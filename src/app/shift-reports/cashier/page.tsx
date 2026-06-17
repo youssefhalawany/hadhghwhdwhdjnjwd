@@ -430,15 +430,15 @@ export default function CashierShiftReportPage() {
                 </div>
 
                 {isDropdownOpen && (
-                  <div className="absolute z-50 top-full left-0 right-0 mt-2 max-h-60 overflow-y-auto bg-background border border-border rounded-xl shadow-2xl">
+                  <div className="absolute z-[100] top-full left-0 right-0 mt-2 max-h-60 overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl overflow-hidden ring-1 ring-black/5">
                     {cashiers.map(c => (
                       <div 
                         key={c.id} 
                         onClick={() => { setSelectedCashierId(c.id); setIsDropdownOpen(false); }}
-                        className="p-3 sm:p-4 hover:bg-muted active:bg-muted cursor-pointer border-b border-border last:border-0 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1"
+                        className="p-4 hover:bg-slate-50 active:bg-slate-100 dark:hover:bg-slate-800 dark:active:bg-slate-700 cursor-pointer border-b border-slate-100 dark:border-slate-800 last:border-0 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 transition-colors"
                       >
-                        <span className="font-bold text-base sm:text-lg">{c.name}</span>
-                        <span className="text-xs sm:text-sm text-muted-foreground font-medium bg-muted/50 px-2 py-1 rounded-md w-fit">
+                        <span className="font-bold text-slate-900 dark:text-white text-base sm:text-lg">{c.name}</span>
+                        <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md w-fit">
                           {lang === "en" ? "Store" : "فرع"}: {c.storeId}
                         </span>
                       </div>
