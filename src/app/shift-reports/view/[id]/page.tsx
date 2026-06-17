@@ -103,10 +103,10 @@ export default function PublicShiftReportView() {
         <div className="space-y-3">
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground">Actual Cash</span>
-            <span className="font-mono font-bold text-emerald-600">{report.cashierCounts.cash.toFixed(2)} EGP</span>
+            <span className="font-mono font-bold text-emerald-600">{Number(report?.cashierCounts?.cash || 0).toFixed(2)} EGP</span>
           </div>
 
-          {report.cashierCounts.denominations && (
+          {report?.cashierCounts?.denominations && (
             <div className="bg-emerald-50/50 p-3 rounded-lg border border-emerald-100 text-xs">
               <p className="font-bold text-slate-500 mb-2 border-b border-emerald-100 pb-1">Cash Breakdown</p>
               <div className="grid grid-cols-2 gap-2 font-mono">
@@ -125,16 +125,16 @@ export default function PublicShiftReportView() {
 
           <div className="flex justify-between items-center pt-2">
             <span className="text-muted-foreground">Total Visa</span>
-            <span className="font-mono font-bold text-blue-600">{report.cashierCounts.visa.toFixed(2)} EGP</span>
+            <span className="font-mono font-bold text-blue-600">{Number(report?.cashierCounts?.visa || 0).toFixed(2)} EGP</span>
           </div>
           <div className="flex justify-between items-center pt-2 border-t border-border">
             <span className="font-bold">Total Drops</span>
-            <span className="font-mono font-black text-lg">{report.cashierCounts.total.toFixed(2)} EGP</span>
+            <span className="font-mono font-black text-lg">{Number(report?.cashierCounts?.total || 0).toFixed(2)} EGP</span>
           </div>
         </div>
       </div>
 
-      {(report.cashierRole === 1 || report.cashierRole === "1") && report.inventoryCounts && (
+      {(report?.cashierRole === 1 || report?.cashierRole === "1") && report?.inventoryCounts && (
         <div className="glass-panel p-5 rounded-2xl space-y-4">
           <h2 className="font-bold text-lg border-b border-border pb-2 flex items-center gap-2">
             <Package className="h-5 w-5 text-orange-500" /> Inventory
@@ -143,19 +143,19 @@ export default function PublicShiftReportView() {
             <div>
               <p className="font-bold mb-2">Cigarettes (Packs)</p>
               <div className="grid grid-cols-4 gap-2 text-center text-xs font-mono">
-                <div className="bg-muted p-2 rounded">St: {report.inventoryCounts.cigarettes.start}</div>
-                <div className="bg-emerald-500/10 text-emerald-600 p-2 rounded">In: {report.inventoryCounts.cigarettes.delivery}</div>
-                <div className="bg-red-500/10 text-red-600 p-2 rounded">End: {report.inventoryCounts.cigarettes.end}</div>
-                <div className="bg-slate-900 text-white p-2 rounded font-bold">={report.inventoryCounts.cigarettes.sold}</div>
+                <div className="bg-muted p-2 rounded">St: {report.inventoryCounts.cigarettes?.start || 0}</div>
+                <div className="bg-emerald-500/10 text-emerald-600 p-2 rounded">In: {report.inventoryCounts.cigarettes?.delivery || 0}</div>
+                <div className="bg-red-500/10 text-red-600 p-2 rounded">End: {report.inventoryCounts.cigarettes?.end || 0}</div>
+                <div className="bg-slate-900 text-white p-2 rounded font-bold">={report.inventoryCounts.cigarettes?.sold || 0}</div>
               </div>
             </div>
             <div>
               <p className="font-bold mb-2">Lighters (Units)</p>
               <div className="grid grid-cols-4 gap-2 text-center text-xs font-mono">
-                <div className="bg-muted p-2 rounded">St: {report.inventoryCounts.lighters.start}</div>
-                <div className="bg-emerald-500/10 text-emerald-600 p-2 rounded">In: {report.inventoryCounts.lighters.delivery}</div>
-                <div className="bg-red-500/10 text-red-600 p-2 rounded">End: {report.inventoryCounts.lighters.end}</div>
-                <div className="bg-slate-900 text-white p-2 rounded font-bold">={report.inventoryCounts.lighters.sold}</div>
+                <div className="bg-muted p-2 rounded">St: {report.inventoryCounts.lighters?.start || 0}</div>
+                <div className="bg-emerald-500/10 text-emerald-600 p-2 rounded">In: {report.inventoryCounts.lighters?.delivery || 0}</div>
+                <div className="bg-red-500/10 text-red-600 p-2 rounded">End: {report.inventoryCounts.lighters?.end || 0}</div>
+                <div className="bg-slate-900 text-white p-2 rounded font-bold">={report.inventoryCounts.lighters?.sold || 0}</div>
               </div>
             </div>
           </div>
@@ -182,16 +182,16 @@ export default function PublicShiftReportView() {
             <div className="bg-muted/50 p-3 rounded-lg text-sm">
               <div className="flex justify-between font-mono mb-1">
                 <span>Total Expected:</span>
-                <span>{report.managerAudit.financials.systemExpected.toFixed(2)}</span>
+                <span>{Number(report.managerAudit?.financials?.systemExpected || 0).toFixed(2)}</span>
               </div>
               <div className="flex justify-between font-mono mb-1">
                 <span>Total Drops:</span>
-                <span>{report.managerAudit.financials.actualDrops.toFixed(2)}</span>
+                <span>{Number(report.managerAudit?.financials?.actualDrops || 0).toFixed(2)}</span>
               </div>
               <div className="flex justify-between font-mono font-bold mt-2 pt-2 border-t border-border">
                 <span>Variance:</span>
-                <span className={report.managerAudit.financials.variance < 0 ? "text-red-500" : "text-emerald-500"}>
-                  {report.managerAudit.financials.variance.toFixed(2)} EGP
+                <span className={(report.managerAudit?.financials?.variance || 0) < 0 ? "text-red-500" : "text-emerald-500"}>
+                  {Number(report.managerAudit?.financials?.variance || 0).toFixed(2)} EGP
                 </span>
               </div>
             </div>
