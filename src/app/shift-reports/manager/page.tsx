@@ -10,12 +10,20 @@ import jsPDF from "jspdf";
 
 export default function ManagerAuditPage() {
   const [activeTab, setActiveTab] = useState<"pending" | "history">("pending");
-  
+
   const [pendingReports, setPendingReports] = useState<any[]>([]);
   const [historyReports, setHistoryReports] = useState<any[]>([]);
-  
+
   const [selectedReport, setSelectedReport] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const formatTimeMinus2Hours = (dateString: string) => {
+    if (!dateString) return "";
+    const d = new Date(dateString);
+    d.setHours(d.getHours() - 2);
+    return d.toLocaleString('en-GB');
+  };
 
   // Audit Form State
   const [expectedCash, setExpectedCash] = useState<string>("");
@@ -94,7 +102,7 @@ export default function ManagerAuditPage() {
     setSubmitting(true);
     try {
       const reportRef = doc(db, "shift_reports", selectedReport.id);
-      
+
       await updateDoc(reportRef, {
         status: "approved",
         managerAudit: {
@@ -111,7 +119,7 @@ export default function ManagerAuditPage() {
           auditedAt: selectedReport.managerAudit?.auditedAt || new Date().toISOString()
         }
       });
-      
+
       alert("Report Approved & Saved!");
       setActiveTab("history");
     } catch (error) {
@@ -130,7 +138,7 @@ export default function ManagerAuditPage() {
     setSubmitting(true);
     try {
       const reportRef = doc(db, "shift_reports", selectedReport.id);
-      
+
       await updateDoc(reportRef, {
         status: "rejected",
         managerAudit: {
@@ -138,7 +146,7 @@ export default function ManagerAuditPage() {
           rejectedAt: new Date().toISOString()
         }
       });
-      
+
       alert("Report Rejected & sent back to cashier!");
       setActiveTab("pending");
       setSelectedReport(null);
@@ -179,26 +187,31 @@ export default function ManagerAuditPage() {
     return <div className="flex items-center justify-center min-h-[60vh]"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600"></div></div>;
   }
 
-  const reportsList = activeTab === "pending" ? pendingReports : historyReports;
+  const reportsList = activeTab === "pending" 
+    ? pendingReports 
+    : historyReports.filter(r => 
+        r.id.toUpperCase().includes(searchQuery.toUpperCase()) || 
+        (r.cashierDetails?.name || "").toLowerCase().includes(searchQuery.toLowerCase())
+      );
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      
+
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end border-b border-border pb-4 mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-black text-foreground tracking-tight">Manager Audit Portal</h1>
           <p className="text-sm text-muted-foreground mt-1">Review, approve, and print end-of-shift reports</p>
         </div>
-        
+
         {/* TAB SWITCHER */}
         <div className="flex bg-muted/50 p-1 rounded-xl border border-border">
-          <button 
+          <button
             onClick={() => { setActiveTab("pending"); setSelectedReport(null); }}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "pending" ? "bg-white shadow text-red-600 border border-border" : "text-muted-foreground hover:text-foreground"}`}
           >
             <Clock className="h-4 w-4" /> Pending ({pendingReports.length})
           </button>
-          <button 
+          <button
             onClick={() => { setActiveTab("history"); setSelectedReport(null); }}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "history" ? "bg-white shadow text-slate-800 border border-border" : "text-muted-foreground hover:text-foreground"}`}
           >
@@ -208,9 +221,22 @@ export default function ManagerAuditPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
+
         {/* LEFT COLUMN: LIST */}
         <div className="lg:col-span-1 space-y-4 max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar">
+          
+          {activeTab === "history" && (
+            <div className="sticky top-0 z-10 bg-background pb-2">
+              <input 
+                type="text"
+                placeholder="Search by Barcode or Cashier Name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full p-3 rounded-xl border border-border bg-muted/50 focus:bg-background outline-none focus:ring-2 focus:ring-red-500 text-sm"
+              />
+            </div>
+          )}
+
           {reportsList.length === 0 ? (
             <div className="glass-panel p-8 text-center rounded-2xl">
               <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
@@ -222,11 +248,10 @@ export default function ManagerAuditPage() {
                 <button
                   key={report.id}
                   onClick={() => handleSelectReport(report)}
-                  className={`w-full text-left p-4 rounded-xl border transition-all ${
-                    selectedReport?.id === report.id 
-                      ? 'border-red-500 bg-red-50 shadow-md shadow-red-500/10' 
+                  className={`w-full text-left p-4 rounded-xl border transition-all ${selectedReport?.id === report.id
+                      ? 'border-red-500 bg-red-50 shadow-md shadow-red-500/10'
                       : 'border-border bg-card hover:border-red-300'
-                  }`}
+                    }`}
                 >
                   <div className="flex justify-between items-start mb-2">
                     <span className="font-bold text-foreground text-sm">{report.cashierDetails.date}</span>
@@ -234,7 +259,7 @@ export default function ManagerAuditPage() {
                   </div>
                   <div className="font-semibold text-lg text-foreground mb-1">{report.cashierDetails.name}</div>
                   <div className="text-xs text-muted-foreground font-mono mb-3">Store: {report.cashierDetails.storeId}</div>
-                  
+
                   {activeTab === "history" && report.managerAudit && (
                     <div className="mb-3 text-xs flex justify-between bg-white p-2 rounded border border-border">
                       <span className="text-slate-500">Variance:</span>
@@ -272,7 +297,7 @@ export default function ManagerAuditPage() {
                     <p className="text-slate-500 text-xs mt-1 font-semibold text-blue-600">
                       {selectedReport.cashierRole === 2 ? 'Cashier 2 (Money Only)' : 'Cashier 1 (Full Register)'}
                     </p>
-                    <p className="text-slate-400 text-xs mt-1">Submitted: {new Date(selectedReport.createdAt).toLocaleString()}</p>
+                    <p className="text-slate-400 text-xs mt-1">Submitted: {formatTimeMinus2Hours(selectedReport.createdAt)}</p>
                     {activeTab === "history" && (
                       <span className="inline-block mt-3 px-2 py-1 bg-green-500/20 text-green-400 text-xs font-bold rounded border border-green-500/30">
                         <CheckCircle className="inline h-3 w-3 mr-1" /> Approved by {selectedReport.managerAudit?.managerName}
@@ -287,14 +312,14 @@ export default function ManagerAuditPage() {
               </div>
 
               <div className="p-6 space-y-8 bg-background">
-                
+
                 {/* 1. Cashier Counts vs System Expected */}
                 <section>
                   <div className="flex items-center gap-2 mb-4">
                     <Banknote className="h-5 w-5 text-red-500" />
                     <h3 className="text-lg font-bold">Financial Audit (Over/Short)</h3>
                   </div>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Cashier Submitted */}
                     <div className="space-y-3 p-4 bg-muted/30 rounded-xl border border-border relative">
@@ -412,7 +437,7 @@ export default function ManagerAuditPage() {
                     <Lock className="h-5 w-5 text-slate-500" />
                     <h3 className="text-lg font-bold">Manager Audit Notes</h3>
                   </div>
-                  
+
                   <div className="space-y-4">
                     <div>
                       <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Auditing Manager Name</label>
@@ -444,14 +469,14 @@ export default function ManagerAuditPage() {
                 <div className="pt-4 border-t border-border grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {activeTab === "pending" ? (
                     <>
-                      <button 
+                      <button
                         onClick={handleReject}
                         disabled={submitting}
                         className="w-full py-4 bg-red-100 hover:bg-red-200 text-red-700 rounded-xl font-bold text-lg transition-all"
                       >
                         {submitting ? "..." : "Reject & Send Back"}
                       </button>
-                      <button 
+                      <button
                         onClick={handleApprove}
                         disabled={submitting}
                         className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-lg shadow-xl shadow-slate-900/20 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
@@ -461,14 +486,14 @@ export default function ManagerAuditPage() {
                     </>
                   ) : (
                     <>
-                      <button 
+                      <button
                         onClick={handleApprove}
                         disabled={submitting}
                         className="w-full py-4 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold text-sm transition-all"
                       >
                         {submitting ? "Saving..." : "Update Audit Notes"}
                       </button>
-                      <button 
+                      <button
                         onClick={generatePDF}
                         disabled={generatingPDF}
                         className="w-full py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-sm shadow-xl shadow-red-500/20 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
@@ -489,7 +514,7 @@ export default function ManagerAuditPage() {
       {selectedReport && (
         <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
           <div id="manager-signoff-pdf-capture" style={{ width: '794px', height: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif' }}>
-            
+
             {/* Header / Letterhead */}
             <div style={{ padding: '40px 40px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '4px solid #1e293b' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
@@ -497,18 +522,23 @@ export default function ManagerAuditPage() {
                   <span style={{ fontSize: '50px', fontWeight: '900', color: '#ffffff', lineHeight: 1 }}>K</span>
                 </div>
                 <div>
-                  <h1 style={{ fontSize: '32px', fontWeight: '900', color: '#1e293b', margin: 0, textTransform: 'uppercase', letterSpacing: '-0.5px' }}>Circle K Corporate</h1>
-                  <p style={{ fontSize: '16px', color: '#64748b', margin: '5px 0 0', fontWeight: '600' }}>OFFICIAL SHIFT AUDIT & SIGN-OFF</p>
+                  <h1 style={{ fontSize: '32px', fontWeight: '900', color: '#1e293b', margin: 0, textTransform: 'uppercase', letterSpacing: '-0.5px' }}>CIRCLE K EL-ALAMEIN 4</h1>
+                  <p style={{ fontSize: '16px', color: '#64748b', margin: '5px 0 0', fontWeight: '600' }}>SHIFT REPORT</p>
                 </div>
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <Barcode value={selectedReport.id.substring(0, 10).toUpperCase()} width={1.5} height={40} fontSize={12} displayValue={true} />
+              <div style={{ textAlign: 'right', display: 'flex', gap: '15px', alignItems: 'center' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <Barcode value={selectedReport.id.substring(0, 10).toUpperCase()} width={1.5} height={40} fontSize={12} displayValue={true} />
+                </div>
+                <div style={{ borderLeft: '1px solid #e2e8f0', paddingLeft: '15px' }}>
+                  <img src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(typeof window !== 'undefined' ? window.location.origin + '/shift-reports/view/' + selectedReport.id : '')}`} style={{ width: '64px', height: '64px' }} alt="QR Code" />
+                </div>
               </div>
             </div>
 
             {/* Content Area */}
             <div style={{ padding: '30px 40px', position: 'relative', zIndex: 10 }}>
-              
+
               {/* Branch & Shift Details (Strict Grid) */}
               <div style={{ border: '2px solid #e2e8f0', marginBottom: '30px', borderRadius: '4px', overflow: 'hidden' }}>
                 <div style={{ backgroundColor: '#f8fafc', padding: '10px 15px', borderBottom: '2px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '1px' }}>
@@ -539,7 +569,7 @@ export default function ManagerAuditPage() {
                   </div>
                   <div style={{ padding: '15px' }}>
                     <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Cashier Submission Timestamp</p>
-                    <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{new Date(selectedReport.createdAt).toLocaleString()}</p>
+                    <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{formatTimeMinus2Hours(selectedReport.createdAt)}</p>
                   </div>
                 </div>
               </div>
@@ -549,7 +579,7 @@ export default function ManagerAuditPage() {
                 <div style={{ backgroundColor: '#f8fafc', padding: '6px 15px', borderBottom: '2px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>
                   2. Financial Audit & Variance
                 </div>
-                
+
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
                   <thead style={{ backgroundColor: '#f1f5f9' }}>
                     <tr>
@@ -586,7 +616,7 @@ export default function ManagerAuditPage() {
                   <div style={{ backgroundColor: '#f8fafc', padding: '6px 15px', borderBottom: '2px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>
                     3. Inventory Counts & Shrinkage
                   </div>
-                  
+
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
                     <thead style={{ backgroundColor: '#f1f5f9' }}>
                       <tr>
@@ -656,7 +686,7 @@ export default function ManagerAuditPage() {
 
               {/* Official Signatures Block */}
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '40px' }}>
-                
+
                 {/* Cashier Signature */}
                 <div style={{ width: '40%' }}>
                   <p style={{ fontSize: '10px', color: '#64748b', fontStyle: 'italic', marginBottom: '30px', lineHeight: 1.4 }}>
@@ -683,11 +713,11 @@ export default function ManagerAuditPage() {
             {/* Footer */}
             <div style={{ position: 'absolute', bottom: '30px', left: '40px', right: '40px', borderTop: '2px solid #e2e8f0', paddingTop: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase' }}>Circle K Internal Document</span>
-                <p style={{ fontSize: '9px', color: '#cbd5e1', margin: '2px 0 0' }}>Confidential & Proprietary</p>
+                <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase' }}>El Masreya For Trade Internal Document</span>
+                <p style={{ fontSize: '9px', color: '#cbd5e1', margin: '2px 0 0' }}>Generated: {formatTimeMinus2Hours(new Date().toISOString())}</p>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <span style={{ fontSize: '10px', color: '#94a3b8', fontFamily: 'monospace', fontWeight: 'bold' }}>AUDIT TIMESTAMP: {new Date(selectedReport.managerAudit?.auditedAt || selectedReport.createdAt).toLocaleString()}</span>
+                <span style={{ fontSize: '10px', color: '#94a3b8', fontFamily: 'monospace', fontWeight: 'bold' }}>AUDIT TIMESTAMP: {formatTimeMinus2Hours(selectedReport.managerAudit?.auditedAt || selectedReport.createdAt)}</span>
               </div>
             </div>
 
