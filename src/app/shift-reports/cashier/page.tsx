@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, getDocs, query, where, updateDoc, doc } from "firebase/firestore";
-import { Calculator, Package, Banknote, Calendar, Clock, ArrowRight, Lock, User as UserIcon, Globe, WifiOff, RefreshCw } from "lucide-react";
+import { Calculator, Package, Banknote, Calendar, Clock, ArrowRight, Lock, User as UserIcon, Globe, WifiOff, RefreshCw, ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 // Translation Dictionary
@@ -119,7 +119,7 @@ export default function CashierShiftReportPage() {
   const [isOffline, setIsOffline] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [offlineCount, setOfflineCount] = useState(0);
-
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   useEffect(() => {
     // Initial offline check
     setIsOffline(!navigator.onLine);
@@ -413,19 +413,39 @@ export default function CashierShiftReportPage() {
           <form onSubmit={handleUnlock} className="glass-panel p-4 sm:p-6 rounded-2xl space-y-4 sm:space-y-6 border border-border">
             <div>
               <label className="block text-[10px] sm:text-xs font-bold text-muted-foreground uppercase mb-1 sm:mb-2 flex items-center gap-1"><UserIcon className="h-3 w-3 sm:h-4 sm:w-4" /> {dict.cashierName}</label>
-              <select 
-                required
-                value={selectedCashierId}
-                onChange={(e) => setSelectedCashierId(e.target.value)}
-                className="w-full p-3 sm:p-4 rounded-xl border border-border bg-background text-foreground outline-none focus:ring-2 focus:ring-red-500 text-base sm:text-lg cursor-pointer"
-              >
-                <option value="" disabled className="text-black bg-white dark:text-white dark:bg-slate-900">{dict.selectName}</option>
-                {cashiers.map(c => (
-                  <option key={c.id} value={c.id} className="text-black bg-white dark:text-white dark:bg-slate-900">
-                    {c.name} ({lang === "en" ? "Store" : "فرع"}: {c.storeId})
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <div 
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="w-full p-3 sm:p-4 rounded-xl border border-border bg-background text-foreground outline-none focus:ring-2 focus:ring-red-500 text-base sm:text-lg cursor-pointer flex justify-between items-center"
+                >
+                  <span className={!selectedCashierId ? "text-muted-foreground" : ""}>
+                    {selectedCashierId 
+                      ? (() => {
+                          const c = cashiers.find(x => x.id === selectedCashierId);
+                          return c ? `${c.name} (${lang === "en" ? "Store" : "فرع"}: ${c.storeId})` : dict.selectName;
+                        })()
+                      : dict.selectName}
+                  </span>
+                  <ChevronDown className={`h-5 w-5 transition-transform ${isDropdownOpen ? "rotate-180" : ""}`} />
+                </div>
+
+                {isDropdownOpen && (
+                  <div className="absolute z-50 top-full left-0 right-0 mt-2 max-h-60 overflow-y-auto bg-background border border-border rounded-xl shadow-2xl">
+                    {cashiers.map(c => (
+                      <div 
+                        key={c.id} 
+                        onClick={() => { setSelectedCashierId(c.id); setIsDropdownOpen(false); }}
+                        className="p-3 sm:p-4 hover:bg-muted active:bg-muted cursor-pointer border-b border-border last:border-0 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1"
+                      >
+                        <span className="font-bold text-base sm:text-lg">{c.name}</span>
+                        <span className="text-xs sm:text-sm text-muted-foreground font-medium bg-muted/50 px-2 py-1 rounded-md w-fit">
+                          {lang === "en" ? "Store" : "فرع"}: {c.storeId}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div>
