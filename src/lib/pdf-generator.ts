@@ -32,11 +32,11 @@ export const generatePDF = async (elementId: string, options: PDFExportOptions):
   const height = element.offsetHeight;
   
   // A4 dimensions in mm
-  const a4Width = orientation === "p" ? 210 : 297;
-  const a4Height = orientation === "p" ? 297 : 210;
+  const a4Width: number = orientation === "p" ? 210 : 297;
+  const a4Height: number = orientation === "p" ? 297 : 210;
   
-  const imgWidth = a4Width;
-  const imgHeight = width > 0 ? (height * imgWidth) / width : 0;
+  const imgWidth: number = a4Width;
+  const imgHeight: number = width > 0 ? (height * imgWidth) / width : 0;
   
   if (imgHeight === 0 || imgWidth === 0) {
     throw new Error("Captured canvas has zero dimensions");
