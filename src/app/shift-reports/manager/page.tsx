@@ -514,7 +514,7 @@ export default function ManagerAuditPage() {
       {/* --- HIDDEN FORMAL A4 PRINT TEMPLATE FOR MANAGER --- */}
       {selectedReport && (
         <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
-          <div id="manager-signoff-pdf-capture" style={{ width: '794px', height: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif' }}>
+          <div id="manager-signoff-pdf-capture" style={{ width: '794px', minHeight: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', display: 'flex', flexDirection: 'column' }}>
 
             {/* Header / Letterhead */}
             <div style={{ padding: '40px 40px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '4px solid #1e293b' }}>
@@ -550,6 +550,16 @@ export default function ManagerAuditPage() {
               <div style={{ border: '2px solid #e2e8f0', marginBottom: '30px', borderRadius: '4px', overflow: 'hidden' }}>
                 <div style={{ backgroundColor: '#f8fafc', padding: '10px 15px', borderBottom: '2px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '1px' }}>
                   1. Shift & Branch Information
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginTop: '10px' }}>
+                    <div>
+                      <p style={{ margin: '0 0 5px', color: '#64748b' }}>Audited By</p>
+                      <p style={{ margin: 0, fontWeight: 'bold', fontSize: '14px', color: '#0f172a' }}>{managerName || "Pending"}</p>
+                    </div>
+                    <div>
+                      <p style={{ margin: '0 0 5px', color: '#64748b' }}>Date Audited</p>
+                      <p style={{ margin: 0, fontWeight: 'bold', fontSize: '14px', color: '#0f172a' }}>{formatTimeMinus2Hours(selectedReport.managerAudit?.auditedAt || new Date().toISOString())}</p>
+                    </div>
+                  </div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.5fr', gap: '0' }}>
                   <div style={{ padding: '15px', borderRight: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
@@ -600,7 +610,7 @@ export default function ManagerAuditPage() {
                     <tr>
                       <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>Cash</td>
                       <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px' }}>EGP {selectedReport.cashierCounts.cash.toLocaleString()}</td>
-                      <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px' }}>EGP {selectedReport.managerAudit?.expectedCash?.toLocaleString() || "0"}</td>
+                      <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px' }}>EGP {Number(expectedCash).toLocaleString() || "0"}</td>
                       <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px', textAlign: 'right', fontWeight: 'bold', color: calculateCashVariance() < 0 ? '#dc2626' : '#16a34a' }}>
                         {calculateCashVariance() < 0 ? '-' : '+'}EGP {Math.abs(calculateCashVariance()).toLocaleString()}
                       </td>
@@ -608,7 +618,7 @@ export default function ManagerAuditPage() {
                     <tr>
                       <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>Visa</td>
                       <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px' }}>EGP {selectedReport.cashierCounts.visa.toLocaleString()}</td>
-                      <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px' }}>EGP {selectedReport.managerAudit?.expectedVisa?.toLocaleString() || "0"}</td>
+                      <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px' }}>EGP {Number(expectedVisa).toLocaleString() || "0"}</td>
                       <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px', textAlign: 'right', fontWeight: 'bold', color: calculateVisaVariance() < 0 ? '#dc2626' : '#16a34a' }}>
                         {calculateVisaVariance() < 0 ? '-' : '+'}EGP {Math.abs(calculateVisaVariance()).toLocaleString()}
                       </td>
@@ -654,11 +664,11 @@ export default function ManagerAuditPage() {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', backgroundColor: '#f8fafc', borderTop: '2px solid #cbd5e1' }}>
                     <div style={{ padding: '8px 15px', borderRight: '1px solid #e2e8f0' }}>
                       <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', marginRight: '10px' }}>Cigarettes Shrink</span>
-                      <span style={{ fontSize: '14px', fontWeight: '900', color: '#0f172a' }}>{selectedReport.managerAudit?.cigarettesPercent || 0}%</span>
+                      <span style={{ fontSize: '14px', fontWeight: '900', color: '#0f172a' }}>{Number(cigarettesPercent) || 0}%</span>
                     </div>
                     <div style={{ padding: '8px 15px' }}>
                       <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', marginRight: '10px' }}>Coffee Shrink</span>
-                      <span style={{ fontSize: '14px', fontWeight: '900', color: '#0f172a' }}>{selectedReport.managerAudit?.coffeePercent || 0}%</span>
+                      <span style={{ fontSize: '14px', fontWeight: '900', color: '#0f172a' }}>{Number(coffeePercent) || 0}%</span>
                     </div>
                   </div>
                 </div>
@@ -696,12 +706,17 @@ export default function ManagerAuditPage() {
 
                 {/* Cashier Signature */}
                 <div style={{ width: '40%' }}>
-                  <p style={{ fontSize: '10px', color: '#64748b', fontStyle: 'italic', marginBottom: '30px', lineHeight: 1.4 }}>
+                  <p style={{ fontSize: '10px', color: '#64748b', fontStyle: 'italic', marginBottom: '10px', lineHeight: 1.4 }}>
                     I, the undersigned cashier, declare that the physical counts provided above are accurate, and I have surrendered the declared funds to the manager.
                   </p>
+                  {selectedReport.cashierSignature ? (
+                    <img src={selectedReport.cashierSignature} alt="Signature" style={{ display: 'block', maxWidth: '100%', height: '100px', objectFit: 'contain', marginBottom: '5px' }} />
+                  ) : (
+                    <div style={{ height: '100px', marginBottom: '5px' }}></div>
+                  )}
                   <div style={{ borderBottom: '2px solid #1e293b', width: '100%', marginBottom: '10px' }}></div>
                   <p style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e293b', margin: 0, textTransform: 'uppercase' }}>Cashier Signature</p>
-                  <p style={{ fontSize: '14px', color: '#475569', margin: '4px 0 0' }}>{selectedReport.cashierDetails.name}</p>
+                  <p style={{ fontSize: '16px', fontWeight: '900', color: '#000000', margin: '4px 0 0' }}>{selectedReport.cashierDetails.name}</p>
                 </div>
 
                 {/* Manager Signature */}
@@ -711,14 +726,14 @@ export default function ManagerAuditPage() {
                   </p>
                   <div style={{ borderBottom: '2px solid #1e293b', width: '100%', marginBottom: '10px' }}></div>
                   <p style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e293b', margin: 0, textTransform: 'uppercase' }}>Manager Signature</p>
-                  <p style={{ fontSize: '14px', color: '#475569', margin: '4px 0 0' }}>{selectedReport.managerAudit?.managerName || "__________________"}</p>
+                  <p style={{ fontSize: '16px', fontWeight: '900', color: '#000000', margin: '4px 0 0' }}>{managerName || "__________________"}</p>
                 </div>
 
               </div>
             </div>
 
             {/* Footer */}
-            <div style={{ position: 'absolute', bottom: '30px', left: '40px', right: '40px', borderTop: '2px solid #e2e8f0', paddingTop: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ marginTop: 'auto', marginBottom: '30px', marginLeft: '40px', marginRight: '40px', borderTop: '2px solid #e2e8f0', paddingTop: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase' }}>El Masreya For Trade Internal Document</span>
                 <p style={{ fontSize: '9px', color: '#cbd5e1', margin: '2px 0 0' }}>Generated: {formatTimeMinus2Hours(new Date().toISOString())}</p>

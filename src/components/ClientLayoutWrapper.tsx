@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sun, Moon, Shield, Database, LayoutDashboard, FileText, Printer, ClipboardList, CheckCircle, Search, LogOut, User, Users } from "lucide-react";
+import { Sun, Moon, Shield, Database, LayoutDashboard, FileText, Printer, ClipboardList, CheckCircle, Search, LogOut, User, Users, Menu, X } from "lucide-react";
 import { auth } from "@/lib/firebase";
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
 import type { User as FirebaseUser } from "firebase/auth";
@@ -16,6 +16,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
 
   // Initialize theme, role, and mock status from localStorage
@@ -59,13 +60,11 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
   const navItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Transactions", href: "/", icon: ClipboardList },
     { name: "Shift Input", href: "/shift-reports/cashier", icon: User },
     { name: "Shift Audit", href: "/shift-reports/manager", icon: Shield },
+    { name: "Voids & Returns", href: "/voids/manager", icon: Shield },
     { name: "Financial Reports", href: "/financial-reports", icon: FileText },
-    { name: "Cashier Accounts", href: "/settings/cashiers", icon: Users },
-    { name: "Thermal Designer", href: "/label-designer", icon: Printer },
-    { name: "Audit Logs", href: "/audit-logs", icon: ClipboardList }
+    { name: "Cashier Accounts", href: "/settings/cashiers", icon: Users }
   ];
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -79,7 +78,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   };
 
   // Completely isolate Cashier pages (No Enterprise Auth, No Sidebar)
-  if (pathname?.startsWith('/shift-reports/cashier')) {
+  if (pathname?.startsWith('/shift-reports/cashier') || pathname?.startsWith('/voids/cashier')) {
     return (
       <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
         {children}
@@ -185,9 +184,9 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
             </nav>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             {/* Role Switcher */}
-            <div className="flex items-center gap-1.5 bg-muted/60 border border-border px-2.5 py-1.5 rounded-lg">
+            <div className="hidden sm:flex items-center gap-1.5 bg-muted/60 border border-border px-2.5 py-1.5 rounded-lg">
               <Shield className="h-3.5 w-3.5 text-red-500" />
               <select
                 id="select-role-switcher"
@@ -218,13 +217,69 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
             {/* Logout */}
             <button
               onClick={() => signOut(auth)}
-              className="p-2 rounded-lg border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors"
+              className="p-2 rounded-lg border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors hidden sm:flex"
               title="Sign Out"
             >
               <LogOut className="h-4 w-4" />
             </button>
+
+            {/* Mobile Hamburger Toggle */}
+            <button 
+              className="md:hidden p-2 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground transition-colors ml-1"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            </button>
           </div>
         </div>
+
+        {/* Mobile Dropdown Menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden absolute top-16 left-0 w-full bg-background border-b border-border shadow-xl z-50 flex flex-col p-4 gap-2">
+            {navItems.map((item) => {
+              const isActive = pathname === item.href;
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
+                    isActive
+                      ? "bg-red-500/10 text-red-600 dark:text-red-500"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  <Icon className="h-5 w-5" />
+                  {item.name}
+                </Link>
+              );
+            })}
+            <div className="border-t border-border mt-2 pt-4 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-muted-foreground uppercase">Role Simulator</span>
+                <select
+                  value={role}
+                  onChange={(e) => { handleRoleChange(e); setMobileMenuOpen(false); }}
+                  className="bg-muted border border-border rounded-md px-2 py-1 text-xs outline-none"
+                >
+                  <option value="owner">Owner (Full)</option>
+                  <option value="manager">Manager</option>
+                  <option value="accountant">Accountant</option>
+                  <option value="cashier">Cashier</option>
+                  <option value="warehouse">Warehouse</option>
+                  <option value="viewer">Viewer</option>
+                </select>
+              </div>
+              <button
+                onClick={() => signOut(auth)}
+                className="w-full flex items-center justify-center gap-2 p-3 rounded-lg border border-red-500/30 bg-red-500/10 text-red-500 font-bold"
+              >
+                <LogOut className="h-4 w-4" /> Sign Out
+              </button>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Main Content Area */}

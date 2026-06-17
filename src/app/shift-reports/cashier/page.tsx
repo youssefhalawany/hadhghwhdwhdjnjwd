@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, getDocs, query, where, updateDoc, doc } from "firebase/firestore";
-import { Calculator, Package, Banknote, Calendar, Clock, ArrowRight, Lock, User as UserIcon, Globe, WifiOff, RefreshCw, ChevronDown } from "lucide-react";
+import { Calculator, Package, Banknote, Calendar, Clock, ArrowRight, Lock, User as UserIcon, Globe, WifiOff, RefreshCw, ChevronDown, Shield } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 // Translation Dictionary
@@ -43,7 +43,10 @@ const t = {
     submitting: "Submitting...",
     resubmit: "Resubmit Corrected Report",
     submit: "Submit Shift Report",
-    reasonLabel: "Manager's Reason"
+    reasonLabel: "Manager's Reason",
+    signYourReport: "Sign Your Report",
+    signBelow: "Please sign below to verify this report.",
+    clearSignature: "Clear Signature"
   },
   ar: {
     shiftAccess: "تسجيل الدخول للوردية",
@@ -80,8 +83,109 @@ const t = {
     submitting: "جاري الإرسال...",
     resubmit: "إعادة إرسال التقرير المصحح",
     submit: "إرسال تقرير الوردية",
-    reasonLabel: "سبب الرفض"
+    reasonLabel: "سبب الرفض",
+    signYourReport: "توقيع التقرير",
+    signBelow: "يرجى التوقيع داخل المربع أدناه لتأكيد التقرير.",
+    clearSignature: "مسح التوقيع"
   }
+};
+
+const SignaturePad = ({ onSave, onClear, dict }: { onSave: (data: string) => void, onClear: () => void, dict: any }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (canvas) {
+      // Fix for blurry canvas on high DPI screens
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 2;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+      }
+    }
+  }, []);
+
+  const getCoordinates = (e: any) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    
+    // Calculate scaling factor in case the canvas is scaled by CSS
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY
+    };
+  };
+
+  const startDrawing = (e: any) => {
+    const coords = getCoordinates(e);
+    if (!coords) return;
+    const ctx = canvasRef.current?.getContext("2d");
+    if (!ctx) return;
+    ctx.beginPath();
+    ctx.moveTo(coords.x, coords.y);
+    setIsDrawing(true);
+  };
+
+  const draw = (e: any) => {
+    if (!isDrawing) return;
+    const coords = getCoordinates(e);
+    if (!coords) return;
+    const ctx = canvasRef.current?.getContext("2d");
+    if (!ctx) return;
+    ctx.lineTo(coords.x, coords.y);
+    ctx.stroke();
+  };
+
+  const stopDrawing = () => {
+    if (!isDrawing) return;
+    setIsDrawing(false);
+    const canvas = canvasRef.current;
+    if (canvas) {
+      onSave(canvas.toDataURL("image/png"));
+    }
+  };
+
+  const clear = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      onClear();
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="border border-border rounded-xl overflow-hidden bg-white touch-none">
+        <canvas
+          ref={canvasRef}
+          width={600}
+          height={200}
+          className="w-full h-[150px] sm:h-[200px] cursor-crosshair touch-none"
+          onMouseDown={startDrawing}
+          onMouseMove={draw}
+          onMouseUp={stopDrawing}
+          onMouseLeave={stopDrawing}
+          onTouchStart={startDrawing}
+          onTouchMove={draw}
+          onTouchEnd={stopDrawing}
+        />
+      </div>
+      <button type="button" onClick={clear} className="text-xs text-red-500 font-bold uppercase hover:underline">
+        {dict.clearSignature || "Clear Signature"}
+      </button>
+    </div>
+  );
 };
 
 export default function CashierShiftReportPage() {
@@ -114,6 +218,8 @@ export default function CashierShiftReportPage() {
   const [existingReportId, setExistingReportId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState<string | null>(null);
   const [originalData, setOriginalData] = useState<any>(null);
+
+  const [cashierSignature, setCashierSignature] = useState<string>("");
 
   const [loading, setLoading] = useState(false);
   
@@ -348,6 +454,7 @@ export default function CashierShiftReportPage() {
         visa: Number(visa) || 0,
         total: calculateTotalMoney()
       },
+      cashierSignature,
       inventoryCounts: {
         cigarettes: {
           start: Number(cigarettes.start) || 0,
@@ -409,6 +516,7 @@ export default function CashierShiftReportPage() {
         // Reset form to let them continue or leave
         setDenominations({ '200': "", '100': "", '50': "", '20': "", '10': "", '5': "", 'coins': "" });
         setVisa("");
+        setCashierSignature("");
         router.push('/shift-reports/cashier');
         window.location.reload();
       } else {
@@ -551,7 +659,23 @@ export default function CashierShiftReportPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto pb-24 relative">
+      <div className="px-4 pt-4">
+        <button 
+          type="button"
+          onClick={() => router.push('/voids/cashier')}
+          className="w-full flex items-center justify-between bg-slate-900 text-white p-3 rounded-xl font-bold shadow-lg shadow-slate-900/20 active:scale-[0.98] transition-transform"
+        >
+          <div className="flex items-center gap-2">
+            <div className="bg-red-600 p-1.5 rounded-lg">
+              <Shield className="h-4 w-4" />
+            </div>
+            <span>{lang === 'en' ? "Log a Void / Return" : "تسجيل مرتجع / إلغاء"}</span>
+          </div>
+          <span className="text-xs text-slate-400 bg-slate-800 px-2 py-1 rounded-md">New</span>
+        </button>
+      </div>
+
+      <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto pb-24 relative mt-2">
         {rejectReason && (
           <div className="bg-red-50 border-b border-red-200 p-4 mb-4">
             <div className="flex items-start gap-3">
@@ -674,7 +798,7 @@ export default function CashierShiftReportPage() {
               {/* Cigarettes */}
               <div className="space-y-2 sm:space-y-3 bg-muted/20 p-3 sm:p-4 rounded-xl border border-border">
                 <h3 className="font-bold text-slate-700 dark:text-slate-300 border-b border-border pb-1 sm:pb-2 uppercase tracking-wide text-[10px] sm:text-xs">{dict.cigarettes}</h3>
-                <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2">
                   <div>
                     <label className="block text-[8px] sm:text-[10px] font-bold text-muted-foreground uppercase mb-1">{dict.start}</label>
                     <input required type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={cigarettes.start} onChange={(e) => setCigarettes({ ...cigarettes, start: e.target.value })} className="w-full p-2 sm:p-2.5 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-orange-500 text-center font-mono text-xs sm:text-base" />
@@ -697,7 +821,7 @@ export default function CashierShiftReportPage() {
               {/* Lighters */}
               <div className="space-y-2 sm:space-y-3 bg-muted/20 p-3 sm:p-4 rounded-xl border border-border">
                 <h3 className="font-bold text-slate-700 dark:text-slate-300 border-b border-border pb-1 sm:pb-2 uppercase tracking-wide text-[10px] sm:text-xs">{dict.lighters}</h3>
-                <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2">
                   <div>
                     <label className="block text-[8px] sm:text-[10px] font-bold text-muted-foreground uppercase mb-1">{dict.start}</label>
                     <input required type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={lighters.start} onChange={(e) => setLighters({ ...lighters, start: e.target.value })} className="w-full p-2 sm:p-2.5 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-orange-500 text-center font-mono text-xs sm:text-base" />
@@ -718,6 +842,22 @@ export default function CashierShiftReportPage() {
               </div>
             </section>
           )}
+
+          {/* Signature Capture */}
+          <section className="glass-panel p-4 sm:p-5 rounded-xl sm:rounded-2xl space-y-3 sm:space-y-4 mb-24">
+            <div className="flex items-center gap-2 border-b border-border pb-2">
+              <UserIcon className="h-4 w-4 sm:h-5 sm:w-5 text-red-500" />
+              <h2 className="text-base sm:text-lg font-bold text-foreground">{dict.signYourReport}</h2>
+            </div>
+            <p className="text-xs text-muted-foreground">{dict.signBelow}</p>
+            <SignaturePad 
+              dict={dict} 
+              onSave={(data) => setCashierSignature(data)} 
+              onClear={() => setCashierSignature("")} 
+            />
+            {/* Hidden required input to prevent form submission if no signature */}
+            <input type="text" value={cashierSignature} readOnly required className="h-0 w-0 opacity-0 absolute pointer-events-none" />
+          </section>
         </div>
 
         {/* SUBMIT */}

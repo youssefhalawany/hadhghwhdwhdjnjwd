@@ -345,13 +345,13 @@ export default function FinancialReportsPage() {
         <div className="pt-2">
           {activeTab === "sales" && (
             <div className="space-y-4">
-              <div className="grid grid-cols-4 gap-4 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <div className="glass-panel p-4 rounded-xl text-center"><p className="text-xs text-muted-foreground uppercase">Cash Total</p><p className="text-xl font-bold text-green-500">EGP {totalCash.toLocaleString()}</p></div>
                 <div className="glass-panel p-4 rounded-xl text-center"><p className="text-xs text-muted-foreground uppercase">Visa Total</p><p className="text-xl font-bold text-blue-500">EGP {totalVisa.toLocaleString()}</p></div>
                 <div className="glass-panel p-4 rounded-xl text-center"><p className="text-xs text-muted-foreground uppercase">Grand Total</p><p className="text-xl font-bold text-red-500">EGP {grandTotal.toLocaleString()}</p></div>
                 <div className="glass-panel p-4 rounded-xl text-center"><p className="text-xs text-muted-foreground uppercase">Over/Short</p><p className={`text-xl font-bold ${totalOverShort < 0 ? 'text-red-500' : 'text-green-500'}`}>EGP {totalOverShort.toLocaleString()}</p></div>
               </div>
-              <div className="overflow-hidden rounded border border-border bg-card">
+              <div className="overflow-x-auto rounded border border-border bg-card">
                 <table className="w-full text-left text-sm">
                   <thead className="bg-muted text-muted-foreground border-b border-border">
                     <tr>{printTableHeaders.map((h, i) => <th key={i} className="p-3 font-semibold">{h}</th>)}</tr>
@@ -374,7 +374,7 @@ export default function FinancialReportsPage() {
             </div>
           )}
           {activeTab === "credits" && (
-            <div className="overflow-hidden rounded border border-border bg-card mt-6">
+            <div className="overflow-x-auto rounded border border-border bg-card mt-6">
               <table className="w-full text-left text-sm">
                 <thead className="bg-muted text-muted-foreground border-b border-border">
                   <tr>{printTableHeaders.map((h, i) => <th key={i} className="p-3 font-semibold">{h}</th>)}</tr>

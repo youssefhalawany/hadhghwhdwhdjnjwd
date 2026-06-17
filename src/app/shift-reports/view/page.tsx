@@ -163,6 +163,19 @@ function PublicShiftReportContent() {
         </div>
       )}
 
+      {report.cashierSignature && (
+        <div className="glass-panel p-5 rounded-2xl space-y-4">
+          <h2 className="font-bold text-lg border-b border-border pb-2 flex items-center gap-2">
+            <User className="h-5 w-5 text-slate-500" /> Cashier Signature
+          </h2>
+          <div className="bg-white rounded-lg border border-border p-3 text-center">
+            <img src={report.cashierSignature} alt="Cashier Signature" className="w-full h-[80px] object-contain mb-2" />
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">Signed By</p>
+            <p className="text-base font-black text-slate-800">{report.cashierDetails.name}</p>
+          </div>
+        </div>
+      )}
+
       {report.managerAudit && (
         <div className="glass-panel p-5 rounded-2xl space-y-4 border-l-4 border-l-indigo-500">
           <h2 className="font-bold text-lg border-b border-border pb-2 flex items-center gap-2">
@@ -183,16 +196,16 @@ function PublicShiftReportContent() {
             <div className="bg-muted/50 p-3 rounded-lg text-sm">
               <div className="flex justify-between font-mono mb-1">
                 <span>Total Expected:</span>
-                <span>{Number(report.managerAudit?.financials?.systemExpected || 0).toFixed(2)}</span>
+                <span>{Number((report.managerAudit?.expectedCash || 0) + (report.managerAudit?.expectedVisa || 0)).toFixed(2)}</span>
               </div>
               <div className="flex justify-between font-mono mb-1">
                 <span>Total Drops:</span>
-                <span>{Number(report.managerAudit?.financials?.actualDrops || 0).toFixed(2)}</span>
+                <span>{Number(report.cashierCounts?.total || 0).toFixed(2)}</span>
               </div>
               <div className="flex justify-between font-mono font-bold mt-2 pt-2 border-t border-border">
                 <span>Variance:</span>
-                <span className={(report.managerAudit?.financials?.variance || 0) < 0 ? "text-red-500" : "text-emerald-500"}>
-                  {Number(report.managerAudit?.financials?.variance || 0).toFixed(2)} EGP
+                <span className={(report.managerAudit?.overShort || 0) < 0 ? "text-red-500" : "text-emerald-500"}>
+                  {Number(report.managerAudit?.overShort || 0).toFixed(2)} EGP
                 </span>
               </div>
             </div>
