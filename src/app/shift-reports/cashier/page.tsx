@@ -2,12 +2,93 @@
 
 import React, { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, getDocs, query, where, orderBy, limit, updateDoc, doc } from "firebase/firestore";
-import { Calculator, Package, Banknote, Calendar, Clock, ArrowRight, Lock, User as UserIcon } from "lucide-react";
+import { collection, addDoc, getDocs, query, where, updateDoc, doc } from "firebase/firestore";
+import { Calculator, Package, Banknote, Calendar, Clock, ArrowRight, Lock, User as UserIcon, Globe, WifiOff, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
+
+// Translation Dictionary
+const t = {
+  en: {
+    shiftAccess: "Shift Access",
+    authorizedOnly: "Authorized Cashiers Only",
+    cashierName: "Cashier Name",
+    selectName: "-- Select your name --",
+    pin: "4-Digit PIN",
+    unlock: "Unlock Shift Input",
+    dailyReport: "Daily Shift Report",
+    rejectedTitle: "Report Rejected by Manager",
+    rejectedSubtitle: "Please correct your numbers below and resubmit.",
+    shiftInfo: "Shift Information",
+    date: "Date",
+    shift: "Shift",
+    morning: "Morning",
+    noon: "Noon",
+    night: "Night",
+    role: "Register Role",
+    role1: "Cashier 1 (Full Register & Inventory)",
+    role2: "Cashier 2 (Money Only)",
+    storeId: "Assigned Store ID",
+    drops: "Cashier Drops",
+    actualCash: "Actual Cash Inside Drop",
+    totalVisa: "Total Visa Slips Inside Drop",
+    totalDrops: "Total Declared Drops:",
+    inventory: "Inventory Checks",
+    cigarettes: "Cigarettes (Packs)",
+    lighters: "Lighters (Units)",
+    start: "Start",
+    delivery: "+ Delivery",
+    end: "- End Count",
+    soldPacks: "Sold Packs",
+    soldUnits: "Sold Units",
+    submitting: "Submitting...",
+    resubmit: "Resubmit Corrected Report",
+    submit: "Submit Shift Report",
+    reasonLabel: "Manager's Reason"
+  },
+  ar: {
+    shiftAccess: "تسجيل الدخول للوردية",
+    authorizedOnly: "للكاشير المصرح لهم فقط",
+    cashierName: "اسم الكاشير",
+    selectName: "-- اختر اسمك --",
+    pin: "الرمز السري (٤ أرقام)",
+    unlock: "الدخول للوردية",
+    dailyReport: "تقرير الوردية اليومي",
+    rejectedTitle: "تم رفض التقرير من المدير",
+    rejectedSubtitle: "يرجى تصحيح الأرقام أدناه وإعادة الإرسال.",
+    shiftInfo: "معلومات الوردية",
+    date: "التاريخ",
+    shift: "فترة الوردية",
+    morning: "صباحي",
+    noon: "مسائي",
+    night: "ليلي",
+    role: "نوع الكاشير",
+    role1: "كاشير ١ (نقدية ومخزون)",
+    role2: "كاشير ٢ (نقدية فقط)",
+    storeId: "رقم الفرع",
+    drops: "النقدية المسلمة",
+    actualCash: "النقد الفعلي المسلم (كاش)",
+    totalVisa: "إجمالي إيصالات الفيزا",
+    totalDrops: "إجمالي النقدية المسلمة:",
+    inventory: "جرد المخزون",
+    cigarettes: "السجائر (علب)",
+    lighters: "الولاعات (حبات)",
+    start: "بداية الوردية",
+    delivery: "+ استلام",
+    end: "- نهاية الوردية",
+    soldPacks: "المباع (علب)",
+    soldUnits: "المباع (حبات)",
+    submitting: "جاري الإرسال...",
+    resubmit: "إعادة إرسال التقرير المصحح",
+    submit: "إرسال تقرير الوردية",
+    reasonLabel: "سبب الرفض"
+  }
+};
 
 export default function CashierShiftReportPage() {
   const router = useRouter();
+
+  const [lang, setLang] = useState<"en" | "ar">("en");
+  const dict = t[lang];
 
   const [cashiers, setCashiers] = useState<any[]>([]);
   const [selectedCashierId, setSelectedCashierId] = useState("");
@@ -33,6 +114,77 @@ export default function CashierShiftReportPage() {
   const [originalData, setOriginalData] = useState<any>(null);
 
   const [loading, setLoading] = useState(false);
+  
+  // Offline Mode States
+  const [isOffline, setIsOffline] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [offlineCount, setOfflineCount] = useState(0);
+
+  useEffect(() => {
+    // Initial offline check
+    setIsOffline(!navigator.onLine);
+    checkOfflineQueue();
+
+    const handleOnline = () => {
+      setIsOffline(false);
+      syncOfflineReports();
+    };
+    const handleOffline = () => setIsOffline(true);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  const checkOfflineQueue = () => {
+    const stored = localStorage.getItem('offline_reports_queue');
+    if (stored) {
+      const q = JSON.parse(stored);
+      setOfflineCount(q.length);
+    } else {
+      setOfflineCount(0);
+    }
+  };
+
+  const syncOfflineReports = async () => {
+    const stored = localStorage.getItem('offline_reports_queue');
+    if (!stored) return;
+    
+    try {
+      setSyncing(true);
+      const queue = JSON.parse(stored);
+      const remaining = [];
+      
+      for (const item of queue) {
+        try {
+          if (item.existingReportId) {
+            await updateDoc(doc(db, "shift_reports", item.existingReportId), item.payload);
+          } else {
+            await addDoc(collection(db, "shift_reports"), item.payload);
+          }
+        } catch (e) {
+          console.error("Failed to sync report", e);
+          remaining.push(item);
+        }
+      }
+      
+      if (remaining.length === 0) {
+        localStorage.removeItem('offline_reports_queue');
+        alert(lang === 'en' ? "Offline reports successfully synced to the server!" : "تم مزامنة التقارير المحفوظة بنجاح!");
+      } else {
+        localStorage.setItem('offline_reports_queue', JSON.stringify(remaining));
+      }
+      checkOfflineQueue();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   useEffect(() => {
     const fetchCashiers = async () => {
@@ -110,13 +262,12 @@ export default function CashierShiftReportPage() {
       // 2. If no rejected report, Auto-fetch previous shift's end inventory for this store
       const prevQuery = query(
         collection(db, "shift_reports"),
-        where("cashierDetails.storeId", "==", c.storeId),
-        orderBy("createdAt", "desc"),
-        limit(1)
+        where("cashierDetails.storeId", "==", c.storeId)
       );
       const prevSnap = await getDocs(prevQuery);
       if (!prevSnap.empty) {
-        const lastReport = prevSnap.docs[0].data();
+        const sortedDocs = prevSnap.docs.sort((a,b) => b.data().createdAt.localeCompare(a.data().createdAt));
+        const lastReport = sortedDocs[0].data();
         const cigEnd = lastReport.inventoryCounts?.cigarettes?.end || 0;
         const lightEnd = lastReport.inventoryCounts?.lighters?.end || 0;
         setCigarettes(prev => ({ ...prev, start: String(cigEnd) }));
@@ -148,7 +299,7 @@ export default function CashierShiftReportPage() {
     const c = cashiers.find(x => x.id === selectedCashierId);
 
     try {
-      const payload = {
+      const payload: any = {
         status: "pending_manager",
         createdAt: new Date().toISOString(),
         cashierDetails: {
@@ -179,6 +330,10 @@ export default function CashierShiftReportPage() {
         }
       };
 
+      if (isOffline) {
+        throw new Error("OFFLINE_MODE");
+      }
+
       let submittedId = "";
       if (existingReportId) {
         // Edit rejected report
@@ -195,9 +350,36 @@ export default function CashierShiftReportPage() {
       }
       
       router.push(`/shift-reports/cashier/success/${submittedId}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting shift report:", error);
-      alert("Failed to submit. Please check your connection and try again.");
+      
+      // Save to offline queue if offline or network failure
+      const isNetworkError = error.message === "OFFLINE_MODE" || error.code?.includes('network') || error.message?.includes('offline');
+      
+      if (isNetworkError) {
+        const stored = localStorage.getItem('offline_reports_queue');
+        const queue = stored ? JSON.parse(stored) : [];
+        queue.push({
+          existingReportId: existingReportId || null,
+          payload: {
+            ...payload,
+            _offlineSavedAt: new Date().toISOString()
+          }
+        });
+        localStorage.setItem('offline_reports_queue', JSON.stringify(queue));
+        checkOfflineQueue();
+        
+        alert(lang === 'en' ? "You are offline. Your report has been saved and will automatically send when you reconnect to the internet." : "أنت غير متصل بالإنترنت. تم حفظ التقرير محلياً وسيتم إرساله تلقائياً فور عودة الاتصال.");
+        
+        // Reset form to let them continue or leave
+        setCash("");
+        setVisa("");
+        router.push('/shift-reports/cashier');
+        window.location.reload();
+      } else {
+        alert(lang === 'en' ? "Failed to submit. Please try again." : "فشل الإرسال. يرجى المحاولة مرة أخرى.");
+      }
+    } finally {
       setLoading(false);
     }
   };
@@ -208,50 +390,61 @@ export default function CashierShiftReportPage() {
 
   if (!unlocked) {
     return (
-      <div className="max-w-md mx-auto space-y-6 pt-10">
-        <div className="text-center py-4 border-b border-border mb-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-red-600 rounded-full mb-4 shadow-lg shadow-red-500/20">
-            <Lock className="h-8 w-8 text-white" />
-          </div>
-          <h1 className="text-3xl font-black tracking-tight">Shift Access</h1>
-          <p className="text-sm text-muted-foreground uppercase font-bold tracking-widest mt-2">Authorized Cashiers Only</p>
+      <div className="max-w-md mx-auto space-y-6 pt-10" dir={lang === "ar" ? "rtl" : "ltr"}>
+        <div className="flex justify-end px-4">
+          <button 
+            onClick={() => setLang(lang === "en" ? "ar" : "en")}
+            className="flex items-center gap-2 bg-slate-200 dark:bg-slate-800 px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-bold shadow-sm"
+          >
+            <Globe className="h-4 w-4" /> {lang === "en" ? "عربي" : "English"}
+          </button>
         </div>
 
-        <form onSubmit={handleUnlock} className="glass-panel p-6 rounded-2xl space-y-6 border border-border">
-          <div>
-            <label className="block text-xs font-bold text-muted-foreground uppercase mb-2 flex items-center gap-1"><UserIcon className="h-4 w-4" /> Cashier Name</label>
-            <select 
-              required
-              value={selectedCashierId}
-              onChange={(e) => setSelectedCashierId(e.target.value)}
-              className="w-full p-4 rounded-xl border border-border bg-background outline-none focus:ring-2 focus:ring-red-500 text-lg appearance-none"
-            >
-              <option value="" disabled>-- Select your name --</option>
-              {cashiers.map(c => (
-                <option key={c.id} value={c.id}>{c.name} (Store: {c.storeId})</option>
-              ))}
-            </select>
+        <div className="text-center py-4 border-b border-border mb-4 sm:mb-6 px-4">
+          <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 bg-red-600 rounded-full mb-3 sm:mb-4 shadow-lg shadow-red-500/20">
+            <Lock className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
           </div>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight">{dict.shiftAccess}</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground uppercase font-bold tracking-widest mt-1 sm:mt-2">{dict.authorizedOnly}</p>
+        </div>
 
-          <div>
-            <label className="block text-xs font-bold text-muted-foreground uppercase mb-2 flex items-center gap-1"><Lock className="h-4 w-4" /> 4-Digit PIN</label>
-            <input 
-              required
-              type="password"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              maxLength={4}
-              value={pinInput}
-              onChange={(e) => setPinInput(e.target.value)}
-              className="w-full p-4 rounded-xl border border-border bg-background outline-none focus:ring-2 focus:ring-red-500 text-center text-3xl tracking-[1em] font-mono"
-              placeholder="••••"
-            />
-          </div>
+        <div className="px-4">
+          <form onSubmit={handleUnlock} className="glass-panel p-4 sm:p-6 rounded-2xl space-y-4 sm:space-y-6 border border-border">
+            <div>
+              <label className="block text-[10px] sm:text-xs font-bold text-muted-foreground uppercase mb-1 sm:mb-2 flex items-center gap-1"><UserIcon className="h-3 w-3 sm:h-4 sm:w-4" /> {dict.cashierName}</label>
+              <select 
+                required
+                value={selectedCashierId}
+                onChange={(e) => setSelectedCashierId(e.target.value)}
+                className="w-full p-3 sm:p-4 rounded-xl border border-border bg-background outline-none focus:ring-2 focus:ring-red-500 text-base sm:text-lg appearance-none"
+              >
+                <option value="" disabled>{dict.selectName}</option>
+                {cashiers.map(c => (
+                  <option key={c.id} value={c.id}>{c.name} ({lang === "en" ? "Store" : "فرع"}: {c.storeId})</option>
+                ))}
+              </select>
+            </div>
 
-          <button type="submit" className="w-full py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-lg shadow-xl shadow-red-500/20 transition-all">
-            Unlock Shift Input
-          </button>
-        </form>
+            <div>
+              <label className="block text-[10px] sm:text-xs font-bold text-muted-foreground uppercase mb-1 sm:mb-2 flex items-center gap-1"><Lock className="h-3 w-3 sm:h-4 sm:w-4" /> {dict.pin}</label>
+              <input 
+                required
+                type="password"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={4}
+                value={pinInput}
+                onChange={(e) => setPinInput(e.target.value)}
+                className="w-full p-3 sm:p-4 rounded-xl border border-border bg-background outline-none focus:ring-2 focus:ring-red-500 text-center text-2xl sm:text-3xl tracking-[0.5em] sm:tracking-[1em] font-mono"
+                placeholder="••••"
+              />
+            </div>
+
+            <button type="submit" className="w-full py-3 sm:py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-base sm:text-lg shadow-xl shadow-red-500/20 transition-all">
+              {dict.unlock}
+            </button>
+          </form>
+        </div>
       </div>
     );
   }
@@ -259,20 +452,49 @@ export default function CashierShiftReportPage() {
   const activeCashier = cashiers.find(x => x.id === selectedCashierId);
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col h-screen bg-background text-foreground max-w-md mx-auto shadow-2xl relative">
+    <div className="flex flex-col h-screen bg-background text-foreground max-w-md mx-auto shadow-2xl relative" dir={lang === "ar" ? "rtl" : "ltr"}>
       
       {/* Header */}
-      <header className="bg-slate-900 text-white p-4 sticky top-0 z-10 flex items-center justify-between border-b border-slate-800">
+      <header className="bg-slate-900 text-white p-3 sm:p-4 sticky top-0 z-10 flex items-center justify-between border-b border-slate-800">
         <div>
-          <h1 className="text-xl font-black tracking-tight">Daily Shift Report</h1>
-          <p className="text-xs text-slate-400 font-semibold">{new Date().toLocaleDateString('en-GB')}</p>
+          <h1 className="text-lg sm:text-xl font-black tracking-tight">{dict.dailyReport}</h1>
+          <p className="text-[10px] sm:text-xs text-slate-400 font-semibold">{new Date().toLocaleDateString('en-GB')}</p>
         </div>
-        <div className="h-10 w-10 bg-red-600 rounded-full flex items-center justify-center border-2 border-red-500/30">
-          <span className="font-black text-xl">K</span>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button 
+            type="button"
+            onClick={() => setLang(lang === "en" ? "ar" : "en")}
+            className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold transition-colors"
+          >
+            <Globe className="h-3 w-3" /> {lang === "en" ? "عربي" : "EN"}
+          </button>
+          <div className="h-8 w-8 sm:h-10 sm:w-10 bg-red-600 rounded-full flex items-center justify-center border-2 border-red-500/30">
+            <span className="font-black text-sm sm:text-xl">K</span>
+          </div>
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto pb-24 relative">
+      {/* Offline Status Bar */}
+      {(isOffline || offlineCount > 0) && (
+        <div className={`px-4 py-2 flex items-center justify-between text-xs font-bold text-white ${isOffline ? 'bg-orange-500' : 'bg-blue-600'}`}>
+          <div className="flex items-center gap-2">
+            {isOffline ? <WifiOff className="h-4 w-4" /> : <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />}
+            <span>
+              {isOffline 
+                ? (lang === 'en' ? "Offline Mode Active" : "وضع عدم الاتصال نشط") 
+                : (syncing ? (lang === 'en' ? "Syncing..." : "جاري المزامنة...") : (lang === 'en' ? "Internet Restored" : "عاد الاتصال"))
+              }
+            </span>
+          </div>
+          {offlineCount > 0 && (
+            <span className="bg-white/20 px-2 py-0.5 rounded-full">
+              {offlineCount} {lang === 'en' ? "pending" : "معلق"}
+            </span>
+          )}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto pb-24 relative">
         {rejectReason && (
           <div className="bg-red-50 border-b border-red-200 p-4 mb-4">
             <div className="flex items-start gap-3">
@@ -280,134 +502,134 @@ export default function CashierShiftReportPage() {
                 <Lock className="h-5 w-5 text-red-600" />
               </div>
               <div>
-                <h3 className="text-red-800 font-bold text-sm">Report Rejected by Manager</h3>
+                <h3 className="text-red-800 font-bold text-sm">{dict.rejectedTitle}</h3>
                 <p className="text-red-600 text-xs mt-1 font-medium leading-snug">
-                  "{rejectReason}"
+                  <span className="font-bold text-red-800">{dict.reasonLabel}:</span> "{rejectReason}"
                 </p>
                 <p className="text-red-500 text-[10px] mt-2 font-bold uppercase tracking-wider">
-                  Please correct your numbers below and resubmit.
+                  {dict.rejectedSubtitle}
                 </p>
               </div>
             </div>
           </div>
         )}
 
-        <div className="p-4 space-y-6">
+        <div className="p-3 sm:p-4 space-y-4 sm:space-y-6">
           
           {/* 1. Shift Info */}
-          <section className="glass-panel p-5 rounded-2xl space-y-4">
+          <section className="glass-panel p-4 sm:p-5 rounded-xl sm:rounded-2xl space-y-3 sm:space-y-4">
             <div className="flex items-center gap-2 border-b border-border pb-2">
-              <Clock className="h-5 w-5 text-red-500" />
-              <h2 className="text-lg font-bold text-foreground">Shift Information</h2>
+              <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-red-500" />
+              <h2 className="text-base sm:text-lg font-bold text-foreground">{dict.shiftInfo}</h2>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <label className="block text-xs font-bold text-muted-foreground uppercase mb-1 flex items-center gap-1"><Calendar className="h-3 w-3" /> Date</label>
-                <input required type="date" value={date} readOnly className="w-full p-3 rounded-xl border border-border bg-muted/50 text-slate-500 outline-none cursor-not-allowed" />
+                <label className="block text-[10px] sm:text-xs font-bold text-muted-foreground uppercase mb-1 flex items-center gap-1"><Calendar className="h-3 w-3" /> {dict.date}</label>
+                <input required type="date" value={date} readOnly className="w-full p-2.5 sm:p-3 rounded-lg sm:rounded-xl border border-border bg-muted/50 text-slate-500 outline-none cursor-not-allowed text-xs sm:text-sm" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-muted-foreground uppercase mb-1 flex items-center gap-1"><Clock className="h-3 w-3" /> Shift</label>
-                <select value={shift} onChange={(e) => setShift(e.target.value)} className="w-full p-3 rounded-xl border border-border bg-background outline-none appearance-none">
-                  <option value="Morning">Morning</option>
-                  <option value="Noon">Noon</option>
-                  <option value="Night">Night</option>
+                <label className="block text-[10px] sm:text-xs font-bold text-muted-foreground uppercase mb-1 flex items-center gap-1"><Clock className="h-3 w-3" /> {dict.shift}</label>
+                <select value={shift} onChange={(e) => setShift(e.target.value)} className="w-full p-2.5 sm:p-3 rounded-lg sm:rounded-xl border border-border bg-background outline-none appearance-none text-xs sm:text-sm">
+                  <option value="Morning">{dict.morning}</option>
+                  <option value="Noon">{dict.noon}</option>
+                  <option value="Night">{dict.night}</option>
                 </select>
               </div>
               <div className="col-span-2">
-                <label className="block text-xs font-bold text-muted-foreground uppercase mb-1 flex items-center gap-1"><UserIcon className="h-3 w-3" /> Register Role</label>
-                <select value={cashierRole} onChange={(e) => setCashierRole(Number(e.target.value))} className="w-full p-3 rounded-xl border border-border bg-background outline-none appearance-none font-bold text-foreground focus:ring-2 focus:ring-red-500">
-                  <option value={1}>Cashier 1 (Full Register & Inventory)</option>
-                  <option value={2}>Cashier 2 (Money Only)</option>
+                <label className="block text-[10px] sm:text-xs font-bold text-muted-foreground uppercase mb-1 flex items-center gap-1"><UserIcon className="h-3 w-3" /> {dict.role}</label>
+                <select value={cashierRole} onChange={(e) => setCashierRole(Number(e.target.value))} className="w-full p-2.5 sm:p-3 rounded-lg sm:rounded-xl border border-border bg-background outline-none appearance-none font-bold text-foreground focus:ring-2 focus:ring-red-500 text-xs sm:text-sm">
+                  <option value={1}>{dict.role1}</option>
+                  <option value={2}>{dict.role2}</option>
                 </select>
               </div>
             </div>
             <div>
-              <label className="block text-xs font-bold text-muted-foreground uppercase mb-1 text-slate-400">Assigned Store ID</label>
-              <div className="w-full p-3 rounded-xl border border-border bg-muted/50 text-slate-500 font-mono">
+              <label className="block text-[10px] sm:text-xs font-bold text-muted-foreground uppercase mb-1 text-slate-400">{dict.storeId}</label>
+              <div className="w-full p-2.5 sm:p-3 rounded-lg sm:rounded-xl border border-border bg-muted/50 text-slate-500 font-mono text-xs sm:text-sm">
                 {activeCashier?.storeId}
               </div>
             </div>
           </section>
 
           {/* 2. Cashier Money */}
-          <section className="glass-panel p-5 rounded-2xl space-y-4">
+          <section className="glass-panel p-4 sm:p-5 rounded-xl sm:rounded-2xl space-y-3 sm:space-y-4">
             <div className="flex items-center gap-2 border-b border-border pb-2">
-              <Banknote className="h-5 w-5 text-emerald-500" />
-              <h2 className="text-lg font-bold text-foreground">Cashier Drops</h2>
+              <Banknote className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-500" />
+              <h2 className="text-base sm:text-lg font-bold text-foreground">{dict.drops}</h2>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <div>
-                <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Actual Cash Inside Drop</label>
+                <label className="block text-[10px] sm:text-xs font-bold text-muted-foreground uppercase mb-1">{dict.actualCash}</label>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">EGP</span>
-                  <input required type="number" min="0" step="0.01" value={cash} onChange={(e) => setCash(e.target.value)} className="w-full pl-14 p-4 rounded-xl border border-border bg-background outline-none focus:ring-2 focus:ring-emerald-500 text-xl font-mono text-emerald-600 dark:text-emerald-400" placeholder="0.00" />
+                  <span className={`absolute ${lang === "ar" ? "right-3 sm:right-4" : "left-3 sm:left-4"} top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs sm:text-sm`}>EGP</span>
+                  <input required type="number" inputMode="decimal" min="0" step="0.01" value={cash} onChange={(e) => setCash(e.target.value)} className={`w-full ${lang === "ar" ? "pr-12 sm:pr-14" : "pl-12 sm:pl-14"} p-3 sm:p-4 rounded-lg sm:rounded-xl border border-border bg-background outline-none focus:ring-2 focus:ring-emerald-500 text-lg sm:text-xl font-mono text-emerald-600 dark:text-emerald-400`} placeholder="0.00" />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Total Visa Slips Inside Drop</label>
+                <label className="block text-[10px] sm:text-xs font-bold text-muted-foreground uppercase mb-1">{dict.totalVisa}</label>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">EGP</span>
-                  <input required type="number" min="0" step="0.01" value={visa} onChange={(e) => setVisa(e.target.value)} className="w-full pl-14 p-4 rounded-xl border border-border bg-background outline-none focus:ring-2 focus:ring-blue-500 text-xl font-mono text-blue-600 dark:text-blue-400" placeholder="0.00" />
+                  <span className={`absolute ${lang === "ar" ? "right-3 sm:right-4" : "left-3 sm:left-4"} top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs sm:text-sm`}>EGP</span>
+                  <input required type="number" inputMode="decimal" min="0" step="0.01" value={visa} onChange={(e) => setVisa(e.target.value)} className={`w-full ${lang === "ar" ? "pr-12 sm:pr-14" : "pl-12 sm:pl-14"} p-3 sm:p-4 rounded-lg sm:rounded-xl border border-border bg-background outline-none focus:ring-2 focus:ring-blue-500 text-lg sm:text-xl font-mono text-blue-600 dark:text-blue-400`} placeholder="0.00" />
                 </div>
               </div>
-              <div className="pt-4 border-t border-border flex justify-between items-center bg-muted/30 p-4 rounded-xl border-dashed">
-                <span className="text-sm font-bold text-muted-foreground uppercase">Total Declared Drops:</span>
-                <span className="text-2xl font-black text-foreground">{calculateTotalMoney().toFixed(2)}</span>
+              <div className="pt-3 sm:pt-4 border-t border-border flex justify-between items-center bg-muted/30 p-3 sm:p-4 rounded-lg sm:rounded-xl border-dashed">
+                <span className="text-xs sm:text-sm font-bold text-muted-foreground uppercase">{dict.totalDrops}</span>
+                <span className="text-xl sm:text-2xl font-black text-foreground">{calculateTotalMoney().toFixed(2)}</span>
               </div>
             </div>
           </section>
 
           {/* 3. Inventory Checks (Only shown for Cashier 1) */}
           {cashierRole === 1 && (
-            <section className="glass-panel p-5 rounded-2xl space-y-6">
+            <section className="glass-panel p-4 sm:p-5 rounded-xl sm:rounded-2xl space-y-4 sm:space-y-6">
               <div className="flex items-center gap-2 border-b border-border pb-2">
-                <Package className="h-5 w-5 text-orange-500" />
-                <h2 className="text-lg font-bold text-foreground">Inventory Checks</h2>
+                <Package className="h-4 w-4 sm:h-5 sm:w-5 text-orange-500" />
+                <h2 className="text-base sm:text-lg font-bold text-foreground">{dict.inventory}</h2>
               </div>
               
               {/* Cigarettes */}
-              <div className="space-y-3 bg-muted/20 p-4 rounded-xl border border-border">
-                <h3 className="font-bold text-slate-700 dark:text-slate-300 border-b border-border pb-2 uppercase tracking-wide text-xs">Cigarettes (Packs)</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="space-y-2 sm:space-y-3 bg-muted/20 p-3 sm:p-4 rounded-xl border border-border">
+                <h3 className="font-bold text-slate-700 dark:text-slate-300 border-b border-border pb-1 sm:pb-2 uppercase tracking-wide text-[10px] sm:text-xs">{dict.cigarettes}</h3>
+                <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
                   <div>
-                    <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Start</label>
-                    <input required type="number" min="0" value={cigarettes.start} onChange={(e) => setCigarettes({ ...cigarettes, start: e.target.value })} className="w-full p-2.5 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-orange-500 text-center font-mono" />
+                    <label className="block text-[8px] sm:text-[10px] font-bold text-muted-foreground uppercase mb-1">{dict.start}</label>
+                    <input required type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={cigarettes.start} onChange={(e) => setCigarettes({ ...cigarettes, start: e.target.value })} className="w-full p-2 sm:p-2.5 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-orange-500 text-center font-mono text-xs sm:text-base" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1 text-emerald-500">+ Delivery</label>
-                    <input required type="number" min="0" value={cigarettes.delivery} onChange={(e) => setCigarettes({ ...cigarettes, delivery: e.target.value })} className="w-full p-2.5 rounded-lg border border-emerald-500/30 bg-emerald-500/5 outline-none focus:ring-2 focus:ring-emerald-500 text-center font-mono text-emerald-600" />
+                    <label className="block text-[8px] sm:text-[10px] font-bold text-muted-foreground uppercase mb-1 text-emerald-500">{dict.delivery}</label>
+                    <input required type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={cigarettes.delivery} onChange={(e) => setCigarettes({ ...cigarettes, delivery: e.target.value })} className="w-full p-2 sm:p-2.5 rounded-lg border border-emerald-500/30 bg-emerald-500/5 outline-none focus:ring-2 focus:ring-emerald-500 text-center font-mono text-emerald-600 text-xs sm:text-base" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1 text-red-500">- End Count</label>
-                    <input required type="number" min="0" value={cigarettes.end} onChange={(e) => setCigarettes({ ...cigarettes, end: e.target.value })} className="w-full p-2.5 rounded-lg border border-red-500/30 bg-red-500/5 outline-none focus:ring-2 focus:ring-red-500 text-center font-mono text-red-600 font-bold" />
+                    <label className="block text-[8px] sm:text-[10px] font-bold text-muted-foreground uppercase mb-1 text-red-500">{dict.end}</label>
+                    <input required type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={cigarettes.end} onChange={(e) => setCigarettes({ ...cigarettes, end: e.target.value })} className="w-full p-2 sm:p-2.5 rounded-lg border border-red-500/30 bg-red-500/5 outline-none focus:ring-2 focus:ring-red-500 text-center font-mono text-red-600 font-bold text-xs sm:text-base" />
                   </div>
-                  <div className="bg-slate-900 rounded-lg p-2.5 text-center border border-slate-700 flex flex-col justify-center">
-                    <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">Sold Packs</label>
-                    <span className="font-black text-white text-lg">{calculateSold(cigarettes.start, cigarettes.delivery, cigarettes.end)}</span>
+                  <div className="bg-slate-900 rounded-lg p-1.5 sm:p-2.5 text-center border border-slate-700 flex flex-col justify-center">
+                    <label className="block text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase mb-0.5">{dict.soldPacks}</label>
+                    <span className="font-black text-white text-sm sm:text-lg">{calculateSold(cigarettes.start, cigarettes.delivery, cigarettes.end)}</span>
                   </div>
                 </div>
               </div>
 
               {/* Lighters */}
-              <div className="space-y-3 bg-muted/20 p-4 rounded-xl border border-border">
-                <h3 className="font-bold text-slate-700 dark:text-slate-300 border-b border-border pb-2 uppercase tracking-wide text-xs">Lighters (Units)</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="space-y-2 sm:space-y-3 bg-muted/20 p-3 sm:p-4 rounded-xl border border-border">
+                <h3 className="font-bold text-slate-700 dark:text-slate-300 border-b border-border pb-1 sm:pb-2 uppercase tracking-wide text-[10px] sm:text-xs">{dict.lighters}</h3>
+                <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
                   <div>
-                    <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Start</label>
-                    <input required type="number" min="0" value={lighters.start} onChange={(e) => setLighters({ ...lighters, start: e.target.value })} className="w-full p-2.5 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-orange-500 text-center font-mono" />
+                    <label className="block text-[8px] sm:text-[10px] font-bold text-muted-foreground uppercase mb-1">{dict.start}</label>
+                    <input required type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={lighters.start} onChange={(e) => setLighters({ ...lighters, start: e.target.value })} className="w-full p-2 sm:p-2.5 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-orange-500 text-center font-mono text-xs sm:text-base" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1 text-emerald-500">+ Delivery</label>
-                    <input required type="number" min="0" value={lighters.delivery} onChange={(e) => setLighters({ ...lighters, delivery: e.target.value })} className="w-full p-2.5 rounded-lg border border-emerald-500/30 bg-emerald-500/5 outline-none focus:ring-2 focus:ring-emerald-500 text-center font-mono text-emerald-600" />
+                    <label className="block text-[8px] sm:text-[10px] font-bold text-muted-foreground uppercase mb-1 text-emerald-500">{dict.delivery}</label>
+                    <input required type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={lighters.delivery} onChange={(e) => setLighters({ ...lighters, delivery: e.target.value })} className="w-full p-2 sm:p-2.5 rounded-lg border border-emerald-500/30 bg-emerald-500/5 outline-none focus:ring-2 focus:ring-emerald-500 text-center font-mono text-emerald-600 text-xs sm:text-base" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1 text-red-500">- End Count</label>
-                    <input required type="number" min="0" value={lighters.end} onChange={(e) => setLighters({ ...lighters, end: e.target.value })} className="w-full p-2.5 rounded-lg border border-red-500/30 bg-red-500/5 outline-none focus:ring-2 focus:ring-red-500 text-center font-mono text-red-600 font-bold" />
+                    <label className="block text-[8px] sm:text-[10px] font-bold text-muted-foreground uppercase mb-1 text-red-500">{dict.end}</label>
+                    <input required type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={lighters.end} onChange={(e) => setLighters({ ...lighters, end: e.target.value })} className="w-full p-2 sm:p-2.5 rounded-lg border border-red-500/30 bg-red-500/5 outline-none focus:ring-2 focus:ring-red-500 text-center font-mono text-red-600 font-bold text-xs sm:text-base" />
                   </div>
-                  <div className="bg-slate-900 rounded-lg p-2.5 text-center border border-slate-700 flex flex-col justify-center">
-                    <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">Sold Units</label>
-                    <span className="font-black text-white text-lg">{calculateSold(lighters.start, lighters.delivery, lighters.end)}</span>
+                  <div className="bg-slate-900 rounded-lg p-1.5 sm:p-2.5 text-center border border-slate-700 flex flex-col justify-center">
+                    <label className="block text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase mb-0.5">{dict.soldUnits}</label>
+                    <span className="font-black text-white text-sm sm:text-lg">{calculateSold(lighters.start, lighters.delivery, lighters.end)}</span>
                   </div>
                 </div>
               </div>
@@ -416,14 +638,14 @@ export default function CashierShiftReportPage() {
         </div>
 
         {/* SUBMIT */}
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/80 backdrop-blur-md border-t border-border z-10">
+        <div className="fixed bottom-0 left-0 right-0 p-3 sm:p-4 bg-background/90 backdrop-blur-md border-t border-border z-10 shadow-[0_-10px_40px_rgba(0,0,0,0.1)]">
           <div className="max-w-md mx-auto">
-            <button type="submit" disabled={loading} className="w-full py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-lg shadow-xl shadow-red-500/20 disabled:opacity-50 transition-all flex items-center justify-center gap-2">
-              {loading ? "Submitting..." : <>{existingReportId ? "Resubmit Corrected Report" : "Submit Shift Report"} <ArrowRight className="h-5 w-5" /></>}
+            <button type="submit" disabled={loading} className="w-full py-3.5 sm:py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-base sm:text-lg shadow-xl shadow-red-500/20 disabled:opacity-50 transition-all flex items-center justify-center gap-2">
+              {loading ? dict.submitting : <>{existingReportId ? dict.resubmit : dict.submit} <ArrowRight className={`h-4 w-4 sm:h-5 sm:w-5 ${lang === "ar" ? "rotate-180" : ""}`} /></>}
             </button>
           </div>
         </div>
-      </div>
-    </form>
+      </form>
+    </div>
   );
 }
