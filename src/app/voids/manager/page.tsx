@@ -292,7 +292,7 @@ export default function ManagerVoidsPage() {
                       <p style={{ fontSize: '10px', fontWeight: '800', color: '#64748b', margin: '0 0 10px 0', textTransform: 'uppercase', letterSpacing: '1px' }}>Manager Authorization</p>
                       <div style={{ height: '80px', marginBottom: '5px' }}></div>
                       <div style={{ borderBottom: '2px solid #0f172a', width: '100%', marginBottom: '5px' }}></div>
-                      <p style={{ fontSize: '16px', fontWeight: '900', color: '#000000', margin: 0 }}>{managerName || "__________________"}</p>
+                      <p style={{ fontSize: '16px', fontWeight: '900', color: '#000000', margin: 0 }}>__________________</p>
                     </div>
                   </div>
 
