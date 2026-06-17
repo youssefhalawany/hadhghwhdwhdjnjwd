@@ -5,6 +5,7 @@ import { db } from "@/lib/firebase";
 import { collection, query, where, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { CheckCircle, Clock, FileText, Banknote, Package, Lock, Printer, Archive } from "lucide-react";
 import Barcode from "react-barcode";
+import QRCode from "react-qr-code";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 
@@ -531,7 +532,13 @@ export default function ManagerAuditPage() {
                   <Barcode value={selectedReport.id.substring(0, 10).toUpperCase()} width={1.5} height={40} fontSize={12} displayValue={true} />
                 </div>
                 <div style={{ borderLeft: '1px solid #e2e8f0', paddingLeft: '15px' }}>
-                  <img src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(typeof window !== 'undefined' ? window.location.origin + '/shift-reports/view/' + selectedReport.id : '')}`} style={{ width: '64px', height: '64px' }} alt="QR Code" />
+                  {typeof window !== 'undefined' && (
+                    <QRCode 
+                      value={window.location.origin + '/shift-reports/view/' + selectedReport.id} 
+                      size={64} 
+                      level="M" 
+                    />
+                  )}
                 </div>
               </div>
             </div>

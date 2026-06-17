@@ -105,7 +105,25 @@ export default function PublicShiftReportView() {
             <span className="text-muted-foreground">Actual Cash</span>
             <span className="font-mono font-bold text-emerald-600">{report.cashierCounts.cash.toFixed(2)} EGP</span>
           </div>
-          <div className="flex justify-between items-center">
+
+          {report.cashierCounts.denominations && (
+            <div className="bg-emerald-50/50 p-3 rounded-lg border border-emerald-100 text-xs">
+              <p className="font-bold text-slate-500 mb-2 border-b border-emerald-100 pb-1">Cash Breakdown</p>
+              <div className="grid grid-cols-2 gap-2 font-mono">
+                {Object.entries(report.cashierCounts.denominations).map(([bill, count]) => {
+                  if (!count || count === 0 || count === "0") return null;
+                  return (
+                    <div key={bill} className="flex justify-between bg-white p-1 px-2 rounded border border-emerald-50">
+                      <span className="text-slate-500">{bill === 'coins' ? 'Coins' : `${bill} x`}</span>
+                      <span className="font-bold text-slate-700">{String(count)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-between items-center pt-2">
             <span className="text-muted-foreground">Total Visa</span>
             <span className="font-mono font-bold text-blue-600">{report.cashierCounts.visa.toFixed(2)} EGP</span>
           </div>

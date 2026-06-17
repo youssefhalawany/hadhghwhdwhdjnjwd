@@ -102,7 +102,9 @@ export default function CashierShiftReportPage() {
   const [cashierRole, setCashierRole] = useState<number>(1);
   
   // Cashier Money Counts
-  const [cash, setCash] = useState<string>("");
+  const [denominations, setDenominations] = useState({
+    '200': "", '100': "", '50': "", '20': "", '10': "", '5': "", 'coins': ""
+  });
   const [visa, setVisa] = useState<string>("");
 
   // Inventory
@@ -242,7 +244,19 @@ export default function CashierShiftReportPage() {
         // Auto-fill their old inputs
         setShift(data.cashierDetails.shift);
         setCashierRole(data.cashierRole || 1);
-        setCash(String(data.cashierCounts.cash));
+        if (data.cashierCounts.denominations) {
+          setDenominations({
+            '200': data.cashierCounts.denominations['200'] ? String(data.cashierCounts.denominations['200']) : "",
+            '100': data.cashierCounts.denominations['100'] ? String(data.cashierCounts.denominations['100']) : "",
+            '50': data.cashierCounts.denominations['50'] ? String(data.cashierCounts.denominations['50']) : "",
+            '20': data.cashierCounts.denominations['20'] ? String(data.cashierCounts.denominations['20']) : "",
+            '10': data.cashierCounts.denominations['10'] ? String(data.cashierCounts.denominations['10']) : "",
+            '5': data.cashierCounts.denominations['5'] ? String(data.cashierCounts.denominations['5']) : "",
+            'coins': data.cashierCounts.denominations['coins'] ? String(data.cashierCounts.denominations['coins']) : ""
+          });
+        } else {
+          setDenominations({ '200': "", '100': "", '50': "", '20': "", '10': "", '5': "", 'coins': String(data.cashierCounts.cash) });
+        }
         setVisa(String(data.cashierCounts.visa));
         setCigarettes({
           start: String(data.inventoryCounts?.cigarettes?.start || ""),
@@ -288,8 +302,20 @@ export default function CashierShiftReportPage() {
     return s + d - e;
   };
 
+  const calculateTotalCash = () => {
+    return (
+      (Number(denominations['200']) * 200) +
+      (Number(denominations['100']) * 100) +
+      (Number(denominations['50']) * 50) +
+      (Number(denominations['20']) * 20) +
+      (Number(denominations['10']) * 10) +
+      (Number(denominations['5']) * 5) +
+      (Number(denominations['coins']) || 0)
+    );
+  };
+
   const calculateTotalMoney = () => {
-    return (Number(cash) || 0) + (Number(visa) || 0);
+    return calculateTotalCash() + (Number(visa) || 0);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -309,7 +335,16 @@ export default function CashierShiftReportPage() {
       },
       cashierRole,
       cashierCounts: {
-        cash: Number(cash) || 0,
+        cash: calculateTotalCash(),
+        denominations: {
+          '200': Number(denominations['200']) || 0,
+          '100': Number(denominations['100']) || 0,
+          '50': Number(denominations['50']) || 0,
+          '20': Number(denominations['20']) || 0,
+          '10': Number(denominations['10']) || 0,
+          '5': Number(denominations['5']) || 0,
+          'coins': Number(denominations['coins']) || 0,
+        },
         visa: Number(visa) || 0,
         total: calculateTotalMoney()
       },
@@ -373,7 +408,7 @@ export default function CashierShiftReportPage() {
         alert(lang === 'en' ? "You are offline. Your report has been saved and will automatically send when you reconnect to the internet." : "أنت غير متصل بالإنترنت. تم حفظ التقرير محلياً وسيتم إرساله تلقائياً فور عودة الاتصال.");
         
         // Reset form to let them continue or leave
-        setCash("");
+        setDenominations({ '200': "", '100': "", '50': "", '20': "", '10': "", '5': "", 'coins': "" });
         setVisa("");
         router.push('/shift-reports/cashier');
         window.location.reload();
@@ -581,14 +616,40 @@ export default function CashierShiftReportPage() {
               <Banknote className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-500" />
               <h2 className="text-base sm:text-lg font-bold text-foreground">{dict.drops}</h2>
             </div>
-            <div className="space-y-3 sm:space-y-4">
-              <div>
-                <label className="block text-[10px] sm:text-xs font-bold text-muted-foreground uppercase mb-1">{dict.actualCash}</label>
-                <div className="relative">
-                  <span className={`absolute ${lang === "ar" ? "right-3 sm:right-4" : "left-3 sm:left-4"} top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs sm:text-sm`}>EGP</span>
-                  <input required type="number" inputMode="decimal" min="0" step="0.01" value={cash} onChange={(e) => setCash(e.target.value)} className={`w-full ${lang === "ar" ? "pr-12 sm:pr-14" : "pl-12 sm:pl-14"} p-3 sm:p-4 rounded-lg sm:rounded-xl border border-border bg-background outline-none focus:ring-2 focus:ring-emerald-500 text-lg sm:text-xl font-mono text-emerald-600 dark:text-emerald-400`} placeholder="0.00" />
+            <div className="space-y-4">
+              <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-border">
+                <p className="text-sm font-bold text-muted-foreground mb-3">{lang === "en" ? "Cash Breakdown (Quantities)" : "تفاصيل النقدية (العدد)"}</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {[200, 100, 50, 20, 10, 5].map((bill) => (
+                    <div key={bill} className="flex items-center gap-2">
+                      <span className="w-12 text-sm font-bold text-slate-500">x {bill}</span>
+                      <input 
+                        type="number" inputMode="numeric" min="0"
+                        value={denominations[String(bill) as keyof typeof denominations]} 
+                        onChange={(e) => setDenominations({...denominations, [String(bill)]: e.target.value})}
+                        className="w-full p-2 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-emerald-500 font-mono text-emerald-600 dark:text-emerald-400"
+                        placeholder="0"
+                      />
+                    </div>
+                  ))}
+                  <div className="col-span-2 flex items-center gap-2 mt-2 pt-2 border-t border-border">
+                    <span className="w-12 text-sm font-bold text-slate-500">Coins</span>
+                    <input 
+                      type="number" inputMode="decimal" min="0" step="0.01"
+                      value={denominations['coins']} 
+                      onChange={(e) => setDenominations({...denominations, 'coins': e.target.value})}
+                      className="w-full p-2 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-emerald-500 font-mono text-emerald-600 dark:text-emerald-400"
+                      placeholder="0.00"
+                    />
+                  </div>
                 </div>
               </div>
+              <div className="flex justify-between items-center bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-xl border border-emerald-200 dark:border-emerald-800/30">
+                <span className="font-bold text-emerald-800 dark:text-emerald-500">{lang === "en" ? "Total Cash" : "إجمالي النقدية"}</span>
+                <span className="font-black text-xl text-emerald-600 dark:text-emerald-400 font-mono">{calculateTotalCash().toFixed(2)}</span>
+              </div>
+            </div>
+            <div className="space-y-3 sm:space-y-4">
               <div>
                 <label className="block text-[10px] sm:text-xs font-bold text-muted-foreground uppercase mb-1">{dict.totalVisa}</label>
                 <div className="relative">
