@@ -619,7 +619,7 @@ export default function CashierShiftReportPage() {
             <div className="space-y-4">
               <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-border">
                 <p className="text-sm font-bold text-muted-foreground mb-3">{lang === "en" ? "Cash Breakdown (Quantities)" : "تفاصيل النقدية (العدد)"}</p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-3">
                   {[200, 100, 50, 20, 10, 5].map((bill) => (
                     <div key={bill} className="flex items-center gap-2">
                       <span className="w-12 text-sm font-bold text-slate-500">x {bill}</span>
@@ -627,18 +627,18 @@ export default function CashierShiftReportPage() {
                         type="number" inputMode="numeric" min="0"
                         value={denominations[String(bill) as keyof typeof denominations]} 
                         onChange={(e) => setDenominations({...denominations, [String(bill)]: e.target.value})}
-                        className="w-full p-2 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-emerald-500 font-mono text-emerald-600 dark:text-emerald-400"
+                        className="w-full p-2.5 sm:p-3 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-emerald-500 font-mono text-emerald-600 dark:text-emerald-400 text-lg"
                         placeholder="0"
                       />
                     </div>
                   ))}
-                  <div className="col-span-2 flex items-center gap-2 mt-2 pt-2 border-t border-border">
+                  <div className="flex items-center gap-2 mt-2 pt-3 border-t border-border">
                     <span className="w-12 text-sm font-bold text-slate-500">Coins</span>
                     <input 
                       type="number" inputMode="decimal" min="0" step="0.01"
                       value={denominations['coins']} 
                       onChange={(e) => setDenominations({...denominations, 'coins': e.target.value})}
-                      className="w-full p-2 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-emerald-500 font-mono text-emerald-600 dark:text-emerald-400"
+                      className="w-full p-2.5 sm:p-3 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-emerald-500 font-mono text-emerald-600 dark:text-emerald-400 text-lg"
                       placeholder="0.00"
                     />
                   </div>
