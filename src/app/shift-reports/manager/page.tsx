@@ -1,0 +1,700 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import { db } from "@/lib/firebase";
+import { collection, query, where, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import { CheckCircle, Clock, FileText, Banknote, Package, Lock, Printer, Archive } from "lucide-react";
+import Barcode from "react-barcode";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
+
+export default function ManagerAuditPage() {
+  const [activeTab, setActiveTab] = useState<"pending" | "history">("pending");
+  
+  const [pendingReports, setPendingReports] = useState<any[]>([]);
+  const [historyReports, setHistoryReports] = useState<any[]>([]);
+  
+  const [selectedReport, setSelectedReport] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Audit Form State
+  const [expectedCash, setExpectedCash] = useState<string>("");
+  const [expectedVisa, setExpectedVisa] = useState<string>("");
+  const [cigarettesPercent, setCigarettesPercent] = useState<string>("");
+  const [coffeePercent, setCoffeePercent] = useState<string>("");
+  const [comments, setComments] = useState<string>("");
+  const [managerName, setManagerName] = useState<string>("");
+  const [submitting, setSubmitting] = useState(false);
+  const [generatingPDF, setGeneratingPDF] = useState(false);
+
+  useEffect(() => {
+    // 1. Fetch Pending
+    const qPending = query(collection(db, "shift_reports"), where("status", "==", "pending_manager"));
+    const unsubPending = onSnapshot(qPending, (snapshot) => {
+      const reports = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      reports.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setPendingReports(reports);
+    });
+
+    // 2. Fetch History (Approved)
+    const qHistory = query(collection(db, "shift_reports"), where("status", "==", "approved"));
+    const unsubHistory = onSnapshot(qHistory, (snapshot) => {
+      const reports = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      reports.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setHistoryReports(reports);
+      setLoading(false);
+    });
+
+    return () => {
+      unsubPending();
+      unsubHistory();
+    };
+  }, []);
+
+  const handleSelectReport = (report: any) => {
+    setSelectedReport(report);
+    // Populate form
+    if (report.managerAudit) {
+      setExpectedCash(String(report.managerAudit.expectedCash || ""));
+      setExpectedVisa(String(report.managerAudit.expectedVisa || ""));
+      setCigarettesPercent(String(report.managerAudit.cigarettesPercent || ""));
+      setCoffeePercent(String(report.managerAudit.coffeePercent || ""));
+      setComments(report.managerAudit.comments || "");
+      setManagerName(report.managerAudit.managerName || "");
+    } else {
+      setExpectedCash("");
+      setExpectedVisa("");
+      setCigarettesPercent("");
+      setCoffeePercent("");
+      setComments("");
+    }
+  };
+
+  const calculateCashVariance = () => {
+    if (!selectedReport) return 0;
+    return selectedReport.cashierCounts.cash - (Number(expectedCash) || 0);
+  };
+
+  const calculateVisaVariance = () => {
+    if (!selectedReport) return 0;
+    return selectedReport.cashierCounts.visa - (Number(expectedVisa) || 0);
+  };
+
+  const calculateTotalVariance = () => {
+    return calculateCashVariance() + calculateVisaVariance();
+  };
+
+  const handleApprove = async () => {
+    if (!selectedReport) return;
+    if (!managerName.trim()) {
+      alert("Please enter your name as the auditing manager.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const reportRef = doc(db, "shift_reports", selectedReport.id);
+      
+      await updateDoc(reportRef, {
+        status: "approved",
+        managerAudit: {
+          ...selectedReport.managerAudit, // preserve rejectReason and other older fields
+          expectedCash: Number(expectedCash) || 0,
+          expectedVisa: Number(expectedVisa) || 0,
+          cashVariance: calculateCashVariance(),
+          visaVariance: calculateVisaVariance(),
+          overShort: calculateTotalVariance(),
+          cigarettesPercent: Number(cigarettesPercent) || 0,
+          coffeePercent: Number(coffeePercent) || 0,
+          comments,
+          managerName,
+          auditedAt: selectedReport.managerAudit?.auditedAt || new Date().toISOString()
+        }
+      });
+      
+      alert("Report Approved & Saved!");
+      setActiveTab("history");
+    } catch (error) {
+      console.error("Error approving report:", error);
+      alert("Failed to approve report.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!selectedReport) return;
+    const reason = prompt("Enter reason for rejection (this will be shown to the cashier):");
+    if (!reason) return; // cancelled or empty
+
+    setSubmitting(true);
+    try {
+      const reportRef = doc(db, "shift_reports", selectedReport.id);
+      
+      await updateDoc(reportRef, {
+        status: "rejected",
+        managerAudit: {
+          rejectReason: reason,
+          rejectedAt: new Date().toISOString()
+        }
+      });
+      
+      alert("Report Rejected & sent back to cashier!");
+      setActiveTab("pending");
+      setSelectedReport(null);
+    } catch (error) {
+      console.error("Error rejecting report:", error);
+      alert("Failed to reject report.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const generatePDF = async () => {
+    if (!selectedReport) return;
+    setGeneratingPDF(true);
+    try {
+      const element = document.getElementById("manager-signoff-pdf-capture");
+      if (!element) return;
+
+      const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+      const imgData = canvas.toDataURL("image/png");
+
+      const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.autoPrint();
+      window.open(pdf.output("bloburl"), "_blank");
+    } catch (error) {
+      console.error("PDF Generate Error:", error);
+      alert("Failed to generate PDF Report.");
+    } finally {
+      setGeneratingPDF(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-[60vh]"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600"></div></div>;
+  }
+
+  const reportsList = activeTab === "pending" ? pendingReports : historyReports;
+
+  return (
+    <div className="max-w-6xl mx-auto space-y-6">
+      
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end border-b border-border pb-4 mb-8 gap-4">
+        <div>
+          <h1 className="text-3xl font-black text-foreground tracking-tight">Manager Audit Portal</h1>
+          <p className="text-sm text-muted-foreground mt-1">Review, approve, and print end-of-shift reports</p>
+        </div>
+        
+        {/* TAB SWITCHER */}
+        <div className="flex bg-muted/50 p-1 rounded-xl border border-border">
+          <button 
+            onClick={() => { setActiveTab("pending"); setSelectedReport(null); }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "pending" ? "bg-white shadow text-red-600 border border-border" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <Clock className="h-4 w-4" /> Pending ({pendingReports.length})
+          </button>
+          <button 
+            onClick={() => { setActiveTab("history"); setSelectedReport(null); }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "history" ? "bg-white shadow text-slate-800 border border-border" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <Archive className="h-4 w-4" /> Audit History ({historyReports.length})
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* LEFT COLUMN: LIST */}
+        <div className="lg:col-span-1 space-y-4 max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar">
+          {reportsList.length === 0 ? (
+            <div className="glass-panel p-8 text-center rounded-2xl">
+              <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
+              <p className="font-bold text-foreground">{activeTab === "pending" ? "All caught up!" : "No history found."}</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {reportsList.map(report => (
+                <button
+                  key={report.id}
+                  onClick={() => handleSelectReport(report)}
+                  className={`w-full text-left p-4 rounded-xl border transition-all ${
+                    selectedReport?.id === report.id 
+                      ? 'border-red-500 bg-red-50 shadow-md shadow-red-500/10' 
+                      : 'border-border bg-card hover:border-red-300'
+                  }`}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="font-bold text-foreground text-sm">{report.cashierDetails.date}</span>
+                    <span className="text-xs font-bold px-2 py-1 bg-white rounded-md text-red-600 border border-red-100">{report.cashierDetails.shift}</span>
+                  </div>
+                  <div className="font-semibold text-lg text-foreground mb-1">{report.cashierDetails.name}</div>
+                  <div className="text-xs text-muted-foreground font-mono mb-3">Store: {report.cashierDetails.storeId}</div>
+                  
+                  {activeTab === "history" && report.managerAudit && (
+                    <div className="mb-3 text-xs flex justify-between bg-white p-2 rounded border border-border">
+                      <span className="text-slate-500">Variance:</span>
+                      <span className={`font-bold ${report.managerAudit.overShort < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                        {report.managerAudit.overShort < 0 ? '-' : '+'}EGP {Math.abs(report.managerAudit.overShort)}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center pt-3 border-t border-red-100">
+                    <span className="text-xs font-bold text-muted-foreground uppercase">Declared Total</span>
+                    <span className="font-bold text-red-600">EGP {report.cashierCounts.total.toLocaleString()}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* RIGHT COLUMN: AUDIT WORKSPACE */}
+        <div className="lg:col-span-2">
+          {!selectedReport ? (
+            <div className="glass-panel h-full min-h-[500px] flex flex-col items-center justify-center text-center rounded-2xl border border-border bg-muted/20">
+              <FileText className="h-16 w-16 text-muted-foreground/30 mb-4" />
+              <p className="text-lg font-bold text-muted-foreground">Select a report to view/audit</p>
+            </div>
+          ) : (
+            <div className="glass-panel rounded-2xl border border-border overflow-hidden">
+              {/* Header */}
+              <div className="bg-slate-900 text-white p-6">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h2 className="text-2xl font-black">{selectedReport.cashierDetails.name}</h2>
+                    <p className="text-slate-400 text-sm mt-1">{selectedReport.cashierDetails.date} • {selectedReport.cashierDetails.shift} Shift • {selectedReport.cashierDetails.storeId}</p>
+                    <p className="text-slate-500 text-xs mt-1 font-semibold text-blue-600">
+                      {selectedReport.cashierRole === 2 ? 'Cashier 2 (Money Only)' : 'Cashier 1 (Full Register)'}
+                    </p>
+                    <p className="text-slate-400 text-xs mt-1">Submitted: {new Date(selectedReport.createdAt).toLocaleString()}</p>
+                    {activeTab === "history" && (
+                      <span className="inline-block mt-3 px-2 py-1 bg-green-500/20 text-green-400 text-xs font-bold rounded border border-green-500/30">
+                        <CheckCircle className="inline h-3 w-3 mr-1" /> Approved by {selectedReport.managerAudit?.managerName}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Declared Total</p>
+                    <p className="text-2xl font-black text-green-400">EGP {selectedReport.cashierCounts.total.toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-8 bg-background">
+                
+                {/* 1. Cashier Counts vs System Expected */}
+                <section>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Banknote className="h-5 w-5 text-red-500" />
+                    <h3 className="text-lg font-bold">Financial Audit (Over/Short)</h3>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Cashier Submitted */}
+                    <div className="space-y-3 p-4 bg-muted/30 rounded-xl border border-border relative">
+                      <div className="absolute -top-3 left-4 bg-background px-2 text-[10px] font-bold text-muted-foreground uppercase border border-border rounded-full">Cashier's Physical Count</div>
+                      <div className="flex justify-between p-2 bg-white rounded border border-border">
+                        <span className="text-sm font-semibold">Cash</span>
+                        <span className="font-mono text-slate-500 line-through mr-2 opacity-0"></span> {/* Spacing */}
+                        <span className="font-mono font-bold">EGP {selectedReport.cashierCounts.cash.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between p-2 bg-white rounded border border-border">
+                        <span className="text-sm font-semibold">Visa</span>
+                        <span className="font-mono font-bold">EGP {selectedReport.cashierCounts.visa.toLocaleString()}</span>
+                      </div>
+                    </div>
+
+                    {/* Manager Input (System Expected) */}
+                    <div className="space-y-3 p-4 bg-red-50 rounded-xl border border-red-100 relative">
+                      <div className="absolute -top-3 left-4 bg-red-100 px-2 text-[10px] font-bold text-red-800 uppercase border border-red-200 rounded-full">POS Expected Totals</div>
+                      <div className="flex justify-between items-center gap-2">
+                        <span className="text-sm font-semibold text-red-900">Cash</span>
+                        <input type="number" value={expectedCash} onChange={e => setExpectedCash(e.target.value)} className="w-32 p-1.5 text-right font-mono border rounded outline-none focus:ring-2 focus:ring-red-500" placeholder="0.00" />
+                      </div>
+                      <div className="flex justify-between items-center gap-2">
+                        <span className="text-sm font-semibold text-red-900">Visa</span>
+                        <input type="number" value={expectedVisa} onChange={e => setExpectedVisa(e.target.value)} className="w-32 p-1.5 text-right font-mono border rounded outline-none focus:ring-2 focus:ring-red-500" placeholder="0.00" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Variance Result */}
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 rounded-xl border flex justify-between items-center bg-slate-50 border-slate-200">
+                      <span className="font-bold text-slate-700">Cash Variance</span>
+                      {(() => {
+                        const variance = calculateCashVariance();
+                        const isZero = variance === 0;
+                        const isShort = variance < 0;
+                        return (
+                          <span className={`text-xl font-black ${isZero ? 'text-slate-500' : isShort ? 'text-red-600' : 'text-green-600'}`}>
+                            {isShort ? '-' : isZero ? '' : '+'}EGP {Math.abs(variance).toLocaleString()}
+                          </span>
+                        );
+                      })()}
+                    </div>
+                    <div className="p-4 rounded-xl border flex justify-between items-center bg-slate-50 border-slate-200">
+                      <span className="font-bold text-slate-700">Visa Variance</span>
+                      {(() => {
+                        const variance = calculateVisaVariance();
+                        const isZero = variance === 0;
+                        const isShort = variance < 0;
+                        return (
+                          <span className={`text-xl font-black ${isZero ? 'text-slate-500' : isShort ? 'text-red-600' : 'text-green-600'}`}>
+                            {isShort ? '-' : isZero ? '' : '+'}EGP {Math.abs(variance).toLocaleString()}
+                          </span>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </section>
+
+                {/* 2. Inventory Review (Only for Cashier 1) */}
+                {selectedReport.cashierRole !== 2 && (
+                  <section>
+                    <div className="flex items-center gap-2 mb-4">
+                      <Package className="h-5 w-5 text-amber-500" />
+                      <h3 className="text-lg font-bold">Inventory Review</h3>
+                    </div>
+
+                    <div className="overflow-x-auto rounded-xl border border-border">
+                      <table className="w-full text-sm text-left">
+                        <thead className="bg-muted text-muted-foreground uppercase text-xs">
+                          <tr>
+                            <th className="p-3 font-bold">Item</th>
+                            <th className="p-3">Start</th>
+                            <th className="p-3">Delivery</th>
+                            <th className="p-3">End</th>
+                            <th className="p-3 font-bold text-right">Calculated Sold</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border bg-card">
+                          <tr>
+                            <td className="p-3 font-bold">Cigarettes (سجائر)</td>
+                            <td className="p-3">{selectedReport.inventoryCounts?.cigarettes?.start || 0}</td>
+                            <td className="p-3">{selectedReport.inventoryCounts?.cigarettes?.delivery || 0}</td>
+                            <td className="p-3">{selectedReport.inventoryCounts?.cigarettes?.end || 0}</td>
+                            <td className="p-3 font-bold text-right bg-amber-50 text-amber-900">{selectedReport.inventoryCounts?.cigarettes?.sold || 0}</td>
+                          </tr>
+                          <tr>
+                            <td className="p-3 font-bold">Lighters (ولاعات)</td>
+                            <td className="p-3">{selectedReport.inventoryCounts?.lighters?.start || 0}</td>
+                            <td className="p-3">{selectedReport.inventoryCounts?.lighters?.delivery || 0}</td>
+                            <td className="p-3">{selectedReport.inventoryCounts?.lighters?.end || 0}</td>
+                            <td className="p-3 font-bold text-right bg-amber-50 text-amber-900">{selectedReport.inventoryCounts?.lighters?.sold || 0}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 mt-4">
+                      <div>
+                        <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Cigarettes Shrink %</label>
+                        <input type="number" step="0.01" value={cigarettesPercent} onChange={e => setCigarettesPercent(e.target.value)} className="w-full p-2.5 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-amber-500" placeholder="e.g. 1.2" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Coffee Shrink %</label>
+                        <input type="number" step="0.01" value={coffeePercent} onChange={e => setCoffeePercent(e.target.value)} className="w-full p-2.5 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-amber-500" placeholder="e.g. 2.5" />
+                      </div>
+                    </div>
+                  </section>
+                )}
+
+                {/* 3. Final Sign Off */}
+                <section>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Lock className="h-5 w-5 text-slate-500" />
+                    <h3 className="text-lg font-bold">Manager Audit Notes</h3>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Auditing Manager Name</label>
+                      <input type="text" value={managerName} onChange={e => setManagerName(e.target.value)} className="w-full p-3 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-slate-500" placeholder="Enter your full name" />
+                    </div>
+                    {selectedReport.managerAudit?.rejectReason && (
+                      <div className="bg-red-50 p-3 rounded-lg border border-red-200">
+                        <label className="block text-[10px] font-bold text-red-800 uppercase tracking-wider mb-1">Previous Rejection Reason</label>
+                        <p className="text-red-600 text-sm italic font-medium">"{selectedReport.managerAudit.rejectReason}"</p>
+                        {selectedReport.previousSubmission && (
+                          <div className="mt-2 pt-2 border-t border-red-200">
+                            <p className="text-[10px] font-bold text-red-800 uppercase">Original Incorrect Submission:</p>
+                            <p className="text-xs text-red-700 font-mono mt-0.5">
+                              Cash: EGP {selectedReport.previousSubmission.cash} | Visa: EGP {selectedReport.previousSubmission.visa}
+                              {selectedReport.cashierRole === 1 && ` | Cigarettes End: ${selectedReport.previousSubmission.cigEnd} | Lighters End: ${selectedReport.previousSubmission.lightEnd}`}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <div>
+                      <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Audit Comments (Optional)</label>
+                      <textarea value={comments} onChange={e => setComments(e.target.value)} rows={3} className="w-full p-3 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-slate-500" placeholder="Notes regarding variances, issues, etc." />
+                    </div>
+                  </div>
+                </section>
+
+                {/* Actions */}
+                <div className="pt-4 border-t border-border grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {activeTab === "pending" ? (
+                    <>
+                      <button 
+                        onClick={handleReject}
+                        disabled={submitting}
+                        className="w-full py-4 bg-red-100 hover:bg-red-200 text-red-700 rounded-xl font-bold text-lg transition-all"
+                      >
+                        {submitting ? "..." : "Reject & Send Back"}
+                      </button>
+                      <button 
+                        onClick={handleApprove}
+                        disabled={submitting}
+                        className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-lg shadow-xl shadow-slate-900/20 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                      >
+                        {submitting ? "Saving..." : <><CheckCircle className="h-5 w-5" /> Approve</>}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button 
+                        onClick={handleApprove}
+                        disabled={submitting}
+                        className="w-full py-4 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold text-sm transition-all"
+                      >
+                        {submitting ? "Saving..." : "Update Audit Notes"}
+                      </button>
+                      <button 
+                        onClick={generatePDF}
+                        disabled={generatingPDF}
+                        className="w-full py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-sm shadow-xl shadow-red-500/20 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                      >
+                        {generatingPDF ? "Generating PDF..." : <><Printer className="h-5 w-5" /> Print A4 Sign-Off Sheet</>}
+                      </button>
+                    </>
+                  )}
+                </div>
+
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* --- HIDDEN FORMAL A4 PRINT TEMPLATE FOR MANAGER --- */}
+      {selectedReport && (
+        <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+          <div id="manager-signoff-pdf-capture" style={{ width: '794px', height: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif' }}>
+            
+            {/* Header / Letterhead */}
+            <div style={{ padding: '40px 40px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '4px solid #1e293b' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                <div style={{ width: '80px', height: '80px', backgroundColor: '#dc2626', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ fontSize: '50px', fontWeight: '900', color: '#ffffff', lineHeight: 1 }}>K</span>
+                </div>
+                <div>
+                  <h1 style={{ fontSize: '32px', fontWeight: '900', color: '#1e293b', margin: 0, textTransform: 'uppercase', letterSpacing: '-0.5px' }}>Circle K Corporate</h1>
+                  <p style={{ fontSize: '16px', color: '#64748b', margin: '5px 0 0', fontWeight: '600' }}>OFFICIAL SHIFT AUDIT & SIGN-OFF</p>
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <Barcode value={selectedReport.id.substring(0, 10).toUpperCase()} width={1.5} height={40} fontSize={12} displayValue={true} />
+              </div>
+            </div>
+
+            {/* Content Area */}
+            <div style={{ padding: '30px 40px', position: 'relative', zIndex: 10 }}>
+              
+              {/* Branch & Shift Details (Strict Grid) */}
+              <div style={{ border: '2px solid #e2e8f0', marginBottom: '30px', borderRadius: '4px', overflow: 'hidden' }}>
+                <div style={{ backgroundColor: '#f8fafc', padding: '10px 15px', borderBottom: '2px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  1. Shift & Branch Information
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.5fr', gap: '0' }}>
+                  <div style={{ padding: '15px', borderRight: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
+                    <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Branch / Store ID</p>
+                    <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport.cashierDetails.storeId}</p>
+                  </div>
+                  <div style={{ padding: '15px', borderRight: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
+                    <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Shift Period</p>
+                    <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport.cashierDetails.shift} Shift</p>
+                  </div>
+                  <div style={{ padding: '15px', borderBottom: '1px solid #e2e8f0' }}>
+                    <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Cashier Name</p>
+                    <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport.cashierDetails.name}</p>
+                  </div>
+                  <div style={{ padding: '15px', borderRight: '1px solid #e2e8f0' }}>
+                    <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Operating Date</p>
+                    <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport.cashierDetails.date}</p>
+                  </div>
+                  <div style={{ padding: '15px', borderRight: '1px solid #e2e8f0' }}>
+                    <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Cashier Role</p>
+                    <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>
+                      {selectedReport.cashierRole === 2 ? 'Cashier 2 (Money Only)' : 'Cashier 1 (Full)'}
+                    </p>
+                  </div>
+                  <div style={{ padding: '15px' }}>
+                    <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Cashier Submission Timestamp</p>
+                    <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{new Date(selectedReport.createdAt).toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Financial Audit */}
+              <div style={{ border: '2px solid #e2e8f0', marginBottom: '15px', borderRadius: '4px', overflow: 'hidden' }}>
+                <div style={{ backgroundColor: '#f8fafc', padding: '6px 15px', borderBottom: '2px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  2. Financial Audit & Variance
+                </div>
+                
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
+                  <thead style={{ backgroundColor: '#f1f5f9' }}>
+                    <tr>
+                      <th style={{ padding: '8px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Tender Type</th>
+                      <th style={{ padding: '8px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Cashier Declared</th>
+                      <th style={{ padding: '8px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Manager / POS Expected</th>
+                      <th style={{ padding: '8px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569', textAlign: 'right' }}>Variance (Over/Short)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>Cash</td>
+                      <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px' }}>EGP {selectedReport.cashierCounts.cash.toLocaleString()}</td>
+                      <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px' }}>EGP {selectedReport.managerAudit?.expectedCash?.toLocaleString() || "0"}</td>
+                      <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px', textAlign: 'right', fontWeight: 'bold', color: calculateCashVariance() < 0 ? '#dc2626' : '#16a34a' }}>
+                        {calculateCashVariance() < 0 ? '-' : '+'}EGP {Math.abs(calculateCashVariance()).toLocaleString()}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>Visa</td>
+                      <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px' }}>EGP {selectedReport.cashierCounts.visa.toLocaleString()}</td>
+                      <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px' }}>EGP {selectedReport.managerAudit?.expectedVisa?.toLocaleString() || "0"}</td>
+                      <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px', textAlign: 'right', fontWeight: 'bold', color: calculateVisaVariance() < 0 ? '#dc2626' : '#16a34a' }}>
+                        {calculateVisaVariance() < 0 ? '-' : '+'}EGP {Math.abs(calculateVisaVariance()).toLocaleString()}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Inventory Review */}
+              {selectedReport.cashierRole !== 2 && (
+                <div style={{ border: '2px solid #e2e8f0', marginBottom: '15px', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div style={{ backgroundColor: '#f8fafc', padding: '6px 15px', borderBottom: '2px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                    3. Inventory Counts & Shrinkage
+                  </div>
+                  
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
+                    <thead style={{ backgroundColor: '#f1f5f9' }}>
+                      <tr>
+                        <th style={{ padding: '8px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Item</th>
+                        <th style={{ padding: '8px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Start</th>
+                        <th style={{ padding: '8px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Delivery</th>
+                        <th style={{ padding: '8px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>End</th>
+                        <th style={{ padding: '8px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569', textAlign: 'right' }}>Calculated Sold</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>Cigarettes</td>
+                        <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0' }}>{selectedReport.inventoryCounts?.cigarettes?.start || 0}</td>
+                        <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0' }}>{selectedReport.inventoryCounts?.cigarettes?.delivery || 0}</td>
+                        <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0' }}>{selectedReport.inventoryCounts?.cigarettes?.end || 0}</td>
+                        <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 'bold' }}>{selectedReport.inventoryCounts?.cigarettes?.sold || 0}</td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>Lighters</td>
+                        <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0' }}>{selectedReport.inventoryCounts?.lighters?.start || 0}</td>
+                        <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0' }}>{selectedReport.inventoryCounts?.lighters?.delivery || 0}</td>
+                        <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0' }}>{selectedReport.inventoryCounts?.lighters?.end || 0}</td>
+                        <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 'bold' }}>{selectedReport.inventoryCounts?.lighters?.sold || 0}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', backgroundColor: '#f8fafc', borderTop: '2px solid #cbd5e1' }}>
+                    <div style={{ padding: '8px 15px', borderRight: '1px solid #e2e8f0' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', marginRight: '10px' }}>Cigarettes Shrink</span>
+                      <span style={{ fontSize: '14px', fontWeight: '900', color: '#0f172a' }}>{selectedReport.managerAudit?.cigarettesPercent || 0}%</span>
+                    </div>
+                    <div style={{ padding: '8px 15px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', marginRight: '10px' }}>Coffee Shrink</span>
+                      <span style={{ fontSize: '14px', fontWeight: '900', color: '#0f172a' }}>{selectedReport.managerAudit?.coffeePercent || 0}%</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Manager Notes & Rejection History */}
+              <div style={{ border: '2px solid #e2e8f0', marginBottom: '30px', borderRadius: '4px', overflow: 'hidden' }}>
+                <div style={{ backgroundColor: '#f8fafc', padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  4. Manager Comments & Review
+                </div>
+                <div style={{ padding: '12px 15px', fontSize: '12px', color: '#334155' }}>
+                  {selectedReport.managerAudit?.rejectReason && (
+                    <div style={{ marginBottom: '10px', paddingBottom: '10px', borderBottom: '1px dashed #cbd5e1' }}>
+                      <p style={{ margin: '0 0 4px', fontSize: '10px', fontWeight: 'bold', color: '#dc2626', textTransform: 'uppercase' }}>Previous Rejection Reason (Corrected by Cashier)</p>
+                      <p style={{ margin: 0, fontStyle: 'italic', color: '#dc2626' }}>"{selectedReport.managerAudit.rejectReason}"</p>
+                      {selectedReport.previousSubmission && (
+                        <div style={{ marginTop: '5px', paddingTop: '5px', borderTop: '1px solid #fca5a5' }}>
+                          <p style={{ margin: 0, fontSize: '9px', fontWeight: 'bold', color: '#b91c1c', textTransform: 'uppercase' }}>Original Incorrect Submission</p>
+                          <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#b91c1c', fontFamily: 'monospace' }}>
+                            Cash: EGP {selectedReport.previousSubmission.cash} | Visa: EGP {selectedReport.previousSubmission.visa}
+                            {selectedReport.cashierRole === 1 && ` | Cigarettes End: ${selectedReport.previousSubmission.cigEnd} | Lighters End: ${selectedReport.previousSubmission.lightEnd}`}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <div style={{ fontStyle: selectedReport.managerAudit?.comments ? 'normal' : 'italic' }}>
+                    {selectedReport.managerAudit?.comments || "No additional comments provided by the auditing manager."}
+                  </div>
+                </div>
+              </div>
+
+              {/* Official Signatures Block */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '40px' }}>
+                
+                {/* Cashier Signature */}
+                <div style={{ width: '40%' }}>
+                  <p style={{ fontSize: '10px', color: '#64748b', fontStyle: 'italic', marginBottom: '30px', lineHeight: 1.4 }}>
+                    I, the undersigned cashier, declare that the physical counts provided above are accurate, and I have surrendered the declared funds to the manager.
+                  </p>
+                  <div style={{ borderBottom: '2px solid #1e293b', width: '100%', marginBottom: '10px' }}></div>
+                  <p style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e293b', margin: 0, textTransform: 'uppercase' }}>Cashier Signature</p>
+                  <p style={{ fontSize: '14px', color: '#475569', margin: '4px 0 0' }}>{selectedReport.cashierDetails.name}</p>
+                </div>
+
+                {/* Manager Signature */}
+                <div style={{ width: '40%' }}>
+                  <p style={{ fontSize: '10px', color: '#64748b', fontStyle: 'italic', marginBottom: '30px', lineHeight: 1.4 }}>
+                    I, the undersigned manager, declare that I have audited the shift, received the declared funds, and entered the corresponding POS totals.
+                  </p>
+                  <div style={{ borderBottom: '2px solid #1e293b', width: '100%', marginBottom: '10px' }}></div>
+                  <p style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e293b', margin: 0, textTransform: 'uppercase' }}>Manager Signature</p>
+                  <p style={{ fontSize: '14px', color: '#475569', margin: '4px 0 0' }}>{selectedReport.managerAudit?.managerName || "__________________"}</p>
+                </div>
+
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{ position: 'absolute', bottom: '30px', left: '40px', right: '40px', borderTop: '2px solid #e2e8f0', paddingTop: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase' }}>Circle K Internal Document</span>
+                <p style={{ fontSize: '9px', color: '#cbd5e1', margin: '2px 0 0' }}>Confidential & Proprietary</p>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <span style={{ fontSize: '10px', color: '#94a3b8', fontFamily: 'monospace', fontWeight: 'bold' }}>AUDIT TIMESTAMP: {new Date(selectedReport.managerAudit?.auditedAt || selectedReport.createdAt).toLocaleString()}</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
