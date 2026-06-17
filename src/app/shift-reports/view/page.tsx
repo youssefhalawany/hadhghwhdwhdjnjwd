@@ -1,14 +1,15 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { FileText, Calendar, Clock, User, Store, Banknote, Package, CheckCircle, XCircle } from "lucide-react";
 
-export default function PublicShiftReportView() {
-  const params = useParams();
-  const id = params.id as string;
+function PublicShiftReportContent() {
+  const searchParams = useSearchParams();
+  const id = searchParams.get("id") as string;
   const [report, setReport] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -203,5 +204,13 @@ export default function PublicShiftReportView() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function PublicShiftReportView() {
+  return (
+    <Suspense fallback={<div className="flex justify-center p-10"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-red-600"></div></div>}>
+      <PublicShiftReportContent />
+    </Suspense>
   );
 }

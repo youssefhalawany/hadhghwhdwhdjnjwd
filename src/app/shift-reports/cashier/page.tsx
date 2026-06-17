@@ -384,8 +384,7 @@ export default function CashierShiftReportPage() {
         const docRef = await addDoc(collection(db, "shift_reports"), payload);
         submittedId = docRef.id;
       }
-      
-      router.push(`/shift-reports/cashier/success/${submittedId}`);
+      router.push(`/shift-reports/cashier/success?id=${submittedId}`);
     } catch (error: any) {
       console.error("Error submitting shift report:", error);
       

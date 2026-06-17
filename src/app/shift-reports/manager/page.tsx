@@ -534,7 +534,7 @@ export default function ManagerAuditPage() {
                 <div style={{ borderLeft: '1px solid #e2e8f0', paddingLeft: '15px' }}>
                   {typeof window !== 'undefined' && (
                     <QRCode 
-                      value={window.location.origin + '/shift-reports/view/' + selectedReport.id} 
+                      value={window.location.origin + '/shift-reports/view?id=' + selectedReport.id} 
                       size={64} 
                       level="M" 
                     />
