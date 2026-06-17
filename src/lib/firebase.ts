@@ -78,9 +78,6 @@ export const dbService = {
       callback(docs);
     }, (error) => {
       console.error(`Firebase error on ${collectionName}:`, error);
-      if (typeof window !== "undefined") {
-        alert(`Could not fetch data from ${collectionName}. Error: ${error.message} (Check Firestore Security Rules)`);
-      }
     });
     return unsubscribe;
   },

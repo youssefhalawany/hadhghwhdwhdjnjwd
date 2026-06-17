@@ -84,7 +84,7 @@ export const compileCompanyLedger = (
   let runningBalance = 0;
   entries.forEach(entry => {
     runningBalance += (entry.debit - entry.credit);
-    entry.balance = parseFloat(runningBalance.toFixed(2));
+    entry.balance = parseFloat((Number(runningBalance) || 0).toFixed(2));
   });
 
   return entries;

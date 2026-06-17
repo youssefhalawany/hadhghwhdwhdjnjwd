@@ -80,10 +80,10 @@ export default function DashboardPage() {
   }));
 
   const kpis = [
-    { title: "Total Revenue", value: `EGP ${totalSales.toFixed(2)}`, icon: DollarSign, color: "text-green-500", bg: "bg-green-500/10" },
-    { title: "Outstanding Credit", value: `EGP ${totalCredits.toFixed(2)}`, icon: CreditCard, color: "text-amber-500", bg: "bg-amber-500/10" },
-    { title: "Cash Expenses", value: `EGP ${totalExpenses.toFixed(2)}`, icon: Activity, color: "text-red-500", bg: "bg-red-500/10" },
-    { title: "Safe Balance", value: `EGP ${safeBalance.toFixed(2)}`, icon: Wallet, color: "text-blue-500", bg: "bg-blue-500/10" }
+    { title: "Total Revenue", value: `EGP ${(Number(totalSales) || 0).toFixed(2)}`, icon: DollarSign, color: "text-green-500", bg: "bg-green-500/10" },
+    { title: "Outstanding Credit", value: `EGP ${(Number(totalCredits) || 0).toFixed(2)}`, icon: CreditCard, color: "text-amber-500", bg: "bg-amber-500/10" },
+    { title: "Cash Expenses", value: `EGP ${(Number(totalExpenses) || 0).toFixed(2)}`, icon: Activity, color: "text-red-500", bg: "bg-red-500/10" },
+    { title: "Safe Balance", value: `EGP ${(Number(safeBalance) || 0).toFixed(2)}`, icon: Wallet, color: "text-blue-500", bg: "bg-blue-500/10" }
   ];
 
   return (
