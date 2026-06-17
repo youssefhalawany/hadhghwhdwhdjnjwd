@@ -298,37 +298,38 @@ export default function CashierShiftReportPage() {
 
     const c = cashiers.find(x => x.id === selectedCashierId);
 
-    try {
-      const payload: any = {
-        status: "pending_manager",
-        createdAt: new Date().toISOString(),
-        cashierDetails: {
-          name: c.name,
-          date,
-          shift,
-          storeId: c.storeId
+    const payload: any = {
+      status: "pending_manager",
+      createdAt: new Date().toISOString(),
+      cashierDetails: {
+        name: c?.name || "Unknown",
+        date,
+        shift,
+        storeId: c?.storeId || "Unknown"
+      },
+      cashierRole,
+      cashierCounts: {
+        cash: Number(cash) || 0,
+        visa: Number(visa) || 0,
+        total: calculateTotalMoney()
+      },
+      inventoryCounts: {
+        cigarettes: {
+          start: Number(cigarettes.start) || 0,
+          delivery: Number(cigarettes.delivery) || 0,
+          end: Number(cigarettes.end) || 0,
+          sold: calculateSold(cigarettes.start, cigarettes.delivery, cigarettes.end)
         },
-        cashierRole,
-        cashierCounts: {
-          cash: Number(cash) || 0,
-          visa: Number(visa) || 0,
-          total: calculateTotalMoney()
-        },
-        inventoryCounts: {
-          cigarettes: {
-            start: Number(cigarettes.start) || 0,
-            delivery: Number(cigarettes.delivery) || 0,
-            end: Number(cigarettes.end) || 0,
-            sold: calculateSold(cigarettes.start, cigarettes.delivery, cigarettes.end)
-          },
-          lighters: {
-            start: Number(lighters.start) || 0,
-            delivery: Number(lighters.delivery) || 0,
-            end: Number(lighters.end) || 0,
-            sold: calculateSold(lighters.start, lighters.delivery, lighters.end)
-          }
+        lighters: {
+          start: Number(lighters.start) || 0,
+          delivery: Number(lighters.delivery) || 0,
+          end: Number(lighters.end) || 0,
+          sold: calculateSold(lighters.start, lighters.delivery, lighters.end)
         }
-      };
+      }
+    };
+
+    try {
 
       if (isOffline) {
         throw new Error("OFFLINE_MODE");
