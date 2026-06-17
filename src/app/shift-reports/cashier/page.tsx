@@ -417,11 +417,13 @@ export default function CashierShiftReportPage() {
                 required
                 value={selectedCashierId}
                 onChange={(e) => setSelectedCashierId(e.target.value)}
-                className="w-full p-3 sm:p-4 rounded-xl border border-border bg-background outline-none focus:ring-2 focus:ring-red-500 text-base sm:text-lg cursor-pointer"
+                className="w-full p-3 sm:p-4 rounded-xl border border-border bg-background text-foreground outline-none focus:ring-2 focus:ring-red-500 text-base sm:text-lg cursor-pointer"
               >
-                <option value="" disabled>{dict.selectName}</option>
+                <option value="" disabled className="text-black bg-white dark:text-white dark:bg-slate-900">{dict.selectName}</option>
                 {cashiers.map(c => (
-                  <option key={c.id} value={c.id}>{c.name} ({lang === "en" ? "Store" : "فرع"}: {c.storeId})</option>
+                  <option key={c.id} value={c.id} className="text-black bg-white dark:text-white dark:bg-slate-900">
+                    {c.name} ({lang === "en" ? "Store" : "فرع"}: {c.storeId})
+                  </option>
                 ))}
               </select>
             </div>
