@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
-import { collection, query, where, onSnapshot, doc, updateDoc } from "firebase/firestore";
-import { CheckCircle, Clock, FileText, Banknote, Package, Lock, Printer, Archive } from "lucide-react";
+import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { CheckCircle, Clock, FileText, Banknote, Package, Lock, Printer, Archive, Trash2 } from "lucide-react";
 import Barcode from "react-barcode";
 import QRCode from "react-qr-code";
 import html2canvas from "html2canvas";
@@ -154,6 +154,41 @@ export default function ManagerAuditPage() {
     } catch (error) {
       console.error("Error rejecting report:", error);
       alert("Failed to reject report.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedReport) return;
+    
+    // First confirmation: PIN
+    const pin = prompt("Admin override required. Please enter the 4-digit manager PIN to delete this report:");
+    if (pin !== "1111") {
+      if (pin !== null) alert("Incorrect PIN. Deletion cancelled.");
+      return;
+    }
+
+    // Second confirmation: Professional confirmation
+    const isConfirmed = window.confirm(
+      "CRITICAL WARNING: You are about to permanently delete this shift report.\n\n" +
+      "This action cannot be undone and will permanently erase all financial, inventory, and submission data associated with this shift.\n\n" +
+      "Are you absolutely sure you want to proceed with permanent deletion?"
+    );
+
+    if (!isConfirmed) return;
+
+    setSubmitting(true);
+    try {
+      const reportRef = doc(db, "shift_reports", selectedReport.id);
+      await deleteDoc(reportRef);
+
+      alert("Success: Shift report has been permanently deleted.");
+      setActiveTab("pending");
+      setSelectedReport(null);
+    } catch (error) {
+      console.error("Error deleting report:", error);
+      alert("System Error: Failed to delete report.");
     } finally {
       setSubmitting(false);
     }
@@ -467,22 +502,31 @@ export default function ManagerAuditPage() {
                 </section>
 
                 {/* Actions */}
-                <div className="pt-4 border-t border-border grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="pt-4 border-t border-border grid grid-cols-1 gap-4">
                   {activeTab === "pending" ? (
                     <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <button
+                          onClick={handleReject}
+                          disabled={submitting}
+                          className="w-full py-4 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-xl font-bold text-lg transition-all"
+                        >
+                          {submitting ? "..." : "Reject & Send Back"}
+                        </button>
+                        <button
+                          onClick={handleApprove}
+                          disabled={submitting}
+                          className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-lg shadow-xl shadow-slate-900/20 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                        >
+                          {submitting ? "Saving..." : <><CheckCircle className="h-5 w-5" /> Approve</>}
+                        </button>
+                      </div>
                       <button
-                        onClick={handleReject}
+                        onClick={handleDelete}
                         disabled={submitting}
-                        className="w-full py-4 bg-red-100 hover:bg-red-200 text-red-700 rounded-xl font-bold text-lg transition-all"
+                        className="w-full py-3 border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 mt-2"
                       >
-                        {submitting ? "..." : "Reject & Send Back"}
-                      </button>
-                      <button
-                        onClick={handleApprove}
-                        disabled={submitting}
-                        className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-lg shadow-xl shadow-slate-900/20 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
-                      >
-                        {submitting ? "Saving..." : <><CheckCircle className="h-5 w-5" /> Approve</>}
+                        <Trash2 className="h-4 w-4" /> Permanently Delete Report
                       </button>
                     </>
                   ) : (

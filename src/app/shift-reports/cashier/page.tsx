@@ -228,7 +228,22 @@ export default function CashierShiftReportPage() {
   const [syncing, setSyncing] = useState(false);
   const [offlineCount, setOfflineCount] = useState(0);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  
   useEffect(() => {
+    // Check if authenticated from Cashier Hub
+    const savedUserStr = localStorage.getItem("active_cashier_session");
+    if (savedUserStr) {
+      try {
+        const user = JSON.parse(savedUserStr);
+        setSelectedCashierId(user.id);
+        setUnlocked(true);
+        // We simulate unlocking to trigger the data fetch logic
+        setTimeout(() => triggerUnlockDataFetch(user), 500);
+      } catch (e) {
+        console.error("Invalid session");
+      }
+    }
+
     // Initial offline check
     setIsOffline(!navigator.onLine);
     checkOfflineQueue();
@@ -309,16 +324,8 @@ export default function CashierShiftReportPage() {
     setDate(new Date().toISOString().substring(0, 10));
   }, []);
 
-  const handleUnlock = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const c = cashiers.find(x => x.id === selectedCashierId);
-    if (!c) return alert("Select your name");
-    if (c.pin !== pinInput) {
-      alert("Incorrect PIN");
-      return;
-    }
-
-    setUnlocked(true);
+  // Extracted unlock logic for auto-unlock support
+  const triggerUnlockDataFetch = async (c: any) => {
     setLoading(true);
 
     try {
@@ -399,6 +406,19 @@ export default function CashierShiftReportPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleUnlock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const c = cashiers.find(x => x.id === selectedCashierId);
+    if (!c) return alert("Select your name");
+    if (c.pin !== pinInput) {
+      alert("Incorrect PIN");
+      return;
+    }
+
+    setUnlocked(true);
+    triggerUnlockDataFetch(c);
   };
 
   const calculateSold = (start: string, delivery: string, end: string) => {
