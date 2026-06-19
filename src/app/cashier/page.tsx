@@ -45,7 +45,7 @@ export default function CashierHubPage() {
 
         // Fetch registered cashiers
         const snap = await getDocs(collection(db, "cashiers"));
-        const allCashiers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const allCashiers: any[] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
         // Filter: only keep cashiers whose employee record is active
         const activeCashiers = allCashiers.filter(c => activeEmployeesNames.has(c.name));

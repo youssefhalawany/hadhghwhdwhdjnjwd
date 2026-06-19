@@ -177,7 +177,7 @@ export default function MyAccountPage() {
     const st = status?.toLowerCase() || "";
     if (st.includes("approved") || st === "paid" || st === "completed") {
       return (
-        <span className="inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-450 border border-emerald-200/50 dark:border-emerald-900/30 px-2 py-0.5 rounded-md text-[10px] font-black uppercase">
+        <span className="inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-900/30 px-2 py-0.5 rounded-md text-[10px] font-black uppercase">
           <CheckCircle className="h-3 w-3" /> {lang === "en" ? "Approved" : "مقبول"}
         </span>
       );
@@ -189,7 +189,7 @@ export default function MyAccountPage() {
       );
     } else {
       return (
-        <span className="inline-flex items-center gap-1 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-450 border border-amber-250/50 dark:border-amber-900/30 px-2 py-0.5 rounded-md text-[10px] font-black uppercase">
+        <span className="inline-flex items-center gap-1 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-450 border border-amber-200/50 dark:border-amber-900/30 px-2 py-0.5 rounded-md text-[10px] font-black uppercase">
           <Clock className="h-3 w-3" /> {lang === "en" ? "Pending" : "معلق"}
         </span>
       );
@@ -238,7 +238,7 @@ export default function MyAccountPage() {
               <span className="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
                 {userProfile.position || userProfile.role || "Staff"}
               </span>
-              <span className="bg-slate-105 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-3 py-1 rounded-full text-xs font-bold">
+              <span className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-3 py-1 rounded-full text-xs font-bold">
                 {lang === "en" ? "Store:" : "فرع:"} {userProfile.storeId || "N/A"}
               </span>
               {userProfile.fulltime && (
@@ -247,7 +247,7 @@ export default function MyAccountPage() {
                 </span>
               )}
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-405 mt-3 font-mono font-semibold">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-3 font-mono font-semibold">
               ID: {userProfile.id} {userProfile.nationalId ? `| NID: ${userProfile.nationalId}` : ""}
             </p>
           </div>
@@ -338,7 +338,7 @@ export default function MyAccountPage() {
                 </div>
                 <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2 sm:col-span-2">
                   <span className="text-slate-500 dark:text-slate-400 font-bold">{lang === "en" ? "Base Salary Plan" : "الراتب الأساسي الشهري"}</span>
-                  <span className="font-black text-emerald-600 dark:text-emerald-450 text-base">EGP {baseSalary.toLocaleString()} / {lang === "en" ? "month" : "شهر"}</span>
+                  <span className="font-black text-emerald-600 dark:text-emerald-400 text-base">EGP {baseSalary.toLocaleString()} / {lang === "en" ? "month" : "شهر"}</span>
                 </div>
               </div>
             </div>
@@ -363,7 +363,7 @@ export default function MyAccountPage() {
                     <TrendingUp className="h-4 w-4" />
                     <span className="text-[10px] font-bold uppercase tracking-wider">{lang === "en" ? "Bonuses" : "المكافآت"}</span>
                   </div>
-                  <p className="text-xl font-black text-emerald-655 dark:text-emerald-450">+EGP {totalBonuses.toLocaleString()}</p>
+                  <p className="text-xl font-black text-emerald-600 dark:text-emerald-400">+EGP {totalBonuses.toLocaleString()}</p>
                 </div>
                 
                 <div className="bg-white/70 dark:bg-slate-800/40 backdrop-blur-md p-5 rounded-2xl border border-red-200/30 dark:border-red-950/30 shadow-sm">
@@ -371,7 +371,7 @@ export default function MyAccountPage() {
                     <TrendingDown className="h-4 w-4" />
                     <span className="text-[10px] font-bold uppercase tracking-wider">{lang === "en" ? "Deductions" : "الخصومات"}</span>
                   </div>
-                  <p className="text-xl font-black text-red-655 dark:text-red-400">-EGP {totalDeductions.toLocaleString()}</p>
+                  <p className="text-xl font-black text-red-600 dark:text-red-400">-EGP {totalDeductions.toLocaleString()}</p>
                 </div>
                 
                 <div className="bg-gradient-to-br from-red-600 to-orange-500 p-5 rounded-2xl shadow-xl text-white border border-red-500/20">
@@ -438,13 +438,13 @@ export default function MyAccountPage() {
                           <div>
                             <p className="font-bold text-slate-900 dark:text-white text-sm">
                               {a.notes || "Bonus"}
-                              {a.type === "overtime" && <span className="ml-2 bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-450 text-[9px] px-1.5 py-0.5 rounded font-black tracking-wider uppercase">OT</span>}
+                              {a.type === "overtime" && <span className="ml-2 bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 text-[9px] px-1.5 py-0.5 rounded font-black tracking-wider uppercase">OT</span>}
                             </p>
                             <p className="text-xs text-slate-400 flex items-center gap-1 mt-1 font-semibold">
                               <Calendar className="h-3 w-3" /> {a.date}
                             </p>
                           </div>
-                          <div className="font-black text-emerald-600 dark:text-emerald-450">
+                          <div className="font-black text-emerald-600 dark:text-emerald-400">
                             +EGP {a.amount}
                           </div>
                         </div>
@@ -493,7 +493,7 @@ export default function MyAccountPage() {
                           </div>
                           <div className="text-right">
                             <p className="text-[10px] uppercase font-bold text-slate-400">Net Pay Distributed</p>
-                            <p className="text-lg font-black text-emerald-600 dark:text-emerald-450">EGP {p.netPay}</p>
+                            <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">EGP {p.netPay}</p>
                           </div>
                         </div>
                       </div>
@@ -515,9 +515,9 @@ export default function MyAccountPage() {
             <div className="space-y-4">
               {shiftReports.map(report => {
                 const isExpanded = expandedReportId === report.id;
-                const totalDrops = report.cashierCounts?.total || report.cashierCounts?.cash || 0;
-                const visaDrops = report.cashierCounts?.visa || 0;
-                const cashDrops = report.cashierCounts?.cash || 0;
+                const totalDrops = Number(report.cashierCounts?.total || report.cashierCounts?.cash || 0);
+                const visaDrops = Number(report.cashierCounts?.visa || 0);
+                const cashDrops = Number(report.cashierCounts?.cash || 0);
                 
                 return (
                   <div key={report.id} className="bg-white/70 dark:bg-slate-800/40 backdrop-blur-md rounded-2xl border border-slate-200/60 dark:border-slate-800 overflow-hidden shadow-sm">
@@ -534,8 +534,8 @@ export default function MyAccountPage() {
                           <p className="font-black text-slate-900 dark:text-white text-sm sm:text-base">
                             {report.cashierDetails?.date} - {lang === "en" ? report.cashierDetails?.shift : (report.cashierDetails?.shift === "Morning" ? "صباحي" : report.cashierDetails?.shift === "Noon" ? "مسائي" : "ليلي")}
                           </p>
-                          <p className="text-xs text-slate-455 mt-1 font-semibold">
-                            {lang === "en" ? "Role:" : "نوع الكاشير:"} <span className="font-bold text-slate-700 dark:text-slate-350">{report.cashierRole === 1 ? (lang === "en" ? "Register & Stock" : "نقدية ومخزون") : (lang === "en" ? "Money Only" : "نقدية فقط")}</span>
+                          <p className="text-xs text-slate-400 mt-1 font-semibold">
+                            {lang === "en" ? "Role:" : "نوع الكاشير:"} <span className="font-bold text-slate-700 dark:text-slate-300">{report.cashierRole === 1 ? (lang === "en" ? "Register & Stock" : "نقدية ومخزون") : (lang === "en" ? "Money Only" : "نقدية فقط")}</span>
                           </p>
                         </div>
                       </div>
@@ -558,11 +558,11 @@ export default function MyAccountPage() {
                         {/* Manager audit notes if rejected */}
                         {report.status === "rejected" && report.managerAudit?.rejectReason && (
                           <div className="bg-red-50 dark:bg-red-950/15 border border-red-200 dark:border-red-900/50 p-4 rounded-xl text-xs sm:text-sm">
-                            <p className="text-red-750 dark:text-red-400 font-bold flex items-center gap-1.5">
+                            <p className="text-red-700 dark:text-red-400 font-bold flex items-center gap-1.5">
                               <AlertTriangle className="h-4 w-4 animate-pulse" />
                               {lang === "en" ? "Manager's rejection reason:" : "سبب رفض المدير للتقرير:"}
                             </p>
-                            <p className="text-red-655 dark:text-red-300 font-semibold mt-1 italic">"{report.managerAudit.rejectReason}"</p>
+                            <p className="text-red-600 dark:text-red-300 font-semibold mt-1 italic">"{report.managerAudit.rejectReason}"</p>
                             <button 
                               onClick={() => router.push('/shift-reports/cashier')}
                               className="mt-3.5 bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-md shadow-red-500/10 transition-all cursor-pointer block"
@@ -582,16 +582,16 @@ export default function MyAccountPage() {
                             
                             <div className="bg-white dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 space-y-2 text-xs sm:text-sm font-semibold">
                               <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5">
-                                <span className="text-slate-455 font-bold">{lang === "en" ? "Cash (Inside Drop)" : "النقد المسلم (كاش)"}</span>
+                                <span className="text-slate-400 font-bold">{lang === "en" ? "Cash (Inside Drop)" : "النقد المسلم (كاش)"}</span>
                                 <span className="font-mono font-bold text-slate-900 dark:text-white">EGP {cashDrops.toFixed(2)}</span>
                               </div>
                               <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5">
-                                <span className="text-slate-455 font-bold">{lang === "en" ? "Visa Slips" : "إيصالات الفيزا"}</span>
+                                <span className="text-slate-400 font-bold">{lang === "en" ? "Visa Slips" : "إيصالات الفيزا"}</span>
                                 <span className="font-mono font-bold text-slate-900 dark:text-white">EGP {visaDrops.toFixed(2)}</span>
                               </div>
                               <div className="flex justify-between pt-1">
-                                <span className="font-black text-slate-700 dark:text-slate-350">{lang === "en" ? "Total Money" : "الإجمالي الكلي"}</span>
-                                <span className="font-black font-mono text-emerald-600 dark:text-emerald-450">EGP {totalDrops.toFixed(2)}</span>
+                                <span className="font-black text-slate-700 dark:text-slate-300">{lang === "en" ? "Total Money" : "الإجمالي الكلي"}</span>
+                                <span className="font-black font-mono text-emerald-600 dark:text-emerald-400">EGP {totalDrops.toFixed(2)}</span>
                               </div>
                             </div>
                           </div>
@@ -664,7 +664,7 @@ export default function MyAccountPage() {
                               <p className="text-[10px] uppercase font-bold text-slate-400">{lang === "en" ? "Cashier verification signature" : "توقيع تحقق الكاشير"}</p>
                               <p className="text-xs font-bold text-slate-500 mt-1">{report.createdAt ? new Date(report.createdAt).toLocaleString() : ""}</p>
                             </div>
-                            <div className="border border-border rounded-xl p-2 bg-white flex items-center justify-center max-w-[200px] h-[75px]">
+                            <div className="border border-slate-200 rounded-xl p-2 bg-white flex items-center justify-center max-w-[200px] h-[75px]">
                               <img src={report.cashierSignature} alt="Cashier signature preview" className="max-h-[60px] object-contain" />
                             </div>
                           </div>
@@ -704,7 +704,7 @@ export default function MyAccountPage() {
                         <p className="font-black text-slate-900 dark:text-white text-base">
                           {lang === "en" ? "Transaction:" : "معاملة:"} <span className="font-mono text-blue-600 dark:text-blue-400">{v.transactionNumber}</span>
                         </p>
-                        <p className="text-xs text-slate-455 flex items-center gap-1 mt-1 font-semibold">
+                        <p className="text-xs text-slate-400 flex items-center gap-1 mt-1 font-semibold">
                           <Calendar className="h-3 w-3" /> {v.createdAt ? new Date(v.createdAt).toLocaleDateString() : "N/A"}
                           <span className="mx-2 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[10px]">{v.register || "Register"}</span>
                         </p>
@@ -714,16 +714,16 @@ export default function MyAccountPage() {
                     <div className="flex items-center gap-2 sm:gap-4">
                       <div className="text-right">
                         <p className="text-[10px] uppercase font-bold text-slate-400">{lang === "en" ? "Refund" : "المبلغ"}</p>
-                        <p className="text-base font-black text-red-600 dark:text-red-400 font-mono">-EGP {(v.amount || 0).toFixed(2)}</p>
+                        <p className="text-base font-black text-red-600 dark:text-red-400 font-mono">-EGP {Number(v.amount || 0).toFixed(2)}</p>
                       </div>
                       {getStatusBadge(v.status)}
                     </div>
                   </div>
 
-                  <div className="bg-slate-50/50 dark:bg-slate-900/30 p-4 rounded-xl border border-slate-200/60 dark:border-slate-805 space-y-3 text-xs sm:text-sm">
+                  <div className="bg-slate-50/50 dark:bg-slate-900/30 p-4 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-3 text-xs sm:text-sm">
                     <div>
                       <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-1">{lang === "en" ? "Reason" : "السبب للتسجيل"}</p>
-                      <p className="font-semibold text-slate-800 dark:text-slate-205 italic">"{v.reason}"</p>
+                      <p className="font-semibold text-slate-800 dark:text-slate-200 italic">"{v.reason}"</p>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-slate-200/60 dark:border-slate-800/60 text-xs text-slate-500 dark:text-slate-400">
@@ -743,7 +743,7 @@ export default function MyAccountPage() {
                       <div className="text-center sm:text-left">
                         <p className="text-[9px] uppercase font-bold text-slate-400">{lang === "en" ? "Cashier Verification Signature" : "توقيع التحقق للكاشير"}</p>
                       </div>
-                      <div className="border border-border rounded-lg p-2 bg-white flex items-center justify-center max-w-[150px] h-[55px]">
+                      <div className="border border-slate-200 rounded-lg p-2 bg-white flex items-center justify-center max-w-[150px] h-[55px]">
                         <img src={v.cashierSignature} alt="Signature preview" className="max-h-[45px] object-contain" />
                       </div>
                     </div>

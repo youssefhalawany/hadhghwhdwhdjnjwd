@@ -237,7 +237,7 @@ export default function ManagerAuditPage() {
   const handleMarkExpiryPulled = async (id: string) => {
     try {
       await updateDoc(doc(db, "expiries", id), { status: "pulled" });
-      setSelectedExpiry(prev => prev && prev.id === id ? { ...prev, status: "pulled" } : prev);
+      setSelectedExpiry((prev: any) => prev && prev.id === id ? { ...prev, status: "pulled" } : prev);
     } catch (error) {
       console.error("Error marking pulled:", error);
       alert("Failed to update status.");

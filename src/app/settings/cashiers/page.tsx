@@ -23,7 +23,7 @@ export default function CashierSettingsPage() {
       const employeesMap = new Map(empSnap.docs.map(d => [d.data().name, d.data()]));
 
       const snap = await getDocs(collection(db, "cashiers"));
-      const allCashiers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const allCashiers: any[] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
       // Filter: only keep cashiers whose employee record is active
       const activeCashiers: any[] = [];
