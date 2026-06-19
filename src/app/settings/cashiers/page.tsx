@@ -7,6 +7,7 @@ import { Users, Trash2, PlusCircle, Lock, Store } from "lucide-react";
 
 export default function CashierSettingsPage() {
   const [cashiers, setCashiers] = useState<any[]>([]);
+  const [employeesList, setEmployeesList] = useState<any[]>([]);
   const [name, setName] = useState("");
   const [storeId, setStoreId] = useState("");
   const [pin, setPin] = useState("");
@@ -17,8 +18,30 @@ export default function CashierSettingsPage() {
   const fetchCashiers = async () => {
     setLoading(true);
     try {
+      // Fetch all employees to verify status
+      const empSnap = await getDocs(collection(db, "employees"));
+      const employeesMap = new Map(empSnap.docs.map(d => [d.data().name, d.data()]));
+
       const snap = await getDocs(collection(db, "cashiers"));
-      setCashiers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      const allCashiers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      // Filter: only keep cashiers whose employee record is active
+      const activeCashiers: any[] = [];
+      for (const c of allCashiers) {
+        const emp = employeesMap.get(c.name);
+        if (emp && emp.status === "active") {
+          activeCashiers.push(c);
+        } else {
+          // Auto-delete cashier document (account)
+          try {
+            await deleteDoc(doc(db, "cashiers", c.id));
+          } catch (err) {
+            console.error("Failed to delete inactive cashier account:", c.name, err);
+          }
+        }
+      }
+
+      setCashiers(activeCashiers);
     } catch (e) {
       console.error(e);
     } finally {
@@ -26,8 +49,21 @@ export default function CashierSettingsPage() {
     }
   };
 
+  const fetchEmployees = async () => {
+    try {
+      const snap = await getDocs(collection(db, "employees"));
+      const emps = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      // Filter: only show active employees in the dropdown
+      const activeEmps = emps.filter((e: any) => e.status === "active");
+      setEmployeesList(activeEmps);
+    } catch (e) {
+      console.error("Error fetching employees:", e);
+    }
+  };
+
   useEffect(() => {
     fetchCashiers();
+    fetchEmployees();
   }, []);
 
   const handleAddCashier = async (e: React.FormEvent) => {
@@ -115,7 +151,26 @@ export default function CashierSettingsPage() {
             
             <div>
               <label className="text-xs font-bold text-muted-foreground uppercase mb-1 block">Full Name</label>
-              <input required value={name} onChange={e => setName(e.target.value)} type="text" className="w-full p-2.5 bg-background border border-border rounded-lg outline-none focus:border-red-500" placeholder="e.g. Ahmed Ali" />
+              <select
+                required
+                value={name}
+                onChange={e => {
+                  const selectedName = e.target.value;
+                  setName(selectedName);
+                  const selectedEmp = employeesList.find(emp => emp.name === selectedName);
+                  if (selectedEmp && selectedEmp.storeId) {
+                    setStoreId(selectedEmp.storeId);
+                  }
+                }}
+                className="w-full p-2.5 bg-background border border-border rounded-lg outline-none focus:border-red-500 text-sm font-semibold"
+              >
+                <option value="">Select Employee...</option>
+                {employeesList.map(emp => (
+                  <option key={emp.id} value={emp.name}>
+                    {emp.name} ({emp.position || "Employee"})
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>

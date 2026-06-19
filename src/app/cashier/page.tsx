@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Lock, User as UserIcon, ChevronDown, FileText, Shield, Calendar as CalendarIcon, UserCircle, Globe, LogOut } from "lucide-react";
 
@@ -35,19 +35,35 @@ export default function CashierHubPage() {
 
     const fetchEmployees = async () => {
       try {
-        // Try fetching employees first
-        const snap = await getDocs(collection(db, "employees"));
-        let emps = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        
-        // If employees is empty, fallback to cashiers (for backward compatibility)
-        if (emps.length === 0) {
-          const cashSnap = await getDocs(collection(db, "cashiers"));
-          emps = cashSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // Fetch all employees to verify status
+        const empSnap = await getDocs(collection(db, "employees"));
+        const activeEmployeesNames = new Set(
+          empSnap.docs
+            .filter(d => d.data().status === "active")
+            .map(d => d.data().name)
+        );
+
+        // Fetch registered cashiers
+        const snap = await getDocs(collection(db, "cashiers"));
+        const allCashiers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        // Filter: only keep cashiers whose employee record is active
+        const activeCashiers = allCashiers.filter(c => activeEmployeesNames.has(c.name));
+
+        // Auto-delete inactive cashier credentials to prevent login
+        for (const c of allCashiers) {
+          if (!activeEmployeesNames.has(c.name)) {
+            try {
+              await deleteDoc(doc(db, "cashiers", c.id));
+            } catch (err) {
+              console.error("Failed to auto-delete inactive cashier:", c.name, err);
+            }
+          }
         }
-        
-        setEmployees(emps);
+
+        setEmployees(activeCashiers);
       } catch (e) {
-        console.error("Failed to load employees", e);
+        console.error("Failed to load cashiers", e);
       } finally {
         setLoading(false);
       }
@@ -65,11 +81,9 @@ export default function CashierHubPage() {
     const user = employees.find(x => x.id === selectedEmployeeId);
     if (!user) return;
     
-    // Check PIN. Since employees might not have a PIN yet, we allow 1111 as a universal fallback 
-    // or match the exact pin if it exists on the document.
-    const correctPin = user.pin || "1111"; 
+    const correctPin = user.pin;
     
-    if (pinInput !== correctPin && pinInput !== "1111") {
+    if (!correctPin || pinInput !== correctPin) {
       alert(lang === "en" ? "Incorrect PIN" : "الرمز السري غير صحيح");
       return;
     }
@@ -314,9 +328,6 @@ export default function CashierHubPage() {
               className="w-full p-4 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-slate-900 dark:text-white outline-none focus:border-red-500 focus:bg-white dark:focus:bg-slate-900 text-center text-3xl tracking-[1em] font-mono transition-all"
               placeholder="••••"
             />
-            <p className="text-center mt-2 text-[10px] text-slate-400 font-medium">
-              {lang === "en" ? "(Default is 1111 if not set)" : "(الرمز الافتراضي 1111 إذا لم يتم تعيينه)"}
-            </p>
           </div>
 
           <button 
