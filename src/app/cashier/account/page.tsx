@@ -39,12 +39,15 @@ export default function MyAccountPage() {
       try {
         let profileName = sessionData.name;
         let profileData = { id: employeeId, name: profileName, ...sessionData };
+        let actualEmployeeId = employeeId;
         
-        // 1. Fetch exact employee profile
-        const empRef = doc(db, "employees", employeeId);
-        const empSnap = await getDoc(empRef);
-        if (empSnap.exists()) {
-          profileData = { id: empSnap.id, ...empSnap.data() };
+        // 1. Fetch exact employee profile by name query
+        const empQuery = query(collection(db, "employees"), where("name", "==", profileName));
+        const empSnap = await getDocs(empQuery);
+        if (!empSnap.empty) {
+          const empDoc = empSnap.docs[0];
+          profileData = { id: empDoc.id, ...empDoc.data() };
+          actualEmployeeId = empDoc.id;
         } else {
           const cashRef = doc(db, "cashiers", employeeId);
           const cashSnap = await getDoc(cashRef);
@@ -59,6 +62,7 @@ export default function MyAccountPage() {
         const fetchRecordsByStaff = async (collectionName: string) => {
           try {
             const queries = [
+              query(collection(db, collectionName), where("employeeId", "==", actualEmployeeId)),
               query(collection(db, collectionName), where("employeeId", "==", employeeId)),
               query(collection(db, collectionName), where("employeeName", "==", profileName)),
               query(collection(db, collectionName), where("cashierName", "==", profileName)),
