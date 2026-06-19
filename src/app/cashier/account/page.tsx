@@ -39,22 +39,59 @@ export default function MyAccountPage() {
       try {
         let profileName = sessionData.name;
         let profileData = { id: employeeId, name: profileName, ...sessionData };
-        let actualEmployeeId = employeeId;
-        
-        // 1. Fetch exact employee profile by name query
-        const empQuery = query(collection(db, "employees"), where("name", "==", profileName));
-        const empSnap = await getDocs(empQuery);
-        if (!empSnap.empty) {
-          const empDoc = empSnap.docs[0];
-          profileData = { id: empDoc.id, ...empDoc.data() };
-          actualEmployeeId = empDoc.id;
-        } else {
-          const cashRef = doc(db, "cashiers", employeeId);
-          const cashSnap = await getDoc(cashRef);
-          if (cashSnap.exists()) {
-            profileData = { id: cashSnap.id, ...cashSnap.data() };
+        let actualEmployeeId = sessionData.employeeId || "";
+
+        // First attempt: Direct getDoc of employee if employeeId is known in session
+        if (actualEmployeeId) {
+          try {
+            const empSnap = await getDoc(doc(db, "employees", actualEmployeeId));
+            if (empSnap.exists()) {
+              profileData = { id: empSnap.id, ...empSnap.data() };
+            }
+          } catch (e) {
+            console.error("Direct employee fetch failed:", e);
           }
         }
+
+        // Second attempt: Fallback to query by name (might fail if unauthenticated, wrapped in try-catch)
+        if (!profileData.nationalId && !profileData.phone) {
+          try {
+            const empQuery = query(collection(db, "employees"), where("name", "==", profileName));
+            const empSnap = await getDocs(empQuery);
+            if (!empSnap.empty) {
+              const empDoc = empSnap.docs[0];
+              profileData = { id: empDoc.id, ...empDoc.data() };
+              actualEmployeeId = empDoc.id;
+            }
+          } catch (e) {
+            console.warn("Name query failed (expected for unauthenticated device):", e);
+          }
+        }
+
+        // Third attempt: Try fetching cashier doc directly, checking if it has employeeId
+        if (!profileData.nationalId && !profileData.phone) {
+          try {
+            const cashSnap = await getDoc(doc(db, "cashiers", employeeId));
+            if (cashSnap.exists()) {
+              const cashData = cashSnap.data();
+              profileData = { ...profileData, ...cashData };
+              if (cashData.employeeId) {
+                actualEmployeeId = cashData.employeeId;
+                try {
+                  const empSnap = await getDoc(doc(db, "employees", actualEmployeeId));
+                  if (empSnap.exists()) {
+                    profileData = { id: empSnap.id, ...empSnap.data() };
+                  }
+                } catch (e) {
+                  console.error("Employee fetch from cashier employeeId failed:", e);
+                }
+              }
+            }
+          } catch (e) {
+            console.error("Cashier doc fetch failed:", e);
+          }
+        }
+
         setUserProfile(profileData);
         profileName = profileData.name || profileName; // Crucial: use the exact name to link to payrolls
 

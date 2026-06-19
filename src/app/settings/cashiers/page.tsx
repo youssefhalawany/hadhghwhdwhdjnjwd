@@ -20,7 +20,7 @@ export default function CashierSettingsPage() {
     try {
       // Fetch all employees to verify status
       const empSnap = await getDocs(collection(db, "employees"));
-      const employeesMap = new Map(empSnap.docs.map(d => [d.data().name, d.data()]));
+      const employeesMap = new Map<string, any>(empSnap.docs.map(d => [d.data().name, { id: d.id, ...d.data() }]));
 
       const snap = await getDocs(collection(db, "cashiers"));
       const allCashiers: any[] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -30,6 +30,17 @@ export default function CashierSettingsPage() {
       for (const c of allCashiers) {
         const emp = employeesMap.get(c.name);
         if (emp && emp.status === "active") {
+          // Auto-migrate cashier to include employeeId
+          if (!c.employeeId) {
+            try {
+              await updateDoc(doc(db, "cashiers", c.id), {
+                employeeId: emp.id
+              });
+              c.employeeId = emp.id;
+            } catch (err) {
+              console.error("Failed to auto-migrate cashier employeeId:", c.name, err);
+            }
+          }
           activeCashiers.push(c);
         } else {
           // Auto-delete cashier document (account)
@@ -74,12 +85,16 @@ export default function CashierSettingsPage() {
     }
     setAdding(true);
     try {
+      const selectedEmp = employeesList.find(emp => emp.name === name);
+      const empId = selectedEmp ? selectedEmp.id : "";
+
       if (editId) {
         // Edit mode
         await updateDoc(doc(db, "cashiers", editId), {
           name,
           storeId,
-          pin
+          pin,
+          employeeId: empId
         });
       } else {
         // Add mode
@@ -87,6 +102,7 @@ export default function CashierSettingsPage() {
           name,
           storeId,
           pin,
+          employeeId: empId,
           createdAt: new Date().toISOString()
         });
       }

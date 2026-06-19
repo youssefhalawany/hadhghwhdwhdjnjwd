@@ -35,28 +35,36 @@ export default function CashierHubPage() {
 
     const fetchEmployees = async () => {
       try {
-        // Fetch all employees to verify status
-        const empSnap = await getDocs(collection(db, "employees"));
-        const activeEmployeesNames = new Set(
-          empSnap.docs
-            .filter(d => d.data().status === "active")
-            .map(d => d.data().name)
-        );
+        let activeEmployeesNames: Set<string> | null = null;
+        try {
+          // Fetch all employees to verify status
+          const empSnap = await getDocs(collection(db, "employees"));
+          activeEmployeesNames = new Set(
+            empSnap.docs
+              .filter(d => d.data().status === "active")
+              .map(d => d.data().name)
+          );
+        } catch (empErr) {
+          console.warn("Could not fetch employees collection (unauthenticated device). Falling back to direct cashier list.");
+        }
 
         // Fetch registered cashiers
         const snap = await getDocs(collection(db, "cashiers"));
         const allCashiers: any[] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        // Filter: only keep cashiers whose employee record is active
-        const activeCashiers = allCashiers.filter(c => activeEmployeesNames.has(c.name));
+        let activeCashiers = allCashiers;
+        if (activeEmployeesNames) {
+          // Filter: only keep cashiers whose employee record is active
+          activeCashiers = allCashiers.filter(c => activeEmployeesNames!.has(c.name));
 
-        // Auto-delete inactive cashier credentials to prevent login
-        for (const c of allCashiers) {
-          if (!activeEmployeesNames.has(c.name)) {
-            try {
-              await deleteDoc(doc(db, "cashiers", c.id));
-            } catch (err) {
-              console.error("Failed to auto-delete inactive cashier:", c.name, err);
+          // Auto-delete inactive cashier credentials to prevent login
+          for (const c of allCashiers) {
+            if (!activeEmployeesNames.has(c.name)) {
+              try {
+                await deleteDoc(doc(db, "cashiers", c.id));
+              } catch (err) {
+                console.error("Failed to auto-delete inactive cashier:", c.name, err);
+              }
             }
           }
         }
@@ -91,6 +99,7 @@ export default function CashierHubPage() {
     const sessionData = {
       id: user.id,
       name: user.name,
+      employeeId: user.employeeId || "",
       storeId: user.storeId || "N/A",
       role: user.position || user.role || "cashier",
       loggedInAt: new Date().toISOString()
