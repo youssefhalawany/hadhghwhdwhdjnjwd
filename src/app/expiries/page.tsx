@@ -8,6 +8,7 @@ import {
   ArrowLeft, Calendar as CalendarIcon, PlusCircle, AlertTriangle, 
   CheckCircle, Clock, Trash2, Package, Globe, Camera, X, QrCode
 } from "lucide-react";
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 
 export default function ExpiryTrackerPage() {
   const router = useRouter();
@@ -25,8 +26,7 @@ export default function ExpiryTrackerPage() {
   // Scanner States
   const [showScanner, setShowScanner] = useState(false);
   const [scannerError, setScannerError] = useState("");
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
+  const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
 
   useEffect(() => {
     const savedUserStr = localStorage.getItem("active_cashier_session");
@@ -57,56 +57,56 @@ export default function ExpiryTrackerPage() {
   const startScanning = async () => {
     setShowScanner(true);
     setScannerError("");
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" }
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-        // Start detection frame loop
-        requestAnimationFrame(scanFrame);
+    
+    // Wait a tick for the DOM element to render
+    setTimeout(async () => {
+      try {
+        const html5QrCode = new Html5Qrcode("scanner-reader");
+        html5QrCodeRef.current = html5QrCode;
+        
+        const config = {
+          fps: 10,
+          qrbox: { width: 260, height: 160 },
+          formatsToSupport: [
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.EAN_8,
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.UPC_A,
+            Html5QrcodeSupportedFormats.UPC_E,
+            Html5QrcodeSupportedFormats.QR_CODE
+          ]
+        };
+
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          config,
+          (decodedText) => {
+            setBarcode(decodedText);
+            stopScanning();
+          },
+          (errorMessage) => {
+            // Ignore scan failures (typical on empty frames)
+          }
+        );
+      } catch (err: any) {
+        console.error(err);
+        setScannerError(lang === "en" ? "Camera access denied or unsupported." : "فشل الوصول إلى الكاميرا.");
       }
-    } catch (e: any) {
-      console.error(e);
-      setScannerError(lang === "en" ? "Camera access denied or unsupported." : "فشل الوصول إلى الكاميرا.");
-    }
+    }, 250);
   };
 
-  const stopScanning = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
+  const stopScanning = async () => {
+    if (html5QrCodeRef.current) {
+      try {
+        if (html5QrCodeRef.current.isScanning) {
+          await html5QrCodeRef.current.stop();
+        }
+      } catch (err) {
+        console.error("Error stopping scanner:", err);
+      }
+      html5QrCodeRef.current = null;
     }
     setShowScanner(false);
-  };
-
-  const scanFrame = async () => {
-    if (!streamRef.current || !videoRef.current || !showScanner) return;
-    
-    const video = videoRef.current;
-    if (video.readyState === video.HAVE_ENOUGH_DATA) {
-      if ('BarcodeDetector' in window) {
-        try {
-          const barcodeDetector = new (window as any).BarcodeDetector({
-            formats: ["ean_13", "ean_8", "code_128", "qr_code", "upc_a"]
-          });
-          const barcodes = await barcodeDetector.detect(video);
-          if (barcodes.length > 0) {
-            setBarcode(barcodes[0].rawValue);
-            stopScanning();
-            return;
-          }
-        } catch (err) {
-          console.error(err);
-        }
-      }
-    }
-    
-    if (streamRef.current) {
-      requestAnimationFrame(scanFrame);
-    }
   };
 
   const simulateScan = () => {
@@ -435,15 +435,11 @@ export default function ExpiryTrackerPage() {
                   <p className="text-sm font-semibold text-red-400">{scannerError}</p>
                 </div>
               ) : (
-                <div className="relative rounded-2xl overflow-hidden bg-black border border-slate-800 aspect-video flex items-center justify-center">
-                  <video 
-                    ref={videoRef}
-                    className="w-full h-full object-cover"
-                    playsInline
-                  />
+                <div className="relative rounded-2xl overflow-hidden bg-black border border-slate-800 aspect-video">
+                  <div id="scanner-reader" className="w-full h-full"></div>
                   {/* Visual laser overlay */}
-                  <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-0.5 bg-red-500 shadow-[0_0_8px_red] animate-pulse"></div>
-                  <div className="absolute inset-8 border-2 border-dashed border-blue-500/50 rounded-lg pointer-events-none"></div>
+                  <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-0.5 bg-red-500 shadow-[0_0_8px_red] animate-pulse z-10 pointer-events-none"></div>
+                  <div className="absolute inset-8 border-2 border-dashed border-blue-500/50 rounded-lg pointer-events-none z-10"></div>
                 </div>
               )}
 
