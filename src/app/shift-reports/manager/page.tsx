@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
-import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, addDoc } from "firebase/firestore";
 import { CheckCircle, Clock, FileText, Banknote, Package, Lock, Printer, Archive, Trash2, Calendar, QrCode } from "lucide-react";
 import Barcode from "react-barcode";
 import QRCode from "react-qr-code";
@@ -136,7 +136,27 @@ export default function ManagerAuditPage() {
         }
       });
 
-      alert("Report Approved & Saved!");
+      // Construct notes incorporating edit history if previously rejected
+      let finalNotes = comments;
+      if (selectedReport.managerAudit?.rejectReason) {
+        finalNotes += `\n[System Note: Previously sent back for editing. Reason: ${selectedReport.managerAudit.rejectReason}]`;
+      }
+
+      // Add to sales collection
+      await addDoc(collection(db, "sales"), {
+        cash: Number(expectedCash) || 0,
+        cashierName: selectedReport.cashierDetails.name,
+        createdAt: new Date().toISOString(),
+        createdBy: managerName,
+        date: selectedReport.cashierDetails.date,
+        notes: finalNotes.trim(),
+        overShort: calculateCashVariance(), // Cash variance only as requested
+        shift: selectedReport.cashierDetails.shift,
+        storeId: selectedReport.cashierDetails.storeId,
+        visa: Number(expectedVisa) || 0
+      });
+
+      alert("Report Approved & Saved! Sales record created.");
       setActiveTab("history");
     } catch (error) {
       console.error("Error approving report:", error);
