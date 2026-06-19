@@ -54,15 +54,15 @@ function PublicShiftReportContent() {
         
         <div className="mt-4 flex justify-center">
           {isApproved ? (
-            <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-bold">
+            <span className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-full text-sm font-bold">
               <CheckCircle className="h-4 w-4" /> Approved
             </span>
           ) : isRejected ? (
-            <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-bold">
+            <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-500/10 text-red-650 dark:text-red-400 border border-red-500/20 rounded-full text-sm font-bold">
               <XCircle className="h-4 w-4" /> Rejected
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-bold">
+            <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-full text-sm font-bold">
               <Clock className="h-4 w-4" /> Pending Manager Audit
             </span>
           )}
@@ -108,15 +108,15 @@ function PublicShiftReportContent() {
           </div>
 
           {report?.cashierCounts?.denominations && (
-            <div className="bg-emerald-50/50 p-3 rounded-lg border border-emerald-100 text-xs">
-              <p className="font-bold text-slate-500 mb-2 border-b border-emerald-100 pb-1">Cash Breakdown</p>
+            <div className="bg-emerald-500/5 dark:bg-emerald-950/10 p-3 rounded-lg border border-emerald-500/10 dark:border-emerald-900/20 text-xs">
+              <p className="font-bold text-muted-foreground mb-2 border-b border-emerald-500/10 dark:border-emerald-900/20 pb-1">Cash Breakdown</p>
               <div className="grid grid-cols-2 gap-2 font-mono">
                 {Object.entries(report.cashierCounts.denominations).map(([bill, count]) => {
                   if (!count || count === 0 || count === "0") return null;
                   return (
-                    <div key={bill} className="flex justify-between bg-white p-1 px-2 rounded border border-emerald-50">
-                      <span className="text-slate-500">{bill === 'coins' ? 'Coins' : `${bill} x`}</span>
-                      <span className="font-bold text-slate-700">{String(count)}</span>
+                    <div key={bill} className="flex justify-between bg-card p-1 px-2 rounded border border-border">
+                      <span className="text-muted-foreground">{bill === 'coins' ? 'Coins' : `${bill} x`}</span>
+                      <span className="font-bold text-foreground">{String(count)}</span>
                     </div>
                   );
                 })}
@@ -168,10 +168,10 @@ function PublicShiftReportContent() {
           <h2 className="font-bold text-lg border-b border-border pb-2 flex items-center gap-2">
             <User className="h-5 w-5 text-slate-500" /> Cashier Signature
           </h2>
-          <div className="bg-white rounded-lg border border-border p-3 text-center">
+          <div className="bg-card rounded-lg border border-border p-3 text-center">
             <img src={report.cashierSignature} alt="Cashier Signature" className="w-full h-[80px] object-contain mb-2" />
             <p className="text-xs text-muted-foreground uppercase tracking-wider">Signed By</p>
-            <p className="text-base font-black text-slate-800">{report.cashierDetails.name}</p>
+            <p className="text-base font-black text-foreground">{report.cashierDetails.name}</p>
           </div>
         </div>
       )}

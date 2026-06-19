@@ -199,13 +199,13 @@ export default function CashierSettingsPage() {
                 <div>
                   <h3 className="font-bold text-foreground text-lg">{c.name}</h3>
                   <p className="text-xs text-muted-foreground font-mono">{c.storeId}</p>
-                  <p className="text-xs bg-red-100 text-red-800 font-mono px-2 py-0.5 rounded mt-2 inline-block border border-red-200">PIN: ****</p>
+                  <p className="text-xs bg-red-500/10 text-red-650 dark:text-red-400 font-mono px-2 py-0.5 rounded mt-2 inline-block border border-red-200/50 dark:border-red-905/30">PIN: ****</p>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => handleEdit(c)} className="px-3 py-1 text-xs font-bold bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg transition-colors border border-blue-200">
+                  <button onClick={() => handleEdit(c)} className="px-3 py-1 text-xs font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 rounded-lg transition-colors border border-blue-200/50 dark:border-blue-905/30">
                     Edit
                   </button>
-                  <button onClick={() => handleDelete(c.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Remove Cashier">
+                  <button onClick={() => handleDelete(c.id)} className="p-2 text-red-500 hover:bg-red-500/10 dark:hover:bg-red-500/20 rounded-lg transition-colors" title="Remove Cashier">
                     <Trash2 className="h-5 w-5" />
                   </button>
                 </div>

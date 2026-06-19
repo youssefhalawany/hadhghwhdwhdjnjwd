@@ -13,6 +13,16 @@ export default function DashboardPage() {
   const [creditPayments, setCreditPayments] = useState<any[]>([]);
   const [payroll, setPayroll] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    setIsDark(document.documentElement.classList.contains("dark"));
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains("dark"));
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     let unsubSales = () => {};
@@ -122,11 +132,16 @@ export default function DashboardPage() {
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-                <XAxis dataKey="date" stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="#888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `EGP ${value}`} />
+                <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#27272a" : "#e2e8f0"} vertical={false} />
+                <XAxis dataKey="date" stroke={isDark ? "#a1a1aa" : "#64748b"} fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke={isDark ? "#a1a1aa" : "#64748b"} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `EGP ${value}`} />
                 <RechartsTooltip 
-                  contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '8px' }}
+                  contentStyle={{ 
+                    backgroundColor: isDark ? '#18181b' : '#ffffff', 
+                    border: isDark ? '1px solid #27272a' : '1px solid #e2e8f0', 
+                    borderRadius: '8px',
+                    color: isDark ? '#fafafa' : '#0f172a'
+                  }}
                   itemStyle={{ color: '#ef4444' }}
                 />
                 <Line type="monotone" dataKey="sales" stroke="#ef4444" strokeWidth={3} dot={{ r: 4, fill: '#ef4444' }} activeDot={{ r: 6 }} />
@@ -142,11 +157,16 @@ export default function DashboardPage() {
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={[{ name: "Current Period", Sales: totalSales, Expenses: totalExpenses }]}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-                <XAxis dataKey="name" stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="#888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `EGP ${value}`} />
+                <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#27272a" : "#e2e8f0"} vertical={false} />
+                <XAxis dataKey="name" stroke={isDark ? "#a1a1aa" : "#64748b"} fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke={isDark ? "#a1a1aa" : "#64748b"} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `EGP ${value}`} />
                 <RechartsTooltip 
-                  contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '8px' }}
+                  contentStyle={{ 
+                    backgroundColor: isDark ? '#18181b' : '#ffffff', 
+                    border: isDark ? '1px solid #27272a' : '1px solid #e2e8f0', 
+                    borderRadius: '8px',
+                    color: isDark ? '#fafafa' : '#0f172a'
+                  }}
                   cursor={{ fill: 'transparent' }}
                 />
                 <Legend />

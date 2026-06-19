@@ -156,7 +156,7 @@ export default function ManagerVoidsPage() {
                 }`}
               >
                 <div className="flex justify-between items-start mb-2">
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${selectedVoid?.id === v.id ? 'bg-slate-800' : 'bg-red-100 text-red-800'}`}>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${selectedVoid?.id === v.id ? 'bg-slate-800' : 'bg-red-500/10 text-red-500 border border-red-200/20 dark:border-red-950/30'}`}>
                     {v.transactionNumber}
                   </span>
                   <span className="font-mono font-bold">{Number(v.amount).toFixed(2)} EGP</span>
@@ -189,8 +189,8 @@ export default function ManagerVoidsPage() {
               </div>
 
               {/* PDF Container - Hidden on screen, only used for innerHTML extraction, or styled beautifully for preview */}
-              <div className="bg-white text-slate-900 p-8 shadow-2xl rounded-xl border border-slate-200 overflow-x-auto print:p-0 print:shadow-none print:border-none print:rounded-none">
-                <div id="void-print-capture" style={{ width: '100%', maxWidth: '210mm', margin: '0 auto', backgroundColor: 'white', boxSizing: 'border-box', color: '#0f172a' }}>
+              <div className="bg-card text-foreground p-8 shadow-2xl rounded-xl border border-border overflow-x-auto print:p-0 print:shadow-none print:border-none print:rounded-none">
+                <div id="void-print-capture" style={{ width: '100%', maxWidth: '210mm', margin: '0 auto', backgroundColor: 'white', boxSizing: 'border-box', color: '#0f172a', padding: '20px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
                   
                   {/* Header */}
                   <div style={{ borderBottom: '4px solid #dc2626', paddingBottom: '10px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
