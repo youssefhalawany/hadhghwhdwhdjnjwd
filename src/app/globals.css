@@ -31,7 +31,8 @@
   /* Glassmorphism settings */
   --glass-bg: rgba(255, 255, 255, 0.45);
   --glass-border: rgba(255, 255, 255, 0.5);
-  --glass-shadow: rgba(0, 0, 0, 0.04);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.03);
+  --glass-hover-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.08), 0 8px 15px -6px rgba(0, 0, 0, 0.08);
 }
 
 .dark {
@@ -61,7 +62,8 @@
   /* Dark Glassmorphism */
   --glass-bg: rgba(15, 15, 20, 0.45);
   --glass-border: rgba(63, 63, 70, 0.4);
-  --glass-shadow: rgba(0, 0, 0, 0.4);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  --glass-hover-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.5), 0 10px 20px -6px rgba(0, 0, 0, 0.5);
 }
 
 body {
@@ -100,7 +102,7 @@ body {
 
 .glass-panel:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+  box-shadow: var(--glass-hover-shadow);
   border-color: rgba(225, 25, 55, 0.3); /* Subtle brand red glow on hover */
 }
 

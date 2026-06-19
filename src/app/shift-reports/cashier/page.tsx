@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, getDocs, query, where, updateDoc, doc } from "firebase/firestore";
-import { Calculator, Package, Banknote, Calendar, Clock, ArrowRight, Lock, User as UserIcon, Globe, WifiOff, RefreshCw, ChevronDown, Shield } from "lucide-react";
+import { Calculator, Package, Banknote, Calendar, Clock, ArrowRight, ArrowLeft, Lock, User as UserIcon, Globe, WifiOff, RefreshCw, ChevronDown, Shield, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 // Translation Dictionary
@@ -553,34 +553,45 @@ export default function CashierShiftReportPage() {
 
   if (!unlocked) {
     return (
-      <div className="max-w-md mx-auto space-y-6 pt-10" dir={lang === "ar" ? "rtl" : "ltr"}>
-        <div className="flex justify-end px-4">
-          <button 
-            onClick={() => setLang(lang === "en" ? "ar" : "en")}
-            className="flex items-center gap-2 bg-slate-200 dark:bg-slate-800 px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-bold shadow-sm"
-          >
-            <Globe className="h-4 w-4" /> {lang === "en" ? "عربي" : "English"}
-          </button>
-        </div>
-
-        <div className="text-center py-4 border-b border-border mb-4 sm:mb-6 px-4">
-          <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 bg-red-600 rounded-full mb-3 sm:mb-4 shadow-lg shadow-red-500/20">
-            <Lock className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200/50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900/40 flex flex-col items-center justify-center pt-8 pb-12 px-4 transition-colors duration-300" dir={lang === "ar" ? "rtl" : "ltr"}>
+        <div className="w-full max-w-md space-y-6">
+          
+          {/* Language Toggle */}
+          <div className="flex justify-end">
+            <button 
+              type="button"
+              onClick={() => setLang(lang === "en" ? "ar" : "en")}
+              className="flex items-center gap-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border border-slate-200/60 dark:border-slate-700/50 px-4 py-2 rounded-full text-sm font-bold shadow-md hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-slate-700 dark:text-slate-200 cursor-pointer"
+            >
+              <Globe className="h-4 w-4" /> {lang === "en" ? "عربي" : "English"}
+            </button>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight">{dict.shiftAccess}</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground uppercase font-bold tracking-widest mt-1 sm:mt-2">{dict.authorizedOnly}</p>
-        </div>
 
-        <div className="px-4">
-          <form onSubmit={handleUnlock} className="glass-panel p-4 sm:p-6 rounded-2xl space-y-4 sm:space-y-6 border border-border">
+          {/* Title */}
+          <div className="text-center py-2 mb-2">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-red-600 rounded-full mb-4 shadow-xl shadow-red-500/30">
+              <Lock className="h-8 w-8 text-white animate-pulse" />
+            </div>
+            <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+              {dict.shiftAccess}
+            </h1>
+            <p className="text-xs text-red-600 dark:text-red-400 font-bold tracking-widest mt-2 uppercase">
+              {dict.authorizedOnly}
+            </p>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleUnlock} className="bg-white/90 dark:bg-slate-900/70 backdrop-blur-md p-6 sm:p-8 rounded-3xl space-y-6 border border-slate-200/70 dark:border-slate-800/60 shadow-2xl">
             <div>
-              <label className="block text-[10px] sm:text-xs font-bold text-muted-foreground uppercase mb-1 sm:mb-2 flex items-center gap-1"><UserIcon className="h-3 w-3 sm:h-4 sm:w-4" /> {dict.cashierName}</label>
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 flex items-center gap-1">
+                <UserIcon className="h-4 w-4 text-slate-400" /> {dict.cashierName}
+              </label>
               <div className="relative">
                 <div 
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="w-full p-3 sm:p-4 rounded-xl border border-border bg-background text-foreground outline-none focus:ring-2 focus:ring-red-500 text-base sm:text-lg cursor-pointer flex justify-between items-center"
+                  className="w-full p-4 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-805/50 text-slate-900 dark:text-white outline-none focus:border-red-500 text-base cursor-pointer flex justify-between items-center transition-all"
                 >
-                  <span className={!selectedCashierId ? "text-muted-foreground" : ""}>
+                  <span className={!selectedCashierId ? "text-slate-400 dark:text-slate-505" : "font-bold"}>
                     {selectedCashierId 
                       ? (() => {
                           const c = cashiers.find(x => x.id === selectedCashierId);
@@ -588,19 +599,19 @@ export default function CashierShiftReportPage() {
                         })()
                       : dict.selectName}
                   </span>
-                  <ChevronDown className={`h-5 w-5 transition-transform ${isDropdownOpen ? "rotate-180" : ""}`} />
+                  <ChevronDown className={`h-5 w-5 text-slate-400 transition-transform ${isDropdownOpen ? "rotate-180" : ""}`} />
                 </div>
 
                 {isDropdownOpen && (
-                  <div className="absolute z-[100] top-full left-0 right-0 mt-2 max-h-60 overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl overflow-hidden ring-1 ring-black/5">
+                  <div className="absolute z-[100] top-full left-0 right-0 mt-2 max-h-60 overflow-y-auto bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl shadow-2xl overflow-hidden ring-1 ring-black/5 animate-in fade-in duration-200">
                     {cashiers.map(c => (
                       <div 
                         key={c.id} 
                         onClick={() => { setSelectedCashierId(c.id); setIsDropdownOpen(false); }}
-                        className="p-4 hover:bg-slate-50 active:bg-slate-100 dark:hover:bg-slate-800 dark:active:bg-slate-700 cursor-pointer border-b border-slate-100 dark:border-slate-800 last:border-0 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 transition-colors"
+                        className="p-4 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer border-b border-slate-100 dark:border-slate-700/60 last:border-0 flex flex-col gap-1 transition-colors"
                       >
-                        <span className="font-bold text-slate-900 dark:text-white text-base sm:text-lg">{c.name}</span>
-                        <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md w-fit">
+                        <span className="font-bold text-slate-900 dark:text-white text-base">{c.name}</span>
+                        <span className="text-[10px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-900/50 px-2 py-0.5 rounded-md w-fit">
                           {lang === "en" ? "Store" : "فرع"}: {c.storeId}
                         </span>
                       </div>
@@ -611,7 +622,9 @@ export default function CashierShiftReportPage() {
             </div>
 
             <div>
-              <label className="block text-[10px] sm:text-xs font-bold text-muted-foreground uppercase mb-1 sm:mb-2 flex items-center gap-1"><Lock className="h-3 w-3 sm:h-4 sm:w-4" /> {dict.pin}</label>
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 flex items-center gap-1">
+                <Lock className="h-4 w-4 text-slate-400" /> {dict.pin}
+              </label>
               <input 
                 required
                 type="password"
@@ -620,12 +633,12 @@ export default function CashierShiftReportPage() {
                 maxLength={4}
                 value={pinInput}
                 onChange={(e) => setPinInput(e.target.value)}
-                className="w-full p-3 sm:p-4 rounded-xl border border-border bg-background outline-none focus:ring-2 focus:ring-red-500 text-center text-2xl sm:text-3xl tracking-[0.5em] sm:tracking-[1em] font-mono"
+                className="w-full p-4 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-slate-900 dark:text-white outline-none focus:border-red-500 focus:bg-white dark:focus:bg-slate-900 text-center text-3xl tracking-[1em] font-mono transition-all"
                 placeholder="••••"
               />
             </div>
 
-            <button type="submit" className="w-full py-3 sm:py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-base sm:text-lg shadow-xl shadow-red-500/20 transition-all">
+            <button type="submit" className="w-full py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-lg shadow-xl shadow-red-500/20 active:scale-[0.98] transition-all cursor-pointer">
               {dict.unlock}
             </button>
           </form>
@@ -637,77 +650,79 @@ export default function CashierShiftReportPage() {
   const activeCashier = cashiers.find(x => x.id === selectedCashierId);
 
   return (
-    <div className="flex flex-col h-screen bg-background text-foreground max-w-md mx-auto shadow-2xl relative" dir={lang === "ar" ? "rtl" : "ltr"}>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950/20 text-slate-900 dark:text-slate-100 transition-colors duration-300 pb-28" dir={lang === "ar" ? "rtl" : "ltr"}>
       
       {/* Header */}
-      <header className="bg-slate-900 text-white p-3 sm:p-4 sticky top-0 z-10 flex items-center justify-between border-b border-slate-800">
-        <div>
-          <h1 className="text-lg sm:text-xl font-black tracking-tight">{dict.dailyReport}</h1>
-          <p className="text-[10px] sm:text-xs text-slate-400 font-semibold">{new Date().toLocaleDateString('en-GB')}</p>
-        </div>
-        <div className="flex items-center gap-2 sm:gap-3">
-          <button 
-            type="button"
-            onClick={() => setLang(lang === "en" ? "ar" : "en")}
-            className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold transition-colors"
-          >
-            <Globe className="h-3 w-3" /> {lang === "en" ? "عربي" : "EN"}
-          </button>
-          <div className="h-8 w-8 sm:h-10 sm:w-10 bg-red-600 rounded-full flex items-center justify-center border-2 border-red-500/30">
-            <span className="font-black text-sm sm:text-xl">K</span>
+      <header className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md shadow-sm border-b border-slate-200 dark:border-slate-700 p-4 sticky top-0 z-10">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button 
+              type="button"
+              onClick={() => router.push("/cashier")}
+              className="flex items-center gap-1 text-slate-555 hover:text-red-600 dark:hover:text-red-400 transition-colors cursor-pointer"
+            >
+              <ArrowLeft className={`h-5 w-5 ${lang === "ar" ? "rotate-180" : ""}`} />
+              <span className="font-bold text-sm">{lang === "en" ? "Back" : "رجوع"}</span>
+            </button>
+            <div className="h-5 w-px bg-slate-200 dark:bg-slate-700 hidden sm:block"></div>
+            <div>
+              <h1 className="text-lg sm:text-xl font-black tracking-tight text-slate-800 dark:text-white leading-none">{dict.dailyReport}</h1>
+              <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-semibold mt-1">{new Date().toLocaleDateString('en-GB')}</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button 
+              type="button"
+              onClick={() => setLang(lang === "en" ? "ar" : "en")}
+              className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-705 px-3 py-1.5 rounded-full text-xs font-bold transition-colors text-slate-700 dark:text-slate-200 border border-slate-200/50 dark:border-slate-700/60 cursor-pointer"
+            >
+              <Globe className="h-3.5 w-3.5" /> {lang === "en" ? "عربي" : "EN"}
+            </button>
+            <div className="h-8 w-8 sm:h-10 sm:w-10 bg-red-600 rounded-full flex items-center justify-center border-2 border-red-500/30 text-white font-black shadow-md shadow-red-500/10">
+              K
+            </div>
           </div>
         </div>
       </header>
 
       {/* Offline Status Bar */}
       {(isOffline || offlineCount > 0) && (
-        <div className={`px-4 py-2 flex items-center justify-between text-xs font-bold text-white ${isOffline ? 'bg-orange-500' : 'bg-blue-600'}`}>
-          <div className="flex items-center gap-2">
-            {isOffline ? <WifiOff className="h-4 w-4" /> : <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />}
-            <span>
-              {isOffline 
-                ? (lang === 'en' ? "Offline Mode Active" : "وضع عدم الاتصال نشط") 
-                : (syncing ? (lang === 'en' ? "Syncing..." : "جاري المزامنة...") : (lang === 'en' ? "Internet Restored" : "عاد الاتصال"))
-              }
-            </span>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+          <div className={`p-3.5 rounded-2xl flex items-center justify-between text-xs font-bold text-white shadow-md ${isOffline ? 'bg-orange-500 shadow-orange-500/10' : 'bg-blue-600 shadow-blue-600/10'}`}>
+            <div className="flex items-center gap-2">
+              {isOffline ? <WifiOff className="h-4 w-4" /> : <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />}
+              <span>
+                {isOffline 
+                  ? (lang === 'en' ? "Offline Mode Active (Auto-saves locally)" : "وضع عدم الاتصال نشط (سيتم الحفظ محلياً)") 
+                  : (syncing ? (lang === 'en' ? "Syncing offline reports..." : "جاري مزامنة التقارير...") : (lang === 'en' ? "Internet Restored" : "عاد الاتصال بالإنترنت"))
+                }
+              </span>
+            </div>
+            {offlineCount > 0 && (
+              <span className="bg-white/20 px-2.5 py-0.5 rounded-lg text-[10px] font-black">
+                {offlineCount} {lang === 'en' ? "pending" : "معلق"}
+              </span>
+            )}
           </div>
-          {offlineCount > 0 && (
-            <span className="bg-white/20 px-2 py-0.5 rounded-full">
-              {offlineCount} {lang === 'en' ? "pending" : "معلق"}
-            </span>
-          )}
         </div>
       )}
 
-      <div className="px-4 pt-4">
-        <button 
-          type="button"
-          onClick={() => router.push('/voids/cashier')}
-          className="w-full flex items-center justify-between bg-slate-900 text-white p-3 rounded-xl font-bold shadow-lg shadow-slate-900/20 active:scale-[0.98] transition-transform"
-        >
-          <div className="flex items-center gap-2">
-            <div className="bg-red-600 p-1.5 rounded-lg">
-              <Shield className="h-4 w-4" />
-            </div>
-            <span>{lang === 'en' ? "Log a Void / Return" : "تسجيل مرتجع / إلغاء"}</span>
-          </div>
-          <span className="text-xs text-slate-400 bg-slate-800 px-2 py-1 rounded-md">New</span>
-        </button>
-      </div>
-
-      <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto pb-24 relative mt-2">
+      {/* Main Container */}
+      <main className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+        
         {rejectReason && (
-          <div className="bg-red-50 border-b border-red-200 p-4 mb-4">
-            <div className="flex items-start gap-3">
-              <div className="bg-red-100 p-2 rounded-full flex-shrink-0">
-                <Lock className="h-5 w-5 text-red-600" />
+          <div className="bg-red-50 dark:bg-red-950/10 border border-red-200 dark:border-red-900/50 p-5 rounded-2xl shadow-sm">
+            <div className="flex items-start gap-3.5">
+              <div className="bg-red-100 dark:bg-red-900/30 p-2.5 rounded-xl flex-shrink-0 text-red-600 dark:text-red-400">
+                <Lock className="h-5 w-5 animate-pulse" />
               </div>
               <div>
-                <h3 className="text-red-800 font-bold text-sm">{dict.rejectedTitle}</h3>
-                <p className="text-red-600 text-xs mt-1 font-medium leading-snug">
-                  <span className="font-bold text-red-800">{dict.reasonLabel}:</span> "{rejectReason}"
+                <h3 className="text-red-900 dark:text-red-400 font-bold text-sm sm:text-base">{dict.rejectedTitle}</h3>
+                <p className="text-red-750 dark:text-red-300 text-xs sm:text-sm mt-1 font-semibold leading-relaxed">
+                  <span className="font-black text-red-900 dark:text-red-400">{dict.reasonLabel}:</span> "{rejectReason}"
                 </p>
-                <p className="text-red-500 text-[10px] mt-2 font-bold uppercase tracking-wider">
+                <p className="text-red-600 dark:text-red-400 text-[10px] sm:text-xs mt-3 font-bold uppercase tracking-wider">
                   {dict.rejectedSubtitle}
                 </p>
               </div>
@@ -715,180 +730,249 @@ export default function CashierShiftReportPage() {
           </div>
         )}
 
-        <div className="p-3 sm:p-4 space-y-4 sm:space-y-6">
-          
-          {/* 1. Shift Info */}
-          <section className="glass-panel p-4 sm:p-5 rounded-xl sm:rounded-2xl space-y-3 sm:space-y-4">
-            <div className="flex items-center gap-2 border-b border-border pb-2">
-              <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-red-500" />
-              <h2 className="text-base sm:text-lg font-bold text-foreground">{dict.shiftInfo}</h2>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 sm:gap-4">
-              <div>
-                <label className="block text-[10px] sm:text-xs font-bold text-muted-foreground uppercase mb-1 flex items-center gap-1"><Calendar className="h-3 w-3" /> {dict.date}</label>
-                <input required type="date" value={date} readOnly className="w-full p-2.5 sm:p-3 rounded-lg sm:rounded-xl border border-border bg-muted/50 text-slate-500 outline-none cursor-not-allowed text-xs sm:text-sm" />
-              </div>
-              <div>
-                <label className="block text-[10px] sm:text-xs font-bold text-muted-foreground uppercase mb-1 flex items-center gap-1"><Clock className="h-3 w-3" /> {dict.shift}</label>
-                <select value={shift} onChange={(e) => setShift(e.target.value)} className="w-full p-2.5 sm:p-3 rounded-lg sm:rounded-xl border border-border bg-background outline-none appearance-none text-xs sm:text-sm">
-                  <option value="Morning">{dict.morning}</option>
-                  <option value="Noon">{dict.noon}</option>
-                  <option value="Night">{dict.night}</option>
-                </select>
-              </div>
-              <div className="col-span-2">
-                <label className="block text-[10px] sm:text-xs font-bold text-muted-foreground uppercase mb-1 flex items-center gap-1"><UserIcon className="h-3 w-3" /> {dict.role}</label>
-                <select value={cashierRole} onChange={(e) => setCashierRole(Number(e.target.value))} className="w-full p-2.5 sm:p-3 rounded-lg sm:rounded-xl border border-border bg-background outline-none appearance-none font-bold text-foreground focus:ring-2 focus:ring-red-500 text-xs sm:text-sm">
-                  <option value={1}>{dict.role1}</option>
-                  <option value={2}>{dict.role2}</option>
-                </select>
-              </div>
+        <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-white/40 dark:bg-slate-900/40 backdrop-blur-md p-4 rounded-3xl border border-slate-200/60 dark:border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-500">
+              <UserIcon className="h-5 w-5" />
             </div>
             <div>
-              <label className="block text-[10px] sm:text-xs font-bold text-muted-foreground uppercase mb-1 text-slate-400">{dict.storeId}</label>
-              <div className="w-full p-2.5 sm:p-3 rounded-lg sm:rounded-xl border border-border bg-muted/50 text-slate-500 font-mono text-xs sm:text-sm">
-                {activeCashier?.storeId}
-              </div>
+              <p className="text-[10px] uppercase font-bold text-slate-400">{lang === "en" ? "Logged In Cashier" : "الكاشير المسجل"}</p>
+              <p className="font-bold text-slate-800 dark:text-white text-base leading-none mt-1">{activeCashier?.name}</p>
             </div>
-          </section>
+          </div>
+          
+          <button 
+            type="button"
+            onClick={() => router.push('/voids/cashier')}
+            className="w-full sm:w-auto flex items-center justify-between bg-slate-900 hover:bg-slate-800 dark:bg-slate-850 dark:hover:bg-slate-700 text-white px-5 py-3.5 rounded-2xl font-bold shadow-md shadow-slate-900/10 active:scale-[0.98] transition-all gap-4 cursor-pointer"
+          >
+            <div className="flex items-center gap-2">
+              <Shield className="h-4 w-4 text-red-500" />
+              <span className="text-left font-bold text-xs sm:text-sm">
+                {lang === 'en' ? "Log a Void / Return" : "تسجيل مرتجع / إلغاء"}
+              </span>
+            </div>
+            <span className="text-[9px] font-black uppercase text-slate-400 bg-slate-800 dark:bg-slate-700 px-2 py-0.5 rounded-md">NEW</span>
+          </button>
+        </div>
 
-          {/* 2. Cashier Money */}
-          <section className="glass-panel p-4 sm:p-5 rounded-xl sm:rounded-2xl space-y-3 sm:space-y-4">
-            <div className="flex items-center gap-2 border-b border-border pb-2">
-              <Banknote className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-500" />
-              <h2 className="text-base sm:text-lg font-bold text-foreground">{dict.drops}</h2>
-            </div>
-            <div className="space-y-4">
-              <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-border">
-                <p className="text-sm font-bold text-muted-foreground mb-3">{lang === "en" ? "Cash Breakdown (Quantities)" : "تفاصيل النقدية (العدد)"}</p>
-                <div className="flex flex-col gap-3">
-                  {[200, 100, 50, 20, 10, 5].map((bill) => (
-                    <div key={bill} className="flex items-center gap-2">
-                      <span className="w-12 text-sm font-bold text-slate-500">x {bill}</span>
-                      <input 
-                        type="number" inputMode="numeric" min="0"
-                        value={denominations[String(bill) as keyof typeof denominations]} 
-                        onChange={(e) => setDenominations({...denominations, [String(bill)]: e.target.value})}
-                        className="w-full p-2.5 sm:p-3 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-emerald-500 font-mono text-emerald-600 dark:text-emerald-400 text-lg"
-                        placeholder="0"
-                      />
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            {/* Left Column: Shift Info & Cash breakdown */}
+            <div className="space-y-6">
+              
+              {/* 1. Shift Info */}
+              <section className="glass-panel p-5 rounded-2xl space-y-4">
+                <div className="flex items-center gap-2 border-b border-slate-150 dark:border-slate-800 pb-3">
+                  <Clock className="h-5 w-5 text-red-500" />
+                  <h2 className="text-base sm:text-lg font-black text-slate-800 dark:text-white uppercase tracking-wider">{dict.shiftInfo}</h2>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] sm:text-xs font-bold text-slate-400 uppercase mb-1.5 flex items-center gap-1">
+                      <Calendar className="h-3.5 w-3.5" /> {dict.date}
+                    </label>
+                    <input required type="date" value={date} readOnly className="w-full p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-900/50 text-slate-500 outline-none cursor-not-allowed text-xs sm:text-sm font-semibold" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] sm:text-xs font-bold text-slate-400 uppercase mb-1.5 flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5" /> {dict.shift}
+                    </label>
+                    <div className="relative">
+                      <select value={shift} onChange={(e) => setShift(e.target.value)} className="w-full p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none appearance-none focus:ring-2 focus:ring-red-500 text-xs sm:text-sm font-semibold cursor-pointer">
+                        <option value="Morning">{dict.morning}</option>
+                        <option value="Noon">{dict.noon}</option>
+                        <option value="Night">{dict.night}</option>
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                     </div>
-                  ))}
-                  <div className="flex items-center gap-2 mt-2 pt-3 border-t border-border">
-                    <span className="w-12 text-sm font-bold text-slate-500">Coins</span>
-                    <input 
-                      type="number" inputMode="decimal" min="0" step="0.01"
-                      value={denominations['coins']} 
-                      onChange={(e) => setDenominations({...denominations, 'coins': e.target.value})}
-                      className="w-full p-2.5 sm:p-3 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-emerald-500 font-mono text-emerald-600 dark:text-emerald-400 text-lg"
-                      placeholder="0.00"
-                    />
+                  </div>
+                  
+                  <div className="col-span-2">
+                    <label className="block text-[10px] sm:text-xs font-bold text-slate-400 uppercase mb-1.5 flex items-center gap-1">
+                      <UserIcon className="h-3.5 w-3.5" /> {dict.role}
+                    </label>
+                    <div className="relative">
+                      <select value={cashierRole} onChange={(e) => setCashierRole(Number(e.target.value))} className="w-full p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none appearance-none font-bold focus:ring-2 focus:ring-red-500 text-xs sm:text-sm cursor-pointer">
+                        <option value={1}>{dict.role1}</option>
+                        <option value={2}>{dict.role2}</option>
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="flex justify-between items-center bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-xl border border-emerald-200 dark:border-emerald-800/30">
-                <span className="font-bold text-emerald-800 dark:text-emerald-500">{lang === "en" ? "Total Cash" : "إجمالي النقدية"}</span>
-                <span className="font-black text-xl text-emerald-600 dark:text-emerald-400 font-mono">{calculateTotalCash().toFixed(2)}</span>
-              </div>
-            </div>
-            <div className="space-y-3 sm:space-y-4">
-              <div>
-                <label className="block text-[10px] sm:text-xs font-bold text-muted-foreground uppercase mb-1">{dict.totalVisa}</label>
-                <div className="relative">
-                  <span className={`absolute ${lang === "ar" ? "right-3 sm:right-4" : "left-3 sm:left-4"} top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs sm:text-sm`}>EGP</span>
-                  <input required type="number" inputMode="decimal" min="0" step="0.01" value={visa} onChange={(e) => setVisa(e.target.value)} className={`w-full ${lang === "ar" ? "pr-12 sm:pr-14" : "pl-12 sm:pl-14"} p-3 sm:p-4 rounded-lg sm:rounded-xl border border-border bg-background outline-none focus:ring-2 focus:ring-blue-500 text-lg sm:text-xl font-mono text-blue-600 dark:text-blue-400`} placeholder="0.00" />
+                
+                <div>
+                  <label className="block text-[10px] sm:text-xs font-bold text-slate-400 uppercase mb-1.5">{dict.storeId}</label>
+                  <div className="w-full p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-900/50 text-slate-500 font-mono text-xs sm:text-sm font-semibold">
+                    {activeCashier?.storeId}
+                  </div>
                 </div>
-              </div>
-              <div className="pt-3 sm:pt-4 border-t border-border flex justify-between items-center bg-muted/30 p-3 sm:p-4 rounded-lg sm:rounded-xl border-dashed">
-                <span className="text-xs sm:text-sm font-bold text-muted-foreground uppercase">{dict.totalDrops}</span>
-                <span className="text-xl sm:text-2xl font-black text-foreground">{calculateTotalMoney().toFixed(2)}</span>
-              </div>
-            </div>
-          </section>
+              </section>
 
-          {/* 3. Inventory Checks (Only shown for Cashier 1) */}
-          {cashierRole === 1 && (
-            <section className="glass-panel p-4 sm:p-5 rounded-xl sm:rounded-2xl space-y-4 sm:space-y-6">
-              <div className="flex items-center gap-2 border-b border-border pb-2">
-                <Package className="h-4 w-4 sm:h-5 sm:w-5 text-orange-500" />
-                <h2 className="text-base sm:text-lg font-bold text-foreground">{dict.inventory}</h2>
+              {/* 2. Cashier Money (Drops) */}
+              <section className="glass-panel p-5 rounded-2xl space-y-4">
+                <div className="flex items-center gap-2 border-b border-slate-150 dark:border-slate-800 pb-3">
+                  <Banknote className="h-5 w-5 text-emerald-500" />
+                  <h2 className="text-base sm:text-lg font-black text-slate-800 dark:text-white uppercase tracking-wider">{dict.drops}</h2>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="bg-slate-50/50 dark:bg-slate-900/40 p-4 rounded-xl border border-slate-200/60 dark:border-slate-800">
+                    <p className="text-xs font-bold text-slate-400 uppercase mb-3.5 tracking-wider">{lang === "en" ? "Cash Breakdown (Quantities)" : "تفاصيل النقدية (العدد)"}</p>
+                    
+                    <div className="flex flex-col gap-3">
+                      {[200, 100, 50, 20, 10, 5].map((bill) => (
+                        <div key={bill} className="flex items-center justify-between gap-4">
+                          <span className="w-16 text-sm font-bold text-slate-555 dark:text-slate-400 font-mono">x EGP {bill}</span>
+                          <input 
+                            type="number" inputMode="numeric" min="0"
+                            value={denominations[String(bill) as keyof typeof denominations]} 
+                            onChange={(e) => setDenominations({...denominations, [String(bill)]: e.target.value})}
+                            className="w-full p-2.5 rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500 font-mono text-emerald-600 dark:text-emerald-400 text-right text-base sm:text-lg font-bold transition-all"
+                            placeholder="0"
+                          />
+                        </div>
+                      ))}
+                      
+                      <div className="flex items-center justify-between gap-4 mt-2 pt-3 border-t border-slate-200/60 dark:border-slate-800">
+                        <span className="w-16 text-sm font-bold text-slate-555 dark:text-slate-400 font-mono">{lang === "en" ? "Coins" : "قروش/فكة"}</span>
+                        <input 
+                          type="number" inputMode="decimal" min="0" step="0.01"
+                          value={denominations['coins']} 
+                          onChange={(e) => setDenominations({...denominations, 'coins': e.target.value})}
+                          className="w-full p-2.5 rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500 font-mono text-emerald-600 dark:text-emerald-400 text-right text-base sm:text-lg font-bold transition-all"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center bg-emerald-50/50 dark:bg-emerald-950/10 p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/30">
+                    <span className="font-bold text-sm text-emerald-800 dark:text-emerald-450 uppercase">{lang === "en" ? "Total Cash" : "إجمالي النقدية"}</span>
+                    <span className="font-black text-xl text-emerald-600 dark:text-emerald-450 font-mono">EGP {calculateTotalCash().toFixed(2)}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-4 pt-2">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">{dict.totalVisa}</label>
+                    <div className="relative">
+                      <span className={`absolute ${lang === "ar" ? "right-4" : "left-4"} top-1/2 -translate-y-1/2 text-slate-400 font-black text-xs sm:text-sm`}>EGP</span>
+                      <input required type="number" inputMode="decimal" min="0" step="0.01" value={visa} onChange={(e) => setVisa(e.target.value)} className={`w-full ${lang === "ar" ? "pr-14" : "pl-14"} p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-blue-500 text-base sm:text-lg font-mono font-bold text-blue-600 dark:text-blue-450 transition-all`} placeholder="0.00" />
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50 p-4 rounded-xl border-dashed">
+                    <span className="text-xs sm:text-sm font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">{dict.totalDrops}</span>
+                    <span className="text-lg sm:text-xl font-black text-slate-900 dark:text-white font-mono">EGP {calculateTotalMoney().toFixed(2)}</span>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            {/* Right Column: Inventory & Signature */}
+            <div className="space-y-6">
+              
+              {/* 3. Inventory Checks */}
+              {cashierRole === 1 && (
+                <section className="glass-panel p-5 rounded-2xl space-y-4">
+                  <div className="flex items-center gap-2 border-b border-slate-150 dark:border-slate-800 pb-3">
+                    <Package className="h-5 w-5 text-orange-500" />
+                    <h2 className="text-base sm:text-lg font-black text-slate-800 dark:text-white uppercase tracking-wider">{dict.inventory}</h2>
+                  </div>
+                  
+                  {/* Cigarettes */}
+                  <div className="space-y-2.5 bg-slate-50/50 dark:bg-slate-900/40 p-4 rounded-xl border border-slate-200/60 dark:border-slate-800 animate-in fade-in">
+                    <h3 className="font-bold text-slate-700 dark:text-slate-350 border-b border-slate-200 dark:border-slate-800 pb-2 uppercase tracking-widest text-[10px]">{dict.cigarettes}</h3>
+                    <div className="grid grid-cols-4 gap-2">
+                      <div>
+                        <label className="block text-[8px] sm:text-[9px] font-bold text-slate-450 dark:text-slate-500 uppercase mb-1">{dict.start}</label>
+                        <input required type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={cigarettes.start} onChange={(e) => setCigarettes({ ...cigarettes, start: e.target.value })} className="w-full p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-orange-500 text-center font-mono text-xs sm:text-sm font-bold" />
+                      </div>
+                      <div>
+                        <label className="block text-[8px] sm:text-[9px] font-bold text-slate-455 dark:text-slate-500 uppercase mb-1 text-emerald-500">{dict.delivery}</label>
+                        <input required type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={cigarettes.delivery} onChange={(e) => setCigarettes({ ...cigarettes, delivery: e.target.value })} className="w-full p-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 outline-none focus:ring-2 focus:ring-emerald-500 text-center font-mono text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-450" />
+                      </div>
+                      <div>
+                        <label className="block text-[8px] sm:text-[9px] font-bold text-slate-455 dark:text-slate-500 uppercase mb-1 text-red-500">{dict.end}</label>
+                        <input required type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={cigarettes.end} onChange={(e) => setCigarettes({ ...cigarettes, end: e.target.value })} className="w-full p-2 rounded-lg border border-red-500/20 bg-red-500/5 outline-none focus:ring-2 focus:ring-red-500 text-center font-mono text-xs sm:text-sm font-bold text-red-600 dark:text-red-450" />
+                      </div>
+                      <div className="bg-slate-900 rounded-lg p-1.5 text-center border border-slate-800 flex flex-col justify-center">
+                        <label className="block text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase mb-0.5">{dict.soldPacks}</label>
+                        <span className="font-black text-white text-xs sm:text-sm font-mono leading-none">{calculateSold(cigarettes.start, cigarettes.delivery, cigarettes.end)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Lighters */}
+                  <div className="space-y-2.5 bg-slate-50/50 dark:bg-slate-900/40 p-4 rounded-xl border border-slate-200/60 dark:border-slate-800 animate-in fade-in">
+                    <h3 className="font-bold text-slate-700 dark:text-slate-350 border-b border-slate-200 dark:border-slate-800 pb-2 uppercase tracking-widest text-[10px]">{dict.lighters}</h3>
+                    <div className="grid grid-cols-4 gap-2">
+                      <div>
+                        <label className="block text-[8px] sm:text-[9px] font-bold text-slate-455 dark:text-slate-500 uppercase mb-1">{dict.start}</label>
+                        <input required type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={lighters.start} onChange={(e) => setLighters({ ...lighters, start: e.target.value })} className="w-full p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-orange-500 text-center font-mono text-xs sm:text-sm font-bold" />
+                      </div>
+                      <div>
+                        <label className="block text-[8px] sm:text-[9px] font-bold text-slate-455 dark:text-slate-500 uppercase mb-1 text-emerald-500">{dict.delivery}</label>
+                        <input required type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={lighters.delivery} onChange={(e) => setLighters({ ...lighters, delivery: e.target.value })} className="w-full p-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 outline-none focus:ring-2 focus:ring-emerald-500 text-center font-mono text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-455" />
+                      </div>
+                      <div>
+                        <label className="block text-[8px] sm:text-[9px] font-bold text-slate-455 dark:text-slate-500 uppercase mb-1 text-red-500">{dict.end}</label>
+                        <input required type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={lighters.end} onChange={(e) => setLighters({ ...lighters, end: e.target.value })} className="w-full p-2 rounded-lg border border-red-500/20 bg-red-500/5 outline-none focus:ring-2 focus:ring-red-500 text-center font-mono text-xs sm:text-sm font-bold text-red-600 dark:text-red-455" />
+                      </div>
+                      <div className="bg-slate-900 rounded-lg p-1.5 text-center border border-slate-800 flex flex-col justify-center">
+                        <label className="block text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase mb-0.5">{dict.soldUnits}</label>
+                        <span className="font-black text-white text-xs sm:text-sm font-mono leading-none">{calculateSold(lighters.start, lighters.delivery, lighters.end)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {/* Signature Capture */}
+              <section className="glass-panel p-5 rounded-2xl space-y-4">
+                <div className="flex items-center gap-2 border-b border-slate-150 dark:border-slate-800 pb-3">
+                  <UserIcon className="h-5 w-5 text-red-500" />
+                  <h2 className="text-base sm:text-lg font-black text-slate-800 dark:text-white uppercase tracking-wider">{dict.signYourReport}</h2>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{dict.signBelow}</p>
+                <SignaturePad 
+                  dict={dict} 
+                  onSave={(data) => setCashierSignature(data)} 
+                  onClear={() => setCashierSignature("")} 
+                />
+                <input type="text" value={cashierSignature} readOnly required className="h-0 w-0 opacity-0 absolute pointer-events-none" />
+              </section>
+            </div>
+          </div>
+
+          {/* Footer inside the form to allow submit trigger */}
+          <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 z-10 shadow-[0_-10px_40px_rgba(0,0,0,0.04)]">
+            <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
+              <div className="hidden sm:block">
+                <p className="text-[10px] uppercase font-bold text-slate-450 tracking-wider leading-none">{lang === "en" ? "Ready Status" : "حالة التقرير"}</p>
+                <p className="text-xs font-bold text-emerald-650 dark:text-emerald-450 mt-1 flex items-center gap-1">
+                  <ShieldCheck className="h-4.5 w-4.5 text-emerald-500" /> {lang === "en" ? "Ready to Submit" : "جاهز للإرسال"}
+                </p>
               </div>
               
-              {/* Cigarettes */}
-              <div className="space-y-2 sm:space-y-3 bg-muted/20 p-3 sm:p-4 rounded-xl border border-border">
-                <h3 className="font-bold text-slate-700 dark:text-slate-300 border-b border-border pb-1 sm:pb-2 uppercase tracking-wide text-[10px] sm:text-xs">{dict.cigarettes}</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2">
-                  <div>
-                    <label className="block text-[8px] sm:text-[10px] font-bold text-muted-foreground uppercase mb-1">{dict.start}</label>
-                    <input required type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={cigarettes.start} onChange={(e) => setCigarettes({ ...cigarettes, start: e.target.value })} className="w-full p-2 sm:p-2.5 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-orange-500 text-center font-mono text-xs sm:text-base" />
-                  </div>
-                  <div>
-                    <label className="block text-[8px] sm:text-[10px] font-bold text-muted-foreground uppercase mb-1 text-emerald-500">{dict.delivery}</label>
-                    <input required type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={cigarettes.delivery} onChange={(e) => setCigarettes({ ...cigarettes, delivery: e.target.value })} className="w-full p-2 sm:p-2.5 rounded-lg border border-emerald-500/30 bg-emerald-500/5 outline-none focus:ring-2 focus:ring-emerald-500 text-center font-mono text-emerald-600 text-xs sm:text-base" />
-                  </div>
-                  <div>
-                    <label className="block text-[8px] sm:text-[10px] font-bold text-muted-foreground uppercase mb-1 text-red-500">{dict.end}</label>
-                    <input required type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={cigarettes.end} onChange={(e) => setCigarettes({ ...cigarettes, end: e.target.value })} className="w-full p-2 sm:p-2.5 rounded-lg border border-red-500/30 bg-red-500/5 outline-none focus:ring-2 focus:ring-red-500 text-center font-mono text-red-600 font-bold text-xs sm:text-base" />
-                  </div>
-                  <div className="bg-slate-900 rounded-lg p-1.5 sm:p-2.5 text-center border border-slate-700 flex flex-col justify-center">
-                    <label className="block text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase mb-0.5">{dict.soldPacks}</label>
-                    <span className="font-black text-white text-sm sm:text-lg">{calculateSold(cigarettes.start, cigarettes.delivery, cigarettes.end)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Lighters */}
-              <div className="space-y-2 sm:space-y-3 bg-muted/20 p-3 sm:p-4 rounded-xl border border-border">
-                <h3 className="font-bold text-slate-700 dark:text-slate-300 border-b border-border pb-1 sm:pb-2 uppercase tracking-wide text-[10px] sm:text-xs">{dict.lighters}</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2">
-                  <div>
-                    <label className="block text-[8px] sm:text-[10px] font-bold text-muted-foreground uppercase mb-1">{dict.start}</label>
-                    <input required type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={lighters.start} onChange={(e) => setLighters({ ...lighters, start: e.target.value })} className="w-full p-2 sm:p-2.5 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-orange-500 text-center font-mono text-xs sm:text-base" />
-                  </div>
-                  <div>
-                    <label className="block text-[8px] sm:text-[10px] font-bold text-muted-foreground uppercase mb-1 text-emerald-500">{dict.delivery}</label>
-                    <input required type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={lighters.delivery} onChange={(e) => setLighters({ ...lighters, delivery: e.target.value })} className="w-full p-2 sm:p-2.5 rounded-lg border border-emerald-500/30 bg-emerald-500/5 outline-none focus:ring-2 focus:ring-emerald-500 text-center font-mono text-emerald-600 text-xs sm:text-base" />
-                  </div>
-                  <div>
-                    <label className="block text-[8px] sm:text-[10px] font-bold text-muted-foreground uppercase mb-1 text-red-500">{dict.end}</label>
-                    <input required type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={lighters.end} onChange={(e) => setLighters({ ...lighters, end: e.target.value })} className="w-full p-2 sm:p-2.5 rounded-lg border border-red-500/30 bg-red-500/5 outline-none focus:ring-2 focus:ring-red-500 text-center font-mono text-red-600 font-bold text-xs sm:text-base" />
-                  </div>
-                  <div className="bg-slate-900 rounded-lg p-1.5 sm:p-2.5 text-center border border-slate-700 flex flex-col justify-center">
-                    <label className="block text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase mb-0.5">{dict.soldUnits}</label>
-                    <span className="font-black text-white text-sm sm:text-lg">{calculateSold(lighters.start, lighters.delivery, lighters.end)}</span>
-                  </div>
-                </div>
-              </div>
-            </section>
-          )}
-
-          {/* Signature Capture */}
-          <section className="glass-panel p-4 sm:p-5 rounded-xl sm:rounded-2xl space-y-3 sm:space-y-4 mb-24">
-            <div className="flex items-center gap-2 border-b border-border pb-2">
-              <UserIcon className="h-4 w-4 sm:h-5 sm:w-5 text-red-500" />
-              <h2 className="text-base sm:text-lg font-bold text-foreground">{dict.signYourReport}</h2>
+              <button type="submit" disabled={loading} className="w-full sm:w-auto px-8 py-3.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-xl font-bold text-base shadow-lg shadow-red-500/15 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer">
+                {loading ? (
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                ) : (
+                  <>
+                    {existingReportId ? dict.resubmit : dict.submit}
+                    <ArrowRight className={`h-4.5 w-4.5 ${lang === "ar" ? "rotate-180" : ""}`} />
+                  </>
+                )}
+              </button>
             </div>
-            <p className="text-xs text-muted-foreground">{dict.signBelow}</p>
-            <SignaturePad 
-              dict={dict} 
-              onSave={(data) => setCashierSignature(data)} 
-              onClear={() => setCashierSignature("")} 
-            />
-            {/* Hidden required input to prevent form submission if no signature */}
-            <input type="text" value={cashierSignature} readOnly required className="h-0 w-0 opacity-0 absolute pointer-events-none" />
-          </section>
-        </div>
-
-        {/* SUBMIT */}
-        <div className="fixed bottom-0 left-0 right-0 p-3 sm:p-4 bg-background/90 backdrop-blur-md border-t border-border z-10 shadow-[0_-10px_40px_rgba(0,0,0,0.1)]">
-          <div className="max-w-md mx-auto">
-            <button type="submit" disabled={loading} className="w-full py-3.5 sm:py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-base sm:text-lg shadow-xl shadow-red-500/20 disabled:opacity-50 transition-all flex items-center justify-center gap-2">
-              {loading ? dict.submitting : <>{existingReportId ? dict.resubmit : dict.submit} <ArrowRight className={`h-4 w-4 sm:h-5 sm:w-5 ${lang === "ar" ? "rotate-180" : ""}`} /></>}
-            </button>
           </div>
-        </div>
-      </form>
+        </form>
+      </main>
     </div>
   );
 }

@@ -60,7 +60,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
   const navItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Shift Input", href: "/shift-reports/cashier", icon: User },
+    { name: "Cashier Portal", href: "/cashier", icon: User },
     { name: "Shift Audit", href: "/shift-reports/manager", icon: Shield },
     { name: "Voids & Returns", href: "/voids/manager", icon: Shield },
     { name: "Financial Reports", href: "/financial-reports", icon: FileText },
@@ -78,7 +78,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   };
 
   // Completely isolate Cashier pages (No Enterprise Auth, No Sidebar)
-  if (pathname?.startsWith('/shift-reports/cashier') || pathname?.startsWith('/voids/cashier')) {
+  if (pathname?.startsWith('/shift-reports/cashier') || pathname?.startsWith('/voids/cashier') || pathname?.startsWith('/cashier') || pathname?.startsWith('/expiries')) {
     return (
       <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
         {children}
