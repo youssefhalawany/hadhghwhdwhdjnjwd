@@ -7,6 +7,7 @@ import { Sun, Moon, Shield, Database, LayoutDashboard, FileText, Printer, Clipbo
 import { auth, messaging, dbService } from "@/lib/firebase";
 import { getToken } from "firebase/messaging";
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
+import PwaInstallPrompt from "./PwaInstallPrompt";
 import type { User as FirebaseUser } from "firebase/auth";
 
 export default function ClientLayoutWrapper({ children }: { children: React.ReactNode }) {
@@ -328,6 +329,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
           </div>
         </div>
       </footer>
+      <PwaInstallPrompt />
     </div>
   );
 }
