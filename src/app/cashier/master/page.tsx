@@ -115,11 +115,18 @@ export default function MasterCashierDashboard() {
           <p className="text-xs text-red-200">Global Activity Monitor</p>
         </div>
         <div className="flex gap-2">
-          {!isNotificationEnabled && (
-            <button onClick={handleEnableNotifications} className="bg-white/20 p-2 rounded-full hover:bg-white/30 transition-colors">
-              <Bell className="h-4 w-4" />
-            </button>
-          )}
+          <button 
+            onClick={handleEnableNotifications} 
+            className={`relative p-2 rounded-full transition-colors ${
+              isNotificationEnabled 
+                ? "bg-emerald-500/20 text-emerald-100 hover:bg-emerald-500/30" 
+                : "bg-white/20 hover:bg-white/30"
+            }`}
+            title={isNotificationEnabled ? "Notifications On" : "Enable Notifications"}
+          >
+            <Bell className={`h-4 w-4 ${!isNotificationEnabled && "animate-pulse"}`} />
+            {isNotificationEnabled && <span className="absolute top-0 right-0 w-2 h-2 bg-emerald-400 rounded-full border-2 border-red-600"></span>}
+          </button>
           <button onClick={fetchFeed} className="bg-white/20 p-2 rounded-full hover:bg-white/30 transition-colors">
             <RefreshCw className="h-4 w-4" />
           </button>

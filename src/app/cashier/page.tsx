@@ -331,11 +331,17 @@ export default function CashierHubPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={handleEnableNotifications} className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold ${isNotificationEnabled ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"}`}>
-                <Bell className="h-4 w-4" /> 
-                {isNotificationEnabled 
-                  ? (lang === "en" ? "Notifications On" : "الإشعارات مفعلة") 
-                  : (lang === "en" ? "Enable Notifications" : "تفعيل الإشعارات")}
+              <button 
+                onClick={handleEnableNotifications} 
+                className={`relative flex items-center justify-center p-2 rounded-full border transition-all duration-300 ${
+                  isNotificationEnabled 
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-600 dark:bg-emerald-900/20 dark:border-emerald-800/50 dark:text-emerald-400" 
+                    : "bg-slate-50 border-slate-200 text-slate-500 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
+                }`}
+                title={isNotificationEnabled ? (lang === "en" ? "Notifications On" : "الإشعارات مفعلة") : (lang === "en" ? "Enable Notifications" : "تفعيل الإشعارات")}
+              >
+                <Bell className={`h-4 w-4 ${!isNotificationEnabled && "animate-pulse"}`} />
+                {isNotificationEnabled && <span className="absolute top-0 right-0 w-2 h-2 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-800"></span>}
               </button>
               {!isInstalled && (
                 <button onClick={handleInstallClick} className="flex items-center gap-1 bg-red-100 dark:bg-red-900/30 px-3 py-1.5 rounded-full text-xs font-bold text-red-700 dark:text-red-400"><Download className="h-4 w-4" /> {lang === "en" ? "Install App" : "تثبيت التطبيق"}</button>
@@ -451,11 +457,17 @@ export default function CashierHubPage() {
         {/* Header Actions */}
         <div className="flex justify-between items-center w-full">
           <div className="flex items-center gap-2">
-            <button onClick={handleEnableNotifications} className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold ${isNotificationEnabled ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"}`}>
-              <Bell className="h-4 w-4" /> 
-              {isNotificationEnabled 
-                ? (lang === "en" ? "Notifications On" : "الإشعارات مفعلة") 
-                : (lang === "en" ? "Enable Notifications" : "تفعيل الإشعارات")}
+            <button 
+              onClick={handleEnableNotifications} 
+              className={`relative flex items-center justify-center p-2 rounded-full border transition-all duration-300 ${
+                isNotificationEnabled 
+                  ? "bg-emerald-50/80 backdrop-blur-md border-emerald-200/60 text-emerald-600 dark:bg-emerald-900/30 dark:border-emerald-800/50 dark:text-emerald-400" 
+                  : "bg-white/80 backdrop-blur-md border-slate-200/60 text-slate-500 dark:bg-slate-800/80 dark:border-slate-700/50 dark:text-slate-400 hover:bg-white hover:text-blue-600 hover:border-blue-200 hover:shadow-md"
+              }`}
+              title={isNotificationEnabled ? (lang === "en" ? "Notifications On" : "الإشعارات مفعلة") : (lang === "en" ? "Enable Notifications" : "تفعيل الإشعارات")}
+            >
+              <Bell className={`h-4 w-4 ${!isNotificationEnabled && "animate-pulse"}`} />
+              {isNotificationEnabled && <span className="absolute top-0 right-0 w-2 h-2 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-800"></span>}
             </button>
             {!isInstalled && (
               <button 
