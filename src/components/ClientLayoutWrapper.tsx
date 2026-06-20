@@ -63,6 +63,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     { name: "Cashier Portal", href: "/cashier", icon: User },
     { name: "Shift Audit", href: "/shift-reports/manager", icon: Shield },
     { name: "Voids & Returns", href: "/voids/manager", icon: Shield },
+    { name: "Expiry Audits", href: "/dashboard/expiries-audit", icon: ClipboardList },
     { name: "Financial Reports", href: "/financial-reports", icon: FileText },
     { name: "Cashier Accounts", href: "/settings/cashiers", icon: Users }
   ];

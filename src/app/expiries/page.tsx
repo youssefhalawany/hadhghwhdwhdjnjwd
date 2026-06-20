@@ -8,7 +8,7 @@ import {
   ArrowLeft, Calendar as CalendarIcon, PlusCircle, AlertTriangle, 
   CheckCircle, Clock, Trash2, Package, Globe, Camera, X, QrCode
 } from "lucide-react";
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
+import { Html5QrcodeScanner } from "html5-qrcode";
 
 export default function ExpiryTrackerPage() {
   const router = useRouter();
@@ -26,7 +26,7 @@ export default function ExpiryTrackerPage() {
   // Scanner States
   const [showScanner, setShowScanner] = useState(false);
   const [scannerError, setScannerError] = useState("");
-  const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
+  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
 
   useEffect(() => {
     const savedUserStr = localStorage.getItem("active_cashier_session");
@@ -54,61 +54,53 @@ export default function ExpiryTrackerPage() {
   }, [router]);
 
   // Scanner Actions
-  const startScanning = async () => {
+  const startScanning = () => {
     setShowScanner(true);
     setScannerError("");
     
     // Wait a tick for the DOM element to render
-    setTimeout(async () => {
+    setTimeout(() => {
       try {
-        const html5QrCode = new Html5Qrcode("scanner-reader");
-        html5QrCodeRef.current = html5QrCode;
+        // Use the high-level scanner wrapper which has built-in UI for camera selection and permission fallbacks
+        const scanner = new Html5QrcodeScanner(
+          "scanner-reader",
+          {
+            fps: 10,
+            qrbox: { width: 300, height: 150 },
+            aspectRatio: 1.0,
+            rememberLastUsedCamera: true
+          },
+          false // verbose
+        );
         
-        const config = {
-          fps: 30, // Increased for better scan speed
-          qrbox: { width: 300, height: 150 }, // Wider box for barcodes
-          // Removed formatsToSupport to allow all default formats (better compatibility)
-        };
-
-        const startWithConstraints = async (constraints: any) => {
-          return html5QrCode.start(
-            constraints,
-            config,
-            (decodedText) => {
-              const audio = new Audio("https://www.soundjay.com/misc/sounds/beep-07a.mp3");
-              audio.play().catch(e => console.error("Audio play failed:", e));
-              setBarcode(decodedText);
-              stopScanning();
-            },
-            (errorMessage) => {
-              // Ignore scan failures
-            }
-          );
-        };
-
-        try {
-          await startWithConstraints({ facingMode: "environment", advanced: [{ focusMode: "continuous" }] });
-        } catch (advancedErr) {
-          console.warn("Advanced constraints failed, falling back to basic camera config", advancedErr);
-          await startWithConstraints({ facingMode: "environment" });
-        }
+        scannerRef.current = scanner;
+        
+        scanner.render(
+          (decodedText) => {
+            const audio = new Audio("https://www.soundjay.com/misc/sounds/beep-07a.mp3");
+            audio.play().catch(e => console.error("Audio play failed:", e));
+            setBarcode(decodedText);
+            stopScanning();
+          },
+          (errorMessage) => {
+            // Ignore frame scan failures
+          }
+        );
       } catch (err: any) {
-        console.error("Scanner failed to start completely:", err);
-        setScannerError(lang === "en" ? "Camera access denied or unsupported by this browser." : "فشل الوصول إلى الكاميرا.");
+        console.error("Scanner wrapper failed to mount:", err);
+        setScannerError(lang === "en" ? "Camera error. Please ensure permissions are granted or use a supported browser like Chrome/Safari." : "فشل الكاميرا. يرجى منح الصلاحيات.");
       }
     }, 250);
   };
 
-  const stopScanning = async () => {
-    if (html5QrCodeRef.current) {
+  const stopScanning = () => {
+    if (scannerRef.current) {
       try {
-        if (html5QrCodeRef.current.isScanning) {
-          await html5QrCodeRef.current.stop();
-        }
+        scannerRef.current.clear().catch(e => console.error("Error clearing scanner:", e));
       } catch (err) {
         console.error("Error stopping scanner:", err);
       }
-      html5QrCodeRef.current = null;
+      scannerRef.current = null;
     }
     setShowScanner(false);
   };
@@ -441,11 +433,8 @@ export default function ExpiryTrackerPage() {
                   <p className="text-sm font-semibold text-red-400">{scannerError}</p>
                 </div>
               ) : (
-                <div className="relative rounded-2xl overflow-hidden bg-black border border-slate-800 aspect-video">
-                  <div id="scanner-reader" className="w-full h-full"></div>
-                  {/* Visual laser overlay */}
-                  <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-0.5 bg-red-500 shadow-[0_0_8px_red] animate-pulse z-10 pointer-events-none"></div>
-                  <div className="absolute inset-8 border-2 border-dashed border-blue-500/50 rounded-lg pointer-events-none z-10"></div>
+                <div className="relative rounded-2xl overflow-hidden bg-white text-slate-900 border border-slate-800">
+                  <div id="scanner-reader" className="w-full"></div>
                 </div>
               )}
 

@@ -11,7 +11,6 @@ import QRCode from "react-qr-code";
 
 export default function VendorStatementsPage() {
   const [loading, setLoading] = useState(true);
-  const [generatingPDF, setGeneratingPDF] = useState(false);
   
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7));
   const [selectedCompany, setSelectedCompany] = useState<string>("");
@@ -108,27 +107,8 @@ export default function VendorStatementsPage() {
     setFilteredReceipts(filtered);
   };
 
-  const generatePDF = async () => {
-    const element = pdfRef.current;
-    if (!element) return;
-    setGeneratingPDF(true);
-    
-    try {
-      const canvas = await html2canvas(element, { scale: 2, useCORS: true, logging: false });
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
-      
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-
-      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`Vendor_Statement_${selectedCompany.replace(/\s+/g, '_')}_${selectedMonth}.pdf`);
-    } catch (error) {
-      console.error("Error generating PDF:", error);
-      alert("Failed to generate PDF.");
-    } finally {
-      setGeneratingPDF(false);
-    }
+  const handlePrint = () => {
+    window.print();
   };
 
   const formatCurrency = (val: number) => {
@@ -153,10 +133,10 @@ export default function VendorStatementsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950/20 text-slate-900 dark:text-slate-100 pb-20">
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-950/20 text-slate-900 dark:text-slate-100 pb-20 print:bg-white print:text-black print:pb-0">
       
       {/* Control Bar */}
-      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50 shadow-sm">
+      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50 shadow-sm print:hidden">
         <div className="max-w-4xl mx-auto p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <Link href="/financial-reports" className="text-slate-400 hover:text-orange-600 transition-colors">
@@ -189,12 +169,12 @@ export default function VendorStatementsPage() {
               />
             </div>
             <button 
-              onClick={generatePDF}
-              disabled={generatingPDF || loading || filteredReceipts.length === 0}
+              onClick={handlePrint}
+              disabled={loading || filteredReceipts.length === 0}
               className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 dark:bg-orange-600 dark:hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-md transition-colors disabled:opacity-50 w-full sm:w-auto justify-center"
             >
-              {generatingPDF ? <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div> : <Download className="h-4 w-4" />}
-              {generatingPDF ? "Exporting..." : "Export PDF"}
+              <Download className="h-4 w-4" />
+              Print Statement
             </button>
           </div>
         </div>
@@ -211,8 +191,8 @@ export default function VendorStatementsPage() {
         ) : (
           <div 
             ref={pdfRef} 
-            className="bg-white text-slate-900 w-full rounded-none sm:rounded-xl shadow-2xl overflow-hidden print:shadow-none print:w-full print:m-0"
-            style={{ width: '210mm', minHeight: '297mm', margin: '0 auto', boxSizing: 'border-box', backgroundColor: '#ffffff' }}
+            className="bg-white text-slate-900 w-full rounded-none sm:rounded-xl shadow-2xl overflow-hidden print:shadow-none print:w-full print:max-w-none print:m-0 print:border-none"
+            style={{ minHeight: '297mm', margin: '0 auto', boxSizing: 'border-box', backgroundColor: '#ffffff' }}
           >
             {/* PDF HEADER */}
             <div className="border-b-4 border-slate-900 p-10 flex justify-between items-end bg-slate-50">
