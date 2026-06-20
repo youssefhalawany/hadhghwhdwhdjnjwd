@@ -110,6 +110,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     return (
       <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
         {children}
+        <PwaInstallPrompt />
       </div>
     );
   }

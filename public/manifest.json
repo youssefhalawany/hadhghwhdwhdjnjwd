@@ -2,7 +2,7 @@
   "name": "ANH Employee Portal",
   "short_name": "ANH",
   "description": "Cashier System PWA",
-  "start_url": "/",
+  "start_url": "/cashier",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#000000",
