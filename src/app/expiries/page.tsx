@@ -8,7 +8,7 @@ import {
   ArrowLeft, Calendar as CalendarIcon, PlusCircle, AlertTriangle, 
   CheckCircle, Clock, Trash2, Package, Globe, Camera, X, QrCode
 } from "lucide-react";
-import { Html5QrcodeScanner } from "html5-qrcode";
+import { Html5Qrcode } from "html5-qrcode";
 
 export default function ExpiryTrackerPage() {
   const router = useRouter();
@@ -26,7 +26,7 @@ export default function ExpiryTrackerPage() {
   // Scanner States
   const [showScanner, setShowScanner] = useState(false);
   const [scannerError, setScannerError] = useState("");
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
 
   useEffect(() => {
     const savedUserStr = localStorage.getItem("active_cashier_session");
@@ -59,36 +59,41 @@ export default function ExpiryTrackerPage() {
     setScannerError("");
     
     // Wait a tick for the DOM element to render
-    setTimeout(() => {
+    setTimeout(async () => {
       try {
-        // Use the high-level scanner wrapper which has built-in UI for camera selection and permission fallbacks
-        const scanner = new Html5QrcodeScanner(
-          "scanner-reader",
-          {
-            fps: 10,
-            qrbox: { width: 300, height: 150 },
-            aspectRatio: 1.0,
-            rememberLastUsedCamera: true
-          },
-          false // verbose
-        );
-        
-        scannerRef.current = scanner;
-        
-        scanner.render(
-          (decodedText) => {
-            const audio = new Audio("https://www.soundjay.com/misc/sounds/beep-07a.mp3");
-            audio.play().catch(e => console.error("Audio play failed:", e));
-            setBarcode(decodedText);
-            stopScanning();
-          },
-          (errorMessage) => {
-            // Ignore frame scan failures
+        const html5QrCode = new Html5Qrcode("scanner-reader");
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+        const startWithConstraints = async (constraints: any) => {
+          return html5QrCode.start(
+            constraints,
+            config,
+            (decodedText) => {
+              const audio = new Audio("https://www.soundjay.com/misc/sounds/beep-07a.mp3");
+              audio.play().catch(e => console.error("Audio play failed:", e));
+              setBarcode(decodedText);
+              stopScanning();
+            },
+            undefined
+          );
+        };
+
+        try {
+          // Try standard environment camera
+          await startWithConstraints({ facingMode: "environment" });
+          scannerRef.current = html5QrCode;
+        } catch (err) {
+          try {
+            // Fallback to any camera
+            await startWithConstraints({ video: true });
+            scannerRef.current = html5QrCode;
+          } catch (fallbackErr) {
+            setScannerError(lang === "en" ? "Camera error. Please ensure permissions are granted or use a supported browser." : "فشل الكاميرا. يرجى منح الصلاحيات.");
           }
-        );
+        }
       } catch (err: any) {
-        console.error("Scanner wrapper failed to mount:", err);
-        setScannerError(lang === "en" ? "Camera error. Please ensure permissions are granted or use a supported browser like Chrome/Safari." : "فشل الكاميرا. يرجى منح الصلاحيات.");
+        console.error("Scanner failed to mount:", err);
+        setScannerError(lang === "en" ? "Scanner error." : "خطأ في المسح.");
       }
     }, 250);
   };
@@ -96,7 +101,7 @@ export default function ExpiryTrackerPage() {
   const stopScanning = () => {
     if (scannerRef.current) {
       try {
-        scannerRef.current.clear().catch(e => console.error("Error clearing scanner:", e));
+        scannerRef.current.stop().catch(e => console.error("Error stopping scanner:", e));
       } catch (err) {
         console.error("Error stopping scanner:", err);
       }

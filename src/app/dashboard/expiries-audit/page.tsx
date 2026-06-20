@@ -11,7 +11,10 @@ export default function ExpiryAuditPage() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"pending" | "reports">("pending");
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7));
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  });
   const [searchTerm, setSearchTerm] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editQuantity, setEditQuantity] = useState<number>(0);
@@ -62,7 +65,12 @@ export default function ExpiryAuditPage() {
   };
 
   const pendingItems = items.filter(i => i.status === "pulled" && i.itemName.toLowerCase().includes(searchTerm.toLowerCase()));
-  const auditedItems = items.filter(i => i.status === "audited" && i.auditedAt && i.auditedAt.startsWith(selectedMonth));
+  const auditedItems = items.filter(i => {
+    if (i.status !== "audited" || !i.auditedAt) return false;
+    const d = new Date(i.auditedAt);
+    const itemMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    return itemMonth === selectedMonth;
+  });
 
   const totalAuditedQuantity = auditedItems.reduce((acc, curr) => acc + Number(curr.quantity || 0), 0);
 
