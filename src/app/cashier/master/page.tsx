@@ -132,52 +132,102 @@ export default function MasterCashierDashboard() {
       <main className="max-w-2xl mx-auto p-4 space-y-4">
         {feed.map((item, idx) => {
           if (item._type === "shift_report") {
+            const shortOverage = (item.totalActualSales || 0) - (item.totalSystemSales || 0);
             return (
-              <div key={idx} className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow border border-slate-200 dark:border-slate-700">
-                <div className="flex justify-between items-start">
+              <div key={idx} className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow border border-slate-200 dark:border-slate-700 hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-start mb-3">
                   <div className="flex gap-3">
-                    <div className="bg-blue-100 text-blue-600 p-2 rounded-lg h-fit"><FileText className="h-5 w-5"/></div>
+                    <div className="bg-blue-100 text-blue-600 p-2.5 rounded-xl h-fit"><FileText className="h-6 w-6"/></div>
                     <div>
-                      <p className="font-bold">Shift Report: {item.cashierDetails?.name}</p>
-                      <p className="text-sm text-slate-500">Store: {item.cashierDetails?.storeId} • Shift: {item.cashierDetails?.shift}</p>
-                      <p className="text-xs text-slate-400 mt-1">{new Date(item.createdAt).toLocaleString()}</p>
+                      <p className="font-bold text-lg text-slate-900 dark:text-white">Shift Report: {item.cashierDetails?.name}</p>
+                      <p className="text-sm font-medium text-slate-500">Store: {item.cashierDetails?.storeId} • Shift: {item.cashierDetails?.shift}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">{new Date(item.createdAt).toLocaleString()}</p>
                     </div>
                   </div>
-                  <span className={`text-xs px-2 py-1 rounded-full font-bold ${item.status === 'pending_manager' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'}`}>
-                    {item.status}
+                  <span className={`text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider ${item.status === 'pending_manager' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'}`}>
+                    {item.status.replace("_", " ")}
                   </span>
                 </div>
+                <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-100 dark:border-slate-700/50">
+                  <div>
+                    <p className="text-xs text-slate-500 uppercase tracking-wider">System Sales</p>
+                    <p className="font-bold text-slate-800 dark:text-slate-200">${item.totalSystemSales || 0}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500 uppercase tracking-wider">Actual Drawer</p>
+                    <p className="font-bold text-slate-800 dark:text-slate-200">${item.totalActualSales || 0}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500 uppercase tracking-wider">Difference</p>
+                    <p className={`font-bold ${shortOverage < 0 ? "text-red-500" : shortOverage > 0 ? "text-blue-500" : "text-emerald-500"}`}>
+                      {shortOverage < 0 ? "-" : "+"}${Math.abs(shortOverage)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500 uppercase tracking-wider">Total Drops</p>
+                    <p className="font-bold text-slate-800 dark:text-slate-200">${item.safeDrops?.reduce((sum: number, drop: any) => sum + Number(drop.amount), 0) || 0}</p>
+                  </div>
+                </div>
+                {item.expenses && item.expenses.length > 0 && (
+                  <div className="mt-3 text-sm text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/50 p-2 rounded-lg">
+                    <span className="font-bold text-slate-700 dark:text-slate-300">Expenses Logged:</span> {item.expenses.length} item(s) totaling ${item.expenses.reduce((sum: number, exp: any) => sum + Number(exp.amount), 0)}
+                  </div>
+                )}
               </div>
             );
           }
           if (item._type === "void_request") {
             return (
-              <div key={idx} className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow border border-slate-200 dark:border-slate-700">
-                <div className="flex justify-between items-start">
+              <div key={idx} className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow border border-slate-200 dark:border-slate-700 hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-start mb-3">
                   <div className="flex gap-3">
-                    <div className="bg-red-100 text-red-600 p-2 rounded-lg h-fit"><Shield className="h-5 w-5"/></div>
+                    <div className="bg-red-100 text-red-600 p-2.5 rounded-xl h-fit"><Shield className="h-6 w-6"/></div>
                     <div>
-                      <p className="font-bold">Void/Return: {item.cashierDetails?.name}</p>
-                      <p className="text-sm text-slate-500">Store: {item.cashierDetails?.storeId} • Ref: {item.receiptNumber}</p>
-                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 mt-1">Amt: {item.amount} • {item.reason}</p>
-                      <p className="text-xs text-slate-400 mt-1">{new Date(item.createdAt).toLocaleString()}</p>
+                      <p className="font-bold text-lg text-slate-900 dark:text-white">Void / Return: {item.cashierDetails?.name}</p>
+                      <p className="text-sm font-medium text-slate-500">Store: {item.cashierDetails?.storeId} • Ref: {item.receiptNumber || 'N/A'}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">{new Date(item.createdAt).toLocaleString()}</p>
                     </div>
                   </div>
+                  <span className={`text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider ${item.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    {item.status || "LOGGED"}
+                  </span>
+                </div>
+                <div className="bg-red-50 dark:bg-red-950/20 p-3 rounded-xl border border-red-100 dark:border-red-900/30">
+                  <p className="text-sm font-bold text-red-800 dark:text-red-300">Amount: ${item.amount}</p>
+                  <p className="text-sm text-red-700 dark:text-red-400 mt-1"><span className="font-semibold">Reason:</span> {item.reason || 'No reason provided'}</p>
+                  {item.managerApproval && (
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-2 flex items-center gap-1">
+                      ✓ Approved by Manager ({item.managerApproval})
+                    </p>
+                  )}
                 </div>
               </div>
             );
           }
           if (item._type === "expiry") {
             return (
-              <div key={idx} className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow border border-slate-200 dark:border-slate-700">
-                <div className="flex justify-between items-start">
+              <div key={idx} className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow border border-slate-200 dark:border-slate-700 hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-start mb-3">
                   <div className="flex gap-3">
-                    <div className="bg-orange-100 text-orange-600 p-2 rounded-lg h-fit"><Calendar className="h-5 w-5"/></div>
+                    <div className="bg-orange-100 text-orange-600 p-2.5 rounded-xl h-fit"><Calendar className="h-6 w-6"/></div>
                     <div>
-                      <p className="font-bold">Expiry Logged: {item.productName}</p>
-                      <p className="text-sm text-slate-500">Store: {item.storeId} • Qty: {item.quantity}</p>
-                      <p className="text-xs text-slate-400 mt-1">{new Date(item.createdAt).toLocaleString()}</p>
+                      <p className="font-bold text-lg text-slate-900 dark:text-white">Expiry Logged: {item.productName}</p>
+                      <p className="text-sm font-medium text-slate-500">Store: {item.storeId || item.branchId || 'Unknown'}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">{new Date(item.createdAt).toLocaleString()}</p>
                     </div>
+                  </div>
+                  <span className="text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider bg-orange-100 text-orange-700">
+                    EXPIRED
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-4 mt-2">
+                  <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl">
+                    <p className="text-xs text-slate-500 uppercase tracking-wider">Quantity</p>
+                    <p className="font-bold text-slate-800 dark:text-slate-200">{item.quantity} units</p>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl">
+                    <p className="text-xs text-slate-500 uppercase tracking-wider">Estimated Value</p>
+                    <p className="font-bold text-slate-800 dark:text-slate-200">${item.estimatedValue || (item.quantity * 2.50).toFixed(2)}</p>
                   </div>
                 </div>
               </div>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Delete } from 'lucide-react';
+import { playPopSound, playDeleteSound } from '@/lib/sounds';
 
 interface PinPadProps {
   onPinChange: (pin: string) => void;
@@ -15,6 +16,7 @@ export function PinPad({ onPinChange, onSubmit, maxLength = 4 }: PinPadProps) {
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
       navigator.vibrate(50);
     }
+    playPopSound(); // Play instant custom sound
     
     if (pin.length < maxLength) {
       const newPin = pin + num;
@@ -31,6 +33,7 @@ export function PinPad({ onPinChange, onSubmit, maxLength = 4 }: PinPadProps) {
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
       navigator.vibrate(30);
     }
+    playDeleteSound();
     if (pin.length > 0) {
       const newPin = pin.slice(0, -1);
       setPin(newPin);

@@ -7,6 +7,7 @@ import { getToken } from "firebase/messaging";
 import { useRouter } from "next/navigation";
 import { Lock, User as UserIcon, ChevronDown, FileText, Shield, Calendar as CalendarIcon, UserCircle, Globe, LogOut, Download, Bell, Fingerprint } from "lucide-react";
 import { PinPad } from "@/components/PinPad";
+import { playSuccessSound, playErrorSound, getAudioCtx } from "@/lib/sounds";
 
 export default function CashierHubPage() {
   const router = useRouter();
@@ -218,11 +219,13 @@ export default function CashierHubPage() {
     
     if (!correctPin || pinToVerify !== correctPin) {
       if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate([50, 50, 50]);
+      playErrorSound();
       alert(lang === "en" ? "Incorrect PIN" : "الرمز السري غير صحيح");
       setPinInput("");
       return;
     }
     
+    playSuccessSound();
     const sessionData = {
       id: user.id,
       name: user.name,
@@ -267,7 +270,7 @@ export default function CashierHubPage() {
     }
   };
 
-  const loginWithFaceId = async () => {
+  const loginWithFaceId = async (empId: string) => {
     try {
       const challenge = new Uint8Array(32);
       window.crypto.getRandomValues(challenge);
@@ -275,8 +278,9 @@ export default function CashierHubPage() {
         publicKey: { challenge, rpId: window.location.hostname, userVerification: "required" }
       });
       if (assertion) {
-        const user = employees.find(x => x.id === selectedEmployeeId);
+        const user = employees.find(x => x.id === empId);
         if (user) {
+          playSuccessSound();
           const sessionData = {
             id: user.id,
             name: user.name,
@@ -288,6 +292,7 @@ export default function CashierHubPage() {
         }
       }
     } catch (e) {
+      playErrorSound();
       console.error(e);
     }
   };
@@ -326,9 +331,12 @@ export default function CashierHubPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {!isNotificationEnabled && (
-                <button onClick={handleEnableNotifications} className="flex items-center gap-1 bg-blue-100 dark:bg-blue-900/30 px-3 py-1.5 rounded-full text-xs font-bold text-blue-700 dark:text-blue-400"><Bell className="h-4 w-4" /> {lang === "en" ? "Enable Notifications" : "تفعيل الإشعارات"}</button>
-              )}
+              <button onClick={handleEnableNotifications} className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold ${isNotificationEnabled ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"}`}>
+                <Bell className="h-4 w-4" /> 
+                {isNotificationEnabled 
+                  ? (lang === "en" ? "Notifications On" : "الإشعارات مفعلة") 
+                  : (lang === "en" ? "Enable Notifications" : "تفعيل الإشعارات")}
+              </button>
               {!isInstalled && (
                 <button onClick={handleInstallClick} className="flex items-center gap-1 bg-red-100 dark:bg-red-900/30 px-3 py-1.5 rounded-full text-xs font-bold text-red-700 dark:text-red-400"><Download className="h-4 w-4" /> {lang === "en" ? "Install App" : "تثبيت التطبيق"}</button>
               )}
@@ -402,7 +410,7 @@ export default function CashierHubPage() {
               onClick={() => navigateTo('/expiries')}
               className="group flex flex-col items-center justify-center bg-white/70 dark:bg-slate-800/40 backdrop-blur-md p-8 rounded-3xl border border-slate-200/60 dark:border-slate-700/40 hover:border-blue-500/50 dark:hover:border-blue-500/40 shadow-xl shadow-slate-200/10 dark:shadow-none hover:shadow-blue-500/5 hover:-translate-y-1 transition-all duration-300 active:scale-[0.98] text-slate-900 dark:text-white cursor-pointer"
             >
-              <div className="h-16 w-16 bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
+              <div className="h-16 w-16 bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:blue-400 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
                 <CalendarIcon className="h-8 w-8" />
               </div>
               <h3 className="font-bold text-xl">{lang === "en" ? "Expiry Tracker" : "متابعة تواريخ الصلاحية"}</h3>
@@ -433,20 +441,32 @@ export default function CashierHubPage() {
 
   // --- LOGIN VIEW (UNAUTHENTICATED) ---
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200/50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900/40 flex flex-col items-center justify-center pt-8 pb-12 px-4 transition-colors duration-300" dir={lang === "ar" ? "rtl" : "ltr"}>
+    <div 
+      className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200/50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900/40 flex flex-col items-center justify-center pt-8 pb-12 px-4 transition-colors duration-300" 
+      dir={lang === "ar" ? "rtl" : "ltr"}
+      onClick={() => getAudioCtx()}
+    >
       <div className="w-full max-w-md space-y-6">
         
         {/* Header Actions */}
         <div className="flex justify-between items-center w-full">
-          {!isInstalled ? (
-            <button 
-              type="button"
-              onClick={handleInstallClick}
-              className="flex items-center gap-2 bg-red-100 dark:bg-red-900/30 border border-red-200/60 dark:border-red-800/50 px-4 py-2 rounded-full text-sm font-bold shadow-md hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors text-red-700 dark:text-red-400 cursor-pointer"
-            >
-              <Download className="h-4 w-4" /> {lang === "en" ? "Install App" : "تثبيت التطبيق"}
+          <div className="flex items-center gap-2">
+            <button onClick={handleEnableNotifications} className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold ${isNotificationEnabled ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"}`}>
+              <Bell className="h-4 w-4" /> 
+              {isNotificationEnabled 
+                ? (lang === "en" ? "Notifications On" : "الإشعارات مفعلة") 
+                : (lang === "en" ? "Enable Notifications" : "تفعيل الإشعارات")}
             </button>
-          ) : <div></div>}
+            {!isInstalled && (
+              <button 
+                type="button"
+                onClick={handleInstallClick}
+                className="flex items-center gap-2 bg-red-100 dark:bg-red-900/30 border border-red-200/60 dark:border-red-800/50 px-4 py-2 rounded-full text-sm font-bold shadow-md hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors text-red-700 dark:text-red-400 cursor-pointer"
+              >
+                <Download className="h-4 w-4" /> {lang === "en" ? "Install App" : "تثبيت التطبيق"}
+              </button>
+            )}
+          </div>
           <button 
             type="button"
             onClick={() => setLang(lang === "en" ? "ar" : "en")}
@@ -502,7 +522,13 @@ export default function CashierHubPage() {
                     employees.map(c => (
                       <div 
                         key={c.id} 
-                        onClick={() => { setSelectedEmployeeId(c.id); setIsDropdownOpen(false); }}
+                        onClick={() => { 
+                          setSelectedEmployeeId(c.id); 
+                          setIsDropdownOpen(false); 
+                          if (localStorage.getItem(`faceid_enabled_${c.id}`) === "true") {
+                            loginWithFaceId(c.id);
+                          }
+                        }}
                         className="p-4 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer border-b border-slate-100 dark:border-slate-700/60 last:border-0 flex flex-col gap-1 transition-colors"
                       >
                         <span className="font-bold text-slate-900 dark:text-white text-base">{c.name}</span>
@@ -539,7 +565,7 @@ export default function CashierHubPage() {
             {hasFaceIdRegistered && (
               <button
                 type="button"
-                onClick={loginWithFaceId}
+                onClick={() => loginWithFaceId(selectedEmployeeId)}
                 className="mt-6 w-full py-4 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl font-bold text-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-2 shadow-inner"
               >
                 <Fingerprint className="h-6 w-6 text-emerald-500" />
