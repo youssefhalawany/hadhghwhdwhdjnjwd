@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
-import { Lock, User as UserIcon, ChevronDown, FileText, Shield, Calendar as CalendarIcon, UserCircle, Globe, LogOut } from "lucide-react";
+import { Lock, User as UserIcon, ChevronDown, FileText, Shield, Calendar as CalendarIcon, UserCircle, Globe, LogOut, Download } from "lucide-react";
 
 export default function CashierHubPage() {
   const router = useRouter();
@@ -18,6 +18,61 @@ export default function CashierHubPage() {
   
   // State for authenticated user
   const [authenticatedUser, setAuthenticatedUser] = useState<any>(null);
+
+  // State for PWA Install
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstalled, setIsInstalled] = useState(true);
+
+  useEffect(() => {
+    // PWA Install Checks
+    if (typeof window !== 'undefined') {
+      if (window.matchMedia('(display-mode: standalone)').matches) {
+        setIsInstalled(true);
+      } else {
+        setIsInstalled(false);
+      }
+
+      const handleBeforeInstallPrompt = (e: Event) => {
+        e.preventDefault();
+        setDeferredPrompt(e);
+        setIsInstalled(false);
+      };
+
+      window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.addEventListener("appinstalled", () => {
+        setIsInstalled(true);
+        setDeferredPrompt(null);
+      });
+
+      return () => {
+        window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      };
+    }
+  }, []);
+
+  const handleInstallClick = async () => {
+    const isIOS = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
+    if (isIOS) {
+      alert(lang === "en" 
+        ? "To install on iOS: Tap the 'Share' icon at the bottom of Safari, then scroll down and tap 'Add to Home Screen'."
+        : "للتثبيت على iOS: اضغط على أيقونة 'مشاركة' في أسفل سفاري، ثم مرر لأسفل واضغط على 'إضافة إلى الشاشة الرئيسية'.");
+      return;
+    }
+
+    if (!deferredPrompt) {
+      alert(lang === "en"
+        ? "Your browser doesn't support automatic installation. You can install it from your browser's menu (three dots -> Add to Home screen)."
+        : "متصفحك لا يدعم التثبيت التلقائي. يمكنك تثبيته من قائمة المتصفح (الثلاث نقاط -> إضافة إلى الشاشة الرئيسية).");
+      return;
+    }
+
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+      setIsInstalled(true);
+    }
+  };
 
   useEffect(() => {
     // Check if already logged in via localStorage
@@ -150,6 +205,14 @@ export default function CashierHubPage() {
             </div>
             
             <div className="flex items-center gap-2">
+              {!isInstalled && (
+                <button 
+                  onClick={handleInstallClick}
+                  className="flex items-center gap-1 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 px-3 py-1.5 rounded-full text-xs font-bold transition-colors text-red-700 dark:text-red-400 border border-red-200/50 dark:border-red-800/40"
+                >
+                  <Download className="h-4 w-4" /> {lang === "en" ? "Install App" : "تثبيت التطبيق"}
+                </button>
+              )}
               <button 
                 onClick={() => setLang(lang === "en" ? "ar" : "en")}
                 className="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 px-3 py-1.5 rounded-full text-xs font-bold transition-colors text-slate-700 dark:text-slate-200 border border-slate-200/50 dark:border-slate-600/40"
@@ -241,8 +304,17 @@ export default function CashierHubPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200/50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900/40 flex flex-col items-center justify-center pt-8 pb-12 px-4 transition-colors duration-300" dir={lang === "ar" ? "rtl" : "ltr"}>
       <div className="w-full max-w-md space-y-6">
         
-        {/* Language Toggle */}
-        <div className="flex justify-end">
+        {/* Header Actions */}
+        <div className="flex justify-between items-center w-full">
+          {!isInstalled ? (
+            <button 
+              type="button"
+              onClick={handleInstallClick}
+              className="flex items-center gap-2 bg-red-100 dark:bg-red-900/30 border border-red-200/60 dark:border-red-800/50 px-4 py-2 rounded-full text-sm font-bold shadow-md hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors text-red-700 dark:text-red-400 cursor-pointer"
+            >
+              <Download className="h-4 w-4" /> {lang === "en" ? "Install App" : "تثبيت التطبيق"}
+            </button>
+          ) : <div></div>}
           <button 
             type="button"
             onClick={() => setLang(lang === "en" ? "ar" : "en")}
