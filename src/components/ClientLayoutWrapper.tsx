@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sun, Moon, Shield, Database, LayoutDashboard, FileText, Printer, ClipboardList, CheckCircle, Search, LogOut, User, Users, Menu, X } from "lucide-react";
-import { auth } from "@/lib/firebase";
+import { Sun, Moon, Shield, Database, LayoutDashboard, FileText, Printer, ClipboardList, CheckCircle, Search, LogOut, User, Users, Menu, X, Bell } from "lucide-react";
+import { auth, messaging, dbService } from "@/lib/firebase";
+import { getToken } from "firebase/messaging";
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
 import type { User as FirebaseUser } from "firebase/auth";
 
@@ -35,9 +36,33 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     setRole(storedRole);
 
     // Firebase Auth Listener
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       setAuthLoading(false);
+
+      if (currentUser && typeof window !== "undefined" && "Notification" in window) {
+        try {
+          const permission = await Notification.requestPermission();
+          if (permission === "granted" && messaging) {
+            const messagingInstance = await messaging;
+            if (messagingInstance) {
+              const token = await getToken(messagingInstance, { 
+                vapidKey: "BHiDvLTbQ2DTED8p7X1BQ8Vu811fuu3dmpVfclmA5P7n-DuRltU7kkai9E2_2VkbLpS7Ns5ekNQClP5CsTeWf7M" 
+              });
+            if (token) {
+              console.log("FCM Token:", token);
+              await dbService.setDoc("user_tokens", currentUser.uid, {
+                fcmToken: token,
+                email: currentUser.email,
+                updatedAt: new Date().toISOString()
+              });
+            }
+          }
+        }
+        } catch (err) {
+          console.error("FCM Token generation failed:", err);
+        }
+      }
     });
 
     return () => unsubscribe();
@@ -65,7 +90,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     { name: "Voids & Returns", href: "/voids/manager", icon: Shield },
     { name: "Expiry Audits", href: "/dashboard/expiries-audit", icon: ClipboardList },
     { name: "Financial Reports", href: "/financial-reports", icon: FileText },
-    { name: "Cashier Accounts", href: "/settings/cashiers", icon: Users }
+    { name: "Cashier Accounts", href: "/settings/cashiers", icon: Users },
+    { name: "Send Notifications", href: "/settings/notifications", icon: Bell }
   ];
 
   const handleLogin = async (e: React.FormEvent) => {

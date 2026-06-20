@@ -2,6 +2,7 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore, collection, doc, getDocs, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, query } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
+import { getMessaging, isSupported } from "firebase/messaging";
 
 const firebaseConfig = {
   apiKey: "AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q",
@@ -15,10 +16,13 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const auth = getAuth(app);
-const storage = getStorage(app);
+export const auth = getAuth(app);
+export const storage = getStorage(app);
 
-export { app, db, auth, storage };
+// Initialize Cloud Messaging (only works in browser)
+export const messaging = typeof window !== "undefined" ? isSupported().then(supported => supported ? getMessaging(app) : null) : null;
+
+export { app, db };
 
 export const getMockMode = () => false; // Disabled
 export const setMockMode = (mode: boolean) => {}; // Disabled
