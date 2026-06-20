@@ -196,6 +196,18 @@ export default function CashierVoidPage() {
       };
 
       await addDoc(collection(db, "void_requests"), payload);
+      
+      try {
+        fetch("/api/notifications/notify-master", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: "New Void/Return Request",
+            body: `Cashier ${cashierName || 'Unknown'} logged a return for ${amount} EGP (Ref: ${transactionNumber}).`
+          })
+        }).catch(e => console.error("Notify error", e));
+      } catch (err) {}
+
       router.push("/voids/cashier/success");
     } catch (error: any) {
       console.error("Error submitting void request:", error);

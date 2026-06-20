@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { db } from "@/lib/firebase";
+import { db, messaging, dbService } from "@/lib/firebase";
 import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
+import { getToken } from "firebase/messaging";
 import { useRouter } from "next/navigation";
-import { Lock, User as UserIcon, ChevronDown, FileText, Shield, Calendar as CalendarIcon, UserCircle, Globe, LogOut, Download } from "lucide-react";
+import { Lock, User as UserIcon, ChevronDown, FileText, Shield, Calendar as CalendarIcon, UserCircle, Globe, LogOut, Download, Bell } from "lucide-react";
 
 export default function CashierHubPage() {
   const router = useRouter();
@@ -74,12 +75,62 @@ export default function CashierHubPage() {
     }
   };
 
+  const [isNotificationEnabled, setIsNotificationEnabled] = useState(false);
+
+  useEffect(() => {
+    // Check if permission already granted
+    if (typeof window !== "undefined" && "Notification" in window) {
+      if (Notification.permission === "granted") {
+        setIsNotificationEnabled(true);
+      }
+    }
+  }, []);
+
+  const handleEnableNotifications = async () => {
+    if (!("Notification" in window)) {
+      alert(lang === "en" ? "This browser does not support notifications." : "هذا المتصفح لا يدعم الإشعارات.");
+      return;
+    }
+
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission === "granted" && messaging) {
+        const messagingInstance = await messaging;
+        if (messagingInstance) {
+          const token = await getToken(messagingInstance, { 
+            vapidKey: "BHiDvLTbQ2DTED8p7X1BQ8Vu811fuu3dmpVfclmA5P7n-DuRltU7kkai9E2_2VkbLpS7Ns5ekNQClP5CsTeWf7M" 
+          });
+          
+          if (token && authenticatedUser) {
+            await dbService.setDoc("user_tokens", authenticatedUser.id, {
+              fcmToken: token,
+              name: authenticatedUser.name,
+              role: authenticatedUser.role || "cashier",
+              updatedAt: new Date().toISOString()
+            });
+            setIsNotificationEnabled(true);
+            alert(lang === "en" ? "Notifications enabled successfully!" : "تم تفعيل الإشعارات بنجاح!");
+          }
+        }
+      } else {
+        alert(lang === "en" ? "Notification permission denied." : "تم رفض إذن الإشعارات.");
+      }
+    } catch (err) {
+      console.error("FCM Token generation failed:", err);
+      alert(lang === "en" ? "Failed to enable notifications." : "فشل تفعيل الإشعارات.");
+    }
+  };
+
   useEffect(() => {
     // Check if already logged in via localStorage
     const savedUserStr = localStorage.getItem("active_cashier_session");
     if (savedUserStr) {
       try {
         const user = JSON.parse(savedUserStr);
+        if (user.role === "master") {
+          router.push("/cashier/master");
+          return;
+        }
         setAuthenticatedUser(user);
         setLoading(false);
         return;
@@ -124,6 +175,16 @@ export default function CashierHubPage() {
           }
         }
 
+        // Inject Master Account
+        activeCashiers.push({
+          id: "master_youssef",
+          employeeId: "master_youssef",
+          name: "Mr Youssef (Owner)",
+          pin: "4321",
+          role: "master",
+          storeId: "ALL"
+        });
+
         setEmployees(activeCashiers);
       } catch (e) {
         console.error("Failed to load cashiers", e);
@@ -161,8 +222,13 @@ export default function CashierHubPage() {
     };
     
     localStorage.setItem("active_cashier_session", JSON.stringify(sessionData));
-    setAuthenticatedUser(sessionData);
     setPinInput("");
+    
+    if (sessionData.role === "master") {
+      router.push("/cashier/master");
+    } else {
+      setAuthenticatedUser(sessionData);
+    }
   };
 
   const handleLogout = () => {
@@ -205,6 +271,14 @@ export default function CashierHubPage() {
             </div>
             
             <div className="flex items-center gap-2">
+              {!isNotificationEnabled && (
+                <button 
+                  onClick={handleEnableNotifications}
+                  className="flex items-center gap-1 bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50 px-3 py-1.5 rounded-full text-xs font-bold transition-colors text-blue-700 dark:text-blue-400 border border-blue-200/50 dark:border-blue-800/40"
+                >
+                  <Bell className="h-4 w-4" /> {lang === "en" ? "Enable Notifications" : "تفعيل الإشعارات"}
+                </button>
+              )}
               {!isInstalled && (
                 <button 
                   onClick={handleInstallClick}

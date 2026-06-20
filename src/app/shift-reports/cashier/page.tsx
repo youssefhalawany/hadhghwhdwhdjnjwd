@@ -517,6 +517,18 @@ export default function CashierShiftReportPage() {
         const docRef = await addDoc(collection(db, "shift_reports"), payload);
         submittedId = docRef.id;
       }
+      
+      try {
+        fetch("/api/notifications/notify-master", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: "New Shift Report",
+            body: `Cashier ${c?.name || 'Unknown'} (Store: ${c?.storeId || 'Unknown'}) just submitted a shift report.`
+          })
+        }).catch(e => console.error("Notify error", e));
+      } catch (err) {}
+
       router.push(`/shift-reports/cashier/success?id=${submittedId}`);
     } catch (error: any) {
       console.error("Error submitting shift report:", error);

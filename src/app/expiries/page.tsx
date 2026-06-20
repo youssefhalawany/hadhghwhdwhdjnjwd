@@ -152,6 +152,18 @@ export default function ExpiryTrackerPage() {
 
     try {
       const docRef = await addDoc(collection(db, "expiries"), newItem);
+      
+      try {
+        fetch("/api/notifications/notify-master", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: "New Expiry Item Tracked",
+            body: `${newItem.addedBy} logged ${newItem.quantity}x ${newItem.itemName} expiring on ${newItem.expiryDate}.`
+          })
+        }).catch(e => console.error("Notify error", e));
+      } catch (err) {}
+
       setExpiries(prev => [...prev, { id: docRef.id, ...newItem }].sort((a,b) => a.expiryDate.localeCompare(b.expiryDate)));
       setItemName("");
       setBarcode("");

@@ -12,6 +12,15 @@ export const metadata: Metadata = {
   title: "Circle K Franchise - Financial reporting & Verification System",
   description: "Enterprise level POS, fuel operations, inventory reporting and validation system for Circle K retail stores.",
   manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "CK Cashier"
+  },
+  icons: {
+    icon: "/icons/icon-192x192.png",
+    apple: "/apple-icon.png",
+  }
 };
 
 export default function RootLayout({
