@@ -2,29 +2,29 @@ import { NextResponse } from 'next/server';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getMessaging } from 'firebase-admin/messaging';
 
-// Initialize Firebase Admin if not already initialized
-if (!getApps().length) {
-  try {
-    // Handle private key edge case with newlines
-    let privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY || '';
-    if (privateKey) {
-      privateKey = privateKey.replace(/\\n/g, '\n');
-    }
-
-    initializeApp({
-      credential: cert({
-        projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-        privateKey: privateKey,
-      }),
-    });
-  } catch (error) {
-    console.error('Firebase admin initialization error', error);
-  }
-}
-
 export async function POST(request: Request) {
   try {
+    // Initialize Firebase Admin if not already initialized
+    if (!getApps().length) {
+      try {
+        // Handle private key edge case with newlines
+        let privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY || '';
+        if (privateKey) {
+          privateKey = privateKey.replace(/\\n/g, '\n');
+        }
+
+        initializeApp({
+          credential: cert({
+            projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
+            clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+            privateKey: privateKey,
+          }),
+        });
+      } catch (error) {
+        console.error('Firebase admin initialization error', error);
+      }
+    }
+
     const { tokens, title, body } = await request.json();
 
     if (!tokens || !Array.isArray(tokens) || tokens.length === 0 || !title || !body) {

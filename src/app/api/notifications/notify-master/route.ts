@@ -3,27 +3,27 @@ import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getMessaging } from 'firebase-admin/messaging';
 import { getFirestore } from 'firebase-admin/firestore';
 
-// Initialize Firebase Admin if not already initialized
-if (!getApps().length) {
-  try {
-    let privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY || '';
-    if (privateKey) {
-      privateKey = privateKey.replace(/\\n/g, '\n');
-    }
-    initializeApp({
-      credential: cert({
-        projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-        privateKey: privateKey,
-      }),
-    });
-  } catch (error) {
-    console.error('Firebase admin initialization error', error);
-  }
-}
-
 export async function POST(req: Request) {
   try {
+    // Initialize Firebase Admin if not already initialized
+    if (!getApps().length) {
+      try {
+        let privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY || '';
+        if (privateKey) {
+          privateKey = privateKey.replace(/\\n/g, '\n');
+        }
+        initializeApp({
+          credential: cert({
+            projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
+            clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+            privateKey: privateKey,
+          }),
+        });
+      } catch (error) {
+        console.error('Firebase admin initialization error', error);
+      }
+    }
+
     const { title, body } = await req.json();
 
     if (!title || !body) {
