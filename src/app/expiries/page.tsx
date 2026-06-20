@@ -22,6 +22,10 @@ export default function ExpiryTrackerPage() {
   const [barcode, setBarcode] = useState("");
   const [quantity, setQuantity] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
+  
+  // Edit Quantity States
+  const [editingQtyId, setEditingQtyId] = useState<string | null>(null);
+  const [editItemQty, setEditItemQty] = useState<number>(0);
 
   // Scanner States
   const [showScanner, setShowScanner] = useState(false);
@@ -69,8 +73,20 @@ export default function ExpiryTrackerPage() {
             constraints,
             config,
             (decodedText) => {
-              const audio = new Audio("https://www.soundjay.com/misc/sounds/beep-07a.mp3");
-              audio.play().catch(e => console.error("Audio play failed:", e));
+              try {
+                const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.type = "sine";
+                osc.frequency.setValueAtTime(800, ctx.currentTime);
+                gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.15);
+              } catch (e) {
+                console.error("Audio beep failed", e);
+              }
               setBarcode(decodedText);
               stopScanning();
             },
@@ -156,14 +172,24 @@ export default function ExpiryTrackerPage() {
     }
   };
 
-  const deleteItem = async (id: string) => {
-    if (!confirm(lang === "en" ? "Delete this entry permanently?" : "هل أنت متأكد من الحذف؟")) return;
-    try {
-      await deleteDoc(doc(db, "expiries", id));
-      setExpiries(prev => prev.filter(item => item.id !== id));
-    } catch (e) {
-      console.error("Error deleting:", e);
+  const saveQuantity = async (item: any) => {
+    if (editItemQty === 0) {
+      if (!confirm(lang === "en" ? "Marking quantity as 0 means the item was sold. It will be removed from records. Proceed?" : "الكمية 0 تعني أن العنصر قد تم بيعه. سيتم حذفه من السجلات. متابعة؟")) return;
+      try {
+        await deleteDoc(doc(db, "expiries", item.id));
+        setExpiries(prev => prev.filter(i => i.id !== item.id));
+      } catch (e) {
+        console.error("Error deleting:", e);
+      }
+    } else {
+      try {
+        await updateDoc(doc(db, "expiries", item.id), { quantity: editItemQty });
+        setExpiries(prev => prev.map(i => i.id === item.id ? { ...i, quantity: editItemQty } : i));
+      } catch (e) {
+        console.error("Error updating quantity:", e);
+      }
     }
+    setEditingQtyId(null);
   };
 
   const today = new Date();
@@ -356,8 +382,23 @@ export default function ExpiryTrackerPage() {
                       <div>
                         <h4 className="font-bold text-lg text-slate-900 dark:text-white leading-tight">{item.itemName}</h4>
                         <div className="flex items-center gap-2 mt-1">
-                          <p className="text-xs font-bold text-slate-500">
-                            {lang === "en" ? "Qty:" : "الكمية:"} <span className="text-slate-755 dark:text-slate-350">{item.quantity}</span>
+                          <p className="text-xs font-bold text-slate-500 flex items-center gap-2">
+                            {lang === "en" ? "Qty:" : "الكمية:"} 
+                            {editingQtyId === item.id ? (
+                              <div className="flex items-center gap-1 bg-white dark:bg-slate-800 rounded-md p-0.5 border border-blue-500/30">
+                                <input 
+                                  type="number" 
+                                  min="0" 
+                                  value={editItemQty} 
+                                  onChange={e => setEditItemQty(Number(e.target.value))} 
+                                  className="w-12 p-1 bg-transparent text-slate-900 dark:text-white font-black outline-none text-center" 
+                                />
+                                <button type="button" onClick={() => saveQuantity(item)} className="text-[10px] bg-blue-500 text-white px-1.5 py-0.5 rounded font-bold">{lang === "en" ? "Save" : "حفظ"}</button>
+                                <button type="button" onClick={() => setEditingQtyId(null)} className="text-[10px] text-slate-400 px-1 hover:text-slate-600 font-bold">X</button>
+                              </div>
+                            ) : (
+                              <span className="text-slate-755 dark:text-slate-350">{item.quantity}</span>
+                            )}
                           </p>
                           {item.barcode && (
                             <span className="text-[10px] font-mono bg-slate-100 dark:bg-slate-800 text-slate-550 dark:text-slate-400 px-1.5 py-0.5 rounded font-bold border border-slate-200/40 dark:border-slate-700/40 flex items-center gap-0.5">
@@ -379,11 +420,10 @@ export default function ExpiryTrackerPage() {
                     <div className="flex items-center gap-2">
                       <button 
                         type="button"
-                        onClick={() => deleteItem(item.id)}
-                        className="p-1.5 text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
-                        title={lang === "en" ? "Delete entry" : "حذف"}
+                        onClick={() => { setEditingQtyId(item.id); setEditItemQty(item.quantity); }}
+                        className="text-xs font-bold text-blue-500 hover:text-blue-600 transition-colors"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        {lang === "en" ? "Edit Qty" : "تعديل الكمية"}
                       </button>
                       <button 
                         type="button"
