@@ -5,6 +5,8 @@ import { db } from "@/lib/firebase";
 import { collection, addDoc, getDocs, query, where, updateDoc, doc } from "firebase/firestore";
 import { Calculator, Package, Banknote, Calendar, Clock, ArrowRight, ArrowLeft, Lock, User as UserIcon, Globe, WifiOff, RefreshCw, ChevronDown, Shield, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { PinPad } from "@/components/PinPad";
+import { RadarOfflineScreen } from "@/components/RadarOfflineScreen";
 
 // Translation Dictionary
 const t = {
@@ -227,6 +229,7 @@ export default function CashierShiftReportPage() {
   const [isOffline, setIsOffline] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [offlineCount, setOfflineCount] = useState(0);
+  const [showRadar, setShowRadar] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   
   useEffect(() => {
@@ -297,7 +300,13 @@ export default function CashierShiftReportPage() {
       
       if (remaining.length === 0) {
         localStorage.removeItem('offline_reports_queue');
-        alert(lang === 'en' ? "Offline reports successfully synced to the server!" : "تم مزامنة التقارير المحفوظة بنجاح!");
+        
+        // Show success animation on radar if it's open
+        setShowRadar(true);
+        setTimeout(() => {
+          setShowRadar(false);
+          alert(lang === 'en' ? "Offline reports successfully synced to the server!" : "تم مزامنة التقارير المحفوظة بنجاح!");
+        }, 2000);
       } else {
         localStorage.setItem('offline_reports_queue', JSON.stringify(remaining));
       }
@@ -313,7 +322,19 @@ export default function CashierShiftReportPage() {
     const fetchCashiers = async () => {
       try {
         const snap = await getDocs(collection(db, "cashiers"));
-        setCashiers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        const fetched = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        
+        // Inject Master Account so it works properly in Shift Reports
+        fetched.push({
+          id: "master_youssef",
+          employeeId: "master_youssef",
+          name: "Mr Youssef",
+          pin: "4321",
+          role: "master",
+          storeId: "ALL"
+        });
+        
+        setCashiers(fetched);
       } catch (e) {
         console.error("Failed to load cashiers", e);
       } finally {
@@ -408,12 +429,18 @@ export default function CashierShiftReportPage() {
     }
   };
 
-  const handleUnlock = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleUnlock = async (e: React.FormEvent | string) => {
+    if (typeof e !== "string") {
+      e.preventDefault();
+    }
     const c = cashiers.find(x => x.id === selectedCashierId);
     if (!c) return alert("Select your name");
-    if (c.pin !== pinInput) {
+    
+    const pinToVerify = typeof e === "string" ? e : pinInput;
+    if (c.pin !== pinToVerify) {
+      if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate([50, 50, 50]);
       alert("Incorrect PIN");
+      setPinInput("");
       return;
     }
 
@@ -549,14 +576,13 @@ export default function CashierShiftReportPage() {
         localStorage.setItem('offline_reports_queue', JSON.stringify(queue));
         checkOfflineQueue();
         
-        alert(lang === 'en' ? "You are offline. Your report has been saved and will automatically send when you reconnect to the internet." : "أنت غير متصل بالإنترنت. تم حفظ التقرير محلياً وسيتم إرساله تلقائياً فور عودة الاتصال.");
+        // Show radar
+        setShowRadar(true);
         
         // Reset form to let them continue or leave
         setDenominations({ '200': "", '100': "", '50': "", '20': "", '10': "", '5': "", 'coins': "" });
         setVisa("");
         setCashierSignature("");
-        router.push('/shift-reports/cashier');
-        window.location.reload();
       } else {
         alert(lang === 'en' ? "Failed to submit. Please try again." : "فشل الإرسال. يرجى المحاولة مرة أخرى.");
       }
@@ -640,25 +666,15 @@ export default function CashierShiftReportPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 flex items-center gap-1">
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-4 flex items-center justify-center gap-1">
                 <Lock className="h-4 w-4 text-slate-400" /> {dict.pin}
               </label>
-              <input 
-                required
-                type="password"
-                inputMode="numeric"
-                pattern="[0-9]*"
+              <PinPad 
+                onPinChange={(val) => setPinInput(val)}
+                onSubmit={(val) => handleUnlock(val)}
                 maxLength={4}
-                value={pinInput}
-                onChange={(e) => setPinInput(e.target.value)}
-                className="w-full p-4 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-slate-900 dark:text-white outline-none focus:border-red-500 focus:bg-white dark:focus:bg-slate-900 text-center text-3xl tracking-[1em] font-mono transition-all"
-                placeholder="••••"
               />
             </div>
-
-            <button type="submit" className="w-full py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-lg shadow-xl shadow-red-500/20 active:scale-[0.98] transition-all cursor-pointer">
-              {dict.unlock}
-            </button>
           </form>
         </div>
       </div>
@@ -704,10 +720,21 @@ export default function CashierShiftReportPage() {
         </div>
       </header>
 
+      {showRadar && (
+        <RadarOfflineScreen 
+          isReconnecting={syncing} 
+          onDismiss={() => setShowRadar(false)} 
+          reportCount={offlineCount} 
+        />
+      )}
+
       {/* Offline Status Bar */}
       {(isOffline || offlineCount > 0) && (
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
-          <div className={`p-3.5 rounded-2xl flex items-center justify-between text-xs font-bold text-white shadow-md ${isOffline ? 'bg-orange-500 shadow-orange-500/10' : 'bg-blue-600 shadow-blue-600/10'}`}>
+          <div 
+            onClick={() => setShowRadar(true)}
+            className={`p-3.5 rounded-2xl flex items-center justify-between text-xs font-bold text-white shadow-md cursor-pointer transition-all hover:scale-[1.01] ${isOffline ? 'bg-orange-500 shadow-orange-500/10' : 'bg-blue-600 shadow-blue-600/10'}`}
+          >
             <div className="flex items-center gap-2">
               {isOffline ? <WifiOff className="h-4 w-4" /> : <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />}
               <span>

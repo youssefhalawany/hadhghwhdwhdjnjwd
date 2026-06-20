@@ -5,7 +5,8 @@ import { db, messaging, dbService } from "@/lib/firebase";
 import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { getToken } from "firebase/messaging";
 import { useRouter } from "next/navigation";
-import { Lock, User as UserIcon, ChevronDown, FileText, Shield, Calendar as CalendarIcon, UserCircle, Globe, LogOut, Download, Bell } from "lucide-react";
+import { Lock, User as UserIcon, ChevronDown, FileText, Shield, Calendar as CalendarIcon, UserCircle, Globe, LogOut, Download, Bell, Fingerprint } from "lucide-react";
+import { PinPad } from "@/components/PinPad";
 
 export default function CashierHubPage() {
   const router = useRouter();
@@ -19,6 +20,7 @@ export default function CashierHubPage() {
   
   // State for authenticated user
   const [authenticatedUser, setAuthenticatedUser] = useState<any>(null);
+  const [hasFaceIdRegistered, setHasFaceIdRegistered] = useState(false);
 
   // State for PWA Install
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -50,6 +52,15 @@ export default function CashierHubPage() {
       };
     }
   }, []);
+
+  // Check if selected employee has FaceID enabled
+  useEffect(() => {
+    if (selectedEmployeeId) {
+      setHasFaceIdRegistered(localStorage.getItem(`faceid_enabled_${selectedEmployeeId}`) === "true");
+    } else {
+      setHasFaceIdRegistered(false);
+    }
+  }, [selectedEmployeeId]);
 
   const handleInstallClick = async () => {
     const isIOS = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
@@ -95,10 +106,12 @@ export default function CashierHubPage() {
     try {
       const permission = await Notification.requestPermission();
       if (permission === "granted" && messaging) {
+        const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
         const messagingInstance = await messaging;
         if (messagingInstance) {
           const token = await getToken(messagingInstance, { 
-            vapidKey: "BHiDvLTbQ2DTED8p7X1BQ8Vu811fuu3dmpVfclmA5P7n-DuRltU7kkai9E2_2VkbLpS7Ns5ekNQClP5CsTeWf7M" 
+            vapidKey: "BHiDvLTbQ2DTED8p7X1BQ8Vu811fuu3dmpVfclmA5P7n-DuRltU7kkai9E2_2VkbLpS7Ns5ekNQClP5CsTeWf7M",
+            serviceWorkerRegistration: swReg
           });
           
           if (token && authenticatedUser) {
@@ -113,11 +126,11 @@ export default function CashierHubPage() {
           }
         }
       } else {
-        alert(lang === "en" ? "Notification permission denied." : "تم رفض إذن الإشعارات.");
+        alert(lang === "en" ? "Notification permission denied. Please enable in your device settings." : "تم رفض إذن الإشعارات. يرجى التفعيل من إعدادات الجهاز.");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("FCM Token generation failed:", err);
-      alert(lang === "en" ? "Failed to enable notifications." : "فشل تفعيل الإشعارات.");
+      alert((lang === "en" ? "Failed to enable notifications. Error: " : "فشل تفعيل الإشعارات. الخطأ: ") + err.message);
     }
   };
 
@@ -128,7 +141,8 @@ export default function CashierHubPage() {
       try {
         const user = JSON.parse(savedUserStr);
         if (user.role === "master") {
-          router.push("/cashier/master");
+          setAuthenticatedUser(user);
+          setLoading(false);
           return;
         }
         setAuthenticatedUser(user);
@@ -143,7 +157,6 @@ export default function CashierHubPage() {
       try {
         let activeEmployeesNames: Set<string> | null = null;
         try {
-          // Fetch all employees to verify status
           const empSnap = await getDocs(collection(db, "employees"));
           activeEmployeesNames = new Set(
             empSnap.docs
@@ -154,16 +167,12 @@ export default function CashierHubPage() {
           console.warn("Could not fetch employees collection (unauthenticated device). Falling back to direct cashier list.");
         }
 
-        // Fetch registered cashiers
         const snap = await getDocs(collection(db, "cashiers"));
         const allCashiers: any[] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
         let activeCashiers = allCashiers;
         if (activeEmployeesNames) {
-          // Filter: only keep cashiers whose employee record is active
           activeCashiers = allCashiers.filter(c => activeEmployeesNames!.has(c.name));
-
-          // Auto-delete inactive cashier credentials to prevent login
           for (const c of allCashiers) {
             if (!activeEmployeesNames.has(c.name)) {
               try {
@@ -175,7 +184,6 @@ export default function CashierHubPage() {
           }
         }
 
-        // Inject Master Account
         activeCashiers.push({
           id: "master_youssef",
           employeeId: "master_youssef",
@@ -195,8 +203,8 @@ export default function CashierHubPage() {
     fetchEmployees();
   }, []);
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = (e: React.FormEvent | string) => {
+    if (typeof e !== 'string') e.preventDefault();
     if (!selectedEmployeeId) {
       alert(lang === "en" ? "Please select your name." : "يرجى اختيار اسمك.");
       return;
@@ -206,9 +214,12 @@ export default function CashierHubPage() {
     if (!user) return;
     
     const correctPin = user.pin;
+    const pinToVerify = typeof e === "string" ? e : pinInput;
     
-    if (!correctPin || pinInput !== correctPin) {
+    if (!correctPin || pinToVerify !== correctPin) {
+      if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate([50, 50, 50]);
       alert(lang === "en" ? "Incorrect PIN" : "الرمز السري غير صحيح");
+      setPinInput("");
       return;
     }
     
@@ -224,10 +235,60 @@ export default function CashierHubPage() {
     localStorage.setItem("active_cashier_session", JSON.stringify(sessionData));
     setPinInput("");
     
-    if (sessionData.role === "master") {
-      router.push("/cashier/master");
-    } else {
-      setAuthenticatedUser(sessionData);
+    setAuthenticatedUser(sessionData);
+  };
+
+  const registerFaceId = async () => {
+    if (!window.PublicKeyCredential) return;
+    try {
+      const challenge = new Uint8Array(32);
+      window.crypto.getRandomValues(challenge);
+      const userId = new Uint8Array(16);
+      window.crypto.getRandomValues(userId);
+
+      const credential = await navigator.credentials.create({
+        publicKey: {
+          challenge,
+          rp: { name: "CK Shift App", id: window.location.hostname },
+          user: { id: userId, name: selectedEmployeeId, displayName: selectedEmployeeId },
+          pubKeyCredParams: [{ alg: -7, type: "public-key" }],
+          authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
+          timeout: 60000,
+        }
+      });
+      
+      if (credential) {
+        localStorage.setItem(`faceid_enabled_${selectedEmployeeId}`, "true");
+        setHasFaceIdRegistered(true);
+        alert(lang === "en" ? "FaceID/TouchID Enabled!" : "تم تفعيل البصمة!");
+      }
+    } catch (e) {
+      alert(lang === "en" ? "Failed to register." : "فشل التفعيل.");
+    }
+  };
+
+  const loginWithFaceId = async () => {
+    try {
+      const challenge = new Uint8Array(32);
+      window.crypto.getRandomValues(challenge);
+      const assertion = await navigator.credentials.get({
+        publicKey: { challenge, rpId: window.location.hostname, userVerification: "required" }
+      });
+      if (assertion) {
+        const user = employees.find(x => x.id === selectedEmployeeId);
+        if (user) {
+          const sessionData = {
+            id: user.id,
+            name: user.name,
+            role: user.position || user.role || "cashier",
+            loggedInAt: new Date().toISOString()
+          };
+          localStorage.setItem("active_cashier_session", JSON.stringify(sessionData));
+          setAuthenticatedUser(sessionData);
+        }
+      }
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -239,7 +300,6 @@ export default function CashierHubPage() {
   };
 
   const navigateTo = (path: string) => {
-    // If they go to shift-reports, we want shift-reports to know they are authenticated.
     router.push(path);
   };
 
@@ -251,17 +311,13 @@ export default function CashierHubPage() {
     );
   }
 
-  // --- DASHBOARD VIEW (AUTHENTICATED) ---
   if (authenticatedUser) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-red-50/10 dark:from-slate-950 dark:via-slate-900 dark:to-red-950/5 text-slate-900 dark:text-slate-100 transition-colors duration-300" dir={lang === "ar" ? "rtl" : "ltr"}>
-        {/* Header */}
         <header className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md shadow-sm border-b border-slate-200 dark:border-slate-700 p-4 sticky top-0 z-10">
           <div className="max-w-4xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 bg-red-600 rounded-full flex items-center justify-center border-2 border-red-500/30 text-white font-black text-xl shadow-lg shadow-red-600/20 animate-pulse">
-                K
-              </div>
+              <div className="h-10 w-10 bg-red-600 rounded-full flex items-center justify-center border-2 border-red-500/30 text-white font-black text-xl shadow-lg shadow-red-600/20 animate-pulse">K</div>
               <div>
                 <h1 className="font-black text-lg leading-tight text-slate-800 dark:text-white">{lang === "en" ? "Staff Portal" : "بوابة الموظفين"}</h1>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
@@ -269,48 +325,50 @@ export default function CashierHubPage() {
                 </p>
               </div>
             </div>
-            
             <div className="flex items-center gap-2">
               {!isNotificationEnabled && (
-                <button 
-                  onClick={handleEnableNotifications}
-                  className="flex items-center gap-1 bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50 px-3 py-1.5 rounded-full text-xs font-bold transition-colors text-blue-700 dark:text-blue-400 border border-blue-200/50 dark:border-blue-800/40"
-                >
-                  <Bell className="h-4 w-4" /> {lang === "en" ? "Enable Notifications" : "تفعيل الإشعارات"}
-                </button>
+                <button onClick={handleEnableNotifications} className="flex items-center gap-1 bg-blue-100 dark:bg-blue-900/30 px-3 py-1.5 rounded-full text-xs font-bold text-blue-700 dark:text-blue-400"><Bell className="h-4 w-4" /> {lang === "en" ? "Enable Notifications" : "تفعيل الإشعارات"}</button>
               )}
               {!isInstalled && (
-                <button 
-                  onClick={handleInstallClick}
-                  className="flex items-center gap-1 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 px-3 py-1.5 rounded-full text-xs font-bold transition-colors text-red-700 dark:text-red-400 border border-red-200/50 dark:border-red-800/40"
-                >
-                  <Download className="h-4 w-4" /> {lang === "en" ? "Install App" : "تثبيت التطبيق"}
-                </button>
+                <button onClick={handleInstallClick} className="flex items-center gap-1 bg-red-100 dark:bg-red-900/30 px-3 py-1.5 rounded-full text-xs font-bold text-red-700 dark:text-red-400"><Download className="h-4 w-4" /> {lang === "en" ? "Install App" : "تثبيت التطبيق"}</button>
               )}
-              <button 
-                onClick={() => setLang(lang === "en" ? "ar" : "en")}
-                className="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 px-3 py-1.5 rounded-full text-xs font-bold transition-colors text-slate-700 dark:text-slate-200 border border-slate-200/50 dark:border-slate-600/40"
-              >
-                <Globe className="h-4 w-4" /> {lang === "en" ? "عربي" : "EN"}
-              </button>
-              <button 
-                onClick={handleLogout}
-                className="flex items-center gap-1 text-slate-500 hover:text-red-600 dark:hover:text-red-400 bg-slate-100 dark:bg-slate-700 hover:bg-red-50 dark:hover:bg-red-900/20 px-3 py-1.5 rounded-full text-xs font-bold transition-colors border border-slate-200/50 dark:border-slate-600/40"
-              >
-                <LogOut className="h-4 w-4" /> {lang === "en" ? "Logout" : "خروج"}
-              </button>
+              <button onClick={() => setLang(lang === "en" ? "ar" : "en")} className="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 px-3 py-1.5 rounded-full text-xs font-bold text-slate-700 dark:text-slate-200"><Globe className="h-4 w-4" /> {lang === "en" ? "عربي" : "EN"}</button>
+              <button onClick={handleLogout} className="flex items-center gap-1 text-slate-500 hover:text-red-600 dark:hover:text-red-400 bg-slate-100 dark:bg-slate-700 px-3 py-1.5 rounded-full text-xs font-bold"><LogOut className="h-4 w-4" /> {lang === "en" ? "Logout" : "خروج"}</button>
             </div>
           </div>
         </header>
 
-        {/* Main Content Hub */}
         <main className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 mt-4 space-y-6">
           <h2 className="text-sm font-black mb-6 uppercase tracking-widest text-slate-400 dark:text-slate-500 text-center">
             {lang === "en" ? "Select Action" : "اختر الإجراء"}
           </h2>
-          
+
+          {!hasFaceIdRegistered && typeof window !== "undefined" && window.PublicKeyCredential && (
+            <button 
+              onClick={registerFaceId}
+              className="w-full mb-8 py-3 bg-slate-900 dark:bg-slate-800 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/10"
+            >
+              <Fingerprint className="h-5 w-5 text-emerald-400" />
+              {lang === "en" ? "Enable FaceID / TouchID" : "تفعيل بصمة الوجه / الإصبع"}
+            </button>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-            
+            {authenticatedUser.role === "master" && (
+              <button 
+                onClick={() => navigateTo('/cashier/master')}
+                className="group flex flex-col items-center justify-center bg-red-50 dark:bg-red-950/20 backdrop-blur-md p-8 rounded-3xl border border-red-200 dark:border-red-800/40 hover:border-red-500/80 shadow-xl shadow-red-500/10 hover:shadow-red-500/20 hover:-translate-y-1 transition-all duration-300 active:scale-[0.98] text-slate-900 dark:text-white cursor-pointer col-span-1 sm:col-span-2"
+              >
+                <div className="h-16 w-16 bg-red-600 text-white rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-all duration-300 shadow-lg shadow-red-500/30">
+                  <Bell className="h-8 w-8 animate-pulse" />
+                </div>
+                <h3 className="font-black text-2xl text-red-600 dark:text-red-400 uppercase tracking-wider">{lang === "en" ? "Master Feed" : "اللوحة الرئيسية"}</h3>
+                <p className="text-sm font-semibold text-slate-600 dark:text-slate-300 mt-2 text-center leading-relaxed max-w-[280px]">
+                  {lang === "en" ? "View global activity and live notifications." : "عرض النشاط العام والإشعارات المباشرة."}
+                </p>
+              </button>
+            )}
+
             {/* Action 1: Shift Report */}
             <button 
               onClick={() => navigateTo('/shift-reports/cashier')}
@@ -469,28 +527,27 @@ export default function CashierHubPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 flex items-center gap-1">
-              <Lock className="h-4 w-4 text-slate-400" /> {lang === "en" ? "4-Digit PIN" : "الرمز السري"}
+            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-4 flex items-center justify-center gap-1">
+              <Lock className="h-4 w-4 text-slate-400" /> {lang === "en" ? "Enter 4-Digit PIN" : "أدخل الرمز السري"}
             </label>
-            <input 
-              required
-              type="password"
-              inputMode="numeric"
-              pattern="[0-9]*"
+            <PinPad 
+              onPinChange={(val) => setPinInput(val)}
+              onSubmit={(val) => handleLogin(val as any)}
               maxLength={4}
-              value={pinInput}
-              onChange={(e) => setPinInput(e.target.value)}
-              className="w-full p-4 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-slate-900 dark:text-white outline-none focus:border-red-500 focus:bg-white dark:focus:bg-slate-900 text-center text-3xl tracking-[1em] font-mono transition-all"
-              placeholder="••••"
             />
+            
+            {hasFaceIdRegistered && (
+              <button
+                type="button"
+                onClick={loginWithFaceId}
+                className="mt-6 w-full py-4 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl font-bold text-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-2 shadow-inner"
+              >
+                <Fingerprint className="h-6 w-6 text-emerald-500" />
+                {lang === "en" ? "Use FaceID / TouchID" : "استخدام البصمة"}
+              </button>
+            )}
           </div>
 
-          <button 
-            type="submit" 
-            className="w-full py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-lg shadow-xl shadow-red-500/20 active:scale-[0.98] hover:scale-[1.01] transition-all duration-200 cursor-pointer"
-          >
-            {lang === "en" ? "Unlock Dashboard" : "الدخول"}
-          </button>
         </form>
       </div>
     </div>

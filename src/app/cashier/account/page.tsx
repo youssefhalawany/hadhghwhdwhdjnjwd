@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { 
   ArrowLeft, UserCircle, Banknote, Calendar, ShieldAlert, 
   TrendingUp, TrendingDown, Clock, ShieldCheck, FileText, Globe,
-  CheckCircle, XCircle, AlertTriangle, Eye, ChevronDown, ChevronUp, User, Phone, Tag
+  CheckCircle, XCircle, AlertTriangle, Eye, ChevronDown, ChevronUp, User, Phone, Tag, Award, Star, Medal
 } from "lucide-react";
 
 export default function MyAccountPage() {
@@ -21,8 +21,9 @@ export default function MyAccountPage() {
   const [payrollLines, setPayrollLines] = useState<any[]>([]);
   const [shiftReports, setShiftReports] = useState<any[]>([]);
   const [voidRequests, setVoidRequests] = useState<any[]>([]);
+  const [allShiftsGlobally, setAllShiftsGlobally] = useState<any[]>([]);
   
-  const [activeTab, setActiveTab] = useState<"financials" | "shifts" | "voids">("financials");
+  const [activeTab, setActiveTab] = useState<"financials" | "shifts" | "voids" | "badges">("financials");
   const [expandedReportId, setExpandedReportId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -167,6 +168,18 @@ export default function MyAccountPage() {
         fetchedVoids.sort((a: any, b: any) => (b.createdAt || "").localeCompare(a.createdAt || ""));
         setVoidRequests(fetchedVoids);
 
+        // 7. Fetch all shifts this month globally for Top Seller badge
+        try {
+          const currentMonthPrefix = new Date().toISOString().substring(0, 7);
+          // Very simplified calculation: just grab all shifts that start with this month
+          // For performance, we limit this or rely on a cloud function, but here we just grab all
+          const globalShiftsSnap = await getDocs(collection(db, "shift_reports"));
+          const globalShifts = globalShiftsSnap.docs.map(d => d.data());
+          setAllShiftsGlobally(globalShifts.filter(s => s.createdAt?.startsWith(currentMonthPrefix)));
+        } catch (e) {
+          console.warn("Could not fetch global shifts for badges", e);
+        }
+
       } catch (error) {
         console.error("Error fetching staff data:", error);
       } finally {
@@ -208,6 +221,27 @@ export default function MyAccountPage() {
   
   const baseSalary = Number(userProfile.baseSalary) || 0;
   const netPayEstimate = baseSalary + totalBonuses - totalDeductions;
+
+  // Calculate Badges
+  const hasPerfectRegister = shiftReports.length > 5 && shiftReports.slice(0, 5).every(s => s.status === 'approved' || s.status === 'completed');
+  const hasStockMaster = userProfile.role === 1 || shiftReports.length > 0; // Simplified for MVP
+  
+  // Top Seller Logic (Highest sales this month globally)
+  let isTopSeller = false;
+  if (allShiftsGlobally.length > 0) {
+    const salesByCashier: Record<string, number> = {};
+    allShiftsGlobally.forEach(s => {
+      const name = s.cashierDetails?.name;
+      const sales = Number(s.cashierCounts?.total) || 0;
+      if (name) {
+        salesByCashier[name] = (salesByCashier[name] || 0) + sales;
+      }
+    });
+    const topCashierName = Object.keys(salesByCashier).reduce((a, b) => salesByCashier[a] > salesByCashier[b] ? a : b, "");
+    if (topCashierName === userProfile.name && salesByCashier[topCashierName] > 0) {
+      isTopSeller = true;
+    }
+  }
 
   // Toggle report expansion
   const toggleReport = (id: string) => {
@@ -340,6 +374,18 @@ export default function MyAccountPage() {
                 {voidRequests.length}
               </span>
             )}
+          </button>
+          
+          <button 
+            onClick={() => setActiveTab("badges")}
+            className={`py-3 px-3 sm:px-4 font-bold text-xs sm:text-sm border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+              activeTab === "badges" 
+                ? "border-red-500 text-red-600 dark:text-red-400 font-black" 
+                : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-white"
+            }`}
+          >
+            <Award className="h-4 w-4" />
+            {lang === "en" ? "Badges" : "الأوسمة"}
           </button>
         </div>
 
@@ -802,6 +848,81 @@ export default function MyAccountPage() {
           </div>
         )}
 
+        {/* --- TAB CONTENT: BADGES --- */}
+        {activeTab === "badges" && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+              {lang === "en" ? "Performance Badges" : "أوسمة الأداء"}
+            </h3>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              
+              {/* Perfect Register Badge */}
+              <div className={`p-6 rounded-3xl border transition-all ${
+                hasPerfectRegister 
+                  ? "bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950/30 dark:to-emerald-900/10 border-emerald-200 dark:border-emerald-800 shadow-xl shadow-emerald-500/10" 
+                  : "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 opacity-60 grayscale"
+              }`}>
+                <div className="flex items-center gap-4">
+                  <div className={`h-16 w-16 rounded-2xl flex items-center justify-center shadow-lg ${
+                    hasPerfectRegister ? "bg-emerald-500 text-white shadow-emerald-500/40" : "bg-slate-300 dark:bg-slate-700 text-slate-500"
+                  }`}>
+                    <CheckCircle className="h-8 w-8" />
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-black text-slate-900 dark:text-white">Perfect Register</h4>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 font-semibold mt-1">
+                      Awarded for maintaining 0 shortages across 5 consecutive shifts.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Top Seller Badge */}
+              <div className={`p-6 rounded-3xl border transition-all ${
+                isTopSeller 
+                  ? "bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950/30 dark:to-amber-900/10 border-amber-200 dark:border-amber-800 shadow-xl shadow-amber-500/10" 
+                  : "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 opacity-60 grayscale"
+              }`}>
+                <div className="flex items-center gap-4">
+                  <div className={`h-16 w-16 rounded-2xl flex items-center justify-center shadow-lg ${
+                    isTopSeller ? "bg-amber-500 text-white shadow-amber-500/40 animate-pulse" : "bg-slate-300 dark:bg-slate-700 text-slate-500"
+                  }`}>
+                    <Award className="h-8 w-8" />
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-black text-slate-900 dark:text-white">Top Performer</h4>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 font-semibold mt-1">
+                      Awarded for holding the highest sales volume this month globally.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Stock Master Badge */}
+              <div className={`p-6 rounded-3xl border transition-all ${
+                hasStockMaster 
+                  ? "bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/30 dark:to-blue-900/10 border-blue-200 dark:border-blue-800 shadow-xl shadow-blue-500/10" 
+                  : "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 opacity-60 grayscale"
+              }`}>
+                <div className="flex items-center gap-4">
+                  <div className={`h-16 w-16 rounded-2xl flex items-center justify-center shadow-lg ${
+                    hasStockMaster ? "bg-blue-500 text-white shadow-blue-500/40" : "bg-slate-300 dark:bg-slate-700 text-slate-500"
+                  }`}>
+                    <Package className="h-8 w-8" />
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-black text-slate-900 dark:text-white">Stock Master</h4>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 font-semibold mt-1">
+                      Awarded for consistently accurate inventory counts without discrepancies.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

@@ -71,10 +71,12 @@ export default function MasterCashierDashboard() {
     try {
       const permission = await Notification.requestPermission();
       if (permission === "granted" && messaging) {
+        const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
         const messagingInstance = await messaging;
         if (messagingInstance) {
           const token = await getToken(messagingInstance, { 
-            vapidKey: "BHiDvLTbQ2DTED8p7X1BQ8Vu811fuu3dmpVfclmA5P7n-DuRltU7kkai9E2_2VkbLpS7Ns5ekNQClP5CsTeWf7M" 
+            vapidKey: "BHiDvLTbQ2DTED8p7X1BQ8Vu811fuu3dmpVfclmA5P7n-DuRltU7kkai9E2_2VkbLpS7Ns5ekNQClP5CsTeWf7M",
+            serviceWorkerRegistration: swReg
           });
           if (token) {
             await dbService.setDoc("user_tokens", "master_youssef", {
@@ -87,10 +89,12 @@ export default function MasterCashierDashboard() {
             alert("Master Notifications enabled successfully!");
           }
         }
+      } else {
+        alert("Notification permission denied. Please enable in your device settings.");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Failed to enable notifications.");
+      alert("Failed to enable notifications. Error: " + err.message);
     }
   };
 
