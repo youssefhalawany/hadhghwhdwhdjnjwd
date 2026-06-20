@@ -55,12 +55,12 @@ export default function FinancialReportsHub() {
       status: "Active"
     },
     {
-      title: "Vendor Receipts Log",
-      description: "Log incoming vendor receipts, PO numbers, and payment status.",
+      title: "Inventory Valuation",
+      description: "Current stock value, adjustments, shrinkage, and reorder alerts.",
       icon: Database,
-      href: "/financial-reports/vendor-receipts",
-      color: "text-orange-600 dark:text-orange-400 bg-orange-500/10 border-orange-500/20",
-      status: "Active"
+      href: "#",
+      color: "text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 border-indigo-500/20",
+      status: "Coming Soon"
     },
     {
       title: "Vendor Statements",

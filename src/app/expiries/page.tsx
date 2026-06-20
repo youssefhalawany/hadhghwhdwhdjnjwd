@@ -70,24 +70,31 @@ export default function ExpiryTrackerPage() {
           // Removed formatsToSupport to allow all default formats (better compatibility)
         };
 
-        await html5QrCode.start(
-          { facingMode: "environment", advanced: [{ focusMode: "continuous" }] } as any, // Added focusMode
-          config,
-          (decodedText) => {
-            // Play barcode scanner beep sound
-            const audio = new Audio("https://www.soundjay.com/misc/sounds/beep-07a.mp3");
-            audio.play().catch(e => console.error("Audio play failed:", e));
-            
-            setBarcode(decodedText);
-            stopScanning();
-          },
-          (errorMessage) => {
-            // Ignore scan failures (typical on empty frames)
-          }
-        );
+        const startWithConstraints = async (constraints: any) => {
+          return html5QrCode.start(
+            constraints,
+            config,
+            (decodedText) => {
+              const audio = new Audio("https://www.soundjay.com/misc/sounds/beep-07a.mp3");
+              audio.play().catch(e => console.error("Audio play failed:", e));
+              setBarcode(decodedText);
+              stopScanning();
+            },
+            (errorMessage) => {
+              // Ignore scan failures
+            }
+          );
+        };
+
+        try {
+          await startWithConstraints({ facingMode: "environment", advanced: [{ focusMode: "continuous" }] });
+        } catch (advancedErr) {
+          console.warn("Advanced constraints failed, falling back to basic camera config", advancedErr);
+          await startWithConstraints({ facingMode: "environment" });
+        }
       } catch (err: any) {
-        console.error(err);
-        setScannerError(lang === "en" ? "Camera access denied or unsupported." : "فشل الوصول إلى الكاميرا.");
+        console.error("Scanner failed to start completely:", err);
+        setScannerError(lang === "en" ? "Camera access denied or unsupported by this browser." : "فشل الوصول إلى الكاميرا.");
       }
     }, 250);
   };
@@ -113,15 +120,22 @@ export default function ExpiryTrackerPage() {
     if (!itemName || !quantity || !expiryDate || !barcode) return;
 
     const newItem = {
-      itemName,
-      barcode,
-      quantity: Number(quantity),
-      expiryDate,
+      itemName: itemName || "",
+      barcode: barcode || "",
+      quantity: Number(quantity) || 0,
+      expiryDate: expiryDate || "",
       storeId: authenticatedUser?.storeId || "Unknown Store",
-      addedBy: authenticatedUser?.name || "Unknown User",
+      addedBy: authenticatedUser?.name || authenticatedUser?.email || "Unknown User",
       createdAt: new Date().toISOString(),
       status: "active" // active, pulled
     };
+
+    // Remove any accidental undefined fields
+    Object.keys(newItem).forEach(key => {
+      if ((newItem as any)[key] === undefined) {
+        delete (newItem as any)[key];
+      }
+    });
 
     try {
       const docRef = await addDoc(collection(db, "expiries"), newItem);
@@ -130,9 +144,9 @@ export default function ExpiryTrackerPage() {
       setBarcode("");
       setQuantity("");
       setExpiryDate("");
-    } catch (e) {
+    } catch (e: any) {
       console.error("Error adding item:", e);
-      alert(lang === "en" ? "Failed to add item." : "فشلت إضافة العنصر.");
+      alert((lang === "en" ? "Failed to add item. Error: " : "فشلت إضافة العنصر. الخطأ: ") + (e.message || e));
     }
   };
 

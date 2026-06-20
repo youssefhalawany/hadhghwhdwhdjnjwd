@@ -33,9 +33,50 @@ export default function VendorStatementsPage() {
   const fetchReceipts = async () => {
     setLoading(true);
     try {
-      const q = query(collection(db, "vendor_receipts"));
-      const snap = await getDocs(q);
-      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // 1. Fetch Cash Payments
+      const cashQ = query(collection(db, "cash_payments"));
+      const cashSnap = await getDocs(cashQ);
+      const cashData = cashSnap.docs.map(doc => {
+        const d = doc.data();
+        if (!d.companyName) return null;
+        return {
+          id: doc.id,
+          companyName: d.companyName,
+          receiptDate: d.date || new Date().toISOString().substring(0, 10),
+          poNumber: d.poNumber || d.invoiceNumber || "",
+          price: Number(d.total || 0),
+          status: "Paid",
+          paymentDate: d.date || null
+        };
+      }).filter(Boolean);
+
+      // 2. Fetch Credits (User requested: "and credit if paid only")
+      const creditQ = query(collection(db, "credits"));
+      const creditSnap = await getDocs(creditQ);
+      const creditData = creditSnap.docs.map(doc => {
+        const d = doc.data();
+        if (!d.companyName) return null;
+        
+        // "credit if paid only"
+        if (d.status !== "paid" && d.status !== "Paid") return null;
+        
+        let rDate = d.date || d.collectionDate;
+        if (!rDate && d.createdAt && typeof d.createdAt.toDate === 'function') {
+           rDate = d.createdAt.toDate().toISOString().substring(0, 10);
+        }
+        
+        return {
+          id: doc.id,
+          companyName: d.companyName,
+          receiptDate: rDate || new Date().toISOString().substring(0, 10),
+          poNumber: d.poNumber || d.invoiceNumber || "",
+          price: Number(d.amountDue || d.total || 0),
+          status: "Paid",
+          paymentDate: d.paidAt ? d.paidAt.substring(0, 10) : null
+        };
+      }).filter(Boolean);
+
+      const data = [...cashData, ...creditData] as any[];
       
       // Sort by date ascending for the statement
       data.sort((a: any, b: any) => a.receiptDate.localeCompare(b.receiptDate));
@@ -49,7 +90,7 @@ export default function VendorStatementsPage() {
         setSelectedCompany(companies[0] as string);
       }
     } catch (error) {
-      console.error("Error fetching vendor receipts:", error);
+      console.error("Error fetching receipts from unified collections:", error);
     } finally {
       setLoading(false);
     }
