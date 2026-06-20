@@ -446,6 +446,12 @@ export default function CashierShiftReportPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!cashierSignature) {
+      alert(lang === 'en' ? "Please sign your report before submitting." : "يرجى توقيع التقرير قبل الإرسال.");
+      return;
+    }
+
     setLoading(true);
 
     const c = cashiers.find(x => x.id === selectedCashierId);
@@ -944,7 +950,7 @@ export default function CashierShiftReportPage() {
                   onSave={(data) => setCashierSignature(data)} 
                   onClear={() => setCashierSignature("")} 
                 />
-                <input type="text" value={cashierSignature} readOnly required className="h-0 w-0 opacity-0 absolute pointer-events-none" />
+                <input type="text" value={cashierSignature} readOnly className="h-0 w-0 opacity-0 absolute pointer-events-none" tabIndex={-1} />
               </section>
             </div>
           </div>

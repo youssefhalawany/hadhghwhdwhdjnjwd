@@ -65,22 +65,19 @@ export default function ExpiryTrackerPage() {
         html5QrCodeRef.current = html5QrCode;
         
         const config = {
-          fps: 10,
-          qrbox: { width: 260, height: 160 },
-          formatsToSupport: [
-            Html5QrcodeSupportedFormats.EAN_13,
-            Html5QrcodeSupportedFormats.EAN_8,
-            Html5QrcodeSupportedFormats.CODE_128,
-            Html5QrcodeSupportedFormats.UPC_A,
-            Html5QrcodeSupportedFormats.UPC_E,
-            Html5QrcodeSupportedFormats.QR_CODE
-          ]
+          fps: 30, // Increased for better scan speed
+          qrbox: { width: 300, height: 150 }, // Wider box for barcodes
+          // Removed formatsToSupport to allow all default formats (better compatibility)
         };
 
         await html5QrCode.start(
-          { facingMode: "environment" },
+          { facingMode: "environment", advanced: [{ focusMode: "continuous" }] } as any, // Added focusMode
           config,
           (decodedText) => {
+            // Play barcode scanner beep sound
+            const audio = new Audio("https://www.soundjay.com/misc/sounds/beep-07a.mp3");
+            audio.play().catch(e => console.error("Audio play failed:", e));
+            
             setBarcode(decodedText);
             stopScanning();
           },
@@ -109,12 +106,7 @@ export default function ExpiryTrackerPage() {
     setShowScanner(false);
   };
 
-  const simulateScan = () => {
-    const sampleBarcodes = ["6223000123456", "6221123456789", "6224000987654", "0123456789012"];
-    const randomCode = sampleBarcodes[Math.floor(Math.random() * sampleBarcodes.length)];
-    setBarcode(randomCode);
-    stopScanning();
-  };
+
 
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,8 +117,8 @@ export default function ExpiryTrackerPage() {
       barcode,
       quantity: Number(quantity),
       expiryDate,
-      storeId: authenticatedUser.storeId,
-      addedBy: authenticatedUser.name,
+      storeId: authenticatedUser?.storeId || "Unknown Store",
+      addedBy: authenticatedUser?.name || "Unknown User",
       createdAt: new Date().toISOString(),
       status: "active" // active, pulled
     };
@@ -449,14 +441,7 @@ export default function ExpiryTrackerPage() {
                   : "ضع الباركود في وسط المربع للمسح التلقائي."}
               </p>
               
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                <button 
-                  type="button"
-                  onClick={simulateScan}
-                  className="w-full py-3 bg-blue-600/20 hover:bg-blue-600/35 border border-blue-500/30 text-blue-400 rounded-xl font-bold text-xs transition-all active:scale-[0.98] cursor-pointer"
-                >
-                  {lang === "en" ? "Simulate Scan (Mock)" : "محاكاة مسح (تجريبي)"}
-                </button>
+              <div className="pt-2">
                 <button 
                   type="button"
                   onClick={stopScanning}

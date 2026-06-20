@@ -40,35 +40,35 @@ export default function FinancialReportsHub() {
     },
     {
       title: "Expense & Payouts",
-      description: "Track store expenses, vendor payouts, and petty cash logs.",
+      description: "Track store expenses, vendor payouts, COGS, rent, and petty cash logs.",
       icon: Wallet,
-      href: "#",
+      href: "/financial-reports/expenses",
       color: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
-      status: "Coming Soon"
+      status: "Active"
     },
     {
-      title: "Daily Revenue Analysis",
-      description: "Aggregated daily totals, margin analysis, and month-to-date tracking.",
+      title: "Profit & Loss (P&L)",
+      description: "Generate corporate P&L and Cash Flow statements with PDF export.",
       icon: TrendingUp,
-      href: "#",
+      href: "/financial-reports/pnl",
       color: "text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20",
-      status: "Coming Soon"
+      status: "Active"
     },
     {
-      title: "Inventory Valuation",
-      description: "Current stock value, adjustments, shrinkage, and reorder alerts.",
+      title: "Vendor Receipts Log",
+      description: "Log incoming vendor receipts, PO numbers, and payment status.",
       icon: Database,
-      href: "#",
-      color: "text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 border-indigo-500/20",
-      status: "Coming Soon"
+      href: "/financial-reports/vendor-receipts",
+      color: "text-orange-600 dark:text-orange-400 bg-orange-500/10 border-orange-500/20",
+      status: "Active"
     },
     {
-      title: "VAT & Tax Report",
-      description: "Automated tax calculation reporting for compliance and auditing.",
+      title: "Vendor Statements",
+      description: "Generate monthly printable statements for each vendor and supplier.",
       icon: FileText,
-      href: "#",
+      href: "/financial-reports/vendor-statements",
       color: "text-violet-600 dark:text-violet-400 bg-violet-500/10 border-violet-500/20",
-      status: "Coming Soon"
+      status: "Active"
     }
   ];
 

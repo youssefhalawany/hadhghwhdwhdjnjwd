@@ -254,10 +254,57 @@ export default function ManagerAuditPage() {
     }
   };
   
-  const handleMarkExpiryPulled = async (id: string) => {
+  const handleMarkExpiryPulled = async (item: any) => {
+    const exp = new Date(item.expiryDate);
+    exp.setHours(0,0,0,0);
+    const t = new Date();
+    t.setHours(0,0,0,0);
+    const isExpired = exp <= t;
+
+    let pulledQty = Number(item.quantity) || 0;
+
+    if (isExpired) {
+      const pulledQtyStr = prompt(`Audit Expiry: Item ${item.itemName} (${item.barcode || "N/A"})\nHow many items are you actually pulling from the shelf?`, item.quantity.toString());
+      if (pulledQtyStr === null) return; // Cancelled
+      
+      pulledQty = Number(pulledQtyStr);
+      if (isNaN(pulledQty) || pulledQty < 0) {
+        alert("Invalid quantity. Action cancelled.");
+        return;
+      }
+    }
+
     try {
-      await updateDoc(doc(db, "expiries", id), { status: "pulled" });
-      setSelectedExpiry((prev: any) => prev && prev.id === id ? { ...prev, status: "pulled" } : prev);
+      // 1. Update status in expiries
+      await updateDoc(doc(db, "expiries", item.id), { status: "pulled" });
+      setSelectedExpiry((prev: any) => prev && prev.id === item.id ? { ...prev, status: "pulled" } : prev);
+
+      // 2. If expired, add to expired_items collection
+      if (isExpired) {
+        const savedUserStr = localStorage.getItem("active_cashier_session");
+        let managerEmail = "Unknown Manager";
+        if (savedUserStr) {
+          const sessionData = JSON.parse(savedUserStr);
+          managerEmail = sessionData.email || sessionData.name || "Unknown Manager";
+        }
+
+        const todayStr = new Date().toISOString().split('T')[0];
+
+        await addDoc(collection(db, "expired_items"), {
+          barcode: item.barcode || "N/A",
+          category: "uncategorized",
+          createdAt: new Date().toISOString(),
+          createdBy: managerEmail,
+          date: todayStr,
+          name: item.itemName,
+          quantity: pulledQty,
+          storeId: item.storeId || "Unknown"
+        });
+      }
+      
+      // alert only if we had to audit it to give confirmation
+      if (isExpired) alert("Item audited and marked as pulled successfully!");
+
     } catch (error) {
       console.error("Error marking pulled:", error);
       alert("Failed to update status.");
@@ -584,7 +631,7 @@ export default function ManagerAuditPage() {
                                   <td className="p-2.5 text-right flex items-center justify-end gap-1.5">
                                     <button
                                       type="button"
-                                      onClick={() => handleMarkExpiryPulled(item.id)}
+                                      onClick={() => handleMarkExpiryPulled(item)}
                                       className="px-2 py-1 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded font-bold text-[10px] hover:scale-105 active:scale-95 transition-all cursor-pointer"
                                     >
                                       Pull
@@ -699,7 +746,7 @@ export default function ManagerAuditPage() {
                     {selectedExpiry.status !== "pulled" && (
                       <button
                         type="button"
-                        onClick={() => handleMarkExpiryPulled(selectedExpiry.id)}
+                        onClick={() => handleMarkExpiryPulled(selectedExpiry)}
                         className="w-full py-4 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 text-white rounded-xl font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer animate-in fade-in"
                       >
                         <CheckCircle className="h-5 w-5 text-green-500" /> Mark Item as Pulled from Shelf
