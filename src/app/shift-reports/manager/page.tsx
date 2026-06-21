@@ -163,7 +163,7 @@ export default function ManagerAuditPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             title: "New Sales Record (Shift Approved)",
-            body: `Approved By: ${managerName}\nCashier: ${selectedReport.cashierDetails.name}\nShift: ${selectedReport.cashierDetails.shift}\nMoney: Cash ${expectedCash}, Visa ${expectedVisa}\nOver/Short: ${calculateCashVariance()}`
+            body: `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' })}\nApproved By: ${managerName}\nCashier: ${selectedReport.cashierDetails.name}\nShift: ${selectedReport.cashierDetails.shift}\nSystem Cash: ${expectedCash} EGP\nSystem Visa: ${expectedVisa} EGP\nOver/Short: ${calculateCashVariance()} EGP\nCig. Variance: ${Number(cigarettesPercent) || 0}%\nCoffee Variance: ${Number(coffeePercent) || 0}%\nNotes: ${finalNotes || 'None'}`
           })
         }).catch(e => console.error("Notify error", e));
       } catch (err) {}

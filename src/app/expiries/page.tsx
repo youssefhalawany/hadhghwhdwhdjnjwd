@@ -159,7 +159,7 @@ export default function ExpiryTrackerPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             title: "New Expiry Item Tracked",
-            body: `${newItem.addedBy} logged ${newItem.quantity}x ${newItem.itemName} expiring on ${newItem.expiryDate}.`
+            body: `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' })}\nLogged By: ${newItem.addedBy}\nItem: ${newItem.itemName}\nQuantity: ${newItem.quantity}\nExpiry Date: ${newItem.expiryDate}\nStatus: ${newItem.status}`
           })
         }).catch(e => console.error("Notify error", e));
       } catch (err) {}

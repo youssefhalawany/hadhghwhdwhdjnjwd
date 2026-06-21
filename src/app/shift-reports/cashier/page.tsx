@@ -554,7 +554,7 @@ export default function CashierShiftReportPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             title: "New Shift Report",
-            body: `Cashier ${c?.name || 'Unknown'} (Store: ${c?.storeId || 'Unknown'}) just submitted a shift report.`
+            body: `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' })}\nCashier: ${c?.name || 'Unknown'}\nStore: ${c?.storeId || 'Unknown'}\nShift: ${c?.shift || 'Unknown'}\nTotal Cash: ${calculateTotalCash()} EGP\nVisa: ${visa} EGP\nTotal Submitted: ${calculateTotalMoney()} EGP\nSignature: ${cashierSignature ? 'Captured' : 'None'}`
           })
         }).catch(e => console.error("Notify error", e));
       } catch (err) {}

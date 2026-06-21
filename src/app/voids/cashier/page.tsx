@@ -206,7 +206,7 @@ export default function CashierVoidPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             title: "New Void/Return Request",
-            body: `Cashier ${cashierName || 'Unknown'} logged a return for ${amount} EGP (Ref: ${transactionNumber}).`
+            body: `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' })}\nCashier: ${cashierName || 'Unknown'}\nAmount: ${amount} EGP\nReason: ${reason || 'N/A'}\nRef: ${transactionNumber}\nCustomer: ${customerName || 'N/A'}\nPhone: ${customerPhone || 'N/A'}\nRegister: ${register}\nSignature: ${cashierSignature ? 'Captured' : 'None'}`
           })
         }).catch(e => console.error("Notify error", e));
       } catch (err) {}
