@@ -12,6 +12,7 @@ export default function MasterCashierDashboard() {
   const [feed, setFeed] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isNotificationEnabled, setIsNotificationEnabled] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
     const session = localStorage.getItem("active_cashier_session");
@@ -138,10 +139,12 @@ export default function MasterCashierDashboard() {
 
       <main className="max-w-2xl mx-auto p-4 space-y-4">
         {feed.map((item, idx) => {
+          const isExpanded = expandedId === item.id;
+          
           if (item._type === "shift_report") {
             const shortOverage = (item.totalActualSales || 0) - (item.totalSystemSales || 0);
             return (
-              <div key={idx} className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow border border-slate-200 dark:border-slate-700 hover:shadow-md transition-shadow">
+              <div key={item.id} onClick={() => setExpandedId(isExpanded ? null : item.id)} className="cursor-pointer bg-white dark:bg-slate-800 p-5 rounded-2xl shadow border border-slate-200 dark:border-slate-700 hover:shadow-md transition-shadow">
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex gap-3">
                     <div className="bg-blue-100 text-blue-600 p-2.5 rounded-xl h-fit"><FileText className="h-6 w-6"/></div>
@@ -158,26 +161,75 @@ export default function MasterCashierDashboard() {
                 <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-100 dark:border-slate-700/50">
                   <div>
                     <p className="text-xs text-slate-500 uppercase tracking-wider">System Sales</p>
-                    <p className="font-bold text-slate-800 dark:text-slate-200">${item.totalSystemSales || 0}</p>
+                    <p className="font-bold text-slate-800 dark:text-slate-200">{Number(item.totalSystemSales || 0).toLocaleString()} EGP</p>
                   </div>
                   <div>
                     <p className="text-xs text-slate-500 uppercase tracking-wider">Actual Drawer</p>
-                    <p className="font-bold text-slate-800 dark:text-slate-200">${item.totalActualSales || 0}</p>
+                    <p className="font-bold text-slate-800 dark:text-slate-200">{Number(item.totalActualSales || 0).toLocaleString()} EGP</p>
                   </div>
                   <div>
                     <p className="text-xs text-slate-500 uppercase tracking-wider">Difference</p>
                     <p className={`font-bold ${shortOverage < 0 ? "text-red-500" : shortOverage > 0 ? "text-blue-500" : "text-emerald-500"}`}>
-                      {shortOverage < 0 ? "-" : "+"}${Math.abs(shortOverage)}
+                      {shortOverage < 0 ? "-" : "+"}{Math.abs(shortOverage).toLocaleString()} EGP
                     </p>
                   </div>
                   <div>
                     <p className="text-xs text-slate-500 uppercase tracking-wider">Total Drops</p>
-                    <p className="font-bold text-slate-800 dark:text-slate-200">${item.safeDrops?.reduce((sum: number, drop: any) => sum + Number(drop.amount), 0) || 0}</p>
+                    <p className="font-bold text-slate-800 dark:text-slate-200">{Number(item.safeDrops?.reduce((sum: number, drop: any) => sum + Number(drop.amount), 0) || 0).toLocaleString()} EGP</p>
                   </div>
                 </div>
                 {item.expenses && item.expenses.length > 0 && (
                   <div className="mt-3 text-sm text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/50 p-2 rounded-lg">
-                    <span className="font-bold text-slate-700 dark:text-slate-300">Expenses Logged:</span> {item.expenses.length} item(s) totaling ${item.expenses.reduce((sum: number, exp: any) => sum + Number(exp.amount), 0)}
+                    <span className="font-bold text-slate-700 dark:text-slate-300">Expenses Logged:</span> {item.expenses.length} item(s) totaling {Number(item.expenses.reduce((sum: number, exp: any) => sum + Number(exp.amount), 0)).toLocaleString()} EGP
+                  </div>
+                )}
+                
+                {isExpanded && (
+                  <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700/50 space-y-4 animate-in fade-in slide-in-from-top-2">
+                    {/* Extra Details */}
+                    <div>
+                      <p className="font-bold text-slate-800 dark:text-slate-200 text-sm mb-2">Detailed Counts:</p>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div className="bg-slate-50 dark:bg-slate-900 p-2 rounded">
+                          <span className="text-slate-500">Cash:</span> {Number(item.cashierCounts?.cash || 0).toLocaleString()} EGP
+                        </div>
+                        <div className="bg-slate-50 dark:bg-slate-900 p-2 rounded">
+                          <span className="text-slate-500">Visa:</span> {Number(item.cashierCounts?.visa || 0).toLocaleString()} EGP
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {item.expenses && item.expenses.length > 0 && (
+                      <div>
+                        <p className="font-bold text-slate-800 dark:text-slate-200 text-sm mb-2">Expenses Detail:</p>
+                        <ul className="text-sm space-y-1">
+                          {item.expenses.map((exp: any, i: number) => (
+                            <li key={i} className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-1">
+                              <span>{exp.reason}</span>
+                              <span className="font-semibold">{Number(exp.amount).toLocaleString()} EGP</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    
+                    {item.signature && (
+                      <div className="mt-4">
+                        <p className="text-xs text-slate-500 mb-1">Cashier Signature:</p>
+                        <div className="bg-white border border-slate-200 p-2 rounded-lg inline-block">
+                          <img src={item.signature} alt="Signature" className="h-16 object-contain" />
+                        </div>
+                      </div>
+                    )}
+                    
+                    {item.managerAudit && (
+                      <div className="mt-4 bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <p className="font-bold text-slate-800 dark:text-slate-200 text-sm mb-2">Manager Audit:</p>
+                        <p className="text-sm">Audited By: {item.managerAudit.auditedBy}</p>
+                        <p className="text-sm">Status: <span className={item.managerAudit.status === 'approved' ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>{item.managerAudit.status}</span></p>
+                        {item.managerAudit.notes && <p className="text-sm mt-1 text-slate-600 italic">"{item.managerAudit.notes}"</p>}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -185,7 +237,7 @@ export default function MasterCashierDashboard() {
           }
           if (item._type === "void_request") {
             return (
-              <div key={idx} className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow border border-slate-200 dark:border-slate-700 hover:shadow-md transition-shadow">
+              <div key={item.id} onClick={() => setExpandedId(isExpanded ? null : item.id)} className="cursor-pointer bg-white dark:bg-slate-800 p-5 rounded-2xl shadow border border-slate-200 dark:border-slate-700 hover:shadow-md transition-shadow">
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex gap-3">
                     <div className="bg-red-100 text-red-600 p-2.5 rounded-xl h-fit"><Shield className="h-6 w-6"/></div>
@@ -200,7 +252,7 @@ export default function MasterCashierDashboard() {
                   </span>
                 </div>
                 <div className="bg-red-50 dark:bg-red-950/20 p-3 rounded-xl border border-red-100 dark:border-red-900/30">
-                  <p className="text-sm font-bold text-red-800 dark:text-red-300">Amount: ${item.amount}</p>
+                  <p className="text-sm font-bold text-red-800 dark:text-red-300">Amount: {Number(item.amount || 0).toLocaleString()} EGP</p>
                   <p className="text-sm text-red-700 dark:text-red-400 mt-1"><span className="font-semibold">Reason:</span> {item.reason || 'No reason provided'}</p>
                   {item.managerApproval && (
                     <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-2 flex items-center gap-1">
@@ -208,12 +260,28 @@ export default function MasterCashierDashboard() {
                     </p>
                   )}
                 </div>
+                
+                {isExpanded && (
+                  <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700/50 space-y-4 animate-in fade-in slide-in-from-top-2">
+                     <p className="text-sm text-slate-600 dark:text-slate-400">
+                       <span className="font-semibold">Item Details:</span> {item.itemDetails || 'N/A'}
+                     </p>
+                     {item.signature && (
+                      <div className="mt-2">
+                        <p className="text-xs text-slate-500 mb-1">Cashier Signature:</p>
+                        <div className="bg-white border border-slate-200 p-2 rounded-lg inline-block">
+                          <img src={item.signature} alt="Signature" className="h-12 object-contain" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           }
           if (item._type === "expiry") {
             return (
-              <div key={idx} className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow border border-slate-200 dark:border-slate-700 hover:shadow-md transition-shadow">
+              <div key={item.id} onClick={() => setExpandedId(isExpanded ? null : item.id)} className="cursor-pointer bg-white dark:bg-slate-800 p-5 rounded-2xl shadow border border-slate-200 dark:border-slate-700 hover:shadow-md transition-shadow">
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex gap-3">
                     <div className="bg-orange-100 text-orange-600 p-2.5 rounded-xl h-fit"><Calendar className="h-6 w-6"/></div>
@@ -234,9 +302,20 @@ export default function MasterCashierDashboard() {
                   </div>
                   <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl">
                     <p className="text-xs text-slate-500 uppercase tracking-wider">Estimated Value</p>
-                    <p className="font-bold text-slate-800 dark:text-slate-200">${item.estimatedValue || (item.quantity * 2.50).toFixed(2)}</p>
+                    <p className="font-bold text-slate-800 dark:text-slate-200">{Number(item.estimatedValue || (item.quantity * 2.50)).toLocaleString()} EGP</p>
                   </div>
                 </div>
+                
+                {isExpanded && (
+                  <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700/50 space-y-4 animate-in fade-in slide-in-from-top-2">
+                     <p className="text-sm text-slate-600 dark:text-slate-400">
+                       <span className="font-semibold">Expiry Date:</span> {item.expiryDate || 'N/A'}
+                     </p>
+                     <p className="text-sm text-slate-600 dark:text-slate-400">
+                       <span className="font-semibold">Logged By:</span> {item.loggedBy || 'Unknown'}
+                     </p>
+                  </div>
+                )}
               </div>
             );
           }

@@ -25,13 +25,15 @@ export default function PwaInstallPrompt() {
       const userAgent = window.navigator.userAgent.toLowerCase();
       return /iphone|ipad|ipod/.test(userAgent);
     };
-    const isIOSDevice = checkIOS();
-    setIsIOS(isIOSDevice);
-
-    if (isIOSDevice && !isInstalled) {
-      // Show custom iOS prompt
-      setShowPrompt(true);
-    }
+    
+    // Defer setting iOS state to avoid cascading render lint warning
+    setTimeout(() => {
+      const isIOSDevice = checkIOS();
+      setIsIOS(isIOSDevice);
+      if (isIOSDevice && !isInstalled) {
+        setShowPrompt(true);
+      }
+    }, 0);
 
     // Listen for Chrome/Android install prompt
     const handleBeforeInstallPrompt = (e: Event) => {

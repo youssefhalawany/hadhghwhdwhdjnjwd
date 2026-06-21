@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getFirestore, collection, doc, getDocs, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, query } from "firebase/firestore";
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, getDocs, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, query, Firestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 import { getMessaging, isSupported } from "firebase/messaging";
@@ -15,7 +15,15 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-const db = getFirestore(app);
+
+let db: Firestore;
+if (getApps().length === 0 || !getApps()[0]) {
+  db = initializeFirestore(app, {
+    localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
+  });
+} else {
+  db = getFirestore(app);
+}
 export const auth = getAuth(app);
 export const storage = getStorage(app);
 

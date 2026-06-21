@@ -1,10 +1,16 @@
-import type { NextConfig } from "next";
+import withPWAInit from "@ducanh2912/next-pwa";
 
-const nextConfig: any = {
+const withPWA = withPWAInit({
+  dest: "public",
+  disable: process.env.NODE_ENV === "development",
+});
+
+const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  turbopack: {},
 };
 
-export default nextConfig;
+export default withPWA(nextConfig);
 

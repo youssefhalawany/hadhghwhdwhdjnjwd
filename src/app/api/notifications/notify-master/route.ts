@@ -10,6 +10,9 @@ export async function POST(req: Request) {
       try {
         let privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY || '';
         if (privateKey) {
+          if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+            privateKey = privateKey.slice(1, -1);
+          }
           privateKey = privateKey.replace(/\\n/g, '\n');
         }
         initializeApp({
@@ -19,8 +22,9 @@ export async function POST(req: Request) {
             privateKey: privateKey,
           }),
         });
-      } catch (error) {
+      } catch (error: any) {
         console.error('Firebase admin initialization error', error);
+        return NextResponse.json({ error: "Firebase Admin Initialization Failed: " + error.message }, { status: 500 });
       }
     }
 
@@ -28,6 +32,22 @@ export async function POST(req: Request) {
 
     if (!title || !body) {
       return NextResponse.json({ error: "Missing title or body" }, { status: 400 });
+    }
+
+    // Send WhatsApp via CallMeBot
+    try {
+      const phone = "201011212003";
+      const apikey = "3367979";
+      const waText = encodeURIComponent(`*${title}*\n${body}`);
+      const callMeBotUrl = `https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${waText}&apikey=${apikey}`;
+      await fetch(callMeBotUrl, {
+        method: "GET",
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Node.js)"
+        }
+      });
+    } catch (e) {
+      console.error("WhatsApp notification failed", e);
     }
 
     // Get Master FCM Token

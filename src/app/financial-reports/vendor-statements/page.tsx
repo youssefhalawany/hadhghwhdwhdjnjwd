@@ -95,7 +95,7 @@ export default function VendorStatementsPage() {
     }
   };
 
-  const filterData = () => {
+  function filterData() {
     if (!selectedCompany) {
       setFilteredReceipts([]);
       return;
@@ -105,7 +105,7 @@ export default function VendorStatementsPage() {
       r.receiptDate && r.receiptDate.startsWith(selectedMonth)
     );
     setFilteredReceipts(filtered);
-  };
+  }
 
   const handlePrint = () => {
     window.print();

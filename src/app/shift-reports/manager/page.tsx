@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { db } from "@/lib/firebase";
 import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, addDoc } from "firebase/firestore";
 import { CheckCircle, Clock, FileText, Banknote, Package, Lock, Printer, Archive, Trash2, Calendar, QrCode } from "lucide-react";
@@ -155,6 +156,17 @@ export default function ManagerAuditPage() {
         storeId: selectedReport.cashierDetails.storeId,
         visa: Number(expectedVisa) || 0
       });
+
+      try {
+        fetch("/api/notifications/notify-master", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: "New Sales Record (Shift Approved)",
+            body: `Approved By: ${managerName}\nCashier: ${selectedReport.cashierDetails.name}\nShift: ${selectedReport.cashierDetails.shift}\nMoney: Cash ${expectedCash}, Visa ${expectedVisa}\nOver/Short: ${calculateCashVariance()}`
+          })
+        }).catch(e => console.error("Notify error", e));
+      } catch (err) {}
 
       alert("Report Approved & Saved! Sales record created.");
       setActiveTab("history");
@@ -458,12 +470,18 @@ export default function ManagerAuditPage() {
             </div>
           ) : (
             <div className="space-y-3">
+              <AnimatePresence>
               {reportsList.map(report => (
-                <button
+                <motion.button
+                  layout
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
                   key={report.id}
                   onClick={() => { handleSelectReport(report); setSelectedExpiry(null); }}
-                  className={`w-full text-left p-4 rounded-xl border transition-all ${selectedReport?.id === report.id
-                      ? 'border-red-500 bg-red-50 shadow-md shadow-red-500/10'
+                  className={`w-full text-left p-4 rounded-xl border transition-all relative overflow-hidden ${selectedReport?.id === report.id
+                      ? 'border-red-500 bg-red-50 dark:bg-red-950/20 shadow-md shadow-red-500/10'
                       : 'border-border bg-card hover:border-red-300'
                     }`}
                 >
@@ -475,20 +493,21 @@ export default function ManagerAuditPage() {
                   <div className="text-xs text-muted-foreground font-mono mb-3">Store: {report.cashierDetails.storeId}</div>
 
                   {activeTab === "history" && report.managerAudit && (
-                    <div className="mb-3 text-xs flex justify-between bg-card p-2 rounded border border-border">
+                    <div className={`mb-3 text-xs flex justify-between bg-card p-2 rounded border border-border ${report.managerAudit.overShort !== 0 ? 'animate-pulse border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.2)]' : ''}`}>
                       <span className="text-muted-foreground">Variance:</span>
-                      <span className={`font-bold ${report.managerAudit.overShort < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                        {report.managerAudit.overShort < 0 ? '-' : '+'}EGP {Math.abs(report.managerAudit.overShort)}
+                      <span className={`font-bold ${report.managerAudit.overShort < 0 ? 'text-red-600' : report.managerAudit.overShort > 0 ? 'text-emerald-600' : 'text-slate-500'}`}>
+                        {report.managerAudit.overShort < 0 ? '-' : report.managerAudit.overShort > 0 ? '+' : ''}EGP {Math.abs(report.managerAudit.overShort)}
                       </span>
                     </div>
                   )}
 
-                  <div className="flex justify-between items-center pt-3 border-t border-red-100">
+                  <div className="flex justify-between items-center pt-3 border-t border-red-100 dark:border-red-900/30">
                     <span className="text-xs font-bold text-muted-foreground uppercase">Declared Total</span>
-                    <span className="font-bold text-red-600">EGP {report.cashierCounts.total.toLocaleString()}</span>
+                    <span className="font-bold text-red-600 dark:text-red-400">EGP {report.cashierCounts.total.toLocaleString()}</span>
                   </div>
-                </button>
+                </motion.button>
               ))}
+              </AnimatePresence>
             </div>
           )}
         </div>

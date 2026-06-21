@@ -5,6 +5,8 @@ import { db } from "@/lib/firebase";
 import { collection, addDoc, query, orderBy, onSnapshot, deleteDoc, doc } from "firebase/firestore";
 import { ArrowLeft, Wallet, PlusCircle, FileText, Calendar, Trash2, Tag, Building, Zap, Users, Shield, Package, LayoutGrid } from "lucide-react";
 import Link from "next/link";
+import { vibrateSuccess, vibrateError } from "@/lib/haptics";
+import { NumericFormat } from "react-number-format";
 
 const EXPENSE_CATEGORIES = [
   { id: "cogs", label: "Cost of Goods Sold (Inventory)", icon: Package, color: "text-amber-500 bg-amber-500/10" },
@@ -40,6 +42,7 @@ export default function ExpensesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+      vibrateError();
       alert("Please enter a valid amount.");
       return;
     }
@@ -66,8 +69,10 @@ export default function ExpensesPage() {
       setAmount("");
       setSubCategory("");
       setNotes("");
+      vibrateSuccess();
       alert("Expense logged successfully!");
     } catch (error) {
+      vibrateError();
       console.error("Error adding expense:", error);
       alert("Failed to log expense.");
     } finally {
@@ -128,8 +133,18 @@ export default function ExpensesPage() {
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Amount (EGP)</label>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-slate-400">EGP</span>
-                  <input required type="number" step="0.01" min="0" value={amount} onChange={e => setAmount(e.target.value)} className="w-full pl-12 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-lg font-black" placeholder="0.00" />
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-slate-400 z-10">EGP</span>
+                  <NumericFormat 
+                    required 
+                    value={amount} 
+                    onValueChange={(values) => setAmount(values.value)} 
+                    thousandSeparator=","
+                    allowNegative={false}
+                    decimalScale={2}
+                    fixedDecimalScale={true}
+                    className="w-full pl-12 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-lg font-black" 
+                    placeholder="0.00" 
+                  />
                 </div>
               </div>
 
@@ -152,8 +167,8 @@ export default function ExpensesPage() {
                 <textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)} className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-sm" placeholder="Any additional details..."></textarea>
               </div>
 
-              <button type="submit" disabled={submitting} className="w-full py-3.5 mt-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black uppercase tracking-wider text-sm shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition-all disabled:opacity-50">
-                {submitting ? "Logging..." : "Log Expense Record"}
+              <button type="submit" disabled={submitting} className={`w-full py-3.5 mt-2 ${submitting ? 'bg-slate-500 opacity-50 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] cursor-pointer'} text-white rounded-xl font-black uppercase tracking-wider text-sm shadow-lg shadow-emerald-500/20 transition-all`}>
+                {submitting ? "Submitting..." : "Log Expense Record"}
               </button>
             </form>
           </div>

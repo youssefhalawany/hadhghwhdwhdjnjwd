@@ -9,7 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@ducanh2912/next-pwa": "^10.2.9",
     "canvas-confetti": "^1.9.4",
+    "chart.js": "^4.5.1",
     "exceljs": "^4.4.0",
     "firebase": "^12.15.0",
     "firebase-admin": "^14.0.0",
@@ -23,7 +25,9 @@
     "qrcode": "^1.5.4",
     "react": "19.2.4",
     "react-barcode": "^1.6.1",
+    "react-chartjs-2": "^5.3.1",
     "react-dom": "19.2.4",
+    "react-number-format": "^5.4.5",
     "react-qr-code": "^2.2.0",
     "recharts": "^3.8.1"
   },

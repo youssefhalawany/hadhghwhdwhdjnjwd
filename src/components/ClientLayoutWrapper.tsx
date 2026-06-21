@@ -219,7 +219,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
               </div>
             </Link>
 
-            <nav className="hidden md:flex items-center gap-1">
+            <nav className="hidden lg:flex items-center gap-2 ml-4">
               {navItems.map((item) => {
                 const isActive = pathname === item.href;
                 const Icon = item.icon;
@@ -228,14 +228,20 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                     key={item.href}
                     id={`nav-${item.name.toLowerCase().replace(/\s+/g, "-")}`}
                     href={item.href}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                    className={`group relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all duration-300 ${
                       isActive
-                        ? "bg-red-500/10 text-red-600 dark:text-red-500"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        ? "text-red-600 dark:text-red-500"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
                     }`}
                   >
-                    <Icon className="h-4 w-4" />
-                    {item.name}
+                    {isActive && (
+                      <span className="absolute inset-0 bg-red-50 dark:bg-red-950/30 rounded-xl -z-10 border border-red-100 dark:border-red-900/50 shadow-sm"></span>
+                    )}
+                    {!isActive && (
+                      <span className="absolute inset-0 bg-slate-100 dark:bg-slate-800 rounded-xl opacity-0 group-hover:opacity-100 scale-95 group-hover:scale-100 transition-all duration-200 -z-10"></span>
+                    )}
+                    <Icon className={`h-4 w-4 ${isActive ? 'scale-110 drop-shadow-sm' : 'opacity-70 group-hover:opacity-100 transition-opacity'}`} />
+                    <span>{item.name}</span>
                   </Link>
                 );
               })}
@@ -283,7 +289,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
             {/* Mobile Hamburger Toggle */}
             <button 
-              className="md:hidden p-2 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground transition-colors ml-1"
+              className="lg:hidden p-2 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground transition-colors ml-1"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
@@ -293,7 +299,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
         {/* Mobile Dropdown Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden absolute top-16 left-0 w-full bg-white dark:bg-slate-950 border-b border-border shadow-xl z-50 flex flex-col p-4 gap-2">
+          <div className="lg:hidden absolute top-16 left-0 w-full bg-white dark:bg-slate-950 border-b border-border shadow-xl z-50 flex flex-col p-4 gap-2">
             {navItems.map((item) => {
               const isActive = pathname === item.href;
               const Icon = item.icon;

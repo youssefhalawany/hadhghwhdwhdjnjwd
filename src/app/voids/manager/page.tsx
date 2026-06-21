@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { collection, query, orderBy, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Search, Printer, Shield, Image as ImageIcon, ArrowLeftRight, Calendar } from "lucide-react";
+import { Search, Printer, Shield, Image as ImageIcon, ArrowLeftRight, Calendar, CheckCircle } from "lucide-react";
 import Barcode from "react-barcode";
 // Removed html2canvas and jspdf due to Tailwind CSS parsing errors
 
@@ -179,6 +179,26 @@ export default function ManagerVoidsPage() {
             <div className="space-y-6">
               
               <div className="flex justify-end gap-3">
+                <button
+                  onClick={async () => {
+                    try {
+                      await updateDoc(doc(db, "void_requests", selectedVoid.id), {
+                        status: selectedVoid.status === "closed_on_system" ? "logged" : "closed_on_system"
+                      });
+                    } catch(e) {
+                      console.error("Failed to update status", e);
+                      alert("Failed to update status. Check permissions.");
+                    }
+                  }}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold shadow transition-all ${
+                    selectedVoid.status === "closed_on_system" 
+                      ? "bg-green-100 text-green-700 hover:bg-green-200 border border-green-200" 
+                      : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  <CheckCircle className="h-4 w-4" />
+                  {selectedVoid.status === "closed_on_system" ? "Marked Closed on System" : "Mark Closed on System"}
+                </button>
                 <button
                   onClick={generatePDF}
                   className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg font-bold shadow-lg hover:bg-slate-800 transition-all"

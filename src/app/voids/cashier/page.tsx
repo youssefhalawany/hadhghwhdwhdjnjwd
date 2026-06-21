@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { collection, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Shield, UploadCloud, ChevronLeft, AlertTriangle, User as UserIcon, Globe } from "lucide-react";
+import { vibrateSuccess, vibrateError } from "@/lib/haptics";
+import { NumericFormat } from "react-number-format";
 
 const t = {
   en: {
@@ -177,6 +179,7 @@ export default function CashierVoidPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!cashierSignature) {
+      vibrateError();
       alert(lang === "en" ? "Please sign your request before submitting." : "يرجى توقيع الطلب قبل الإرسال.");
       return;
     }
@@ -208,8 +211,10 @@ export default function CashierVoidPage() {
         }).catch(e => console.error("Notify error", e));
       } catch (err) {}
 
+      vibrateSuccess();
       router.push("/voids/cashier/success");
     } catch (error: any) {
+      vibrateError();
       console.error("Error submitting void request:", error);
       alert(lang === "en" ? "Failed to submit request: " + error.message : "فشل إرسال الطلب: " + error.message);
     } finally {
@@ -277,6 +282,7 @@ export default function CashierVoidPage() {
                 <input 
                   type="text" 
                   required
+                  autoFocus
                   value={transactionNumber}
                   onChange={(e) => setTransactionNumber(e.target.value)}
                   className="w-full p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-red-500 transition-all text-base font-mono font-bold"
@@ -311,12 +317,14 @@ export default function CashierVoidPage() {
                 <div>
                   <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">{dict.amount}</label>
                   <div className="relative">
-                    <input 
-                      type="number" 
-                      step="0.01"
+                    <NumericFormat 
                       required
                       value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
+                      onValueChange={(values) => setAmount(values.value)}
+                      thousandSeparator=","
+                      allowNegative={false}
+                      decimalScale={2}
+                      fixedDecimalScale={true}
                       className={`w-full p-3 ${lang === "ar" ? "pl-12" : "pr-12"} rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-red-500 transition-all font-mono font-black text-red-600 dark:text-red-400 text-lg`}
                       placeholder="0.00"
                     />
@@ -390,10 +398,13 @@ export default function CashierVoidPage() {
               <button 
                 type="submit" 
                 disabled={loading}
-                className="w-full sm:w-auto px-8 py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold shadow-lg shadow-red-500/15 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                className={`w-full sm:w-auto px-8 py-3.5 ${loading ? 'bg-slate-500 opacity-50 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700 active:scale-[0.98] cursor-pointer'} text-white rounded-xl font-bold shadow-lg shadow-red-500/15 transition-all flex items-center justify-center gap-2`}
               >
                 {loading ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                    {dict.submitting}
+                  </>
                 ) : (
                   <>
                     <UploadCloud className="h-5 w-5" /> {dict.submit}

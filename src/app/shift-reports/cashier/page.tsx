@@ -7,6 +7,8 @@ import { Calculator, Package, Banknote, Calendar, Clock, ArrowRight, ArrowLeft, 
 import { useRouter } from "next/navigation";
 import { PinPad } from "@/components/PinPad";
 import { RadarOfflineScreen } from "@/components/RadarOfflineScreen";
+import { vibrateSuccess, vibrateError } from "@/lib/haptics";
+import { NumericFormat } from "react-number-format";
 
 // Translation Dictionary
 const t = {
@@ -266,7 +268,7 @@ export default function CashierShiftReportPage() {
     };
   }, []);
 
-  const checkOfflineQueue = () => {
+  function checkOfflineQueue() {
     const stored = localStorage.getItem('offline_reports_queue');
     if (stored) {
       const q = JSON.parse(stored);
@@ -274,9 +276,9 @@ export default function CashierShiftReportPage() {
     } else {
       setOfflineCount(0);
     }
-  };
+  }
 
-  const syncOfflineReports = async () => {
+  async function syncOfflineReports() {
     const stored = localStorage.getItem('offline_reports_queue');
     if (!stored) return;
     
@@ -316,7 +318,7 @@ export default function CashierShiftReportPage() {
     } finally {
       setSyncing(false);
     }
-  };
+  }
 
   useEffect(() => {
     const fetchCashiers = async () => {
@@ -332,7 +334,7 @@ export default function CashierShiftReportPage() {
           pin: "4321",
           role: "master",
           storeId: "ALL"
-        });
+        } as any);
         
         setCashiers(fetched);
       } catch (e) {
@@ -346,7 +348,7 @@ export default function CashierShiftReportPage() {
   }, []);
 
   // Extracted unlock logic for auto-unlock support
-  const triggerUnlockDataFetch = async (c: any) => {
+  async function triggerUnlockDataFetch(c: any) {
     setLoading(true);
 
     try {
@@ -427,7 +429,7 @@ export default function CashierShiftReportPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   const handleUnlock = async (e: React.FormEvent | string) => {
     if (typeof e !== "string") {
@@ -475,6 +477,7 @@ export default function CashierShiftReportPage() {
     e.preventDefault();
 
     if (!cashierSignature) {
+      vibrateError();
       alert(lang === 'en' ? "Please sign your report before submitting." : "يرجى توقيع التقرير قبل الإرسال.");
       return;
     }
@@ -556,6 +559,7 @@ export default function CashierShiftReportPage() {
         }).catch(e => console.error("Notify error", e));
       } catch (err) {}
 
+      vibrateSuccess();
       router.push(`/shift-reports/cashier/success?id=${submittedId}`);
     } catch (error: any) {
       console.error("Error submitting shift report:", error);
@@ -564,6 +568,7 @@ export default function CashierShiftReportPage() {
       const isNetworkError = error.message === "OFFLINE_MODE" || error.code?.includes('network') || error.message?.includes('offline');
       
       if (isNetworkError) {
+        vibrateSuccess(); // Still a success UX since it saved offline
         const stored = localStorage.getItem('offline_reports_queue');
         const queue = stored ? JSON.parse(stored) : [];
         queue.push({
@@ -584,6 +589,7 @@ export default function CashierShiftReportPage() {
         setVisa("");
         setCashierSignature("");
       } else {
+        vibrateError();
         alert(lang === 'en' ? "Failed to submit. Please try again." : "فشل الإرسال. يرجى المحاولة مرة أخرى.");
       }
     } finally {
@@ -872,10 +878,13 @@ export default function CashierShiftReportPage() {
                       {[200, 100, 50, 20, 10, 5].map((bill) => (
                         <div key={bill} className="flex items-center justify-between gap-4">
                           <span className="w-16 text-sm font-bold text-slate-555 dark:text-slate-400 font-mono">x EGP {bill}</span>
-                          <input 
-                            type="number" inputMode="numeric" min="0"
+                          <NumericFormat 
+                            autoFocus={bill === 200}
                             value={denominations[String(bill) as keyof typeof denominations]} 
-                            onChange={(e) => setDenominations({...denominations, [String(bill)]: e.target.value})}
+                            onValueChange={(values) => setDenominations({...denominations, [String(bill)]: values.value})}
+                            thousandSeparator=","
+                            allowNegative={false}
+                            decimalScale={0}
                             className="w-full p-2.5 rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500 font-mono text-emerald-600 dark:text-emerald-400 text-right text-base sm:text-lg font-bold transition-all"
                             placeholder="0"
                           />
@@ -884,10 +893,13 @@ export default function CashierShiftReportPage() {
                       
                       <div className="flex items-center justify-between gap-4 mt-2 pt-3 border-t border-slate-200/60 dark:border-slate-800">
                         <span className="w-16 text-sm font-bold text-slate-555 dark:text-slate-400 font-mono">{lang === "en" ? "Coins" : "قروش/فكة"}</span>
-                        <input 
-                          type="number" inputMode="decimal" min="0" step="0.01"
+                        <NumericFormat 
                           value={denominations['coins']} 
-                          onChange={(e) => setDenominations({...denominations, 'coins': e.target.value})}
+                          onValueChange={(values) => setDenominations({...denominations, 'coins': values.value})}
+                          thousandSeparator=","
+                          allowNegative={false}
+                          decimalScale={2}
+                          fixedDecimalScale={true}
                           className="w-full p-2.5 rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500 font-mono text-emerald-600 dark:text-emerald-400 text-right text-base sm:text-lg font-bold transition-all"
                           placeholder="0.00"
                         />
@@ -906,7 +918,16 @@ export default function CashierShiftReportPage() {
                     <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">{dict.totalVisa}</label>
                     <div className="relative">
                       <span className={`absolute ${lang === "ar" ? "right-4" : "left-4"} top-1/2 -translate-y-1/2 text-slate-400 font-black text-xs sm:text-sm`}>EGP</span>
-                      <input required type="number" inputMode="decimal" min="0" step="0.01" value={visa} onChange={(e) => setVisa(e.target.value)} className={`w-full ${lang === "ar" ? "pr-14" : "pl-14"} p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-blue-500 text-base sm:text-lg font-mono font-bold text-blue-600 dark:text-blue-450 transition-all`} placeholder="0.00" />
+                      <NumericFormat 
+                        value={visa} 
+                        onValueChange={(values) => setVisa(values.value)}
+                        thousandSeparator=","
+                        allowNegative={false}
+                        decimalScale={2}
+                        fixedDecimalScale={true}
+                        className={`w-full ${lang === "ar" ? "pr-14" : "pl-14"} p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-blue-500 text-base sm:text-lg font-mono font-bold text-blue-600 dark:text-blue-450 transition-all`} 
+                        placeholder="0.00" 
+                      />
                     </div>
                   </div>
 
@@ -1004,9 +1025,12 @@ export default function CashierShiftReportPage() {
                 </p>
               </div>
               
-              <button type="submit" disabled={loading} className="w-full sm:w-auto px-8 py-3.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-xl font-bold text-base shadow-lg shadow-red-500/15 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer">
+              <button type="submit" disabled={loading} className={`w-full sm:w-auto px-8 py-3.5 ${loading ? 'bg-slate-500 opacity-50 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700 active:scale-[0.98] cursor-pointer'} text-white rounded-xl font-bold text-base shadow-lg shadow-red-500/15 transition-all flex items-center justify-center gap-2`}>
                 {loading ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                    {dict.submitting}
+                  </>
                 ) : (
                   <>
                     {existingReportId ? dict.resubmit : dict.submit}

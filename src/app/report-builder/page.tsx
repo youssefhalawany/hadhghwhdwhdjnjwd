@@ -75,7 +75,7 @@ export default function ReportBuilderPage() {
     };
   }, []);
 
-  const handleSelectTemplate = (temp: ReportTemplate) => {
+  function handleSelectTemplate(temp: ReportTemplate) {
     setSelectedTemplate(temp);
     setName(temp.name);
     setType(temp.type);
@@ -95,7 +95,7 @@ export default function ReportBuilderPage() {
       { version: temp.version, date: temp.lastUpdated || new Date().toISOString(), updatedBy: temp.updatedBy || "karim@circlek.com", action: "Current Active Version" },
       { version: temp.version - 1 > 0 ? temp.version - 1 : 1, date: new Date(Date.now() - 86400000).toISOString(), updatedBy: "ahmed@circlek.com", action: "Added automatic discount formulas" }
     ].filter(v => v.version > 0));
-  };
+  }
 
   const handleCreateNew = () => {
     setSelectedTemplate(null);

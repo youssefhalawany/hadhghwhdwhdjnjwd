@@ -7,12 +7,13 @@ export async function POST(request: Request) {
     // Initialize Firebase Admin if not already initialized
     if (!getApps().length) {
       try {
-        // Handle private key edge case with newlines
         let privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY || '';
         if (privateKey) {
+          if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+            privateKey = privateKey.slice(1, -1);
+          }
           privateKey = privateKey.replace(/\\n/g, '\n');
         }
-
         initializeApp({
           credential: cert({
             projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
@@ -20,8 +21,9 @@ export async function POST(request: Request) {
             privateKey: privateKey,
           }),
         });
-      } catch (error) {
+      } catch (error: any) {
         console.error('Firebase admin initialization error', error);
+        return NextResponse.json({ error: "Firebase Admin Initialization Failed: " + error.message }, { status: 500 });
       }
     }
 

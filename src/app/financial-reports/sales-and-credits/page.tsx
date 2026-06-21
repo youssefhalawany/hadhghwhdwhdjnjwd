@@ -196,7 +196,7 @@ export default function FinancialReportsPage() {
     const data = filterData(sales, "date", "storeId");
     const grouped: Record<string, any> = {};
     data.forEach(item => {
-      let d = item.date;
+      const d = item.date;
       let itemYMD = d;
       if (typeof d === 'string' && d.includes('T')) itemYMD = d.substring(0, 10);
       const key = `${itemYMD}_${item.storeId || 'UNKNOWN'}`;
