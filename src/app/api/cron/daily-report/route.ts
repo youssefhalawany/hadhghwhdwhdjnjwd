@@ -4,11 +4,14 @@ import { getFirestore } from 'firebase-admin/firestore';
 
 export async function GET(req: Request) {
   // 1. Verify Vercel Cron Security (Optional but recommended)
-  // Vercel sends a CRON_SECRET header to ensure only Vercel can trigger this.
+  // For local testing, we skip this if CRON_SECRET is not set, or we allow a query param.
   const authHeader = req.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
   
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  const url = new URL(req.url);
+  const isTest = url.searchParams.get("test") === "true";
+
+  if (cronSecret && authHeader !== `Bearer ${cronSecret}` && !isTest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -38,57 +41,109 @@ export async function GET(req: Request) {
   const adminDb = getFirestore();
 
   try {
-    // 3. Query Sales from the last 24 hours
-    // We get the current date/time minus 24 hours
+    // 3. Setup Time Window (last 24 hours)
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     
-    const salesSnapshot = await adminDb.collection("sales")
+    // --- FETCH SHIFT REPORTS ---
+    const shiftsSnapshot = await adminDb.collection("shift_reports")
       .where("createdAt", ">=", twentyFourHoursAgo)
       .get();
 
-    if (salesSnapshot.empty) {
-      // Send a message saying no sales were recorded.
-      await sendWhatsApp("*Daily Sales Report*\nNo sales shifts were approved in the last 24 hours.");
-      return NextResponse.json({ message: "No sales found. WhatsApp sent." });
-    }
-
-    // 4. Calculate Totals
     let totalCash = 0;
     let totalVisa = 0;
     let totalVariance = 0;
-    let shiftsCount = 0;
-    let breakdown = "";
+    
+    const approvedShifts: string[] = [];
+    const notApprovedShifts: string[] = [];
 
-    salesSnapshot.forEach(doc => {
+    shiftsSnapshot.forEach(doc => {
       const data = doc.data();
-      totalCash += Number(data.cash) || 0;
-      totalVisa += Number(data.visa) || 0;
-      totalVariance += Number(data.overShort) || 0;
-      shiftsCount++;
-      
-      // Build a mini-breakdown per shift
-      breakdown += `\n- ${data.cashierName} (${data.shift}): ${data.cash} EGP Cash, ${data.visa} EGP Visa (Var: ${data.overShort})`;
+      const status = data.status || "pending";
+      const name = data.cashierDetails?.name || "Unknown";
+      const shift = data.cashierDetails?.shift || "Unknown";
+
+      if (status === "approved") {
+        const cCash = Number(data.managerAudit?.expectedCash) || 0;
+        const cVisa = Number(data.managerAudit?.expectedVisa) || 0;
+        const cVar = Number(data.managerAudit?.cashVariance) || 0;
+        totalCash += cCash;
+        totalVisa += cVisa;
+        totalVariance += cVar;
+        approvedShifts.push(`- *${name}* (${shift}): ${cCash} EGP Cash, ${cVisa} EGP Visa (Var: ${cVar})`);
+      } else {
+        const submittedCash = Number(data.cashierCounts?.cash) || 0;
+        const submittedVisa = Number(data.cashierCounts?.visa) || 0;
+        notApprovedShifts.push(`- *${name}* (${shift}): Submitted ${submittedCash} EGP Cash, ${submittedVisa} EGP Visa (Status: *${status.replace('_', ' ').toUpperCase()}*)`);
+      }
     });
 
     const grandTotal = totalCash + totalVisa;
 
-    // 5. Format WhatsApp Message
-    const reportDate = new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo', dateStyle: 'long' });
-    const message = `*Daily Sales Report - ${reportDate}*
-    
-Total Approved Shifts: ${shiftsCount}
-----------------------
-*TOTAL CASH:* ${totalCash.toLocaleString()} EGP
-*TOTAL VISA:* ${totalVisa.toLocaleString()} EGP
-*TOTAL REVENUE:* ${grandTotal.toLocaleString()} EGP
-*NET VARIANCE:* ${totalVariance.toLocaleString()} EGP
-----------------------
-*Shift Breakdown:*${breakdown}`;
+    // --- FETCH EXPIRIES ---
+    const expiriesSnapshot = await adminDb.collection("expiries")
+      .where("createdAt", ">=", twentyFourHoursAgo)
+      .get();
+      
+    const expiries: string[] = [];
+    expiriesSnapshot.forEach(doc => {
+      const data = doc.data();
+      expiries.push(`- ${data.quantity}x ${data.itemName} (Logged by: ${data.addedBy})`);
+    });
 
-    // 6. Send via CallMeBot
+    // --- FETCH VOIDS/RETURNS ---
+    const voidsSnapshot = await adminDb.collection("void_requests")
+      .where("createdAt", ">=", twentyFourHoursAgo)
+      .get();
+
+    const voids: string[] = [];
+    voidsSnapshot.forEach(doc => {
+      const data = doc.data();
+      const isSystemClosed = data.status === "closed_on_system";
+      const statusText = isSystemClosed ? "✅ Marked on System" : "❌ NOT Marked on System";
+      voids.push(`- *${data.cashierName}* voided ${data.amount} EGP (Ref: ${data.transactionNumber}) [${statusText}]`);
+    });
+
+    // 4. Format the final WhatsApp Message
+    const reportDate = new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo', dateStyle: 'long' });
+    
+    let message = `*📊 DAILY EXECUTIVE REPORT - ${reportDate}*\n\n`;
+
+    message += `*🟢 APPROVED SHIFTS TOTALS*\n`;
+    message += `----------------------\n`;
+    message += `*TOTAL CASH:* ${totalCash.toLocaleString()} EGP\n`;
+    message += `*TOTAL VISA:* ${totalVisa.toLocaleString()} EGP\n`;
+    message += `*TOTAL REVENUE:* ${grandTotal.toLocaleString()} EGP\n`;
+    message += `*NET VARIANCE:* ${totalVariance.toLocaleString()} EGP\n`;
+    message += `----------------------\n\n`;
+
+    if (approvedShifts.length > 0) {
+      message += `*✅ APPROVED SHIFTS:*\n${approvedShifts.join('\n')}\n\n`;
+    } else {
+      message += `*✅ APPROVED SHIFTS:*\n_None today._\n\n`;
+    }
+
+    if (notApprovedShifts.length > 0) {
+      message += `*⚠️ NOT APPROVED SHIFTS:*\n${notApprovedShifts.join('\n')}\n\n`;
+    }
+
+    message += `*🗑️ VOIDS & RETURNS TODAY:*\n`;
+    if (voids.length > 0) {
+      message += voids.join('\n') + '\n\n';
+    } else {
+      message += `_No voids logged._\n\n`;
+    }
+
+    message += `*🥪 EXPIRIES TRACKED TODAY:*\n`;
+    if (expiries.length > 0) {
+      message += expiries.join('\n') + '\n';
+    } else {
+      message += `_No expiries logged._\n`;
+    }
+
+    // 5. Send via CallMeBot
     await sendWhatsApp(message);
 
-    return NextResponse.json({ success: true, message: "Report generated and sent." });
+    return NextResponse.json({ success: true, message: "Advanced report generated and sent." });
 
   } catch (error: any) {
     console.error("Daily cron error:", error);
