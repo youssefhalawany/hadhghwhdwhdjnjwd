@@ -79,8 +79,9 @@ export default function ExpiryTrackerPage() {
         setItemName("");
         setSupplier("");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Lookup error:", error);
+      alert("Database Lookup Error: " + (error.message || "Unknown error"));
     } finally {
       setLookupLoading(false);
     }

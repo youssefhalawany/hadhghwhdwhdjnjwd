@@ -62,8 +62,9 @@ export default function ProductLookupPage() {
 
       setExpiriesData(matchingExpiries.sort((a, b) => a.expiryDate.localeCompare(b.expiryDate)));
 
-    } catch (err) {
+    } catch (err: any) {
       console.error("Lookup failed:", err);
+      setProductData({ notFound: true, searchTerm: term, error: err.message || "Unknown error occurred" });
     } finally {
       setLoading(false);
     }
@@ -189,7 +190,12 @@ export default function ProductLookupPage() {
               <div className="text-center py-8">
                 <AlertTriangle className="h-12 w-12 text-orange-500 mx-auto mb-4 opacity-50" />
                 <p className="font-bold text-slate-700 dark:text-slate-300">Product not found in database.</p>
-                <p className="text-sm text-slate-500 mt-2">Searched for: {productData.searchTerm}</p>
+                <p className="text-sm text-slate-500 mt-2">Searched for: <span className="font-mono">{productData.searchTerm}</span></p>
+                {productData.error && (
+                  <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-sm font-semibold border border-red-200 dark:border-red-800">
+                    Error: {productData.error}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-4">
