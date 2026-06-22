@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, getDocs, query, where, updateDoc, doc } from "firebase/firestore";
+import { collection, addDoc, getDocs, getDoc, query, where, updateDoc, doc } from "firebase/firestore";
 import { Calculator, Package, Banknote, Calendar, Clock, ArrowRight, ArrowLeft, Lock, User as UserIcon, Globe, WifiOff, RefreshCw, ChevronDown, Shield, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { PinPad } from "@/components/PinPad";
