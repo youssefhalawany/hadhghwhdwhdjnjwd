@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "firebase/firestore";
-import { Users, Trash2, PlusCircle, Lock, Store } from "lucide-react";
+import { Users, Trash2, PlusCircle, Lock, Store, Clock } from "lucide-react";
 
 export default function CashierSettingsPage() {
   const [cashiers, setCashiers] = useState<any[]>([]);
@@ -11,6 +11,7 @@ export default function CashierSettingsPage() {
   const [name, setName] = useState("");
   const [storeId, setStoreId] = useState("");
   const [pin, setPin] = useState("");
+  const [shiftType, setShiftType] = useState("All");
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -94,6 +95,7 @@ export default function CashierSettingsPage() {
           name,
           storeId,
           pin,
+          shiftType,
           employeeId: empId
         });
       } else {
@@ -102,6 +104,7 @@ export default function CashierSettingsPage() {
           name,
           storeId,
           pin,
+          shiftType,
           employeeId: empId,
           createdAt: new Date().toISOString()
         });
@@ -110,6 +113,7 @@ export default function CashierSettingsPage() {
       setName("");
       setStoreId("");
       setPin("");
+      setShiftType("All");
       setEditId(null);
       fetchCashiers();
     } catch (e) {
@@ -125,6 +129,7 @@ export default function CashierSettingsPage() {
     setName(cashier.name);
     setStoreId(cashier.storeId);
     setPin(cashier.pin);
+    setShiftType(cashier.shiftType || "All");
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -161,7 +166,7 @@ export default function CashierSettingsPage() {
                 {editId ? 'Edit Cashier' : 'Add New Cashier'}
               </h2>
               {editId && (
-                <button type="button" onClick={() => { setEditId(null); setName(''); setStoreId(''); setPin(''); }} className="text-xs text-slate-500 underline">Cancel Edit</button>
+                <button type="button" onClick={() => { setEditId(null); setName(''); setStoreId(''); setPin(''); setShiftType('All'); }} className="text-xs text-slate-500 underline">Cancel Edit</button>
               )}
             </div>
             
@@ -191,7 +196,21 @@ export default function CashierSettingsPage() {
 
             <div>
               <label className="text-xs font-bold text-muted-foreground uppercase mb-1 flex items-center gap-1"><Store className="h-3 w-3" /> Default Store ID</label>
-              <input required value={storeId} onChange={e => setStoreId(e.target.value)} type="text" className="w-full p-2.5 bg-background border border-border rounded-lg outline-none focus:border-red-500" placeholder="e.g. eL-alamein-4" />
+              <input required value={storeId} onChange={e => setStoreId(e.target.value)} type="text" className="w-full p-2.5 bg-background border border-border rounded-lg outline-none focus:border-red-500 text-sm font-semibold" placeholder="e.g. eL-alamein-4" />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-muted-foreground uppercase mb-1 flex items-center gap-1"><Clock className="h-3 w-3" /> Allowed Shift</label>
+              <select
+                value={shiftType}
+                onChange={e => setShiftType(e.target.value)}
+                className="w-full p-2.5 bg-background border border-border rounded-lg outline-none focus:border-red-500 text-sm font-semibold"
+              >
+                <option value="All">All (Cashier chooses)</option>
+                <option value="Morning">Morning Only</option>
+                <option value="Noon">Noon Only</option>
+                <option value="Night">Night Only</option>
+              </select>
             </div>
 
             <div>
@@ -211,11 +230,16 @@ export default function CashierSettingsPage() {
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {cashiers.map(c => (
-              <div key={c.id} className="bg-card border border-border p-4 rounded-xl flex justify-between items-center shadow-sm">
+              <div key={c.id} className="bg-card border border-border p-4 rounded-xl flex justify-between items-center shadow-sm relative overflow-hidden">
                 <div>
-                  <h3 className="font-bold text-foreground text-lg">{c.name}</h3>
-                  <p className="text-xs text-muted-foreground font-mono">{c.storeId}</p>
-                  <p className="text-xs bg-red-500/10 text-red-650 dark:text-red-400 font-mono px-2 py-0.5 rounded mt-2 inline-block border border-red-200/50 dark:border-red-905/30">PIN: ****</p>
+                  <h3 className="font-bold text-foreground text-lg flex items-center gap-2">
+                    {c.name}
+                    <span className="text-[10px] uppercase font-black bg-blue-500/10 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-md border border-blue-200/50 dark:border-blue-900/50">
+                      {c.shiftType || 'All'} Shift
+                    </span>
+                  </h3>
+                  <p className="text-xs text-muted-foreground font-mono mt-1"><Store className="h-3 w-3 inline-block -mt-0.5 mr-1" />{c.storeId}</p>
+                  <p className="text-xs bg-red-500/10 text-red-650 dark:text-red-400 font-mono px-2 py-0.5 rounded mt-2 inline-block border border-red-200/50 dark:border-red-905/30"><Lock className="h-3 w-3 inline-block -mt-0.5 mr-1" />PIN: ****</p>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => handleEdit(c)} className="px-3 py-1 text-xs font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 rounded-lg transition-colors border border-blue-200/50 dark:border-blue-905/30">

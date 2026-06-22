@@ -32,6 +32,7 @@ export default function ManagerAuditPage() {
   // Audit Form State
   const [expectedCash, setExpectedCash] = useState<string>("");
   const [expectedVisa, setExpectedVisa] = useState<string>("");
+  const [auditShift, setAuditShift] = useState<string>("Morning");
   const [cigarettesPercent, setCigarettesPercent] = useState<string>("");
   const [coffeePercent, setCoffeePercent] = useState<string>("");
   const [comments, setComments] = useState<string>("");
@@ -86,12 +87,14 @@ export default function ManagerAuditPage() {
       setCoffeePercent(String(report.managerAudit.coffeePercent || ""));
       setComments(report.managerAudit.comments || "");
       setManagerName(report.managerAudit.managerName || "");
+      setAuditShift(report.cashierDetails?.shift || "Morning");
     } else {
       setExpectedCash("");
       setExpectedVisa("");
       setCigarettesPercent("");
       setCoffeePercent("");
       setComments("");
+      setAuditShift(report.cashierDetails?.shift || "Morning");
     }
   };
 
@@ -122,6 +125,7 @@ export default function ManagerAuditPage() {
 
       await updateDoc(reportRef, {
         status: "approved",
+        "cashierDetails.shift": auditShift,
         managerAudit: {
           ...selectedReport.managerAudit, // preserve rejectReason and other older fields
           expectedCash: Number(expectedCash) || 0,
@@ -152,7 +156,7 @@ export default function ManagerAuditPage() {
         date: selectedReport.cashierDetails.date,
         notes: finalNotes.trim(),
         overShort: calculateCashVariance(), // Cash variance only as requested
-        shift: selectedReport.cashierDetails.shift,
+        shift: auditShift,
         storeId: selectedReport.cashierDetails.storeId,
         visa: Number(expectedVisa) || 0
       });
@@ -163,7 +167,7 @@ export default function ManagerAuditPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             title: "New Sales Record (Shift Approved)",
-            body: `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' })}\nApproved By: ${managerName}\nCashier: ${selectedReport.cashierDetails.name}\nShift: ${selectedReport.cashierDetails.shift}\nSystem Cash: ${expectedCash} EGP\nSystem Visa: ${expectedVisa} EGP\nOver/Short: ${calculateCashVariance()} EGP\nCig. Variance: ${Number(cigarettesPercent) || 0}%\nCoffee Variance: ${Number(coffeePercent) || 0}%\nNotes: ${finalNotes || 'None'}\n\nView Approved Report:\n${window.location.origin}/shift-reports/view?id=${selectedReport.id}`
+            body: `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' })}\nApproved By: ${managerName}\nCashier: ${selectedReport.cashierDetails.name}\nShift: ${auditShift}\nSystem Cash: ${expectedCash} EGP\nSystem Visa: ${expectedVisa} EGP\nOver/Short: ${calculateCashVariance()} EGP\nCig. Variance: ${Number(cigarettesPercent) || 0}%\nCoffee Variance: ${Number(coffeePercent) || 0}%\nNotes: ${finalNotes || 'None'}\n\nView Approved Report:\n${window.location.origin}/shift-reports/view?id=${selectedReport.id}`
           })
         }).catch(e => console.error("Notify error", e));
       } catch (err) {}
@@ -794,7 +798,25 @@ export default function ManagerAuditPage() {
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <h2 className="text-2xl font-black">{selectedReport.cashierDetails.name}</h2>
-                    <p className="text-slate-400 text-sm mt-1">{selectedReport.cashierDetails.date} • {selectedReport.cashierDetails.shift} Shift • {selectedReport.cashierDetails.storeId}</p>
+                    <p className="text-slate-400 text-sm mt-1 flex flex-wrap items-center gap-2">
+                      <span>{selectedReport.cashierDetails.date}</span>
+                      <span className="text-slate-600">•</span>
+                      {activeTab === "pending" ? (
+                        <select 
+                          value={auditShift} 
+                          onChange={(e) => setAuditShift(e.target.value)} 
+                          className="bg-slate-800 border border-slate-600 text-white rounded px-2 py-0.5 outline-none font-bold text-xs focus:border-red-500 transition-colors"
+                        >
+                          <option value="Morning">Morning Shift</option>
+                          <option value="Noon">Noon Shift</option>
+                          <option value="Night">Night Shift</option>
+                        </select>
+                      ) : (
+                        <span>{selectedReport.cashierDetails.shift} Shift</span>
+                      )}
+                      <span className="text-slate-600">•</span>
+                      <span>{selectedReport.cashierDetails.storeId}</span>
+                    </p>
                     <p className="text-slate-500 text-xs mt-1 font-semibold text-blue-600">
                       {selectedReport.cashierRole === 2 ? 'Cashier 2 (Money Only)' : 'Cashier 1 (Full Register)'}
                     </p>

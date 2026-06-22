@@ -207,6 +207,7 @@ export default function CashierShiftReportPage() {
   // Cashier Details
   const [date, setDate] = useState("");
   const [shift, setShift] = useState("Morning");
+  const [assignedShiftType, setAssignedShiftType] = useState("All");
   const [cashierRole, setCashierRole] = useState<number>(1);
   
   // Cashier Money Counts
@@ -350,6 +351,12 @@ export default function CashierShiftReportPage() {
   // Extracted unlock logic for auto-unlock support
   async function triggerUnlockDataFetch(c: any) {
     setLoading(true);
+    
+    const configuredShift = c.shiftType || "All";
+    setAssignedShiftType(configuredShift);
+    if (configuredShift !== "All") {
+      setShift(configuredShift);
+    }
 
     try {
       // 1. Check if there is a rejected report for this cashier today
@@ -832,12 +839,18 @@ export default function CashierShiftReportPage() {
                       <Clock className="h-3.5 w-3.5" /> {dict.shift}
                     </label>
                     <div className="relative">
-                      <select value={shift} onChange={(e) => setShift(e.target.value)} className="w-full p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none appearance-none focus:ring-2 focus:ring-red-500 text-xs sm:text-sm font-semibold cursor-pointer">
-                        <option value="Morning">{dict.morning}</option>
-                        <option value="Noon">{dict.noon}</option>
-                        <option value="Night">{dict.night}</option>
-                      </select>
-                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                      {assignedShiftType !== "All" ? (
+                        <input type="text" value={dict[shift.toLowerCase() as keyof typeof dict] || shift} readOnly className="w-full p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-900/50 text-slate-500 outline-none cursor-not-allowed text-xs sm:text-sm font-semibold" />
+                      ) : (
+                        <>
+                          <select value={shift} onChange={(e) => setShift(e.target.value)} className="w-full p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none appearance-none focus:ring-2 focus:ring-red-500 text-xs sm:text-sm font-semibold cursor-pointer">
+                            <option value="Morning">{dict.morning}</option>
+                            <option value="Noon">{dict.noon}</option>
+                            <option value="Night">{dict.night}</option>
+                          </select>
+                          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                        </>
+                      )}
                     </div>
                   </div>
                   
