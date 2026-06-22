@@ -123,7 +123,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     { name: "Cashier Accounts", href: "/settings/cashiers", icon: Users },
     { name: "Send Notifications", href: "/settings/notifications", icon: Bell },
     { name: "Import Products", href: "/admin/import-csv", icon: Database },
-    { name: "Log Expired", href: "/expire-log", icon: PackageX }
+    { name: "Log Expired", href: "/expire-log", icon: PackageX },
+    { name: "Product Lookup", href: "/admin/product-lookup", icon: Search }
   ];
 
   const handleLogin = async (e: React.FormEvent) => {

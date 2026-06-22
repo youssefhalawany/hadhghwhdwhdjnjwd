@@ -3,11 +3,7 @@
 import React, { useState } from 'react';
 import Papa from 'papaparse';
 import { dbService } from '@/lib/firebase';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, CheckCircle2, Upload } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Progress } from '@/components/ui/progress';
 
 export default function ImportCSVPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -81,17 +77,17 @@ export default function ImportCSVPage() {
 
   return (
     <div className="container mx-auto p-6 max-w-2xl">
-      <Card>
-        <CardHeader>
-          <CardTitle>Import Products Database</CardTitle>
-          <CardDescription>
+      <div className="bg-card text-card-foreground border border-border shadow-sm rounded-xl overflow-hidden">
+        <div className="flex flex-col space-y-1.5 p-6 border-b border-border">
+          <h3 className="font-semibold leading-none tracking-tight text-xl">Import Products Database</h3>
+          <p className="text-sm text-muted-foreground">
             Upload your items/Book1.csv file to populate the products database. 
             The CSV must contain columns for "Item" (Barcode), "Supplier", and "Description".
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
+          </p>
+        </div>
+        <div className="p-6 space-y-6">
           <div className="grid w-full max-w-sm items-center gap-1.5">
-            <label htmlFor="csv-upload" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+            <label htmlFor="csv-upload" className="text-sm font-medium leading-none">
               CSV File
             </label>
             <input 
@@ -99,21 +95,21 @@ export default function ImportCSVPage() {
               type="file" 
               accept=".csv"
               onChange={handleFileChange}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:cursor-not-allowed disabled:opacity-50"
             />
           </div>
 
-          <Button 
+          <button 
             onClick={handleUpload} 
             disabled={!file || isUploading}
-            className="w-full sm:w-auto"
+            className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:pointer-events-none disabled:opacity-50 bg-red-600 text-white hover:bg-red-700 h-10 px-4 py-2 w-full sm:w-auto"
           >
             {isUploading ? (
               <>Processing...</>
             ) : (
               <><Upload className="mr-2 h-4 w-4" /> Start Import</>
             )}
-          </Button>
+          </button>
 
           {isUploading && (
             <div className="space-y-2">
@@ -121,30 +117,36 @@ export default function ImportCSVPage() {
                 <span>Importing...</span>
                 <span>{progress}%</span>
               </div>
-              <Progress value={progress} />
+              <div className="w-full bg-muted rounded-full h-2.5">
+                <div className="bg-red-600 h-2.5 rounded-full transition-all" style={{ width: `${progress}%` }}></div>
+              </div>
             </div>
           )}
 
           {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
+            <div className="relative w-full rounded-lg border border-red-500/50 bg-red-500/10 p-4 text-red-600 flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 mt-0.5" />
+              <div>
+                <h5 className="mb-1 font-medium leading-none tracking-tight">Error</h5>
+                <div className="text-sm opacity-90">{error}</div>
+              </div>
+            </div>
           )}
 
           {results && (
-            <Alert className="bg-green-50 border-green-200">
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
-              <AlertTitle className="text-green-800">Import Complete</AlertTitle>
-              <AlertDescription className="text-green-700">
-                Successfully imported {results.success} products. 
-                {results.failed > 0 && ` Failed to import ${results.failed} rows (check if they had a valid barcode).`}
-              </AlertDescription>
-            </Alert>
+            <div className="relative w-full rounded-lg border border-green-500/50 bg-green-500/10 p-4 text-green-700 flex items-start gap-3">
+              <CheckCircle2 className="h-5 w-5 mt-0.5 text-green-600" />
+              <div>
+                <h5 className="mb-1 font-medium leading-none tracking-tight text-green-800">Import Complete</h5>
+                <div className="text-sm opacity-90 text-green-700">
+                  Successfully imported {results.success} products. 
+                  {results.failed > 0 && ` Failed to import ${results.failed} rows (check if they had a valid barcode).`}
+                </div>
+              </div>
+            </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
