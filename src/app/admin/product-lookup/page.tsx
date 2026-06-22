@@ -17,7 +17,8 @@ export default function ProductLookupPage() {
   const [scannerError, setScannerError] = useState("");
   const scannerRef = useRef<Html5Qrcode | null>(null);
 
-  const performLookup = async (term: string) => {
+  const performLookup = async (rawTerm: string) => {
+    const term = rawTerm.trim();
     if (!term) return;
     setLoading(true);
     setProductData(null);
@@ -36,10 +37,13 @@ export default function ProductLookupPage() {
         // 2. If not found by ID (barcode), search by `description` or `itemName`
         const productsSnap = await getDocs(collection(db, "products"));
         const allProducts = productsSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+        const termLower = term.toLowerCase();
         foundProduct = allProducts.find(p => 
-          p.barcode === term || 
-          p.description?.toLowerCase().includes(term.toLowerCase()) || 
-          p.name?.toLowerCase().includes(term.toLowerCase())
+          (p.barcode && p.barcode.toLowerCase() === termLower) || 
+          p.description?.toLowerCase().includes(termLower) || 
+          p.name?.toLowerCase().includes(termLower) ||
+          p.itemName?.toLowerCase().includes(termLower) ||
+          p.id.toLowerCase() === termLower
         );
       }
 

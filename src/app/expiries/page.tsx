@@ -6,7 +6,7 @@ import { collection, addDoc, getDocs, query, orderBy, deleteDoc, doc, updateDoc,
 import { useRouter } from "next/navigation";
 import { 
   ArrowLeft, Calendar as CalendarIcon, PlusCircle, AlertTriangle, 
-  CheckCircle, Clock, Trash2, Package, Globe, Camera, X, QrCode
+  CheckCircle, Clock, Trash2, Package, Globe, Camera, X, QrCode, Search
 } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
 
@@ -61,32 +61,43 @@ export default function ExpiryTrackerPage() {
   }, [router]);
 
   // Product Lookup
-  const handleBarcodeChange = async (newBarcode: string) => {
-    setBarcode(newBarcode);
-    if (newBarcode.length >= 3) {
-      setLookupLoading(true);
-      try {
-        const productRef = doc(db, "products", newBarcode);
-        const productSnap = await getDoc(productRef);
-        if (productSnap.exists()) {
-          const data = productSnap.data();
-          setItemName(data.description || data.name || data.itemName || "");
-          setSupplier(data.supplier || "");
-          setIsNewProduct(false);
-        } else {
-          setIsNewProduct(true);
-          setItemName("");
-          setSupplier("");
-        }
-      } catch (error) {
-        console.error("Lookup error:", error);
-      } finally {
-        setLookupLoading(false);
+  const lookupBarcode = async (rawBarcode: string) => {
+    const cleanBarcode = rawBarcode.trim();
+    if (!cleanBarcode) return;
+    
+    setLookupLoading(true);
+    try {
+      const productRef = doc(db, "products", cleanBarcode);
+      const productSnap = await getDoc(productRef);
+      if (productSnap.exists()) {
+        const data = productSnap.data();
+        setItemName(data.description || data.name || data.itemName || "");
+        setSupplier(data.supplier || "");
+        setIsNewProduct(false);
+      } else {
+        setIsNewProduct(true);
+        setItemName("");
+        setSupplier("");
       }
-    } else {
-      setIsNewProduct(false);
-      setItemName("");
-      setSupplier("");
+    } catch (error) {
+      console.error("Lookup error:", error);
+    } finally {
+      setLookupLoading(false);
+    }
+  };
+
+  const handleBarcodeChange = (newBarcode: string) => {
+    setBarcode(newBarcode);
+    // Optionally clear states when barcode is changed manually
+    setIsNewProduct(false);
+    setItemName("");
+    setSupplier("");
+  };
+
+  const handleBarcodeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault(); // Prevent form from submitting
+      lookupBarcode(barcode);
     }
   };
 
@@ -121,6 +132,7 @@ export default function ExpiryTrackerPage() {
                 console.error("Audio beep failed", e);
               }
               handleBarcodeChange(decodedText);
+              lookupBarcode(decodedText);
               stopScanning();
             },
             undefined
@@ -334,9 +346,19 @@ export default function ExpiryTrackerPage() {
                   type="text" 
                   value={barcode} 
                   onChange={(e) => handleBarcodeChange(e.target.value)}
+                  onKeyDown={handleBarcodeKeyDown}
+                  onBlur={() => { if (barcode) lookupBarcode(barcode); }}
                   placeholder={lang === "en" ? "Barcode" : "الباركود"}
                   className="w-full p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 transition-all font-semibold font-mono text-sm"
                 />
+                <button 
+                  type="button"
+                  onClick={() => lookupBarcode(barcode)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 rounded-xl font-bold active:scale-[0.98] transition-all flex items-center justify-center cursor-pointer shadow border border-blue-600"
+                  title={lang === "en" ? "Search Barcode" : "بحث بالباركود"}
+                >
+                  <Search className="h-5 w-5" />
+                </button>
                 <button 
                   type="button"
                   onClick={startScanning}
