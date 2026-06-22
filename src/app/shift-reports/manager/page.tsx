@@ -125,7 +125,7 @@ export default function ManagerAuditPage() {
 
       await updateDoc(reportRef, {
         status: "approved",
-        "cashierDetails.shift": auditShift,
+        "cashierDetails.shift": auditShift.toLowerCase(),
         managerAudit: {
           ...selectedReport.managerAudit, // preserve rejectReason and other older fields
           expectedCash: Number(expectedCash) || 0,
@@ -156,7 +156,7 @@ export default function ManagerAuditPage() {
         date: selectedReport.cashierDetails.date,
         notes: finalNotes.trim(),
         overShort: calculateCashVariance(), // Cash variance only as requested
-        shift: auditShift,
+        shift: auditShift.toLowerCase(),
         storeId: selectedReport.cashierDetails.storeId,
         visa: Number(expectedVisa) || 0
       });
