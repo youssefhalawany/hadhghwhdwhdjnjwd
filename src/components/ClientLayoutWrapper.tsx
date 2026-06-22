@@ -118,7 +118,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     { name: "Financials", icon: FileText, children: [
       { name: "Financial Reports", href: "/financial-reports", icon: FileText },
       { name: "Voids & Returns", href: "/voids/manager", icon: Shield },
-      { name: "Shift Audit", href: "/shift-reports/manager", icon: Shield }
+      { name: "Shift Audit", href: "/shift-reports/manager", icon: Shield },
+      { name: "Report Search", href: "/financials/report-search", icon: Search }
     ]},
     { name: "Expired", icon: PackageX, children: [
       { name: "Expiry Audits", href: "/dashboard/expiries-audit", icon: ClipboardList },

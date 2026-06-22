@@ -35,6 +35,7 @@ export default function ExpiryTrackerPage() {
   const [showScanner, setShowScanner] = useState(false);
   const [scannerError, setScannerError] = useState("");
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
     const savedUserStr = localStorage.getItem("active_cashier_session");
@@ -105,8 +106,20 @@ export default function ExpiryTrackerPage() {
     }
   };
 
+  const initAudio = () => {
+    try {
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
+      if (audioCtxRef.current.state === "suspended") {
+        audioCtxRef.current.resume();
+      }
+    } catch(e) {}
+  };
+
   // Scanner Actions
   const startScanning = () => {
+    initAudio();
     setShowScanner(true);
     setScannerError("");
     
@@ -122,16 +135,18 @@ export default function ExpiryTrackerPage() {
             config,
             (decodedText) => {
               try {
-                const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.type = "sine";
-                osc.frequency.setValueAtTime(800, ctx.currentTime);
-                gain.gain.setValueAtTime(0.1, ctx.currentTime);
-                osc.start();
-                osc.stop(ctx.currentTime + 0.15);
+                const ctx = audioCtxRef.current;
+                if (ctx) {
+                  const osc = ctx.createOscillator();
+                  const gain = ctx.createGain();
+                  osc.connect(gain);
+                  gain.connect(ctx.destination);
+                  osc.type = "sine";
+                  osc.frequency.setValueAtTime(800, ctx.currentTime);
+                  gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                  osc.start();
+                  osc.stop(ctx.currentTime + 0.15);
+                }
               } catch (e) {
                 console.error("Audio beep failed", e);
               }

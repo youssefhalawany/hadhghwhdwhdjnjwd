@@ -13,7 +13,7 @@ export async function POST(req: Request) {
 
     // Send WhatsApp via CallMeBot FIRST to guarantee it fires
     try {
-      const phone = "201011212003";
+      const phone = encodeURIComponent("+201011212003");
       const apikey = "3367979";
       const waText = encodeURIComponent(`*${title}*\n${body}`);
       const callMeBotUrl = `https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${waText}&apikey=${apikey}`;
