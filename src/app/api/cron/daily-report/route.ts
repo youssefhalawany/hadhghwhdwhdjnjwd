@@ -172,16 +172,20 @@ export async function GET(req: Request) {
 // Helper function to send WhatsApp
 async function sendWhatsApp(text: string) {
   try {
-    const phone = "201011212003";
+    const phone = encodeURIComponent("+201011212003");
     const apikey = "3367979";
     const waText = encodeURIComponent(text);
     const callMeBotUrl = `https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${waText}&apikey=${apikey}`;
-    await fetch(callMeBotUrl, {
+    const res = await fetch(callMeBotUrl, {
       method: "GET",
+      cache: "no-store",
       headers: {
         "User-Agent": "Mozilla/5.0 (Node.js)"
       }
     });
+    if (!res.ok) {
+       console.error("WhatsApp Error Response:", await res.text());
+    }
   } catch (e) {
     console.error("WhatsApp notification failed", e);
   }

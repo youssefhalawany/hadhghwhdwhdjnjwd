@@ -352,7 +352,26 @@ export default function CashierShiftReportPage() {
   async function triggerUnlockDataFetch(c: any) {
     setLoading(true);
     
-    const configuredShift = c.shiftType || "All";
+    let configuredShift = c.shiftType;
+    if (configuredShift === undefined) {
+      try {
+        const q1 = query(collection(db, "cashiers"), where("employeeId", "==", c.id));
+        const snap1 = await getDocs(q1);
+        if (!snap1.empty) {
+          configuredShift = snap1.docs[0].data().shiftType;
+        } else {
+          const docRef = doc(db, "cashiers", c.id);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            configuredShift = docSnap.data().shiftType;
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch configured shift", err);
+      }
+    }
+    
+    configuredShift = configuredShift || "All";
     setAssignedShiftType(configuredShift);
     if (configuredShift !== "All") {
       setShift(configuredShift);
