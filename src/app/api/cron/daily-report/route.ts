@@ -41,12 +41,30 @@ export async function GET(req: Request) {
   const adminDb = getFirestore();
 
   try {
-    // 3. Setup Time Window (last 24 hours)
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    // 3. Setup Time Window (Strict Calendar Day in Cairo Time)
+    const now = new Date();
+    // Cairo is UTC+3
+    const cairoTime = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+
+    // If it runs between midnight and 6 AM, it's meant to summarize "Yesterday".
+    if (cairoTime.getUTCHours() < 6) {
+      cairoTime.setUTCDate(cairoTime.getUTCDate() - 1);
+    }
+
+    // Create Start and End bounds representing exactly 00:00:00 to 23:59:59 of that target date in Cairo
+    const startOfTargetCairo = new Date(Date.UTC(cairoTime.getUTCFullYear(), cairoTime.getUTCMonth(), cairoTime.getUTCDate(), 0, 0, 0));
+    const endOfTargetCairo = new Date(Date.UTC(cairoTime.getUTCFullYear(), cairoTime.getUTCMonth(), cairoTime.getUTCDate(), 23, 59, 59, 999));
+
+    // Convert those Cairo bounds back to absolute UTC for Firestore ISOString matching
+    const startUtc = new Date(startOfTargetCairo.getTime() - 3 * 60 * 60 * 1000).toISOString();
+    const endUtc = new Date(endOfTargetCairo.getTime() - 3 * 60 * 60 * 1000).toISOString();
     
+    const friendlyTargetDate = new Date(startOfTargetCairo.getTime() - 3 * 60 * 60 * 1000).toLocaleString('en-US', { timeZone: 'Africa/Cairo', dateStyle: 'long' });
+
     // --- FETCH SHIFT REPORTS ---
     const shiftsSnapshot = await adminDb.collection("shift_reports")
-      .where("createdAt", ">=", twentyFourHoursAgo)
+      .where("createdAt", ">=", startUtc)
+      .where("createdAt", "<=", endUtc)
       .get();
 
     let totalCash = 0;
@@ -81,7 +99,8 @@ export async function GET(req: Request) {
 
     // --- FETCH EXPIRIES ---
     const expiriesSnapshot = await adminDb.collection("expiries")
-      .where("createdAt", ">=", twentyFourHoursAgo)
+      .where("createdAt", ">=", startUtc)
+      .where("createdAt", "<=", endUtc)
       .get();
       
     const expiries: string[] = [];
@@ -92,7 +111,8 @@ export async function GET(req: Request) {
 
     // --- FETCH VOIDS/RETURNS ---
     const voidsSnapshot = await adminDb.collection("void_requests")
-      .where("createdAt", ">=", twentyFourHoursAgo)
+      .where("createdAt", ">=", startUtc)
+      .where("createdAt", "<=", endUtc)
       .get();
 
     const voids: string[] = [];
@@ -104,9 +124,7 @@ export async function GET(req: Request) {
     });
 
     // 4. Format the final WhatsApp Message
-    const reportDate = new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo', dateStyle: 'long' });
-    
-    let message = `*📊 DAILY EXECUTIVE REPORT - ${reportDate}*\n\n`;
+    let message = `*📊 DAILY EXECUTIVE REPORT - ${friendlyTargetDate}*\n\n`;
 
     message += `*🟢 APPROVED SHIFTS TOTALS*\n`;
     message += `----------------------\n`;
