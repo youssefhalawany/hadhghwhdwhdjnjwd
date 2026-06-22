@@ -24,6 +24,7 @@ export default function ExpiryTrackerPage() {
   const [expiryDate, setExpiryDate] = useState("");
   const [supplier, setSupplier] = useState("");
   const [isNewProduct, setIsNewProduct] = useState(false);
+  const [hasLookedUp, setHasLookedUp] = useState(false);
   const [lookupLoading, setLookupLoading] = useState(false);
   
   // Edit Quantity States
@@ -79,6 +80,7 @@ export default function ExpiryTrackerPage() {
         setItemName("");
         setSupplier("");
       }
+      setHasLookedUp(true);
     } catch (error: any) {
       console.error("Lookup error:", error);
       alert("Database Lookup Error: " + (error.message || "Unknown error"));
@@ -89,8 +91,9 @@ export default function ExpiryTrackerPage() {
 
   const handleBarcodeChange = (newBarcode: string) => {
     setBarcode(newBarcode);
-    // Optionally clear states when barcode is changed manually
+    // Clear states when barcode is changed manually
     setIsNewProduct(false);
+    setHasLookedUp(false);
     setItemName("");
     setSupplier("");
   };
@@ -174,6 +177,10 @@ export default function ExpiryTrackerPage() {
 
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!hasLookedUp) {
+      alert(lang === "en" ? "Please search or scan the barcode first." : "يرجى البحث أو مسح الباركود أولاً.");
+      return;
+    }
     if (!itemName || !quantity || !expiryDate || !barcode) return;
 
     // If new product, save to products collection
@@ -381,32 +388,38 @@ export default function ExpiryTrackerPage() {
               </div>
             )}
 
-            <div>
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
-                {lang === "en" ? "Product Name" : "اسم المنتج"}
-              </label>
-              <input 
-                required 
-                type="text" 
-                value={itemName} 
-                onChange={(e) => setItemName(e.target.value)}
-                placeholder={lang === "en" ? "e.g., Juhayna Milk" : "مثل: لبن جهينة"}
-                className="w-full p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 transition-all font-semibold"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
-                {lang === "en" ? "Supplier" : "المورد"}
-              </label>
-              <input 
-                required 
-                type="text" 
-                value={supplier} 
-                onChange={(e) => setSupplier(e.target.value)}
-                placeholder={lang === "en" ? "Supplier Name" : "اسم المورد"}
-                className="w-full p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 transition-all font-semibold"
-              />
-            </div>
+            {hasLookedUp && (
+              <>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
+                    {lang === "en" ? "Product Name" : "اسم المنتج"}
+                  </label>
+                  <input 
+                    required 
+                    type="text" 
+                    value={itemName} 
+                    onChange={(e) => setItemName(e.target.value)}
+                    disabled={!isNewProduct}
+                    placeholder={lang === "en" ? "e.g., Juhayna Milk" : "مثل: لبن جهينة"}
+                    className={`w-full p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 transition-all font-semibold ${!isNewProduct ? "opacity-70 cursor-not-allowed text-slate-500" : ""}`}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
+                    {lang === "en" ? "Supplier" : "المورد"}
+                  </label>
+                  <input 
+                    required 
+                    type="text" 
+                    value={supplier} 
+                    onChange={(e) => setSupplier(e.target.value)}
+                    disabled={!isNewProduct}
+                    placeholder={lang === "en" ? "Supplier Name" : "اسم المورد"}
+                    className={`w-full p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 transition-all font-semibold ${!isNewProduct ? "opacity-70 cursor-not-allowed text-slate-500" : ""}`}
+                  />
+                </div>
+              </>
+            )}
             <div>
               <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
                 {lang === "en" ? "Quantity" : "الكمية"}
@@ -438,7 +451,8 @@ export default function ExpiryTrackerPage() {
           <div className="flex justify-end pt-2">
             <button 
               type="submit"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold shadow-md shadow-blue-500/20 active:scale-[0.98] hover:scale-[1.01] transition-all cursor-pointer"
+              disabled={!hasLookedUp || lookupLoading}
+              className={`text-white px-6 py-3 rounded-xl font-bold shadow-md active:scale-[0.98] transition-all cursor-pointer ${(!hasLookedUp || lookupLoading) ? "bg-slate-400 dark:bg-slate-700 opacity-50 cursor-not-allowed shadow-none" : "bg-blue-600 hover:bg-blue-700 shadow-blue-500/20 hover:scale-[1.01]"}`}
             >
               {lang === "en" ? "Add to Tracker" : "إضافة للمتابعة"}
             </button>
