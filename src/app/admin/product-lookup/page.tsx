@@ -35,7 +35,7 @@ export default function ProductLookupPage() {
       } else {
         // 2. If not found by ID (barcode), search by `description` or `itemName`
         const productsSnap = await getDocs(collection(db, "products"));
-        const allProducts = productsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const allProducts = productsSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
         foundProduct = allProducts.find(p => 
           p.barcode === term || 
           p.description?.toLowerCase().includes(term.toLowerCase()) || 
@@ -48,7 +48,7 @@ export default function ProductLookupPage() {
       // 3. Look up active expiries for this barcode or name
       const expiriesQuery = query(collection(db, "expiries"), where("status", "==", "active"));
       const expiriesSnap = await getDocs(expiriesQuery);
-      const allExpiries = expiriesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const allExpiries = expiriesSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
       
       const matchingExpiries = allExpiries.filter(e => 
         e.barcode === term || 
