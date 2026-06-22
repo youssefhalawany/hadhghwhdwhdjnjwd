@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, getDocs, query, orderBy, deleteDoc, doc, updateDoc } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, orderBy, deleteDoc, doc, updateDoc, getDoc, setDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { 
   ArrowLeft, Calendar as CalendarIcon, PlusCircle, AlertTriangle, 
@@ -22,6 +22,9 @@ export default function ExpiryTrackerPage() {
   const [barcode, setBarcode] = useState("");
   const [quantity, setQuantity] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
+  const [supplier, setSupplier] = useState("");
+  const [isNewProduct, setIsNewProduct] = useState(false);
+  const [lookupLoading, setLookupLoading] = useState(false);
   
   // Edit Quantity States
   const [editingQtyId, setEditingQtyId] = useState<string | null>(null);
@@ -57,6 +60,36 @@ export default function ExpiryTrackerPage() {
     fetchExpiries();
   }, [router]);
 
+  // Product Lookup
+  const handleBarcodeChange = async (newBarcode: string) => {
+    setBarcode(newBarcode);
+    if (newBarcode.length >= 3) {
+      setLookupLoading(true);
+      try {
+        const productRef = doc(db, "products", newBarcode);
+        const productSnap = await getDoc(productRef);
+        if (productSnap.exists()) {
+          const data = productSnap.data();
+          setItemName(data.description || data.name || data.itemName || "");
+          setSupplier(data.supplier || "");
+          setIsNewProduct(false);
+        } else {
+          setIsNewProduct(true);
+          setItemName("");
+          setSupplier("");
+        }
+      } catch (error) {
+        console.error("Lookup error:", error);
+      } finally {
+        setLookupLoading(false);
+      }
+    } else {
+      setIsNewProduct(false);
+      setItemName("");
+      setSupplier("");
+    }
+  };
+
   // Scanner Actions
   const startScanning = () => {
     setShowScanner(true);
@@ -87,7 +120,7 @@ export default function ExpiryTrackerPage() {
               } catch (e) {
                 console.error("Audio beep failed", e);
               }
-              setBarcode(decodedText);
+              handleBarcodeChange(decodedText);
               stopScanning();
             },
             undefined
@@ -126,15 +159,30 @@ export default function ExpiryTrackerPage() {
     setShowScanner(false);
   };
 
-
-
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!itemName || !quantity || !expiryDate || !barcode) return;
 
+    // If new product, save to products collection
+    if (isNewProduct) {
+      try {
+        await setDoc(doc(db, "products", barcode), {
+          barcode: barcode,
+          description: itemName,
+          supplier: supplier,
+          addedFromExpiry: true,
+          createdAt: new Date().toISOString()
+        });
+        setIsNewProduct(false);
+      } catch (e) {
+        console.error("Failed to add new product:", e);
+      }
+    }
+
     const newItem = {
       itemName: itemName || "",
       barcode: barcode || "",
+      supplier: supplier || "",
       quantity: Number(quantity) || 0,
       expiryDate: expiryDate || "",
       storeId: authenticatedUser?.storeId || "Unknown Store",
@@ -167,6 +215,7 @@ export default function ExpiryTrackerPage() {
       setExpiries(prev => [...prev, { id: docRef.id, ...newItem }].sort((a,b) => a.expiryDate.localeCompare(b.expiryDate)));
       setItemName("");
       setBarcode("");
+      setSupplier("");
       setQuantity("");
       setExpiryDate("");
     } catch (e: any) {
@@ -270,12 +319,12 @@ export default function ExpiryTrackerPage() {
         <form onSubmit={handleAddItem} className="bg-white/70 dark:bg-slate-800/40 backdrop-blur-md p-5 sm:p-6 rounded-3xl border border-slate-200/60 dark:border-slate-700/40 shadow-lg shadow-slate-200/10 dark:shadow-none space-y-4">
           <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-2 flex items-center gap-2">
             <PlusCircle className="h-5 w-5 text-blue-500" />
-            {lang === "en" ? "Log Fresh Food Delivery" : "تسجيل منتجات جديدة"}
+            {lang === "en" ? "Log Expiring Item" : "تسجيل منتجات منتهية"}
           </h3>
           
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Barcode input with scan camera button */}
-            <div>
+            <div className="sm:col-span-2">
               <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
                 {lang === "en" ? "Barcode / Scan" : "الباركود / مسح"}
               </label>
@@ -284,7 +333,7 @@ export default function ExpiryTrackerPage() {
                   required 
                   type="text" 
                   value={barcode} 
-                  onChange={(e) => setBarcode(e.target.value)}
+                  onChange={(e) => handleBarcodeChange(e.target.value)}
                   placeholder={lang === "en" ? "Barcode" : "الباركود"}
                   className="w-full p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 transition-all font-semibold font-mono text-sm"
                 />
@@ -297,7 +346,17 @@ export default function ExpiryTrackerPage() {
                   <Camera className="h-5 w-5 text-blue-500" />
                 </button>
               </div>
+              {lookupLoading && <p className="text-xs text-blue-500 mt-1 animate-pulse">Looking up...</p>}
             </div>
+
+            {isNewProduct && (
+              <div className="sm:col-span-2 bg-blue-50 dark:bg-blue-900/20 p-3 rounded-xl border border-blue-200 dark:border-blue-800/50">
+                <p className="text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  {lang === "en" ? "Product not found! Enter details to add to database." : "المنتج غير موجود! أدخل التفاصيل لإضافته لقاعدة البيانات."}
+                </p>
+              </div>
+            )}
 
             <div>
               <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
@@ -309,6 +368,19 @@ export default function ExpiryTrackerPage() {
                 value={itemName} 
                 onChange={(e) => setItemName(e.target.value)}
                 placeholder={lang === "en" ? "e.g., Juhayna Milk" : "مثل: لبن جهينة"}
+                className="w-full p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 transition-all font-semibold"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
+                {lang === "en" ? "Supplier" : "المورد"}
+              </label>
+              <input 
+                required 
+                type="text" 
+                value={supplier} 
+                onChange={(e) => setSupplier(e.target.value)}
+                placeholder={lang === "en" ? "Supplier Name" : "اسم المورد"}
                 className="w-full p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 transition-all font-semibold"
               />
             </div>
@@ -393,7 +465,7 @@ export default function ExpiryTrackerPage() {
                       </div>
                       <div>
                         <h4 className="font-bold text-lg text-slate-900 dark:text-white leading-tight">{item.itemName}</h4>
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="flex flex-col gap-1 mt-1">
                           <p className="text-xs font-bold text-slate-500 flex items-center gap-2">
                             {lang === "en" ? "Qty:" : "الكمية:"} 
                             {editingQtyId === item.id ? (
@@ -412,8 +484,11 @@ export default function ExpiryTrackerPage() {
                               <span className="text-slate-755 dark:text-slate-350">{item.quantity}</span>
                             )}
                           </p>
+                          {item.supplier && (
+                            <span className="text-[10px] font-medium text-slate-500">Supplier: {item.supplier}</span>
+                          )}
                           {item.barcode && (
-                            <span className="text-[10px] font-mono bg-slate-100 dark:bg-slate-800 text-slate-550 dark:text-slate-400 px-1.5 py-0.5 rounded font-bold border border-slate-200/40 dark:border-slate-700/40 flex items-center gap-0.5">
+                            <span className="text-[10px] font-mono bg-slate-100 dark:bg-slate-800 text-slate-550 dark:text-slate-400 px-1.5 py-0.5 rounded font-bold border border-slate-200/40 dark:border-slate-700/40 w-fit flex items-center gap-0.5">
                               <QrCode className="h-3 w-3" /> {item.barcode}
                             </span>
                           )}

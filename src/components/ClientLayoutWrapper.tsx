@@ -115,16 +115,21 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
   const navItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Cashier Portal", href: "/cashier", icon: User },
-    { name: "Shift Audit", href: "/shift-reports/manager", icon: Shield },
-    { name: "Voids & Returns", href: "/voids/manager", icon: Shield },
-    { name: "Expiry Audits", href: "/dashboard/expiries-audit", icon: ClipboardList },
-    { name: "Financial Reports", href: "/financial-reports", icon: FileText },
-    { name: "Cashier Accounts", href: "/settings/cashiers", icon: Users },
-    { name: "Send Notifications", href: "/settings/notifications", icon: Bell },
-    { name: "Import Products", href: "/admin/import-csv", icon: Database },
-    { name: "Log Expired", href: "/expire-log", icon: PackageX },
-    { name: "Product Lookup", href: "/admin/product-lookup", icon: Search }
+    { name: "Financials", icon: FileText, children: [
+      { name: "Financial Reports", href: "/financial-reports", icon: FileText },
+      { name: "Voids & Returns", href: "/voids/manager", icon: Shield },
+      { name: "Shift Audit", href: "/shift-reports/manager", icon: Shield }
+    ]},
+    { name: "Expired", icon: PackageX, children: [
+      { name: "Expiry Audits", href: "/dashboard/expiries-audit", icon: ClipboardList },
+      { name: "Product Lookup", href: "/admin/product-lookup", icon: Search }
+    ]},
+    { name: "Admin", icon: Shield, children: [
+      { name: "Cashier Accounts", href: "/settings/cashiers", icon: Users },
+      { name: "Send Notifications", href: "/settings/notifications", icon: Bell },
+      { name: "Import Products", href: "/admin/import-csv", icon: Database }
+    ]},
+    { name: "", href: "/cashier", icon: User, isIconOnly: true }
   ];
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -224,13 +229,37 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
             <nav className="hidden lg:flex items-center gap-2 ml-4">
               {navItems.map((item) => {
-                const isActive = pathname === item.href;
+                const isActive = item.href ? pathname === item.href : item.children?.some(child => pathname === child.href);
                 const Icon = item.icon;
+                
+                if (item.children) {
+                  return (
+                    <div key={item.name} className="relative group">
+                      <button className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all duration-300 ${isActive ? "text-red-600 dark:text-red-500" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"}`}>
+                        <Icon className={`h-4 w-4 ${isActive ? 'scale-110 drop-shadow-sm' : 'opacity-70 group-hover:opacity-100 transition-opacity'}`} />
+                        <span>{item.name}</span>
+                      </button>
+                      <div className="absolute left-0 mt-1 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 flex flex-col py-1">
+                        {item.children.map(child => (
+                          <Link
+                            key={child.href}
+                            href={child.href}
+                            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${pathname === child.href ? "text-red-600 dark:text-red-500 bg-red-50 dark:bg-red-950/30" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"}`}
+                          >
+                            <child.icon className="h-4 w-4" />
+                            <span>{child.name}</span>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
+
                 return (
                   <Link
-                    key={item.href}
+                    key={item.href || item.name}
                     id={`nav-${item.name.toLowerCase().replace(/\s+/g, "-")}`}
-                    href={item.href}
+                    href={item.href!}
                     className={`group relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all duration-300 ${
                       isActive
                         ? "text-red-600 dark:text-red-500"
@@ -244,7 +273,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                       <span className="absolute inset-0 bg-slate-100 dark:bg-slate-800 rounded-xl opacity-0 group-hover:opacity-100 scale-95 group-hover:scale-100 transition-all duration-200 -z-10"></span>
                     )}
                     <Icon className={`h-4 w-4 ${isActive ? 'scale-110 drop-shadow-sm' : 'opacity-70 group-hover:opacity-100 transition-opacity'}`} />
-                    <span>{item.name}</span>
+                    {!item.isIconOnly && <span>{item.name}</span>}
                   </Link>
                 );
               })}
@@ -302,14 +331,43 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
         {/* Mobile Dropdown Menu */}
         {mobileMenuOpen && (
-          <div className="lg:hidden absolute top-16 left-0 w-full bg-white dark:bg-slate-950 border-b border-border shadow-xl z-50 flex flex-col p-4 gap-2">
+          <div className="lg:hidden absolute top-16 left-0 w-full bg-white dark:bg-slate-950 border-b border-border shadow-xl z-50 flex flex-col p-4 gap-2 h-[calc(100vh-4rem)] overflow-y-auto">
             {navItems.map((item) => {
+              if (item.children) {
+                return (
+                  <div key={item.name} className="flex flex-col gap-1">
+                    <div className="flex items-center gap-3 px-4 py-2 text-sm font-bold text-slate-500 uppercase tracking-widest border-b border-border mt-2">
+                      <item.icon className="h-4 w-4" />
+                      {item.name}
+                    </div>
+                    {item.children.map(child => {
+                      const isActive = pathname === child.href;
+                      return (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className={`flex items-center gap-3 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                            isActive
+                              ? "bg-red-500/10 text-red-600 dark:text-red-500"
+                              : "text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-foreground"
+                          }`}
+                        >
+                          <child.icon className="h-4 w-4" />
+                          {child.name}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                );
+              }
+
               const isActive = pathname === item.href;
               const Icon = item.icon;
               return (
                 <Link
-                  key={item.href}
-                  href={item.href}
+                  key={item.href || item.name}
+                  href={item.href!}
                   onClick={() => setMobileMenuOpen(false)}
                   className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
                     isActive
@@ -318,7 +376,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                   }`}
                 >
                   <Icon className="h-5 w-5" />
-                  {item.name}
+                  {item.name || "Cashier Portal"}
                 </Link>
               );
             })}
