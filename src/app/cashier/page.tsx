@@ -65,6 +65,8 @@ export default function CashierHubPage() {
 
   const handleInstallClick = async () => {
     const isIOS = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
+    const isAndroid = /android/.test(window.navigator.userAgent.toLowerCase());
+
     if (isIOS) {
       alert(lang === "en" 
         ? "To install on iOS: Tap the 'Share' icon at the bottom of Safari, then scroll down and tap 'Add to Home Screen'."
@@ -72,6 +74,24 @@ export default function CashierHubPage() {
       return;
     }
 
+    if (isAndroid) {
+      // Direct APK download for Android
+      const link = document.createElement("a");
+      link.href = "/circlek-cashier.apk";
+      link.download = "circlek-cashier.apk";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      alert(lang === "en" 
+        ? "Downloading App... Once downloaded, tap the file to install it. You may need to 'Allow installing from unknown sources'."
+        : "جاري تحميل التطبيق... بعد التحميل، اضغط على الملف لتثبيته. قد تحتاج إلى 'السماح بالتثبيت من مصادر غير معروفة'.");
+      
+      setIsInstalled(true);
+      return;
+    }
+
+    // Fallback for Desktop/Chrome if not explicitly Android/iOS
     if (!deferredPrompt) {
       alert(lang === "en"
         ? "Your browser doesn't support automatic installation. You can install it from your browser's menu (three dots -> Add to Home screen)."

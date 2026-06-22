@@ -7,6 +7,7 @@ export default function PwaInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+  const [isAndroid, setIsAndroid] = useState(false);
   const [isInstalled, setIsInstalled] = useState(true); // Default true to prevent flash
 
   useEffect(() => {
@@ -26,11 +27,13 @@ export default function PwaInstallPrompt() {
       return /iphone|ipad|ipod/.test(userAgent);
     };
     
-    // Defer setting iOS state to avoid cascading render lint warning
+    // Defer setting platform state to avoid cascading render lint warning
     setTimeout(() => {
       const isIOSDevice = checkIOS();
+      const isAndroidDevice = /android/.test(window.navigator.userAgent.toLowerCase());
       setIsIOS(isIOSDevice);
-      if (isIOSDevice && !isInstalled) {
+      setIsAndroid(isAndroidDevice);
+      if ((isIOSDevice || isAndroidDevice) && !isInstalled) {
         setShowPrompt(true);
       }
     }, 0);
@@ -59,6 +62,21 @@ export default function PwaInstallPrompt() {
   const handleInstallClick = async () => {
     if (isIOS) {
       alert("To install on iOS: Tap the 'Share' icon at the bottom of Safari, then scroll down and tap 'Add to Home Screen'.");
+      return;
+    }
+
+    if (isAndroid) {
+      const link = document.createElement("a");
+      link.href = "/circlek-cashier.apk";
+      link.download = "circlek-cashier.apk";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      alert("Downloading App... Once downloaded, tap the file to install it. You may need to 'Allow installing from unknown sources'.");
+      
+      setIsInstalled(true);
+      setShowPrompt(false);
       return;
     }
 
