@@ -920,6 +920,8 @@ export default function CashierShiftReportPage() {
                             thousandSeparator=","
                             allowNegative={false}
                             decimalScale={0}
+                            inputMode="numeric"
+                            pattern="[0-9]*"
                             className="w-full p-2.5 rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500 font-mono text-emerald-600 dark:text-emerald-400 text-right text-base sm:text-lg font-bold transition-all"
                             placeholder="0"
                           />
@@ -935,6 +937,7 @@ export default function CashierShiftReportPage() {
                           allowNegative={false}
                           decimalScale={2}
                           fixedDecimalScale={true}
+                          inputMode="decimal"
                           className="w-full p-2.5 rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500 font-mono text-emerald-600 dark:text-emerald-400 text-right text-base sm:text-lg font-bold transition-all"
                           placeholder="0.00"
                         />
@@ -959,6 +962,7 @@ export default function CashierShiftReportPage() {
                         thousandSeparator=","
                         allowNegative={false}
                         decimalScale={2}
+                        inputMode="decimal"
                         fixedDecimalScale={true}
                         className={`w-full ${lang === "ar" ? "pr-14" : "pl-14"} p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-blue-500 text-base sm:text-lg font-mono font-bold text-blue-600 dark:text-blue-450 transition-all`} 
                         placeholder="0.00" 
