@@ -580,7 +580,7 @@ export default function CashierShiftReportPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             title: "New Shift Report",
-            body: `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' })}\nCashier: ${c?.name || 'Unknown'}\nStore: ${c?.storeId || 'Unknown'}\nShift: ${c?.shift || 'Unknown'}\nTotal Cash: ${calculateTotalCash()} EGP\nVisa: ${visa} EGP\nDrop: ${dropCash} EGP\nExpenses: ${expensesTotal} EGP\nNet Envelope: ${calculateTotalCash() - dropCash - expensesTotal} EGP\nSignature: ${cashierSignature ? 'Captured' : 'None'}\n\nView Full Report & Signature:\n${window.location.origin}/shift-reports/view?id=${submittedId}`
+            body: `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' })}\nCashier: ${c?.name || 'Unknown'}\nStore: ${c?.storeId || 'Unknown'}\nShift: ${c?.shift || 'Unknown'}\nTotal Cash: ${calculateTotalCash()} EGP\nVisa: ${visa} EGP\nTotal Submitted: ${calculateTotalMoney()} EGP\nSignature: ${cashierSignature ? 'Captured' : 'None'}\n\nView Full Report & Signature:\n${window.location.origin}/shift-reports/view?id=${submittedId}`
           })
         });
       } catch (err) { console.error("Notify error", err); }
