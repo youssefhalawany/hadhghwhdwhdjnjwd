@@ -11,6 +11,8 @@ import {
 import { Html5Qrcode } from "html5-qrcode";
 import { vibrateSuccess } from "@/lib/haptics";
 
+import { PatternFormat } from "react-number-format";
+
 export default function ExpiryTrackerPage() {
   const router = useRouter();
   const [lang, setLang] = useState<"en" | "ar">("en");
@@ -549,13 +551,14 @@ export default function ExpiryTrackerPage() {
               </label>
               <div className="flex flex-col gap-2">
                 <div className="flex gap-2">
-                  <input 
-                    type="text" 
+                  <PatternFormat 
+                    format="## / ## / ####" 
+                    mask="_"
                     value={rawDateText}
-                    onChange={(e) => setRawDateText(e.target.value)}
+                    onValueChange={(values) => setRawDateText(values.formattedValue)}
                     onBlur={parseRawDate}
-                    placeholder={lang === "en" ? "DD MM YYYY or MM/YY" : "DD MM YYYY أو MM/YY"}
-                    className="flex-1 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 transition-all font-semibold"
+                    placeholder={lang === "en" ? "DD / MM / YYYY" : "DD / MM / YYYY"}
+                    className="flex-1 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 transition-all font-semibold font-mono"
                   />
                   <div className="relative w-14 h-[46px]">
                     <input 
