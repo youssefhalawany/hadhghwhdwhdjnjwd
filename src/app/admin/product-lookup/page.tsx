@@ -20,8 +20,12 @@ export default function ProductLookupPage() {
   // Scanner States
   const [showScanner, setShowScanner] = useState(false);
   const [scannerError, setScannerError] = useState("");
+  const [scannerTarget, setScannerTarget] = useState<"search" | "form">("search");
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
+
+  // Supplier State
+  const [isAddingSupplier, setIsAddingSupplier] = useState(false);
 
   // All Products State
   const [allProducts, setAllProducts] = useState<any[]>([]);
@@ -142,7 +146,8 @@ export default function ProductLookupPage() {
   };
 
   // Scanner Actions
-  const startScanning = () => {
+  const startScanning = (target: "search" | "form" = "search") => {
+    setScannerTarget(target);
     initAudio();
     setShowScanner(true);
     setScannerError("");
@@ -171,8 +176,12 @@ export default function ProductLookupPage() {
                   osc.stop(ctx.currentTime + 0.15);
                 }
               } catch (e) {}
-              setSearchTerm(decodedText);
-              performLookup(decodedText);
+              if (target === "search") {
+                setSearchTerm(decodedText);
+                performLookup(decodedText);
+              } else {
+                setEditFormData(prev => ({...prev, barcode: decodedText}));
+              }
               stopScanning();
             },
             undefined
@@ -227,7 +236,7 @@ export default function ProductLookupPage() {
           </div>
           <button 
             type="button" 
-            onClick={startScanning}
+            onClick={() => startScanning("search")}
             className="p-4 bg-slate-900 dark:bg-slate-800 text-white rounded-xl hover:bg-slate-800 transition-colors flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-sm"
           >
             <Camera className="h-6 w-6" />
@@ -272,14 +281,23 @@ export default function ProductLookupPage() {
               <form onSubmit={handleSaveProduct} className="space-y-4 animate-in fade-in">
                 <div>
                   <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Barcode (ID)</label>
-                  <input 
-                    required
-                    type="text"
-                    value={editFormData.barcode}
-                    onChange={(e) => setEditFormData({...editFormData, barcode: e.target.value})}
-                    disabled={!productData.notFound}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-sm focus:border-blue-500 outline-none disabled:opacity-50"
-                  />
+                  <div className="flex gap-2">
+                    <input 
+                      required
+                      type="text"
+                      value={editFormData.barcode}
+                      onChange={(e) => setEditFormData({...editFormData, barcode: e.target.value})}
+                      disabled={!productData.notFound && !!productData.id}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-sm focus:border-blue-500 outline-none disabled:opacity-50"
+                    />
+                    <button 
+                      type="button"
+                      onClick={() => startScanning("form")}
+                      className="p-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700"
+                    >
+                      <Camera className="h-5 w-5" />
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Product Name</label>
@@ -293,13 +311,52 @@ export default function ProductLookupPage() {
                 </div>
                 <div>
                   <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Supplier</label>
-                  <input 
-                    required
-                    type="text"
-                    value={editFormData.supplier}
-                    onChange={(e) => setEditFormData({...editFormData, supplier: e.target.value})}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-sm focus:border-blue-500 outline-none"
-                  />
+                  {isAddingSupplier ? (
+                    <div className="flex gap-2">
+                      <input 
+                        required
+                        type="text"
+                        placeholder="Enter new supplier name"
+                        value={editFormData.supplier}
+                        onChange={(e) => setEditFormData({...editFormData, supplier: e.target.value})}
+                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-sm focus:border-blue-500 outline-none"
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          setIsAddingSupplier(false);
+                          setEditFormData({...editFormData, supplier: ""});
+                        }}
+                        className="p-3 bg-red-50 text-red-600 rounded-lg font-bold text-sm hover:bg-red-100 transition-colors"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <select 
+                        required
+                        value={editFormData.supplier}
+                        onChange={(e) => setEditFormData({...editFormData, supplier: e.target.value})}
+                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-sm focus:border-blue-500 outline-none"
+                      >
+                        <option value="" disabled>Select a supplier</option>
+                        {Array.from(new Set(allProducts.map(p => p.supplier).filter(Boolean))).sort().map(s => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          setIsAddingSupplier(true);
+                          setEditFormData({...editFormData, supplier: ""});
+                        }}
+                        className="p-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700 whitespace-nowrap text-sm font-bold flex items-center gap-1"
+                      >
+                        <PlusCircle className="h-4 w-4" /> New
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                   <button 
