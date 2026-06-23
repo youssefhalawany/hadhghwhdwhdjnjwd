@@ -38,12 +38,12 @@ export default function ExpiryAuditPage() {
   const fetchItems = async () => {
     setLoading(true);
     try {
-      const q = query(collection(db, "expiries"), orderBy("timestamp", "desc"), limit(2000));
+      const q = query(collection(db, "expiries"), orderBy("createdAt", "desc"), limit(2000));
       const snap = await getDocs(q);
       const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       
-      // Sort by creation date descending
-      data.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      // Sort by expiry date ascending (closest to expire first)
+      data.sort((a: any, b: any) => (a.expiryDate || "").localeCompare(b.expiryDate || ""));
       setItems(data);
     } catch (err) {
       console.error("Error fetching expiries:", err);
@@ -377,28 +377,33 @@ export default function ExpiryAuditPage() {
                     const tomorrow = new Date(today);
                     tomorrow.setDate(tomorrow.getDate() + 1);
 
-                    const isExpired = itemDate < today;
-                    const isExpiringToday = itemDate.getTime() === today.getTime();
-                    const isExpiringTomorrow = itemDate.getTime() === tomorrow.getTime();
+                    const diffTime = itemDate.getTime() - today.getTime();
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-                    let badgeClass = "bg-slate-100 text-slate-650 dark:bg-slate-800 dark:text-slate-400 border border-slate-200/30";
-                    let badgeText = "Active";
+                    let badgeClass = "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 border border-green-200/30";
+                    let badgeText = "Safe (>2M)";
 
                     if (item.status === "pulled") {
                       badgeClass = "bg-slate-200 text-slate-500 dark:bg-slate-800/80 dark:text-slate-500 border border-slate-300/30";
                       badgeText = "Pulled";
                     } else if (item.status === "audited") {
-                      badgeClass = "bg-green-100 text-green-700 border border-green-200/30";
+                      badgeClass = "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400 border border-blue-200/30";
                       badgeText = "Audited";
-                    } else if (isExpired) {
-                      badgeClass = "bg-red-105 text-red-700 dark:bg-red-950/40 dark:text-red-400 border border-red-200/30";
+                    } else if (diffDays < 0) {
+                      badgeClass = "bg-red-200 text-red-800 dark:bg-red-950/40 dark:text-red-400 border border-red-400/50 font-black animate-pulse";
                       badgeText = "EXPIRED";
-                    } else if (isExpiringToday) {
-                      badgeClass = "bg-orange-105 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400 border border-orange-200/30";
-                      badgeText = "Today";
-                    } else if (isExpiringTomorrow) {
-                      badgeClass = "bg-yellow-105 text-yellow-800 dark:bg-yellow-950/45 dark:text-yellow-400 border border-yellow-250/30";
-                      badgeText = "Tomorrow";
+                    } else if (diffDays <= 2) {
+                      badgeClass = "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 border border-red-300/30 font-bold";
+                      badgeText = "≤ 48 Hrs";
+                    } else if (diffDays <= 7) {
+                      badgeClass = "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400 border border-orange-300/30";
+                      badgeText = "Soon";
+                    } else if (diffDays <= 30) {
+                      badgeClass = "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-400 border border-yellow-300/30";
+                      badgeText = "1 Month";
+                    } else if (diffDays <= 60) {
+                      badgeClass = "bg-[#f3e5d8] text-[#8b5a2b] dark:bg-[#3d2a1a] dark:text-[#d4b499] border border-[#d4b499]/30";
+                      badgeText = "2 Months";
                     }
 
                     const isSelected = selectedExpiry?.id === item.id;

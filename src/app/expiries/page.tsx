@@ -614,33 +614,40 @@ export default function ExpiryTrackerPage() {
               const itemDate = new Date(item.expiryDate);
               itemDate.setHours(0,0,0,0);
               
-              const isExpired = itemDate < today;
-              const isExpiringToday = itemDate.getTime() === today.getTime();
-              const isExpiringTomorrow = itemDate.getTime() === tomorrow.getTime();
+              const diffTime = itemDate.getTime() - today.getTime();
+              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-              let severityClass = "border-slate-200/85 dark:border-slate-800 bg-white/40 dark:bg-slate-850/10";
-              let badgeClass = "bg-slate-100 text-slate-650 dark:bg-slate-800 dark:text-slate-400 border border-slate-200/30";
-              let badgeText = lang === "en" ? "Valid" : "صالح";
+              let severityClass = "border-green-200 bg-green-50/40 dark:bg-green-950/10 dark:border-green-900/40";
+              let badgeClass = "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 border border-green-200/30";
+              let badgeText = lang === "en" ? "Safe (>2M)" : "آمن";
 
-              if (isExpired) {
+              if (diffDays < 0) {
                 severityClass = "border-red-500/80 bg-red-50/70 dark:bg-red-950/15";
-                badgeClass = "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400 border border-red-200/30";
+                badgeClass = "bg-red-200 text-red-800 border border-red-400 font-black animate-pulse";
                 badgeText = lang === "en" ? "EXPIRED! Pull Now!" : "منتهي الصلاحية! أزله فوراً!";
-              } else if (isExpiringToday) {
-                severityClass = "border-orange-500/80 bg-orange-50/70 dark:bg-orange-950/15";
-                badgeClass = "bg-orange-100 text-orange-900/40 text-orange-700 dark:text-orange-450 border border-orange-200/30";
-                badgeText = lang === "en" ? "Expires Today" : "ينتهي اليوم";
-              } else if (isExpiringTomorrow) {
-                severityClass = "border-yellow-400/80 bg-yellow-50/70 dark:bg-yellow-950/15";
-                badgeClass = "bg-yellow-100 dark:bg-yellow-900/40 text-yellow-750 dark:text-yellow-455 border border-yellow-250/30";
-                badgeText = lang === "en" ? "Expires Tomorrow" : "ينتهي غداً";
+              } else if (diffDays <= 2) {
+                severityClass = "border-red-400/80 bg-red-50/40 dark:bg-red-950/15";
+                badgeClass = "bg-red-100 text-red-700 border border-red-300 font-bold";
+                badgeText = lang === "en" ? "≤ 48 Hrs" : "أقل من ٤٨ ساعة";
+              } else if (diffDays <= 7) {
+                severityClass = "border-orange-300/80 bg-orange-50/40 dark:bg-orange-950/15";
+                badgeClass = "bg-orange-100 text-orange-700 border border-orange-300";
+                badgeText = lang === "en" ? "Soon" : "قريباً";
+              } else if (diffDays <= 30) {
+                severityClass = "border-yellow-300/80 bg-yellow-50/40 dark:bg-yellow-950/15";
+                badgeClass = "bg-yellow-100 text-yellow-800 border border-yellow-300";
+                badgeText = lang === "en" ? "1 Month" : "شهر واحد";
+              } else if (diffDays <= 60) {
+                severityClass = "border-[#d4b499]/80 bg-[#f3e5d8]/40 dark:bg-[#3d2a1a]/15";
+                badgeClass = "bg-[#f3e5d8] text-[#8b5a2b] border border-[#d4b499]";
+                badgeText = lang === "en" ? "2 Months" : "شهران";
               }
 
               return (
                 <div key={item.id} className={`p-4 rounded-2xl border-2 ${severityClass} shadow-sm hover:shadow-md hover:scale-[1.015] duration-200 transition-all flex flex-col justify-between`}>
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg ${isExpired || isExpiringToday ? "bg-red-100/80 dark:bg-red-900/30 text-red-500" : "bg-blue-100/80 dark:bg-blue-900/30 text-blue-500"}`}>
+                      <div className={`p-2 rounded-lg ${diffDays <= 2 ? "bg-red-100/80 dark:bg-red-900/30 text-red-500" : diffDays <= 7 ? "bg-orange-100/80 dark:bg-orange-900/30 text-orange-500" : diffDays <= 30 ? "bg-yellow-100/80 dark:bg-yellow-900/30 text-yellow-600" : "bg-blue-100/80 dark:bg-blue-900/30 text-blue-500"}`}>
                         <Package className="h-5 w-5" />
                       </div>
                       <div>

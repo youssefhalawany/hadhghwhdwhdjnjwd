@@ -34,7 +34,8 @@ export default function ProductLookupPage() {
   useEffect(() => {
     const fetchAllProducts = async () => {
       try {
-        const snap = await getDocs(collection(db, "products"));
+        const qProducts = query(collection(db, "products"), limit(100));
+        const snap = await getDocs(qProducts);
         const products = snap.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
         products.sort((a, b) => {
           const nameA = (a.description || a.name || a.itemName || "").toLowerCase();
@@ -84,18 +85,17 @@ export default function ProductLookupPage() {
 
       setProductData(foundProduct || { notFound: true, searchTerm: term });
 
-      // 3. Look up active expiries for this barcode or name
-      const expiriesQuery = query(collection(db, "expiries"), where("status", "==", "active"));
-      const expiriesSnap = await getDocs(expiriesQuery);
-      const allExpiries = expiriesSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
-      
-      const matchingExpiries = allExpiries.filter(e => 
-        e.barcode === term || 
-        (foundProduct && e.barcode === foundProduct.barcode) ||
-        e.itemName?.toLowerCase().includes(term.toLowerCase())
+      // 3. Look up active expiries for this barcode
+      const searchBarcode = foundProduct?.barcode || term;
+      const expiriesQuery = query(
+        collection(db, "expiries"), 
+        where("status", "==", "active"),
+        where("barcode", "==", searchBarcode)
       );
-
-      setExpiriesData(matchingExpiries.sort((a, b) => a.expiryDate.localeCompare(b.expiryDate)));
+      const expiriesSnap = await getDocs(expiriesQuery);
+      const matchingExpiries = expiriesSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+      
+      setExpiriesData(matchingExpiries.sort((a: any, b: any) => (a.expiryDate || "").localeCompare(b.expiryDate || "")));
 
     } catch (err: any) {
       console.error("Lookup failed:", err);
