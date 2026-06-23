@@ -34,7 +34,7 @@ export default function ProductLookupPage() {
   useEffect(() => {
     const fetchAllProducts = async () => {
       try {
-        const qProducts = query(collection(db, "products"), limit(100));
+        const qProducts = query(collection(db, "products")); // Removed limit so name search works
         const snap = await getDocs(qProducts);
         const products = snap.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
         products.sort((a, b) => {
@@ -453,19 +453,46 @@ export default function ProductLookupPage() {
                   itemDate.setHours(0,0,0,0);
                   const today = new Date();
                   today.setHours(0,0,0,0);
-                  const isExpired = itemDate < today;
+                  const diffTime = itemDate.getTime() - today.getTime();
+                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                  let bgClass = "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700";
+                  let textClass = "text-slate-900 dark:text-white";
+                  let dateClass = "text-slate-900 dark:text-white";
+
+                  if (diffDays < 0) {
+                    bgClass = "bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-800 animate-pulse";
+                    textClass = "text-red-900 dark:text-red-100";
+                    dateClass = "text-red-700 dark:text-red-400 font-black";
+                  } else if (diffDays <= 2) {
+                    bgClass = "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/50";
+                    textClass = "text-red-800 dark:text-red-200";
+                    dateClass = "text-red-600 dark:text-red-400 font-bold";
+                  } else if (diffDays <= 7) {
+                    bgClass = "bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-900/50";
+                    textClass = "text-orange-900 dark:text-orange-100";
+                    dateClass = "text-orange-700 dark:text-orange-400 font-bold";
+                  } else if (diffDays <= 30) {
+                    bgClass = "bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-900/50";
+                    textClass = "text-yellow-900 dark:text-yellow-100";
+                    dateClass = "text-yellow-700 dark:text-yellow-400 font-bold";
+                  } else if (diffDays <= 60) {
+                    bgClass = "bg-[#fdfbf7] dark:bg-[#2a1f18] border-[#e8dccb] dark:border-[#4a3628]";
+                    textClass = "text-[#5c3a21] dark:text-[#e8dccb]";
+                    dateClass = "text-[#8b5a2b] dark:text-[#d4b499] font-bold";
+                  }
 
                   return (
-                    <div key={idx} className={`p-4 rounded-xl border ${isExpired ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700'} flex items-center justify-between`}>
+                    <div key={idx} className={`p-4 rounded-xl border ${bgClass} flex items-center justify-between`}>
                       <div>
-                        <p className={`font-mono font-bold text-lg ${isExpired ? 'text-red-700 dark:text-red-400' : 'text-slate-900 dark:text-white'}`}>
-                          {exp.expiryDate}
+                        <p className={`font-mono text-lg ${dateClass}`}>
+                          {exp.expiryDate} {diffDays < 0 && "(EXPIRED)"}
                         </p>
-                        <p className="text-xs font-semibold text-slate-500 mt-1">Logged by: {exp.addedBy}</p>
+                        <p className={`text-xs font-semibold mt-1 opacity-70 ${textClass}`}>Logged by: {exp.addedBy}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-2xl font-black text-slate-900 dark:text-white">{exp.quantity}</p>
-                        <p className="text-xs font-bold text-slate-400 uppercase">Qty</p>
+                        <p className={`text-2xl font-black ${textClass}`}>{exp.quantity}</p>
+                        <p className={`text-xs font-bold uppercase opacity-60 ${textClass}`}>Qty</p>
                       </div>
                     </div>
                   );
@@ -487,7 +514,7 @@ export default function ProductLookupPage() {
           </div>
         ) : (
           <div className="max-h-96 overflow-y-auto pr-2 custom-scrollbar space-y-2">
-            {allProducts.map((p, idx) => (
+            {allProducts.slice(0, 50).map((p, idx) => (
               <div key={p.id || idx} className="flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-700 transition-colors cursor-pointer" onClick={() => { setSearchTerm(p.barcode || p.id); performLookup(p.barcode || p.id); }}>
                 <div>
                   <h4 className="font-bold text-slate-900 dark:text-white">{p.description || p.name || p.itemName || "Unnamed Product"}</h4>
@@ -514,6 +541,12 @@ export default function ProductLookupPage() {
                 </button>
               </div>
             ))}
+            {allProducts.length > 50 && (
+              <div className="text-center p-4 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+                <p className="text-sm font-bold text-slate-500">Showing 50 of {allProducts.length} products.</p>
+                <p className="text-xs text-slate-400 mt-1">Use the search bar above to find specific items.</p>
+              </div>
+            )}
           </div>
         )}
       </div>

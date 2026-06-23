@@ -194,8 +194,7 @@ export default function ExpiryAuditPage() {
     return true;
   });
 
-  const totalFilteredQuantity = filteredReportItems.reduce((acc, curr) => acc + Number(curr.quantity || 0), 0);
-  const totalFilteredValue = filteredReportItems.reduce((acc, curr) => acc + (Number(curr.quantity || 0) * 2.5), 0); // Assuming 2.5 is a fallback
+    const totalFilteredQuantity = filteredReportItems.reduce((acc, curr) => acc + Number(curr.quantity || 0), 0);
 
   const generateQRData = () => {
     let text = `Expiry Report\nFilters: Status=${reportFilters.status}, Dates=${reportFilters.startDate || 'Any'} to ${reportFilters.endDate || 'Any'}\n`;
@@ -240,10 +239,6 @@ export default function ExpiryAuditPage() {
               <div>
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Units Impacted</p>
                 <p className="text-3xl font-black text-slate-900">{totalFilteredQuantity} <span className="text-base text-slate-500 font-bold">Units</span></p>
-              </div>
-              <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Estimated Value</p>
-                <p className="text-3xl font-black text-red-600">{totalFilteredValue.toLocaleString()} <span className="text-base text-slate-500 font-bold">EGP</span></p>
               </div>
             </div>
             <div className="text-right">
@@ -905,7 +900,7 @@ export default function ExpiryAuditPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                <div className="glass-panel p-6 rounded-xl border border-border">
                  <p className="text-sm font-bold text-muted-foreground">Filtered Items Expiring</p>
                  <p className="text-3xl font-black mt-1 text-foreground">{totalFilteredQuantity}</p>
@@ -913,10 +908,6 @@ export default function ExpiryAuditPage() {
                <div className="glass-panel p-6 rounded-xl border border-border">
                  <p className="text-sm font-bold text-muted-foreground">Unique Products</p>
                  <p className="text-3xl font-black mt-1 text-foreground">{Array.from(new Set(filteredReportItems.map(i => i.itemName))).length}</p>
-               </div>
-               <div className="glass-panel p-6 rounded-xl border border-border">
-                 <p className="text-sm font-bold text-muted-foreground">Estimated Value</p>
-                 <p className="text-3xl font-black mt-1 text-red-500 flex items-center gap-2">{totalFilteredValue.toLocaleString()} EGP</p>
                </div>
             </div>
 
