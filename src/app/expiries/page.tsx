@@ -163,7 +163,7 @@ export default function ExpiryTrackerPage() {
   };
 
   const parseRawDate = () => {
-    let val = rawDateText.replace(/\D/g, "");
+    const val = rawDateText.replace(/\D/g, "");
     let y = "", m = "", d = "01";
     
     if (val.length === 4) { // MMYY
