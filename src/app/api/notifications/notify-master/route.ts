@@ -11,25 +11,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing title or body" }, { status: 400 });
     }
 
-    // Send WhatsApp via CallMeBot FIRST to guarantee it fires
-    try {
-      const phone = encodeURIComponent("+201011212003");
-      const apikey = "3367979";
-      const waText = encodeURIComponent(`*${title}*\n${body}`);
-      const callMeBotUrl = `https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${waText}&apikey=${apikey}`;
-      const res = await fetch(callMeBotUrl, {
-        method: "GET",
-        cache: "no-store",
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Node.js)"
-        }
-      });
-      if (!res.ok) {
-        console.error("WhatsApp Error:", await res.text());
-      }
-    } catch (e) {
-      console.error("WhatsApp notification failed", e);
-    }
+    // We will run WhatsApp notification later to avoid blocking the Firebase initialization
 
     // Initialize Firebase Admin if not already initialized
     if (!getApps().length) {
@@ -70,15 +52,44 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Master FCM token is empty" }, { status: 404 });
     }
 
-    const response = await getMessaging().send({
+    // Run Firebase and WhatsApp in parallel with timeouts to ensure neither blocks the other fatally
+    const fcmPromise = fcmToken ? getMessaging().send({
       token: fcmToken,
-      notification: {
-        title,
-        body,
-      },
-    });
+      notification: { title, body },
+    }) : Promise.resolve(null);
 
-    return NextResponse.json({ success: true, response });
+    const sendWhatsApp = async () => {
+      try {
+        const phone = encodeURIComponent("+201011212003");
+        const apikey = "3367979";
+        const waText = encodeURIComponent(`*${title}*\n${body}`);
+        const callMeBotUrl = `https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${waText}&apikey=${apikey}`;
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000); // 4 second timeout
+        
+        const res = await fetch(callMeBotUrl, {
+          method: "GET",
+          cache: "no-store",
+          headers: { "User-Agent": "Mozilla/5.0 (Node.js)" },
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        
+        if (!res.ok) {
+          console.error("WhatsApp Error:", await res.text());
+        }
+      } catch (e) {
+        console.error("WhatsApp notification failed or timed out", e);
+      }
+    };
+
+    const [fcmResult] = await Promise.allSettled([fcmPromise, sendWhatsApp()]);
+
+    return NextResponse.json({ 
+      success: true, 
+      fcmStatus: fcmResult.status === 'fulfilled' ? 'sent' : 'failed'
+    });
 
   } catch (error: any) {
     console.error('Error sending master notification:', error);
