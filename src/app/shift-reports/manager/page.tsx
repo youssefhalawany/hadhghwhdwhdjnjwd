@@ -40,6 +40,13 @@ export default function ManagerAuditPage() {
   const [submitting, setSubmitting] = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState(false);
 
+  const [cashierOverrideCash, setCashierOverrideCash] = useState<string>("");
+  const [cashierOverrideVisa, setCashierOverrideVisa] = useState<string>("");
+
+  const [isEditingExpiry, setIsEditingExpiry] = useState(false);
+  const [editExpiryDate, setEditExpiryDate] = useState("");
+  const [editExpiryQty, setEditExpiryQty] = useState("");
+
   useEffect(() => {
     // 1. Fetch Pending
     const qPending = query(collection(db, "shift_reports"), where("status", "==", "pending_manager"));
@@ -79,6 +86,8 @@ export default function ManagerAuditPage() {
 
   const handleSelectReport = (report: any) => {
     setSelectedReport(report);
+    setCashierOverrideCash(String(report.cashierCounts.cash || "0"));
+    setCashierOverrideVisa(String(report.cashierCounts.visa || "0"));
     // Populate form
     if (report.managerAudit) {
       setExpectedCash(String(report.managerAudit.expectedCash || ""));
@@ -100,12 +109,14 @@ export default function ManagerAuditPage() {
 
   const calculateCashVariance = () => {
     if (!selectedReport) return 0;
-    return selectedReport.cashierCounts.cash - (Number(expectedCash) || 0);
+    const submittedCash = activeTab === "pending" ? Number(cashierOverrideCash) || 0 : selectedReport.cashierCounts.cash;
+    return submittedCash - (Number(expectedCash) || 0);
   };
 
   const calculateVisaVariance = () => {
     if (!selectedReport) return 0;
-    return selectedReport.cashierCounts.visa - (Number(expectedVisa) || 0);
+    const submittedVisa = activeTab === "pending" ? Number(cashierOverrideVisa) || 0 : selectedReport.cashierCounts.visa;
+    return submittedVisa - (Number(expectedVisa) || 0);
   };
 
   const calculateTotalVariance = () => {
@@ -126,6 +137,9 @@ export default function ManagerAuditPage() {
       await updateDoc(reportRef, {
         status: "approved",
         "cashierDetails.shift": auditShift.toLowerCase(),
+        "cashierCounts.cash": Number(cashierOverrideCash) || 0,
+        "cashierCounts.visa": Number(cashierOverrideVisa) || 0,
+        "cashierCounts.total": (Number(cashierOverrideCash) || 0) + (Number(cashierOverrideVisa) || 0),
         managerAudit: {
           ...selectedReport.managerAudit, // preserve rejectReason and other older fields
           expectedCash: Number(expectedCash) || 0,
@@ -338,6 +352,22 @@ export default function ManagerAuditPage() {
     }
   };
 
+  const handleSaveExpiryEdit = async () => {
+    if (!selectedExpiry) return;
+    try {
+      await updateDoc(doc(db, "expiries", selectedExpiry.id), {
+        expiryDate: editExpiryDate,
+        quantity: Number(editExpiryQty) || 0
+      });
+      setSelectedExpiry({ ...selectedExpiry, expiryDate: editExpiryDate, quantity: Number(editExpiryQty) || 0 });
+      setIsEditingExpiry(false);
+      alert("Expiry record updated successfully!");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update expiry record.");
+    }
+  };
+
   if (loading) {
     return <div className="flex items-center justify-center min-h-[60vh]"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600"></div></div>;
   }
@@ -447,7 +477,7 @@ export default function ManagerAuditPage() {
                   return (
                     <button
                       key={item.id}
-                      onClick={() => { setSelectedExpiry(item); setSelectedReport(null); }}
+                      onClick={() => { setSelectedExpiry(item); setSelectedReport(null); setEditExpiryDate(item.expiryDate); setEditExpiryQty(String(item.quantity)); setIsEditingExpiry(false); }}
                       className={`w-full text-left p-4 rounded-xl border transition-all ${isSelected
                           ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/15 shadow-md shadow-blue-500/10'
                           : 'border-border bg-card hover:border-blue-300'
@@ -722,9 +752,18 @@ export default function ManagerAuditPage() {
                         })()}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Quantity</p>
-                      <p className="text-2xl font-black text-green-400">{selectedExpiry.quantity}</p>
+                    <div className="text-right flex items-center justify-end gap-4">
+                      {isEditingExpiry ? (
+                        <div className="text-left bg-slate-800 p-2 rounded-lg">
+                          <label className="text-[10px] text-slate-400 font-bold block uppercase mb-1">New Quantity</label>
+                          <input type="number" value={editExpiryQty} onChange={e => setEditExpiryQty(e.target.value)} className="w-16 p-1 text-slate-900 font-bold rounded text-center outline-none" />
+                        </div>
+                      ) : (
+                        <div>
+                          <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Quantity</p>
+                          <p className="text-2xl font-black text-green-400">{selectedExpiry.quantity}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -744,9 +783,13 @@ export default function ManagerAuditPage() {
 
                   {/* 2. Expiry Details */}
                   <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 bg-muted/30 rounded-xl border border-border">
+                    <div className="p-4 bg-muted/30 rounded-xl border border-border relative">
                       <p className="text-xs font-bold text-muted-foreground uppercase mb-1">Expiration Date</p>
-                      <p className="text-lg font-bold text-foreground">{selectedExpiry.expiryDate}</p>
+                      {isEditingExpiry ? (
+                        <input type="date" value={editExpiryDate} onChange={e => setEditExpiryDate(e.target.value)} className="w-full p-2 mt-1 rounded bg-background border border-border font-bold outline-none text-foreground" />
+                      ) : (
+                        <p className="text-lg font-bold text-foreground">{selectedExpiry.expiryDate}</p>
+                      )}
                     </div>
                     <div className="p-4 bg-muted/30 rounded-xl border border-border">
                       <p className="text-xs font-bold text-muted-foreground uppercase mb-1">Date Logged</p>
@@ -766,22 +809,40 @@ export default function ManagerAuditPage() {
 
                   {/* 3. Actions */}
                   <div className="pt-4 border-t border-border flex flex-col gap-3">
-                    {selectedExpiry.status !== "pulled" && (
-                      <button
-                        type="button"
-                        onClick={() => handleMarkExpiryPulled(selectedExpiry)}
-                        className="w-full py-4 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 text-white rounded-xl font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer animate-in fade-in"
-                      >
-                        <CheckCircle className="h-5 w-5 text-green-500" /> Mark Item as Pulled from Shelf
-                      </button>
+                    {isEditingExpiry ? (
+                      <div className="flex gap-2">
+                        <button onClick={() => setIsEditingExpiry(false)} className="flex-1 py-3 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl font-bold transition-all">Cancel</button>
+                        <button onClick={handleSaveExpiryEdit} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-all shadow-md">Save Changes</button>
+                      </div>
+                    ) : (
+                      <>
+                        {selectedExpiry.status !== "pulled" && (
+                          <button
+                            type="button"
+                            onClick={() => handleMarkExpiryPulled(selectedExpiry)}
+                            className="w-full py-4 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 text-white rounded-xl font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer animate-in fade-in"
+                          >
+                            <CheckCircle className="h-5 w-5 text-green-500" /> Mark Item as Pulled from Shelf
+                          </button>
+                        )}
+                        <div className="flex gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setIsEditingExpiry(true)}
+                            className="flex-1 py-3 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700 rounded-xl font-bold text-sm transition-all flex items-center justify-center cursor-pointer"
+                          >
+                            Edit Record
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteExpiry(selectedExpiry.id)}
+                            className="flex-1 py-3 border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/30 dark:border-red-900/40 dark:hover:bg-red-900/50 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+                          >
+                            <Trash2 className="h-4 w-4" /> Delete Expiry
+                          </button>
+                        </div>
+                      </>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteExpiry(selectedExpiry.id)}
-                      className="w-full py-3 border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
-                    >
-                      <Trash2 className="h-4 w-4" /> Delete Expiry Record
-                    </button>
                   </div>
                 </div>
               </div>
@@ -829,7 +890,7 @@ export default function ManagerAuditPage() {
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Declared Total</p>
-                    <p className="text-2xl font-black text-green-400">EGP {selectedReport.cashierCounts.total.toLocaleString()}</p>
+                    <p className="text-2xl font-black text-green-400">EGP {activeTab === "pending" ? ((Number(cashierOverrideCash) || 0) + (Number(cashierOverrideVisa) || 0)).toLocaleString() : selectedReport.cashierCounts.total.toLocaleString()}</p>
                   </div>
                 </div>
               </div>
@@ -844,17 +905,23 @@ export default function ManagerAuditPage() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Cashier Submitted */}
                     <div className="space-y-3 p-4 bg-muted/30 rounded-xl border border-border relative">
                       <div className="absolute -top-3 left-4 bg-background px-2 text-[10px] font-bold text-muted-foreground uppercase border border-border rounded-full">Cashier's Physical Count</div>
-                      <div className="flex justify-between p-2 bg-card rounded border border-border">
+                      <div className="flex justify-between items-center gap-2 p-2 bg-card rounded border border-border">
                         <span className="text-sm font-semibold">Cash</span>
-                        <span className="font-mono text-slate-500 line-through mr-2 opacity-0"></span> {/* Spacing */}
-                        <span className="font-mono font-bold">EGP {selectedReport.cashierCounts.cash.toLocaleString()}</span>
+                        {activeTab === "pending" ? (
+                          <input type="number" value={cashierOverrideCash} onChange={e => setCashierOverrideCash(e.target.value)} className="w-28 p-1 text-right font-mono border border-border bg-background rounded outline-none focus:ring-1 focus:ring-blue-500 text-sm" placeholder="Override" />
+                        ) : (
+                          <span className="font-mono font-bold">EGP {selectedReport.cashierCounts.cash.toLocaleString()}</span>
+                        )}
                       </div>
-                      <div className="flex justify-between p-2 bg-card rounded border border-border">
+                      <div className="flex justify-between items-center gap-2 p-2 bg-card rounded border border-border">
                         <span className="text-sm font-semibold">Visa</span>
-                        <span className="font-mono font-bold">EGP {selectedReport.cashierCounts.visa.toLocaleString()}</span>
+                        {activeTab === "pending" ? (
+                          <input type="number" value={cashierOverrideVisa} onChange={e => setCashierOverrideVisa(e.target.value)} className="w-28 p-1 text-right font-mono border border-border bg-background rounded outline-none focus:ring-1 focus:ring-blue-500 text-sm" placeholder="Override" />
+                        ) : (
+                          <span className="font-mono font-bold">EGP {selectedReport.cashierCounts.visa.toLocaleString()}</span>
+                        )}
                       </div>
                     </div>
 

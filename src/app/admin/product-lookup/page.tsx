@@ -232,13 +232,26 @@ export default function ProductLookupPage() {
           >
             <Camera className="h-6 w-6" />
           </button>
-          <button 
-            type="submit" 
-            className="p-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold transition-colors shadow-sm"
-          >
-            Search
-          </button>
+            <button 
+              type="submit" 
+              className="p-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold transition-colors shadow-sm"
+            >
+              Search
+            </button>
         </form>
+        <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+          <button 
+            onClick={() => {
+              setSearchTerm("");
+              setProductData({ notFound: true, searchTerm: "" });
+              setEditFormData({ name: "", supplier: "", barcode: "" });
+              setIsEditing(true);
+            }}
+            className="text-sm font-bold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+          >
+            <PlusCircle className="h-4 w-4" /> Directly Add New Product
+          </button>
+        </div>
       </div>
 
       {loading && (
