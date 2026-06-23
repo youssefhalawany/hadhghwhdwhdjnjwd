@@ -9,6 +9,7 @@ import {
   CheckCircle, Clock, Trash2, Package, Globe, Camera, X, QrCode, Search
 } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
+import { vibrateSuccess } from "@/lib/haptics";
 
 export default function ExpiryTrackerPage() {
   const router = useRouter();
@@ -20,13 +21,19 @@ export default function ExpiryTrackerPage() {
   // Form States
   const [itemName, setItemName] = useState("");
   const [barcode, setBarcode] = useState("");
-  const [quantity, setQuantity] = useState("");
+  const [quantity, setQuantity] = useState("1");
   const [expiryDate, setExpiryDate] = useState("");
+  const [rawDateText, setRawDateText] = useState("");
   const [supplier, setSupplier] = useState("");
   const [isNewProduct, setIsNewProduct] = useState(false);
   const [hasLookedUp, setHasLookedUp] = useState(false);
   const [lookupLoading, setLookupLoading] = useState(false);
   
+  // Input Refs
+  const barcodeInputRef = useRef<HTMLInputElement>(null);
+  const quantityInputRef = useRef<HTMLInputElement>(null);
+  const itemNameInputRef = useRef<HTMLInputElement>(null);
+
   // Edit Quantity States
   const [editingQtyId, setEditingQtyId] = useState<string | null>(null);
   const [editItemQty, setEditItemQty] = useState<number>(0);
@@ -56,6 +63,8 @@ export default function ExpiryTrackerPage() {
         console.error("Error fetching expiries:", error);
       } finally {
         setLoading(false);
+        // Focus barcode when ready
+        setTimeout(() => barcodeInputRef.current?.focus(), 100);
       }
     };
 
@@ -76,10 +85,12 @@ export default function ExpiryTrackerPage() {
         setItemName(data.description || data.name || data.itemName || "");
         setSupplier(data.supplier || "");
         setIsNewProduct(false);
+        setTimeout(() => quantityInputRef.current?.focus(), 100);
       } else {
         setIsNewProduct(true);
         setItemName("");
         setSupplier("");
+        setTimeout(() => itemNameInputRef.current?.focus(), 100);
       }
       setHasLookedUp(true);
     } catch (error: any) {
@@ -115,6 +126,72 @@ export default function ExpiryTrackerPage() {
         audioCtxRef.current.resume();
       }
     } catch(e) {}
+  };
+
+  const playSuccessChime = () => {
+    initAudio();
+    try {
+      const ctx = audioCtxRef.current;
+      if (ctx) {
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        osc1.connect(gain1);
+        gain1.connect(ctx.destination);
+        osc1.type = "sine";
+        osc1.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
+        gain1.gain.setValueAtTime(0.1, ctx.currentTime);
+        
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        osc2.type = "sine";
+        osc2.frequency.setValueAtTime(659.25, ctx.currentTime + 0.1); // E5
+        gain2.gain.setValueAtTime(0.1, ctx.currentTime + 0.1);
+        
+        osc1.start(ctx.currentTime);
+        osc1.stop(ctx.currentTime + 0.1);
+        
+        osc2.start(ctx.currentTime + 0.1);
+        osc2.stop(ctx.currentTime + 0.3);
+      }
+    } catch (e) {
+      console.error("Success chime failed", e);
+    }
+  };
+
+  const parseRawDate = () => {
+    let val = rawDateText.replace(/\D/g, "");
+    let y = "", m = "", d = "01";
+    
+    if (val.length === 4) { // MMYY
+      m = val.substring(0, 2);
+      y = "20" + val.substring(2, 4);
+    } else if (val.length === 6) { // MMYYYY
+      m = val.substring(0, 2);
+      y = val.substring(2, 6);
+    } else if (val.length === 8) { // DDMMYYYY
+      d = val.substring(0, 2);
+      m = val.substring(2, 4);
+      y = val.substring(4, 8);
+    }
+    
+    if (y && m) {
+      if (Number(m) > 0 && Number(m) <= 12) {
+        const formattedDate = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+        setExpiryDate(formattedDate);
+        setRawDateText(`${d.padStart(2, '0')} / ${m.padStart(2, '0')} / ${y}`);
+      }
+    }
+  };
+
+  const addMonthsToExpiry = (months: number) => {
+    const d = new Date();
+    d.setMonth(d.getMonth() + months);
+    const iso = d.toISOString().split('T')[0];
+    setExpiryDate(iso);
+    const [y, m, day] = iso.split('-');
+    setRawDateText(`${day} / ${m} / ${y}`);
   };
 
   // Scanner Actions
@@ -251,8 +328,18 @@ export default function ExpiryTrackerPage() {
       setItemName("");
       setBarcode("");
       setSupplier("");
-      setQuantity("");
+      setQuantity("1");
       setExpiryDate("");
+      setRawDateText("");
+      setIsNewProduct(false);
+      setHasLookedUp(false);
+      
+      // Success haptics & audio
+      vibrateSuccess();
+      playSuccessChime();
+
+      // Loop back to start
+      setTimeout(() => barcodeInputRef.current?.focus(), 100);
     } catch (e: any) {
       console.error("Error adding item:", e);
       alert((lang === "en" ? "Failed to add item. Error: " : "فشلت إضافة العنصر. الخطأ: ") + (e.message || e));
@@ -365,6 +452,7 @@ export default function ExpiryTrackerPage() {
               </label>
               <div className="flex gap-2">
                 <input 
+                  ref={barcodeInputRef}
                   required 
                   type="text" 
                   value={barcode} 
@@ -410,6 +498,7 @@ export default function ExpiryTrackerPage() {
                     {lang === "en" ? "Product Name" : "اسم المنتج"}
                   </label>
                   <input 
+                    ref={itemNameInputRef}
                     required 
                     type="text" 
                     value={itemName} 
@@ -439,27 +528,63 @@ export default function ExpiryTrackerPage() {
               <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
                 {lang === "en" ? "Quantity" : "الكمية"}
               </label>
-              <input 
-                required 
-                type="number" 
-                min="1"
-                value={quantity} 
-                onChange={(e) => setQuantity(e.target.value)}
-                placeholder="0"
-                className="w-full p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 transition-all font-semibold"
-              />
+              <div className="flex gap-2">
+                <input 
+                  ref={quantityInputRef}
+                  required 
+                  type="number" 
+                  min="1"
+                  value={quantity} 
+                  onChange={(e) => setQuantity(e.target.value)}
+                  placeholder="1"
+                  className="w-full p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 transition-all font-semibold"
+                />
+                <button type="button" onClick={() => setQuantity(String(Number(quantity || 0) + 1))} className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-3 rounded-xl font-bold active:scale-[0.98] transition-all border border-slate-200/80 dark:border-slate-700">+1</button>
+                <button type="button" onClick={() => setQuantity(String(Number(quantity || 0) + 6))} className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-3 rounded-xl font-bold active:scale-[0.98] transition-all border border-slate-200/80 dark:border-slate-700">+6</button>
+              </div>
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
                 {lang === "en" ? "Expiry Date" : "تاريخ الانتهاء"}
               </label>
-              <input 
-                required 
-                type="date" 
-                value={expiryDate} 
-                onChange={(e) => setExpiryDate(e.target.value)}
-                className="w-full p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 transition-all font-semibold"
-              />
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    value={rawDateText}
+                    onChange={(e) => setRawDateText(e.target.value)}
+                    onBlur={parseRawDate}
+                    placeholder={lang === "en" ? "DD MM YYYY or MM/YY" : "DD MM YYYY أو MM/YY"}
+                    className="flex-1 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 transition-all font-semibold"
+                  />
+                  <div className="relative w-14 h-[46px]">
+                    <input 
+                      required 
+                      type="date" 
+                      value={expiryDate} 
+                      onChange={(e) => {
+                        setExpiryDate(e.target.value);
+                        if (e.target.value) {
+                          const [y, m, d] = e.target.value.split('-');
+                          setRawDateText(`${d} / ${m} / ${y}`);
+                        } else {
+                          setRawDateText("");
+                        }
+                      }}
+                      className="w-full h-full absolute opacity-0 cursor-pointer top-0 left-0"
+                    />
+                    <div className="w-full h-full bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl flex items-center justify-center pointer-events-none">
+                      <CalendarIcon className="h-5 w-5 text-slate-500" />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
+                  <button type="button" onClick={() => addMonthsToExpiry(1)} className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold px-3 py-1.5 rounded-lg whitespace-nowrap active:scale-[0.98] transition-all">+1 {lang === "en" ? "Month" : "شهر"}</button>
+                  <button type="button" onClick={() => addMonthsToExpiry(3)} className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold px-3 py-1.5 rounded-lg whitespace-nowrap active:scale-[0.98] transition-all">+3 {lang === "en" ? "Months" : "أشهر"}</button>
+                  <button type="button" onClick={() => addMonthsToExpiry(6)} className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold px-3 py-1.5 rounded-lg whitespace-nowrap active:scale-[0.98] transition-all">+6 {lang === "en" ? "Months" : "أشهر"}</button>
+                  <button type="button" onClick={() => addMonthsToExpiry(12)} className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold px-3 py-1.5 rounded-lg whitespace-nowrap active:scale-[0.98] transition-all">+1 {lang === "en" ? "Year" : "سنة"}</button>
+                </div>
+              </div>
             </div>
           </div>
           

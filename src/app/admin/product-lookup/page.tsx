@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, where, getDoc, doc } from "firebase/firestore";
-import { Search, Package, Calendar, AlertTriangle, QrCode, Camera, X, CheckCircle } from "lucide-react";
+import { collection, getDocs, query, where, getDoc, doc, setDoc } from "firebase/firestore";
+import { Search, Package, Calendar, AlertTriangle, QrCode, Camera, X, CheckCircle, Edit, PlusCircle } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
 
 export default function ProductLookupPage() {
@@ -12,11 +12,40 @@ export default function ProductLookupPage() {
   const [productData, setProductData] = useState<any | null>(null);
   const [expiriesData, setExpiriesData] = useState<any[]>([]);
 
+  // Editing States
+  const [isEditing, setIsEditing] = useState(false);
+  const [editFormData, setEditFormData] = useState({ name: "", supplier: "", barcode: "" });
+  const [saveLoading, setSaveLoading] = useState(false);
+
   // Scanner States
   const [showScanner, setShowScanner] = useState(false);
   const [scannerError, setScannerError] = useState("");
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
+
+  // All Products State
+  const [allProducts, setAllProducts] = useState<any[]>([]);
+  const [fetchingProducts, setFetchingProducts] = useState(true);
+
+  useEffect(() => {
+    const fetchAllProducts = async () => {
+      try {
+        const snap = await getDocs(collection(db, "products"));
+        const products = snap.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+        products.sort((a, b) => {
+          const nameA = (a.description || a.name || a.itemName || "").toLowerCase();
+          const nameB = (b.description || b.name || b.itemName || "").toLowerCase();
+          return nameA.localeCompare(nameB);
+        });
+        setAllProducts(products);
+      } catch (e) {
+        console.error("Failed to fetch products", e);
+      } finally {
+        setFetchingProducts(false);
+      }
+    };
+    fetchAllProducts();
+  }, []);
 
   const performLookup = async (rawTerm: string) => {
     const term = rawTerm.trim();
@@ -24,6 +53,7 @@ export default function ProductLookupPage() {
     setLoading(true);
     setProductData(null);
     setExpiriesData([]);
+    setIsEditing(false);
 
     try {
       // 1. First, try to look up by barcode directly in the `products` collection.
@@ -74,6 +104,30 @@ export default function ProductLookupPage() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     performLookup(searchTerm);
+  };
+
+  const handleSaveProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaveLoading(true);
+    try {
+      const productRef = doc(db, "products", editFormData.barcode);
+      await setDoc(productRef, {
+        barcode: editFormData.barcode,
+        description: editFormData.name,
+        name: editFormData.name,
+        itemName: editFormData.name, 
+        supplier: editFormData.supplier,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+      
+      setIsEditing(false);
+      performLookup(editFormData.barcode);
+    } catch (err) {
+      console.error("Save failed", err);
+      alert("Failed to save product.");
+    } finally {
+      setSaveLoading(false);
+    }
   };
 
   const initAudio = () => {
@@ -201,7 +255,57 @@ export default function ProductLookupPage() {
               <Package className="h-4 w-4" /> Product Database
             </h3>
             
-            {productData.notFound ? (
+            {isEditing ? (
+              <form onSubmit={handleSaveProduct} className="space-y-4 animate-in fade-in">
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Barcode (ID)</label>
+                  <input 
+                    required
+                    type="text"
+                    value={editFormData.barcode}
+                    onChange={(e) => setEditFormData({...editFormData, barcode: e.target.value})}
+                    disabled={!productData.notFound}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-sm focus:border-blue-500 outline-none disabled:opacity-50"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Product Name</label>
+                  <input 
+                    required
+                    type="text"
+                    value={editFormData.name}
+                    onChange={(e) => setEditFormData({...editFormData, name: e.target.value})}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-sm focus:border-blue-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Supplier</label>
+                  <input 
+                    required
+                    type="text"
+                    value={editFormData.supplier}
+                    onChange={(e) => setEditFormData({...editFormData, supplier: e.target.value})}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-sm focus:border-blue-500 outline-none"
+                  />
+                </div>
+                <div className="flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <button 
+                    type="button"
+                    onClick={() => setIsEditing(false)}
+                    className="flex-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 py-2.5 rounded-lg font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit"
+                    disabled={saveLoading}
+                    className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg font-bold text-sm hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  >
+                    {saveLoading ? "Saving..." : "Save Product"}
+                  </button>
+                </div>
+              </form>
+            ) : productData.notFound ? (
               <div className="text-center py-8">
                 <AlertTriangle className="h-12 w-12 text-orange-500 mx-auto mb-4 opacity-50" />
                 <p className="font-bold text-slate-700 dark:text-slate-300">Product not found in database.</p>
@@ -211,12 +315,38 @@ export default function ProductLookupPage() {
                     Error: {productData.error}
                   </div>
                 )}
+                <div className="mt-6">
+                  <button 
+                    onClick={() => {
+                      setEditFormData({ name: "", supplier: "", barcode: productData.searchTerm });
+                      setIsEditing(true);
+                    }}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-blue-700 transition-colors inline-flex items-center gap-2 shadow-sm"
+                  >
+                    <PlusCircle className="h-4 w-4" /> Add New Product
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="space-y-4">
-                <div>
-                  <p className="text-xs text-slate-500 font-bold uppercase">Name</p>
-                  <p className="text-xl font-black text-slate-900 dark:text-white mt-1">{productData.description || productData.name || productData.itemName}</p>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-xs text-slate-500 font-bold uppercase">Name</p>
+                    <p className="text-xl font-black text-slate-900 dark:text-white mt-1">{productData.description || productData.name || productData.itemName}</p>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      setEditFormData({ 
+                        name: productData.description || productData.name || productData.itemName || "", 
+                        supplier: productData.supplier || "", 
+                        barcode: productData.barcode || productData.id 
+                      });
+                      setIsEditing(true);
+                    }}
+                    className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-lg font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors inline-flex items-center gap-1.5"
+                  >
+                    <Edit className="h-3 w-3" /> Edit
+                  </button>
                 </div>
                 <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100 dark:border-slate-800">
                   <div>
@@ -275,6 +405,48 @@ export default function ProductLookupPage() {
           </div>
         </div>
       )}
+
+      {/* All Products Scrollable List */}
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 mt-8">
+        <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+          <Package className="h-4 w-4" /> All Registered Products ({allProducts.length})
+        </h3>
+        {fetchingProducts ? (
+          <div className="flex justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
+          </div>
+        ) : (
+          <div className="max-h-96 overflow-y-auto pr-2 custom-scrollbar space-y-2">
+            {allProducts.map((p, idx) => (
+              <div key={p.id || idx} className="flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-700 transition-colors cursor-pointer" onClick={() => { setSearchTerm(p.barcode || p.id); performLookup(p.barcode || p.id); }}>
+                <div>
+                  <h4 className="font-bold text-slate-900 dark:text-white">{p.description || p.name || p.itemName || "Unnamed Product"}</h4>
+                  <div className="flex gap-4 mt-1">
+                    <p className="text-xs text-slate-500 font-mono"><QrCode className="h-3 w-3 inline mr-1" />{p.barcode || p.id}</p>
+                    <p className="text-xs text-slate-500"><span className="font-bold uppercase mr-1">Supplier:</span>{p.supplier || "N/A"}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditFormData({ 
+                      name: p.description || p.name || p.itemName || "", 
+                      supplier: p.supplier || "", 
+                      barcode: p.barcode || p.id 
+                    });
+                    setIsEditing(true);
+                    setProductData({ id: p.id, ...p });
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="text-xs bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-lg font-bold hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors shadow-sm"
+                >
+                  Edit
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Barcode Camera Scanner Modal */}
       {showScanner && (

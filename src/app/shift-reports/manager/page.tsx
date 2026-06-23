@@ -162,15 +162,15 @@ export default function ManagerAuditPage() {
       });
 
       try {
-        fetch("/api/notifications/notify-master", {
+        await fetch("/api/notifications/notify-master", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             title: "New Sales Record (Shift Approved)",
             body: `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' })}\nApproved By: ${managerName}\nCashier: ${selectedReport.cashierDetails.name}\nShift: ${auditShift}\nSystem Cash: ${expectedCash} EGP\nSystem Visa: ${expectedVisa} EGP\nOver/Short: ${calculateCashVariance()} EGP\nCig. Variance: ${Number(cigarettesPercent) || 0}%\nCoffee Variance: ${Number(coffeePercent) || 0}%\nNotes: ${finalNotes || 'None'}\n\nView Approved Report:\n${window.location.origin}/shift-reports/view?id=${selectedReport.id}`
           })
-        }).catch(e => console.error("Notify error", e));
-      } catch (err) {}
+        });
+      } catch (err) { console.error("Notify error", err); }
 
       alert("Report Approved & Saved! Sales record created.");
       setActiveTab("history");
