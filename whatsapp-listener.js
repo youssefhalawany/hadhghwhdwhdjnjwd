@@ -9,20 +9,31 @@ initializeApp({
 
 const db = getFirestore();
 
-function sendWhatsAppNotification(text) {
-  const phone = '201011212003';
+let messageQueue = [];
+
+function queueWhatsAppNotification(text) {
+  messageQueue.push(text);
+}
+
+setInterval(() => {
+  if (messageQueue.length === 0) return;
+  
+  const textToSend = messageQueue.join('\n\n---\n\n');
+  messageQueue = []; // Clear queue
+  
+  const phone = encodeURIComponent('+201011212003');
   const apikey = '3367979';
-  const waText = encodeURIComponent(text);
+  const waText = encodeURIComponent(textToSend);
   const url = `https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${waText}&apikey=${apikey}`;
 
   https.get(url, (res) => {
     let data = '';
     res.on('data', chunk => data += chunk);
-    res.on('end', () => console.log('WhatsApp notification sent:', data));
+    res.on('end', () => console.log('WhatsApp batch notification sent:', data));
   }).on('error', (err) => {
-    console.error('Error sending WhatsApp notification:', err.message);
+    console.error('Error sending WhatsApp batch notification:', err.message);
   });
-}
+}, 60000); // 60 seconds
 
 // These collections are not triggering the Next.js API, so we listen to them directly
 const listeners = [
@@ -68,7 +79,7 @@ listeners.forEach(({ collection, formatMessage }) => {
         const data = change.doc.data();
         const msg = formatMessage(data);
         console.log(`Detected new document in ${collection}`);
-        sendWhatsAppNotification(msg);
+        queueWhatsAppNotification(msg);
       }
     });
   }, err => {
