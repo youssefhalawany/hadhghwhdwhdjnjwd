@@ -114,7 +114,6 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   };
 
   const navItems = [
-    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Financials", icon: FileText, children: [
       { name: "Financial Reports", href: "/financial-reports", icon: FileText },
       { name: "Voids & Returns", href: "/voids/manager", icon: Shield },
