@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, where, getDoc, doc, setDoc } from "firebase/firestore";
+import { collection, getDocs, query, where, getDoc, doc, setDoc, limit } from "firebase/firestore";
 import { Search, Package, Calendar, AlertTriangle, QrCode, Camera, X, CheckCircle, Edit, PlusCircle } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
 
@@ -34,14 +34,9 @@ export default function ProductLookupPage() {
   useEffect(() => {
     const fetchAllProducts = async () => {
       try {
-        const qProducts = query(collection(db, "products")); // Removed limit so name search works
+        const qProducts = query(collection(db, "products"), limit(50));
         const snap = await getDocs(qProducts);
         const products = snap.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
-        products.sort((a, b) => {
-          const nameA = (a.description || a.name || a.itemName || "").toLowerCase();
-          const nameB = (b.description || b.name || b.itemName || "").toLowerCase();
-          return nameA.localeCompare(nameB);
-        });
         setAllProducts(products);
       } catch (e) {
         console.error("Failed to fetch products", e);
@@ -70,17 +65,32 @@ export default function ProductLookupPage() {
       if (productSnap.exists()) {
         foundProduct = { id: productSnap.id, ...productSnap.data() };
       } else {
-        // 2. If not found by ID (barcode), search by `description` or `itemName`
-        const productsSnap = await getDocs(collection(db, "products"));
-        const allProducts = productsSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+        // 2. If not found by ID (barcode), do a pseudo case-insensitive name prefix search
+        // We do not download the whole database anymore to save Firebase Reads!
         const termLower = term.toLowerCase();
-        foundProduct = allProducts.find(p => 
-          (p.barcode && p.barcode.toLowerCase() === termLower) || 
-          p.description?.toLowerCase().includes(termLower) || 
-          p.name?.toLowerCase().includes(termLower) ||
-          p.itemName?.toLowerCase().includes(termLower) ||
-          p.id.toLowerCase() === termLower
-        );
+        const termUpper = term.toUpperCase();
+        const termTitle = term.charAt(0).toUpperCase() + term.slice(1).toLowerCase();
+
+        // 4 targeted queries costing a max of 40 reads instead of 80,000
+        const queries = [
+          getDocs(query(collection(db, "products"), where("description", ">=", termLower), where("description", "<=", termLower + '\uf8ff'), limit(10))),
+          getDocs(query(collection(db, "products"), where("description", ">=", termUpper), where("description", "<=", termUpper + '\uf8ff'), limit(10))),
+          getDocs(query(collection(db, "products"), where("description", ">=", termTitle), where("description", "<=", termTitle + '\uf8ff'), limit(10))),
+          getDocs(query(collection(db, "products"), where("itemName", ">=", termTitle), where("itemName", "<=", termTitle + '\uf8ff'), limit(10)))
+        ];
+
+        const snaps = await Promise.all(queries);
+        const results: any[] = [];
+        snaps.forEach(s => {
+          s.docs.forEach(d => {
+            if (!results.find(r => r.id === d.id)) results.push({ id: d.id, ...d.data() });
+          });
+        });
+
+        if (results.length > 0) {
+          // Prioritize exact match if available, otherwise take the first match
+          foundProduct = results.find(p => p.description?.toLowerCase() === termLower || p.itemName?.toLowerCase() === termLower) || results[0];
+        }
       }
 
       setProductData(foundProduct || { notFound: true, searchTerm: term });
