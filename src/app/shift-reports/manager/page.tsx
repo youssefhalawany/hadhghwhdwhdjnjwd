@@ -11,14 +11,12 @@ import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 
 export default function ManagerAuditPage() {
-  const [activeTab, setActiveTab] = useState<"pending" | "history" | "expiries">("pending");
+  const [activeTab, setActiveTab] = useState<"pending" | "history">("pending");
 
   const [pendingReports, setPendingReports] = useState<any[]>([]);
   const [historyReports, setHistoryReports] = useState<any[]>([]);
-  const [expiries, setExpiries] = useState<any[]>([]);
 
   const [selectedReport, setSelectedReport] = useState<any | null>(null);
-  const [selectedExpiry, setSelectedExpiry] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -43,9 +41,6 @@ export default function ManagerAuditPage() {
   const [cashierOverrideCash, setCashierOverrideCash] = useState<string>("");
   const [cashierOverrideVisa, setCashierOverrideVisa] = useState<string>("");
 
-  const [isEditingExpiry, setIsEditingExpiry] = useState(false);
-  const [editExpiryDate, setEditExpiryDate] = useState("");
-  const [editExpiryQty, setEditExpiryQty] = useState("");
 
   useEffect(() => {
     // 1. Fetch Pending
@@ -56,31 +51,22 @@ export default function ManagerAuditPage() {
       setPendingReports(reports);
     });
 
-    // 2. Fetch History (Approved)
-    const qHistory = query(collection(db, "shift_reports"), where("status", "==", "approved"));
+    // 2. Fetch History (Approved) - limit to avoid massive reads and speed up portal
+    const qHistory = query(collection(db, "shift_reports"), orderBy("createdAt", "desc"), limit(50));
     const unsubHistory = onSnapshot(qHistory, (snapshot) => {
-      const reports = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      reports.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      setHistoryReports(reports);
+      const reports = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
+      // Filter locally to avoid composite index requirement
+      const approvedReports = reports.filter((r: any) => r.status === "approved");
+      setHistoryReports(approvedReports);
       setLoading(false);
     });
 
-    // 3. Fetch Expiries
-    const qExpiries = query(collection(db, "expiries"), orderBy("timestamp", "desc"), limit(1000));
-    const unsubExpiries = onSnapshot(qExpiries, (snapshot) => {
-      const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      items.sort((a: any, b: any) => {
-        const dateA = a.expiryDate || "";
-        const dateB = b.expiryDate || "";
-        return dateA.localeCompare(dateB);
-      });
-      setExpiries(items);
-    });
+
 
     return () => {
       unsubPending();
       unsubHistory();
-      unsubExpiries();
+
     };
   }, []);
 
@@ -283,90 +269,6 @@ export default function ManagerAuditPage() {
       setGeneratingPDF(false);
     }
   };
-  
-  const handleMarkExpiryPulled = async (item: any) => {
-    const exp = new Date(item.expiryDate);
-    exp.setHours(0,0,0,0);
-    const t = new Date();
-    t.setHours(0,0,0,0);
-    const isExpired = exp <= t;
-
-    let pulledQty = Number(item.quantity) || 0;
-
-    if (isExpired) {
-      const pulledQtyStr = prompt(`Audit Expiry: Item ${item.itemName} (${item.barcode || "N/A"})\nHow many items are you actually pulling from the shelf?`, item.quantity.toString());
-      if (pulledQtyStr === null) return; // Cancelled
-      
-      pulledQty = Number(pulledQtyStr);
-      if (isNaN(pulledQty) || pulledQty < 0) {
-        alert("Invalid quantity. Action cancelled.");
-        return;
-      }
-    }
-
-    try {
-      // 1. Update status in expiries
-      await updateDoc(doc(db, "expiries", item.id), { status: "pulled" });
-      setSelectedExpiry((prev: any) => prev && prev.id === item.id ? { ...prev, status: "pulled" } : prev);
-
-      // 2. If expired, add to expired_items collection
-      if (isExpired) {
-        const savedUserStr = localStorage.getItem("active_cashier_session");
-        let managerEmail = "Unknown Manager";
-        if (savedUserStr) {
-          const sessionData = JSON.parse(savedUserStr);
-          managerEmail = sessionData.email || sessionData.name || "Unknown Manager";
-        }
-
-        const todayStr = new Date().toISOString().split('T')[0];
-
-        await addDoc(collection(db, "expired_items"), {
-          barcode: item.barcode || "N/A",
-          category: "uncategorized",
-          createdAt: new Date().toISOString(),
-          createdBy: managerEmail,
-          date: todayStr,
-          name: item.itemName,
-          quantity: pulledQty,
-          storeId: item.storeId || "Unknown"
-        });
-      }
-      
-      // alert only if we had to audit it to give confirmation
-      if (isExpired) alert("Item audited and marked as pulled successfully!");
-
-    } catch (error) {
-      console.error("Error marking pulled:", error);
-      alert("Failed to update status.");
-    }
-  };
-
-  const handleDeleteExpiry = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this expiry record?")) return;
-    try {
-      await deleteDoc(doc(db, "expiries", id));
-      setSelectedExpiry(null);
-    } catch (error) {
-      console.error("Error deleting expiry:", error);
-      alert("Failed to delete record.");
-    }
-  };
-
-  const handleSaveExpiryEdit = async () => {
-    if (!selectedExpiry) return;
-    try {
-      await updateDoc(doc(db, "expiries", selectedExpiry.id), {
-        expiryDate: editExpiryDate,
-        quantity: Number(editExpiryQty) || 0
-      });
-      setSelectedExpiry({ ...selectedExpiry, expiryDate: editExpiryDate, quantity: Number(editExpiryQty) || 0 });
-      setIsEditingExpiry(false);
-      alert("Expiry record updated successfully!");
-    } catch (err) {
-      console.error(err);
-      alert("Failed to update expiry record.");
-    }
-  };
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-[60vh]"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600"></div></div>;
@@ -379,12 +281,6 @@ export default function ManagerAuditPage() {
         (r.cashierDetails?.name || "").toLowerCase().includes(searchQuery.toLowerCase())
       );
 
-  const filteredExpiries = expiries.filter(item => 
-    (item.itemName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (item.barcode || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (item.storeId || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (item.addedBy || "").toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -398,22 +294,16 @@ export default function ManagerAuditPage() {
         {/* TAB SWITCHER */}
         <div className="flex bg-muted/50 p-1 rounded-xl border border-border">
           <button
-            onClick={() => { setActiveTab("pending"); setSelectedReport(null); setSelectedExpiry(null); }}
+            onClick={() => { setActiveTab("pending"); setSelectedReport(null); }}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "pending" ? "bg-card shadow text-red-500 border border-border" : "text-muted-foreground hover:text-foreground"}`}
           >
             <Clock className="h-4 w-4" /> Pending ({pendingReports.length})
           </button>
           <button
-            onClick={() => { setActiveTab("history"); setSelectedReport(null); setSelectedExpiry(null); }}
+            onClick={() => { setActiveTab("history"); setSelectedReport(null); }}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "history" ? "bg-card shadow text-foreground border border-border" : "text-muted-foreground hover:text-foreground"}`}
           >
             <Archive className="h-4 w-4" /> Audit History ({historyReports.length})
-          </button>
-          <button
-            onClick={() => { setActiveTab("expiries"); setSelectedReport(null); setSelectedExpiry(null); }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "expiries" ? "bg-card shadow text-blue-500 border border-border" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <Calendar className="h-4 w-4 text-blue-500" /> Expiries Tracker ({expiries.filter(e => e.status !== "pulled").length})
           </button>
         </div>
       </div>
@@ -423,11 +313,11 @@ export default function ManagerAuditPage() {
         {/* LEFT COLUMN: LIST */}
         <div className="lg:col-span-1 space-y-4 max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar">
           
-          {(activeTab === "history" || activeTab === "expiries") && (
+          {(activeTab === "history") && (
             <div className="sticky top-0 z-10 bg-background pb-2">
               <input 
                 type="text"
-                placeholder={activeTab === "expiries" ? "Search by Item, Barcode, or Store..." : "Search by Barcode or Cashier Name..."}
+                placeholder="Search by Barcode or Cashier Name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full p-3 rounded-xl border border-border bg-muted/50 focus:bg-background outline-none focus:ring-2 focus:ring-red-500 text-sm"
@@ -435,69 +325,7 @@ export default function ManagerAuditPage() {
             </div>
           )}
 
-          {activeTab === "expiries" ? (
-            filteredExpiries.length === 0 ? (
-              <div className="glass-panel p-8 text-center rounded-2xl">
-                <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
-                <p className="font-bold text-foreground">No active expiries tracked.</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {filteredExpiries.map(item => {
-                  const itemDate = new Date(item.expiryDate);
-                  itemDate.setHours(0,0,0,0);
-                  const today = new Date();
-                  today.setHours(0,0,0,0);
-                  const tomorrow = new Date(today);
-                  tomorrow.setDate(tomorrow.getDate() + 1);
-
-                  const isExpired = itemDate < today;
-                  const isExpiringToday = itemDate.getTime() === today.getTime();
-                  const isExpiringTomorrow = itemDate.getTime() === tomorrow.getTime();
-
-                  let badgeClass = "bg-slate-100 text-slate-650 dark:bg-slate-800 dark:text-slate-400 border border-slate-200/30";
-                  let badgeText = "Active";
-
-                  if (item.status === "pulled") {
-                    badgeClass = "bg-slate-200 text-slate-500 dark:bg-slate-800/80 dark:text-slate-500 border border-slate-300/30";
-                    badgeText = "Pulled";
-                  } else if (isExpired) {
-                    badgeClass = "bg-red-105 text-red-700 dark:bg-red-950/40 dark:text-red-400 border border-red-200/30";
-                    badgeText = "EXPIRED";
-                  } else if (isExpiringToday) {
-                    badgeClass = "bg-orange-105 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400 border border-orange-200/30";
-                    badgeText = "Today";
-                  } else if (isExpiringTomorrow) {
-                    badgeClass = "bg-yellow-105 text-yellow-800 dark:bg-yellow-950/45 dark:text-yellow-400 border border-yellow-250/30";
-                    badgeText = "Tomorrow";
-                  }
-
-                  const isSelected = selectedExpiry?.id === item.id;
-
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => { setSelectedExpiry(item); setSelectedReport(null); setEditExpiryDate(item.expiryDate); setEditExpiryQty(String(item.quantity)); setIsEditingExpiry(false); }}
-                      className={`w-full text-left p-4 rounded-xl border transition-all ${isSelected
-                          ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/15 shadow-md shadow-blue-500/10'
-                          : 'border-border bg-card hover:border-blue-300'
-                        }`}
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="font-bold text-foreground text-sm">{item.expiryDate}</span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${badgeClass}`}>{badgeText}</span>
-                      </div>
-                      <div className="font-semibold text-lg text-foreground mb-1">{item.itemName}</div>
-                      <div className="text-xs text-muted-foreground font-mono flex items-center justify-between">
-                        <span>Barcode: {item.barcode}</span>
-                        <span className="font-bold text-foreground bg-muted px-1.5 py-0.5 rounded">Qty: {item.quantity}</span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )
-          ) : reportsList.length === 0 ? (
+          {reportsList.length === 0 ? (
             <div className="glass-panel p-8 text-center rounded-2xl">
               <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
               <p className="font-bold text-foreground">{activeTab === "pending" ? "All caught up!" : "No history found."}</p>
@@ -513,7 +341,7 @@ export default function ManagerAuditPage() {
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ duration: 0.2 }}
                   key={report.id}
-                  onClick={() => { handleSelectReport(report); setSelectedExpiry(null); }}
+                  onClick={() => { handleSelectReport(report); }}
                   className={`w-full text-left p-4 rounded-xl border transition-all relative overflow-hidden ${selectedReport?.id === report.id
                       ? 'border-red-500 bg-red-50 dark:bg-red-950/20 shadow-md shadow-red-500/10'
                       : 'border-border bg-card hover:border-red-300'
@@ -548,306 +376,7 @@ export default function ManagerAuditPage() {
 
         {/* RIGHT COLUMN: AUDIT WORKSPACE */}
         <div className="lg:col-span-2">
-          {activeTab === "expiries" ? (
-            !selectedExpiry ? (
-              <div className="glass-panel h-full min-h-[500px] p-6 rounded-2xl border border-border bg-muted/10 space-y-6">
-                <div className="flex items-center gap-2 mb-2">
-                  <Package className="h-6 w-6 text-blue-500 animate-pulse" />
-                  <h3 className="text-xl font-black text-foreground">Expiries Tracker Summary</h3>
-                </div>
-
-                {/* Stat Cards Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {/* Total Active */}
-                  <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-border shadow-sm flex flex-col justify-between">
-                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Tracking</span>
-                    <span className="text-3xl font-black text-blue-600 mt-2">
-                      {expiries.filter(e => e.status !== "pulled").length}
-                    </span>
-                    <span className="text-[10px] text-slate-400 mt-1">Active items</span>
-                  </div>
-
-                  {/* Expired */}
-                  {(() => {
-                    const expiredCount = expiries.filter(e => {
-                      if (e.status === "pulled") return false;
-                      const exp = new Date(e.expiryDate);
-                      exp.setHours(0,0,0,0);
-                      const t = new Date();
-                      t.setHours(0,0,0,0);
-                      return exp < t;
-                    }).length;
-
-                    return (
-                      <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-border shadow-sm flex flex-col justify-between">
-                        <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Expired</span>
-                        <span className={`text-3xl font-black mt-2 ${expiredCount > 0 ? "text-red-600 animate-pulse" : "text-slate-500"}`}>
-                          {expiredCount}
-                        </span>
-                        <span className="text-[10px] text-slate-400 mt-1">Requires pulling</span>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Expiring Soon */}
-                  {(() => {
-                    const soonCount = expiries.filter(e => {
-                      if (e.status === "pulled") return false;
-                      const exp = new Date(e.expiryDate);
-                      exp.setHours(0,0,0,0);
-                      const t = new Date();
-                      t.setHours(0,0,0,0);
-                      const tom = new Date(t);
-                      tom.setDate(tom.getDate() + 1);
-                      return exp.getTime() === t.getTime() || exp.getTime() === tom.getTime();
-                    }).length;
-
-                    return (
-                      <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-border shadow-sm flex flex-col justify-between">
-                        <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Expires 48h</span>
-                        <span className="text-3xl font-black text-orange-500 mt-2">
-                          {soonCount}
-                        </span>
-                        <span className="text-[10px] text-slate-400 mt-1">Pull window close</span>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Total Pulled */}
-                  <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-border shadow-sm flex flex-col justify-between">
-                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Pulled</span>
-                    <span className="text-3xl font-black text-green-600 mt-2">
-                      {expiries.filter(e => e.status === "pulled").length}
-                    </span>
-                    <span className="text-[10px] text-slate-400 mt-1">Lifetime total</span>
-                  </div>
-                </div>
-
-                {/* Expiry Action List (Critical First) */}
-                <div className="bg-white dark:bg-slate-850 p-5 rounded-xl border border-border space-y-4">
-                  <h4 className="text-sm font-black text-foreground uppercase tracking-wider">Critical Daily Action List</h4>
-                  
-                  {(() => {
-                    const criticalItems = expiries.filter(e => {
-                      if (e.status === "pulled") return false;
-                      const exp = new Date(e.expiryDate);
-                      exp.setHours(0,0,0,0);
-                      const t = new Date();
-                      t.setHours(0,0,0,0);
-                      const tom = new Date(t);
-                      tom.setDate(tom.getDate() + 1);
-                      return exp < t || exp.getTime() === t.getTime() || exp.getTime() === tom.getTime();
-                    });
-
-                    if (criticalItems.length === 0) {
-                      return (
-                        <div className="p-6 text-center border border-dashed border-slate-200 dark:border-slate-700 rounded-lg">
-                          <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                          <p className="text-xs font-semibold text-slate-500">No items expiring today, tomorrow, or already expired! Excellent work.</p>
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <div className="overflow-x-auto rounded-lg border border-border">
-                        <table className="w-full text-xs text-left">
-                          <thead className="bg-muted text-muted-foreground uppercase text-[10px]">
-                            <tr>
-                              <th className="p-2.5">Item Name</th>
-                              <th className="p-2.5">Barcode</th>
-                              <th className="p-2.5">Store</th>
-                              <th className="p-2.5">Expiry Date</th>
-                              <th className="p-2.5 text-center">Qty</th>
-                              <th className="p-2.5 text-right">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-border">
-                            {criticalItems.map(item => {
-                              const exp = new Date(item.expiryDate);
-                              exp.setHours(0,0,0,0);
-                              const t = new Date();
-                              t.setHours(0,0,0,0);
-                              const isExpired = exp < t;
-
-                              return (
-                                <tr key={item.id} className={isExpired ? "bg-red-500/5" : "bg-transparent"}>
-                                  <td className="p-2.5 font-bold text-foreground flex items-center gap-1.5">
-                                    <span className={`w-1.5 h-1.5 rounded-full ${isExpired ? "bg-red-500 animate-ping" : "bg-orange-500"}`}></span>
-                                    {item.itemName}
-                                  </td>
-                                  <td className="p-2.5 font-mono text-muted-foreground">{item.barcode}</td>
-                                  <td className="p-2.5 text-muted-foreground">{item.storeId}</td>
-                                  <td className={`p-2.5 font-bold ${isExpired ? "text-red-600 dark:text-red-400" : "text-orange-600 dark:text-orange-400"}`}>
-                                    {item.expiryDate} {isExpired ? "(EXPIRED)" : ""}
-                                  </td>
-                                  <td className="p-2.5 text-center font-bold text-foreground">{item.quantity}</td>
-                                  <td className="p-2.5 text-right flex items-center justify-end gap-1.5">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleMarkExpiryPulled(item)}
-                                      className="px-2 py-1 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded font-bold text-[10px] hover:scale-105 active:scale-95 transition-all cursor-pointer"
-                                    >
-                                      Pull
-                                    </button>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    );
-                  })()}
-                </div>
-              </div>
-            ) : (
-              <div className="glass-panel rounded-2xl border border-border overflow-hidden">
-                {/* Header */}
-                <div className="bg-slate-900 text-white p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h2 className="text-2xl font-black">{selectedExpiry.itemName}</h2>
-                      <p className="text-slate-400 text-sm mt-1">
-                        Barcode: {selectedExpiry.barcode} • Store: {selectedExpiry.storeId}
-                      </p>
-                      <div className="mt-3 flex items-center gap-2">
-                        {/* Status Badges */}
-                        {selectedExpiry.status === "pulled" ? (
-                          <span className="px-2.5 py-1 bg-slate-800 text-slate-400 text-xs font-bold rounded-lg border border-slate-700">
-                            Pulled
-                          </span>
-                        ) : (() => {
-                          const itemDate = new Date(selectedExpiry.expiryDate);
-                          itemDate.setHours(0,0,0,0);
-                          const today = new Date();
-                          today.setHours(0,0,0,0);
-                          const tomorrow = new Date(today);
-                          tomorrow.setDate(tomorrow.getDate() + 1);
-
-                          if (itemDate < today) {
-                            return (
-                              <span className="px-2.5 py-1 bg-red-500/20 text-red-400 text-xs font-bold rounded-lg border border-red-500/30 animate-pulse">
-                                EXPIRED! Pull Now!
-                              </span>
-                            );
-                          } else if (itemDate.getTime() === today.getTime()) {
-                            return (
-                              <span className="px-2.5 py-1 bg-orange-500/20 text-orange-400 text-xs font-bold rounded-lg border border-orange-500/30">
-                                Expires Today
-                              </span>
-                            );
-                          } else if (itemDate.getTime() === tomorrow.getTime()) {
-                            return (
-                              <span className="px-2.5 py-1 bg-yellow-500/20 text-yellow-400 text-xs font-bold rounded-lg border border-yellow-500/30">
-                                Expires Tomorrow
-                              </span>
-                            );
-                          } else {
-                            return (
-                              <span className="px-2.5 py-1 bg-blue-500/20 text-blue-400 text-xs font-bold rounded-lg border border-blue-500/30">
-                                Active Tracking
-                              </span>
-                            );
-                          }
-                        })()}
-                      </div>
-                    </div>
-                    <div className="text-right flex items-center justify-end gap-4">
-                      {isEditingExpiry ? (
-                        <div className="text-left bg-slate-800 p-2 rounded-lg">
-                          <label className="text-[10px] text-slate-400 font-bold block uppercase mb-1">New Quantity</label>
-                          <input type="number" value={editExpiryQty} onChange={e => setEditExpiryQty(e.target.value)} className="w-16 p-1 text-slate-900 font-bold rounded text-center outline-none" />
-                        </div>
-                      ) : (
-                        <div>
-                          <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Quantity</p>
-                          <p className="text-2xl font-black text-green-400">{selectedExpiry.quantity}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-6 space-y-6 bg-background">
-                  {/* 1. Barcode Render */}
-                  <section className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-border flex flex-col items-center justify-center">
-                    <p className="text-xs font-bold text-muted-foreground uppercase mb-2">Item Barcode</p>
-                    {selectedExpiry.barcode ? (
-                      <div className="bg-white p-3 rounded">
-                        <Barcode value={selectedExpiry.barcode} width={1.8} height={50} fontSize={14} />
-                      </div>
-                    ) : (
-                      <span className="text-sm italic text-muted-foreground">No barcode recorded</span>
-                    )}
-                  </section>
-
-                  {/* 2. Expiry Details */}
-                  <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 bg-muted/30 rounded-xl border border-border relative">
-                      <p className="text-xs font-bold text-muted-foreground uppercase mb-1">Expiration Date</p>
-                      {isEditingExpiry ? (
-                        <input type="date" value={editExpiryDate} onChange={e => setEditExpiryDate(e.target.value)} className="w-full p-2 mt-1 rounded bg-background border border-border font-bold outline-none text-foreground" />
-                      ) : (
-                        <p className="text-lg font-bold text-foreground">{selectedExpiry.expiryDate}</p>
-                      )}
-                    </div>
-                    <div className="p-4 bg-muted/30 rounded-xl border border-border">
-                      <p className="text-xs font-bold text-muted-foreground uppercase mb-1">Date Logged</p>
-                      <p className="text-lg font-bold text-foreground">
-                        {selectedExpiry.createdAt ? new Date(selectedExpiry.createdAt).toLocaleDateString('en-GB') : "N/A"}
-                      </p>
-                    </div>
-                    <div className="p-4 bg-muted/30 rounded-xl border border-border">
-                      <p className="text-xs font-bold text-muted-foreground uppercase mb-1">Logged By Staff</p>
-                      <p className="text-lg font-bold text-foreground">{selectedExpiry.addedBy || "Unknown"}</p>
-                    </div>
-                    <div className="p-4 bg-muted/30 rounded-xl border border-border">
-                      <p className="text-xs font-bold text-muted-foreground uppercase mb-1">Store Location</p>
-                      <p className="text-lg font-bold text-foreground">{selectedExpiry.storeId || "Unknown"}</p>
-                    </div>
-                  </section>
-
-                  {/* 3. Actions */}
-                  <div className="pt-4 border-t border-border flex flex-col gap-3">
-                    {isEditingExpiry ? (
-                      <div className="flex gap-2">
-                        <button onClick={() => setIsEditingExpiry(false)} className="flex-1 py-3 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl font-bold transition-all">Cancel</button>
-                        <button onClick={handleSaveExpiryEdit} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-all shadow-md">Save Changes</button>
-                      </div>
-                    ) : (
-                      <>
-                        {selectedExpiry.status !== "pulled" && (
-                          <button
-                            type="button"
-                            onClick={() => handleMarkExpiryPulled(selectedExpiry)}
-                            className="w-full py-4 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 text-white rounded-xl font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer animate-in fade-in"
-                          >
-                            <CheckCircle className="h-5 w-5 text-green-500" /> Mark Item as Pulled from Shelf
-                          </button>
-                        )}
-                        <div className="flex gap-3">
-                          <button
-                            type="button"
-                            onClick={() => setIsEditingExpiry(true)}
-                            className="flex-1 py-3 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700 rounded-xl font-bold text-sm transition-all flex items-center justify-center cursor-pointer"
-                          >
-                            Edit Record
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteExpiry(selectedExpiry.id)}
-                            className="flex-1 py-3 border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/30 dark:border-red-900/40 dark:hover:bg-red-900/50 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
-                          >
-                            <Trash2 className="h-4 w-4" /> Delete Expiry
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )
-          ) : !selectedReport ? (
+          {!selectedReport ? (
             <div className="glass-panel h-full min-h-[500px] flex flex-col items-center justify-center text-center rounded-2xl border border-border bg-muted/20">
               <FileText className="h-16 w-16 text-muted-foreground/30 mb-4" />
               <p className="text-lg font-bold text-muted-foreground">Select a report to view/audit</p>
