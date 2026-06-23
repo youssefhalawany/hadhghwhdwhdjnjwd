@@ -98,10 +98,17 @@ export default function ExpiryAuditPage() {
   const generateQRData = () => {
     let text = `Expiry Report\nFilters: Status=${reportFilters.status}, Dates=${reportFilters.startDate || 'Any'} to ${reportFilters.endDate || 'Any'}\n`;
     text += `Total Units: ${totalFilteredQuantity}\n\n`;
-    text += `--- Item Breakdown ---\n`;
-    filteredReportItems.forEach(i => {
-      text += `${i.itemName} | Qty: ${i.quantity} | Exp: ${i.expiryDate}\n`;
-    });
+    
+    // Prevent QR code data too large error
+    if (filteredReportItems.length > 0) {
+      text += `--- Sample Items ---\n`;
+      filteredReportItems.slice(0, 5).forEach(i => {
+        text += `${i.itemName.substring(0, 15)} | Qty: ${i.quantity} | Exp: ${i.expiryDate}\n`;
+      });
+      if (filteredReportItems.length > 5) {
+        text += `...and ${filteredReportItems.length - 5} more items.\n`;
+      }
+    }
     return text;
   };
 
@@ -120,7 +127,7 @@ export default function ExpiryAuditPage() {
           <div className="text-right">
             <div className="h-12 w-12 bg-slate-900 text-white rounded-full flex items-center justify-center font-black text-2xl ml-auto mb-2">K</div>
             <p className="font-bold text-sm text-slate-700">Circle K Enterprise</p>
-            <p className="text-xs font-semibold text-slate-500">Printed: {new Date().toLocaleDateString()}</p>
+            <p suppressHydrationWarning className="text-xs font-semibold text-slate-500">Printed: {new Date().toLocaleDateString()}</p>
           </div>
         </div>
 
