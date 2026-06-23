@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { db } from "@/lib/firebase";
-import { collection, query, getDocs } from "firebase/firestore";
+import { collection, query, getDocs, orderBy, limit } from "firebase/firestore";
 import { ArrowLeft, Download, Filter, Building2, CheckCircle, Clock } from "lucide-react";
 import Link from "next/link";
 import html2canvas from "html2canvas";
@@ -33,7 +33,7 @@ export default function VendorStatementsPage() {
     setLoading(true);
     try {
       // 1. Fetch Cash Payments
-      const cashQ = query(collection(db, "cash_payments"));
+      const cashQ = query(collection(db, "cash_payments"), orderBy("timestamp", "desc"), limit(2000));
       const cashSnap = await getDocs(cashQ);
       const cashData = cashSnap.docs.map(doc => {
         const d = doc.data();
@@ -50,7 +50,7 @@ export default function VendorStatementsPage() {
       }).filter(Boolean);
 
       // 2. Fetch Credits (User requested: "and credit if paid only")
-      const creditQ = query(collection(db, "credits"));
+      const creditQ = query(collection(db, "credits"), orderBy("timestamp", "desc"), limit(2000));
       const creditSnap = await getDocs(creditQ);
       const creditData = creditSnap.docs.map(doc => {
         const d = doc.data();

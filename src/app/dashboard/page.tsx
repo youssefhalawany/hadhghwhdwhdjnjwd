@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { dbService } from "@/lib/firebase";
+import { dbService, db } from "@/lib/firebase";
+import { collection, query, orderBy, limit, getAggregateFromServer, sum, where } from "firebase/firestore";
 import { TrendingUp, DollarSign, CreditCard, Wallet, Activity, Download, PackageOpen, LayoutDashboard, Calendar, AlertTriangle, AlertCircle, Clock, Bell, User, ArrowRight } from "lucide-react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
@@ -60,6 +61,54 @@ export default function DashboardPage() {
   const [isDark, setIsDark] = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState(false);
 
+  // Hybrid Aggregation State
+  const [lifetimeSales, setLifetimeSales] = useState<number>(0);
+  const [lifetimeCredits, setLifetimeCredits] = useState<number>(0);
+  const [lifetimeExpenses, setLifetimeExpenses] = useState<number>(0);
+
+  useEffect(() => {
+    const loadLifetimeTotals = async () => {
+      try {
+        const salesSnap = await getAggregateFromServer(collection(db, "sales"), {
+          cash: sum('cash'),
+          visa: sum('visa'),
+          overShort: sum('overShort')
+        });
+        const sData = salesSnap.data();
+        setLifetimeSales(sData.cash + sData.visa + sData.overShort);
+
+        const creditsSnap = await getAggregateFromServer(collection(db, "credits"), {
+          total: sum('total'),
+          amountDue: sum('amountDue')
+        });
+        const cData = creditsSnap.data();
+        setLifetimeCredits(cData.total + cData.amountDue);
+
+        const cashExpSnap = await getAggregateFromServer(collection(db, "cash_payments"), {
+          total: sum('total'),
+          amount: sum('amount')
+        });
+        const ceData = cashExpSnap.data();
+        
+        const credExpSnap = await getAggregateFromServer(collection(db, "credit_payments"), {
+          total: sum('total'),
+          amount: sum('amount')
+        });
+        const creData = credExpSnap.data();
+
+        const paidPayrollQuery = query(collection(db, "payroll"), where("status", "==", "paid"));
+        const payrollSnap = await getAggregateFromServer(paidPayrollQuery, {
+          netSalary: sum('netSalary')
+        });
+        
+        setLifetimeExpenses(ceData.total + ceData.amount + creData.total + creData.amount + payrollSnap.data().netSalary);
+      } catch (err) {
+        console.error("Aggregation query failed (likely due to missing index or older records). Relying on recent cache:", err);
+      }
+    };
+    loadLifetimeTotals();
+  }, []);
+
   useEffect(() => {
     setIsDark(document.documentElement.classList.contains("dark"));
     const observer = new MutationObserver(() => {
@@ -80,13 +129,13 @@ export default function DashboardPage() {
 
     const loadData = async () => {
       setLoading(true);
-      unsubSales = dbService.onSnapshot("sales", setSales);
-      unsubCredits = dbService.onSnapshot("credits", setCredits);
-      unsubSafe = dbService.onSnapshot("safe_balance", setSafeLogs);
-      unsubCash = dbService.onSnapshot("cash_payments", setExpenses);
-      unsubCreditPayments = dbService.onSnapshot("credit_payments", setCreditPayments);
-      unsubPayroll = dbService.onSnapshot("payroll", setPayroll);
-      unsubExpiries = dbService.onSnapshot("expiries", setExpiries);
+      unsubSales = dbService.onSnapshot(query(collection(db, "sales"), orderBy("timestamp", "desc"), limit(100)), setSales);
+      unsubCredits = dbService.onSnapshot(query(collection(db, "credits"), orderBy("timestamp", "desc"), limit(100)), setCredits);
+      unsubSafe = dbService.onSnapshot(query(collection(db, "safe_balance"), orderBy("timestamp", "desc"), limit(100)), setSafeLogs);
+      unsubCash = dbService.onSnapshot(query(collection(db, "cash_payments"), orderBy("timestamp", "desc"), limit(100)), setExpenses);
+      unsubCreditPayments = dbService.onSnapshot(query(collection(db, "credit_payments"), orderBy("timestamp", "desc"), limit(100)), setCreditPayments);
+      unsubPayroll = dbService.onSnapshot(query(collection(db, "payroll"), orderBy("timestamp", "desc"), limit(100)), setPayroll);
+      unsubExpiries = dbService.onSnapshot(query(collection(db, "expiries"), orderBy("timestamp", "desc"), limit(100)), setExpiries);
       setLoading(false);
     };
 
@@ -114,13 +163,15 @@ export default function DashboardPage() {
     );
   }
 
-  // Calculate KPIs
-  const totalSales = sales.reduce((acc, curr) => acc + (Number(curr.cash) || 0) + (Number(curr.visa) || 0) + (Number(curr.overShort) || 0), 0);
-  const totalCredits = credits.reduce((acc, curr) => acc + (curr.total || curr.amountDue || 0), 0);
+  // Calculate KPIs (With Fallback)
+  // If lifetime totals > 0, we use them (from getAggregateFromServer).
+  // Otherwise, we gracefully fall back to summing the recent 100 records fetched by onSnapshot.
+  const totalSales = lifetimeSales > 0 ? lifetimeSales : sales.reduce((acc, curr) => acc + (Number(curr.cash) || 0) + (Number(curr.visa) || 0) + (Number(curr.overShort) || 0), 0);
+  const totalCredits = lifetimeCredits > 0 ? lifetimeCredits : credits.reduce((acc, curr) => acc + (curr.total || curr.amountDue || 0), 0);
   const rawCashExpenses = expenses.reduce((acc, curr) => acc + (curr.total || curr.amount || 0), 0);
   const totalCreditPayments = creditPayments.reduce((acc, curr) => acc + (Number(curr.amount) || Number(curr.total) || 0), 0);
   const totalPaidPayroll = payroll.filter(p => p.status === 'paid').reduce((acc, curr) => acc + (Number(curr.netSalary) || 0), 0);
-  const totalExpenses = rawCashExpenses + totalCreditPayments + totalPaidPayroll;
+  const totalExpenses = lifetimeExpenses > 0 ? lifetimeExpenses : (rawCashExpenses + totalCreditPayments + totalPaidPayroll);
   const lastSafeLog = safeLogs.length > 0 ? safeLogs[safeLogs.length - 1] : null;
   const safeBalance = lastSafeLog ? (Number(lastSafeLog.balance) || Number(lastSafeLog.amount) || Number(lastSafeLog.total) || 0) : 0;
 

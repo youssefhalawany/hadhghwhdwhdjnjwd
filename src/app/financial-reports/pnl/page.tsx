@@ -27,9 +27,10 @@ export default function PNLReportPage() {
   const fetchFinancialData = async () => {
     setLoading(true);
     try {
-      // 1. Fetch Sales (Revenue) for the selected month
-      // We look for dates starting with the selected month (YYYY-MM)
-      const salesQuery = query(collection(db, "sales"));
+      const start = `${selectedMonth}-01`;
+      const end = `${selectedMonth}-31T23:59:59`;
+      
+      const salesQuery = query(collection(db, "sales"), where("date", ">=", start), where("date", "<=", end));
       const salesSnap = await getDocs(salesQuery);
       
       let totalRev = 0;
@@ -42,7 +43,7 @@ export default function PNLReportPage() {
       setRevenueTotal(totalRev);
 
       // 2. Fetch Expenses for the selected month
-      const expQuery = query(collection(db, "expenses"));
+      const expQuery = query(collection(db, "expenses"), where("date", ">=", start), where("date", "<=", end));
       const expSnap = await getDocs(expQuery);
       
       const exps: any[] = [];

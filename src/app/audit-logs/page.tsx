@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { dbService } from "@/lib/firebase";
+import { dbService, db } from "@/lib/firebase";
+import { collection, query, orderBy, limit } from "firebase/firestore";
 import { 
   ClipboardList, Search, RefreshCw, ShieldAlert, 
   Terminal, ShieldCheck, Laptop, Globe, Calendar
@@ -14,7 +15,7 @@ export default function AuditLogsPage() {
 
   useEffect(() => {
     // Subscribe to audit logs
-    const unsubscribe = dbService.onSnapshot("audit_logs", (data) => {
+    const unsubscribe = dbService.onSnapshot(query(collection(db, "audit_logs"), orderBy("timestamp", "desc"), limit(1000)), (data) => {
       // Sort logs descending by timestamp
       const sorted = [...data].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       setLogs(sorted);

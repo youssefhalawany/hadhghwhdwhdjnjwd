@@ -36,12 +36,14 @@ export const getMockMode = () => false; // Disabled
 export const setMockMode = (mode: boolean) => {}; // Disabled
 
 export const dbService = {
-  getDocs: async (collectionName: string): Promise<any[]> => {
-    const q = query(collection(db, collectionName));
+  getDocs: async (collectionNameOrQuery: string | any): Promise<any[]> => {
+    const q = typeof collectionNameOrQuery === 'string' 
+      ? query(collection(db, collectionNameOrQuery)) 
+      : collectionNameOrQuery;
     const querySnapshot = await getDocs(q);
     const docs: any[] = [];
     querySnapshot.forEach((doc) => {
-      docs.push({ id: doc.id, ...doc.data() });
+      docs.push({ id: doc.id, ...(doc.data() as any) });
     });
     return docs;
   },
@@ -49,7 +51,7 @@ export const dbService = {
   getDoc: async (collectionName: string, id: string): Promise<any | null> => {
     const docRef = doc(db, collectionName, id);
     const docSnap = await getDoc(docRef);
-    return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } : null;
+    return docSnap.exists() ? { id: docSnap.id, ...(docSnap.data() as any) } : null;
   },
 
   addDoc: async (collectionName: string, data: any): Promise<any> => {
@@ -58,7 +60,7 @@ export const dbService = {
       timestamp: data.timestamp || new Date().toISOString()
     });
     const docSnap = await getDoc(docRef);
-    return { id: docRef.id, ...docSnap.data() };
+    return { id: docRef.id, ...(docSnap.data() as any) };
   },
 
   setDoc: async (collectionName: string, id: string, data: any): Promise<any> => {
@@ -79,17 +81,20 @@ export const dbService = {
     return true;
   },
 
-  onSnapshot: (collectionName: string, callback: (data: any[]) => void): (() => void) => {
-    const q = query(collection(db, collectionName));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+  onSnapshot: (collectionNameOrQuery: string | any, callback: (data: any[]) => void): (() => void) => {
+    const q = typeof collectionNameOrQuery === 'string' 
+      ? query(collection(db, collectionNameOrQuery)) 
+      : collectionNameOrQuery;
+    const logName = typeof collectionNameOrQuery === 'string' ? collectionNameOrQuery : 'query';
+    const unsubscribe = onSnapshot(q, (querySnapshot: any) => {
       const docs: any[] = [];
-      querySnapshot.forEach((doc) => {
-        docs.push({ id: doc.id, ...doc.data() });
+      querySnapshot.forEach((doc: any) => {
+        docs.push({ id: doc.id, ...(doc.data() as any) });
       });
-      console.log(`Fetched ${docs.length} from ${collectionName}`);
+      console.log(`Fetched ${docs.length} from ${logName}`);
       callback(docs);
-    }, (error) => {
-      console.error(`Firebase error on ${collectionName}:`, error);
+    }, (error: any) => {
+      console.error(`Firebase error on ${logName}:`, error);
     });
     return unsubscribe;
   },

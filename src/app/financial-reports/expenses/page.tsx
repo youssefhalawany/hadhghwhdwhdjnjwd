@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, query, orderBy, onSnapshot, deleteDoc, doc } from "firebase/firestore";
+import { collection, addDoc, query, orderBy, onSnapshot, deleteDoc, doc, limit } from "firebase/firestore";
 import { ArrowLeft, Wallet, PlusCircle, FileText, Calendar, Trash2, Tag, Building, Zap, Users, Shield, Package, LayoutGrid } from "lucide-react";
 import Link from "next/link";
 import { vibrateSuccess, vibrateError } from "@/lib/haptics";
@@ -31,7 +31,7 @@ export default function ExpensesPage() {
   const [notes, setNotes] = useState("");
 
   useEffect(() => {
-    const q = query(collection(db, "expenses"), orderBy("date", "desc"), orderBy("createdAt", "desc"));
+    const q = query(collection(db, "expenses"), orderBy("date", "desc"), orderBy("createdAt", "desc"), limit(1000));
     const unsub = onSnapshot(q, (snap) => {
       setExpenses(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       setLoading(false);

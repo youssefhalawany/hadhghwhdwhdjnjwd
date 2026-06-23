@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { dbService } from "@/lib/firebase";
+import { dbService, db } from "@/lib/firebase";
+import { collection, query, orderBy, limit } from "firebase/firestore";
 import { Download, Printer, Filter, Search, FileText, ChevronDown, RefreshCw } from "lucide-react";
 import * as ExcelJS from "exceljs";
 import { generatePDF, downloadPDFBlob } from "@/lib/pdf-generator";
@@ -33,10 +34,10 @@ export default function FinancialReportsPage() {
 
     const loadData = async () => {
       setLoading(true);
-      unsubSales = dbService.onSnapshot("sales", setSales);
-      unsubCredits = dbService.onSnapshot("credits", setCredits);
-      unsubCreditPayments = dbService.onSnapshot("credit_payments", setCreditPayments);
-      unsubCashPayments = dbService.onSnapshot("cash_payments", setCashPayments);
+      unsubSales = dbService.onSnapshot(query(collection(db, "sales"), orderBy("timestamp", "desc"), limit(2000)), setSales);
+      unsubCredits = dbService.onSnapshot(query(collection(db, "credits"), orderBy("timestamp", "desc"), limit(1000)), setCredits);
+      unsubCreditPayments = dbService.onSnapshot(query(collection(db, "credit_payments"), orderBy("timestamp", "desc"), limit(1000)), setCreditPayments);
+      unsubCashPayments = dbService.onSnapshot(query(collection(db, "cash_payments"), orderBy("timestamp", "desc"), limit(1000)), setCashPayments);
       setLoading(false);
     };
 

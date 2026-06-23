@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { collection, query, orderBy, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Search, Printer, Shield, Image as ImageIcon, ArrowLeftRight, Calendar, CheckCircle } from "lucide-react";
 import Barcode from "react-barcode";
@@ -17,7 +17,7 @@ export default function ManagerVoidsPage() {
   const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
-    const q = query(collection(db, "void_requests")); // Add orderBy if index exists
+    const q = query(collection(db, "void_requests"), orderBy("createdAt", "desc"), limit(500));
     const unsub = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       // Sort in memory to avoid missing index errors

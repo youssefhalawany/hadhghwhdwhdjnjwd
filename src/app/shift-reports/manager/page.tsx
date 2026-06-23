@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { db } from "@/lib/firebase";
-import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, addDoc } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, addDoc, orderBy, limit } from "firebase/firestore";
 import { CheckCircle, Clock, FileText, Banknote, Package, Lock, Printer, Archive, Trash2, Calendar, QrCode } from "lucide-react";
 import Barcode from "react-barcode";
 import QRCode from "react-qr-code";
@@ -66,7 +66,7 @@ export default function ManagerAuditPage() {
     });
 
     // 3. Fetch Expiries
-    const qExpiries = query(collection(db, "expiries"));
+    const qExpiries = query(collection(db, "expiries"), orderBy("timestamp", "desc"), limit(1000));
     const unsubExpiries = onSnapshot(qExpiries, (snapshot) => {
       const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       items.sort((a: any, b: any) => {

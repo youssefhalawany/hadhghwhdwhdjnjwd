@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { dbService } from "@/lib/firebase";
+import { dbService, db } from "@/lib/firebase";
+import { collection, query, orderBy, limit } from "firebase/firestore";
 import { exportToExcel } from "@/lib/excel-generator";
 import { generatePDF, downloadPDFBlob } from "@/lib/pdf-generator";
 import { generateThermalCommands } from "@/lib/thermal-commands";
@@ -43,7 +44,7 @@ export default function DashboardPage() {
     window.addEventListener("circlek_role_changed", handleRoleChange);
 
     // Subscribe to Firebase database updates
-    const unsubscribeSales = dbService.onSnapshot("sales", (data) => {
+    const unsubscribeSales = dbService.onSnapshot(query(collection(db, "sales"), orderBy("timestamp", "desc"), limit(2000)), (data) => {
       setSales(data);
       setLoading(false);
     });
@@ -56,7 +57,7 @@ export default function DashboardPage() {
       setEmployees(data);
     });
 
-    const unsubscribeDrops = dbService.onSnapshot("safe_balance", (data) => {
+    const unsubscribeDrops = dbService.onSnapshot(query(collection(db, "safe_balance"), orderBy("timestamp", "desc"), limit(500)), (data) => {
       setDrops(data);
     });
 

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
-import { collection, query, getDocs, updateDoc, doc } from "firebase/firestore";
+import { collection, query, getDocs, updateDoc, doc, orderBy, limit } from "firebase/firestore";
 import { CheckCircle, AlertTriangle, Printer, Calendar, Search, Package, Clock, ShieldCheck } from "lucide-react";
 import QRCode from "react-qr-code";
 import Link from "next/link";
@@ -32,7 +32,7 @@ export default function ExpiryAuditPage() {
   const fetchItems = async () => {
     setLoading(true);
     try {
-      const q = query(collection(db, "expiries"));
+      const q = query(collection(db, "expiries"), orderBy("timestamp", "desc"), limit(2000));
       const snap = await getDocs(q);
       const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       
