@@ -1,30 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import useSWR from "swr";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ClipboardCheck, Printer, Search } from "lucide-react";
 
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
 export default function ManagerChecklistsPage() {
   const router = useRouter();
-  const [checklists, setChecklists] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  
+  const { data, error, isLoading: loading } = useSWR("/api/checklists", fetcher, {
+    revalidateOnFocus: false, // Save Firebase reads!
+    dedupingInterval: 60000, // Cache for 1 minute
+  });
 
-  useEffect(() => {
-    async function fetchChecklists() {
-      try {
-        const res = await fetch("/api/checklists");
-        const data = await res.json();
-        if (data.checklists) {
-          setChecklists(data.checklists);
-        }
-      } catch (err) {
-        console.error("Error fetching checklists", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchChecklists();
-  }, []);
+  const checklists: any[] = data?.checklists || [];
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900" dir="rtl">

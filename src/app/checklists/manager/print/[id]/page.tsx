@@ -11,35 +11,38 @@ const SectionTitle = ({ title }: { title: string }) => (
   </div>
 );
 
+import useSWR from "swr";
+
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Checklist not found");
+  return res.json();
+};
+
 export default function PrintChecklistPage() {
   const router = useRouter();
   const params = useParams();
   const id = params?.id as string;
   const isBlank = id.startsWith("blank-");
-  const [data, setData] = useState<any>(null);
+  
+  const { data, error, isLoading } = useSWR(
+    !isBlank && id ? `/api/checklists/${id}` : null,
+    fetcher,
+    {
+      revalidateOnFocus: false, // Save Firebase reads!
+      dedupingInterval: 60000, // Cache for 1 minute
+    }
+  );
+
   const baseChecklistId = isBlank ? id.replace("blank-", "") : data?.checklistId;
   const checklistSchema = allChecklists.find(c => c.id === baseChecklistId);
-  const [loading, setLoading] = useState(!isBlank);
+  const loading = !isBlank && isLoading;
 
   useEffect(() => {
-    if (isBlank || !id) return;
-    async function fetchData() {
-      try {
-        const res = await fetch(`/api/checklists/${id}`);
-        if (res.ok) {
-          const checklistData = await res.json();
-          setData(checklistData);
-        } else {
-          alert("Checklist not found or permission denied");
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
+    if (error) {
+      alert("Checklist not found or permission denied");
     }
-    fetchData();
-  }, [id, isBlank]);
+  }, [error]);
 
   if (loading) return <div className="p-10 text-center">جاري التحميل...</div>;
 
