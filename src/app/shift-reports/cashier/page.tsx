@@ -9,7 +9,8 @@ import { PinPad } from "@/components/PinPad";
 import { RadarOfflineScreen } from "@/components/RadarOfflineScreen";
 import { vibrateSuccess, vibrateError } from "@/lib/haptics";
 import { NumericFormat } from "react-number-format";
-import SignaturePad from "react-signature-canvas";
+import dynamic from "next/dynamic";
+const SignaturePad = dynamic(() => import("react-signature-canvas"), { ssr: false });
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 
