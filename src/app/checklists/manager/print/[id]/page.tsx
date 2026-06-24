@@ -8,6 +8,12 @@ import { mohamedAhmedChecklist } from "@/lib/checklists-data";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 
+const SectionTitle = ({ title }: { title: string }) => (
+  <div className="bg-gray-200 print:bg-gray-200 print:exact-colors text-red-600 font-bold text-center py-1 border-x border-t border-black text-xs">
+    {title}
+  </div>
+);
+
 export default function PrintChecklistPage() {
   const router = useRouter();
   const params = useParams();
@@ -93,12 +99,6 @@ export default function PrintChecklistPage() {
       </div>
     );
   };
-
-  const SectionTitle = ({ title }: { title: string }) => (
-    <div className="bg-gray-200 print:bg-gray-200 print:exact-colors text-red-600 font-bold text-center py-1 border-x border-t border-black text-xs">
-      {title}
-    </div>
-  );
 
   const handleDownloadPDF = async () => {
     const element = document.getElementById("printable-checklist");
