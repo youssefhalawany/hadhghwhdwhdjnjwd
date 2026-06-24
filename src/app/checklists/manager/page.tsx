@@ -21,7 +21,12 @@ export default function ManagerChecklistsPage() {
 
   let checklists: any[] = data?.checklists || [];
   if (currentBranch !== "all") {
-    checklists = checklists.filter(cl => cl.branchId === currentBranch);
+    checklists = checklists.filter(cl => {
+      if (cl.branchId) return cl.branchId === currentBranch;
+      const storeStr = (cl.storeId || cl.cashierDetails?.storeId || "").toLowerCase();
+      const inferredBranch = storeStr.includes("ola") || storeStr.includes("koronfol") ? "ola" : "alamein4";
+      return inferredBranch === currentBranch;
+    });
   }
 
   return (

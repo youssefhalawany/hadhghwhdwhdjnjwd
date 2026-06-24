@@ -300,6 +300,7 @@ export default function ExpiryTrackerPage() {
       quantity: Number(quantity) || 0,
       expiryDate: expiryDate || "",
       storeId: authenticatedUser?.storeId || "Unknown Store",
+      branchId: (authenticatedUser?.storeId || "").toLowerCase().includes("ola") || (authenticatedUser?.storeId || "").toLowerCase().includes("koronfol") ? "ola" : "alamein4",
       addedBy: authenticatedUser?.name || authenticatedUser?.email || "Unknown User",
       createdAt: new Date().toISOString(),
       status: "active" // active, pulled

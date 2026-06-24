@@ -7,9 +7,11 @@ import { CheckCircle, AlertTriangle, Printer, Calendar, Search, Package, Clock, 
 import Barcode from "react-barcode";
 import QRCode from "react-qr-code";
 import Link from "next/link";
+import { useBranch } from "@/context/BranchContext";
 
 export default function ExpiryAuditPage() {
-  const [items, setItems] = useState<any[]>([]);
+  const { currentBranch } = useBranch();
+  const [allExpiries, setAllExpiries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"active" | "pending" | "reports">("active");
   const [searchQuery, setSearchQuery] = useState("");
@@ -44,7 +46,7 @@ export default function ExpiryAuditPage() {
       
       // Sort by expiry date ascending (closest to expire first)
       data.sort((a: any, b: any) => (a.expiryDate || "").localeCompare(b.expiryDate || ""));
-      setItems(data);
+      setAllExpiries(data);
     } catch (err) {
       console.error("Error fetching expiries:", err);
     } finally {
@@ -68,7 +70,7 @@ export default function ExpiryAuditPage() {
 
       await updateDoc(doc(db, "expiries", item.id), auditPayload);
       
-      setItems(prev => prev.map(i => i.id === item.id ? { ...i, ...auditPayload } : i));
+      setAllExpiries(prev => prev.map(i => i.id === item.id ? { ...i, ...auditPayload } : i));
       setEditingId(null);
     } catch (err) {
       console.error("Error auditing item:", err);
@@ -104,7 +106,7 @@ export default function ExpiryAuditPage() {
       // 1. Update status in expiries
       await updateDoc(doc(db, "expiries", item.id), { status: "pulled" });
       setSelectedExpiry((prev: any) => prev && prev.id === item.id ? { ...prev, status: "pulled" } : prev);
-      setItems(prev => prev.map(i => i.id === item.id ? { ...i, status: "pulled", quantity: pulledQty } : i));
+      setAllExpiries(prev => prev.map(i => i.id === item.id ? { ...i, status: "pulled", quantity: pulledQty } : i));
 
       // 2. If expired, add to expired_items collection
       if (isExpired) {
@@ -143,7 +145,7 @@ export default function ExpiryAuditPage() {
     try {
       await deleteDoc(doc(db, "expiries", id));
       setSelectedExpiry(null);
-      setItems(prev => prev.filter(i => i.id !== id));
+      setAllExpiries(prev => prev.filter(i => i.id !== id));
     } catch (error) {
       console.error("Error deleting expiry:", error);
       alert("Failed to delete record.");
@@ -158,7 +160,7 @@ export default function ExpiryAuditPage() {
         quantity: Number(editExpiryQty) || 0
       });
       setSelectedExpiry({ ...selectedExpiry, expiryDate: editExpiryDate, quantity: Number(editExpiryQty) || 0 });
-      setItems(prev => prev.map(i => i.id === selectedExpiry.id ? { ...i, expiryDate: editExpiryDate, quantity: Number(editExpiryQty) || 0 } : i));
+      setAllExpiries(prev => prev.map(i => i.id === selectedExpiry.id ? { ...i, expiryDate: editExpiryDate, quantity: Number(editExpiryQty) || 0 } : i));
       setIsEditingExpiry(false);
       alert("Expiry record updated successfully!");
     } catch (err) {
@@ -166,6 +168,14 @@ export default function ExpiryAuditPage() {
       alert("Failed to update expiry record.");
     }
   };
+
+  const items = allExpiries.filter(i => {
+    if (currentBranch === "all") return true;
+    if (i.branchId) return i.branchId === currentBranch;
+    const storeStr = (i.storeId || "").toLowerCase();
+    const inferred = storeStr.includes("ola") || storeStr.includes("koronfol") ? "ola" : "alamein4";
+    return inferred === currentBranch;
+  });
 
   const filteredExpiries = items.filter(item => 
     (item.itemName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
