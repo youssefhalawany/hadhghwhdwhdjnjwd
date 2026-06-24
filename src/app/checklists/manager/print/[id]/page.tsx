@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { mohamedAhmedChecklist } from "@/lib/checklists-data";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 export default function PrintChecklistPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -96,13 +98,33 @@ export default function PrintChecklistPage({ params }: { params: { id: string } 
     </div>
   );
 
+  const handleDownloadPDF = async () => {
+    const element = document.getElementById("printable-checklist");
+    if (!element) return;
+    
+    try {
+      const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`checklist-${params.id}.pdf`);
+    } catch (error) {
+      console.error("Error generating PDF", error);
+      alert("Failed to generate PDF. You can try the browser print function instead.");
+      window.print();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-200 print:bg-white flex justify-center py-8 print:py-0">
       
       {/* Floating action buttons for web view */}
       <div className="fixed top-4 right-4 flex gap-2 print:hidden z-50">
-        <button onClick={() => window.print()} className="bg-red-600 text-white px-4 py-2 rounded-lg font-bold shadow-lg">
-          طباعة
+        <button onClick={handleDownloadPDF} className="bg-red-600 text-white px-4 py-2 rounded-lg font-bold shadow-lg">
+          تحميل PDF / طباعة
         </button>
         <button onClick={() => router.back()} className="bg-slate-800 text-white px-4 py-2 rounded-lg font-bold shadow-lg">
           رجوع
@@ -111,6 +133,7 @@ export default function PrintChecklistPage({ params }: { params: { id: string } 
 
       {/* A4 Page Container */}
       <div 
+        id="printable-checklist"
         className="bg-white w-[210mm] min-h-[297mm] shadow-2xl print:shadow-none print:w-full print:h-full"
         dir="rtl"
         style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}

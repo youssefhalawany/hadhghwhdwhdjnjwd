@@ -127,9 +127,9 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     { name: "Admin", icon: Shield, children: [
       { name: "Cashier Accounts", href: "/settings/cashiers", icon: Users },
       { name: "Send Notifications", href: "/settings/notifications", icon: Bell },
-      { name: "Import Products", href: "/admin/import-csv", icon: Database },
-      { name: "Audited Checklists", href: "/checklists/manager", icon: ClipboardList }
+      { name: "Import Products", href: "/admin/import-csv", icon: Database }
     ]},
+    { name: "Checklists", href: "/checklists/manager", icon: ClipboardList },
     { name: "", href: "/cashier", icon: User, isIconOnly: true }
   ];
 
@@ -144,7 +144,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   };
 
   // Completely isolate Cashier pages (No Enterprise Auth, No Sidebar)
-  if (pathname?.startsWith('/shift-reports/cashier') || pathname?.startsWith('/voids/cashier') || pathname?.startsWith('/cashier') || pathname?.startsWith('/expiries')) {
+  if (pathname?.startsWith('/shift-reports/cashier') || pathname?.startsWith('/voids/cashier') || pathname?.startsWith('/cashier') || pathname?.startsWith('/expiries') || pathname?.startsWith('/checklists/cashier')) {
     return (
       <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
         {children}
