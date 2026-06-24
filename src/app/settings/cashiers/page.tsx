@@ -249,10 +249,22 @@ export default function CashierSettingsPage() {
 
         {/* CASHIERS LIST */}
         <div className="md:col-span-2 space-y-4">
-          <h2 className="font-bold flex items-center gap-2"><Users className="h-5 w-5 text-slate-500" /> Active Cashiers ({cashiers.filter(c => currentBranch === 'all' || c.branchId === currentBranch).length})</h2>
+          <h2 className="font-bold flex items-center gap-2"><Users className="h-5 w-5 text-slate-500" /> Active Cashiers</h2>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {cashiers.filter(c => currentBranch === 'all' || c.branchId === currentBranch).map(c => (
+            {cashiers.filter(c => {
+              if (currentBranch === 'all') return true;
+              if (c.branchId) return c.branchId === currentBranch;
+              
+              // Backward compatibility for cashiers without branchId
+              const store = (c.storeId || "").toLowerCase();
+              if (currentBranch === 'alamein4') {
+                return store.includes('alamein') || (!store.includes('alamein') && !store.includes('ola'));
+              } else if (currentBranch === 'olaelkoronfol') {
+                return store.includes('ola');
+              }
+              return true;
+            }).map(c => (
               <div key={c.id} className="bg-card border border-border p-4 rounded-xl flex justify-between items-center shadow-sm relative overflow-hidden">
                 <div>
                   <h3 className="font-bold text-foreground text-lg flex items-center gap-2">
