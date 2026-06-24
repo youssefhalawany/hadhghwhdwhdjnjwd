@@ -104,7 +104,13 @@ export default function PrintChecklistPage() {
     if (!element) return;
     
     try {
-      const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+      // Lower scale to 1 to prevent crashing on iOS due to maximum canvas size limits
+      const canvas = await html2canvas(element, { 
+        scale: 1, 
+        useCORS: true,
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight
+      });
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
       const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -148,6 +154,16 @@ export default function PrintChecklistPage() {
               <div className="text-red-600 font-bold text-sm underline underline-offset-4">قائمة التفتيش على المتاجر(Check List)</div>
               <div className="w-24"></div> {/* Spacer to center the title */}
             </div>
+            
+            {/* Metadata Row */}
+            {!isBlank && data && (
+              <div className="flex justify-between items-center p-2 bg-slate-50 border-b border-black text-xs font-bold">
+                <div>الكاشير: <span className="text-red-600">{data.cashierName}</span></div>
+                <div>التاريخ: <span className="text-red-600">{new Date(data.createdAt).toLocaleString('en-GB')}</span></div>
+                <div>النتيجة: <span className="text-red-600">{data.score} / {data.totalScore}</span></div>
+              </div>
+            )}
+
             <div className="flex">
               <div className="flex-1 flex flex-col">
                 <div className="border-b border-black p-1 text-xs">
