@@ -667,7 +667,7 @@ export default function ManagerAuditPage() {
                       </div>
                       <button
                         type="button"
-                        onClick={handleDelete}
+                        onClick={triggerDelete}
                         disabled={submitting}
                         className="w-full py-3 border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 mt-2 cursor-pointer"
                       >
