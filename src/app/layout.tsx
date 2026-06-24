@@ -5,6 +5,7 @@ import ClientLayoutWrapper from "@/components/ClientLayoutWrapper";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { OfflineBanner } from "@/components/OfflineBanner";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -45,6 +46,7 @@ export default function RootLayout({
           <div className="fixed bottom-4 right-4 z-50 print:hidden">
             <ThemeToggle />
           </div>
+          <OfflineBanner />
           <ClientLayoutWrapper>{children}</ClientLayoutWrapper>
           <Toaster position="top-center" richColors closeButton theme="system" />
         </ThemeProvider>

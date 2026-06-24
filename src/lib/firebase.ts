@@ -3,6 +3,7 @@ import { getFirestore, initializeFirestore, persistentLocalCache, persistentMult
 import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 import { getMessaging, isSupported } from "firebase/messaging";
+import { queueOfflineWrite } from "./offline-sync";
 
 const firebaseConfig = {
   apiKey: "AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q",
@@ -55,24 +56,66 @@ export const dbService = {
   },
 
   addDoc: async (collectionName: string, data: any): Promise<any> => {
-    const docRef = await addDoc(collection(db, collectionName), {
+    const payload = {
       ...data,
       timestamp: data.timestamp || new Date().toISOString()
-    });
-    const docSnap = await getDoc(docRef);
-    return { id: docRef.id, ...(docSnap.data() as any) };
+    };
+    try {
+      const docRef = await addDoc(collection(db, collectionName), payload);
+      const docSnap = await getDoc(docRef);
+      return { id: docRef.id, ...(docSnap.data() as any) };
+    } catch (err: any) {
+      if (err?.code?.includes('unavailable') || err?.code?.includes('network') || !navigator.onLine) {
+        await queueOfflineWrite({
+          operation: "addDoc",
+          collectionName,
+          data: payload,
+          createdAt: new Date().toISOString()
+        });
+        return { id: `offline_${Date.now()}`, ...payload, _offline: true };
+      }
+      throw err;
+    }
   },
 
   setDoc: async (collectionName: string, id: string, data: any): Promise<any> => {
-    const docRef = doc(db, collectionName, id);
-    await setDoc(docRef, data);
-    return { id, ...data };
+    try {
+      const docRef = doc(db, collectionName, id);
+      await setDoc(docRef, data);
+      return { id, ...data };
+    } catch (err: any) {
+      if (err?.code?.includes('unavailable') || err?.code?.includes('network') || !navigator.onLine) {
+        await queueOfflineWrite({
+          operation: "setDoc",
+          collectionName,
+          docId: id,
+          data,
+          createdAt: new Date().toISOString()
+        });
+        return { id, ...data, _offline: true };
+      }
+      throw err;
+    }
   },
 
   updateDoc: async (collectionName: string, id: string, data: any): Promise<boolean> => {
-    const docRef = doc(db, collectionName, id);
-    await updateDoc(docRef, data);
-    return true;
+    try {
+      const docRef = doc(db, collectionName, id);
+      await updateDoc(docRef, data);
+      return true;
+    } catch (err: any) {
+      if (err?.code?.includes('unavailable') || err?.code?.includes('network') || !navigator.onLine) {
+        await queueOfflineWrite({
+          operation: "updateDoc",
+          collectionName,
+          docId: id,
+          data,
+          createdAt: new Date().toISOString()
+        });
+        return true;
+      }
+      throw err;
+    }
   },
 
   deleteDoc: async (collectionName: string, id: string): Promise<boolean> => {

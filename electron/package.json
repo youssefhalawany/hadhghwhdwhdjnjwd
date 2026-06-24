@@ -1,0 +1,40 @@
+{
+  "name": "anh-portal-desktop",
+  "version": "1.0.0",
+  "description": "ANH Employee Portal - Circle K Franchise Desktop App",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --mac",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux"
+  },
+  "build": {
+    "appId": "com.anh.portal.desktop",
+    "productName": "ANH Portal",
+    "mac": {
+      "target": "dmg",
+      "icon": "../public/icons/icon-512x512.png",
+      "category": "public.app-category.business"
+    },
+    "dmg": {
+      "title": "ANH Portal",
+      "contents": [
+        { "x": 130, "y": 220 },
+        { "x": 410, "y": 220, "type": "link", "path": "/Applications" }
+      ]
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "assets/**/*"
+    ]
+  },
+  "dependencies": {
+    "electron-is-dev": "^3.0.1"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  }
+}
