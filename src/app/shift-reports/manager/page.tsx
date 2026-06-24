@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { db } from "@/lib/firebase";
 import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, addDoc, orderBy, limit } from "firebase/firestore";
 import { CheckCircle, Clock, FileText, Banknote, Package, Lock, Printer, Archive, Trash2, Calendar, QrCode } from "lucide-react";
@@ -73,7 +73,7 @@ export default function ManagerAuditPage() {
     });
 
     // 2. Fetch History (Approved) - limit to avoid massive reads and speed up portal
-    const qHistory = query(collection(db, "shift_reports"), orderBy("createdAt", "desc"), limit(200));
+    const qHistory = query(collection(db, "shift_reports"), orderBy("createdAt", "desc"), limit(50));
     const unsubHistory = onSnapshot(qHistory, (snapshot) => {
       let reports = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
       // Filter locally to avoid composite index requirement
@@ -361,14 +361,8 @@ export default function ManagerAuditPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              <AnimatePresence>
               {reportsList.map(report => (
-                <motion.button
-                  layout
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.2 }}
+                <button
                   key={report.id}
                   onClick={() => { handleSelectReport(report); }}
                   className={`w-full text-left p-4 rounded-xl border transition-all relative overflow-hidden ${selectedReport?.id === report.id
@@ -396,9 +390,8 @@ export default function ManagerAuditPage() {
                     <span className="text-xs font-bold text-muted-foreground uppercase">Declared Total</span>
                     <span className="font-bold text-red-600 dark:text-red-400">EGP {report?.cashierCounts?.total?.toLocaleString()}</span>
                   </div>
-                </motion.button>
+                </button>
               ))}
-              </AnimatePresence>
             </div>
           )}
         </div>
