@@ -28,6 +28,10 @@ const t = {
     submitting: "Submitting...",
     back: "Back",
     clearSignature: "Clear Signature",
+    scanReceipt: "Scan Receipt",
+    processing: "Processing Receipt...",
+    selectItems: "Select Returned Items",
+    scanError: "Failed to scan receipt. Please enter details manually.",
   },
   ar: {
     title: "تسجيل مرتجع / إلغاء عملية",
@@ -48,6 +52,10 @@ const t = {
     submitting: "جاري الإرسال...",
     back: "رجوع",
     clearSignature: "مسح التوقيع",
+    scanReceipt: "مسح الفاتورة ضوئياً",
+    processing: "جاري المعالجة...",
+    selectItems: "اختر المنتجات المرتجعة",
+    scanError: "فشل مسح الفاتورة. يرجى إدخال التفاصيل يدوياً.",
   }
 };
 
@@ -162,6 +170,12 @@ export default function CashierVoidPage() {
   const [cashierSignature, setCashierSignature] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // New State for receipt scanner
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
+  const [extractedReceipt, setExtractedReceipt] = useState<any>(null);
+  const [selectedItems, setSelectedItems] = useState<any[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     const savedUserStr = localStorage.getItem("active_cashier_session");
     if (savedUserStr) {
@@ -175,6 +189,68 @@ export default function CashierVoidPage() {
       }
     }
   }, []);
+
+  // Auto-calculate amount when selected items change
+  useEffect(() => {
+    if (selectedItems.length > 0) {
+      const total = selectedItems.reduce((sum, item) => sum + (item.total || 0), 0);
+      setAmount(total.toFixed(2));
+    } else if (extractedReceipt) {
+      setAmount("0.00");
+    }
+  }, [selectedItems, extractedReceipt]);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsProcessingImage(true);
+    try {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = async () => {
+        const base64 = reader.result as string;
+        const res = await fetch("/api/extract-receipt", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageBase64: base64 })
+        });
+        
+        const json = await res.json();
+        if (json.success && json.data) {
+          const data = json.data;
+          setExtractedReceipt(data);
+          setSelectedItems([]); // reset selections
+          
+          if (data.transaction_number) setTransactionNumber(data.transaction_number);
+          if (data.register_number) {
+            const num = data.register_number.toString().trim();
+            if (num.includes("1")) setRegister("Cash 1");
+            else if (num.includes("2")) setRegister("Cash 2");
+          }
+          vibrateSuccess();
+        } else {
+          throw new Error(json.error || "Failed to extract");
+        }
+      };
+    } catch (err: any) {
+      console.error(err);
+      alert(dict.scanError);
+      vibrateError();
+    } finally {
+      setIsProcessingImage(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const toggleItemSelection = (item: any, index: number) => {
+    const isSelected = selectedItems.some((s) => s.desc === item.description && s.index === index);
+    if (isSelected) {
+      setSelectedItems(selectedItems.filter((s) => !(s.desc === item.description && s.index === index)));
+    } else {
+      setSelectedItems([...selectedItems, { desc: item.description, price: item.price, qty: item.quantity, total: item.total, index }]);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -195,6 +271,8 @@ export default function CashierVoidPage() {
         register,
         cashierSignature,
         status: "pending",
+        extractedReceipt,
+        selectedReturnedItems: selectedItems,
         createdAt: new Date().toISOString(),
       };
 
@@ -277,6 +355,37 @@ export default function CashierVoidPage() {
             
             {/* Left Column: Form Fields */}
             <div className="glass-panel p-5 rounded-2xl space-y-4">
+              
+              {/* Receipt Scanner Button */}
+              <div className="pb-4 border-b border-slate-100 dark:border-slate-800">
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  capture="environment" 
+                  ref={fileInputRef} 
+                  onChange={handleImageUpload} 
+                  className="hidden" 
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isProcessingImage}
+                  className="w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-200 text-white dark:text-slate-900 font-bold py-3 px-4 rounded-xl transition-all disabled:opacity-50"
+                >
+                  {isProcessingImage ? (
+                    <>
+                      <div className="animate-spin h-5 w-5 border-2 border-current border-t-transparent rounded-full" />
+                      {dict.processing}
+                    </>
+                  ) : (
+                    <>
+                      <UploadCloud className="h-5 w-5" />
+                      {dict.scanReceipt}
+                    </>
+                  )}
+                </button>
+              </div>
+
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">{dict.txnNum}</label>
                 <input 
@@ -332,6 +441,53 @@ export default function CashierVoidPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Extracted Items Checklist */}
+              {extractedReceipt?.items && extractedReceipt.items.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <label className="block text-xs font-bold text-slate-400 uppercase mb-3 flex items-center justify-between">
+                    <span>{dict.selectItems}</span>
+                    <span className="bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 px-2 py-0.5 rounded text-[10px]">
+                      {selectedItems.length} Selected
+                    </span>
+                  </label>
+                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                    {extractedReceipt.items.map((item: any, i: number) => {
+                      const isChecked = selectedItems.some(s => s.desc === item.description && s.index === i);
+                      return (
+                        <div 
+                          key={i} 
+                          onClick={() => toggleItemSelection(item, i)}
+                          className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
+                            isChecked 
+                              ? "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800/50" 
+                              : "bg-white border-slate-100 dark:bg-slate-900 dark:border-slate-800 hover:border-red-300"
+                          }`}
+                        >
+                          <div className="flex flex-col flex-1 pr-2">
+                            <span className={`text-sm font-bold leading-tight ${isChecked ? "text-red-700 dark:text-red-400" : "text-slate-700 dark:text-slate-200"}`}>
+                              {item.description}
+                            </span>
+                            <span className="text-xs text-slate-500 font-mono mt-0.5">
+                              {item.quantity} x {item.price} EGP
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className={`text-sm font-black font-mono whitespace-nowrap ${isChecked ? "text-red-700 dark:text-red-400" : "text-slate-700 dark:text-slate-300"}`}>
+                              {item.total}
+                            </span>
+                            <div className={`w-5 h-5 flex-shrink-0 rounded-md border flex items-center justify-center ${
+                              isChecked ? "bg-red-600 border-red-600" : "border-slate-300 dark:border-slate-600"
+                            }`}>
+                              {isChecked && <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">{dict.customerName}</label>
