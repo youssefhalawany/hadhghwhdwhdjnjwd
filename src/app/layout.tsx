@@ -3,6 +3,8 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import ClientLayoutWrapper from "@/components/ClientLayoutWrapper";
 import { Toaster } from "sonner";
+import { ThemeProvider } from "@/components/ThemeProvider";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -30,10 +32,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${inter.variable} h-full antialiased dark`}
-    >
+    <html lang="en" suppressHydrationWarning className={inter.variable}>
       <head>
         <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192x192.png" />
         <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png" />
@@ -41,9 +40,14 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
-      <body className="min-h-full flex flex-col bg-background font-sans">
-        <ClientLayoutWrapper>{children}</ClientLayoutWrapper>
-        <Toaster position="top-center" richColors closeButton />
+      <body className="min-h-full flex flex-col bg-background text-foreground font-sans transition-colors duration-300">
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <div className="fixed bottom-4 right-4 z-50 print:hidden">
+            <ThemeToggle />
+          </div>
+          <ClientLayoutWrapper>{children}</ClientLayoutWrapper>
+          <Toaster position="top-center" richColors closeButton theme="system" />
+        </ThemeProvider>
       </body>
     </html>
   );

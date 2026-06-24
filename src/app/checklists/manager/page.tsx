@@ -4,6 +4,8 @@ import useSWR from "swr";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ClipboardCheck, Printer, Search } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageWrapper } from "@/components/PageWrapper";
+import { motion } from "framer-motion";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -18,8 +20,8 @@ export default function ManagerChecklistsPage() {
   const checklists: any[] = data?.checklists || [];
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900" dir="rtl">
-      <header className="bg-white shadow-sm border-b border-slate-200 p-4 sticky top-0 z-10">
+    <PageWrapper className="bg-background text-foreground" dir="rtl">
+      <header className="glass-header p-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button 
@@ -53,9 +55,9 @@ export default function ManagerChecklistsPage() {
       </header>
 
       <main className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-            <h2 className="font-bold text-slate-700 flex items-center gap-2">
+        <div className="glass-panel rounded-2xl overflow-hidden">
+          <div className="p-4 border-b border-border flex flex-wrap gap-4 items-center justify-between bg-card/50">
+            <h2 className="font-bold text-foreground flex items-center gap-2">
               <ClipboardCheck className="h-5 w-5 text-red-500" /> 
               السجلات الأخيرة
             </h2>
@@ -93,12 +95,18 @@ export default function ManagerChecklistsPage() {
                   ))
                 ) : checklists.length === 0 ? (
                   <tr><td colSpan={5} className="p-8 text-center text-slate-500">لا توجد قوائم مكتملة بعد</td></tr>
-                ) : checklists.map(cl => (
-                  <tr key={cl.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-4 py-3 font-mono text-slate-500">
+                ) : checklists.map((cl, i) => (
+                  <motion.tr 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    key={cl.id} 
+                    className="hover:bg-muted/50 transition-colors"
+                  >
+                    <td className="px-4 py-3 font-mono text-muted-foreground">
                       {new Date(cl.createdAt).toLocaleString('en-GB')}
                     </td>
-                    <td className="px-4 py-3 font-bold text-slate-700">{cl.checklistTitle}</td>
+                    <td className="px-4 py-3 font-bold text-foreground">{cl.checklistTitle}</td>
                     <td className="px-4 py-3">{cl.cashierName}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded text-xs font-bold ${
@@ -117,13 +125,13 @@ export default function ManagerChecklistsPage() {
                         <Printer className="h-3.5 w-3.5" /> عرض وطباعة
                       </button>
                     </td>
-                  </tr>
+                  </motion.tr>
                 ))}
               </tbody>
             </table>
           </div>
         </div>
       </main>
-    </div>
+    </PageWrapper>
   );
 }

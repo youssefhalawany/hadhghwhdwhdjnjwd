@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ClipboardList, Clock, AlertTriangle } from "lucide-react";
 import { allChecklists } from "@/lib/checklists-data";
+import { PageWrapper } from "@/components/PageWrapper";
 
 export default function CashierChecklistsList() {
   const router = useRouter();
@@ -12,8 +13,8 @@ export default function CashierChecklistsList() {
   const availableChecklists = allChecklists;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950/20 text-slate-900 dark:text-slate-100 pb-28" dir={lang === "ar" ? "rtl" : "ltr"}>
-      <header className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md shadow-sm border-b border-slate-200 dark:border-slate-750 p-4 sticky top-0 z-10">
+    <PageWrapper className="bg-background text-foreground pb-28" dir={lang === "ar" ? "rtl" : "ltr"}>
+      <header className="glass-header p-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button 
@@ -62,6 +63,6 @@ export default function CashierChecklistsList() {
           ))}
         </div>
       </main>
-    </div>
+    </PageWrapper>
   );
 }

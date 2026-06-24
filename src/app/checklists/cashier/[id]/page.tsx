@@ -7,6 +7,7 @@ import { allChecklists } from "@/lib/checklists-data";
 import { collection, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { toast } from "sonner";
+import { PageWrapper } from "@/components/PageWrapper";
 
 export default function ChecklistFillPage() {
   const router = useRouter();
@@ -92,7 +93,7 @@ export default function ChecklistFillPage() {
     });
 
     if (unanswered > 0) {
-      alert(`Please answer all questions. (${unanswered} remaining)`);
+      toast.error(`Please answer all questions. (${unanswered} remaining)`);
       return;
     }
 
@@ -133,8 +134,8 @@ export default function ChecklistFillPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950/20 text-slate-900 dark:text-slate-100 pb-28" dir={lang === "ar" ? "rtl" : "ltr"}>
-      <header className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md shadow-sm border-b border-slate-200 dark:border-slate-750 p-4 sticky top-0 z-10">
+    <PageWrapper className="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 pb-28" dir={lang === "ar" ? "rtl" : "ltr"}>
+      <header className="glass-header p-4 sticky top-0 z-10 shadow-sm border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button 
@@ -270,6 +271,6 @@ export default function ChecklistFillPage() {
 
         </form>
       </main>
-    </div>
+    </PageWrapper>
   );
 }
