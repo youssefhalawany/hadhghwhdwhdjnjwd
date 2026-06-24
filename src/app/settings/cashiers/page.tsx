@@ -265,7 +265,7 @@ export default function CashierSettingsPage() {
               const store = (c.storeId || "").toLowerCase();
               if (currentBranch === 'alamein4') {
                 return store.includes('alamein') || (!store.includes('alamein') && !store.includes('ola'));
-              } else if (currentBranch === 'olaelkoronfol') {
+              } else if (currentBranch === 'ola') {
                 return store.includes('ola');
               }
               return true;

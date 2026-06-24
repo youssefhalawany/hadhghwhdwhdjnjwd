@@ -300,24 +300,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
               </select>
             </div>
 
-            {/* Role Switcher */}
-            <div className="hidden sm:flex items-center gap-1.5 bg-muted/60 border border-border px-2.5 py-1.5 rounded-lg">
-              <Shield className="h-3.5 w-3.5 text-red-500" />
-              <select
-                id="select-role-switcher"
-                value={role}
-                onChange={handleRoleChange}
-                className="bg-transparent border-none text-xs font-semibold focus:ring-0 cursor-pointer outline-none text-foreground"
-                title="Simulator Role (Tests visual permissions)"
-              >
-                <option value="owner" className="bg-card">Owner (Full)</option>
-                <option value="manager" className="bg-card">Manager</option>
-                <option value="accountant" className="bg-card">Accountant</option>
-                <option value="cashier" className="bg-card">Cashier</option>
-                <option value="warehouse" className="bg-card">Warehouse</option>
-                <option value="viewer" className="bg-card">Viewer</option>
-              </select>
-            </div>
+
 
             {/* Theme Toggle */}
             <button
@@ -400,21 +383,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
               );
             })}
             <div className="border-t border-border mt-2 pt-4 flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-muted-foreground uppercase">Role Simulator</span>
-                <select
-                  value={role}
-                  onChange={(e) => { handleRoleChange(e); setMobileMenuOpen(false); }}
-                  className="bg-muted border border-border rounded-md px-2 py-1 text-xs outline-none"
-                >
-                  <option value="owner">Owner (Full)</option>
-                  <option value="manager">Manager</option>
-                  <option value="accountant">Accountant</option>
-                  <option value="cashier">Cashier</option>
-                  <option value="warehouse">Warehouse</option>
-                  <option value="viewer">Viewer</option>
-                </select>
-              </div>
+
               <button
                 onClick={() => signOut(auth)}
                 className="w-full flex items-center justify-center gap-2 p-3 rounded-lg border border-red-500/30 bg-red-500/10 text-red-500 font-bold"

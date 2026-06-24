@@ -98,9 +98,6 @@ export default function ManagerAuditPage() {
       let reports = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
       // Filter locally to avoid composite index requirement
       let approvedReports = reports.filter((r: any) => r.status === "approved");
-      if (currentBranch !== "all") {
-        approvedReports = approvedReports.filter(r => getReportBranch(r) === currentBranch);
-      }
       setHistoryReports(approvedReports);
       setLoading(false);
     });
@@ -346,13 +343,27 @@ export default function ManagerAuditPage() {
             onClick={() => { setActiveTab("pending"); setSelectedReport(null); }}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "pending" ? "bg-card shadow text-red-500 border border-border" : "text-muted-foreground hover:text-foreground"}`}
           >
-            <Clock className="h-4 w-4" /> Pending ({pendingReports.length})
+            <Clock className="h-4 w-4" /> Pending ({pendingReports.filter((r: any) => {
+              if (currentBranch === "all") return true;
+              if (r.branchId) return r.branchId === currentBranch;
+              const store = (r.cashierDetails?.storeId || "").toLowerCase();
+              if (currentBranch === "alamein4") return store.includes("alamein") || (!store.includes("alamein") && !store.includes("ola"));
+              if (currentBranch === "ola") return store.includes("ola");
+              return true;
+            }).length})
           </button>
           <button
             onClick={() => { setActiveTab("history"); setSelectedReport(null); }}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "history" ? "bg-card shadow text-foreground border border-border" : "text-muted-foreground hover:text-foreground"}`}
           >
-            <Archive className="h-4 w-4" /> Audit History ({historyReports.length})
+            <Archive className="h-4 w-4" /> Audit History ({historyReports.filter((r: any) => {
+              if (currentBranch === "all") return true;
+              if (r.branchId) return r.branchId === currentBranch;
+              const store = (r.cashierDetails?.storeId || "").toLowerCase();
+              if (currentBranch === "alamein4") return store.includes("alamein") || (!store.includes("alamein") && !store.includes("ola"));
+              if (currentBranch === "ola") return store.includes("ola");
+              return true;
+            }).length})
           </button>
         </div>
       </div>
@@ -381,7 +392,14 @@ export default function ManagerAuditPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {reportsList.map(report => (
+              {reportsList.filter((r: any) => {
+                if (currentBranch === "all") return true;
+                if (r.branchId) return r.branchId === currentBranch;
+                const store = (r.cashierDetails?.storeId || "").toLowerCase();
+                if (currentBranch === "alamein4") return store.includes("alamein") || (!store.includes("alamein") && !store.includes("ola"));
+                if (currentBranch === "ola") return store.includes("ola");
+                return true;
+              }).map(report => (
                 <button
                   key={report.id}
                   onClick={() => { handleSelectReport(report); }}

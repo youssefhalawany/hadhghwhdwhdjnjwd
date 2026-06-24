@@ -1,0 +1,47 @@
+{ useState, useEffect }
+{ db }
+{ collection, addDoc, getDocs, deleteDoc, doc, updateDoc }
+{ Users, Trash2, PlusCircle, Lock, Store, Clock, Building }
+{ useBranch }
+{ toast }
+{ Skeleton }
+{ currentBranch, availableBranches }
+{ id: d.id, ...d.data() }
+{ id: d.id, ...d.data() }
+{ employeeId: emp.id }
+{}
+{ id: d.id, ...d.data() }
+{e instanceof Error ? e.message : String(e)}
+{ top: 0, behavior: 'smooth' }
+{/* ADD / EDIT FORM */}
+{handleAddCashier}
+{`h-5 w-5 ${editId ? 'text-blue-500' : 'text-red-500'}
+{editId ? 'Edit Cashier' : 'Add New Cashier'}
+{() => { setEditId(null); setName(''); setStoreId(''); setPin(''); setShiftType('All'); }
+{name}
+{emp.id}
+{emp.name}
+{emp.name}
+{emp.position || "Employee"}
+{branchId}
+{b.id}
+{b.id}
+{b.name}
+{storeId}
+{e => setStoreId(e.target.value)}
+{shiftType}
+{e => setShiftType(e.target.value)}
+{pin}
+{e => setPin(e.target.value)}
+{4}
+{4}
+{adding}
+{`w-full py-3 text-white rounded-lg font-bold disabled:opacity-50 transition-colors ${editId ? 'bg-blue-600 hover:bg-blue-700' : 'bg-red-600 hover:bg-red-700'}
+{adding ? "Saving..." : editId ? "Save Changes" : "Add Cashier"}
+{/* CASHIERS LIST */}
+{c.id}
+{c.name}
+{c.shiftType || 'All'}
+{c.storeId}
+{() => handleEdit(c)}
+{() => handleDelete(c.id)}
