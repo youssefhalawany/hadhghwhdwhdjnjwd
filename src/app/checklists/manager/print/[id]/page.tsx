@@ -122,15 +122,14 @@ export default function PrintChecklistPage() {
         <table className="w-full border-collapse border border-black text-[10px] text-center">
           <thead>
             <tr className="bg-yellow-300 print:bg-yellow-300 print:exact-colors">
-              <th className="border border-black p-1 w-6">م</th>
+              <th className="border border-black p-1 w-8">م</th>
               <th className="border border-black p-1 text-right">موظفي الفود</th>
-              <th className="border border-black p-1 w-12">صباحا</th>
-              <th className="border border-black p-1 w-12">مساءا</th>
-              <th className="border border-black p-1 w-12">ليلا</th>
-              <th className="border border-black p-1 w-32">ملاحظات</th>
+              <th className="border border-black p-1 w-16">صباحا</th>
+              <th className="border border-black p-1 w-16">مساءا</th>
+              <th className="border border-black p-1 w-16">ليلا</th>
+              <th className="border border-black p-1 w-40">ملاحظات</th>
             </tr>
           </thead>
-          <tbody>
             {checklistSchema.categories.map(cat => (
               <tbody key={cat.id}>
                 {/* Category Header Row */}
@@ -153,7 +152,6 @@ export default function PrintChecklistPage() {
                 })}
               </tbody>
             ))}
-          </tbody>
         </table>
       </div>
     );
