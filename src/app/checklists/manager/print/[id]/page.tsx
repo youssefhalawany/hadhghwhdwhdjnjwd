@@ -51,6 +51,12 @@ export default function PrintChecklistPage() {
     return { yes: "", no: "", score: "" };
   };
 
+  const getShiftText = () => {
+    if (isBlank || !data?.createdAt) return "";
+    const hour = new Date(data.createdAt).getHours();
+    return hour >= 12 ? "صباحي" : "ليلي";
+  };
+
   // Helper to render a category table
   const renderCategory = (categoryId: string) => {
     const cat = mohamedAhmedChecklist.categories.find(c => c.id === categoryId);
@@ -167,10 +173,10 @@ export default function PrintChecklistPage() {
             <div className="flex">
               <div className="flex-1 flex flex-col">
                 <div className="border-b border-black p-1 text-xs">
-                  <span className="font-bold">الشيفت :</span> 
+                  <span className="font-bold">الشيفت :</span> {getShiftText()}
                 </div>
                 <div className="flex text-xs">
-                  <div className="flex-1 p-1 border-l border-black"><span className="font-bold">الفرع :</span> الفردوس</div>
+                  <div className="flex-1 p-1 border-l border-black"><span className="font-bold">الفرع :</span> العلمين 4</div>
                   <div className="flex-1 p-1 border-l border-black"><span className="font-bold">مدير الفرع :</span> أ /محمد يحيى</div>
                   <div className="flex-1 p-1"><span className="font-bold">مدير المنطقة :</span> أ / عمرو نجاح</div>
                 </div>
