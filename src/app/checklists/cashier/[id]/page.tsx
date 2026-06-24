@@ -1,14 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { ChevronLeft, Save, AlertTriangle } from "lucide-react";
 import { mohamedAhmedChecklist } from "@/lib/checklists-data";
 import { collection, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
-export default function ChecklistFillPage({ params }: { params: { id: string } }) {
+export default function ChecklistFillPage() {
   const router = useRouter();
+  const params = useParams();
+  const id = params?.id as string;
   const [lang, setLang] = useState<"en" | "ar">("ar");
   const [cashierName, setCashierName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -16,7 +18,7 @@ export default function ChecklistFillPage({ params }: { params: { id: string } }
   // We map answers by item.id to either "yes" or "no"
   const [answers, setAnswers] = useState<Record<string, "yes" | "no" | null>>({});
 
-  const checklist = params.id === "mohamed-ahmed-checklist" ? mohamedAhmedChecklist : null;
+  const checklist = id === "mohamed-ahmed-checklist" ? mohamedAhmedChecklist : null;
 
   useEffect(() => {
     const savedUserStr = localStorage.getItem("active_cashier_session");

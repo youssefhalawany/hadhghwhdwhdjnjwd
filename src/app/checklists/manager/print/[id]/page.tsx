@@ -1,24 +1,26 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { mohamedAhmedChecklist } from "@/lib/checklists-data";
 import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
+import { jsPDF } from "jspdf";
 
-export default function PrintChecklistPage({ params }: { params: { id: string } }) {
+export default function PrintChecklistPage() {
   const router = useRouter();
-  const isBlank = params.id === "blank-mohamed-ahmed";
+  const params = useParams();
+  const id = params?.id as string;
+  const isBlank = id === "blank-mohamed-ahmed";
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(!isBlank);
 
   useEffect(() => {
-    if (isBlank) return;
+    if (isBlank || !id) return;
     async function fetchData() {
       try {
-        const docRef = doc(db, "audited_checklists", params.id);
+        const docRef = doc(db, "audited_checklists", id);
         const snapshot = await getDoc(docRef);
         if (snapshot.exists()) {
           setData(snapshot.data());
@@ -32,7 +34,7 @@ export default function PrintChecklistPage({ params }: { params: { id: string } 
       }
     }
     fetchData();
-  }, [params.id, isBlank]);
+  }, [id, isBlank]);
 
   if (loading) return <div className="p-10 text-center">جاري التحميل...</div>;
 
@@ -110,7 +112,7 @@ export default function PrintChecklistPage({ params }: { params: { id: string } 
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       
       pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`checklist-${params.id}.pdf`);
+      pdf.save(`checklist-${id}.pdf`);
     } catch (error) {
       console.error("Error generating PDF", error);
       alert("Failed to generate PDF. You can try the browser print function instead.");
