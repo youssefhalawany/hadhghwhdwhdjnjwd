@@ -127,7 +127,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     { name: "Admin", icon: Shield, children: [
       { name: "Cashier Accounts", href: "/settings/cashiers", icon: Users },
       { name: "Send Notifications", href: "/settings/notifications", icon: Bell },
-      { name: "Import Products", href: "/admin/import-csv", icon: Database }
+      { name: "Import Products", href: "/admin/import-csv", icon: Database },
+      { name: "Audited Checklists", href: "/checklists/manager", icon: ClipboardList }
     ]},
     { name: "", href: "/cashier", icon: User, isIconOnly: true }
   ];

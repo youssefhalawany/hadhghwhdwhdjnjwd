@@ -445,6 +445,20 @@ export default function CashierHubPage() {
               </p>
             </button>
 
+            {/* Action: Checklists */}
+            <button 
+              onClick={() => navigateTo('/checklists/cashier')}
+              className="group flex flex-col items-center justify-center bg-white/70 dark:bg-slate-800/40 backdrop-blur-md p-8 rounded-3xl border border-slate-200/60 dark:border-slate-700/40 hover:border-emerald-500/50 dark:hover:border-emerald-500/40 shadow-xl shadow-slate-200/10 dark:shadow-none hover:shadow-emerald-500/5 hover:-translate-y-1 transition-all duration-300 active:scale-[0.98] text-slate-900 dark:text-white cursor-pointer"
+            >
+              <div className="h-16 w-16 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
+                <FileText className="h-8 w-8" />
+              </div>
+              <h3 className="font-bold text-xl">{lang === "en" ? "Checklists" : "قوائم المراجعة"}</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 text-center leading-relaxed max-w-[280px]">
+                {lang === "en" ? "Submit daily inspection and branch checklists." : "إرسال قوائم الفحص والمراجعة اليومية للفرع."}
+              </p>
+            </button>
+
             {/* Action 4: My Account */}
             <button 
               onClick={() => navigateTo('/cashier/account')}
