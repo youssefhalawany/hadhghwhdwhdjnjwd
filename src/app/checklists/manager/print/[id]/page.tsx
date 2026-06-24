@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { mohamedAhmedChecklist } from "@/lib/checklists-data";
 import html2canvas from "html2canvas";
@@ -26,12 +25,12 @@ export default function PrintChecklistPage() {
     if (isBlank || !id) return;
     async function fetchData() {
       try {
-        const docRef = doc(db, "audited_checklists", id);
-        const snapshot = await getDoc(docRef);
-        if (snapshot.exists()) {
-          setData(snapshot.data());
+        const res = await fetch(`/api/checklists/${id}`);
+        if (res.ok) {
+          const checklistData = await res.json();
+          setData(checklistData);
         } else {
-          alert("Checklist not found");
+          alert("Checklist not found or permission denied");
         }
       } catch (err) {
         console.error(err);
