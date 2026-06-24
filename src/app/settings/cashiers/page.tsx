@@ -40,25 +40,13 @@ export default function CashierSettingsPage() {
       const activeCashiers: any[] = [];
       for (const c of allCashiers) {
         const emp = employeesMap.get(c.name);
-        if (emp && emp.status === "active") {
-          if (!c.employeeId) {
-            try {
-              await updateDoc(doc(db, "cashiers", c.id), {
-                employeeId: emp.id
-              });
-              c.employeeId = emp.id;
-            } catch (err) {
-              console.error("Failed to auto-migrate cashier employeeId:", c.name, err);
-            }
-          }
-          activeCashiers.push(c);
-        } else {
+        if (emp && !c.employeeId) {
           try {
-            await deleteDoc(doc(db, "cashiers", c.id));
-          } catch (err) {
-            console.error("Failed to delete inactive cashier account:", c.name, err);
-          }
+            await updateDoc(doc(db, "cashiers", c.id), { employeeId: emp.id });
+            c.employeeId = emp.id;
+          } catch (err) {}
         }
+        activeCashiers.push(c);
       }
 
       setCashiers(activeCashiers);

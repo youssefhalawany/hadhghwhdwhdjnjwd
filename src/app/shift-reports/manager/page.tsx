@@ -144,9 +144,9 @@ export default function ManagerAuditPage() {
       await updateDoc(reportRef, {
         status: "approved",
         "cashierDetails.shift": auditShift.toLowerCase(),
-        "cashierCounts?.cash": Number(cashierOverrideCash) || 0,
-        "cashierCounts?.visa": Number(cashierOverrideVisa) || 0,
-        "cashierCounts?.total": (Number(cashierOverrideCash) || 0) + (Number(cashierOverrideVisa) || 0),
+        "cashierCounts.cash": Number(cashierOverrideCash) || 0,
+        "cashierCounts.visa": Number(cashierOverrideVisa) || 0,
+        "cashierCounts.total": (Number(cashierOverrideCash) || 0) + (Number(cashierOverrideVisa) || 0),
         managerAudit: {
           ...selectedReport.managerAudit, // preserve rejectReason and other older fields
           expectedCash: Number(expectedCash) || 0,
