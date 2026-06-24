@@ -103,74 +103,8 @@ export default function PrintChecklistPage() {
     );
   };
 
-  const handleDownloadPDF = async () => {
-    const element = document.getElementById("printable-checklist");
-    if (!element) return;
-    
-    try {
-      // Dynamically import heavy libraries only when clicked
-      const { toJpeg } = await import("html-to-image");
-      const { jsPDF } = await import("jspdf");
-
-      const element = document.getElementById("printable-checklist");
-      if (!element) return;
-      
-      // Force desktop layout width to ensure A4 aspect ratio and prevent mobile responsive stretching
-      const originalWidth = element.style.width;
-      const originalMaxWidth = element.style.maxWidth;
-      element.style.width = "794px";
-      element.style.maxWidth = "794px";
-      
-      // Allow DOM to update layout
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      const sections = document.querySelectorAll('.pdf-section');
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      let currentY = 0;
-
-      for (let i = 0; i < sections.length; i++) {
-        const section = sections[i] as HTMLElement;
-        // toJpeg automatically handles modern CSS colors (oklch/lab) via foreignObject
-        const imgData = await toJpeg(section, { quality: 0.95, pixelRatio: 1.5, style: { transform: 'none' } });
-        
-        // We need to calculate height based on the section's actual aspect ratio
-        const canvasHeight = section.offsetHeight;
-        const canvasWidth = section.offsetWidth;
-        const pdfImgHeight = (canvasHeight * pdfWidth) / canvasWidth;
-
-        // If this section pushes us past the page height (and it's not the very first item), add a new page
-        if (currentY + pdfImgHeight > pageHeight && i > 0) {
-          pdf.addPage();
-          currentY = 0;
-        }
-
-        // Leave a tiny gap between sections (2mm)
-        pdf.addImage(imgData, "JPEG", 0, currentY, pdfWidth, pdfImgHeight);
-        currentY += pdfImgHeight + 2;
-      }
-      
-      // Restore original layout
-      element.style.width = originalWidth;
-      element.style.maxWidth = originalMaxWidth;
-
-      // Automatically open print dialog in supported viewers
-      pdf.autoPrint();
-      pdf.save(`checklist-${id}.pdf`);
-    } catch (error: any) {
-      console.error("Error generating PDF", error);
-      alert("Failed to generate PDF. Error: " + (error?.message || "Unknown error"));
-      
-      // Restore layout on error
-      const element = document.getElementById("printable-checklist");
-      if (element) {
-        element.style.width = "";
-        element.style.maxWidth = "";
-      }
-      
-      window.print();
-    }
+  const handlePrint = () => {
+    window.print();
   };
 
   return (
@@ -178,8 +112,8 @@ export default function PrintChecklistPage() {
       
       {/* Floating action buttons for web view */}
       <div className="fixed top-4 right-4 flex gap-2 print:hidden z-50">
-        <button onClick={handleDownloadPDF} className="bg-red-600 text-white px-4 py-2 rounded-lg font-bold shadow-lg">
-          تحميل PDF / طباعة
+        <button onClick={handlePrint} className="bg-red-600 text-white px-4 py-2 rounded-lg font-bold shadow-lg">
+          طباعة القائمة
         </button>
         <button onClick={() => router.back()} className="bg-slate-800 text-white px-4 py-2 rounded-lg font-bold shadow-lg">
           رجوع
@@ -193,6 +127,17 @@ export default function PrintChecklistPage() {
         dir="rtl"
         style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}
       >
+        <style>{`
+          @media print {
+            .pdf-section {
+              break-inside: avoid;
+              page-break-inside: avoid;
+            }
+            @page {
+              margin: 10mm;
+            }
+          }
+        `}</style>
         <div className="p-4 print:p-0">
           
           {/* Header */}
