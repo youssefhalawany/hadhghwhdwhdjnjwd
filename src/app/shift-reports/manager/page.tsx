@@ -53,12 +53,19 @@ export default function ManagerAuditPage() {
 
 
   useEffect(() => {
+    const getReportBranch = (r: any) => {
+      if (r.branchId) return r.branchId;
+      const storeId = r.cashierDetails?.storeId?.toLowerCase() || "";
+      if (storeId.includes("ola") || storeId.includes("koronfol")) return "ola";
+      return "alamein4"; // Default fallback
+    };
+
     // 1. Fetch Pending
     const qPending = query(collection(db, "shift_reports"), where("status", "==", "pending_manager"));
     const unsubPending = onSnapshot(qPending, (snapshot) => {
       let reports = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
       if (currentBranch !== "all") {
-        reports = reports.filter(r => r.branchId === currentBranch);
+        reports = reports.filter(r => getReportBranch(r) === currentBranch);
       }
       reports.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setPendingReports(reports);
@@ -72,18 +79,15 @@ export default function ManagerAuditPage() {
       // Filter locally to avoid composite index requirement
       let approvedReports = reports.filter((r: any) => r.status === "approved");
       if (currentBranch !== "all") {
-        approvedReports = approvedReports.filter(r => r.branchId === currentBranch);
+        approvedReports = approvedReports.filter(r => getReportBranch(r) === currentBranch);
       }
       setHistoryReports(approvedReports);
       setLoading(false);
     });
 
-
-
     return () => {
       unsubPending();
       unsubHistory();
-
     };
   }, [currentBranch]);
 
