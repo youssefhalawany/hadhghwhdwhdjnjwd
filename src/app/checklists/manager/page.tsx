@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ClipboardCheck, Printer, Search } from "lucide-react";
-import { ChevronLeft, ClipboardCheck, Printer, Search } from "lucide-react";
 
 export default function ManagerChecklistsPage() {
   const router = useRouter();
