@@ -7,6 +7,7 @@ import { db } from "@/lib/firebase";
 import { Shield, UploadCloud, ChevronLeft, AlertTriangle, User as UserIcon, Globe } from "lucide-react";
 import { vibrateSuccess, vibrateError } from "@/lib/haptics";
 import { NumericFormat } from "react-number-format";
+import { useBranch } from "@/context/BranchContext";
 
 const t = {
   en: {
@@ -159,6 +160,7 @@ export default function CashierVoidPage() {
   const router = useRouter();
   const [lang, setLang] = useState<"en" | "ar">("en");
   const dict = t[lang];
+  const { currentBranch } = useBranch();
   
   const [transactionNumber, setTransactionNumber] = useState("");
   const [cashierName, setCashierName] = useState("");
@@ -324,6 +326,7 @@ export default function CashierVoidPage() {
         extractedReceipt,
         selectedReturnedItems: selectedItems,
         createdAt: new Date().toISOString(),
+        branchId: currentBranch,
       };
 
       await addDoc(collection(db, "void_requests"), payload);

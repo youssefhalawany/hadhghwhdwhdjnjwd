@@ -5,7 +5,7 @@ import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc } from "f
 import { db } from "@/lib/firebase";
 import { Search, Printer, Shield, Image as ImageIcon, ArrowLeftRight, Calendar, CheckCircle } from "lucide-react";
 import Barcode from "react-barcode";
-// Removed html2canvas and jspdf due to Tailwind CSS parsing errors
+import { useBranch } from "@/context/BranchContext";
 
 export default function ManagerVoidsPage() {
   const [voids, setVoids] = useState<any[]>([]);
@@ -13,6 +13,7 @@ export default function ManagerVoidsPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [generatingPDF, setGeneratingPDF] = useState(false);
+  const { currentBranch } = useBranch();
 
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -93,10 +94,16 @@ export default function ManagerVoidsPage() {
     }, 500);
   };
 
-  const filteredVoids = voids.filter(v => 
-    (v.transactionNumber || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (v.customerName || "").toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredVoids = voids.filter(v => {
+    // Branch Filter (handle legacy voids which have no branchId)
+    const matchesBranch = !v.branchId || v.branchId === currentBranch;
+    
+    // Text Filter
+    const matchesSearch = (v.transactionNumber || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (v.customerName || "").toLowerCase().includes(searchQuery.toLowerCase());
+                          
+    return matchesBranch && matchesSearch;
+  });
 
   if (loading) {
     return <div className="flex justify-center p-10"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-red-600"></div></div>;
