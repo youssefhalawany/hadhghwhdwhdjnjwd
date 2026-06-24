@@ -1,0 +1,304 @@
+3:import React, { useState, useEffect } from "react";
+4:import { motion } from "framer-motion";
+5:import { db } from "@/lib/firebase";
+6:import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, addDoc, orderBy, limit } from "firebase/firestore";
+7:import { CheckCircle, Clock, FileText, Banknote, Package, Lock, Printer, Archive, Trash2, Calendar, QrCode } from "lucide-react";
+12:import { useBranch } from "@/context/BranchContext";
+13:import { toast } from "sonner";
+14:import { Skeleton } from "@/components/ui/skeleton";
+16:export default function ManagerAuditPage() {
+17:  const { currentBranch } = useBranch();
+27:  const formatTimeMinus2Hours = (dateString: string) => {
+55:  useEffect(() => {
+56:    const getReportBranch = (r: any) => {
+65:    const unsubPending = onSnapshot(qPending, (snapshot) => {
+66:      let reports = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+67:      if (currentBranch !== "all") {
+77:    const unsubHistory = onSnapshot(qHistory, (snapshot) => {
+78:      let reports = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
+81:      if (currentBranch !== "all") {
+88:    return () => {
+94:  const handleSelectReport = (report: any) => {
+99:    if (report.managerAudit) {
+107:    } else {
+117:  const calculateCashVariance = () => {
+123:  const calculateVisaVariance = () => {
+129:  const calculateTotalVariance = () => {
+133:  const handleApprove = async () => {
+135:    if (!managerName.trim()) {
+141:    try {
+144:      await updateDoc(reportRef, {
+150:        managerAudit: {
+167:      if (selectedReport.managerAudit?.rejectReason) {
+168:        finalNotes += `\n[System Note: Previously sent back for editing. Reason: ${selectedReport.managerAudit.rejectReason}]`;
+172:      await addDoc(collection(db, "sales"), {
+186:      try {
+187:        await fetch("/api/notifications/notify-master", {
+189:          headers: { "Content-Type": "application/json" },
+190:          body: JSON.stringify({
+192:            body: `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' })}\nApproved By: ${managerName}\nCashier: ${selectedReport?.cashierDetails?.name}\nShift: ${auditShift}\nSystem Cash: ${expectedCash} EGP\nSystem Visa: ${expectedVisa} EGP\nOver/Short: ${calculateCashVariance()} EGP\nCig. Variance: ${Number(cigarettesPercent) || 0}%\nCoffee Variance: ${Number(coffeePercent) || 0}%\nNotes: ${finalNotes || 'None'}\n\nView Approved Report:\n${window.location.origin}/shift-reports/view?id=${selectedReport.id}`
+195:      } catch (err) { console.error("Notify error", err); }
+199:    } catch (error) {
+202:    } finally {
+207:  const triggerReject = () => {
+213:  const confirmReject = async () => {
+214:    if (!selectedReport || !rejectReason.trim()) {
+220:    try {
+223:      await updateDoc(reportRef, {
+225:        managerAudit: {
+234:    } catch (error) {
+237:    } finally {
+242:  const triggerDelete = () => {
+248:  const confirmDelete = async () => {
+251:    if (deletePin !== "1111") {
+258:    try {
+265:    } catch (error) {
+268:    } finally {
+273:  const generatePDF = async () => {
+276:    try {
+280:      const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+283:      const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
+290:    } catch (error) {
+293:    } finally {
+298:  if (loading) {
+323:        {/* TAB SWITCHER */}
+326:            onClick={() => { setActiveTab("pending"); setSelectedReport(null); }}
+327:            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "pending" ? "bg-card shadow text-red-500 border border-border" : "text-muted-foreground hover:text-foreground"}`}
+329:            <Clock className="h-4 w-4" /> Pending ({pendingReports.length})
+332:            onClick={() => { setActiveTab("history"); setSelectedReport(null); }}
+333:            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "history" ? "bg-card shadow text-foreground border border-border" : "text-muted-foreground hover:text-foreground"}`}
+335:            <Archive className="h-4 w-4" /> Audit History ({historyReports.length})
+342:        {/* LEFT COLUMN: LIST */}
+345:          {(activeTab === "history") && (
+350:                value={searchQuery}
+351:                onChange={(e) => setSearchQuery(e.target.value)}
+357:          {reportsList.length === 0 ? (
+360:              <p className="font-bold text-foreground">{activeTab === "pending" ? "All caught up!" : "No history found."}</p>
+364:              {reportsList.map(report => (
+366:                  key={report.id}
+367:                  onClick={() => { handleSelectReport(report); }}
+368:                  className={`w-full text-left p-4 rounded-xl border transition-all relative overflow-hidden ${selectedReport?.id === report.id
+374:                    <span className="font-bold text-foreground text-sm">{report?.cashierDetails?.date}</span>
+375:                    <span className="text-xs font-bold px-2 py-1 bg-red-500/10 rounded-md text-red-500 border border-red-200/20 dark:border-red-950/30">{report?.cashierDetails?.shift}</span>
+377:                  <div className="font-semibold text-lg text-foreground mb-1">{report?.cashierDetails?.name}</div>
+378:                  <div className="text-xs text-muted-foreground font-mono mb-3">Store: {report?.cashierDetails?.storeId}</div>
+380:                  {activeTab === "history" && report.managerAudit && (
+381:                    <div className={`mb-3 text-xs flex justify-between bg-card p-2 rounded border border-border ${report.managerAudit.overShort !== 0 ? 'animate-pulse border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.2)]' : ''}`}>
+383:                      <span className={`font-bold ${report.managerAudit.overShort < 0 ? 'text-red-600' : report.managerAudit.overShort > 0 ? 'text-emerald-600' : 'text-slate-500'}`}>
+384:                        {report.managerAudit.overShort < 0 ? '-' : report.managerAudit.overShort > 0 ? '+' : ''}EGP {Math.abs(report.managerAudit.overShort)}
+391:                    <span className="font-bold text-red-600 dark:text-red-400">EGP {report?.cashierCounts?.total?.toLocaleString()}</span>
+399:        {/* RIGHT COLUMN: AUDIT WORKSPACE */}
+401:          {!selectedReport ? (
+408:              {/* Header */}
+412:                    <h2 className="text-2xl font-black">{selectedReport?.cashierDetails?.name}</h2>
+414:                      <span>{selectedReport?.cashierDetails?.date}</span>
+416:                      {activeTab === "pending" ? (
+418:                          value={auditShift} 
+419:                          onChange={(e) => setAuditShift(e.target.value)} 
+427:                        <span>{selectedReport?.cashierDetails?.shift} Shift</span>
+430:                      <span>{selectedReport?.cashierDetails?.storeId}</span>
+433:                      {selectedReport.cashierRole === 2 ? 'Cashier 2 (Money Only)' : 'Cashier 1 (Full Register)'}
+435:                    <p className="text-slate-400 text-xs mt-1">Submitted: {formatTimeMinus2Hours(selectedReport.createdAt)}</p>
+436:                    {activeTab === "history" && (
+438:                        <CheckCircle className="inline h-3 w-3 mr-1" /> Approved by {selectedReport.managerAudit?.managerName}
+444:                    <p className="text-2xl font-black text-green-400">EGP {activeTab === "pending" ? ((Number(cashierOverrideCash) || 0) + (Number(cashierOverrideVisa) || 0)).toLocaleString() : selectedReport?.cashierCounts?.total?.toLocaleString()}</p>
+451:                {/* 1. Cashier Counts vs System Expected */}
+463:                        {activeTab === "pending" ? (
+464:                          <input type="number" value={cashierOverrideCash} onChange={e => setCashierOverrideCash(e.target.value)} className="w-28 p-1 text-right font-mono border border-border bg-background rounded outline-none focus:ring-1 focus:ring-blue-500 text-sm" placeholder="Override" />
+466:                          <span className="font-mono font-bold">EGP {selectedReport?.cashierCounts?.cash?.toLocaleString()}</span>
+471:                        {activeTab === "pending" ? (
+472:                          <input type="number" value={cashierOverrideVisa} onChange={e => setCashierOverrideVisa(e.target.value)} className="w-28 p-1 text-right font-mono border border-border bg-background rounded outline-none focus:ring-1 focus:ring-blue-500 text-sm" placeholder="Override" />
+474:                          <span className="font-mono font-bold">EGP {selectedReport?.cashierCounts?.visa?.toLocaleString()}</span>
+479:                    {/* Manager Input (System Expected) */}
+484:                        <input type="number" value={expectedCash} onChange={e => setExpectedCash(e.target.value)} className="w-32 p-1.5 text-right font-mono border rounded outline-none focus:ring-2 focus:ring-red-500" placeholder="0.00" />
+488:                        <input type="number" value={expectedVisa} onChange={e => setExpectedVisa(e.target.value)} className="w-32 p-1.5 text-right font-mono border rounded outline-none focus:ring-2 focus:ring-red-500" placeholder="0.00" />
+493:                  {/* Variance Result */}
+497:                      {(() => {
+502:                          <span className={`text-xl font-black ${isZero ? 'text-slate-500' : isShort ? 'text-red-600' : 'text-green-600'}`}>
+503:                            {isShort ? '-' : isZero ? '' : '+'}EGP {Math.abs(variance).toLocaleString()}
+510:                      {(() => {
+515:                          <span className={`text-xl font-black ${isZero ? 'text-slate-500' : isShort ? 'text-red-600' : 'text-green-600'}`}>
+516:                            {isShort ? '-' : isZero ? '' : '+'}EGP {Math.abs(variance).toLocaleString()}
+524:                {/* 2. Inventory Review (Only for Cashier 1) */}
+525:                {selectedReport.cashierRole !== 2 && (
+546:                            <td className="p-3">{selectedReport.inventoryCounts?.cigarettes?.start || 0}</td>
+547:                            <td className="p-3">{selectedReport.inventoryCounts?.cigarettes?.delivery || 0}</td>
+548:                            <td className="p-3">{selectedReport.inventoryCounts?.cigarettes?.end || 0}</td>
+549:                            <td className="p-3 font-bold text-right bg-amber-50 text-amber-900">{selectedReport.inventoryCounts?.cigarettes?.sold || 0}</td>
+553:                            <td className="p-3">{selectedReport.inventoryCounts?.lighters?.start || 0}</td>
+554:                            <td className="p-3">{selectedReport.inventoryCounts?.lighters?.delivery || 0}</td>
+555:                            <td className="p-3">{selectedReport.inventoryCounts?.lighters?.end || 0}</td>
+556:                            <td className="p-3 font-bold text-right bg-amber-50 text-amber-900">{selectedReport.inventoryCounts?.lighters?.sold || 0}</td>
+565:                        <input type="number" step="0.01" value={cigarettesPercent} onChange={e => setCigarettesPercent(e.target.value)} className="w-full p-2.5 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-amber-500" placeholder="e.g. 1.2" />
+569:                        <input type="number" step="0.01" value={coffeePercent} onChange={e => setCoffeePercent(e.target.value)} className="w-full p-2.5 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-amber-500" placeholder="e.g. 2.5" />
+575:                {/* 3. Final Sign Off */}
+585:                      <input type="text" value={managerName} onChange={e => setManagerName(e.target.value)} className="w-full p-3 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-slate-500" placeholder="Enter your full name" />
+587:                    {selectedReport.managerAudit?.rejectReason && (
+590:                        <p className="text-red-600 text-sm italic font-medium">"{selectedReport.managerAudit.rejectReason}"</p>
+591:                        {selectedReport.previousSubmission && (
+595:                              Cash: EGP {selectedReport.previousSubmission.cash} | Visa: EGP {selectedReport.previousSubmission.visa}
+596:                              {selectedReport.cashierRole === 1 && ` | Cigarettes End: ${selectedReport.previousSubmission.cigEnd} | Lighters End: ${selectedReport.previousSubmission.lightEnd}`}
+604:                      <textarea value={comments} onChange={e => setComments(e.target.value)} rows={3} className="w-full p-3 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-slate-500" placeholder="Notes regarding variances, issues, etc." />
+609:                {/* Actions */}
+611:                  {activeTab === "pending" ? (
+615:                          onClick={triggerReject}
+616:                          disabled={submitting}
+619:                          {submitting ? "Rejecting..." : "Reject Report"}
+623:                          onClick={handleApprove}
+624:                          disabled={submitting}
+627:                          {submitting ? "Saving..." : <><CheckCircle className="h-5 w-5" /> Approve</>}
+632:                        onClick={handleDelete}
+633:                        disabled={submitting}
+643:                        onClick={handleApprove}
+644:                        disabled={submitting}
+647:                        {submitting ? "Saving..." : "Update Audit Notes"}
+651:                        onClick={generatePDF}
+652:                        disabled={generatingPDF}
+655:                        {generatingPDF ? "Generating PDF..." : <><Printer className="h-5 w-5" /> Print A4 Sign-Off Sheet</>}
+667:      {/* --- HIDDEN FORMAL A4 PRINT TEMPLATE FOR MANAGER --- */}
+668:      {selectedReport && (
+669:        <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+670:          <div id="manager-signoff-pdf-capture" style={{ width: '794px', minHeight: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', display: 'flex', flexDirection: 'column' }}>
+672:            {/* Header / Letterhead */}
+673:            <div style={{ padding: '40px 40px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '4px solid #1e293b' }}>
+674:              <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+675:                <div style={{ width: '80px', height: '80px', backgroundColor: '#dc2626', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+676:                  <span style={{ fontSize: '50px', fontWeight: '900', color: '#ffffff', lineHeight: 1 }}>K</span>
+679:                  <h1 style={{ fontSize: '32px', fontWeight: '900', color: '#1e293b', margin: 0, textTransform: 'uppercase', letterSpacing: '-0.5px' }}>CIRCLE K EL-ALAMEIN 4</h1>
+680:                  <p style={{ fontSize: '16px', color: '#64748b', margin: '5px 0 0', fontWeight: '600' }}>SHIFT REPORT</p>
+683:              <div style={{ textAlign: 'right', display: 'flex', gap: '15px', alignItems: 'center' }}>
+684:                <div style={{ textAlign: 'center' }}>
+685:                  <Barcode value={selectedReport.id.substring(0, 10).toUpperCase()} width={1.5} height={40} fontSize={12} displayValue={true} />
+687:                <div style={{ borderLeft: '1px solid #e2e8f0', paddingLeft: '15px' }}>
+688:                  {typeof window !== 'undefined' && (
+690:                      value={window.location.origin + '/shift-reports/view?id=' + selectedReport.id} 
+691:                      size={64} 
+699:            {/* Content Area */}
+700:            <div style={{ padding: '30px 40px', position: 'relative', zIndex: 10 }}>
+702:              {/* Branch & Shift Details (Strict Grid) */}
+703:              <div style={{ border: '2px solid #e2e8f0', marginBottom: '30px', borderRadius: '4px', overflow: 'hidden' }}>
+704:                <div style={{ backgroundColor: '#f8fafc', padding: '10px 15px', borderBottom: '2px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+706:                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginTop: '10px' }}>
+708:                      <p style={{ margin: '0 0 5px', color: '#64748b' }}>Audited By</p>
+709:                      <p style={{ margin: 0, fontWeight: 'bold', fontSize: '14px', color: '#0f172a' }}>{managerName || "Pending"}</p>
+712:                      <p style={{ margin: '0 0 5px', color: '#64748b' }}>Date Audited</p>
+713:                      <p style={{ margin: 0, fontWeight: 'bold', fontSize: '14px', color: '#0f172a' }}>{formatTimeMinus2Hours(selectedReport.managerAudit?.auditedAt || new Date().toISOString())}</p>
+717:                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.5fr', gap: '0' }}>
+718:                  <div style={{ padding: '15px', borderRight: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
+719:                    <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Branch / Store ID</p>
+720:                    <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.storeId}</p>
+722:                  <div style={{ padding: '15px', borderRight: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
+723:                    <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Shift Period</p>
+724:                    <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.shift} Shift</p>
+726:                  <div style={{ padding: '15px', borderBottom: '1px solid #e2e8f0' }}>
+727:                    <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Cashier Name</p>
+728:                    <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.name}</p>
+730:                  <div style={{ padding: '15px', borderRight: '1px solid #e2e8f0' }}>
+731:                    <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Operating Date</p>
+732:                    <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.date}</p>
+734:                  <div style={{ padding: '15px', borderRight: '1px solid #e2e8f0' }}>
+735:                    <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Cashier Role</p>
+736:                    <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>
+737:                      {selectedReport.cashierRole === 2 ? 'Cashier 2 (Money Only)' : 'Cashier 1 (Full)'}
+740:                  <div style={{ padding: '15px' }}>
+741:                    <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Cashier Submission Timestamp</p>
+742:                    <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{formatTimeMinus2Hours(selectedReport.createdAt)}</p>
+747:              {/* Financial Audit */}
+748:              <div style={{ border: '2px solid #e2e8f0', marginBottom: '15px', borderRadius: '4px', overflow: 'hidden' }}>
+749:                <div style={{ backgroundColor: '#f8fafc', padding: '6px 15px', borderBottom: '2px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+753:                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
+754:                  <thead style={{ backgroundColor: '#f1f5f9' }}>
+756:                      <th style={{ padding: '8px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Tender Type</th>
+757:                      <th style={{ padding: '8px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Cashier Declared</th>
+758:                      <th style={{ padding: '8px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Manager / POS Expected</th>
+759:                      <th style={{ padding: '8px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569', textAlign: 'right' }}>Variance (Over/Short)</th>
+764:                      <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>Cash</td>
+765:                      <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px' }}>EGP {selectedReport?.cashierCounts?.cash?.toLocaleString()}</td>
+766:                      <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px' }}>EGP {Number(expectedCash).toLocaleString() || "0"}</td>
+767:                      <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px', textAlign: 'right', fontWeight: 'bold', color: calculateCashVariance() < 0 ? '#dc2626' : '#16a34a' }}>
+768:                        {calculateCashVariance() < 0 ? '-' : '+'}EGP {Math.abs(calculateCashVariance()).toLocaleString()}
+772:                      <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>Visa</td>
+773:                      <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px' }}>EGP {selectedReport?.cashierCounts?.visa?.toLocaleString()}</td>
+774:                      <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px' }}>EGP {Number(expectedVisa).toLocaleString() || "0"}</td>
+775:                      <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px', textAlign: 'right', fontWeight: 'bold', color: calculateVisaVariance() < 0 ? '#dc2626' : '#16a34a' }}>
+776:                        {calculateVisaVariance() < 0 ? '-' : '+'}EGP {Math.abs(calculateVisaVariance()).toLocaleString()}
+783:              {/* Inventory Review */}
+784:              {selectedReport.cashierRole !== 2 && (
+785:                <div style={{ border: '2px solid #e2e8f0', marginBottom: '15px', borderRadius: '4px', overflow: 'hidden' }}>
+786:                  <div style={{ backgroundColor: '#f8fafc', padding: '6px 15px', borderBottom: '2px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+790:                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
+791:                    <thead style={{ backgroundColor: '#f1f5f9' }}>
+793:                        <th style={{ padding: '8px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Item</th>
+794:                        <th style={{ padding: '8px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Start</th>
+795:                        <th style={{ padding: '8px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Delivery</th>
+796:                        <th style={{ padding: '8px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>End</th>
+797:                        <th style={{ padding: '8px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569', textAlign: 'right' }}>Calculated Sold</th>
+802:                        <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>Cigarettes</td>
+803:                        <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0' }}>{selectedReport.inventoryCounts?.cigarettes?.start || 0}</td>
+804:                        <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0' }}>{selectedReport.inventoryCounts?.cigarettes?.delivery || 0}</td>
+805:                        <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0' }}>{selectedReport.inventoryCounts?.cigarettes?.end || 0}</td>
+806:                        <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 'bold' }}>{selectedReport.inventoryCounts?.cigarettes?.sold || 0}</td>
+809:                        <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>Lighters</td>
+810:                        <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0' }}>{selectedReport.inventoryCounts?.lighters?.start || 0}</td>
+811:                        <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0' }}>{selectedReport.inventoryCounts?.lighters?.delivery || 0}</td>
+812:                        <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0' }}>{selectedReport.inventoryCounts?.lighters?.end || 0}</td>
+813:                        <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 'bold' }}>{selectedReport.inventoryCounts?.lighters?.sold || 0}</td>
+817:                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', backgroundColor: '#f8fafc', borderTop: '2px solid #cbd5e1' }}>
+818:                    <div style={{ padding: '8px 15px', borderRight: '1px solid #e2e8f0' }}>
+819:                      <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', marginRight: '10px' }}>Cigarettes Shrink</span>
+820:                      <span style={{ fontSize: '14px', fontWeight: '900', color: '#0f172a' }}>{Number(cigarettesPercent) || 0}%</span>
+822:                    <div style={{ padding: '8px 15px' }}>
+823:                      <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', marginRight: '10px' }}>Coffee Shrink</span>
+824:                      <span style={{ fontSize: '14px', fontWeight: '900', color: '#0f172a' }}>{Number(coffeePercent) || 0}%</span>
+830:              {/* Manager Notes & Rejection History */}
+831:              <div style={{ border: '2px solid #e2e8f0', marginBottom: '30px', borderRadius: '4px', overflow: 'hidden' }}>
+832:                <div style={{ backgroundColor: '#f8fafc', padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+835:                <div style={{ padding: '12px 15px', fontSize: '12px', color: '#334155' }}>
+836:                  {selectedReport.managerAudit?.rejectReason && (
+837:                    <div style={{ marginBottom: '10px', paddingBottom: '10px', borderBottom: '1px dashed #cbd5e1' }}>
+838:                      <p style={{ margin: '0 0 4px', fontSize: '10px', fontWeight: 'bold', color: '#dc2626', textTransform: 'uppercase' }}>Previous Rejection Reason (Corrected by Cashier)</p>
+839:                      <p style={{ margin: 0, fontStyle: 'italic', color: '#dc2626' }}>"{selectedReport.managerAudit.rejectReason}"</p>
+840:                      {selectedReport.previousSubmission && (
+841:                        <div style={{ marginTop: '5px', paddingTop: '5px', borderTop: '1px solid #fca5a5' }}>
+842:                          <p style={{ margin: 0, fontSize: '9px', fontWeight: 'bold', color: '#b91c1c', textTransform: 'uppercase' }}>Original Incorrect Submission</p>
+843:                          <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#b91c1c', fontFamily: 'monospace' }}>
+844:                            Cash: EGP {selectedReport.previousSubmission.cash} | Visa: EGP {selectedReport.previousSubmission.visa}
+845:                            {selectedReport.cashierRole === 1 && ` | Cigarettes End: ${selectedReport.previousSubmission.cigEnd} | Lighters End: ${selectedReport.previousSubmission.lightEnd}`}
+851:                  <div style={{ fontStyle: selectedReport.managerAudit?.comments ? 'normal' : 'italic' }}>
+852:                    {selectedReport.managerAudit?.comments || "No additional comments provided by the auditing manager."}
+857:              {/* Official Signatures Block */}
+858:              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '40px' }}>
+860:                {/* Cashier Signature */}
+861:                <div style={{ width: '40%' }}>
+862:                  <p style={{ fontSize: '10px', color: '#64748b', fontStyle: 'italic', marginBottom: '10px', lineHeight: 1.4 }}>
+865:                  {selectedReport.cashierSignature ? (
+866:                    <img src={selectedReport.cashierSignature} alt="Signature" style={{ display: 'block', maxWidth: '100%', height: '100px', objectFit: 'contain', marginBottom: '5px' }} />
+868:                    <div style={{ height: '100px', marginBottom: '5px' }}></div>
+870:                  <div style={{ borderBottom: '2px solid #1e293b', width: '100%', marginBottom: '10px' }}></div>
+871:                  <p style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e293b', margin: 0, textTransform: 'uppercase' }}>Cashier Signature</p>
+872:                  <p style={{ fontSize: '16px', fontWeight: '900', color: '#000000', margin: '4px 0 0' }}>{selectedReport?.cashierDetails?.name}</p>
+875:                {/* Manager Signature */}
+876:                <div style={{ width: '40%' }}>
+877:                  <p style={{ fontSize: '10px', color: '#64748b', fontStyle: 'italic', marginBottom: '30px', lineHeight: 1.4 }}>
+880:                  <div style={{ borderBottom: '2px solid #1e293b', width: '100%', marginBottom: '10px' }}></div>
+881:                  <p style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e293b', margin: 0, textTransform: 'uppercase' }}>Manager Signature</p>
+882:                  <p style={{ fontSize: '16px', fontWeight: '900', color: '#000000', margin: '4px 0 0' }}>{managerName || "__________________"}</p>
+888:            {/* Footer */}
+889:            <div style={{ marginTop: 'auto', marginBottom: '30px', marginLeft: '40px', marginRight: '40px', borderTop: '2px solid #e2e8f0', paddingTop: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+891:                <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase' }}>El Masreya For Trade Internal Document</span>
+892:                <p style={{ fontSize: '9px', color: '#cbd5e1', margin: '2px 0 0' }}>Generated: {formatTimeMinus2Hours(new Date().toISOString())}</p>
+894:              <div style={{ textAlign: 'right' }}>
+895:                <span style={{ fontSize: '10px', color: '#94a3b8', fontFamily: 'monospace', fontWeight: 'bold' }}>AUDIT TIMESTAMP: {formatTimeMinus2Hours(selectedReport.managerAudit?.auditedAt || selectedReport.createdAt)}</span>
+903:      {/* Reject Modal */}
+904:      {rejectModalOpen && (
+911:              value={rejectReason}
+912:              onChange={(e) => setRejectReason(e.target.value)}
+916:                onClick={() => setRejectModalOpen(false)}
+922:                onClick={confirmReject}
+932:      {/* Delete Modal */}
+933:      {deleteModalOpen && (
+944:              value={deletePin}
+945:              onChange={(e) => setDeletePin(e.target.value)}
+946:              maxLength={4}
+950:                onClick={() => setDeleteModalOpen(false)}
+956:                onClick={confirmDelete}

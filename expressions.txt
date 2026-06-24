@@ -1,0 +1,294 @@
+{ useState, useEffect }
+{ motion }
+{ db }
+{ collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, addDoc, orderBy, limit }
+{ CheckCircle, Clock, FileText, Banknote, Package, Lock, Printer, Archive, Trash2, Calendar, QrCode }
+{ useBranch }
+{ toast }
+{ Skeleton }
+{ currentBranch }
+{ id: doc.id, ...doc.data() as any }
+{ id: doc.id, ...(doc.data() as any) }
+{selectedReport.managerAudit.rejectReason}
+{ "Content-Type": "application/json" }
+{new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' }
+{managerName}
+{selectedReport?.cashierDetails?.name}
+{auditShift}
+{expectedCash}
+{expectedVisa}
+{calculateCashVariance()}
+{Number(cigarettesPercent) || 0}
+{Number(coffeePercent) || 0}
+{finalNotes || 'None'}
+{window.location.origin}
+{selectedReport.id}
+{ console.error("Notify error", err); }
+{ scale: 2, useCORS: true }
+{ orientation: "p", unit: "mm", format: "a4" }
+{/* TAB SWITCHER */}
+{() => { setActiveTab("pending"); setSelectedReport(null); }
+{`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "pending" ? "bg-card shadow text-red-500 border border-border" : "text-muted-foreground hover:text-foreground"}
+{pendingReports.length}
+{() => { setActiveTab("history"); setSelectedReport(null); }
+{`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "history" ? "bg-card shadow text-foreground border border-border" : "text-muted-foreground hover:text-foreground"}
+{historyReports.length}
+{/* LEFT COLUMN: LIST */}
+{searchQuery}
+{(e) => setSearchQuery(e.target.value)}
+{activeTab === "pending" ? "All caught up!" : "No history found."}
+{report.id}
+{() => { handleSelectReport(report); }
+{report?.cashierDetails?.date}
+{report?.cashierDetails?.shift}
+{report?.cashierDetails?.name}
+{report?.cashierDetails?.storeId}
+{`mb-3 text-xs flex justify-between bg-card p-2 rounded border border-border ${report.managerAudit.overShort !== 0 ? 'animate-pulse border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.2)]' : ''}
+{`font-bold ${report.managerAudit.overShort < 0 ? 'text-red-600' : report.managerAudit.overShort > 0 ? 'text-emerald-600' : 'text-slate-500'}
+{report.managerAudit.overShort < 0 ? '-' : report.managerAudit.overShort > 0 ? '+' : ''}
+{Math.abs(report.managerAudit.overShort)}
+{report?.cashierCounts?.total?.toLocaleString()}
+{/* RIGHT COLUMN: AUDIT WORKSPACE */}
+{/* Header */}
+{selectedReport?.cashierDetails?.name}
+{selectedReport?.cashierDetails?.date}
+{auditShift}
+{(e) => setAuditShift(e.target.value)}
+{selectedReport?.cashierDetails?.shift}
+{selectedReport?.cashierDetails?.storeId}
+{selectedReport.cashierRole === 2 ? 'Cashier 2 (Money Only)' : 'Cashier 1 (Full Register)'}
+{formatTimeMinus2Hours(selectedReport.createdAt)}
+{selectedReport.managerAudit?.managerName}
+{activeTab === "pending" ? ((Number(cashierOverrideCash) || 0) + (Number(cashierOverrideVisa) || 0)).toLocaleString() : selectedReport?.cashierCounts?.total?.toLocaleString()}
+{/* 1. Cashier Counts vs System Expected */}
+{cashierOverrideCash}
+{e => setCashierOverrideCash(e.target.value)}
+{selectedReport?.cashierCounts?.cash?.toLocaleString()}
+{cashierOverrideVisa}
+{e => setCashierOverrideVisa(e.target.value)}
+{selectedReport?.cashierCounts?.visa?.toLocaleString()}
+{/* Manager Input (System Expected) */}
+{expectedCash}
+{e => setExpectedCash(e.target.value)}
+{expectedVisa}
+{e => setExpectedVisa(e.target.value)}
+{/* Variance Result */}
+{`text-xl font-black ${isZero ? 'text-slate-500' : isShort ? 'text-red-600' : 'text-green-600'}
+{isShort ? '-' : isZero ? '' : '+'}
+{Math.abs(variance).toLocaleString()}
+{`text-xl font-black ${isZero ? 'text-slate-500' : isShort ? 'text-red-600' : 'text-green-600'}
+{isShort ? '-' : isZero ? '' : '+'}
+{Math.abs(variance).toLocaleString()}
+{/* 2. Inventory Review (Only for Cashier 1) */}
+{selectedReport.inventoryCounts?.cigarettes?.start || 0}
+{selectedReport.inventoryCounts?.cigarettes?.delivery || 0}
+{selectedReport.inventoryCounts?.cigarettes?.end || 0}
+{selectedReport.inventoryCounts?.cigarettes?.sold || 0}
+{selectedReport.inventoryCounts?.lighters?.start || 0}
+{selectedReport.inventoryCounts?.lighters?.delivery || 0}
+{selectedReport.inventoryCounts?.lighters?.end || 0}
+{selectedReport.inventoryCounts?.lighters?.sold || 0}
+{cigarettesPercent}
+{e => setCigarettesPercent(e.target.value)}
+{coffeePercent}
+{e => setCoffeePercent(e.target.value)}
+{/* 3. Final Sign Off */}
+{managerName}
+{e => setManagerName(e.target.value)}
+{selectedReport.managerAudit.rejectReason}
+{selectedReport.previousSubmission.cash}
+{selectedReport.previousSubmission.visa}
+{selectedReport.cashierRole === 1 && ` | Cigarettes End: ${selectedReport.previousSubmission.cigEnd}
+{selectedReport.previousSubmission.lightEnd}
+{comments}
+{e => setComments(e.target.value)}
+{3}
+{/* Actions */}
+{triggerReject}
+{submitting}
+{submitting ? "Rejecting..." : "Reject Report"}
+{handleApprove}
+{submitting}
+{submitting ? "Saving..." : <><CheckCircle className="h-5 w-5" /> Approve</>}
+{handleDelete}
+{submitting}
+{handleApprove}
+{submitting}
+{submitting ? "Saving..." : "Update Audit Notes"}
+{generatePDF}
+{generatingPDF}
+{generatingPDF ? "Generating PDF..." : <><Printer className="h-5 w-5" /> Print A4 Sign-Off Sheet</>}
+{/* --- HIDDEN FORMAL A4 PRINT TEMPLATE FOR MANAGER --- */}
+{{ position: 'absolute', left: '-9999px', top: 0 }
+{{ width: '794px', minHeight: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', display: 'flex', flexDirection: 'column' }
+{/* Header / Letterhead */}
+{{ padding: '40px 40px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '4px solid #1e293b' }
+{{ display: 'flex', alignItems: 'center', gap: '20px' }
+{{ width: '80px', height: '80px', backgroundColor: '#dc2626', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }
+{{ fontSize: '50px', fontWeight: '900', color: '#ffffff', lineHeight: 1 }
+{{ fontSize: '32px', fontWeight: '900', color: '#1e293b', margin: 0, textTransform: 'uppercase', letterSpacing: '-0.5px' }
+{{ fontSize: '16px', color: '#64748b', margin: '5px 0 0', fontWeight: '600' }
+{{ textAlign: 'right', display: 'flex', gap: '15px', alignItems: 'center' }
+{{ textAlign: 'center' }
+{selectedReport.id.substring(0, 10).toUpperCase()}
+{1.5}
+{40}
+{12}
+{true}
+{{ borderLeft: '1px solid #e2e8f0', paddingLeft: '15px' }
+{window.location.origin + '/shift-reports/view?id=' + selectedReport.id}
+{64}
+{/* Content Area */}
+{{ padding: '30px 40px', position: 'relative', zIndex: 10 }
+{/* Branch & Shift Details (Strict Grid) */}
+{{ border: '2px solid #e2e8f0', marginBottom: '30px', borderRadius: '4px', overflow: 'hidden' }
+{{ backgroundColor: '#f8fafc', padding: '10px 15px', borderBottom: '2px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '1px' }
+{{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginTop: '10px' }
+{{ margin: '0 0 5px', color: '#64748b' }
+{{ margin: 0, fontWeight: 'bold', fontSize: '14px', color: '#0f172a' }
+{managerName || "Pending"}
+{{ margin: '0 0 5px', color: '#64748b' }
+{{ margin: 0, fontWeight: 'bold', fontSize: '14px', color: '#0f172a' }
+{formatTimeMinus2Hours(selectedReport.managerAudit?.auditedAt || new Date().toISOString())}
+{{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.5fr', gap: '0' }
+{{ padding: '15px', borderRight: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }
+{{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }
+{{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }
+{selectedReport?.cashierDetails?.storeId}
+{{ padding: '15px', borderRight: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }
+{{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }
+{{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }
+{selectedReport?.cashierDetails?.shift}
+{{ padding: '15px', borderBottom: '1px solid #e2e8f0' }
+{{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }
+{{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }
+{selectedReport?.cashierDetails?.name}
+{{ padding: '15px', borderRight: '1px solid #e2e8f0' }
+{{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }
+{{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }
+{selectedReport?.cashierDetails?.date}
+{{ padding: '15px', borderRight: '1px solid #e2e8f0' }
+{{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }
+{{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }
+{selectedReport.cashierRole === 2 ? 'Cashier 2 (Money Only)' : 'Cashier 1 (Full)'}
+{{ padding: '15px' }
+{{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }
+{{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }
+{formatTimeMinus2Hours(selectedReport.createdAt)}
+{/* Financial Audit */}
+{{ border: '2px solid #e2e8f0', marginBottom: '15px', borderRadius: '4px', overflow: 'hidden' }
+{{ backgroundColor: '#f8fafc', padding: '6px 15px', borderBottom: '2px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }
+{{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }
+{{ backgroundColor: '#f1f5f9' }
+{{ padding: '8px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }
+{{ padding: '8px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }
+{{ padding: '8px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }
+{{ padding: '8px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569', textAlign: 'right' }
+{{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }
+{{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px' }
+{selectedReport?.cashierCounts?.cash?.toLocaleString()}
+{{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px' }
+{Number(expectedCash).toLocaleString() || "0"}
+{{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px', textAlign: 'right', fontWeight: 'bold', color: calculateCashVariance() < 0 ? '#dc2626' : '#16a34a' }
+{calculateCashVariance() < 0 ? '-' : '+'}
+{Math.abs(calculateCashVariance()).toLocaleString()}
+{{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }
+{{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px' }
+{selectedReport?.cashierCounts?.visa?.toLocaleString()}
+{{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px' }
+{Number(expectedVisa).toLocaleString() || "0"}
+{{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px', textAlign: 'right', fontWeight: 'bold', color: calculateVisaVariance() < 0 ? '#dc2626' : '#16a34a' }
+{calculateVisaVariance() < 0 ? '-' : '+'}
+{Math.abs(calculateVisaVariance()).toLocaleString()}
+{/* Inventory Review */}
+{{ border: '2px solid #e2e8f0', marginBottom: '15px', borderRadius: '4px', overflow: 'hidden' }
+{{ backgroundColor: '#f8fafc', padding: '6px 15px', borderBottom: '2px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }
+{{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }
+{{ backgroundColor: '#f1f5f9' }
+{{ padding: '8px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }
+{{ padding: '8px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }
+{{ padding: '8px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }
+{{ padding: '8px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }
+{{ padding: '8px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569', textAlign: 'right' }
+{{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }
+{{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0' }
+{selectedReport.inventoryCounts?.cigarettes?.start || 0}
+{{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0' }
+{selectedReport.inventoryCounts?.cigarettes?.delivery || 0}
+{{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0' }
+{selectedReport.inventoryCounts?.cigarettes?.end || 0}
+{{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 'bold' }
+{selectedReport.inventoryCounts?.cigarettes?.sold || 0}
+{{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }
+{{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0' }
+{selectedReport.inventoryCounts?.lighters?.start || 0}
+{{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0' }
+{selectedReport.inventoryCounts?.lighters?.delivery || 0}
+{{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0' }
+{selectedReport.inventoryCounts?.lighters?.end || 0}
+{{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 'bold' }
+{selectedReport.inventoryCounts?.lighters?.sold || 0}
+{{ display: 'grid', gridTemplateColumns: '1fr 1fr', backgroundColor: '#f8fafc', borderTop: '2px solid #cbd5e1' }
+{{ padding: '8px 15px', borderRight: '1px solid #e2e8f0' }
+{{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', marginRight: '10px' }
+{{ fontSize: '14px', fontWeight: '900', color: '#0f172a' }
+{Number(cigarettesPercent) || 0}
+{{ padding: '8px 15px' }
+{{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', marginRight: '10px' }
+{{ fontSize: '14px', fontWeight: '900', color: '#0f172a' }
+{Number(coffeePercent) || 0}
+{/* Manager Notes & Rejection History */}
+{{ border: '2px solid #e2e8f0', marginBottom: '30px', borderRadius: '4px', overflow: 'hidden' }
+{{ backgroundColor: '#f8fafc', padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }
+{{ padding: '12px 15px', fontSize: '12px', color: '#334155' }
+{{ marginBottom: '10px', paddingBottom: '10px', borderBottom: '1px dashed #cbd5e1' }
+{{ margin: '0 0 4px', fontSize: '10px', fontWeight: 'bold', color: '#dc2626', textTransform: 'uppercase' }
+{{ margin: 0, fontStyle: 'italic', color: '#dc2626' }
+{selectedReport.managerAudit.rejectReason}
+{{ marginTop: '5px', paddingTop: '5px', borderTop: '1px solid #fca5a5' }
+{{ margin: 0, fontSize: '9px', fontWeight: 'bold', color: '#b91c1c', textTransform: 'uppercase' }
+{{ margin: '2px 0 0', fontSize: '11px', color: '#b91c1c', fontFamily: 'monospace' }
+{selectedReport.previousSubmission.cash}
+{selectedReport.previousSubmission.visa}
+{selectedReport.cashierRole === 1 && ` | Cigarettes End: ${selectedReport.previousSubmission.cigEnd}
+{selectedReport.previousSubmission.lightEnd}
+{{ fontStyle: selectedReport.managerAudit?.comments ? 'normal' : 'italic' }
+{selectedReport.managerAudit?.comments || "No additional comments provided by the auditing manager."}
+{/* Official Signatures Block */}
+{{ display: 'flex', justifyContent: 'space-between', marginTop: '40px' }
+{/* Cashier Signature */}
+{{ width: '40%' }
+{{ fontSize: '10px', color: '#64748b', fontStyle: 'italic', marginBottom: '10px', lineHeight: 1.4 }
+{selectedReport.cashierSignature}
+{{ display: 'block', maxWidth: '100%', height: '100px', objectFit: 'contain', marginBottom: '5px' }
+{{ height: '100px', marginBottom: '5px' }
+{{ borderBottom: '2px solid #1e293b', width: '100%', marginBottom: '10px' }
+{{ fontSize: '14px', fontWeight: 'bold', color: '#1e293b', margin: 0, textTransform: 'uppercase' }
+{{ fontSize: '16px', fontWeight: '900', color: '#000000', margin: '4px 0 0' }
+{selectedReport?.cashierDetails?.name}
+{/* Manager Signature */}
+{{ width: '40%' }
+{{ fontSize: '10px', color: '#64748b', fontStyle: 'italic', marginBottom: '30px', lineHeight: 1.4 }
+{{ borderBottom: '2px solid #1e293b', width: '100%', marginBottom: '10px' }
+{{ fontSize: '14px', fontWeight: 'bold', color: '#1e293b', margin: 0, textTransform: 'uppercase' }
+{{ fontSize: '16px', fontWeight: '900', color: '#000000', margin: '4px 0 0' }
+{managerName || "__________________"}
+{/* Footer */}
+{{ marginTop: 'auto', marginBottom: '30px', marginLeft: '40px', marginRight: '40px', borderTop: '2px solid #e2e8f0', paddingTop: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }
+{{ fontSize: '10px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase' }
+{{ fontSize: '9px', color: '#cbd5e1', margin: '2px 0 0' }
+{formatTimeMinus2Hours(new Date().toISOString())}
+{{ textAlign: 'right' }
+{{ fontSize: '10px', color: '#94a3b8', fontFamily: 'monospace', fontWeight: 'bold' }
+{formatTimeMinus2Hours(selectedReport.managerAudit?.auditedAt || selectedReport.createdAt)}
+{/* Reject Modal */}
+{rejectReason}
+{(e) => setRejectReason(e.target.value)}
+{() => setRejectModalOpen(false)}
+{confirmReject}
+{/* Delete Modal */}
+{deletePin}
+{(e) => setDeletePin(e.target.value)}
+{4}
+{() => setDeleteModalOpen(false)}
+{confirmDelete}

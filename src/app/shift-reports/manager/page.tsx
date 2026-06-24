@@ -24,11 +24,24 @@ export default function ManagerAuditPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const formatTimeMinus2Hours = (dateString: string) => {
-    if (!dateString) return "";
-    const d = new Date(dateString);
-    d.setHours(d.getHours() - 2);
-    return d.toLocaleString('en-GB');
+  const formatTimeMinus2Hours = (dateValue: any) => {
+    if (!dateValue) return "";
+    try {
+      // Handle Firebase Timestamp objects
+      let d: Date;
+      if (typeof dateValue === 'object' && dateValue.seconds) {
+        d = new Date(dateValue.seconds * 1000);
+      } else {
+        d = new Date(dateValue);
+      }
+      
+      if (isNaN(d.getTime())) return "Invalid Date";
+      
+      d.setHours(d.getHours() - 2);
+      return d.toLocaleString('en-GB');
+    } catch {
+      return "Invalid Date";
+    }
   };
 
   // Audit Form State
@@ -60,6 +73,13 @@ export default function ManagerAuditPage() {
       return "alamein4"; // Default fallback
     };
 
+    const getDateValue = (dateObj: any) => {
+      if (!dateObj) return 0;
+      if (typeof dateObj === 'object' && dateObj.seconds) return dateObj.seconds * 1000;
+      const t = new Date(dateObj).getTime();
+      return isNaN(t) ? 0 : t;
+    };
+
     // 1. Fetch Pending
     const qPending = query(collection(db, "shift_reports"), where("status", "==", "pending_manager"));
     const unsubPending = onSnapshot(qPending, (snapshot) => {
@@ -67,7 +87,7 @@ export default function ManagerAuditPage() {
       if (currentBranch !== "all") {
         reports = reports.filter(r => getReportBranch(r) === currentBranch);
       }
-      reports.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      reports.sort((a: any, b: any) => getDateValue(b.createdAt) - getDateValue(a.createdAt));
       setPendingReports(reports);
       setLoading(false);
     });
