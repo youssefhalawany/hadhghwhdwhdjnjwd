@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { db } from "@/lib/firebase";
 import { allChecklists, mohamedAhmedChecklist } from "@/lib/checklists-data";
+import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const SectionTitle = ({ title }: { title: string }) => (
   <div className="bg-gray-200 print:bg-gray-200 print:exact-colors text-red-600 font-bold text-center py-1 border-x border-t border-black text-xs">
@@ -40,11 +42,22 @@ export default function PrintChecklistPage() {
 
   useEffect(() => {
     if (error) {
-      alert("Checklist not found or permission denied");
+      toast.error("Checklist not found or permission denied");
     }
   }, [error]);
 
-  if (loading) return <div className="p-10 text-center">جاري التحميل...</div>;
+  if (loading) return (
+    <div className="max-w-6xl mx-auto p-8 space-y-4">
+      <Skeleton className="h-12 w-full max-w-md mx-auto" />
+      <Skeleton className="h-6 w-full max-w-lg mx-auto" />
+      <div className="space-y-2 mt-8">
+        <Skeleton className="h-8 w-full" />
+        <Skeleton className="h-8 w-full" />
+        <Skeleton className="h-8 w-full" />
+        <Skeleton className="h-8 w-full" />
+      </div>
+    </div>
+  );
 
   const getAnswerScore = (itemId: string, maxScore: number) => {
     if (isBlank || !data) return { yes: "", no: "", score: "" };

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import ClientLayoutWrapper from "@/components/ClientLayoutWrapper";
+import { Toaster } from "sonner";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -42,7 +43,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col bg-background font-sans">
         <ClientLayoutWrapper>{children}</ClientLayoutWrapper>
-
+        <Toaster position="top-center" richColors closeButton />
       </body>
     </html>
   );

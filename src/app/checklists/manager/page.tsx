@@ -3,6 +3,7 @@
 import useSWR from "swr";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ClipboardCheck, Printer, Search } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -81,7 +82,15 @@ export default function ManagerChecklistsPage() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {loading ? (
-                  <tr><td colSpan={5} className="p-8 text-center text-slate-500">جاري التحميل...</td></tr>
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i}>
+                      <td className="px-4 py-4"><Skeleton className="h-4 w-24" /></td>
+                      <td className="px-4 py-4"><Skeleton className="h-4 w-48" /></td>
+                      <td className="px-4 py-4"><Skeleton className="h-4 w-32" /></td>
+                      <td className="px-4 py-4"><Skeleton className="h-6 w-16 rounded-full" /></td>
+                      <td className="px-4 py-4"><Skeleton className="h-8 w-24 mx-auto" /></td>
+                    </tr>
+                  ))
                 ) : checklists.length === 0 ? (
                   <tr><td colSpan={5} className="p-8 text-center text-slate-500">لا توجد قوائم مكتملة بعد</td></tr>
                 ) : checklists.map(cl => (

@@ -6,6 +6,7 @@ import { ChevronLeft, Save, AlertTriangle } from "lucide-react";
 import { allChecklists } from "@/lib/checklists-data";
 import { collection, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { toast } from "sonner";
 
 export default function ChecklistFillPage() {
   const router = useRouter();
@@ -121,11 +122,11 @@ export default function ChecklistFillPage() {
         throw new Error("Failed to submit checklist to server");
       }
 
-      alert("تم إرسال قائمة المراجعة بنجاح!");
+      toast.success("تم إرسال قائمة المراجعة بنجاح!");
       router.push("/checklists/cashier");
     } catch (err: any) {
       console.error(err);
-      alert("Error submitting: " + err.message);
+      toast.error("Error submitting: " + err.message);
     } finally {
       setLoading(false);
     }
