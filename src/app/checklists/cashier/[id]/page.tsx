@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { ChevronLeft, Save, AlertTriangle } from "lucide-react";
-import { mohamedAhmedChecklist } from "@/lib/checklists-data";
+import { allChecklists } from "@/lib/checklists-data";
 import { collection, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -18,7 +18,7 @@ export default function ChecklistFillPage() {
   // We map answers by item.id to either "yes" or "no"
   const [answers, setAnswers] = useState<Record<string, "yes" | "no" | null>>({});
 
-  const checklist = id === "mohamed-ahmed-checklist" ? mohamedAhmedChecklist : null;
+  const checklist = allChecklists.find(c => c.id === id) || null;
 
   useEffect(() => {
     const savedUserStr = localStorage.getItem("active_cashier_session");

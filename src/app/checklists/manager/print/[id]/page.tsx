@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { mohamedAhmedChecklist } from "@/lib/checklists-data";
+import { allChecklists, mohamedAhmedChecklist } from "@/lib/checklists-data";
 
 const SectionTitle = ({ title }: { title: string }) => (
   <div className="bg-gray-200 print:bg-gray-200 print:exact-colors text-red-600 font-bold text-center py-1 border-x border-t border-black text-xs">
@@ -15,8 +15,10 @@ export default function PrintChecklistPage() {
   const router = useRouter();
   const params = useParams();
   const id = params?.id as string;
-  const isBlank = id === "blank-mohamed-ahmed";
+  const isBlank = id.startsWith("blank-");
   const [data, setData] = useState<any>(null);
+  const baseChecklistId = isBlank ? id.replace("blank-", "") : data?.checklistId;
+  const checklistSchema = allChecklists.find(c => c.id === baseChecklistId);
   const [loading, setLoading] = useState(!isBlank);
 
   useEffect(() => {
@@ -55,9 +57,9 @@ export default function PrintChecklistPage() {
     return hour >= 12 ? "صباحي" : "ليلي";
   };
 
-  // Helper to render a category table
   const renderCategory = (categoryId: string) => {
-    const cat = mohamedAhmedChecklist.categories.find(c => c.id === categoryId);
+    if (!checklistSchema) return null;
+    const cat = checklistSchema.categories.find(c => c.id === categoryId);
     if (!cat) return null;
 
     let catTotalScore = 0;
@@ -151,6 +153,7 @@ export default function PrintChecklistPage() {
             {/* Metadata Row */}
             {!isBlank && data && (
               <div className="flex justify-between items-center p-2 bg-slate-50 border-b border-black text-xs font-bold">
+                <div>القائمة: <span className="text-red-600">{data.checklistTitle || checklistSchema?.title}</span></div>
                 <div>الكاشير: <span className="text-red-600">{data.cashierName}</span></div>
                 <div>التاريخ: <span className="text-red-600">{new Date(data.createdAt).toLocaleString('en-GB')}</span></div>
                 <div>النتيجة: <span className="text-red-600">{data.score} / {data.totalScore}</span></div>
@@ -177,73 +180,96 @@ export default function PrintChecklistPage() {
             </div>
           </div>
 
-          {/* Section 1: External */}
-          <div className="pdf-section mb-2 bg-white">
-            <SectionTitle title="الفرع من الخارج" />
-            <div className="grid grid-cols-2 border-b border-black">
-              <div className="border-l border-black p-1">
-                {renderCategory("external_building")}
-                {renderCategory("lighting_facade")}
+          {/* Dynamic Content */}
+          {checklistSchema?.id === "mohamed-ahmed-checklist" ? (
+            <>
+              {/* Section 1: External */}
+              <div className="pdf-section mb-2 bg-white">
+                <SectionTitle title="الفرع من الخارج" />
+                <div className="grid grid-cols-2 border-b border-black">
+                  <div className="border-l border-black p-1">
+                    {renderCategory("external_building")}
+                    {renderCategory("lighting_facade")}
+                  </div>
+                  <div className="p-1">
+                    {renderCategory("gardens_external")}
+                    {renderCategory("trash_bins")}
+                  </div>
+                </div>
               </div>
-              <div className="p-1">
-                {renderCategory("gardens_external")}
-                {renderCategory("trash_bins")}
-              </div>
-            </div>
-          </div>
 
-          {/* Section 2: Internal */}
-          <div className="pdf-section mb-2 bg-white">
-            <SectionTitle title="الفرع من الداخل" />
-            <div className="grid grid-cols-2 border-b border-black">
-              <div className="border-l border-black p-1">
-                {renderCategory("internal_branch")}
+              {/* Section 2: Internal */}
+              <div className="pdf-section mb-2 bg-white">
+                <SectionTitle title="الفرع من الداخل" />
+                <div className="grid grid-cols-2 border-b border-black">
+                  <div className="border-l border-black p-1">
+                    {renderCategory("internal_branch")}
+                  </div>
+                  <div className="p-1">
+                    {renderCategory("restrooms")}
+                    {renderCategory("retail_gondolas")}
+                    {renderCategory("seating_areas")}
+                  </div>
+                </div>
               </div>
-              <div className="p-1">
-                {renderCategory("restrooms")}
-                {renderCategory("retail_gondolas")}
-                {renderCategory("seating_areas")}
-              </div>
-            </div>
-          </div>
 
-          {/* Section 3: Operating & Customers */}
-          <div className="pdf-section mb-2 bg-white">
-            <div className="grid grid-cols-2 border-x border-b border-t border-black">
-              <div className="border-l border-black p-1">
-                {renderCategory("operating_files")}
+              {/* Section 3: Operating & Customers */}
+              <div className="pdf-section mb-2 bg-white">
+                <div className="grid grid-cols-2 border-x border-b border-t border-black">
+                  <div className="border-l border-black p-1">
+                    {renderCategory("operating_files")}
+                  </div>
+                  <div className="p-1">
+                    {renderCategory("customer_service")}
+                  </div>
+                </div>
               </div>
-              <div className="p-1">
-                {renderCategory("customer_service")}
-              </div>
-            </div>
-          </div>
 
-          {/* Section 4: Fridges & Office */}
-          <div className="pdf-section mb-2 bg-white">
-             <div className="grid grid-cols-2 border-x border-t border-b border-black">
-              <div className="border-l border-black p-1">
-                {renderCategory("fridges_freezers")}
+              {/* Section 4: Fridges & Office */}
+              <div className="pdf-section mb-2 bg-white">
+                 <div className="grid grid-cols-2 border-x border-t border-b border-black">
+                  <div className="border-l border-black p-1">
+                    {renderCategory("fridges_freezers")}
+                  </div>
+                  <div className="p-1">
+                    {renderCategory("cupboards_office")}
+                  </div>
+                 </div>
               </div>
-              <div className="p-1">
-                {renderCategory("cupboards_office")}
+                 
+              {/* Section 5: Drinks & Fast Food */}
+              <div className="pdf-section mb-2 bg-white">
+                 <div className="grid grid-cols-2 border-x border-t border-b border-black">
+                  <div className="border-l border-black p-1">
+                    {renderCategory("drinks_equipment")}
+                    {renderCategory("sales_transaction")}
+                  </div>
+                  <div className="p-1">
+                    {renderCategory("fast_food_equipment")}
+                    {renderCategory("store_staff")}
+                  </div>
+                 </div>
               </div>
-             </div>
-          </div>
-             
-          {/* Section 5: Drinks & Fast Food */}
-          <div className="pdf-section mb-2 bg-white">
-             <div className="grid grid-cols-2 border-x border-t border-b border-black">
-              <div className="border-l border-black p-1">
-                {renderCategory("drinks_equipment")}
-                {renderCategory("sales_transaction")}
+            </>
+          ) : (
+            <>
+              {/* Generic 2-Column Layout for other checklists */}
+              <div className="pdf-section mb-2 bg-white">
+                 <div className="grid grid-cols-1 md:grid-cols-2 border-x border-t border-b border-black print:grid-cols-2">
+                  <div className="border-b md:border-b-0 md:border-l border-black p-1 print:border-b-0 print:border-l">
+                    {checklistSchema?.categories.slice(0, Math.ceil(checklistSchema.categories.length / 2)).map(c => (
+                      <div key={c.id}>{renderCategory(c.id)}</div>
+                    ))}
+                  </div>
+                  <div className="p-1">
+                    {checklistSchema?.categories.slice(Math.ceil(checklistSchema.categories.length / 2)).map(c => (
+                      <div key={c.id}>{renderCategory(c.id)}</div>
+                    ))}
+                  </div>
+                 </div>
               </div>
-              <div className="p-1">
-                {renderCategory("fast_food_equipment")}
-                {renderCategory("store_staff")}
-              </div>
-             </div>
-          </div>
+            </>
+          )}
 
         </div>
       </div>

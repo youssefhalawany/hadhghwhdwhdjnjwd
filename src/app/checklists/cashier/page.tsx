@@ -3,16 +3,13 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ClipboardList, Clock, AlertTriangle } from "lucide-react";
-import { mohamedAhmedChecklist } from "@/lib/checklists-data";
+import { allChecklists } from "@/lib/checklists-data";
 
 export default function CashierChecklistsList() {
   const router = useRouter();
   const [lang, setLang] = useState<"en" | "ar">("ar");
 
-  // In the future we will list all 4 checklists here
-  const availableChecklists = [
-    mohamedAhmedChecklist,
-  ];
+  const availableChecklists = allChecklists;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950/20 text-slate-900 dark:text-slate-100 pb-28" dir={lang === "ar" ? "rtl" : "ltr"}>

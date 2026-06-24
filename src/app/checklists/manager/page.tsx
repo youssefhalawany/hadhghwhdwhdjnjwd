@@ -43,13 +43,21 @@ export default function ManagerChecklistsPage() {
             </div>
           </div>
           
-          <button 
-            onClick={() => router.push('/checklists/manager/print/blank-mohamed-ahmed')}
-            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all"
+          <select 
+            onChange={(e) => {
+              if (e.target.value) {
+                router.push(`/checklists/manager/print/blank-${e.target.value}`);
+                e.target.value = "";
+              }
+            }}
+            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all outline-none cursor-pointer appearance-none text-center"
           >
-            <Printer className="h-4 w-4" />
-            طباعة نموذج فارغ
-          </button>
+            <option value="">🖨️ طباعة نموذج فارغ...</option>
+            <option value="mohamed-ahmed-checklist">قائمة التفتيش على المتاجر</option>
+            <option value="food-dept-checklist">قائمة المتابعة اليومية لاداء قسم الفود</option>
+            <option value="temperature-checklist">تشيك ليست درجات الحرارة</option>
+            <option value="cleaning-checklist">نموذج متابعة نظافة الفرع</option>
+          </select>
         </div>
       </header>
 
