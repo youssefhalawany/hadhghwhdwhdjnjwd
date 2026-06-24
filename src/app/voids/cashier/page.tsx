@@ -205,37 +205,55 @@ export default function CashierVoidPage() {
     if (!file) return;
 
     setIsProcessingImage(true);
+    
+    const getBase64 = (f: File): Promise<string> => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(f);
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = error => reject(error);
+      });
+    };
+
     try {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = async () => {
-        const base64 = reader.result as string;
-        const res = await fetch("/api/extract-receipt", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imageBase64: base64 })
-        });
-        
-        const json = await res.json();
-        if (json.success && json.data) {
-          const data = json.data;
-          setExtractedReceipt(data);
-          setSelectedItems([]); // reset selections
-          
-          if (data.transaction_number) setTransactionNumber(data.transaction_number);
-          if (data.register_number) {
-            const num = data.register_number.toString().trim();
-            if (num.includes("1")) setRegister("Cash 1");
-            else if (num.includes("2")) setRegister("Cash 2");
-          }
-          vibrateSuccess();
-        } else {
-          throw new Error(json.error || "Failed to extract");
+      const base64 = await getBase64(file);
+      
+      const res = await fetch("/api/extract-receipt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64: base64 })
+      });
+      
+      if (!res.ok) {
+        let errorMessage = "Server error";
+        try {
+           const errJson = await res.json();
+           errorMessage = errJson.error || errorMessage;
+        } catch(e) {
+           errorMessage = res.statusText || errorMessage;
         }
-      };
+        throw new Error(errorMessage);
+      }
+
+      const json = await res.json();
+      if (json.success && json.data) {
+        const data = json.data;
+        setExtractedReceipt(data);
+        setSelectedItems([]); // reset selections
+        
+        if (data.transaction_number) setTransactionNumber(data.transaction_number);
+        if (data.register_number) {
+          const num = data.register_number.toString().trim();
+          if (num.includes("1")) setRegister("Cash 1");
+          else if (num.includes("2")) setRegister("Cash 2");
+        }
+        vibrateSuccess();
+      } else {
+        throw new Error(json.error || "Failed to extract");
+      }
     } catch (err: any) {
-      console.error(err);
-      alert(dict.scanError);
+      console.error("Extraction error:", err);
+      alert(dict.scanError + " (" + (err.message || "Unknown error") + ")");
       vibrateError();
     } finally {
       setIsProcessingImage(false);
