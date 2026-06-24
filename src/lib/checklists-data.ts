@@ -14,6 +14,7 @@ export interface ChecklistSchema {
   id: string;
   title: string;
   version: string;
+  type?: "yes_no" | "food_dept" | "temperature_grid" | "hourly_cleaning";
   categories: ChecklistCategory[];
   totalScore: number;
 }
@@ -22,6 +23,7 @@ export const mohamedAhmedChecklist: ChecklistSchema = {
   id: "mohamed-ahmed-checklist",
   title: "قائمة التفتيش على المتاجر",
   version: "1.0",
+  type: "yes_no",
   totalScore: 150,
   categories: [
     {
@@ -232,6 +234,7 @@ export const foodDeptChecklist: ChecklistSchema = {
   id: "food-dept-checklist",
   title: "قائمة المتابعة اليومية لاداء قسم الفود",
   version: "1.0",
+  type: "food_dept",
   totalScore: 46,
   categories: [
     {
@@ -323,21 +326,22 @@ export const temperatureChecklist: ChecklistSchema = {
   id: "temperature-checklist",
   title: "تشيك ليست درجات الحرارة",
   version: "1.0",
+  type: "temperature_grid",
   totalScore: 9,
   categories: [
     {
       id: "temps",
       title: "متابعة درجات الحرارة للثلاجات",
       items: [
-        { id: "t1", text: "هل درجة حرارة ثلاجة عرض الايس كريم (اقل من 18- درجة مئوية) سليمة؟", score: 1 },
-        { id: "t2", text: "هل درجة حرارة ثلاجة الساندوتشات (2 الى 5 درجة مئوية) سليمة؟", score: 1 },
-        { id: "t3", text: "هل درجة حرارة ثلاجة الباريستا (2 الى 5 درجة مئوية) سليمة؟", score: 1 },
-        { id: "t4", text: "هل درجة حرارة الفريزر الاندركونتر (اقل من 18- درجة مئوية) سليمة؟", score: 1 },
-        { id: "t5", text: "هل درجة حرارة الثلاجة الاندركونتر (2 الى 5 درجة مئوية) سليمة؟", score: 1 },
-        { id: "t6", text: "هل درجة حرارة الثلاجة الاوبن (2 الى 5 درجة مئوية) سليمة؟", score: 1 },
-        { id: "t7", text: "هل درجة حرارة ثلاجة عرض المشروبات (2 الى 5 درجة مئوية) سليمة؟", score: 1 },
-        { id: "t8", text: "هل درجة حرارة الفريزر فى المخزن (اقل من 18- درجة مئوية) سليمة؟", score: 1 },
-        { id: "t9", text: "هل درجات حرارة التبريد والتجميد في سيارة الطلبية كانت مطابقة اثناء الاستلام؟", score: 1 }
+        { id: "t1", text: "ثلاجة عرض الايس كريم (اقل من 18-)", score: 1 },
+        { id: "t2", text: "ثلاجة الساندوتشات (2 الى 5)", score: 1 },
+        { id: "t3", text: "ثلاجة الباريستا (2 الى 5)", score: 1 },
+        { id: "t4", text: "الفريزر الاندركونتر (اقل من 18-)", score: 1 },
+        { id: "t5", text: "الثلاجة الاندركونتر (2 الى 5)", score: 1 },
+        { id: "t6", text: "الثلاجة الاوبن (2 الى 5)", score: 1 },
+        { id: "t7", text: "ثلاجة عرض المشروبات (2 الى 5)", score: 1 },
+        { id: "t8", text: "الفريزر فى المخزن (اقل من 18-)", score: 1 },
+        { id: "t9", text: "درجة حرارة التبريد والتجميد في سيارة الطلبية", score: 1 }
       ]
     }
   ]
@@ -347,27 +351,28 @@ export const cleaningChecklist: ChecklistSchema = {
   id: "cleaning-checklist",
   title: "نموذج متابعة نظافة الفرع",
   version: "1.0",
+  type: "hourly_cleaning",
   totalScore: 16,
   categories: [
     {
       id: "clean_ext",
       title: "المنطقة الخارجية",
       items: [
-        { id: "ce1", text: "تم الحفاظ على نظافة الرصيف والارضية امام الفرع طوال الشفت", score: 1 },
-        { id: "ce2", text: "تم الحفاظ على نظافة الترابيزات والكراسى فى المنطقة الخارجية", score: 1 },
-        { id: "ce3", text: "بساكت التراش والارضية الترتان امام الفرع نظيفة", score: 1 },
-        { id: "ce4", text: "زجاج اليافطة وزجاج باب الفرع نظيف", score: 1 }
+        { id: "ce1", text: "الرصيف والارضية امام الفرع", score: 1 },
+        { id: "ce2", text: "الترابيزات والكراسى فى المنطقة الخارجية", score: 1 },
+        { id: "ce3", text: "بساكت التراش والارضية الترتان امام الفرع", score: 1 },
+        { id: "ce4", text: "زجاج اليافطة وزجاج باب الفرع", score: 1 }
       ]
     },
     {
       id: "clean_int",
       title: "داخل الفرع",
       items: [
-        { id: "ci1", text: "تم الحفاظ على نظافة كونتر العملاء وطفايات السجائر", score: 1 },
-        { id: "ci2", text: "اسفل كونتر العملاء نظيف وخالي من المخلفات", score: 1 },
-        { id: "ci3", text: "الارضية داخل الفرع تم مسحها ونظيفة", score: 1 },
-        { id: "ci4", text: "امام الكونتر وثلاجة الساندوتشات و كابينة البيكرى نظيف", score: 1 },
-        { id: "ci5", text: "بساكت التراش بجوار كونتر العملاء وداخل الفرع تم تفريغها ونظيفة", score: 1 }
+        { id: "ci1", text: "كونتر العملاء وطفايات السجائر", score: 1 },
+        { id: "ci2", text: "اسفل كونتر العملاء", score: 1 },
+        { id: "ci3", text: "الارضية داخل الفرع", score: 1 },
+        { id: "ci4", text: "امام الكونتر وثلاجة الساندوتشات و كابينة البيكرى", score: 1 },
+        { id: "ci5", text: "بساكت التراش بجوار كونتر العملاء وداخل الفرع", score: 1 }
       ]
     },
     {
@@ -376,11 +381,13 @@ export const cleaningChecklist: ChecklistSchema = {
       items: [
         { id: "cr1", text: "المنطقة امام الحمامات نظيفة وخالية", score: 1 },
         { id: "cr2", text: "دسبنسر الصابون والمناديل ملىء بكميات كافية", score: 1 },
-        { id: "cr3", text: "الحوض واسفل الحوض نظيف ولا يتم تخزين اى خامات نظافة اسفله", score: 1 },
-        { id: "cr4", text: "الارضية والحوائط والاركان نظيفة وبساكت التراش غير ممتلئة والاكياس سوداء", score: 1 },
-        { id: "cr5", text: "جميع كراسى الحمامات نظيفة وتعمل بحالة جيدة وفتحات الصرف مقفولة", score: 1 },
-        { id: "cr6", text: "السقف والشفطات نظيفة وتعمل بحالة جيدة", score: 1 },
-        { id: "cr7", text: "لا توجد روائح كريهة داخل الحمام", score: 1 }
+        { id: "cr3", text: "الحوض واسفل الحوض نظيف", score: 1 },
+        { id: "cr4", text: "الارضية والحوائط والاركان نظيفة", score: 1 },
+        { id: "cr5", text: "بساكت التراش نظيفة وغير ممتلئة والاكياس سوداء", score: 1 },
+        { id: "cr6", text: "جميع كراسى الحمامات نظيفة وتعمل بحالة جيدة", score: 1 },
+        { id: "cr7", text: "جميع فتحات الصرف نظيفة ومقفولة", score: 1 },
+        { id: "cr8", text: "السقف والشفطات نظيفة وتعمل بحالة جيدة", score: 1 },
+        { id: "cr9", text: "لا توجد روائح كريهة داخل الحمام", score: 1 }
       ]
     }
   ]

@@ -105,6 +105,128 @@ export default function PrintChecklistPage() {
     );
   };
 
+  const getFoodShiftColumn = () => {
+    if (isBlank || !data?.createdAt) return "";
+    const hour = new Date(data.createdAt).getHours();
+    if (hour >= 8 && hour < 16) return "morning";
+    if (hour >= 16 && hour <= 23) return "evening";
+    return "night";
+  };
+
+  const renderFoodDeptLayout = () => {
+    if (!checklistSchema) return null;
+    const shift = getFoodShiftColumn();
+    
+    return (
+      <div className="pdf-section mb-2 bg-white">
+        <table className="w-full border-collapse border border-black text-[10px] text-center">
+          <thead>
+            <tr className="bg-yellow-300 print:bg-yellow-300 print:exact-colors">
+              <th className="border border-black p-1 w-6">م</th>
+              <th className="border border-black p-1 text-right">موظفي الفود</th>
+              <th className="border border-black p-1 w-12">صباحا</th>
+              <th className="border border-black p-1 w-12">مساءا</th>
+              <th className="border border-black p-1 w-12">ليلا</th>
+              <th className="border border-black p-1 w-32">ملاحظات</th>
+            </tr>
+          </thead>
+          <tbody>
+            {checklistSchema.categories.map(cat => (
+              <tbody key={cat.id}>
+                {/* Category Header Row */}
+                <tr className="bg-gray-200 print:bg-gray-200 print:exact-colors font-bold">
+                  <td className="border border-black p-1 text-right pr-4" colSpan={6}>{cat.title}</td>
+                </tr>
+                {cat.items.map((item, idx) => {
+                  const ans = isBlank ? null : data?.answers?.[item.id];
+                  const isYes = ans === "yes";
+                  return (
+                    <tr key={item.id}>
+                      <td className="border border-black p-1 font-bold">{idx + 1}</td>
+                      <td className="border border-black p-1 text-right">{item.text}</td>
+                      <td className="border border-black p-1 font-bold text-green-600 text-lg">{!isBlank && shift === "morning" && isYes ? "✓" : ""}</td>
+                      <td className="border border-black p-1 font-bold text-green-600 text-lg">{!isBlank && shift === "evening" && isYes ? "✓" : ""}</td>
+                      <td className="border border-black p-1 font-bold text-green-600 text-lg">{!isBlank && shift === "night" && isYes ? "✓" : ""}</td>
+                      <td className="border border-black p-1"></td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
+  const renderTemperatureLayout = () => {
+    if (!checklistSchema) return null;
+    const cat = checklistSchema.categories[0];
+    const temps = ["8:00 AM", "10:00 AM", "12:00 PM", "2:00 PM", "4:00 PM", "6:00 PM", "8:00 PM", "10:00 PM", "12:00 AM", "2:00 AM", "4:00 AM", "6:00 AM"];
+    return (
+      <div className="pdf-section mb-2 bg-white break-inside-avoid">
+        <table className="w-full border-collapse border border-black text-[10px] text-center">
+          <thead>
+            <tr className="bg-yellow-300 print:bg-yellow-300 print:exact-colors">
+              <th className="border border-black p-1 w-6">م</th>
+              <th className="border border-black p-1">الاسم</th>
+              {temps.map(t => <th key={t} className="border border-black p-1 whitespace-nowrap">{t}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {cat.items.map((item, idx) => (
+              <tr key={item.id}>
+                <td className="border border-black p-1 font-bold">{idx + 1}</td>
+                <td className="border border-black p-1 text-right">{item.text}</td>
+                {temps.map(t => (
+                  <td key={t} className="border border-black p-1 font-bold">
+                    {isBlank ? "" : data?.answers?.[item.id]?.[t] || ""}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
+  const renderCleaningLayout = () => {
+    if (!checklistSchema) return null;
+    const hours = ["7-8 AM", "8-9 AM", "9-10 AM", "10-11 AM", "11-12 PM", "12-1 PM", "1-2 PM", "2-3 PM", "3-4 PM", "4-5 PM", "5-6 PM", "6-7 PM", "7-8 PM", "8-9 PM", "9-10 PM", "10-11 PM", "11-12 AM", "12-1 AM", "1-2 AM", "2-3 AM", "3-4 AM", "4-5 AM", "5-6 AM", "6-7 AM"];
+    return (
+      <div className="pdf-section mb-2 bg-white break-inside-avoid">
+        <table className="w-full border-collapse border border-black text-[8px] text-center">
+          <thead>
+            <tr className="bg-yellow-300 print:bg-yellow-300 print:exact-colors">
+              <th className="border border-black p-1 text-right min-w-[120px]">التوقيت</th>
+              {hours.map(h => (
+                <th key={h} className="border border-black p-0.5 whitespace-nowrap" style={{writingMode: "vertical-rl", transform: "rotate(180deg)"}}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          {checklistSchema.categories.map(cat => (
+            <tbody key={cat.id}>
+              <tr className="bg-gray-200 print:bg-gray-200 print:exact-colors font-bold">
+                <td className="border border-black p-1 text-right pr-4" colSpan={hours.length + 1}>{cat.title}</td>
+              </tr>
+              {cat.items.map((item) => (
+                <tr key={item.id}>
+                  <td className="border border-black p-1 text-right leading-tight">{item.text}</td>
+                  {hours.map(h => (
+                    <td key={h} className="border border-black p-0.5 font-bold text-green-600 text-sm">
+                      {isBlank ? "" : (data?.answers?.[item.id]?.[h] ? "✓" : "")}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          ))}
+        </table>
+      </div>
+    );
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -251,9 +373,15 @@ export default function PrintChecklistPage() {
                  </div>
               </div>
             </>
+          ) : checklistSchema?.id === "food-dept-checklist" ? (
+            renderFoodDeptLayout()
+          ) : checklistSchema?.id === "temperature-checklist" ? (
+            renderTemperatureLayout()
+          ) : checklistSchema?.id === "cleaning-checklist" ? (
+            renderCleaningLayout()
           ) : (
             <>
-              {/* Generic 2-Column Layout for other checklists */}
+              {/* Fallback Generic 2-Column Layout */}
               <div className="pdf-section mb-2 bg-white">
                  <div className="grid grid-cols-1 md:grid-cols-2 border-x border-t border-b border-black print:grid-cols-2">
                   <div className="border-b md:border-b-0 md:border-l border-black p-1 print:border-b-0 print:border-l">
