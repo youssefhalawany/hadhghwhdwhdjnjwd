@@ -210,7 +210,39 @@ export default function CashierVoidPage() {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.readAsDataURL(f);
-        reader.onload = () => resolve(reader.result as string);
+        reader.onload = (event) => {
+          const img = new Image();
+          img.src = event.target?.result as string;
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const MAX_WIDTH = 1200;
+            const MAX_HEIGHT = 1600;
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+              if (width > MAX_WIDTH) {
+                height *= MAX_WIDTH / width;
+                width = MAX_WIDTH;
+              }
+            } else {
+              if (height > MAX_HEIGHT) {
+                width *= MAX_HEIGHT / height;
+                height = MAX_HEIGHT;
+              }
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, width, height);
+              resolve(canvas.toDataURL('image/jpeg', 0.6));
+            } else {
+              resolve(event.target?.result as string);
+            }
+          };
+          img.onerror = (e) => reject(e);
+        };
         reader.onerror = error => reject(error);
       });
     };
@@ -459,6 +491,21 @@ export default function CashierVoidPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Receipt Details Summary */}
+              {extractedReceipt && (
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800 mt-4 space-y-2">
+                  <h3 className="text-sm font-black text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 pb-2 mb-2">{extractedReceipt.store_name || "Receipt Details"}</h3>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div><span className="text-slate-400">Date:</span> <span className="font-bold text-slate-700 dark:text-slate-300">{extractedReceipt.date || "-"}</span></div>
+                    <div><span className="text-slate-400">Time:</span> <span className="font-bold text-slate-700 dark:text-slate-300">{extractedReceipt.time || "-"}</span></div>
+                    <div><span className="text-slate-400">Total:</span> <span className="font-bold text-slate-700 dark:text-slate-300">{extractedReceipt.total_amount || "0"} EGP</span></div>
+                    <div><span className="text-slate-400">Net:</span> <span className="font-bold text-slate-700 dark:text-slate-300">{extractedReceipt.net_amount || "0"} EGP</span></div>
+                    <div><span className="text-slate-400">Tax:</span> <span className="font-bold text-slate-700 dark:text-slate-300">{extractedReceipt.tax_amount || "0"} EGP</span></div>
+                    <div><span className="text-slate-400">Cashier:</span> <span className="font-bold text-slate-700 dark:text-slate-300">{extractedReceipt.cashier || "-"}</span></div>
+                  </div>
+                </div>
+              )}
 
               {/* Extracted Items Checklist */}
               {extractedReceipt?.items && extractedReceipt.items.length > 0 && (
