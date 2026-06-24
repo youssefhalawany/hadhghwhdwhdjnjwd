@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
+import { getAdminDb } from "@/lib/firebase-admin";
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,6 +13,7 @@ export async function POST(req: NextRequest) {
       serverTimestamp: new Date().toISOString()
     };
 
+    const adminDb = getAdminDb();
     const docRef = await adminDb.collection("audited_checklists").add(checklistData);
 
     return NextResponse.json({ success: true, id: docRef.id });
