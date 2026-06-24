@@ -207,7 +207,12 @@ export default function CashierSettingsPage() {
               <select
                 required
                 value={branchId}
-                onChange={e => setBranchId(e.target.value)}
+                onChange={e => {
+                  const bId = e.target.value;
+                  setBranchId(bId);
+                  if (bId === 'alamein4') setStoreId('eL-alamein-4');
+                  else if (bId === 'ola') setStoreId('ola-el-koronfol');
+                }}
                 className="w-full p-2.5 bg-background border border-border rounded-lg outline-none focus:border-red-500 text-sm font-semibold"
               >
                 <option value="">Select Branch...</option>
