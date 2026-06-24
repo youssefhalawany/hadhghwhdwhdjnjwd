@@ -93,8 +93,8 @@ export default function ManagerAuditPage() {
 
   const handleSelectReport = (report: any) => {
     setSelectedReport(report);
-    setCashierOverrideCash(String(report.cashierCounts.cash || "0"));
-    setCashierOverrideVisa(String(report.cashierCounts.visa || "0"));
+    setCashierOverrideCash(String(report?.cashierCounts?.cash || "0"));
+    setCashierOverrideVisa(String(report?.cashierCounts?.visa || "0"));
     // Populate form
     if (report.managerAudit) {
       setExpectedCash(String(report.managerAudit.expectedCash || ""));
@@ -116,13 +116,13 @@ export default function ManagerAuditPage() {
 
   const calculateCashVariance = () => {
     if (!selectedReport) return 0;
-    const submittedCash = activeTab === "pending" ? Number(cashierOverrideCash) || 0 : selectedReport.cashierCounts.cash;
+    const submittedCash = activeTab === "pending" ? Number(cashierOverrideCash) || 0 : selectedReport.cashierCounts?.cash;
     return submittedCash - (Number(expectedCash) || 0);
   };
 
   const calculateVisaVariance = () => {
     if (!selectedReport) return 0;
-    const submittedVisa = activeTab === "pending" ? Number(cashierOverrideVisa) || 0 : selectedReport.cashierCounts.visa;
+    const submittedVisa = activeTab === "pending" ? Number(cashierOverrideVisa) || 0 : selectedReport.cashierCounts?.visa;
     return submittedVisa - (Number(expectedVisa) || 0);
   };
 
@@ -144,9 +144,9 @@ export default function ManagerAuditPage() {
       await updateDoc(reportRef, {
         status: "approved",
         "cashierDetails.shift": auditShift.toLowerCase(),
-        "cashierCounts.cash": Number(cashierOverrideCash) || 0,
-        "cashierCounts.visa": Number(cashierOverrideVisa) || 0,
-        "cashierCounts.total": (Number(cashierOverrideCash) || 0) + (Number(cashierOverrideVisa) || 0),
+        "cashierCounts?.cash": Number(cashierOverrideCash) || 0,
+        "cashierCounts?.visa": Number(cashierOverrideVisa) || 0,
+        "cashierCounts?.total": (Number(cashierOverrideCash) || 0) + (Number(cashierOverrideVisa) || 0),
         managerAudit: {
           ...selectedReport.managerAudit, // preserve rejectReason and other older fields
           expectedCash: Number(expectedCash) || 0,
@@ -171,14 +171,14 @@ export default function ManagerAuditPage() {
       // Add to sales collection
       await addDoc(collection(db, "sales"), {
         cash: Number(expectedCash) || 0,
-        cashierName: selectedReport.cashierDetails.name,
+        cashierName: selectedReport?.cashierDetails?.name,
         createdAt: new Date().toISOString(),
         createdBy: managerName,
-        date: selectedReport.cashierDetails.date,
+        date: selectedReport?.cashierDetails?.date,
         notes: finalNotes.trim(),
         overShort: calculateCashVariance(), // Cash variance only as requested
         shift: auditShift.toLowerCase(),
-        storeId: selectedReport.cashierDetails.storeId,
+        storeId: selectedReport?.cashierDetails?.storeId,
         branchId: selectedReport.branchId || currentBranch,
         visa: Number(expectedVisa) || 0
       });
@@ -189,7 +189,7 @@ export default function ManagerAuditPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             title: "New Sales Record (Shift Approved)",
-            body: `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' })}\nApproved By: ${managerName}\nCashier: ${selectedReport.cashierDetails.name}\nShift: ${auditShift}\nSystem Cash: ${expectedCash} EGP\nSystem Visa: ${expectedVisa} EGP\nOver/Short: ${calculateCashVariance()} EGP\nCig. Variance: ${Number(cigarettesPercent) || 0}%\nCoffee Variance: ${Number(coffeePercent) || 0}%\nNotes: ${finalNotes || 'None'}\n\nView Approved Report:\n${window.location.origin}/shift-reports/view?id=${selectedReport.id}`
+            body: `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' })}\nApproved By: ${managerName}\nCashier: ${selectedReport?.cashierDetails?.name}\nShift: ${auditShift}\nSystem Cash: ${expectedCash} EGP\nSystem Visa: ${expectedVisa} EGP\nOver/Short: ${calculateCashVariance()} EGP\nCig. Variance: ${Number(cigarettesPercent) || 0}%\nCoffee Variance: ${Number(coffeePercent) || 0}%\nNotes: ${finalNotes || 'None'}\n\nView Approved Report:\n${window.location.origin}/shift-reports/view?id=${selectedReport.id}`
           })
         });
       } catch (err) { console.error("Notify error", err); }
@@ -377,11 +377,11 @@ export default function ManagerAuditPage() {
                     }`}
                 >
                   <div className="flex justify-between items-start mb-2">
-                    <span className="font-bold text-foreground text-sm">{report.cashierDetails.date}</span>
-                    <span className="text-xs font-bold px-2 py-1 bg-red-500/10 rounded-md text-red-500 border border-red-200/20 dark:border-red-950/30">{report.cashierDetails.shift}</span>
+                    <span className="font-bold text-foreground text-sm">{report?.cashierDetails?.date}</span>
+                    <span className="text-xs font-bold px-2 py-1 bg-red-500/10 rounded-md text-red-500 border border-red-200/20 dark:border-red-950/30">{report?.cashierDetails?.shift}</span>
                   </div>
-                  <div className="font-semibold text-lg text-foreground mb-1">{report.cashierDetails.name}</div>
-                  <div className="text-xs text-muted-foreground font-mono mb-3">Store: {report.cashierDetails.storeId}</div>
+                  <div className="font-semibold text-lg text-foreground mb-1">{report?.cashierDetails?.name}</div>
+                  <div className="text-xs text-muted-foreground font-mono mb-3">Store: {report?.cashierDetails?.storeId}</div>
 
                   {activeTab === "history" && report.managerAudit && (
                     <div className={`mb-3 text-xs flex justify-between bg-card p-2 rounded border border-border ${report.managerAudit.overShort !== 0 ? 'animate-pulse border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.2)]' : ''}`}>
@@ -394,7 +394,7 @@ export default function ManagerAuditPage() {
 
                   <div className="flex justify-between items-center pt-3 border-t border-red-100 dark:border-red-900/30">
                     <span className="text-xs font-bold text-muted-foreground uppercase">Declared Total</span>
-                    <span className="font-bold text-red-600 dark:text-red-400">EGP {report.cashierCounts.total.toLocaleString()}</span>
+                    <span className="font-bold text-red-600 dark:text-red-400">EGP {report?.cashierCounts?.total?.toLocaleString()}</span>
                   </div>
                 </motion.button>
               ))}
@@ -416,9 +416,9 @@ export default function ManagerAuditPage() {
               <div className="bg-slate-900 text-white p-6">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <h2 className="text-2xl font-black">{selectedReport.cashierDetails.name}</h2>
+                    <h2 className="text-2xl font-black">{selectedReport?.cashierDetails?.name}</h2>
                     <p className="text-slate-400 text-sm mt-1 flex flex-wrap items-center gap-2">
-                      <span>{selectedReport.cashierDetails.date}</span>
+                      <span>{selectedReport?.cashierDetails?.date}</span>
                       <span className="text-slate-600">•</span>
                       {activeTab === "pending" ? (
                         <select 
@@ -431,10 +431,10 @@ export default function ManagerAuditPage() {
                           <option value="Night">Night Shift</option>
                         </select>
                       ) : (
-                        <span>{selectedReport.cashierDetails.shift} Shift</span>
+                        <span>{selectedReport?.cashierDetails?.shift} Shift</span>
                       )}
                       <span className="text-slate-600">•</span>
-                      <span>{selectedReport.cashierDetails.storeId}</span>
+                      <span>{selectedReport?.cashierDetails?.storeId}</span>
                     </p>
                     <p className="text-slate-500 text-xs mt-1 font-semibold text-blue-600">
                       {selectedReport.cashierRole === 2 ? 'Cashier 2 (Money Only)' : 'Cashier 1 (Full Register)'}
@@ -448,7 +448,7 @@ export default function ManagerAuditPage() {
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Declared Total</p>
-                    <p className="text-2xl font-black text-green-400">EGP {activeTab === "pending" ? ((Number(cashierOverrideCash) || 0) + (Number(cashierOverrideVisa) || 0)).toLocaleString() : selectedReport.cashierCounts.total.toLocaleString()}</p>
+                    <p className="text-2xl font-black text-green-400">EGP {activeTab === "pending" ? ((Number(cashierOverrideCash) || 0) + (Number(cashierOverrideVisa) || 0)).toLocaleString() : selectedReport?.cashierCounts?.total?.toLocaleString()}</p>
                   </div>
                 </div>
               </div>
@@ -470,7 +470,7 @@ export default function ManagerAuditPage() {
                         {activeTab === "pending" ? (
                           <input type="number" value={cashierOverrideCash} onChange={e => setCashierOverrideCash(e.target.value)} className="w-28 p-1 text-right font-mono border border-border bg-background rounded outline-none focus:ring-1 focus:ring-blue-500 text-sm" placeholder="Override" />
                         ) : (
-                          <span className="font-mono font-bold">EGP {selectedReport.cashierCounts.cash.toLocaleString()}</span>
+                          <span className="font-mono font-bold">EGP {selectedReport?.cashierCounts?.cash?.toLocaleString()}</span>
                         )}
                       </div>
                       <div className="flex justify-between items-center gap-2 p-2 bg-card rounded border border-border">
@@ -478,7 +478,7 @@ export default function ManagerAuditPage() {
                         {activeTab === "pending" ? (
                           <input type="number" value={cashierOverrideVisa} onChange={e => setCashierOverrideVisa(e.target.value)} className="w-28 p-1 text-right font-mono border border-border bg-background rounded outline-none focus:ring-1 focus:ring-blue-500 text-sm" placeholder="Override" />
                         ) : (
-                          <span className="font-mono font-bold">EGP {selectedReport.cashierCounts.visa.toLocaleString()}</span>
+                          <span className="font-mono font-bold">EGP {selectedReport?.cashierCounts?.visa?.toLocaleString()}</span>
                         )}
                       </div>
                     </div>
@@ -724,19 +724,19 @@ export default function ManagerAuditPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.5fr', gap: '0' }}>
                   <div style={{ padding: '15px', borderRight: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
                     <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Branch / Store ID</p>
-                    <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport.cashierDetails.storeId}</p>
+                    <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.storeId}</p>
                   </div>
                   <div style={{ padding: '15px', borderRight: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
                     <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Shift Period</p>
-                    <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport.cashierDetails.shift} Shift</p>
+                    <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.shift} Shift</p>
                   </div>
                   <div style={{ padding: '15px', borderBottom: '1px solid #e2e8f0' }}>
                     <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Cashier Name</p>
-                    <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport.cashierDetails.name}</p>
+                    <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.name}</p>
                   </div>
                   <div style={{ padding: '15px', borderRight: '1px solid #e2e8f0' }}>
                     <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Operating Date</p>
-                    <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport.cashierDetails.date}</p>
+                    <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.date}</p>
                   </div>
                   <div style={{ padding: '15px', borderRight: '1px solid #e2e8f0' }}>
                     <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Cashier Role</p>
@@ -769,7 +769,7 @@ export default function ManagerAuditPage() {
                   <tbody>
                     <tr>
                       <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>Cash</td>
-                      <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px' }}>EGP {selectedReport.cashierCounts.cash.toLocaleString()}</td>
+                      <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px' }}>EGP {selectedReport?.cashierCounts?.cash?.toLocaleString()}</td>
                       <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px' }}>EGP {Number(expectedCash).toLocaleString() || "0"}</td>
                       <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px', textAlign: 'right', fontWeight: 'bold', color: calculateCashVariance() < 0 ? '#dc2626' : '#16a34a' }}>
                         {calculateCashVariance() < 0 ? '-' : '+'}EGP {Math.abs(calculateCashVariance()).toLocaleString()}
@@ -777,7 +777,7 @@ export default function ManagerAuditPage() {
                     </tr>
                     <tr>
                       <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>Visa</td>
-                      <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px' }}>EGP {selectedReport.cashierCounts.visa.toLocaleString()}</td>
+                      <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px' }}>EGP {selectedReport?.cashierCounts?.visa?.toLocaleString()}</td>
                       <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px' }}>EGP {Number(expectedVisa).toLocaleString() || "0"}</td>
                       <td style={{ padding: '8px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '14px', textAlign: 'right', fontWeight: 'bold', color: calculateVisaVariance() < 0 ? '#dc2626' : '#16a34a' }}>
                         {calculateVisaVariance() < 0 ? '-' : '+'}EGP {Math.abs(calculateVisaVariance()).toLocaleString()}
@@ -876,7 +876,7 @@ export default function ManagerAuditPage() {
                   )}
                   <div style={{ borderBottom: '2px solid #1e293b', width: '100%', marginBottom: '10px' }}></div>
                   <p style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e293b', margin: 0, textTransform: 'uppercase' }}>Cashier Signature</p>
-                  <p style={{ fontSize: '16px', fontWeight: '900', color: '#000000', margin: '4px 0 0' }}>{selectedReport.cashierDetails.name}</p>
+                  <p style={{ fontSize: '16px', fontWeight: '900', color: '#000000', margin: '4px 0 0' }}>{selectedReport?.cashierDetails?.name}</p>
                 </div>
 
                 {/* Manager Signature */}
