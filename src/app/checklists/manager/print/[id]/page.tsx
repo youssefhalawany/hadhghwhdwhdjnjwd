@@ -112,23 +112,41 @@ export default function PrintChecklistPage() {
       const html2canvas = (await import("html2canvas")).default;
       const { jsPDF } = await import("jspdf");
 
-      // Lower scale to 1 to prevent crashing on iOS due to maximum canvas size limits
-      const canvas = await html2canvas(element, { 
-        scale: 1, 
-        useCORS: true,
-        windowWidth: element.scrollWidth,
-        windowHeight: element.scrollHeight
-      });
-      const imgData = canvas.toDataURL("image/png");
+      const sections = document.querySelectorAll('.pdf-section');
       const pdf = new jsPDF("p", "mm", "a4");
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      let currentY = 0;
+
+      for (let i = 0; i < sections.length; i++) {
+        const section = sections[i] as HTMLElement;
+        const canvas = await html2canvas(section, { 
+          scale: 1.5, // Better resolution but still safe
+          useCORS: true,
+          logging: false
+        });
+        
+        // Use JPEG to drastically reduce memory overhead on iOS
+        const imgData = canvas.toDataURL("image/jpeg", 0.9);
+        const canvasHeight = canvas.height;
+        const canvasWidth = canvas.width;
+        const pdfImgHeight = (canvasHeight * pdfWidth) / canvasWidth;
+
+        // If this section pushes us past the page height (and it's not the very first item), add a new page
+        if (currentY + pdfImgHeight > pageHeight && i > 0) {
+          pdf.addPage();
+          currentY = 0;
+        }
+
+        // Leave a tiny gap between sections (2mm)
+        pdf.addImage(imgData, "JPEG", 0, currentY, pdfWidth, pdfImgHeight);
+        currentY += pdfImgHeight + 2;
+      }
       
-      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
       pdf.save(`checklist-${id}.pdf`);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error generating PDF", error);
-      alert("Failed to generate PDF. You can try the browser print function instead.");
+      alert("Failed to generate PDF. Error: " + (error?.message || "Unknown error"));
       window.print();
     }
   };
@@ -156,7 +174,7 @@ export default function PrintChecklistPage() {
         <div className="p-4 print:p-0">
           
           {/* Header */}
-          <div className="border border-black mb-2">
+          <div className="pdf-section border border-black mb-2 bg-white">
             <div className="flex justify-between items-center p-2 border-b border-black">
               <div className="text-red-600 font-black text-2xl tracking-tighter">CIRCLE K</div>
               <div className="text-red-600 font-bold text-sm underline underline-offset-4">قائمة التفتيش على المتاجر(Check List)</div>
@@ -193,44 +211,49 @@ export default function PrintChecklistPage() {
           </div>
 
           {/* Section 1: External */}
-          <SectionTitle title="الفرع من الخارج" />
-          <div className="grid grid-cols-2 border-b border-black">
-            <div className="border-l border-black p-1">
-              {renderCategory("external_building")}
-              {renderCategory("lighting_facade")}
-            </div>
-            <div className="p-1">
-              {renderCategory("gardens_external")}
-              {renderCategory("trash_bins")}
+          <div className="pdf-section mb-2 bg-white">
+            <SectionTitle title="الفرع من الخارج" />
+            <div className="grid grid-cols-2 border-b border-black">
+              <div className="border-l border-black p-1">
+                {renderCategory("external_building")}
+                {renderCategory("lighting_facade")}
+              </div>
+              <div className="p-1">
+                {renderCategory("gardens_external")}
+                {renderCategory("trash_bins")}
+              </div>
             </div>
           </div>
 
           {/* Section 2: Internal */}
-          <SectionTitle title="الفرع من الداخل" />
-          <div className="grid grid-cols-2 border-b border-black">
-            <div className="border-l border-black p-1">
-              {renderCategory("internal_branch")}
-            </div>
-            <div className="p-1">
-              {renderCategory("restrooms")}
-              {renderCategory("retail_gondolas")}
-              {renderCategory("seating_areas")}
+          <div className="pdf-section mb-2 bg-white">
+            <SectionTitle title="الفرع من الداخل" />
+            <div className="grid grid-cols-2 border-b border-black">
+              <div className="border-l border-black p-1">
+                {renderCategory("internal_branch")}
+              </div>
+              <div className="p-1">
+                {renderCategory("restrooms")}
+                {renderCategory("retail_gondolas")}
+                {renderCategory("seating_areas")}
+              </div>
             </div>
           </div>
 
           {/* Section 3: Operating & Customers */}
-          <div className="grid grid-cols-2 border-x border-b border-black">
-            <div className="border-l border-black p-1">
-              {renderCategory("operating_files")}
-            </div>
-            <div className="p-1">
-              {renderCategory("customer_service")}
+          <div className="pdf-section mb-2 bg-white">
+            <div className="grid grid-cols-2 border-x border-b border-t border-black">
+              <div className="border-l border-black p-1">
+                {renderCategory("operating_files")}
+              </div>
+              <div className="p-1">
+                {renderCategory("customer_service")}
+              </div>
             </div>
           </div>
 
-          {/* Section 4: Fridges & Office (Page 2 conceptually, but we let it flow) */}
-          <div className="mt-4">
-             {/* Note: In original PDF this was page 2, we just render them below */}
+          {/* Section 4: Fridges & Office */}
+          <div className="pdf-section mb-2 bg-white">
              <div className="grid grid-cols-2 border-x border-t border-black">
               <div className="border-l border-black p-1 border-b">
                 {renderCategory("fridges_freezers")}
