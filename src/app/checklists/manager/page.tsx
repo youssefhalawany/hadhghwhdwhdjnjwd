@@ -3,8 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ClipboardCheck, Printer, Search } from "lucide-react";
-import { collection, getDocs, query, orderBy, limit } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { ChevronLeft, ClipboardCheck, Printer, Search } from "lucide-react";
 
 export default function ManagerChecklistsPage() {
   const router = useRouter();
@@ -14,10 +13,11 @@ export default function ManagerChecklistsPage() {
   useEffect(() => {
     async function fetchChecklists() {
       try {
-        const q = query(collection(db, "audited_checklists"), orderBy("createdAt", "desc"), limit(50));
-        const snapshot = await getDocs(q);
-        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setChecklists(data);
+        const res = await fetch("/api/checklists");
+        const data = await res.json();
+        if (data.checklists) {
+          setChecklists(data.checklists);
+        }
       } catch (err) {
         console.error("Error fetching checklists", err);
       } finally {
