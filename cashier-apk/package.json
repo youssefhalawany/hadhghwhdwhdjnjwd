@@ -1,0 +1,19 @@
+{
+  "name": "ck-cashier-app",
+  "version": "1.0.0",
+  "description": "Circle K Cashier Portal",
+  "scripts": {
+    "init:android": "cap add android",
+    "sync": "cap sync",
+    "build:apk": "cap open android"
+  },
+  "author": "Youssef Halawany",
+  "license": "ISC",
+  "dependencies": {
+    "@capacitor/android": "^5.6.0",
+    "@capacitor/core": "^5.6.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^5.6.0"
+  }
+}

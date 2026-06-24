@@ -217,7 +217,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground transition-colors duration-300">
       {/* Dynamic Header */}
-      <header className="glass-header z-40 border-b border-border" id="app-main-header">
+      {!pathname.startsWith('/cashier') && (
+        <header className="glass-header z-40 border-b border-border" id="app-main-header">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-6">
             <Link href="/" className="flex items-center gap-3">
@@ -394,26 +395,31 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
           </div>
         )}
       </header>
+      )}
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className={`flex-grow flex flex-col ${pathname.startsWith('/cashier') ? '' : 'pt-6 pb-20 lg:pb-6'}`}>
+        <div className={`flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${pathname.startsWith('/cashier') ? 'h-screen p-0 m-0 max-w-full' : ''}`}>
         {children}
+        </div>
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border bg-card py-4 text-center text-xs text-muted-foreground mt-auto no-print">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p>© 2026 Circle K Franchise Group. All rights reserved.</p>
-          <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1">
-              <CheckCircle className="h-3 w-3 text-green-500" /> SHA-256 Hash Validation Enabled
-            </span>
-            <Link href="/verify/check" className="hover:text-foreground transition-colors flex items-center gap-1">
-              <Search className="h-3 w-3" /> Verify Document
-            </Link>
+      {!pathname.startsWith('/cashier') && (
+        <footer className="border-t border-border bg-card py-4 text-center text-xs text-muted-foreground mt-auto no-print">
+          <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <p>© 2026 Circle K Franchise Group. All rights reserved.</p>
+            <div className="flex items-center gap-4">
+              <span className="flex items-center gap-1">
+                <CheckCircle className="h-3 w-3 text-green-500" /> SHA-256 Hash Validation Enabled
+              </span>
+              <Link href="/verify/check" className="hover:text-foreground transition-colors flex items-center gap-1">
+                <Search className="h-3 w-3" /> Verify Document
+              </Link>
+            </div>
           </div>
-        </div>
-      </footer>
+        </footer>
+      )}
       <PwaInstallPrompt />
     </div>
   );
