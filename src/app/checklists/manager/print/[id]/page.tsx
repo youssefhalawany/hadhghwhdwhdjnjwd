@@ -109,7 +109,7 @@ export default function PrintChecklistPage() {
     
     try {
       // Dynamically import heavy libraries only when clicked
-      const html2canvas = (await import("html2canvas")).default;
+      const { toJpeg } = await import("html-to-image");
       const { jsPDF } = await import("jspdf");
 
       const sections = document.querySelectorAll('.pdf-section');
@@ -120,16 +120,12 @@ export default function PrintChecklistPage() {
 
       for (let i = 0; i < sections.length; i++) {
         const section = sections[i] as HTMLElement;
-        const canvas = await html2canvas(section, { 
-          scale: 1.5, // Better resolution but still safe
-          useCORS: true,
-          logging: false
-        });
+        // toJpeg automatically handles modern CSS colors (oklch/lab) via foreignObject
+        const imgData = await toJpeg(section, { quality: 0.95, pixelRatio: 1.5 });
         
-        // Use JPEG to drastically reduce memory overhead on iOS
-        const imgData = canvas.toDataURL("image/jpeg", 0.9);
-        const canvasHeight = canvas.height;
-        const canvasWidth = canvas.width;
+        // We need to calculate height based on the section's actual aspect ratio
+        const canvasHeight = section.offsetHeight;
+        const canvasWidth = section.offsetWidth;
         const pdfImgHeight = (canvasHeight * pdfWidth) / canvasWidth;
 
         // If this section pushes us past the page height (and it's not the very first item), add a new page
