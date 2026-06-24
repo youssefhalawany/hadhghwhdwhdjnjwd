@@ -8,6 +8,8 @@ import { useRouter } from "next/navigation";
 import { Lock, User as UserIcon, ChevronDown, FileText, Shield, Calendar as CalendarIcon, UserCircle, Globe, LogOut, Download, Bell, Fingerprint } from "lucide-react";
 import { PinPad } from "@/components/PinPad";
 import { playSuccessSound, playErrorSound, getAudioCtx } from "@/lib/sounds";
+import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function CashierHubPage() {
   const router = useRouter();
@@ -68,9 +70,9 @@ export default function CashierHubPage() {
     const isAndroid = /android/.test(window.navigator.userAgent.toLowerCase());
 
     if (isIOS) {
-      alert(lang === "en" 
-        ? "To install on iOS: Tap the 'Share' icon at the bottom of Safari, then scroll down and tap 'Add to Home Screen'."
-        : "للتثبيت على iOS: اضغط على أيقونة 'مشاركة' في أسفل سفاري، ثم مرر لأسفل واضغط على 'إضافة إلى الشاشة الرئيسية'.");
+      toast.info(lang === "en" 
+        ? "To install on iOS: Tap 'Share' at the bottom of Safari, then 'Add to Home Screen'."
+        : "للتثبيت على iOS: اضغط على أيقونة 'مشاركة' في أسفل سفاري، ثم اضغط على 'إضافة إلى الشاشة الرئيسية'.");
       return;
     }
 
@@ -83,9 +85,10 @@ export default function CashierHubPage() {
       link.click();
       document.body.removeChild(link);
       
-      alert(lang === "en" 
-        ? "Downloading App... Once downloaded, tap the file to install it. You may need to 'Allow installing from unknown sources'."
-        : "جاري تحميل التطبيق... بعد التحميل، اضغط على الملف لتثبيته. قد تحتاج إلى 'السماح بالتثبيت من مصادر غير معروفة'.");
+      
+      toast.success(lang === "en" 
+        ? "Downloading App... Tap the file to install it."
+        : "جاري تحميل التطبيق... اضغط على الملف لتثبيته.");
       
       setIsInstalled(true);
       return;
@@ -93,9 +96,9 @@ export default function CashierHubPage() {
 
     // Fallback for Desktop/Chrome if not explicitly Android/iOS
     if (!deferredPrompt) {
-      alert(lang === "en"
-        ? "Your browser doesn't support automatic installation. You can install it from your browser's menu (three dots -> Add to Home screen)."
-        : "متصفحك لا يدعم التثبيت التلقائي. يمكنك تثبيته من قائمة المتصفح (الثلاث نقاط -> إضافة إلى الشاشة الرئيسية).");
+      toast.warning(lang === "en"
+        ? "Your browser doesn't support automatic installation. Use browser menu -> Add to Home screen."
+        : "متصفحك لا يدعم التثبيت التلقائي. يمكنك التثبيت من القائمة -> إضافة إلى الشاشة الرئيسية.");
       return;
     }
 
@@ -120,7 +123,7 @@ export default function CashierHubPage() {
 
   const handleEnableNotifications = async () => {
     if (!("Notification" in window)) {
-      alert(lang === "en" ? "This browser does not support notifications." : "هذا المتصفح لا يدعم الإشعارات.");
+      toast.error(lang === "en" ? "This browser does not support notifications." : "هذا المتصفح لا يدعم الإشعارات.");
       return;
     }
 
@@ -143,15 +146,15 @@ export default function CashierHubPage() {
               updatedAt: new Date().toISOString()
             });
             setIsNotificationEnabled(true);
-            alert(lang === "en" ? "Notifications enabled successfully!" : "تم تفعيل الإشعارات بنجاح!");
+            toast.success(lang === "en" ? "Notifications enabled successfully!" : "تم تفعيل الإشعارات بنجاح!");
           }
         }
       } else {
-        alert(lang === "en" ? "Notification permission denied. Please enable in your device settings." : "تم رفض إذن الإشعارات. يرجى التفعيل من إعدادات الجهاز.");
+        toast.error(lang === "en" ? "Notification permission denied." : "تم رفض إذن الإشعارات.");
       }
     } catch (err: any) {
       console.error("FCM Token generation failed:", err);
-      alert((lang === "en" ? "Failed to enable notifications. Error: " : "فشل تفعيل الإشعارات. الخطأ: ") + err.message);
+      toast.error((lang === "en" ? "Failed to enable notifications. " : "فشل تفعيل الإشعارات. ") + err.message);
     }
   };
 
@@ -227,7 +230,7 @@ export default function CashierHubPage() {
   const handleLogin = (e: React.FormEvent | string) => {
     if (typeof e !== 'string') e.preventDefault();
     if (!selectedEmployeeId) {
-      alert(lang === "en" ? "Please select your name." : "يرجى اختيار اسمك.");
+      toast.error(lang === "en" ? "Please select your name." : "يرجى اختيار اسمك.");
       return;
     }
     
@@ -240,7 +243,7 @@ export default function CashierHubPage() {
     if (!correctPin || pinToVerify !== correctPin) {
       if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate([50, 50, 50]);
       playErrorSound();
-      alert(lang === "en" ? "Incorrect PIN" : "الرمز السري غير صحيح");
+      toast.error(lang === "en" ? "Incorrect PIN" : "الرمز السري غير صحيح");
       setPinInput("");
       return;
     }
@@ -251,6 +254,7 @@ export default function CashierHubPage() {
       name: user.name,
       employeeId: user.employeeId || "",
       storeId: user.storeId || "N/A",
+      branchId: user.branchId || "alamein4",
       role: user.position || user.role || "cashier",
       loggedInAt: new Date().toISOString()
     };
@@ -283,10 +287,11 @@ export default function CashierHubPage() {
       if (credential) {
         localStorage.setItem(`faceid_enabled_${selectedEmployeeId}`, "true");
         setHasFaceIdRegistered(true);
-        alert(lang === "en" ? "FaceID/TouchID Enabled!" : "تم تفعيل البصمة!");
+        toast.success(lang === "en" ? "FaceID/TouchID Enabled!" : "تم تفعيل البصمة!");
+        handleLogin(user.pin);
       }
     } catch (e) {
-      alert(lang === "en" ? "Failed to register." : "فشل التفعيل.");
+      toast.error(lang === "en" ? "Biometric authentication failed." : "فشل التحقق.");
     }
   };
 
@@ -330,8 +335,8 @@ export default function CashierHubPage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-screen bg-slate-50 dark:bg-slate-900">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-red-600"></div>
+      <div className="flex justify-center items-center h-screen bg-background">
+        <Skeleton className="h-16 w-16 rounded-full" />
       </div>
     );
   }

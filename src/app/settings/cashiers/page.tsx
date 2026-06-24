@@ -3,15 +3,27 @@
 import React, { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "firebase/firestore";
-import { Users, Trash2, PlusCircle, Lock, Store, Clock } from "lucide-react";
+import { Users, Trash2, PlusCircle, Lock, Store, Clock, Building } from "lucide-react";
+import { useBranch } from "@/context/BranchContext";
+import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function CashierSettingsPage() {
+  const { currentBranch, availableBranches } = useBranch();
   const [cashiers, setCashiers] = useState<any[]>([]);
   const [employeesList, setEmployeesList] = useState<any[]>([]);
   const [name, setName] = useState("");
   const [storeId, setStoreId] = useState("");
   const [pin, setPin] = useState("");
   const [shiftType, setShiftType] = useState("All");
+  const [branchId, setBranchId] = useState<string>("");
+  
+  useEffect(() => {
+    if (!branchId && currentBranch !== "all") {
+      setBranchId(currentBranch);
+    }
+  }, [currentBranch, branchId]);
+
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -19,19 +31,16 @@ export default function CashierSettingsPage() {
   const fetchCashiers = async () => {
     setLoading(true);
     try {
-      // Fetch all employees to verify status
       const empSnap = await getDocs(collection(db, "employees"));
       const employeesMap = new Map<string, any>(empSnap.docs.map(d => [d.data().name, { id: d.id, ...d.data() }]));
 
       const snap = await getDocs(collection(db, "cashiers"));
       const allCashiers: any[] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-      // Filter: only keep cashiers whose employee record is active
       const activeCashiers: any[] = [];
       for (const c of allCashiers) {
         const emp = employeesMap.get(c.name);
         if (emp && emp.status === "active") {
-          // Auto-migrate cashier to include employeeId
           if (!c.employeeId) {
             try {
               await updateDoc(doc(db, "cashiers", c.id), {
@@ -44,7 +53,6 @@ export default function CashierSettingsPage() {
           }
           activeCashiers.push(c);
         } else {
-          // Auto-delete cashier document (account)
           try {
             await deleteDoc(doc(db, "cashiers", c.id));
           } catch (err) {
@@ -65,7 +73,6 @@ export default function CashierSettingsPage() {
     try {
       const snap = await getDocs(collection(db, "employees"));
       const emps = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      // Filter: only show active employees in the dropdown
       const activeEmps = emps.filter((e: any) => e.status === "active");
       setEmployeesList(activeEmps);
     } catch (e) {
@@ -81,7 +88,7 @@ export default function CashierSettingsPage() {
   const handleAddCashier = async (e: React.FormEvent) => {
     e.preventDefault();
     if (pin.length !== 4) {
-      alert("PIN must be exactly 4 digits.");
+      toast.error("PIN must be exactly 4 digits.");
       return;
     }
     setAdding(true);
@@ -90,22 +97,22 @@ export default function CashierSettingsPage() {
       const empId = selectedEmp ? selectedEmp.id : "";
 
       if (editId) {
-        // Edit mode
         await updateDoc(doc(db, "cashiers", editId), {
           name,
           storeId,
           pin,
           shiftType,
-          employeeId: empId
+          employeeId: empId,
+          branchId
         });
       } else {
-        // Add mode
         await addDoc(collection(db, "cashiers"), {
           name,
           storeId,
           pin,
           shiftType,
           employeeId: empId,
+          branchId,
           createdAt: new Date().toISOString()
         });
       }
@@ -116,9 +123,10 @@ export default function CashierSettingsPage() {
       setShiftType("All");
       setEditId(null);
       fetchCashiers();
+      toast.success("Cashier saved successfully!");
     } catch (e) {
       console.error(e);
-      alert(`Failed to save cashier: ${e instanceof Error ? e.message : String(e)}`);
+      toast.error(`Failed to save cashier: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setAdding(false);
     }
@@ -130,22 +138,34 @@ export default function CashierSettingsPage() {
     setStoreId(cashier.storeId);
     setPin(cashier.pin);
     setShiftType(cashier.shiftType || "All");
+    setBranchId(cashier.branchId || "alamein4");
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Remove this cashier?")) return;
-    try {
-      await deleteDoc(doc(db, "cashiers", id));
-      fetchCashiers();
-    } catch (e) {
-      console.error(e);
-      alert("Failed to delete cashier");
-    }
+    toast.warning("Remove this cashier?", {
+      action: {
+        label: "Delete",
+        onClick: async () => {
+          try {
+            await deleteDoc(doc(db, "cashiers", id));
+            fetchCashiers();
+            toast.success("Cashier removed successfully");
+          } catch (e) {
+            console.error(e);
+            toast.error("Failed to delete cashier");
+          }
+        }
+      }
+    });
   };
 
   if (loading) {
-    return <div className="flex justify-center py-20"><div className="animate-spin h-10 w-10 border-t-2 border-red-600 rounded-full"></div></div>;
+    return (
+      <div className="flex justify-center py-20 bg-background min-h-screen">
+        <Skeleton className="h-16 w-16 rounded-full" />
+      </div>
+    );
   }
 
   return (
@@ -195,6 +215,21 @@ export default function CashierSettingsPage() {
             </div>
 
             <div>
+              <label className="text-xs font-bold text-muted-foreground uppercase mb-1 flex items-center gap-1"><Building className="h-3 w-3" /> Branch</label>
+              <select
+                required
+                value={branchId}
+                onChange={e => setBranchId(e.target.value)}
+                className="w-full p-2.5 bg-background border border-border rounded-lg outline-none focus:border-red-500 text-sm font-semibold"
+              >
+                <option value="">Select Branch...</option>
+                {availableBranches.map(b => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
               <label className="text-xs font-bold text-muted-foreground uppercase mb-1 flex items-center gap-1"><Store className="h-3 w-3" /> Default Store ID</label>
               <input required value={storeId} onChange={e => setStoreId(e.target.value)} type="text" className="w-full p-2.5 bg-background border border-border rounded-lg outline-none focus:border-red-500 text-sm font-semibold" placeholder="e.g. eL-alamein-4" />
             </div>
@@ -226,10 +261,10 @@ export default function CashierSettingsPage() {
 
         {/* CASHIERS LIST */}
         <div className="md:col-span-2 space-y-4">
-          <h2 className="font-bold flex items-center gap-2"><Users className="h-5 w-5 text-slate-500" /> Active Cashiers ({cashiers.length})</h2>
+          <h2 className="font-bold flex items-center gap-2"><Users className="h-5 w-5 text-slate-500" /> Active Cashiers ({cashiers.filter(c => currentBranch === 'all' || c.branchId === currentBranch).length})</h2>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {cashiers.map(c => (
+            {cashiers.filter(c => currentBranch === 'all' || c.branchId === currentBranch).map(c => (
               <div key={c.id} className="bg-card border border-border p-4 rounded-xl flex justify-between items-center shadow-sm relative overflow-hidden">
                 <div>
                   <h3 className="font-bold text-foreground text-lg flex items-center gap-2">

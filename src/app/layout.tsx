@@ -6,6 +6,7 @@ import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { BranchProvider } from "@/context/BranchContext";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -43,12 +44,14 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col bg-background text-foreground font-sans transition-colors duration-300">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <div className="fixed bottom-4 right-4 z-50 print:hidden">
-            <ThemeToggle />
-          </div>
-          <OfflineBanner />
-          <ClientLayoutWrapper>{children}</ClientLayoutWrapper>
-          <Toaster position="top-center" richColors closeButton theme="system" />
+          <BranchProvider>
+            <div className="fixed bottom-4 right-4 z-50 print:hidden">
+              <ThemeToggle />
+            </div>
+            <OfflineBanner />
+            <ClientLayoutWrapper>{children}</ClientLayoutWrapper>
+            <Toaster position="top-center" richColors closeButton theme="system" />
+          </BranchProvider>
         </ThemeProvider>
       </body>
     </html>

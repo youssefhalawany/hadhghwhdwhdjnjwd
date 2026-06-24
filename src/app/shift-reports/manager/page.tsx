@@ -9,8 +9,12 @@ import Barcode from "react-barcode";
 import QRCode from "react-qr-code";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import { useBranch } from "@/context/BranchContext";
+import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ManagerAuditPage() {
+  const { currentBranch } = useBranch();
   const [activeTab, setActiveTab] = useState<"pending" | "history">("pending");
 
   const [pendingReports, setPendingReports] = useState<any[]>([]);
@@ -41,22 +45,35 @@ export default function ManagerAuditPage() {
   const [cashierOverrideCash, setCashierOverrideCash] = useState<string>("");
   const [cashierOverrideVisa, setCashierOverrideVisa] = useState<string>("");
 
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deletePin, setDeletePin] = useState("");
+
 
   useEffect(() => {
     // 1. Fetch Pending
     const qPending = query(collection(db, "shift_reports"), where("status", "==", "pending_manager"));
     const unsubPending = onSnapshot(qPending, (snapshot) => {
-      const reports = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      let reports = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+      if (currentBranch !== "all") {
+        reports = reports.filter(r => r.branchId === currentBranch);
+      }
       reports.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setPendingReports(reports);
+      setLoading(false);
     });
 
     // 2. Fetch History (Approved) - limit to avoid massive reads and speed up portal
-    const qHistory = query(collection(db, "shift_reports"), orderBy("createdAt", "desc"), limit(50));
+    const qHistory = query(collection(db, "shift_reports"), orderBy("createdAt", "desc"), limit(200));
     const unsubHistory = onSnapshot(qHistory, (snapshot) => {
-      const reports = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
+      let reports = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
       // Filter locally to avoid composite index requirement
-      const approvedReports = reports.filter((r: any) => r.status === "approved");
+      let approvedReports = reports.filter((r: any) => r.status === "approved");
+      if (currentBranch !== "all") {
+        approvedReports = approvedReports.filter(r => r.branchId === currentBranch);
+      }
       setHistoryReports(approvedReports);
       setLoading(false);
     });
@@ -68,7 +85,7 @@ export default function ManagerAuditPage() {
       unsubHistory();
 
     };
-  }, []);
+  }, [currentBranch]);
 
   const handleSelectReport = (report: any) => {
     setSelectedReport(report);
@@ -112,7 +129,7 @@ export default function ManagerAuditPage() {
   const handleApprove = async () => {
     if (!selectedReport) return;
     if (!managerName.trim()) {
-      alert("Please enter your name as the auditing manager.");
+      toast.error("Please enter your name as the auditing manager.");
       return;
     }
 
@@ -158,6 +175,7 @@ export default function ManagerAuditPage() {
         overShort: calculateCashVariance(), // Cash variance only as requested
         shift: auditShift.toLowerCase(),
         storeId: selectedReport.cashierDetails.storeId,
+        branchId: selectedReport.branchId || currentBranch,
         visa: Number(expectedVisa) || 0
       });
 
@@ -172,74 +190,77 @@ export default function ManagerAuditPage() {
         });
       } catch (err) { console.error("Notify error", err); }
 
-      alert("Report Approved & Saved! Sales record created.");
+      toast.success("Report Approved & Saved! Sales record created.");
       setActiveTab("history");
     } catch (error) {
       console.error("Error approving report:", error);
-      alert("Failed to approve report.");
+      toast.error("Failed to approve report.");
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleReject = async () => {
+  const triggerReject = () => {
     if (!selectedReport) return;
-    const reason = prompt("Enter reason for rejection (this will be shown to the cashier):");
-    if (!reason) return; // cancelled or empty
+    setRejectReason("");
+    setRejectModalOpen(true);
+  };
 
+  const confirmReject = async () => {
+    if (!selectedReport || !rejectReason.trim()) {
+      toast.error("Please enter a valid rejection reason.");
+      return;
+    }
     setSubmitting(true);
+    setRejectModalOpen(false);
     try {
       const reportRef = doc(db, "shift_reports", selectedReport.id);
 
       await updateDoc(reportRef, {
         status: "rejected",
         managerAudit: {
-          rejectReason: reason,
+          rejectReason: rejectReason,
           rejectedAt: new Date().toISOString()
         }
       });
 
-      alert("Report Rejected & sent back to cashier!");
+      toast.success("Report Rejected & sent back to cashier!");
       setActiveTab("pending");
       setSelectedReport(null);
     } catch (error) {
       console.error("Error rejecting report:", error);
-      alert("Failed to reject report.");
+      toast.error("Failed to reject report.");
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleDelete = async () => {
+  const triggerDelete = () => {
+    if (!selectedReport) return;
+    setDeletePin("");
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
     if (!selectedReport) return;
     
-    // First confirmation: PIN
-    const pin = prompt("Admin override required. Please enter the 4-digit manager PIN to delete this report:");
-    if (pin !== "1111") {
-      if (pin !== null) alert("Incorrect PIN. Deletion cancelled.");
+    if (deletePin !== "1111") {
+      toast.error("Incorrect PIN. Deletion cancelled.");
       return;
     }
 
-    // Second confirmation: Professional confirmation
-    const isConfirmed = window.confirm(
-      "CRITICAL WARNING: You are about to permanently delete this shift report.\n\n" +
-      "This action cannot be undone and will permanently erase all financial, inventory, and submission data associated with this shift.\n\n" +
-      "Are you absolutely sure you want to proceed with permanent deletion?"
-    );
-
-    if (!isConfirmed) return;
-
     setSubmitting(true);
+    setDeleteModalOpen(false);
     try {
       const reportRef = doc(db, "shift_reports", selectedReport.id);
       await deleteDoc(reportRef);
 
-      alert("Success: Shift report has been permanently deleted.");
+      toast.success("Success: Shift report has been permanently deleted.");
       setActiveTab("pending");
       setSelectedReport(null);
     } catch (error) {
       console.error("Error deleting report:", error);
-      alert("System Error: Failed to delete report.");
+      toast.error("System Error: Failed to delete report.");
     } finally {
       setSubmitting(false);
     }
@@ -264,14 +285,18 @@ export default function ManagerAuditPage() {
       window.open(pdf.output("bloburl"), "_blank");
     } catch (error) {
       console.error("PDF Generate Error:", error);
-      alert("Failed to generate PDF Report.");
+      toast.error("Failed to generate PDF Report.");
     } finally {
       setGeneratingPDF(false);
     }
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center min-h-[60vh]"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600"></div></div>;
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Skeleton className="h-16 w-16 rounded-full" />
+      </div>
+    );
   }
 
   const reportsList = activeTab === "pending" 
@@ -589,13 +614,12 @@ export default function ManagerAuditPage() {
                   {activeTab === "pending" ? (
                     <>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <button
-                          type="button"
-                          onClick={handleReject}
+                        <button 
+                          onClick={triggerReject}
                           disabled={submitting}
-                          className="w-full py-4 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-xl font-bold text-lg transition-all cursor-pointer"
+                          className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-bold rounded-lg shadow-sm transition-all"
                         >
-                          {submitting ? "..." : "Reject & Send Back"}
+                          {submitting ? "Rejecting..." : "Reject Report"}
                         </button>
                         <button
                           type="button"
@@ -879,6 +903,68 @@ export default function ManagerAuditPage() {
         </div>
       )}
 
+      {/* Reject Modal */}
+      {rejectModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Reject Shift Report</h3>
+            <textarea
+              className="w-full border border-slate-300 dark:border-slate-700 bg-transparent rounded-lg p-3 text-slate-800 dark:text-white outline-none focus:border-red-500 mb-4 min-h-[100px]"
+              placeholder="Enter reason for rejection (this will be shown to the cashier)"
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+            />
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => setRejectModalOpen(false)}
+                className="px-4 py-2 font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmReject}
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg"
+              >
+                Confirm Reject
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Modal */}
+      {deleteModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl p-6 shadow-2xl border border-red-500/20">
+            <h3 className="text-lg font-bold text-red-600 mb-2">CRITICAL WARNING</h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+              You are about to permanently delete this shift report. This action cannot be undone and will erase all data associated with this shift.
+            </p>
+            <input
+              type="password"
+              className="w-full border border-slate-300 dark:border-slate-700 bg-transparent rounded-lg p-3 text-slate-800 dark:text-white outline-none focus:border-red-500 mb-4 text-center font-bold tracking-[0.5em]"
+              placeholder="Enter 4-digit Manager PIN"
+              value={deletePin}
+              onChange={(e) => setDeletePin(e.target.value)}
+              maxLength={4}
+            />
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => setDeleteModalOpen(false)}
+                className="px-4 py-2 font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmDelete}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg"
+              >
+                Permanently Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

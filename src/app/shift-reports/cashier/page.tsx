@@ -9,6 +9,9 @@ import { PinPad } from "@/components/PinPad";
 import { RadarOfflineScreen } from "@/components/RadarOfflineScreen";
 import { vibrateSuccess, vibrateError } from "@/lib/haptics";
 import { NumericFormat } from "react-number-format";
+import SignaturePad from "react-signature-canvas";
+import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Translation Dictionary
 const t = {
@@ -94,106 +97,9 @@ const t = {
   }
 };
 
-const SignaturePad = ({ onSave, onClear, dict }: { onSave: (data: string) => void, onClear: () => void, dict: any }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (canvas) {
-      // Fix for blurry canvas on high DPI screens
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        ctx.strokeStyle = "black";
-        ctx.lineWidth = 2;
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-      }
-    }
-  }, []);
-
-  const getCoordinates = (e: any) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return null;
-    const rect = canvas.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    
-    // Calculate scaling factor in case the canvas is scaled by CSS
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    
-    return {
-      x: (clientX - rect.left) * scaleX,
-      y: (clientY - rect.top) * scaleY
-    };
-  };
-
-  const startDrawing = (e: any) => {
-    const coords = getCoordinates(e);
-    if (!coords) return;
-    const ctx = canvasRef.current?.getContext("2d");
-    if (!ctx) return;
-    ctx.beginPath();
-    ctx.moveTo(coords.x, coords.y);
-    setIsDrawing(true);
-  };
-
-  const draw = (e: any) => {
-    if (!isDrawing) return;
-    const coords = getCoordinates(e);
-    if (!coords) return;
-    const ctx = canvasRef.current?.getContext("2d");
-    if (!ctx) return;
-    ctx.lineTo(coords.x, coords.y);
-    ctx.stroke();
-  };
-
-  const stopDrawing = () => {
-    if (!isDrawing) return;
-    setIsDrawing(false);
-    const canvas = canvasRef.current;
-    if (canvas) {
-      onSave(canvas.toDataURL("image/png"));
-    }
-  };
-
-  const clear = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (ctx) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      onClear();
-    }
-  };
-
-  return (
-    <div className="space-y-2">
-      <div className="border border-border rounded-xl overflow-hidden bg-white touch-none">
-        <canvas
-          ref={canvasRef}
-          width={600}
-          height={200}
-          className="w-full h-[150px] sm:h-[200px] cursor-crosshair touch-none"
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={stopDrawing}
-          onMouseLeave={stopDrawing}
-          onTouchStart={startDrawing}
-          onTouchMove={draw}
-          onTouchEnd={stopDrawing}
-        />
-      </div>
-      <button type="button" onClick={clear} className="text-xs text-red-500 font-bold uppercase hover:underline">
-        {dict.clearSignature || "Clear Signature"}
-      </button>
-    </div>
-  );
-};
-
 export default function CashierShiftReportPage() {
   const router = useRouter();
+  const sigPadRef = useRef<SignaturePad>(null);
 
   const [lang, setLang] = useState<"en" | "ar">("en");
   const dict = t[lang];
@@ -306,17 +212,14 @@ export default function CashierShiftReportPage() {
         
         // Show success animation on radar if it's open
         setShowRadar(true);
-        setTimeout(() => {
-          setShowRadar(false);
-          alert(lang === 'en' ? "Offline reports successfully synced to the server!" : "تم مزامنة التقارير المحفوظة بنجاح!");
-        }, 2000);
+        setSyncing(false);
+        toast.success(lang === 'en' ? "Offline reports successfully synced to the server!" : "تم مزامنة التقارير المحفوظة بنجاح!");
       } else {
         localStorage.setItem('offline_reports_queue', JSON.stringify(remaining));
       }
       checkOfflineQueue();
     } catch (e) {
       console.error(e);
-    } finally {
       setSyncing(false);
     }
   }
@@ -462,12 +365,12 @@ export default function CashierShiftReportPage() {
       e.preventDefault();
     }
     const c = cashiers.find(x => x.id === selectedCashierId);
-    if (!c) return alert("Select your name");
+    if (!c) return toast.error("Select your name");
     
     const pinToVerify = typeof e === "string" ? e : pinInput;
     if (c.pin !== pinToVerify) {
       if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate([50, 50, 50]);
-      alert("Incorrect PIN");
+      toast.error("Incorrect PIN");
       setPinInput("");
       return;
     }
@@ -502,15 +405,16 @@ export default function CashierShiftReportPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!cashierSignature) {
+    if (sigPadRef.current?.isEmpty()) {
       vibrateError();
-      alert(lang === 'en' ? "Please sign your report before submitting." : "يرجى توقيع التقرير قبل الإرسال.");
+      toast.warning(lang === 'en' ? "Please sign your report before submitting." : "يرجى توقيع التقرير قبل الإرسال.");
       return;
     }
 
     setLoading(true);
 
     const c = cashiers.find(x => x.id === selectedCashierId);
+    const signature = sigPadRef.current?.toDataURL();
 
     const payload: any = {
       status: "pending_manager",
@@ -519,8 +423,9 @@ export default function CashierShiftReportPage() {
         name: c?.name || "Unknown",
         date,
         shift,
-        storeId: c?.storeId || "Unknown"
+        storeId: c?.storeId || "Unknown",
       },
+      branchId: c?.branchId || "alamein4",
       cashierRole,
       cashierCounts: {
         cash: calculateTotalCash(),
@@ -536,7 +441,7 @@ export default function CashierShiftReportPage() {
         visa: Number(visa) || 0,
         total: calculateTotalMoney()
       },
-      cashierSignature,
+      cashierSignature: signature,
       inventoryCounts: {
         cigarettes: {
           start: Number(cigarettes.start) || 0,
@@ -580,7 +485,7 @@ export default function CashierShiftReportPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             title: "New Shift Report",
-            body: `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' })}\nCashier: ${c?.name || 'Unknown'}\nStore: ${c?.storeId || 'Unknown'}\nShift: ${c?.shift || 'Unknown'}\nTotal Cash: ${calculateTotalCash()} EGP\nVisa: ${visa} EGP\nTotal Submitted: ${calculateTotalMoney()} EGP\nSignature: ${cashierSignature ? 'Captured' : 'None'}\n\nView Full Report & Signature:\n${window.location.origin}/shift-reports/view?id=${submittedId}`
+            body: `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' })}\nCashier: ${c?.name || 'Unknown'}\nStore: ${c?.storeId || 'Unknown'}\nShift: ${c?.shift || 'Unknown'}\nTotal Cash: ${calculateTotalCash()} EGP\nVisa: ${visa} EGP\nTotal Submitted: ${calculateTotalMoney()} EGP\nSignature: ${signature ? 'Captured' : 'None'}\n\nView Full Report & Signature:\n${window.location.origin}/shift-reports/view?id=${submittedId}`
           })
         });
       } catch (err) { console.error("Notify error", err); }
@@ -613,10 +518,9 @@ export default function CashierShiftReportPage() {
         // Reset form to let them continue or leave
         setDenominations({ '200': "", '100': "", '50': "", '20': "", '10': "", '5': "", 'coins': "" });
         setVisa("");
-        setCashierSignature("");
       } else {
         vibrateError();
-        alert(lang === 'en' ? "Failed to submit. Please try again." : "فشل الإرسال. يرجى المحاولة مرة أخرى.");
+        toast.error(lang === 'en' ? "Failed to submit. Please try again." : "فشل الإرسال. يرجى المحاولة مرة أخرى.");
       }
     } finally {
       setLoading(false);
@@ -624,7 +528,11 @@ export default function CashierShiftReportPage() {
   };
 
   if (loadingCashiers) {
-    return <div className="flex justify-center p-10"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-red-600"></div></div>;
+    return (
+      <div className="flex justify-center items-center p-20 bg-background min-h-screen">
+        <Skeleton className="h-16 w-16 rounded-full" />
+      </div>
+    );
   }
 
   if (!unlocked) {
@@ -1044,11 +952,15 @@ export default function CashierShiftReportPage() {
                   <h2 className="text-base sm:text-lg font-black text-slate-800 dark:text-white uppercase tracking-wider">{dict.signYourReport}</h2>
                 </div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{dict.signBelow}</p>
-                <SignaturePad 
-                  dict={dict} 
-                  onSave={(data) => setCashierSignature(data)} 
-                  onClear={() => setCashierSignature("")} 
-                />
+                <div className="border border-border rounded-xl overflow-hidden bg-white touch-none">
+                  <SignaturePad 
+                    ref={sigPadRef}
+                    canvasProps={{ className: "w-full h-[150px] sm:h-[200px] cursor-crosshair touch-none" }} 
+                  />
+                </div>
+                <button type="button" onClick={() => sigPadRef.current?.clear()} className="text-xs text-red-500 font-bold uppercase hover:underline">
+                  {dict.clearSignature || "Clear Signature"}
+                </button>
                 <input type="text" value={cashierSignature} readOnly className="h-0 w-0 opacity-0 absolute pointer-events-none" tabIndex={-1} />
               </section>
             </div>

@@ -15,6 +15,7 @@ export default function ChecklistFillPage() {
   const id = params?.id as string;
   const [lang, setLang] = useState<"en" | "ar">("ar");
   const [cashierName, setCashierName] = useState("");
+  const [branchId, setBranchId] = useState("alamein4");
   const [loading, setLoading] = useState(false);
 
   // We map answers by item.id to values
@@ -29,6 +30,7 @@ export default function ChecklistFillPage() {
         const user = JSON.parse(savedUserStr);
         if (user && user.name) {
           setCashierName(user.name);
+          if (user.branchId) setBranchId(user.branchId);
         }
       } catch (e) {
         console.error("Invalid session");
@@ -104,6 +106,7 @@ export default function ChecklistFillPage() {
         checklistId: checklist.id,
         checklistTitle: checklist.title,
         cashierName: cashierName || "Unknown Cashier",
+        branchId,
         answers,
         score: finalScore,
         totalScore: checklist.totalScore,

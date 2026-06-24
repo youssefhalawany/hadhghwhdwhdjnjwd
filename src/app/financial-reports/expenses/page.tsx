@@ -7,6 +7,9 @@ import { ArrowLeft, Wallet, PlusCircle, FileText, Calendar, Trash2, Tag, Buildin
 import Link from "next/link";
 import { vibrateSuccess, vibrateError } from "@/lib/haptics";
 import { NumericFormat } from "react-number-format";
+import { useBranch } from "@/context/BranchContext";
+import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const EXPENSE_CATEGORIES = [
   { id: "cogs", label: "Cost of Goods Sold (Inventory)", icon: Package, color: "text-amber-500 bg-amber-500/10" },
@@ -20,6 +23,7 @@ const EXPENSE_CATEGORIES = [
 ];
 
 export default function ExpensesPage() {
+  const { currentBranch } = useBranch();
   const [expenses, setExpenses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -33,17 +37,22 @@ export default function ExpensesPage() {
   useEffect(() => {
     const q = query(collection(db, "expenses"), orderBy("date", "desc"), orderBy("createdAt", "desc"), limit(1000));
     const unsub = onSnapshot(q, (snap) => {
-      setExpenses(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      let data = snap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+      if (currentBranch !== "all") {
+        data = data.filter(e => e.branchId === currentBranch);
+      }
+      setExpenses(data);
       setLoading(false);
     });
     return () => unsub();
-  }, []);
+  }, [currentBranch]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+    const numAmount = Number(amount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      toast.error("Please enter a valid amount.");
       vibrateError();
-      alert("Please enter a valid amount.");
       return;
     }
 
@@ -58,36 +67,46 @@ export default function ExpensesPage() {
 
       await addDoc(collection(db, "expenses"), {
         date,
-        amount: Number(amount),
+        amount: numAmount,
         category,
         subCategory: subCategory.trim(),
         notes: notes.trim(),
         createdBy,
+        branchId: currentBranch === "all" ? "alamein4" : currentBranch,
         createdAt: new Date().toISOString()
       });
 
       setAmount("");
       setSubCategory("");
       setNotes("");
+      toast.success("Expense logged successfully!");
       vibrateSuccess();
-      alert("Expense logged successfully!");
     } catch (error) {
-      vibrateError();
       console.error("Error adding expense:", error);
-      alert("Failed to log expense.");
+      toast.error("Failed to log expense.");
+      vibrateError();
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this expense record?")) return;
-    try {
-      await deleteDoc(doc(db, "expenses", id));
-    } catch (error) {
-      console.error("Error deleting expense:", error);
-      alert("Failed to delete record.");
-    }
+    toast.warning("Are you sure you want to delete this expense record?", {
+      action: {
+        label: "Delete",
+        onClick: async () => {
+          try {
+            await deleteDoc(doc(db, "expenses", id));
+            toast.success("Record deleted");
+            vibrateSuccess();
+          } catch (error) {
+            console.error("Error deleting expense:", error);
+            toast.error("Failed to delete record.");
+            vibrateError();
+          }
+        }
+      }
+    });
   };
 
   const getCategoryDetails = (catId: string) => {
@@ -116,7 +135,6 @@ export default function ExpensesPage() {
 
       <main className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* LEFT COLUMN: Add Expense Form */}
         <div className="lg:col-span-1 space-y-6">
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/20 dark:shadow-none">
             <div className="flex items-center gap-2 mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
@@ -174,7 +192,6 @@ export default function ExpensesPage() {
           </div>
         </div>
 
-        {/* RIGHT COLUMN: Recent Expenses */}
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-xl font-black">Recent Logs</h2>
@@ -186,7 +203,11 @@ export default function ExpensesPage() {
           </div>
 
           {loading ? (
-            <div className="flex justify-center p-10"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-emerald-500"></div></div>
+            <div className="space-y-3">
+              <Skeleton className="h-20 w-full rounded-2xl" />
+              <Skeleton className="h-20 w-full rounded-2xl" />
+              <Skeleton className="h-20 w-full rounded-2xl" />
+            </div>
           ) : expenses.length === 0 ? (
             <div className="bg-white/50 dark:bg-slate-900/50 rounded-3xl p-12 text-center border border-dashed border-slate-300 dark:border-slate-700">
               <FileText className="h-12 w-12 text-slate-300 mx-auto mb-3" />

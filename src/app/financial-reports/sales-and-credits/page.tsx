@@ -8,8 +8,10 @@ import * as ExcelJS from "exceljs";
 import { generatePDF, downloadPDFBlob } from "@/lib/pdf-generator";
 import QRCode from "react-qr-code";
 import Barcode from "react-barcode";
+import { useBranch } from "@/context/BranchContext";
 
 export default function FinancialReportsPage() {
+  const { currentBranch } = useBranch();
   const [sales, setSales] = useState<any[]>([]);
   const [credits, setCredits] = useState<any[]>([]);
   const [creditPayments, setCreditPayments] = useState<any[]>([]);
@@ -80,14 +82,15 @@ export default function FinancialReportsPage() {
       }
 
       const storeMatch = storeId === "all" || item[storeField] === storeId;
+      const branchMatch = currentBranch === "all" || item.branchId === currentBranch;
 
       if (startDate || endDate) {
         if (!itemYMD) return false;
         const passStart = startDate ? itemYMD >= startDate : true;
         const passEnd = endDate ? itemYMD <= endDate : true;
-        return passStart && passEnd && storeMatch;
+        return passStart && passEnd && storeMatch && branchMatch;
       }
-      return storeMatch;
+      return storeMatch && branchMatch;
     });
   };
 

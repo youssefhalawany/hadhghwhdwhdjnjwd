@@ -7,6 +7,9 @@ import { ArrowLeft, Wallet, FileText, Trash2, Edit2, Check, X, Plus } from "luci
 import Link from "next/link";
 import { vibrateSuccess, vibrateError } from "@/lib/haptics";
 import { NumericFormat } from "react-number-format";
+import { useBranch } from "@/context/BranchContext";
+import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type EndShiftRecord = {
   id: string; // The date string YYYY-MM-DD
@@ -21,6 +24,7 @@ type EndShiftRecord = {
 };
 
 export default function EndShiftCashPage() {
+  const { currentBranch } = useBranch();
   const [records, setRecords] = useState<EndShiftRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -34,12 +38,15 @@ export default function EndShiftCashPage() {
   useEffect(() => {
     const q = query(collection(db, "end_shift_cash"), orderBy("date", "asc"));
     const unsub = onSnapshot(q, (snap) => {
-      const fetched = snap.docs.map(d => ({ id: d.id, ...d.data() } as EndShiftRecord));
+      let fetched = snap.docs.map(d => ({ id: d.id, ...d.data() } as EndShiftRecord));
+      if (currentBranch !== "all") {
+        fetched = fetched.filter((r: any) => r.branchId === currentBranch);
+      }
       setRecords(fetched);
       setLoading(false);
     });
     return () => unsub();
-  }, []);
+  }, [currentBranch]);
 
   // Compute running totals dynamically so we don't have to manually update everything if a past record is added
   const computedRecords = React.useMemo(() => {
@@ -60,14 +67,23 @@ export default function EndShiftCashPage() {
   }, [records]);
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this record? Subsequent balances will shift.")) return;
-    try {
-      await deleteDoc(doc(db, "end_shift_cash", id));
-      vibrateSuccess();
-    } catch (error) {
-      console.error("Error deleting record:", error);
-      alert("Failed to delete record.");
-    }
+    toast.warning("Are you sure you want to delete this record?", {
+      description: "Subsequent balances will shift.",
+      action: {
+        label: "Delete",
+        onClick: async () => {
+          try {
+            await deleteDoc(doc(db, "end_shift_cash", id));
+            toast.success("Record deleted");
+            vibrateSuccess();
+          } catch (error) {
+            console.error(error);
+            toast.error("Failed to delete record.");
+            vibrateError();
+          }
+        }
+      }
+    });
   };
 
   const startEditing = (record: EndShiftRecord) => {
@@ -107,7 +123,7 @@ export default function EndShiftCashPage() {
 
   const saveRow = async () => {
     if (!editForm.date) {
-      alert("Date is required.");
+      toast.error("Date is required.");
       return;
     }
 
@@ -122,9 +138,10 @@ export default function EndShiftCashPage() {
       const numVisa = Number(editForm.visa || 0);
       const numDed = Number(editForm.deduction || 0);
       const numEnd = numStart + numCash - numDed;
+      const bId = currentBranch === "all" ? "alamein4" : currentBranch;
 
-      // We use the date as the document ID so adding the same date updates it or creates it cleanly
-      await setDoc(doc(db, "end_shift_cash", editForm.date!), {
+      // We use the date and branch as the document ID so adding the same date updates it or creates it cleanly
+      await setDoc(doc(db, "end_shift_cash", `${editForm.date!}_${bId}`), {
         date: editForm.date,
         startCash: numStart,
         cash: numCash,
@@ -133,17 +150,19 @@ export default function EndShiftCashPage() {
         details: editForm.details || "",
         poNumbers: editForm.poNumbers || "",
         endCash: numEnd,
+        branchId: bId,
         updatedAt: new Date().toISOString()
       }, { merge: true });
       
       setEditingId(null);
       setIsAddingNew(false);
       setEditForm({});
+      toast.success("Record saved!");
       vibrateSuccess();
     } catch (error) {
+      console.error(error);
+      toast.error("Failed to save record.");
       vibrateError();
-      console.error("Error saving record:", error);
-      alert("Failed to save record.");
     }
   };
 
@@ -195,8 +214,10 @@ export default function EndShiftCashPage() {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
                 {loading ? (
                   <tr>
-                    <td colSpan={9} className="text-center p-12">
-                      <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-teal-500"></div>
+                    <td colSpan={9} className="p-12">
+                      <div className="flex justify-center">
+                        <Skeleton className="h-16 w-16 rounded-full" />
+                      </div>
                     </td>
                   </tr>
                 ) : computedRecords.length === 0 && !isAddingNew ? (

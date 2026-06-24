@@ -9,8 +9,11 @@ import { getToken } from "firebase/messaging";
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
 import PwaInstallPrompt from "./PwaInstallPrompt";
 import type { User as FirebaseUser } from "firebase/auth";
+import { useBranch, BranchId } from "@/context/BranchContext";
+import { Store } from "lucide-react";
 
 export default function ClientLayoutWrapper({ children }: { children: React.ReactNode }) {
+  const { currentBranch, setBranch, availableBranches } = useBranch();
   const [theme, setTheme] = useState<"light" | "dark">("dark");
   const [role, setRole] = useState<string>("owner");
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -282,6 +285,21 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
+            {/* Branch Switcher */}
+            <div className="hidden sm:flex items-center gap-1.5 bg-muted/60 border border-border px-2.5 py-1.5 rounded-lg">
+              <Store className="h-3.5 w-3.5 text-blue-500" />
+              <select
+                value={currentBranch}
+                onChange={(e) => setBranch(e.target.value as BranchId)}
+                className="bg-transparent border-none text-xs font-semibold focus:ring-0 cursor-pointer outline-none text-foreground"
+                title="Select Branch"
+              >
+                {availableBranches.map((b) => (
+                  <option key={b.id} value={b.id} className="bg-card">{b.name}</option>
+                ))}
+              </select>
+            </div>
+
             {/* Role Switcher */}
             <div className="hidden sm:flex items-center gap-1.5 bg-muted/60 border border-border px-2.5 py-1.5 rounded-lg">
               <Shield className="h-3.5 w-3.5 text-red-500" />

@@ -6,18 +6,23 @@ import { ChevronLeft, ClipboardCheck, Printer, Search } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageWrapper } from "@/components/PageWrapper";
 import { motion } from "framer-motion";
+import { useBranch } from "@/context/BranchContext";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function ManagerChecklistsPage() {
   const router = useRouter();
+  const { currentBranch } = useBranch();
   
   const { data, error, isLoading: loading } = useSWR("/api/checklists", fetcher, {
     revalidateOnFocus: false, // Save Firebase reads!
     dedupingInterval: 60000, // Cache for 1 minute
   });
 
-  const checklists: any[] = data?.checklists || [];
+  let checklists: any[] = data?.checklists || [];
+  if (currentBranch !== "all") {
+    checklists = checklists.filter(cl => cl.branchId === currentBranch);
+  }
 
   return (
     <PageWrapper className="bg-background text-foreground" dir="rtl">
