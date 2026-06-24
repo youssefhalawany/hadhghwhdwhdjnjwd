@@ -196,6 +196,8 @@ export default function ExpiryAuditPage() {
 
     const totalFilteredQuantity = filteredReportItems.reduce((acc, curr) => acc + Number(curr.quantity || 0), 0);
 
+  const uniqueSuppliers = Array.from(new Set(items.map(i => i.supplier).filter(Boolean))).sort();
+
   const generateQRData = () => {
     let text = `Expiry Report\nFilters: Status=${reportFilters.status}, Dates=${reportFilters.startDate || 'Any'} to ${reportFilters.endDate || 'Any'}\n`;
     text += `Total Units: ${totalFilteredQuantity}\n\n`;
@@ -256,6 +258,7 @@ export default function ExpiryAuditPage() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b-2 border-slate-900">
+                <th className="py-3 px-2 text-xs font-black text-slate-900 uppercase tracking-widest">Barcode</th>
                 <th className="py-3 px-2 text-xs font-black text-slate-900 uppercase tracking-widest">Item Description</th>
                 <th className="py-3 px-2 text-xs font-black text-slate-900 uppercase tracking-widest">Supplier</th>
                 <th className="py-3 px-2 text-xs font-black text-slate-900 uppercase tracking-widest">Store</th>
@@ -267,9 +270,11 @@ export default function ExpiryAuditPage() {
             <tbody>
               {filteredReportItems.map(item => (
                 <tr key={item.id} className="border-b border-slate-200">
+                  <td className="py-2 px-2">
+                    {item.barcode ? <div className="scale-75 origin-left -ml-2"><Barcode value={item.barcode} height={30} width={1.2} fontSize={12} margin={0} /></div> : <span className="text-slate-400 text-xs">-</span>}
+                  </td>
                   <td className="py-4 px-2 text-sm font-bold text-slate-900">
                     {item.itemName}
-                    <div className="text-[10px] text-slate-500 font-mono">{item.barcode}</div>
                   </td>
                   <td className="py-4 px-2 text-sm text-slate-600">{item.supplier || "-"}</td>
                   <td className="py-4 px-2 text-sm text-slate-600">{item.storeId || "Unknown Store"}</td>
@@ -280,7 +285,7 @@ export default function ExpiryAuditPage() {
               ))}
               {filteredReportItems.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-10 text-center text-slate-500 font-bold">No records found for the selected filters.</td>
+                  <td colSpan={7} className="py-10 text-center text-slate-500 font-bold">No records found for the selected filters.</td>
                 </tr>
               )}
             </tbody>
@@ -851,13 +856,16 @@ export default function ExpiryAuditPage() {
                 </div>
                 <div>
                   <label className="text-xs font-bold text-muted-foreground uppercase mb-1 block">Supplier (Company)</label>
-                  <input 
-                    type="text" 
-                    placeholder="All Suppliers"
+                  <select 
                     value={reportFilters.supplier}
                     onChange={e => setReportFilters({...reportFilters, supplier: e.target.value})}
                     className="w-full bg-background border border-border rounded-lg p-2 text-sm focus:border-red-500 outline-none"
-                  />
+                  >
+                    <option value="">All Suppliers</option>
+                    {uniqueSuppliers.map((s: any) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="text-xs font-bold text-muted-foreground uppercase mb-1 block">Item Name</label>
@@ -916,6 +924,7 @@ export default function ExpiryAuditPage() {
                 <table className="w-full text-left">
                   <thead className="bg-muted/50 border-b border-border">
                     <tr>
+                      <th className="p-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">Barcode</th>
                       <th className="p-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">Item Name</th>
                       <th className="p-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">Supplier</th>
                       <th className="p-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">Status</th>
@@ -926,9 +935,11 @@ export default function ExpiryAuditPage() {
                   <tbody className="divide-y divide-border">
                     {filteredReportItems.map(item => (
                       <tr key={item.id} className="hover:bg-muted/30">
+                        <td className="p-2">
+                          {item.barcode ? <div className="scale-75 origin-left -ml-2"><Barcode value={item.barcode} height={40} width={1.2} fontSize={12} margin={0} background="transparent" /></div> : <span className="text-slate-400 text-xs">-</span>}
+                        </td>
                         <td className="p-4">
                           <p className="font-bold text-sm">{item.itemName}</p>
-                          <p className="text-xs text-muted-foreground font-mono mt-0.5">{item.barcode}</p>
                         </td>
                         <td className="p-4 text-sm">{item.supplier || "-"}</td>
                         <td className="p-4 text-xs font-bold uppercase text-muted-foreground">{item.status}</td>
