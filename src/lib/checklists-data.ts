@@ -20,7 +20,7 @@ export interface ChecklistSchema {
 
 export const mohamedAhmedChecklist: ChecklistSchema = {
   id: "mohamed-ahmed-checklist",
-  title: "قائمة التفتيش على المتاجر (Mohamed Ahmed)",
+  title: "قائمة التفتيش على المتاجر",
   version: "1.0",
   totalScore: 150,
   categories: [

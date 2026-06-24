@@ -84,8 +84,19 @@ export default function ChecklistFillPage() {
         createdAt: new Date().toISOString()
       };
 
-      await addDoc(collection(db, "audited_checklists"), payload);
-      alert("Checklist submitted successfully!");
+      const response = await fetch('/api/submit-checklist', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to submit checklist to server");
+      }
+
+      alert("تم إرسال قائمة المراجعة بنجاح!");
       router.push("/checklists/cashier");
     } catch (err: any) {
       console.error(err);
