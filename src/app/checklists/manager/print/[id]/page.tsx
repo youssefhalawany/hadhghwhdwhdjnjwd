@@ -4,8 +4,6 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { db } from "@/lib/firebase";
 import { mohamedAhmedChecklist } from "@/lib/checklists-data";
-import html2canvas from "html2canvas";
-import { jsPDF } from "jspdf";
 
 const SectionTitle = ({ title }: { title: string }) => (
   <div className="bg-gray-200 print:bg-gray-200 print:exact-colors text-red-600 font-bold text-center py-1 border-x border-t border-black text-xs">
@@ -110,6 +108,10 @@ export default function PrintChecklistPage() {
     if (!element) return;
     
     try {
+      // Dynamically import heavy libraries only when clicked
+      const html2canvas = (await import("html2canvas")).default;
+      const { jsPDF } = await import("jspdf");
+
       // Lower scale to 1 to prevent crashing on iOS due to maximum canvas size limits
       const canvas = await html2canvas(element, { 
         scale: 1, 
