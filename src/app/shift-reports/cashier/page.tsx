@@ -955,6 +955,7 @@ export default function CashierShiftReportPage() {
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{dict.signBelow}</p>
                 <div className="border border-border rounded-xl overflow-hidden bg-white touch-none">
                   <SignaturePad 
+                    // @ts-expect-error: dynamic import ref typing mismatch
                     ref={sigPadRef}
                     canvasProps={{ className: "w-full h-[150px] sm:h-[200px] cursor-crosshair touch-none" }} 
                   />

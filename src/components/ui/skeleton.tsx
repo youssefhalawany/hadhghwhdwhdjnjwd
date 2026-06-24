@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 function Skeleton({
   className,
   ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
+}: React.ComponentProps<typeof motion.div>) {
   return (
     <motion.div
       initial={{ opacity: 0.5 }}

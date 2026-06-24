@@ -288,7 +288,11 @@ export default function CashierHubPage() {
         localStorage.setItem(`faceid_enabled_${selectedEmployeeId}`, "true");
         setHasFaceIdRegistered(true);
         toast.success(lang === "en" ? "FaceID/TouchID Enabled!" : "تم تفعيل البصمة!");
-        handleLogin(user.pin);
+        
+        const emp = employees.find(e => e.id === selectedEmployeeId);
+        if (emp) {
+          handleLogin(emp.pin);
+        }
       }
     } catch (e) {
       toast.error(lang === "en" ? "Biometric authentication failed." : "فشل التحقق.");
