@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sun, Moon, Shield, Database, LayoutDashboard, FileText, Printer, ClipboardList, CheckCircle, Search, LogOut, User, Users, Menu, X, Bell, PackageX } from "lucide-react";
+import { Sun, Moon, Shield, Database, LayoutDashboard, FileText, Printer, ClipboardList, CheckCircle, Search, LogOut, User, Users, Menu, X, Bell, PackageX, CalendarDays } from "lucide-react";
 import { auth, messaging, dbService } from "@/lib/firebase";
 import { getToken } from "firebase/messaging";
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
@@ -128,6 +128,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       { name: "Product Lookup", href: "/admin/product-lookup", icon: Search }
     ]},
     { name: "Admin", icon: Shield, children: [
+      { name: "Smart Scheduler", href: "/admin/schedule", icon: CalendarDays },
       { name: "Cashier Accounts", href: "/settings/cashiers", icon: Users },
       { name: "Send Notifications", href: "/settings/notifications", icon: Bell },
       { name: "Import Products", href: "/admin/import-csv", icon: Database }

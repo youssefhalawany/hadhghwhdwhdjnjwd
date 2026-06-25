@@ -39,3 +39,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Desktop App
+desktop-app/node_modules
+desktop-app/dist
+desktop-app/build
+electron/dist
+
+# Capacitor Android
+cashier-apk/android/app/build
+cashier-apk/android/.gradle
+cashier-apk/android/app/build/
+cashier-apk/android/local.properties

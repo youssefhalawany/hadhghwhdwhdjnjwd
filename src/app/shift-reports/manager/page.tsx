@@ -95,9 +95,9 @@ export default function ManagerAuditPage() {
     // 2. Fetch History (Approved) - limit to avoid massive reads and speed up portal
     const qHistory = query(collection(db, "shift_reports"), orderBy("createdAt", "desc"), limit(50));
     const unsubHistory = onSnapshot(qHistory, (snapshot) => {
-      let reports = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
+      const reports = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
       // Filter locally to avoid composite index requirement
-      let approvedReports = reports.filter((r: any) => r.status === "approved");
+      const approvedReports = reports.filter((r: any) => r.status === "approved");
       setHistoryReports(approvedReports);
       setLoading(false);
     });

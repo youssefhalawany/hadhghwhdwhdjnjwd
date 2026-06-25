@@ -19,10 +19,12 @@
     "appId": "com.circlek.enterprise",
     "productName": "Circle K Enterprise",
     "mac": {
+      "icon": "assets/icon.png",
       "category": "public.app-category.business",
       "target": ["dmg"]
     },
     "win": {
+      "icon": "assets/icon.png",
       "target": ["nsis"]
     }
   }

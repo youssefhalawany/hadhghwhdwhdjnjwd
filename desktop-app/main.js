@@ -12,6 +12,7 @@ function createWindow() {
     show: false, // Don't show until ready-to-show
     backgroundColor: '#0f172a',
     autoHideMenuBar: true, // Professional look
+    icon: path.join(__dirname, 'assets/icon.png'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -19,12 +20,26 @@ function createWindow() {
     },
   });
 
-  // Load the live Next.js Vercel URL
-  mainWindow.loadURL('https://anhreports.vercel.app/');
+  const { dialog } = require('electron');
+
+  // Load the live URL
+  mainWindow.loadURL('https://hadhghwhdwhdjnjwd.vercel.app/shift-reports/manager').catch((err) => {
+    dialog.showErrorBox(
+      'Connection Error',
+      'Failed to connect to the cloud server at https://hadhghwhdwhdjnjwd.vercel.app/.\n\nPlease ensure your device is connected to the internet.'
+    );
+  });
 
   // Show window gracefully when loaded
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
+    // Open DevTools automatically
+    mainWindow.webContents.openDevTools();
+  });
+
+  // Log console messages from the renderer to the terminal
+  mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
+    console.log(`[Electron Console] Level ${level}: ${message} (at ${sourceId}:${line})`);
   });
 
   // Handle external links (e.g. print popups) securely

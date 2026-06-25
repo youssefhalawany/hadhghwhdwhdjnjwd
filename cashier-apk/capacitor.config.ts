@@ -6,7 +6,8 @@ const config: CapacitorConfig = {
   webDir: 'www', // Placeholder since we load remote URL
   bundledWebRuntime: false,
   server: {
-    url: 'https://anhreports.vercel.app/cashier',
+    // Vercel Live URL
+    url: 'https://hadhghwhdwhdjnjwd.vercel.app/cashier',
     cleartext: true,
   },
   android: {
