@@ -144,7 +144,14 @@ export function generateSchedule(
         minStaffMet = workingIfGivenOff >= 1; // Generic fallback
       }
       
-      if (canTakeDayOff && consecutiveCheckPass && minStaffMet) {
+      const needsForce = (rules.maxDaysOffPerMonth - daysOffCount[emp.id]) >= remainingDaysInMonth + 1;
+      let preferredMaxOffMet = true;
+      // Prefer giving only 1 person off per shift, UNLESS they are running out of days in the month
+      if (!needsForce && givenOffByShift[shift] >= 1) {
+        preferredMaxOffMet = false;
+      }
+      
+      if (canTakeDayOff && consecutiveCheckPass && minStaffMet && preferredMaxOffMet) {
         // Give day off
         dailyShifts.push({
           employeeId: emp.id,

@@ -348,32 +348,38 @@ export default function AdminSchedulePage() {
                                 {day.shifts.map((shift: any, i: number) => {
                                   const isOff = shift.shiftTime.includes('Off');
                                   return (
-                                    <div key={i} className={`px-3 py-1.5 rounded-lg border text-xs flex flex-col print:border-black
+                                    <div key={i} className={`px-3 py-1.5 rounded-xl border text-xs flex flex-col print:border-black backdrop-blur-sm transition-all
                                       ${isOff 
-                                        ? 'bg-red-500/10 border-red-500/20 text-red-400 print:text-black print:bg-gray-100' 
-                                        : 'bg-blue-500/10 border-blue-500/20 text-blue-400 print:text-black print:bg-white'}`}>
-                                      <span className="font-bold">{shift.employeeName}</span>
+                                        ? 'bg-red-500/10 border-red-500/20 text-red-400 print:text-black print:bg-gray-100 hover:bg-red-500/15' 
+                                        : 'bg-blue-500/10 border-blue-500/20 text-blue-400 print:text-black print:bg-white hover:bg-blue-500/15 shadow-sm'}`}>
+                                      <span className="font-bold tracking-wide">{shift.employeeName}</span>
                                       
-                                      {!schedule.isPublished ? (
-                                        <select 
-                                          value={shift.shiftTime}
-                                          onChange={(e) => {
-                                            const newSchedule = JSON.parse(JSON.stringify(schedule));
-                                            newSchedule.assignments[dayIndex].shifts[i].shiftTime = e.target.value;
-                                            setSchedule(newSchedule);
-                                          }}
-                                          className="mt-1 bg-background/80 border border-border/80 rounded px-1.5 py-1 text-[10px] font-medium focus:ring-1 focus:ring-blue-500 outline-none print:hidden w-full cursor-pointer transition-colors"
-                                        >
-                                          <option value="Off">Off</option>
-                                          <option value="Scheduled">Scheduled</option>
-                                          <option value="Morning">Morning</option>
-                                          <option value="Noon">Noon</option>
-                                          <option value="Night">Night</option>
-                                          <option value="Off (Approved Leave)">Off (Approved Leave)</option>
-                                        </select>
-                                      ) : (
-                                        <span className="opacity-80 mt-0.5 block">{shift.shiftTime}</span>
-                                      )}
+                                      <select 
+                                        value={shift.shiftTime}
+                                        onChange={(e) => {
+                                          const newSchedule = JSON.parse(JSON.stringify(schedule));
+                                          newSchedule.assignments[dayIndex].shifts[i].shiftTime = e.target.value;
+                                          setSchedule(newSchedule);
+                                          
+                                          // Auto-save if it's already published
+                                          if (schedule.isPublished) {
+                                            fetch('/api/schedule', {
+                                              method: 'POST',
+                                              headers: { 'Content-Type': 'application/json' },
+                                              body: JSON.stringify(newSchedule)
+                                            }).catch(console.error);
+                                          }
+                                        }}
+                                        className={`mt-1.5 rounded-md px-1.5 py-1 text-[10px] font-medium focus:ring-2 focus:ring-blue-500/50 outline-none print:hidden w-full cursor-pointer transition-colors shadow-sm
+                                          ${schedule.isPublished ? 'bg-background/40 border border-border/30 hover:bg-background/60 text-foreground/80' : 'bg-background/80 border border-border/80 text-foreground'}`}
+                                      >
+                                        <option value="Off">Off</option>
+                                        <option value="Scheduled">Scheduled</option>
+                                        <option value="Morning">Morning</option>
+                                        <option value="Noon">Noon</option>
+                                        <option value="Night">Night</option>
+                                        <option value="Off (Approved Leave)">Off (Approved Leave)</option>
+                                      </select>
                                       <span className="hidden print:block opacity-80 mt-0.5">{shift.shiftTime}</span>
                                     </div>
                                   );
