@@ -147,41 +147,6 @@ export default function ManagerAuditPage() {
     return calculateCashVariance() + calculateVisaVariance();
   };
 
-  const syncEndShiftCash = async (dateStr: string, branchId: string) => {
-    try {
-      const q = query(
-        collection(db, "shift_reports"),
-        where("cashierDetails.date", "==", dateStr),
-        where("branchId", "==", branchId),
-        where("status", "==", "approved")
-      );
-      const snap = await getDocs(q);
-      let totalCash = 0;
-      let totalVisa = 0;
-      snap.forEach(docSnap => {
-        const data = docSnap.data();
-        const expectedCash = Number(data.managerAudit?.expectedCash || 0);
-        const cashVariance = Number(data.managerAudit?.cashVariance || 0);
-        const expectedVisa = Number(data.managerAudit?.expectedVisa || 0);
-        const visaVariance = Number(data.managerAudit?.visaVariance || 0);
-
-        totalCash += (expectedCash + cashVariance);
-        totalVisa += (expectedVisa + visaVariance);
-      });
-
-      const docId = `${dateStr}_${branchId}`;
-      await setDoc(doc(db, "end_shift_cash", docId), {
-        date: dateStr,
-        branchId: branchId,
-        cash: totalCash,
-        visa: totalVisa,
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
-    } catch (err) {
-      console.error("Failed to sync end shift cash:", err);
-    }
-  };
-
   const handleApprove = async () => {
     if (!selectedReport) return;
     if (!managerName.trim()) {
@@ -228,7 +193,7 @@ export default function ManagerAuditPage() {
         createdBy: managerName,
         date: selectedReport?.cashierDetails?.date,
         notes: finalNotes.trim(),
-        overShort: calculateCashVariance(), // Cash variance only as requested
+        overShort: calculateCashVariance(), 
         shift: auditShift.toLowerCase(),
         storeId: selectedReport?.cashierDetails?.storeId,
         branchId: selectedReport.branchId || currentBranch,
@@ -248,12 +213,6 @@ export default function ManagerAuditPage() {
 
       toast.success("Report Approved & Saved! Sales record created.");
       setActiveTab("history");
-
-      // Auto-sync End Shift Cash
-      if (selectedReport?.cashierDetails?.date && (selectedReport.branchId || currentBranch)) {
-        await syncEndShiftCash(selectedReport.cashierDetails.date, selectedReport.branchId || currentBranch);
-      }
-
     } catch (error) {
       console.error("Error approving report:", error);
       toast.error("Failed to approve report.");
@@ -288,12 +247,6 @@ export default function ManagerAuditPage() {
 
       toast.success("Report Rejected & sent back to cashier!");
       setActiveTab("pending");
-
-      // Auto-sync End Shift Cash just in case it was previously approved
-      if (selectedReport?.cashierDetails?.date && (selectedReport.branchId || currentBranch)) {
-        await syncEndShiftCash(selectedReport.cashierDetails.date, selectedReport.branchId || currentBranch);
-      }
-
       setSelectedReport(null);
     } catch (error) {
       console.error("Error rejecting report:", error);
@@ -325,12 +278,6 @@ export default function ManagerAuditPage() {
 
       toast.success("Success: Shift report has been permanently deleted.");
       setActiveTab("pending");
-
-      // Auto-sync End Shift Cash just in case it was an approved report that got deleted
-      if (selectedReport?.cashierDetails?.date && (selectedReport.branchId || currentBranch)) {
-        await syncEndShiftCash(selectedReport.cashierDetails.date, selectedReport.branchId || currentBranch);
-      }
-
       setSelectedReport(null);
     } catch (error) {
       console.error("Error deleting report:", error);

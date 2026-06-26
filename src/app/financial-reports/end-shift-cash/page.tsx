@@ -216,9 +216,9 @@ export default function EndShiftCashPage() {
               <thead className="text-[11px] text-slate-500 uppercase tracking-wider bg-slate-50/80 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800">
                 <tr>
                   <th className="px-3 py-3 font-black whitespace-nowrap">Date</th>
-                  <th className="px-3 py-3 font-black text-right whitespace-nowrap bg-slate-100/30 dark:bg-slate-800/30">Start Cash (Auto)</th>
-                  <th className="px-3 py-3 font-black text-right whitespace-nowrap text-teal-600/70 dark:text-teal-400/70">Cash (Auto)</th>
-                  <th className="px-3 py-3 font-black text-right whitespace-nowrap text-blue-600/70 dark:text-blue-400/70">Visa (Auto)</th>
+                  <th className="px-3 py-3 font-black text-right whitespace-nowrap bg-slate-100/30 dark:bg-slate-800/30">Start Cash</th>
+                  <th className="px-3 py-3 font-black text-right whitespace-nowrap text-teal-600/70 dark:text-teal-400/70">Cash (+ In)</th>
+                  <th className="px-3 py-3 font-black text-right whitespace-nowrap text-blue-600/70 dark:text-blue-400/70">Visa</th>
                   <th className="px-3 py-3 font-black text-right whitespace-nowrap text-red-600/70 dark:text-red-400/70">Deduction (- Out)</th>
                   <th className="px-3 py-3 font-black">Details</th>
                   <th className="px-3 py-3 font-black whitespace-nowrap">PO Numbers</th>
@@ -272,7 +272,7 @@ export default function EndShiftCashPage() {
                           {/* Cash */}
                           <td className="px-3 py-3 font-black text-teal-600 dark:text-teal-400 text-right">
                             {isEditing ? (
-                              <input type="number" value={editForm.cash} disabled className="w-20 px-2 py-1 border border-slate-200 dark:border-slate-800 rounded-md text-right bg-slate-100 dark:bg-slate-900 font-mono text-sm cursor-not-allowed opacity-70" title="Auto-synced from Shift Reports" />
+                              <input type="number" value={editForm.cash} onChange={e => setEditForm({...editForm, cash: Number(e.target.value)})} className="w-20 px-2 py-1 border border-teal-200 dark:border-teal-800 focus:border-teal-500 rounded-md text-right bg-white dark:bg-slate-950 font-mono text-sm" />
                             ) : (
                               r.cash.toLocaleString()
                             )}
@@ -281,7 +281,7 @@ export default function EndShiftCashPage() {
                           {/* Visa */}
                           <td className="px-3 py-3 font-bold text-blue-600 dark:text-blue-400 text-right">
                             {isEditing ? (
-                              <input type="number" value={editForm.visa} disabled className="w-20 px-2 py-1 border border-slate-200 dark:border-slate-800 rounded-md text-right bg-slate-100 dark:bg-slate-900 font-mono text-sm cursor-not-allowed opacity-70" title="Auto-synced from Shift Reports" />
+                              <input type="number" value={editForm.visa} onChange={e => setEditForm({...editForm, visa: Number(e.target.value)})} className="w-20 px-2 py-1 border border-teal-200 dark:border-teal-800 focus:border-teal-500 rounded-md text-right bg-white dark:bg-slate-950 font-mono text-sm" />
                             ) : (
                               r.visa.toLocaleString()
                             )}
@@ -361,10 +361,10 @@ export default function EndShiftCashPage() {
                           {editPreviewStartCash.toLocaleString()}
                         </td>
                         <td className="px-3 py-3">
-                          <input type="number" value={editForm.cash} disabled className="w-20 px-2 py-1 border border-slate-200 dark:border-slate-800 rounded-md text-right bg-slate-100 dark:bg-slate-900 font-mono text-sm cursor-not-allowed opacity-70" placeholder="Auto" />
+                          <input type="number" value={editForm.cash} onChange={e => setEditForm({...editForm, cash: Number(e.target.value)})} className="w-20 px-2 py-1 border border-teal-300 dark:border-teal-700 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 rounded-md text-right bg-white dark:bg-slate-950 font-mono text-sm shadow-sm" placeholder="0" />
                         </td>
                         <td className="px-3 py-3">
-                          <input type="number" value={editForm.visa} disabled className="w-20 px-2 py-1 border border-slate-200 dark:border-slate-800 rounded-md text-right bg-slate-100 dark:bg-slate-900 font-mono text-sm cursor-not-allowed opacity-70" placeholder="Auto" />
+                          <input type="number" value={editForm.visa} onChange={e => setEditForm({...editForm, visa: Number(e.target.value)})} className="w-20 px-2 py-1 border border-teal-300 dark:border-teal-700 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 rounded-md text-right bg-white dark:bg-slate-950 font-mono text-sm shadow-sm" placeholder="0" />
                         </td>
                         <td className="px-3 py-3">
                           <input type="number" value={editForm.deduction} onChange={e => setEditForm({...editForm, deduction: Number(e.target.value)})} className="w-20 px-2 py-1 border border-teal-300 dark:border-teal-700 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 rounded-md text-right bg-white dark:bg-slate-950 font-mono text-sm shadow-sm" placeholder="0" />
