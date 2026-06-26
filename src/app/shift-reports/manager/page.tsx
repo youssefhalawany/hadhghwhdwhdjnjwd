@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { db } from "@/lib/firebase";
-import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, addDoc, orderBy, limit } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, addDoc, orderBy, limit, getDocs, setDoc } from "firebase/firestore";
 import { CheckCircle, Clock, FileText, Banknote, Package, Lock, Printer, Archive, Trash2, Calendar, QrCode } from "lucide-react";
 import Barcode from "react-barcode";
 import QRCode from "react-qr-code";
@@ -147,6 +147,36 @@ export default function ManagerAuditPage() {
     return calculateCashVariance() + calculateVisaVariance();
   };
 
+  const syncEndShiftCash = async (dateStr: string, branchId: string) => {
+    try {
+      const q = query(
+        collection(db, "shift_reports"),
+        where("cashierDetails.date", "==", dateStr),
+        where("branchId", "==", branchId),
+        where("status", "==", "approved")
+      );
+      const snap = await getDocs(q);
+      let totalCash = 0;
+      let totalVisa = 0;
+      snap.forEach(docSnap => {
+        const data = docSnap.data();
+        totalCash += Number(data.managerAudit?.expectedCash || 0);
+        totalVisa += Number(data.managerAudit?.expectedVisa || 0);
+      });
+
+      const docId = `${dateStr}_${branchId}`;
+      await setDoc(doc(db, "end_shift_cash", docId), {
+        date: dateStr,
+        branchId: branchId,
+        cash: totalCash,
+        visa: totalVisa,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (err) {
+      console.error("Failed to sync end shift cash:", err);
+    }
+  };
+
   const handleApprove = async () => {
     if (!selectedReport) return;
     if (!managerName.trim()) {
@@ -213,6 +243,12 @@ export default function ManagerAuditPage() {
 
       toast.success("Report Approved & Saved! Sales record created.");
       setActiveTab("history");
+
+      // Auto-sync End Shift Cash
+      if (selectedReport?.cashierDetails?.date && (selectedReport.branchId || currentBranch)) {
+        await syncEndShiftCash(selectedReport.cashierDetails.date, selectedReport.branchId || currentBranch);
+      }
+
     } catch (error) {
       console.error("Error approving report:", error);
       toast.error("Failed to approve report.");
@@ -247,6 +283,12 @@ export default function ManagerAuditPage() {
 
       toast.success("Report Rejected & sent back to cashier!");
       setActiveTab("pending");
+
+      // Auto-sync End Shift Cash just in case it was previously approved
+      if (selectedReport?.cashierDetails?.date && (selectedReport.branchId || currentBranch)) {
+        await syncEndShiftCash(selectedReport.cashierDetails.date, selectedReport.branchId || currentBranch);
+      }
+
       setSelectedReport(null);
     } catch (error) {
       console.error("Error rejecting report:", error);
@@ -278,6 +320,12 @@ export default function ManagerAuditPage() {
 
       toast.success("Success: Shift report has been permanently deleted.");
       setActiveTab("pending");
+
+      // Auto-sync End Shift Cash just in case it was an approved report that got deleted
+      if (selectedReport?.cashierDetails?.date && (selectedReport.branchId || currentBranch)) {
+        await syncEndShiftCash(selectedReport.cashierDetails.date, selectedReport.branchId || currentBranch);
+      }
+
       setSelectedReport(null);
     } catch (error) {
       console.error("Error deleting report:", error);
