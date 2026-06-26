@@ -40,9 +40,14 @@ export default function EndShiftCashPage() {
     const unsub = onSnapshot(q, (snap) => {
       let fetched = snap.docs.map(d => ({ id: d.id, ...d.data() } as EndShiftRecord));
       if (currentBranch !== "all") {
-        fetched = fetched.filter((r: any) => r.branchId === currentBranch);
+        // Fallback to alamein4 for old records that didn't have branchId saved
+        fetched = fetched.filter((r: any) => (r.branchId || "alamein4") === currentBranch);
       }
       setRecords(fetched);
+      setLoading(false);
+    }, (error) => {
+      console.error("Firestore End Shift Cash Error:", error);
+      toast.error("Database Error: " + error.message);
       setLoading(false);
     });
     return () => unsub();
