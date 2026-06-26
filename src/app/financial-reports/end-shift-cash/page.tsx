@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
 import { collection, query, orderBy, onSnapshot, deleteDoc, doc, setDoc } from "firebase/firestore";
-import { ArrowLeft, Wallet, FileText, Trash2, Edit2, Check, X, Plus } from "lucide-react";
+import { ArrowLeft, Wallet, FileText, Trash2, Edit2, Check, X, Plus, Calendar } from "lucide-react";
 import Link from "next/link";
 import { vibrateSuccess, vibrateError } from "@/lib/haptics";
 import { NumericFormat } from "react-number-format";
@@ -376,7 +376,7 @@ export default function EndShiftCashPage() {
                           <input type="text" value={editForm.poNumbers} onChange={e => setEditForm({...editForm, poNumbers: e.target.value})} className="w-full px-2 py-1 border border-teal-300 dark:border-teal-700 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 rounded-md bg-white dark:bg-slate-950 text-sm shadow-sm" placeholder="PO..." />
                         </td>
                         <td className="px-3 py-3 font-black text-slate-800 dark:text-white text-right bg-slate-100/30 dark:bg-slate-800/30">
-                          {editPreviewEndCash.toLocaleString()}
+                          {(editPreviewStartCash + (Number(editForm.cash)||0) - (Number(editForm.deduction)||0)).toLocaleString()}
                         </td>
                         <td className="px-3 py-3 text-center sticky right-0 bg-teal-50 dark:bg-teal-900/30">
                           <div className="flex justify-center gap-1">
