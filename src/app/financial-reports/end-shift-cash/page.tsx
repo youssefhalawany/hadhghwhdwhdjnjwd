@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
-import { collection, query, orderBy, onSnapshot, deleteDoc, doc, setDoc } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, deleteDoc, doc, setDoc, getDocs, writeBatch } from "firebase/firestore";
 import { ArrowLeft, Wallet, FileText, Trash2, Edit2, Check, X, Plus, Calendar } from "lucide-react";
 import Link from "next/link";
 import { vibrateSuccess, vibrateError } from "@/lib/haptics";
@@ -181,12 +181,40 @@ export default function EndShiftCashPage() {
     }
   };
 
+  const fixDates = async () => {
+    if (!window.confirm("Shift all dates forward by 1 day?")) return;
+    try {
+      const snap = await getDocs(collection(db, "end_shift_cash"));
+      const batch = writeBatch(db);
+      snap.forEach((d: any) => {
+        const data = d.data();
+        if (data.date) {
+          const dateObj = new Date(data.date);
+          dateObj.setDate(dateObj.getDate() + 1);
+          const newDateStr = dateObj.toISOString().split('T')[0];
+          
+          const branchId = data.branchId || currentBranch || 'alamein4';
+          const newDocId = `${newDateStr}_${branchId}`;
+          const newRef = doc(db, "end_shift_cash", newDocId);
+          
+          batch.set(newRef, { ...data, date: newDateStr });
+          batch.delete(d.ref);
+        }
+      });
+      await batch.commit();
+      alert("Successfully shifted all dates forward by 1 day!");
+    } catch (e) {
+      console.error(e);
+      alert("Failed to shift dates: " + String(e));
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950/20 text-slate-900 dark:text-slate-100 pb-20">
-      <header className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md shadow-sm border-b border-slate-200 dark:border-slate-700 p-4 sticky top-0 z-20">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/financial-reports" className="flex items-center gap-1 text-slate-500 hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20">
+      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link href="/financial-reports" className="text-slate-500 hover:text-teal-600 transition-colors flex items-center gap-2">
               <ArrowLeft className="h-5 w-5" />
               <span className="font-bold text-sm">Back</span>
             </Link>
@@ -198,14 +226,22 @@ export default function EndShiftCashPage() {
               </h1>
             </div>
           </div>
-          <button 
-            onClick={startNewRow}
-            disabled={isAddingNew}
-            className="flex items-center gap-1.5 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm rounded-lg shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100"
-          >
-            <Plus className="h-4 w-4" />
-            Add Row
-          </button>
+          <div className="flex gap-2">
+            <button 
+              onClick={fixDates}
+              className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm rounded-lg shadow-md transition-all active:scale-95"
+            >
+              Fix Dates (+1 Day)
+            </button>
+            <button 
+              onClick={startNewRow}
+              disabled={isAddingNew}
+              className="flex items-center gap-1.5 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm rounded-lg shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+            >
+              <Plus className="h-4 w-4" />
+              Add Row
+            </button>
+          </div>
         </div>
       </header>
 
