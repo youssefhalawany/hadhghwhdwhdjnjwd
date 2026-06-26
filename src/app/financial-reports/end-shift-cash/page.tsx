@@ -181,34 +181,6 @@ export default function EndShiftCashPage() {
     }
   };
 
-  const fixDates = async () => {
-    if (!window.confirm("Shift all dates forward by 1 day?")) return;
-    try {
-      const snap = await getDocs(collection(db, "end_shift_cash"));
-      const batch = writeBatch(db);
-      snap.forEach((d: any) => {
-        const data = d.data();
-        if (data.date) {
-          const dateObj = new Date(data.date);
-          dateObj.setDate(dateObj.getDate() + 1);
-          const newDateStr = dateObj.toISOString().split('T')[0];
-          
-          const branchId = data.branchId || currentBranch || 'alamein4';
-          const newDocId = `${newDateStr}_${branchId}`;
-          const newRef = doc(db, "end_shift_cash", newDocId);
-          
-          batch.set(newRef, { ...data, date: newDateStr });
-          batch.delete(d.ref);
-        }
-      });
-      await batch.commit();
-      alert("Successfully shifted all dates forward by 1 day!");
-    } catch (e) {
-      console.error(e);
-      alert("Failed to shift dates: " + String(e));
-    }
-  };
-
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20">
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10 shadow-sm">
@@ -226,22 +198,14 @@ export default function EndShiftCashPage() {
               </h1>
             </div>
           </div>
-          <div className="flex gap-2">
-            <button 
-              onClick={fixDates}
-              className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm rounded-lg shadow-md transition-all active:scale-95"
-            >
-              Fix Dates (+1 Day)
-            </button>
-            <button 
-              onClick={startNewRow}
-              disabled={isAddingNew}
-              className="flex items-center gap-1.5 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm rounded-lg shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100"
-            >
-              <Plus className="h-4 w-4" />
-              Add Row
-            </button>
-          </div>
+          <button 
+            onClick={startNewRow}
+            disabled={isAddingNew}
+            className="flex items-center gap-1.5 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm rounded-lg shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+          >
+            <Plus className="h-4 w-4" />
+            Add Row
+          </button>
         </div>
       </header>
 
