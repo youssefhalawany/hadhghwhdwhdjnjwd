@@ -14,7 +14,9 @@ export interface LeaveRequest {
 }
 
 export interface ScheduleRules {
-  minEmployeesPerShift: number;
+  minEmployeesMorning: number;
+  minEmployeesNoon: number;
+  minEmployeesNight: number;
   maxDaysOffPerMonth: number;
   allowConsecutiveDaysOff: boolean;
   maxConsecutiveDaysOff: number;
@@ -108,14 +110,16 @@ export function generateSchedule(
     });
     
     // 3. Assign Off or Scheduled based on rules
-    let currentlyWorking = 0;
-    
-    // Count how many we've assigned so far. Wait, we need to know how many people MUST work
-    // to satisfy minEmployeesPerShift.
-    const totalAvailable = availableEmployees.length;
-    let givenOffToday = 0;
+    const totalAvailableByShift: Record<string, number> = { Morning: 0, Noon: 0, Night: 0, Scheduled: 0 };
+    availableEmployees.forEach(emp => {
+      const shift = emp.shiftTime || 'Scheduled';
+      totalAvailableByShift[shift] = (totalAvailableByShift[shift] || 0) + 1;
+    });
+
+    const givenOffByShift: Record<string, number> = { Morning: 0, Noon: 0, Night: 0, Scheduled: 0 };
     
     for (const emp of availableEmployees) {
+      const shift = emp.shiftTime || 'Scheduled';
       const canTakeDayOff = daysOffCount[emp.id] < rules.maxDaysOffPerMonth;
       
       let consecutiveCheckPass = true;
@@ -126,10 +130,19 @@ export function generateSchedule(
         consecutiveCheckPass = false;
       }
       
-      // Will we drop below minEmployeesPerShift if we give this person off?
-      // Employees working = totalAvailable - givenOffToday - 1 (if we give this person off)
-      const workingIfGivenOff = totalAvailable - givenOffToday - 1;
-      const minStaffMet = workingIfGivenOff >= rules.minEmployeesPerShift;
+      // Will we drop below minEmployees for THIS specific shift if we give this person off?
+      const workingIfGivenOff = totalAvailableByShift[shift] - givenOffByShift[shift] - 1;
+      
+      let minStaffMet = true;
+      if (shift === 'Morning') {
+        minStaffMet = workingIfGivenOff >= rules.minEmployeesMorning;
+      } else if (shift === 'Noon') {
+        minStaffMet = workingIfGivenOff >= rules.minEmployeesNoon;
+      } else if (shift === 'Night') {
+        minStaffMet = workingIfGivenOff >= rules.minEmployeesNight;
+      } else {
+        minStaffMet = workingIfGivenOff >= 1; // Generic fallback
+      }
       
       if (canTakeDayOff && consecutiveCheckPass && minStaffMet) {
         // Give day off
@@ -140,13 +153,13 @@ export function generateSchedule(
         });
         daysOffCount[emp.id]++;
         consecutiveDaysOff[emp.id]++;
-        givenOffToday++;
+        givenOffByShift[shift]++;
       } else {
         // Must work
         dailyShifts.push({
           employeeId: emp.id,
           employeeName: emp.name,
-          shiftTime: emp.shiftTime || 'Scheduled'
+          shiftTime: shift
         });
         consecutiveDaysOff[emp.id] = 0;
       }

@@ -14,7 +14,9 @@ export default function AdminSchedulePage() {
   const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [rules, setRules] = useState({
-    minEmployeesPerShift: 2,
+    minEmployeesMorning: 2,
+    minEmployeesNoon: 0,
+    minEmployeesNight: 2,
     maxDaysOffPerMonth: 4,
     allowConsecutiveDaysOff: true,
     maxConsecutiveDaysOff: 2
@@ -153,14 +155,37 @@ export default function AdminSchedulePage() {
               </div>
               
               <div className="space-y-4">
-                <div>
-                  <label className="text-sm text-muted-foreground mb-1 block">Min Employees/Shift</label>
-                  <input 
-                    type="number" min={1}
-                    value={rules.minEmployeesPerShift}
-                    onChange={(e) => setRules({...rules, minEmployeesPerShift: parseInt(e.target.value)})}
-                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm"
-                  />
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="col-span-3">
+                    <label className="text-sm text-muted-foreground mb-1 block">Min Employees Per Shift</label>
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block text-center">Morning</label>
+                    <input 
+                      type="number" min={0}
+                      value={rules.minEmployeesMorning || 0}
+                      onChange={(e) => setRules({...rules, minEmployeesMorning: parseInt(e.target.value) || 0})}
+                      className="w-full bg-background border border-border rounded-lg px-2 py-1.5 text-sm text-center focus:ring-1 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block text-center">Noon</label>
+                    <input 
+                      type="number" min={0}
+                      value={rules.minEmployeesNoon || 0}
+                      onChange={(e) => setRules({...rules, minEmployeesNoon: parseInt(e.target.value) || 0})}
+                      className="w-full bg-background border border-border rounded-lg px-2 py-1.5 text-sm text-center focus:ring-1 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block text-center">Night</label>
+                    <input 
+                      type="number" min={0}
+                      value={rules.minEmployeesNight || 0}
+                      onChange={(e) => setRules({...rules, minEmployeesNight: parseInt(e.target.value) || 0})}
+                      className="w-full bg-background border border-border rounded-lg px-2 py-1.5 text-sm text-center focus:ring-1 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="text-sm text-muted-foreground mb-1 block">Max Days Off/Month</label>
