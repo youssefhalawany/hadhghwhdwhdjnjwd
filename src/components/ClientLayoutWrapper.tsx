@@ -4,24 +4,31 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Sun, Moon, Shield, Database, LayoutDashboard, FileText, Printer, ClipboardList, CheckCircle, Search, LogOut, User, Users, Menu, X, Bell, PackageX, CalendarDays } from "lucide-react";
-import { auth, messaging, dbService } from "@/lib/firebase";
+import { auth, messaging, dbService, db } from "@/lib/firebase";
 import { getToken } from "firebase/messaging";
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
+import { collection, query, where, onSnapshot, doc, getDoc } from "firebase/firestore";
 import PwaInstallPrompt from "./PwaInstallPrompt";
 import type { User as FirebaseUser } from "firebase/auth";
 import { useBranch, BranchId } from "@/context/BranchContext";
 import { Store } from "lucide-react";
+import GlobalReminders from "./GlobalReminders";
+import toast from "react-hot-toast";
 
 export default function ClientLayoutWrapper({ children }: { children: React.ReactNode }) {
-  const { currentBranch, setBranch, availableBranches } = useBranch();
+  const { currentBranch, setBranch, availableBranches, setAvailableBranches } = useBranch();
   const [theme, setTheme] = useState<"light" | "dark">("dark");
   const [role, setRole] = useState<string>("owner");
   const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [userDoc, setUserDoc] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [minSplashDone, setMinSplashDone] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [pendingShiftCount, setPendingShiftCount] = useState(0);
+  const [pendingVoidCount, setPendingVoidCount] = useState(0);
   const pathname = usePathname();
 
   // Initialize theme, role, and mock status from localStorage
@@ -39,9 +46,49 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     const storedRole = localStorage.getItem("circlek_role") || "owner";
     setRole(storedRole);
 
+    // Splash screen timer
+    const splashTimer = setTimeout(() => setMinSplashDone(true), 1500);
+
     // Firebase Auth Listener
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+      
+      if (currentUser) {
+        // Fetch user document
+        try {
+          const docSnap = await getDoc(doc(db, "users", currentUser.uid));
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            setUserDoc(data);
+            
+            // Map storeIds to local BranchIds
+            const allowedIds = data.storeIds || [];
+            const mappedBranches: { id: BranchId; name: string }[] = [];
+            
+            if (allowedIds.includes("eL-alamein-4")) {
+              mappedBranches.push({ id: "alamein4", name: "El Alamein 4" });
+            }
+            if (allowedIds.includes("ola-el-koronfol")) {
+              mappedBranches.push({ id: "ola", name: "Ola El Koronfol" });
+            }
+            
+            if (mappedBranches.length > 0) {
+              setAvailableBranches(mappedBranches);
+              // Auto select if only 1 branch
+              if (mappedBranches.length === 1) {
+                setBranch(mappedBranches[0].id);
+              } else {
+                // If they have multiple branches, ensure their current selection is valid
+                const isValid = mappedBranches.some(b => b.id === currentBranch);
+                if (!isValid) setBranch(mappedBranches[0].id);
+              }
+            }
+          }
+        } catch (err) {
+          console.error("Failed to fetch user doc:", err);
+        }
+      }
+
       setAuthLoading(false);
 
       if (currentUser && typeof window !== "undefined" && "Notification" in window) {
@@ -63,11 +110,45 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
             }
           }
         }
-        } catch (err) {
-          console.error("FCM Token generation failed:", err);
+      } catch (err) {
+        console.error("FCM Token generation failed:", err);
+      }
+    }
+
+      // Show welcome toast if just logged in (using sessionStorage to prevent repeats on refresh)
+      if (currentUser && typeof window !== "undefined") {
+        const hasSeenWelcome = sessionStorage.getItem("circlek_welcomed");
+        if (!hasSeenWelcome) {
+          toast.success(`Welcome back, ${currentUser.displayName || currentUser.email?.split('@')[0]}! 👋`, { duration: 4000 });
+          sessionStorage.setItem("circlek_welcomed", "true");
         }
       }
     });
+
+    // Fetch Badges
+    let unsubscribeShifts: any = null;
+    let unsubscribeVoids: any = null;
+
+    if (user && currentBranch) {
+      // Assuming managers query specific branch or all
+      // We will just do a basic query for 'pending' status for the current branch
+      // If "all", we query without branch filter if they are an admin.
+      const shiftQ = currentBranch === "all" 
+        ? query(collection(db, "shift_reports"), where("status", "==", "pending"))
+        : query(collection(db, "shift_reports"), where("status", "==", "pending"), where("branchId", "==", currentBranch));
+      
+      unsubscribeShifts = onSnapshot(shiftQ, (snap) => {
+        setPendingShiftCount(snap.docs.length);
+      }, (err) => console.log("Shift badge err", err));
+
+      const voidQ = currentBranch === "all"
+        ? query(collection(db, "void_requests"), where("status", "==", "pending"))
+        : query(collection(db, "void_requests"), where("status", "==", "pending"), where("branchId", "==", currentBranch));
+      
+      unsubscribeVoids = onSnapshot(voidQ, (snap) => {
+        setPendingVoidCount(snap.docs.length);
+      }, (err) => console.log("Void badge err", err));
+    }
 
     // Global Sound Effects
     const playClick = () => {
@@ -98,6 +179,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     return () => {
       unsubscribe();
       window.removeEventListener('click', handleClick);
+      if (unsubscribeShifts) unsubscribeShifts();
+      if (unsubscribeVoids) unsubscribeVoids();
     };
   }, []);
 
@@ -151,16 +234,35 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   if (pathname?.startsWith('/shift-reports/cashier') || pathname?.startsWith('/voids/cashier') || pathname?.startsWith('/cashier') || pathname?.startsWith('/expiries') || pathname?.startsWith('/checklists/cashier')) {
     return (
       <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
+        <GlobalReminders />
         {children}
         <PwaInstallPrompt />
       </div>
     );
   }
 
-  if (authLoading) {
+  if (authLoading || !minSplashDone) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600"></div>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background relative overflow-hidden">
+        {/* Decorative background blur */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-red-500/20 rounded-full blur-[100px] pointer-events-none"></div>
+        
+        <div className="z-10 flex flex-col items-center animate-in fade-in zoom-in duration-1000">
+          <div className="relative">
+            <div className="absolute inset-0 bg-red-600 rounded-full animate-ping opacity-20"></div>
+            <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full bg-red-600 flex items-center justify-center font-black text-white text-4xl sm:text-5xl border-[3px] border-orange-500 shadow-2xl relative z-10">
+              K
+            </div>
+          </div>
+          <h1 className="mt-8 text-3xl sm:text-4xl font-extrabold tracking-widest text-red-600 dark:text-red-500">CIRCLE K</h1>
+          <p className="mt-3 text-sm text-muted-foreground uppercase tracking-[0.2em] font-semibold">Franchise Portal</p>
+          
+          <div className="mt-12 flex gap-2">
+            <div className="w-2 h-2 rounded-full bg-red-600 animate-bounce" style={{ animationDelay: '0ms' }}></div>
+            <div className="w-2 h-2 rounded-full bg-red-600 animate-bounce" style={{ animationDelay: '150ms' }}></div>
+            <div className="w-2 h-2 rounded-full bg-red-600 animate-bounce" style={{ animationDelay: '300ms' }}></div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -217,6 +319,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground transition-colors duration-300">
+      <GlobalReminders />
       {/* Dynamic Header */}
       {!pathname.startsWith('/cashier') && (
         <header className="glass-header z-40 border-b border-border" id="app-main-header">
@@ -229,7 +332,9 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
               </div>
               <div className="flex flex-col">
                 <span className="font-bold tracking-wider text-sm sm:text-base text-red-600 dark:text-red-500">CIRCLE K</span>
-                <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">Franchise Portal</span>
+                <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">
+                  {currentBranch === 'alamein4' ? 'El Alamein 4 Portal' : currentBranch === 'ola' ? 'Ola El Koronfol Portal' : 'All Branches Portal'}
+                </span>
               </div>
             </Link>
 
@@ -244,16 +349,38 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                       <button className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all duration-300 ${isActive ? "text-red-600 dark:text-red-500" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"}`}>
                         <Icon className={`h-4 w-4 ${isActive ? 'scale-110 drop-shadow-sm' : 'opacity-70 group-hover:opacity-100 transition-opacity'}`} />
                         <span>{item.name}</span>
+                        {item.name === "Financials" && pendingShiftCount > 0 && (
+                           <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-1 animate-pulse shadow-sm shadow-red-500/30">
+                             {pendingShiftCount}
+                           </span>
+                        )}
+                        {item.name === "Financials" && pendingVoidCount > 0 && pendingShiftCount === 0 && (
+                           <span className="bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-1 shadow-sm shadow-orange-500/30">
+                             {pendingVoidCount}
+                           </span>
+                        )}
                       </button>
                       <div className="absolute left-0 mt-1 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 flex flex-col py-1">
                         {item.children.map(child => (
                           <Link
                             key={child.href}
                             href={child.href}
-                            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${pathname === child.href ? "text-red-600 dark:text-red-500 bg-red-50 dark:bg-red-950/30" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"}`}
+                            className={`flex items-center justify-between px-4 py-2 text-sm font-medium transition-colors ${pathname === child.href ? "text-red-600 dark:text-red-500 bg-red-50 dark:bg-red-950/30" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"}`}
                           >
-                            <child.icon className="h-4 w-4" />
-                            <span>{child.name}</span>
+                            <div className="flex items-center gap-2">
+                              <child.icon className="h-4 w-4" />
+                              <span>{child.name}</span>
+                            </div>
+                            {child.name === "Shift Audit" && pendingShiftCount > 0 && (
+                              <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
+                                {pendingShiftCount}
+                              </span>
+                            )}
+                            {child.name === "Voids & Returns" && pendingVoidCount > 0 && (
+                              <span className="bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
+                                {pendingVoidCount}
+                              </span>
+                            )}
                           </Link>
                         ))}
                       </div>
@@ -287,9 +414,17 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
-            {/* Branch Switcher */}
-            <div className="hidden sm:flex items-center gap-1.5 bg-muted/60 border border-border px-2.5 py-1.5 rounded-lg">
-              <Store className="h-3.5 w-3.5 text-blue-500" />
+            {/* User Greeting */}
+            {userDoc && (
+              <div className="hidden md:flex items-center gap-2 text-sm font-semibold text-muted-foreground mr-2">
+                <span>Welcome, <span className="text-foreground">{userDoc.displayName || user?.email?.split('@')[0]}</span></span>
+              </div>
+            )}
+
+            {/* Branch Switcher (Only show if multiple branches available) */}
+            {availableBranches.length > 1 && (
+              <div className="flex items-center gap-1.5 bg-muted/60 border border-border px-2.5 py-1.5 rounded-lg">
+                <Store className="h-3.5 w-3.5 text-blue-500" />
               <select
                 value={currentBranch}
                 onChange={(e) => setBranch(e.target.value as BranchId)}
@@ -301,6 +436,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                 ))}
               </select>
             </div>
+            )}
 
 
 

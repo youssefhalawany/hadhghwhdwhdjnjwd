@@ -103,10 +103,10 @@ export default function FinancialReportsHub() {
               <Link 
                 key={idx} 
                 href={isActive ? mod.href : "#"}
-                className={`relative group flex flex-col h-full p-6 sm:p-8 rounded-3xl border transition-all duration-300
+                className={`relative group flex flex-col h-full p-6 sm:p-8 transition-all duration-300
                   ${isActive 
-                    ? "bg-card hover:bg-accent/5 border-border hover:border-primary/30 hover:shadow-xl hover:-translate-y-1 cursor-pointer" 
-                    : "bg-muted/30 border-border/50 opacity-80 cursor-not-allowed"
+                    ? "glass-panel cursor-pointer" 
+                    : "bg-muted/30 border border-border/50 rounded-3xl opacity-80 cursor-not-allowed"
                   }`}
               >
                 {/* Header: Icon & Status Label */}

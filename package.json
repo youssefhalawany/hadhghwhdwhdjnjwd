@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3005",
+    "dev": "next dev -p 3005 --turbo",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -32,6 +32,7 @@
     "react-barcode": "^1.6.1",
     "react-chartjs-2": "^5.3.1",
     "react-dom": "19.2.4",
+    "react-hot-toast": "^2.6.0",
     "react-number-format": "^5.4.5",
     "react-qr-code": "^2.2.0",
     "react-signature-canvas": "^1.1.0-alpha.2",

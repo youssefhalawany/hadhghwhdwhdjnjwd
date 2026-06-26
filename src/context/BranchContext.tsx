@@ -8,12 +8,14 @@ interface BranchContextType {
   currentBranch: BranchId;
   setBranch: (branch: BranchId) => void;
   availableBranches: { id: BranchId; name: string }[];
+  setAvailableBranches: (branches: { id: BranchId; name: string }[]) => void;
 }
 
 const BranchContext = createContext<BranchContextType>({
   currentBranch: "alamein4", // Default
   setBranch: () => {},
   availableBranches: [],
+  setAvailableBranches: () => {},
 });
 
 export const BRANCHES = [
@@ -23,6 +25,7 @@ export const BRANCHES = [
 
 export function BranchProvider({ children }: { children: React.ReactNode }) {
   const [currentBranch, setCurrentBranch] = useState<BranchId>("alamein4");
+  const [availableBranches, setAvailableBranchesState] = useState<{ id: BranchId; name: string }[]>(BRANCHES);
 
   useEffect(() => {
     // Load saved branch on mount
@@ -42,7 +45,8 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
       value={{
         currentBranch,
         setBranch,
-        availableBranches: BRANCHES,
+        availableBranches,
+        setAvailableBranches: setAvailableBranchesState,
       }}
     >
       {children}
