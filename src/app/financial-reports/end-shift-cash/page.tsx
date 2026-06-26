@@ -255,7 +255,7 @@ export default function EndShiftCashPage() {
                             ) : (
                               <div className="flex items-center gap-2">
                                 <Calendar className="h-4 w-4 text-slate-400" />
-                                {new Date(r.date).toLocaleDateString('en-GB')}
+                                {r.date.split('-').reverse().join('/')}
                               </div>
                             )}
                           </td>
