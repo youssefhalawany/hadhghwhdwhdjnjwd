@@ -48,15 +48,13 @@ export function generateSchedule(
   const monthNum = parseInt(monthStr, 10) - 1; // JS months are 0-indexed
   
   const daysInMonth = new Date(year, monthNum + 1, 0).getDate();
-  
   const activeEmployees = employees.filter(e => e.status === 'active');
   
-  // Initialize schedule structure
   const assignments: DailySchedule[] = [];
   
-  // Track days off per employee
   const daysOffCount: Record<string, number> = {};
   const consecutiveDaysOff: Record<string, number> = {};
+  
   activeEmployees.forEach(e => {
     daysOffCount[e.id] = 0;
     consecutiveDaysOff[e.id] = 0;
@@ -64,6 +62,7 @@ export function generateSchedule(
 
   for (let day = 1; day <= daysInMonth; day++) {
     const dateStr = `${year}-${String(monthNum + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const remainingDaysInMonth = daysInMonth - day;
     
     // Find approved leaves for today
     const leavesToday = leaveRequests.filter(
@@ -73,15 +72,9 @@ export function generateSchedule(
     
     const dailyShifts: DailySchedule['shifts'] = [];
     
-    let scheduledCount = 0;
-    // Sort available employees: 
-    // Prioritize those who have the LEAST days off so far, to distribute days off evenly.
-    const availableEmployees = [...activeEmployees].sort((a, b) => daysOffCount[a.id] - daysOffCount[b.id]);
-    
-    // First, assign "Off" to everyone who has an approved leave request
-    for (const emp of availableEmployees) {
-      const isOnLeave = employeesOnLeave.includes(emp.id);
-      if (isOnLeave) {
+    // 1. Assign approved leaves
+    for (const emp of activeEmployees) {
+      if (employeesOnLeave.includes(emp.id)) {
         dailyShifts.push({
           employeeId: emp.id,
           employeeName: emp.name,
@@ -92,19 +85,39 @@ export function generateSchedule(
       }
     }
     
-    // Now, see who else we can give a day off to, based on rules
+    // 2. Sort available employees by priority for a day off
+    const availableEmployees = activeEmployees.filter(e => !employeesOnLeave.includes(e.id));
+    
+    availableEmployees.sort((a, b) => {
+      // Priority 1: Force day off if they are running out of days in the month to take their required days off
+      const aNeedsForce = (rules.maxDaysOffPerMonth - daysOffCount[a.id]) >= remainingDaysInMonth + 1;
+      const bNeedsForce = (rules.maxDaysOffPerMonth - daysOffCount[b.id]) >= remainingDaysInMonth + 1;
+      if (aNeedsForce !== bNeedsForce) return aNeedsForce ? -1 : 1;
+      
+      // Priority 2: Stagger consecutive days off
+      // If rules allow consecutive, prioritize someone who already has a consecutive streak started
+      // but hasn't reached the max yet.
+      if (rules.allowConsecutiveDaysOff) {
+        const aWantsConsecutive = consecutiveDaysOff[a.id] > 0 && consecutiveDaysOff[a.id] < rules.maxConsecutiveDaysOff;
+        const bWantsConsecutive = consecutiveDaysOff[b.id] > 0 && consecutiveDaysOff[b.id] < rules.maxConsecutiveDaysOff;
+        if (aWantsConsecutive !== bWantsConsecutive) return aWantsConsecutive ? -1 : 1;
+      }
+      
+      // Priority 3: Least total days off
+      return daysOffCount[a.id] - daysOffCount[b.id];
+    });
+    
+    // 3. Assign Off or Scheduled based on rules
+    let currentlyWorking = 0;
+    
+    // Count how many we've assigned so far. Wait, we need to know how many people MUST work
+    // to satisfy minEmployeesPerShift.
+    const totalAvailable = availableEmployees.length;
+    let givenOffToday = 0;
+    
     for (const emp of availableEmployees) {
-      if (employeesOnLeave.includes(emp.id)) continue; // Already handled
-      
-      const scheduledCount = dailyShifts.filter(s => s.shiftTime !== 'Off (Approved Leave)' && s.shiftTime !== 'Off').length;
-      const remainingToSchedule = availableEmployees.length - dailyShifts.length;
-      
-      let assignOff = false;
-      
-      // Can they take a day off?
       const canTakeDayOff = daysOffCount[emp.id] < rules.maxDaysOffPerMonth;
       
-      // Consecutive days off check
       let consecutiveCheckPass = true;
       if (!rules.allowConsecutiveDaysOff && consecutiveDaysOff[emp.id] >= 1) {
         consecutiveCheckPass = false;
@@ -113,19 +126,13 @@ export function generateSchedule(
         consecutiveCheckPass = false;
       }
       
-      // Check if assigning this person "Off" breaks the minimum staff rule
-      // If we give them off, the maximum possible staff scheduled today would be scheduledCount + remainingToSchedule - 1
-      const maxPossibleStaffIfOff = scheduledCount + remainingToSchedule - 1;
-      const minStaffMet = maxPossibleStaffIfOff >= rules.minEmployeesPerShift;
-      
-      // "only 1 employee can take a day off a time or if i have the right amout its okay"
-      // If we assign off, will we still have enough? minStaffMet answers this.
+      // Will we drop below minEmployeesPerShift if we give this person off?
+      // Employees working = totalAvailable - givenOffToday - 1 (if we give this person off)
+      const workingIfGivenOff = totalAvailable - givenOffToday - 1;
+      const minStaffMet = workingIfGivenOff >= rules.minEmployeesPerShift;
       
       if (canTakeDayOff && consecutiveCheckPass && minStaffMet) {
-        assignOff = true;
-      }
-      
-      if (assignOff) {
+        // Give day off
         dailyShifts.push({
           employeeId: emp.id,
           employeeName: emp.name,
@@ -133,7 +140,9 @@ export function generateSchedule(
         });
         daysOffCount[emp.id]++;
         consecutiveDaysOff[emp.id]++;
+        givenOffToday++;
       } else {
+        // Must work
         dailyShifts.push({
           employeeId: emp.id,
           employeeName: emp.name,

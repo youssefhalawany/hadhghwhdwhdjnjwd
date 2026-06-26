@@ -308,7 +308,7 @@ export default function AdminSchedulePage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {schedule.assignments.map((day: any) => {
+                      {schedule.assignments.map((day: any, dayIndex: number) => {
                         const dateObj = new Date(day.date);
                         const isWeekend = dateObj.getDay() === 5 || dateObj.getDay() === 6; // Fri/Sat in some regions
                         
@@ -328,7 +328,28 @@ export default function AdminSchedulePage() {
                                         ? 'bg-red-500/10 border-red-500/20 text-red-400 print:text-black print:bg-gray-100' 
                                         : 'bg-blue-500/10 border-blue-500/20 text-blue-400 print:text-black print:bg-white'}`}>
                                       <span className="font-bold">{shift.employeeName}</span>
-                                      <span className="opacity-80">{shift.shiftTime}</span>
+                                      
+                                      {!schedule.isPublished ? (
+                                        <select 
+                                          value={shift.shiftTime}
+                                          onChange={(e) => {
+                                            const newSchedule = JSON.parse(JSON.stringify(schedule));
+                                            newSchedule.assignments[dayIndex].shifts[i].shiftTime = e.target.value;
+                                            setSchedule(newSchedule);
+                                          }}
+                                          className="mt-1 bg-background/80 border border-border/80 rounded px-1.5 py-1 text-[10px] font-medium focus:ring-1 focus:ring-blue-500 outline-none print:hidden w-full cursor-pointer transition-colors"
+                                        >
+                                          <option value="Off">Off</option>
+                                          <option value="Scheduled">Scheduled</option>
+                                          <option value="Morning">Morning</option>
+                                          <option value="Noon">Noon</option>
+                                          <option value="Night">Night</option>
+                                          <option value="Off (Approved Leave)">Off (Approved Leave)</option>
+                                        </select>
+                                      ) : (
+                                        <span className="opacity-80 mt-0.5 block">{shift.shiftTime}</span>
+                                      )}
+                                      <span className="hidden print:block opacity-80 mt-0.5">{shift.shiftTime}</span>
                                     </div>
                                   );
                                 })}
