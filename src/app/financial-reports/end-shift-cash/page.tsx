@@ -53,7 +53,10 @@ export default function EndShiftCashPage() {
     const computed: EndShiftRecord[] = [];
     let runningEndCash = 0;
     
-    for (const r of records) {
+    // Sort records explicitly here once
+    const sorted = [...records].sort((a, b) => a.date.localeCompare(b.date));
+    
+    for (const r of sorted) {
       const startCash = computed.length === 0 ? r.startCash : runningEndCash;
       const endCash = startCash + r.cash - r.deduction;
       runningEndCash = endCash;
@@ -65,6 +68,13 @@ export default function EndShiftCashPage() {
     }
     return computed;
   }, [records]);
+
+  // Compute the preview start cash for the row being edited/added ONCE, not in the render loop
+  const editPreviewStartCash = React.useMemo(() => {
+    if (!editForm.date) return 0;
+    const prevs = computedRecords.filter(r => r.date < editForm.date!).sort((a,b) => b.date.localeCompare(a.date));
+    return prevs.length > 0 ? prevs[0].endCash : 0;
+  }, [computedRecords, editForm.date]);
 
   const handleDelete = async (id: string) => {
     toast.warning("Are you sure you want to delete this record?", {
@@ -344,10 +354,7 @@ export default function EndShiftCashPage() {
                         </td>
                         <td className="px-5 py-4 text-right text-slate-400 font-mono text-sm">
                           {/* Live preview of what start cash will be based on chosen date */}
-                          {(() => {
-                             const prevs = computedRecords.filter(r => r.date < (editForm.date || "")).sort((a,b) => b.date.localeCompare(a.date));
-                             return prevs.length > 0 ? prevs[0].endCash.toLocaleString() : "0";
-                          })()}
+                          {editPreviewStartCash.toLocaleString()}
                         </td>
                         <td className="px-5 py-4">
                           <input type="number" value={editForm.cash} onChange={e => setEditForm({...editForm, cash: Number(e.target.value)})} className="w-24 px-2 py-1.5 border border-teal-300 dark:border-teal-700 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 rounded-md text-right bg-white dark:bg-slate-950 font-mono text-sm shadow-sm" placeholder="0" />
@@ -365,11 +372,7 @@ export default function EndShiftCashPage() {
                           <input type="text" value={editForm.poNumbers} onChange={e => setEditForm({...editForm, poNumbers: e.target.value})} className="w-full min-w-[120px] px-2 py-1.5 border border-teal-300 dark:border-teal-700 focus:border-teal-500 rounded-md bg-white dark:bg-slate-950 text-xs shadow-sm font-mono" placeholder="PO..." />
                         </td>
                         <td className="px-5 py-4 font-black text-right text-teal-600 dark:text-teal-400 bg-teal-50/50 dark:bg-teal-900/10">
-                           {(() => {
-                             const prevs = computedRecords.filter(r => r.date < (editForm.date || "")).sort((a,b) => b.date.localeCompare(a.date));
-                             const startC = prevs.length > 0 ? prevs[0].endCash : 0;
-                             return (startC + (Number(editForm.cash)||0) - (Number(editForm.deduction)||0)).toLocaleString();
-                          })()}
+                           {(editPreviewStartCash + (Number(editForm.cash)||0) - (Number(editForm.deduction)||0)).toLocaleString()}
                         </td>
                         <td className="px-5 py-4 text-center sticky right-0 bg-teal-50/95 dark:bg-teal-900/95 shadow-[-4px_0_12px_rgba(20,184,166,0.1)]">
                           <div className="flex justify-center gap-1">
