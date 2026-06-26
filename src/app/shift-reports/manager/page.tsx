@@ -160,8 +160,13 @@ export default function ManagerAuditPage() {
       let totalVisa = 0;
       snap.forEach(docSnap => {
         const data = docSnap.data();
-        totalCash += Number(data.managerAudit?.expectedCash || 0);
-        totalVisa += Number(data.managerAudit?.expectedVisa || 0);
+        const expectedCash = Number(data.managerAudit?.expectedCash || 0);
+        const cashVariance = Number(data.managerAudit?.cashVariance || 0);
+        const expectedVisa = Number(data.managerAudit?.expectedVisa || 0);
+        const visaVariance = Number(data.managerAudit?.visaVariance || 0);
+
+        totalCash += (expectedCash + cashVariance);
+        totalVisa += (expectedVisa + visaVariance);
       });
 
       const docId = `${dateStr}_${branchId}`;

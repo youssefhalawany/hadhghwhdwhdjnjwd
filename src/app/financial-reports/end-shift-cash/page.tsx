@@ -215,15 +215,15 @@ export default function EndShiftCashPage() {
             <table className="w-full text-sm text-left">
               <thead className="text-[11px] text-slate-500 uppercase tracking-wider bg-slate-50/80 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800">
                 <tr>
-                  <th className="px-5 py-4 font-black whitespace-nowrap">Date</th>
-                  <th className="px-5 py-4 font-black text-right whitespace-nowrap bg-slate-100/30 dark:bg-slate-800/30">Start Cash (Auto)</th>
-                  <th className="px-5 py-4 font-black text-right whitespace-nowrap text-teal-600/70 dark:text-teal-400/70">Cash (Auto)</th>
-                  <th className="px-5 py-4 font-black text-right whitespace-nowrap text-blue-600/70 dark:text-blue-400/70">Visa (Auto)</th>
-                  <th className="px-5 py-4 font-black text-right whitespace-nowrap text-red-600/70 dark:text-red-400/70">Deduction (- Out)</th>
-                  <th className="px-5 py-4 font-black">Details</th>
-                  <th className="px-5 py-4 font-black whitespace-nowrap">PO Numbers</th>
-                  <th className="px-5 py-4 font-black text-right whitespace-nowrap bg-slate-100/30 dark:bg-slate-800/30">End Cash (Auto)</th>
-                  <th className="px-5 py-4 font-black text-center sticky right-0 bg-slate-50/95 dark:bg-slate-800/95 shadow-[-4px_0_12px_rgba(0,0,0,0.03)] dark:shadow-[-4px_0_12px_rgba(0,0,0,0.2)]">Actions</th>
+                  <th className="px-3 py-3 font-black whitespace-nowrap">Date</th>
+                  <th className="px-3 py-3 font-black text-right whitespace-nowrap bg-slate-100/30 dark:bg-slate-800/30">Start Cash (Auto)</th>
+                  <th className="px-3 py-3 font-black text-right whitespace-nowrap text-teal-600/70 dark:text-teal-400/70">Cash (Auto)</th>
+                  <th className="px-3 py-3 font-black text-right whitespace-nowrap text-blue-600/70 dark:text-blue-400/70">Visa (Auto)</th>
+                  <th className="px-3 py-3 font-black text-right whitespace-nowrap text-red-600/70 dark:text-red-400/70">Deduction (- Out)</th>
+                  <th className="px-3 py-3 font-black">Details</th>
+                  <th className="px-3 py-3 font-black whitespace-nowrap">PO Numbers</th>
+                  <th className="px-3 py-3 font-black text-right whitespace-nowrap bg-slate-100/30 dark:bg-slate-800/30">End Cash (Auto)</th>
+                  <th className="px-3 py-3 font-black text-center sticky right-0 bg-slate-50/95 dark:bg-slate-800/95 shadow-[-4px_0_12px_rgba(0,0,0,0.03)] dark:shadow-[-4px_0_12px_rgba(0,0,0,0.2)]">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
@@ -249,73 +249,73 @@ export default function EndShiftCashPage() {
                       return (
                         <tr key={r.id} className={`transition-colors ${isEditing ? 'bg-teal-50/50 dark:bg-teal-900/10' : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/30'}`}>
                           {/* Date */}
-                          <td className="px-5 py-3.5 font-bold whitespace-nowrap">
+                          <td className="px-3 py-3 font-semibold whitespace-nowrap">
                             {isEditing ? (
-                              <input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} className="w-full px-2 py-1.5 border border-teal-200 dark:border-teal-800 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 rounded-md bg-white dark:bg-slate-950 font-mono text-sm shadow-sm" />
+                              <input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} className="px-2 py-1.5 border border-slate-200 dark:border-slate-800 focus:border-teal-500 rounded-md bg-white dark:bg-slate-950 text-sm" />
                             ) : (
-                              <span className="font-mono text-slate-700 dark:text-slate-300">
-                                {new Date(r.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4 text-slate-400" />
+                                {new Date(r.date).toLocaleDateString('en-GB')}
+                              </div>
                             )}
                           </td>
                           
-                          {/* Start Cash (Auto Computed) */}
-                          <td className="px-5 py-3.5 font-bold text-right bg-slate-50/30 dark:bg-slate-800/10 text-slate-500 dark:text-slate-400">
+                          {/* Start Cash */}
+                          <td className="px-3 py-3 font-mono text-slate-500 dark:text-slate-400 text-right bg-slate-100/30 dark:bg-slate-800/30">
                             {isEditing && index === 0 ? (
-                              // Allow editing start cash ONLY on the very first record to seed the balances
-                              <input type="number" value={editForm.startCash} onChange={e => setEditForm({...editForm, startCash: Number(e.target.value)})} className="w-24 px-2 py-1.5 border border-teal-200 dark:border-teal-800 focus:border-teal-500 rounded-md text-right bg-white dark:bg-slate-950 font-mono text-sm" />
+                              <input type="number" value={editForm.startCash} onChange={e => setEditForm({...editForm, startCash: Number(e.target.value)})} className="w-20 px-2 py-1 border border-teal-200 dark:border-teal-800 focus:border-teal-500 rounded-md text-right bg-white dark:bg-slate-950 font-mono text-sm" />
                             ) : (
                               r.startCash.toLocaleString()
                             )}
                           </td>
 
                           {/* Cash */}
-                          <td className="px-5 py-3.5 font-black text-teal-600 dark:text-teal-400 text-right">
+                          <td className="px-3 py-3 font-black text-teal-600 dark:text-teal-400 text-right">
                             {isEditing ? (
-                              <input type="number" value={editForm.cash} disabled className="w-24 px-2 py-1.5 border border-slate-200 dark:border-slate-800 rounded-md text-right bg-slate-100 dark:bg-slate-900 font-mono text-sm cursor-not-allowed opacity-70" title="Auto-synced from Shift Reports" />
+                              <input type="number" value={editForm.cash} disabled className="w-20 px-2 py-1 border border-slate-200 dark:border-slate-800 rounded-md text-right bg-slate-100 dark:bg-slate-900 font-mono text-sm cursor-not-allowed opacity-70" title="Auto-synced from Shift Reports" />
                             ) : (
                               r.cash.toLocaleString()
                             )}
                           </td>
 
                           {/* Visa */}
-                          <td className="px-5 py-3.5 font-bold text-blue-600 dark:text-blue-400 text-right">
+                          <td className="px-3 py-3 font-bold text-blue-600 dark:text-blue-400 text-right">
                             {isEditing ? (
-                              <input type="number" value={editForm.visa} disabled className="w-24 px-2 py-1.5 border border-slate-200 dark:border-slate-800 rounded-md text-right bg-slate-100 dark:bg-slate-900 font-mono text-sm cursor-not-allowed opacity-70" title="Auto-synced from Shift Reports" />
+                              <input type="number" value={editForm.visa} disabled className="w-20 px-2 py-1 border border-slate-200 dark:border-slate-800 rounded-md text-right bg-slate-100 dark:bg-slate-900 font-mono text-sm cursor-not-allowed opacity-70" title="Auto-synced from Shift Reports" />
                             ) : (
                               r.visa.toLocaleString()
                             )}
                           </td>
 
                           {/* Deduction */}
-                          <td className="px-5 py-3.5 font-black text-red-600 dark:text-red-400 text-right">
+                          <td className="px-3 py-3 font-bold text-red-600 dark:text-red-400 text-right">
                             {isEditing ? (
-                              <input type="number" value={editForm.deduction} onChange={e => setEditForm({...editForm, deduction: Number(e.target.value)})} className="w-24 px-2 py-1.5 border border-teal-200 dark:border-teal-800 focus:border-teal-500 rounded-md text-right bg-white dark:bg-slate-950 font-mono text-sm" />
+                              <input type="number" value={editForm.deduction} onChange={e => setEditForm({...editForm, deduction: Number(e.target.value)})} className="w-20 px-2 py-1 border border-teal-200 dark:border-teal-800 focus:border-teal-500 rounded-md text-right bg-white dark:bg-slate-950 font-mono text-sm" />
                             ) : (
                               r.deduction.toLocaleString()
                             )}
                           </td>
 
                           {/* Details */}
-                          <td className="px-5 py-3.5 text-slate-600 dark:text-slate-300">
+                          <td className="px-3 py-3 min-w-[150px]">
                             {isEditing ? (
-                              <input type="text" value={editForm.details} onChange={e => setEditForm({...editForm, details: e.target.value})} className="w-full min-w-[150px] px-2 py-1.5 border border-teal-200 dark:border-teal-800 focus:border-teal-500 rounded-md bg-white dark:bg-slate-950 text-sm shadow-sm" placeholder="Any details..." />
+                              <input type="text" value={editForm.details} onChange={e => setEditForm({...editForm, details: e.target.value})} className="w-full px-2 py-1.5 border border-teal-200 dark:border-teal-800 focus:border-teal-500 rounded-md bg-white dark:bg-slate-950 text-sm" />
                             ) : (
-                              <div className="max-w-[200px] truncate" title={r.details}>{r.details}</div>
+                              <span className="text-slate-600 dark:text-slate-300">{r.details || "-"}</span>
                             )}
                           </td>
 
                           {/* PO Numbers */}
-                          <td className="px-5 py-3.5 text-slate-600 dark:text-slate-300 font-mono text-xs">
+                          <td className="px-3 py-3 min-w-[120px]">
                             {isEditing ? (
-                              <input type="text" value={editForm.poNumbers} onChange={e => setEditForm({...editForm, poNumbers: e.target.value})} className="w-full min-w-[120px] px-2 py-1.5 border border-teal-200 dark:border-teal-800 focus:border-teal-500 rounded-md bg-white dark:bg-slate-950 shadow-sm" placeholder="PO..." />
+                              <input type="text" value={editForm.poNumbers} onChange={e => setEditForm({...editForm, poNumbers: e.target.value})} className="w-full px-2 py-1.5 border border-teal-200 dark:border-teal-800 focus:border-teal-500 rounded-md bg-white dark:bg-slate-950 text-sm" />
                             ) : (
-                              r.poNumbers
+                              <span className="text-slate-600 dark:text-slate-300 font-mono text-xs">{r.poNumbers || "-"}</span>
                             )}
                           </td>
 
-                          {/* End Cash (Auto Computed) */}
-                          <td className="px-5 py-3.5 font-black text-right whitespace-nowrap bg-slate-50/30 dark:bg-slate-800/10 text-slate-800 dark:text-white">
+                          {/* End Cash */}
+                          <td className="px-3 py-3 font-black text-right text-slate-800 dark:text-white bg-slate-100/30 dark:bg-slate-800/30">
                             {isEditing ? (
                               <span className="text-teal-600 dark:text-teal-400">
                                 {((Number(editForm.startCash ?? r.startCash)||0) + (Number(editForm.cash)||0) - (Number(editForm.deduction)||0)).toLocaleString()}
@@ -326,7 +326,7 @@ export default function EndShiftCashPage() {
                           </td>
 
                           {/* Actions */}
-                          <td className="px-5 py-3.5 text-center sticky right-0 bg-white/95 dark:bg-slate-900/95 shadow-[-4px_0_12px_rgba(0,0,0,0.03)] dark:shadow-[-4px_0_12px_rgba(0,0,0,0.2)]">
+                          <td className="px-3 py-3 text-center sticky right-0 bg-white/95 dark:bg-slate-900/95 shadow-[-4px_0_12px_rgba(0,0,0,0.03)] dark:shadow-[-4px_0_12px_rgba(0,0,0,0.2)]">
                             {isEditing ? (
                               <div className="flex justify-center gap-1">
                                 <button onClick={saveRow} className="p-1.5 bg-green-500 text-white hover:bg-green-600 rounded-md shadow-sm transition-colors" title="Save">
@@ -337,7 +337,7 @@ export default function EndShiftCashPage() {
                                 </button>
                               </div>
                             ) : (
-                              <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity" style={{ opacity: 1 }}>
+                              <div className="flex justify-center gap-1">
                                 <button onClick={() => startEditing(r)} className="p-1.5 text-slate-400 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-900/30 rounded-md transition-colors">
                                   <Edit2 className="h-4 w-4" />
                                 </button>
@@ -353,33 +353,32 @@ export default function EndShiftCashPage() {
 
                     {/* NEW ROW ENTRY */}
                     {isAddingNew && (
-                      <tr className="bg-teal-50 dark:bg-teal-900/20 shadow-[inset_0_2px_10px_rgba(20,184,166,0.1)]">
-                        <td className="px-5 py-4 whitespace-nowrap">
-                          <input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} className="w-full px-2 py-1.5 border-2 border-teal-500 focus:ring-2 focus:ring-teal-500/30 rounded-md bg-white dark:bg-slate-950 font-mono text-sm shadow-md" autoFocus />
+                      <tr className="bg-teal-50/50 dark:bg-teal-900/10 border-b border-teal-100 dark:border-teal-900">
+                        <td className="px-3 py-3">
+                          <input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} className="px-2 py-1.5 border border-teal-300 dark:border-teal-700 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 rounded-md bg-white dark:bg-slate-950 text-sm shadow-sm" autoFocus />
                         </td>
-                        <td className="px-5 py-4 text-right text-slate-400 font-mono text-sm">
-                          {/* Live preview of what start cash will be based on chosen date */}
+                        <td className="px-3 py-3 font-mono text-slate-500 dark:text-slate-400 text-right bg-slate-100/30 dark:bg-slate-800/30">
                           {editPreviewStartCash.toLocaleString()}
                         </td>
-                        <td className="px-5 py-4">
-                          <input type="number" value={editForm.cash} disabled className="w-24 px-2 py-1.5 border border-slate-200 dark:border-slate-800 rounded-md text-right bg-slate-100 dark:bg-slate-900 font-mono text-sm cursor-not-allowed opacity-70" placeholder="Auto" title="Auto-synced from Shift Reports" />
+                        <td className="px-3 py-3">
+                          <input type="number" value={editForm.cash} disabled className="w-20 px-2 py-1 border border-slate-200 dark:border-slate-800 rounded-md text-right bg-slate-100 dark:bg-slate-900 font-mono text-sm cursor-not-allowed opacity-70" placeholder="Auto" />
                         </td>
-                        <td className="px-5 py-4">
-                          <input type="number" value={editForm.visa} disabled className="w-24 px-2 py-1.5 border border-slate-200 dark:border-slate-800 rounded-md text-right bg-slate-100 dark:bg-slate-900 font-mono text-sm cursor-not-allowed opacity-70" placeholder="Auto" title="Auto-synced from Shift Reports" />
+                        <td className="px-3 py-3">
+                          <input type="number" value={editForm.visa} disabled className="w-20 px-2 py-1 border border-slate-200 dark:border-slate-800 rounded-md text-right bg-slate-100 dark:bg-slate-900 font-mono text-sm cursor-not-allowed opacity-70" placeholder="Auto" />
                         </td>
-                        <td className="px-5 py-4">
-                          <input type="number" value={editForm.deduction} onChange={e => setEditForm({...editForm, deduction: Number(e.target.value)})} className="w-24 px-2 py-1.5 border border-teal-300 dark:border-teal-700 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 rounded-md text-right bg-white dark:bg-slate-950 font-mono text-sm shadow-sm" placeholder="0" />
+                        <td className="px-3 py-3">
+                          <input type="number" value={editForm.deduction} onChange={e => setEditForm({...editForm, deduction: Number(e.target.value)})} className="w-20 px-2 py-1 border border-teal-300 dark:border-teal-700 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 rounded-md text-right bg-white dark:bg-slate-950 font-mono text-sm shadow-sm" placeholder="0" />
                         </td>
-                        <td className="px-5 py-4">
-                          <input type="text" value={editForm.details} onChange={e => setEditForm({...editForm, details: e.target.value})} className="w-full min-w-[150px] px-2 py-1.5 border border-teal-300 dark:border-teal-700 focus:border-teal-500 rounded-md bg-white dark:bg-slate-950 text-sm shadow-sm" placeholder="Notes..." />
+                        <td className="px-3 py-3">
+                          <input type="text" value={editForm.details} onChange={e => setEditForm({...editForm, details: e.target.value})} className="w-full px-2 py-1 border border-teal-300 dark:border-teal-700 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 rounded-md bg-white dark:bg-slate-950 text-sm shadow-sm" placeholder="Reason..." />
                         </td>
-                        <td className="px-5 py-4">
-                          <input type="text" value={editForm.poNumbers} onChange={e => setEditForm({...editForm, poNumbers: e.target.value})} className="w-full min-w-[120px] px-2 py-1.5 border border-teal-300 dark:border-teal-700 focus:border-teal-500 rounded-md bg-white dark:bg-slate-950 text-xs shadow-sm font-mono" placeholder="PO..." />
+                        <td className="px-3 py-3">
+                          <input type="text" value={editForm.poNumbers} onChange={e => setEditForm({...editForm, poNumbers: e.target.value})} className="w-full px-2 py-1 border border-teal-300 dark:border-teal-700 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 rounded-md bg-white dark:bg-slate-950 text-sm shadow-sm" placeholder="PO..." />
                         </td>
-                        <td className="px-5 py-4 font-black text-right text-teal-600 dark:text-teal-400 bg-teal-50/50 dark:bg-teal-900/10">
-                           {(editPreviewStartCash + (Number(editForm.cash)||0) - (Number(editForm.deduction)||0)).toLocaleString()}
+                        <td className="px-3 py-3 font-black text-slate-800 dark:text-white text-right bg-slate-100/30 dark:bg-slate-800/30">
+                          {editPreviewEndCash.toLocaleString()}
                         </td>
-                        <td className="px-5 py-4 text-center sticky right-0 bg-teal-50/95 dark:bg-teal-900/95 shadow-[-4px_0_12px_rgba(20,184,166,0.1)]">
+                        <td className="px-3 py-3 text-center sticky right-0 bg-teal-50 dark:bg-teal-900/30">
                           <div className="flex justify-center gap-1">
                             <button onClick={saveRow} className="p-1.5 bg-teal-600 text-white hover:bg-teal-700 rounded-md shadow-md transition-all active:scale-95" title="Save Row">
                               <Check className="h-4 w-4" strokeWidth={3} />
