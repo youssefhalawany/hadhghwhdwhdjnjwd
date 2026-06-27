@@ -5,6 +5,7 @@ import {
   CalendarDays, Settings, Users, CheckCircle, 
   XCircle, Printer, Send, RefreshCw, AlertCircle, BarChart3, Plus 
 } from "lucide-react";
+import ClientLayoutWrapper from "@/components/ClientLayoutWrapper";
 import { useBranch } from "@/context/BranchContext";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, addDoc, updateDoc, doc, onSnapshot, query, where, orderBy } from "firebase/firestore";
@@ -16,7 +17,7 @@ export default function AdminSchedulePage() {
   const [schedule, setSchedule] = useState<any>(null);
   const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'roster' | 'analytics'>('roster');
+  const [activeTab, setActiveTab] = useState<'roster' | 'analytics' | 'requests'>('roster');
   const [allEmployees, setAllEmployees] = useState<any[]>([]);
   const [showBorrowModal, setShowBorrowModal] = useState<number | null>(null); // dayIndex
   const [borrowSelectedEmp, setBorrowSelectedEmp] = useState<any>(null);
@@ -555,7 +556,7 @@ export default function AdminSchedulePage() {
                                     <td className="p-3 text-center text-blue-400">{data.night}</td>
                                     <td className={`p-3 text-right font-bold ${isOvertimeWarning ? 'text-orange-500' : 'text-green-500'}`}>
                                       {totalHours}
-                                      {isOvertimeWarning && <AlertCircle className="w-3 h-3 inline ml-1" title="High hours warning"/>}
+                                      {isOvertimeWarning && <span title="High hours warning"><AlertCircle className="w-3 h-3 inline ml-1" /></span>}
                                     </td>
                                   </tr>
                                 );
