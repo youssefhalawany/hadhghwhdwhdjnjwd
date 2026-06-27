@@ -54,62 +54,44 @@ export default function ExpiryAuditPage() {
     }
   };
 
-  const handleAudit = async (item: any) => {
+  const processExpiryAudit = async (item: any) => {
     setProcessing(item.id);
     try {
-      const updatedQuantity = editingId === item.id ? editQuantity : item.quantity;
-      const updatedDate = editingId === item.id ? editDate : item.expiryDate;
+      const currentQty = editingId === item.id ? editQuantity : (Number(item.quantity) || 0);
+      const currentDate = editingId === item.id ? editDate : item.expiryDate;
+      
+      const soldQtyStr = prompt(`Audit Expiry: Item ${item.itemName} (${item.barcode || "N/A"})\n\nTotal tracked quantity: ${currentQty}\n\nWere any of these SOLD before expiring? If yes, enter the SOLD quantity. If none were sold, enter 0:`, "0");
+      if (soldQtyStr === null) return; // Cancelled
+      
+      const soldQty = Number(soldQtyStr);
+      if (isNaN(soldQty) || soldQty < 0 || soldQty > currentQty) {
+        alert("Invalid sold quantity. It must be a number between 0 and " + currentQty + ". Action cancelled.");
+        return;
+      }
+
+      const expiredQty = currentQty - soldQty;
       
       const auditPayload = {
         status: "audited",
-        quantity: updatedQuantity,
-        expiryDate: updatedDate,
+        quantity: expiredQty,
+        soldQuantity: soldQty,
+        originalQuantity: currentQty,
+        expiryDate: currentDate,
         auditedAt: new Date().toISOString(),
-        auditedBy: localStorage.getItem("circlek_role") || "manager"
+        auditedBy: localStorage.getItem("circlek_role") || "manager" // Fallback
       };
 
+      // 1. Update status in expiries
       await updateDoc(doc(db, "expiries", item.id), auditPayload);
       
-      setAllExpiries(prev => prev.map(i => i.id === item.id ? { ...i, ...auditPayload } : i));
-      setEditingId(null);
-    } catch (err) {
-      console.error("Error auditing item:", err);
-      alert("Failed to audit item.");
-    } finally {
-      setProcessing(null);
-    }
-  };
-
-
-
-  const handleMarkExpiryPulled = async (item: any) => {
-    const exp = new Date(item.expiryDate);
-    exp.setHours(0,0,0,0);
-    const t = new Date();
-    t.setHours(0,0,0,0);
-    const isExpired = exp <= t;
-
-    let pulledQty = Number(item.quantity) || 0;
-
-    if (isExpired) {
-      const pulledQtyStr = prompt(`Audit Expiry: Item ${item.itemName} (${item.barcode || "N/A"})\nHow many items are you actually pulling from the shelf?`, item.quantity.toString());
-      if (pulledQtyStr === null) return; // Cancelled
-      
-      pulledQty = Number(pulledQtyStr);
-      if (isNaN(pulledQty) || pulledQty < 0) {
-        alert("Invalid quantity. Action cancelled.");
-        return;
+      // Update local state
+      if (selectedExpiry && selectedExpiry.id === item.id) {
+        setSelectedExpiry({ ...selectedExpiry, ...auditPayload });
       }
-    }
+      setAllExpiries(prev => prev.map(i => i.id === item.id ? { ...i, ...auditPayload } : i));
 
-    try {
-      // 1. Update status in expiries
-      await updateDoc(doc(db, "expiries", item.id), { status: "pulled" });
-      setSelectedExpiry((prev: any) => prev && prev.id === item.id ? { ...prev, status: "pulled" } : prev);
-      setAllExpiries(prev => prev.map(i => i.id === item.id ? { ...i, status: "pulled", quantity: pulledQty } : i));
-
-      // 2. If expired, add to expired_items collection
-      if (isExpired) {
+      // 2. Add to expired_items ONLY if there's actually an expired quantity
+      if (expiredQty > 0) {
         const savedUserStr = localStorage.getItem("active_cashier_session");
         let managerEmail = "Unknown Manager";
         if (savedUserStr) {
@@ -120,24 +102,33 @@ export default function ExpiryAuditPage() {
         const todayStr = new Date().toISOString().split('T')[0];
 
         await addDoc(collection(db, "expired_items"), {
-          barcode: item.barcode || "N/A",
-          category: "uncategorized",
+          barcode: item.barcode || "1",
+          category: item.category || "uncategorized",
           createdAt: new Date().toISOString(),
           createdBy: managerEmail,
           date: todayStr,
           name: item.itemName,
-          quantity: pulledQty,
+          quantity: expiredQty,
           storeId: item.storeId || "Unknown"
         });
       }
       
-      // alert only if we had to audit it to give confirmation
-      if (isExpired) alert("Item audited and marked as pulled successfully!");
-
-    } catch (error) {
-      console.error("Error marking pulled:", error);
-      alert("Failed to update status.");
+      alert(`Audit completed!\nSold: ${soldQty}\nExpired: ${expiredQty}\n\nThe expired quantity has been recorded in the database.`);
+      setEditingId(null);
+    } catch (err) {
+      console.error("Error auditing item:", err);
+      alert("Failed to audit item.");
+    } finally {
+      setProcessing(null);
     }
+  };
+
+  const handleAudit = async (item: any) => {
+    await processExpiryAudit(item);
+  };
+
+  const handleMarkExpiryPulled = async (item: any) => {
+    await processExpiryAudit(item);
   };
 
   const handleDeleteExpiry = async (id: string) => {

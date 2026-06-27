@@ -350,6 +350,7 @@ export default function ExpiryTrackerPage() {
   };
 
   const markAsPulled = async (id: string) => {
+    if (!confirm(lang === "en" ? "Are you sure you want to pull this item? It will be sent to the manager for auditing." : "هل أنت متأكد من سحب هذا المنتج؟ سيتم إرساله للمدير للمراجعة.")) return;
     try {
       await updateDoc(doc(db, "expiries", id), { status: "pulled" });
       setExpiries(prev => prev.map(item => item.id === id ? { ...item, status: "pulled" } : item));
