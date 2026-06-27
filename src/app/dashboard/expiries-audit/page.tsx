@@ -108,6 +108,24 @@ export default function ExpiryAuditPage() {
 
         const todayStr = new Date().toISOString().split('T')[0];
 
+        let normalizedStoreId = "Unknown Store";
+        let targetBranch = currentBranch;
+        
+        if (targetBranch === "all") {
+          if (item.branchId) {
+             targetBranch = item.branchId;
+          } else {
+             const storeStr = (item.storeId || "").toLowerCase();
+             targetBranch = storeStr.includes("ola") || storeStr.includes("koronfol") ? "ola" : "alamein4";
+          }
+        }
+        
+        if (targetBranch === "alamein4") {
+          normalizedStoreId = "eL-alamein-4";
+        } else if (targetBranch === "ola") {
+          normalizedStoreId = "ola-el-koronfol";
+        }
+
         await addDoc(collection(db, "expired_items"), {
           barcode: item.barcode || "1",
           category: item.category || "uncategorized",
@@ -116,7 +134,7 @@ export default function ExpiryAuditPage() {
           date: todayStr,
           name: item.itemName,
           quantity: expiredQty,
-          storeId: item.storeId || "Unknown"
+          storeId: normalizedStoreId
         });
       }
       
