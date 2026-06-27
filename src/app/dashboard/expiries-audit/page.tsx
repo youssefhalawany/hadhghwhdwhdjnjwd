@@ -8,9 +8,11 @@ import Barcode from "react-barcode";
 import QRCode from "react-qr-code";
 import Link from "next/link";
 import { useBranch } from "@/context/BranchContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function ExpiryAuditPage() {
   const { currentBranch } = useBranch();
+  const { t } = useLanguage();
   const [allExpiries, setAllExpiries] = useState<any[]>([]);
   const [supplierReturns, setSupplierReturns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,6 +39,10 @@ export default function ExpiryAuditPage() {
   const [agentNationalId, setAgentNationalId] = useState("");
   const [agentMobile, setAgentMobile] = useState("");
   const [printData, setPrintData] = useState<any | null>(null);
+  const [totalPrice, setTotalPrice] = useState<number | "">("");
+  const [settlementMethod, setSettlementMethod] = useState<"money" | "products">("money");
+  const [paymentTiming, setPaymentTiming] = useState<"now" | "later">("now");
+  const [expectedPaymentDate, setExpectedPaymentDate] = useState("");
 
   // Advanced Filters
   const [reportFilters, setReportFilters] = useState({
@@ -156,7 +162,7 @@ export default function ExpiryAuditPage() {
         if (auditAction === "return") {
           await addDoc(collection(db, "supplier_returns"), {
             barcode: item.barcode || "1",
-            itemName: item.itemName,
+            itemName: item.itemName || "Unknown Item",
             category: item.category || "uncategorized",
             supplier: item.supplier || "Unknown Supplier",
             quantity: expiredQty,
@@ -164,7 +170,7 @@ export default function ExpiryAuditPage() {
             branchId: targetBranch,
             status: "pending", // pending, returned
             createdAt: new Date().toISOString(),
-            createdBy: managerEmail,
+            createdBy: managerEmail || "Unknown Manager",
             expiryId: item.id // Link back to expiries if needed
           });
         } else {
@@ -172,9 +178,9 @@ export default function ExpiryAuditPage() {
             barcode: item.barcode || "1",
             category: item.category || "uncategorized",
             createdAt: new Date().toISOString(),
-            createdBy: managerEmail,
+            createdBy: managerEmail || "Unknown Manager",
             date: todayStr,
-            name: item.itemName,
+            name: item.itemName || "Unknown Item",
             quantity: expiredQty,
             storeId: normalizedStoreId
           });
@@ -210,7 +216,12 @@ export default function ExpiryAuditPage() {
             returnedAt: new Date().toISOString(),
             agentName,
             agentNationalId,
-            agentMobile
+            agentMobile,
+            totalPrice: Number(totalPrice) || 0,
+            settlementMethod,
+            paymentTiming: settlementMethod === "money" ? paymentTiming : null,
+            expectedPaymentDate: settlementMethod === "money" && paymentTiming === "later" ? expectedPaymentDate : null,
+            isSettled: settlementMethod === "products" || paymentTiming === "now"
           });
           finalItems.push({
             ...item,
@@ -229,7 +240,11 @@ export default function ExpiryAuditPage() {
         agentName,
         agentNationalId,
         agentMobile,
-        items: finalItems
+        items: finalItems,
+        totalPrice: Number(totalPrice) || 0,
+        settlementMethod,
+        paymentTiming,
+        expectedPaymentDate
       };
 
       setPrintData(receiptData);
@@ -240,6 +255,10 @@ export default function ExpiryAuditPage() {
       setAgentName("");
       setAgentNationalId("");
       setAgentMobile("");
+      setTotalPrice("");
+      setSettlementMethod("money");
+      setPaymentTiming("now");
+      setExpectedPaymentDate("");
       
       // Give DOM time to render print view, then print
       setTimeout(() => {
@@ -252,6 +271,20 @@ export default function ExpiryAuditPage() {
       alert("Failed to process handover.");
     } finally {
       setProcessing(null);
+    }
+  };
+
+  const handleSettlePayment = async (id: string) => {
+    if (!confirm("Confirm that you have received the pending payment/products for this return?")) return;
+    try {
+      await updateDoc(doc(db, "supplier_returns", id), {
+        isSettled: true,
+        settledAt: new Date().toISOString()
+      });
+      alert("Settlement marked as received!");
+    } catch (err) {
+      console.error("Error settling payment:", err);
+      alert("Failed to mark settlement.");
     }
   };
 
@@ -483,7 +516,7 @@ export default function ExpiryAuditPage() {
                   : "bg-transparent text-muted-foreground hover:bg-muted"
               }`}
             >
-              Audit Reports
+              {t("expiries_audit.tab_reports")}
             </button>
             <button 
               onClick={() => setActiveTab("returns")}
@@ -493,7 +526,7 @@ export default function ExpiryAuditPage() {
                   : "bg-transparent text-muted-foreground hover:bg-muted"
               }`}
             >
-              Supplier Returns
+              {t("expiries_audit.tab_returns")}
             </button>
           </div>
         </div>
@@ -1056,6 +1089,47 @@ export default function ExpiryAuditPage() {
                 </div>
               );
             })()}
+
+            <div className="bg-card p-5 border border-border rounded-xl space-y-4 mt-8">
+              <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                <Calendar className="h-4 w-4" /> {t("expiries_audit.returns_pending_settlements")}
+              </h3>
+            </div>
+            {(() => {
+              const pendingSettlements = supplierReturns.filter(r => r.status === "returned" && r.isSettled === false && (currentBranch === "all" || r.branchId === "all" || r.branchId === currentBranch || (r.storeId && r.storeId.toLowerCase().includes(currentBranch === "ola" ? "ola" : "alamein"))));
+              if (pendingSettlements.length === 0) {
+                return (
+                  <div className="text-center p-16 bg-card border border-border rounded-2xl">
+                    <CheckCircle className="h-12 w-12 text-emerald-500 mx-auto mb-4" />
+                    <h3 className="text-lg font-bold">{t("expiries_audit.returns_no_pending_settlements")}</h3>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-4">
+                  {pendingSettlements.map((item) => (
+                    <div key={item.id} className="bg-muted/30 border border-amber-500/30 rounded-xl p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-bold">{item.supplier}</h4>
+                          <span className="bg-amber-500 text-white text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full font-bold">Awaiting Payment</span>
+                        </div>
+                        <p className="text-sm font-semibold text-muted-foreground">Amount: <span className="text-foreground">{item.totalPrice} EGP</span></p>
+                        <p className="text-xs text-muted-foreground mt-1">Handed over to: {item.agentName} • Expected: {item.expectedPaymentDate || "Not set"}</p>
+                      </div>
+                      <button 
+                        onClick={() => handleSettlePayment(item.id)}
+                        className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded-lg text-sm transition-colors shrink-0"
+                      >
+                        {t("expiries_audit.btn_mark_paid")}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+
           </div>
         ) : activeTab === "reports" ? (
           <div className="space-y-6">
@@ -1329,6 +1403,59 @@ export default function ExpiryAuditPage() {
                     className="w-full p-2 border border-border rounded-lg bg-background outline-none focus:border-blue-500 text-sm"
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 p-4 border border-border rounded-xl bg-muted/20">
+                <div className="col-span-1 md:col-span-2">
+                  <h4 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-2">Settlement Details</h4>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground mb-1 block">{t("expiries_audit.modal_total_price")}</label>
+                  <input 
+                    type="number" 
+                    value={totalPrice}
+                    onChange={e => setTotalPrice(e.target.value === "" ? "" : Number(e.target.value))}
+                    placeholder="Total EGP"
+                    className="w-full p-2 border border-border rounded-lg bg-background outline-none focus:border-blue-500 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground mb-1 block">{t("expiries_audit.modal_settlement_method")}</label>
+                  <select
+                    value={settlementMethod}
+                    onChange={e => setSettlementMethod(e.target.value as "money" | "products")}
+                    className="w-full p-2 border border-border rounded-lg bg-background outline-none focus:border-blue-500 text-sm"
+                  >
+                    <option value="money">Money (Cash/Transfer)</option>
+                    <option value="products">Products (Exchange)</option>
+                  </select>
+                </div>
+                {settlementMethod === "money" && (
+                  <>
+                    <div>
+                      <label className="text-xs font-bold text-muted-foreground mb-1 block">{t("expiries_audit.modal_payment_timing")}</label>
+                      <select
+                        value={paymentTiming}
+                        onChange={e => setPaymentTiming(e.target.value as "now" | "later")}
+                        className="w-full p-2 border border-border rounded-lg bg-background outline-none focus:border-blue-500 text-sm"
+                      >
+                        <option value="now">Received Now</option>
+                        <option value="later">Will Pay Later</option>
+                      </select>
+                    </div>
+                    {paymentTiming === "later" && (
+                      <div>
+                        <label className="text-xs font-bold text-muted-foreground mb-1 block">{t("expiries_audit.modal_expected_date")}</label>
+                        <input 
+                          type="date" 
+                          value={expectedPaymentDate}
+                          onChange={e => setExpectedPaymentDate(e.target.value)}
+                          className="w-full p-2 border border-border rounded-lg bg-background outline-none focus:border-blue-500 text-sm"
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
 
               <div>

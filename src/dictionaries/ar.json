@@ -1,0 +1,43 @@
+{
+  "common": {
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "search": "بحث",
+    "loading": "جاري التحميل...",
+    "error": "خطأ"
+  },
+  "nav": {
+    "dashboard": "لوحة القيادة",
+    "expiries": "تدقيق الصلاحيات",
+    "reports": "التقارير المالية"
+  },
+  "expiries_audit": {
+    "page_title": "تدقيق الصلاحيات والمرتجعات",
+    "page_desc": "مراجعة الصلاحيات المسحوبة وبدء إرجاع الموردين",
+    "tab_active": "الصلاحيات النشطة",
+    "tab_pending": "قيد التدقيق",
+    "tab_returns": "مرتجعات الموردين",
+    "tab_reports": "التقارير",
+    "search_placeholder": "ابحث بواسطة الباركود، اسم الصنف، أو المورد...",
+    "btn_audit": "تدقيق",
+    "empty_active": "لم يتم العثور على صلاحيات نشطة.",
+    "empty_pending": "لم يتم العثور على عمليات تدقيق معلقة.",
+    "modal_audit_title": "تدقيق الصلاحية",
+    "modal_handover_title": "تسليم مرتجع المورد",
+    "modal_total_price": "السعر الإجمالي",
+    "modal_settlement_method": "طريقة التسوية",
+    "modal_payment_timing": "وقت الدفع",
+    "modal_expected_date": "تاريخ الدفع المتوقع",
+    "modal_agent_name": "اسم المندوب",
+    "modal_national_id": "الرقم القومي",
+    "modal_mobile": "رقم الموبايل",
+    "btn_confirm_audit": "تأكيد التدقيق",
+    "btn_complete_handover": "إتمام التسليم والطباعة",
+    "returns_pending_settlements": "التسويات المالية المعلقة",
+    "returns_no_pending": "لا توجد مرتجعات معلقة",
+    "returns_no_pending_settlements": "تمت تسوية جميع مرتجعات الموردين.",
+    "btn_mark_paid": "تحديد كمدفوع"
+  }
+}

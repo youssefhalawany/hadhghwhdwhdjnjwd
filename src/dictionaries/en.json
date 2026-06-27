@@ -1,0 +1,43 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "search": "Search",
+    "loading": "Loading...",
+    "error": "Error"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "expiries": "Expiries Audit",
+    "reports": "Financial Reports"
+  },
+  "expiries_audit": {
+    "page_title": "Expiries Audit & Returns",
+    "page_desc": "Review pulled expiries and initiate supplier returns",
+    "tab_active": "Active Expiries",
+    "tab_pending": "Pending Audit",
+    "tab_returns": "Supplier Returns",
+    "tab_reports": "Reports",
+    "search_placeholder": "Search by barcode, item name, or supplier...",
+    "btn_audit": "Audit",
+    "empty_active": "No active expiries found.",
+    "empty_pending": "No pending audits found.",
+    "modal_audit_title": "Audit Expiry",
+    "modal_handover_title": "Supplier Return Handover",
+    "modal_total_price": "Total Price",
+    "modal_settlement_method": "Settlement Method",
+    "modal_payment_timing": "Payment Timing",
+    "modal_expected_date": "Expected Payment Date",
+    "modal_agent_name": "Agent Name",
+    "modal_national_id": "National ID",
+    "modal_mobile": "Mobile Number",
+    "btn_confirm_audit": "Confirm Audit",
+    "btn_complete_handover": "Complete Handover & Print",
+    "returns_pending_settlements": "Pending Financial Settlements",
+    "returns_no_pending": "No Pending Returns",
+    "returns_no_pending_settlements": "All supplier returns have been settled.",
+    "btn_mark_paid": "Mark as Paid"
+  }
+}

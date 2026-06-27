@@ -11,12 +11,14 @@ import { collection, query, where, onSnapshot, doc, getDoc } from "firebase/fire
 import PwaInstallPrompt from "./PwaInstallPrompt";
 import type { User as FirebaseUser } from "firebase/auth";
 import { useBranch, BranchId } from "@/context/BranchContext";
-import { Store } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
+import { Store, Languages } from "lucide-react";
 import GlobalReminders from "./GlobalReminders";
 import toast from "react-hot-toast";
 
 export default function ClientLayoutWrapper({ children }: { children: React.ReactNode }) {
   const { currentBranch, setBranch, availableBranches, setAvailableBranches } = useBranch();
+  const { language, setLanguage, t } = useLanguage();
   const [theme, setTheme] = useState<"light" | "dark">("dark");
   const [role, setRole] = useState<string>("owner");
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -30,6 +32,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   const [pendingShiftCount, setPendingShiftCount] = useState(0);
   const [pendingVoidCount, setPendingVoidCount] = useState(0);
   const [pendingExpiriesCount, setPendingExpiriesCount] = useState(0);
+  const [pendingReturnsCount, setPendingReturnsCount] = useState(0);
   const pathname = usePathname();
 
   // Initialize theme, role, and mock status from localStorage
@@ -167,6 +170,26 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
         });
         setPendingExpiriesCount(count);
       }, (err) => console.log("Expiries badge err", err));
+
+      const returnsQ = query(collection(db, "supplier_returns"));
+      const unsubscribeReturns = onSnapshot(returnsQ, (snap) => {
+        let count = 0;
+        snap.docs.forEach(doc => {
+          const d = doc.data();
+          const isPending = d.status === "pending" || (d.status === "returned" && d.isSettled === false);
+          if (isPending) {
+            if (currentBranch === "all") {
+              count++;
+            } else {
+              const inferred = (d.storeId || "").toLowerCase().includes("ola") || (d.storeId || "").toLowerCase().includes("koronfol") ? "ola" : "alamein4";
+              if ((d.branchId && d.branchId === currentBranch) || (!d.branchId && inferred === currentBranch)) {
+                count++;
+              }
+            }
+          }
+        });
+        setPendingReturnsCount(count);
+      }, (err) => console.log("Returns badge err", err));
     }
 
     // Global Sound Effects
@@ -221,13 +244,13 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
   const navItems = [
     { name: "Financials", icon: FileText, children: [
-      { name: "Financial Reports", href: "/financial-reports", icon: FileText },
+      { name: t("nav.reports"), href: "/financial-reports", icon: FileText },
       { name: "Voids & Returns", href: "/voids/manager", icon: Shield },
       { name: "Shift Audit", href: "/shift-reports/manager", icon: Shield },
       { name: "Report Search", href: "/financials/report-search", icon: Search }
     ]},
     { name: "Expired", icon: PackageX, children: [
-      { name: "Expiry Audits", href: "/dashboard/expiries-audit", icon: ClipboardList },
+      { name: t("nav.expiries"), href: "/dashboard/expiries-audit", icon: ClipboardList },
       { name: "Product Lookup", href: "/admin/product-lookup", icon: Search }
     ]},
     { name: "Admin", icon: Shield, children: [
@@ -379,9 +402,9 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                              {pendingVoidCount}
                            </span>
                         )}
-                        {item.name === "Expired" && pendingExpiriesCount > 0 && (
+                        {item.name === "Expired" && (pendingExpiriesCount + pendingReturnsCount) > 0 && (
                            <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-1 animate-pulse shadow-sm shadow-red-500/30">
-                             {pendingExpiriesCount}
+                             {pendingExpiriesCount + pendingReturnsCount}
                            </span>
                         )}
                       </button>
@@ -406,9 +429,9 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                                 {pendingVoidCount}
                               </span>
                             )}
-                            {child.name === "Expiry Audits" && pendingExpiriesCount > 0 && (
+                            {child.name === "Expiry Audits" && (pendingExpiriesCount + pendingReturnsCount) > 0 && (
                               <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
-                                {pendingExpiriesCount}
+                                {pendingExpiriesCount + pendingReturnsCount}
                               </span>
                             )}
                           </Link>
@@ -470,6 +493,16 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
 
 
+            {/* Language Toggle */}
+            <button
+              onClick={() => setLanguage(language === "en" ? "ar" : "en")}
+              className="p-2 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+              title="Toggle Language"
+            >
+              <Languages className="h-4 w-4" />
+              <span className="text-[10px] font-bold uppercase">{language === "en" ? "عربي" : "EN"}</span>
+            </button>
+
             {/* Theme Toggle */}
             <button
               id="btn-toggle-theme"
@@ -521,9 +554,9 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                            {pendingVoidCount}
                          </span>
                       )}
-                      {item.name === "Expired" && pendingExpiriesCount > 0 && (
+                      {item.name === "Expired" && (pendingExpiriesCount + pendingReturnsCount) > 0 && (
                          <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-pulse shadow-sm">
-                           {pendingExpiriesCount}
+                           {pendingExpiriesCount + pendingReturnsCount}
                          </span>
                       )}
                     </div>
@@ -554,9 +587,9 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                               {pendingVoidCount}
                             </span>
                           )}
-                          {child.name === "Expiry Audits" && pendingExpiriesCount > 0 && (
+                          {child.name === "Expiry Audits" && (pendingExpiriesCount + pendingReturnsCount) > 0 && (
                             <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
-                              {pendingExpiriesCount}
+                              {pendingExpiriesCount + pendingReturnsCount}
                             </span>
                           )}
                         </Link>
