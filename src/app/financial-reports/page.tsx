@@ -23,6 +23,14 @@ export default function FinancialReportsHub() {
 
   const reportModules = [
     {
+      title: "End Shift Cash",
+      description: "Track daily shift start and end cash, deductions, and visa payments.",
+      icon: Wallet,
+      href: "/financial-reports/end-shift-cash",
+      color: "text-teal-600 dark:text-teal-400 bg-teal-500/10 border-teal-500/20",
+      status: "Active"
+    },
+    {
       title: "Sales, Cash & Credits",
       description: "Shift-level summaries including itemized sales, cash drops, and credit payments.",
       icon: BarChart3,
@@ -68,14 +76,6 @@ export default function FinancialReportsHub() {
       icon: FileText,
       href: "/financial-reports/vendor-statements",
       color: "text-violet-600 dark:text-violet-400 bg-violet-500/10 border-violet-500/20",
-      status: "Active"
-    },
-    {
-      title: "End Shift Cash",
-      description: "Track daily shift start and end cash, deductions, and visa payments.",
-      icon: Wallet,
-      href: "/financial-reports/end-shift-cash",
-      color: "text-teal-600 dark:text-teal-400 bg-teal-500/10 border-teal-500/20",
       status: "Active"
     }
   ];
