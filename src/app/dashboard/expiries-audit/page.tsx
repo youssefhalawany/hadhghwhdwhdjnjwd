@@ -902,9 +902,9 @@ export default function ExpiryAuditPage() {
                     className="w-full bg-background border border-border rounded-lg p-2 text-sm focus:border-red-500 outline-none"
                   >
                     <option value="all">All Statuses</option>
-                    <option value="active">Active</option>
-                    <option value="pulled">Pulled</option>
-                    <option value="audited">Audited</option>
+                    <option value="active">Active (On Shelf)</option>
+                    <option value="pulled">Pending Audit (Pulled)</option>
+                    <option value="audited">Finalized (Audited)</option>
                   </select>
                 </div>
                 <div>

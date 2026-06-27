@@ -622,7 +622,7 @@ export default function ExpiryTrackerPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {expiries.filter(item => {
-              if (item.status === "pulled") return false;
+              if ((item.status || "active").toLowerCase() !== "active") return false;
               const itemDate = new Date(item.expiryDate);
               itemDate.setHours(0,0,0,0);
               const diffTime = itemDate.getTime() - today.getTime();
