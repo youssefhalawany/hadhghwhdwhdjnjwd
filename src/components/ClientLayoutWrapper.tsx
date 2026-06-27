@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sun, Moon, Shield, Database, LayoutDashboard, FileText, Printer, ClipboardList, CheckCircle, Search, LogOut, User, Users, Menu, X, Bell, PackageX, CalendarDays } from "lucide-react";
+import { Sun, Moon, Shield, Database, LayoutDashboard, FileText, Printer, ClipboardList, CheckCircle, Search, LogOut, User, Users, Menu, X, Bell, PackageX, Truck, CalendarDays } from "lucide-react";
 import { auth, messaging, dbService, db } from "@/lib/firebase";
 import { getToken } from "firebase/messaging";
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
@@ -249,7 +249,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       { name: "Shift Audit", href: "/shift-reports/manager", icon: Shield },
       { name: "Report Search", href: "/financials/report-search", icon: Search }
     ]},
-    { name: "Expired", icon: PackageX, children: [
+    { name: "Expired", icon: PackageX, Truck, children: [
       { name: t("nav.expiries"), href: "/dashboard/expiries-audit", icon: ClipboardList },
       { name: "Product Lookup", href: "/admin/product-lookup", icon: Search }
     ]},
@@ -402,9 +402,9 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                              {pendingVoidCount}
                            </span>
                         )}
-                        {item.name === "Expired" && (pendingExpiriesCount + pendingReturnsCount) > 0 && (
+                        {item.name === "Expired" && pendingExpiriesCount > 0 && (
                            <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-1 animate-pulse shadow-sm shadow-red-500/30">
-                             {pendingExpiriesCount + pendingReturnsCount}
+                             {pendingExpiriesCount}
                            </span>
                         )}
                       </button>
@@ -431,7 +431,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                             )}
                             {child.name === "Expiry Audits" && (pendingExpiriesCount + pendingReturnsCount) > 0 && (
                               <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
-                                {pendingExpiriesCount + pendingReturnsCount}
+                                {pendingExpiriesCount}
                               </span>
                             )}
                           </Link>
@@ -554,9 +554,9 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                            {pendingVoidCount}
                          </span>
                       )}
-                      {item.name === "Expired" && (pendingExpiriesCount + pendingReturnsCount) > 0 && (
+                      {item.name === "Expired" && pendingExpiriesCount > 0 && (
                          <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-pulse shadow-sm">
-                           {pendingExpiriesCount + pendingReturnsCount}
+                           {pendingExpiriesCount}
                          </span>
                       )}
                     </div>
@@ -589,7 +589,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                           )}
                           {child.name === "Expiry Audits" && (pendingExpiriesCount + pendingReturnsCount) > 0 && (
                             <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
-                              {pendingExpiriesCount + pendingReturnsCount}
+                              {pendingExpiriesCount}
                             </span>
                           )}
                         </Link>
