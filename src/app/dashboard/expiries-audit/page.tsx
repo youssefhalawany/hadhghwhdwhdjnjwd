@@ -105,10 +105,10 @@ export default function ExpiryAuditPage() {
       
       const auditPayload = {
         status: auditAction === "return" ? "pending_return" : "audited",
-        quantity: expiredQty,
-        soldQuantity: soldQty,
-        originalQuantity: currentQty,
-        expiryDate: currentDate,
+        quantity: expiredQty || 0,
+        soldQuantity: soldQty || 0,
+        originalQuantity: currentQty || 0,
+        expiryDate: currentDate || "2026-01-01",
         auditedAt: new Date().toISOString(),
         auditedBy: localStorage.getItem("circlek_role") || "manager" // Fallback
       };
@@ -166,8 +166,8 @@ export default function ExpiryAuditPage() {
             category: item.category || "uncategorized",
             supplier: item.supplier || "Unknown Supplier",
             quantity: expiredQty,
-            storeId: normalizedStoreId,
-            branchId: targetBranch,
+            storeId: normalizedStoreId || "Unknown Store",
+            branchId: targetBranch || "alamein4",
             status: "pending", // pending, returned
             createdAt: new Date().toISOString(),
             createdBy: managerEmail || "Unknown Manager",
@@ -191,7 +191,7 @@ export default function ExpiryAuditPage() {
       setEditingId(null);
     } catch (err) {
       console.error("Error auditing item:", err);
-      alert("Failed to audit item.");
+      alert("Failed to audit item: " + (err.message || JSON.stringify(err)));
     } finally {
       setProcessing(null);
     }
