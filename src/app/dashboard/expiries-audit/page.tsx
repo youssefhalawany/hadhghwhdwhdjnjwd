@@ -88,14 +88,22 @@ export default function ExpiryAuditPage() {
         auditedBy: localStorage.getItem("circlek_role") || "manager" // Fallback
       };
 
-      // 1. Update status in expiries
-      await updateDoc(doc(db, "expiries", item.id), auditPayload);
-      
-      // Update local state
-      if (selectedExpiry && selectedExpiry.id === item.id) {
-        setSelectedExpiry({ ...selectedExpiry, ...auditPayload });
+      if (expiredQty === 0) {
+        await deleteDoc(doc(db, "expiries", item.id));
+        setAllExpiries(prev => prev.filter(i => i.id !== item.id));
+        if (selectedExpiry && selectedExpiry.id === item.id) {
+          setSelectedExpiry(null);
+        }
+      } else {
+        // 1. Update status in expiries
+        await updateDoc(doc(db, "expiries", item.id), auditPayload);
+        
+        // Update local state
+        if (selectedExpiry && selectedExpiry.id === item.id) {
+          setSelectedExpiry({ ...selectedExpiry, ...auditPayload });
+        }
+        setAllExpiries(prev => prev.map(i => i.id === item.id ? { ...i, ...auditPayload } : i));
       }
-      setAllExpiries(prev => prev.map(i => i.id === item.id ? { ...i, ...auditPayload } : i));
 
       // 2. Add to expired_items ONLY if there's actually an expired quantity
       if (expiredQty > 0) {
