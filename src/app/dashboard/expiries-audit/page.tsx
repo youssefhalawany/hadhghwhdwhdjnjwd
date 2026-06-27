@@ -187,7 +187,12 @@ export default function ExpiryAuditPage() {
 
   const items = allExpiries.filter(i => {
     if (currentBranch === "all") return true;
-    if (i.branchId) return i.branchId === currentBranch;
+    let bId = i.branchId;
+    if (bId === "eL-alamein-4" || bId === "el-alamein-4") bId = "alamein4";
+    if (bId === "ola-el-koronfol") bId = "ola";
+    
+    if (bId === "alamein4" || bId === "ola") return bId === currentBranch;
+    
     const storeStr = (i.storeId || "").toLowerCase();
     const inferred = storeStr.includes("ola") || storeStr.includes("koronfol") ? "ola" : "alamein4";
     return inferred === currentBranch;
@@ -200,12 +205,12 @@ export default function ExpiryAuditPage() {
     (item.addedBy || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const pendingItems = items.filter(i => i.status === "pulled" && i.itemName.toLowerCase().includes(reportFilters.item.toLowerCase()));
+  const pendingItems = items.filter(i => (i.status || "").toLowerCase() === "pulled" && (i.itemName || "").toLowerCase().includes((reportFilters.item || "").toLowerCase()));
   
   // Apply Advanced Filters
   const filteredReportItems = items.filter(i => {
     // Status Filter
-    if (reportFilters.status !== "all" && i.status !== reportFilters.status) return false;
+    if (reportFilters.status !== "all" && (i.status || "").toLowerCase() !== reportFilters.status.toLowerCase()) return false;
     
     // Supplier Filter
     if (reportFilters.supplier && !(i.supplier || "").toLowerCase().includes(reportFilters.supplier.toLowerCase())) return false;
