@@ -43,6 +43,12 @@ export default function ExpiryAuditPage() {
   const [settlementMethod, setSettlementMethod] = useState<"money" | "products">("money");
   const [paymentTiming, setPaymentTiming] = useState<"now" | "later">("now");
   const [expectedPaymentDate, setExpectedPaymentDate] = useState("");
+  const [showManualReturn, setShowManualReturn] = useState(false);
+  const [manualBarcode, setManualBarcode] = useState("");
+  const [manualName, setManualName] = useState("");
+  const [manualQty, setManualQty] = useState(1);
+  const [manualSupplier, setManualSupplier] = useState("");
+  const [isSearchingProduct, setIsSearchingProduct] = useState(false);
 
   // Advanced Filters
   const [reportFilters, setReportFilters] = useState({
@@ -339,10 +345,11 @@ export default function ExpiryAuditPage() {
   });
 
   const filteredExpiries = items.filter(item => 
-    (item.itemName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+    ((item.itemName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     (item.barcode || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     (item.storeId || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (item.addedBy || "").toLowerCase().includes(searchQuery.toLowerCase())
+    (item.addedBy || "").toLowerCase().includes(searchQuery.toLowerCase())) &&
+    item.status !== "audited" && item.status !== "pending_return"
   );
 
   const pendingItems = items.filter(i => (i.status || "").toLowerCase() === "pulled" && (i.itemName || "").toLowerCase().includes((reportFilters.item || "").toLowerCase()));
