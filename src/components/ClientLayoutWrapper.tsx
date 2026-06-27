@@ -249,7 +249,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       { name: "Shift Audit", href: "/shift-reports/manager", icon: Shield },
       { name: "Report Search", href: "/financials/report-search", icon: Search }
     ]},
-    { name: "Expired", icon: PackageX, Truck, children: [
+    { name: "Returns", href: "/dashboard/supplier-returns", icon: Truck },
+    { name: "Expired", icon: PackageX, children: [
       { name: t("nav.expiries"), href: "/dashboard/expiries-audit", icon: ClipboardList },
       { name: "Product Lookup", href: "/admin/product-lookup", icon: Search }
     ]},
@@ -460,6 +461,11 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                     )}
                     <Icon className={`h-4 w-4 ${isActive ? 'scale-110 drop-shadow-sm' : 'opacity-70 group-hover:opacity-100 transition-opacity'}`} />
                     {!item.isIconOnly && <span>{item.name}</span>}
+                    {item.name === "Returns" && pendingReturnsCount > 0 && (
+                      <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-1 animate-pulse shadow-sm shadow-red-500/30">
+                        {pendingReturnsCount}
+                      </span>
+                    )}
                   </Link>
                 );
               })}
