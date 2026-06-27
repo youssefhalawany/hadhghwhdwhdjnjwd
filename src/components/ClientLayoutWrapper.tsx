@@ -374,15 +374,15 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
               <div className="h-9 w-9 rounded-full bg-red-600 flex items-center justify-center font-black text-white text-lg border-2 border-orange-500 shadow-md">
                 K
               </div>
-              <div className="flex flex-col">
+              <div className="flex flex-col text-start">
                 <span className="font-bold tracking-wider text-sm sm:text-base text-red-600 dark:text-red-500">CIRCLE K</span>
                 <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">
-                  {currentBranch === 'alamein4' ? 'El Alamein 4 Portal' : currentBranch === 'ola' ? 'Ola El Koronfol Portal' : 'All Branches Portal'}
+                  {currentBranch === 'alamein4' ? (language === 'ar' ? 'بوابة العلمين 4' : 'El Alamein 4 Portal') : currentBranch === 'ola' ? (language === 'ar' ? 'بوابة علا القرنفل' : 'Ola El Koronfol Portal') : (language === 'ar' ? 'بوابة جميع الفروع' : 'All Branches Portal')}
                 </span>
               </div>
             </Link>
 
-            <nav className="hidden lg:flex items-center gap-2 ml-4">
+            <nav className="hidden lg:flex items-center gap-2 ms-4">
               {navItems.map((item) => {
                 const isActive = item.href ? pathname === item.href : item.children?.some(child => pathname === child.href);
                 const Icon = item.icon;
@@ -394,17 +394,17 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                         <Icon className={`h-4 w-4 ${isActive ? 'scale-110 drop-shadow-sm' : 'opacity-70 group-hover:opacity-100 transition-opacity'}`} />
                         <span>{item.name}</span>
                         {item.name === "Financials" && pendingShiftCount > 0 && (
-                           <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-1 animate-pulse shadow-sm shadow-red-500/30">
+                           <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ms-1 animate-pulse shadow-sm shadow-red-500/30">
                              {pendingShiftCount}
                            </span>
                         )}
                         {item.name === "Financials" && pendingVoidCount > 0 && pendingShiftCount === 0 && (
-                           <span className="bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-1 shadow-sm shadow-orange-500/30">
+                           <span className="bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ms-1 shadow-sm shadow-orange-500/30">
                              {pendingVoidCount}
                            </span>
                         )}
                         {item.name === "Expired" && pendingExpiriesCount > 0 && (
-                           <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-1 animate-pulse shadow-sm shadow-red-500/30">
+                           <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ms-1 animate-pulse shadow-sm shadow-red-500/30">
                              {pendingExpiriesCount}
                            </span>
                         )}
@@ -460,9 +460,9 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                       <span className="absolute inset-0 bg-slate-100 dark:bg-slate-800 rounded-xl opacity-0 group-hover:opacity-100 scale-95 group-hover:scale-100 transition-all duration-200 -z-10"></span>
                     )}
                     <Icon className={`h-4 w-4 ${isActive ? 'scale-110 drop-shadow-sm' : 'opacity-70 group-hover:opacity-100 transition-opacity'}`} />
-                    {!item.isIconOnly && <span>{item.name}</span>}
+                    {!item.isIconOnly && <span>{language === 'ar' && item.name === 'Returns' ? 'مرتجعات' : language === 'ar' && item.name === 'Expired' ? 'منتهية الصلاحية' : language === 'ar' && item.name === 'Admin' ? 'الإدارة' : language === 'ar' && item.name === 'Checklists' ? 'قوائم المراجعة' : language === 'ar' && item.name === 'Financials' ? 'الماليات' : item.name}</span>}
                     {item.name === "Returns" && pendingReturnsCount > 0 && (
-                      <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-1 animate-pulse shadow-sm shadow-red-500/30">
+                      <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ms-1 animate-pulse shadow-sm shadow-red-500/30">
                         {pendingReturnsCount}
                       </span>
                     )}
@@ -475,8 +475,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
           <div className="flex items-center gap-2 sm:gap-4">
             {/* User Greeting */}
             {userDoc && (
-              <div className="hidden md:flex items-center gap-2 text-sm font-semibold text-muted-foreground mr-2">
-                <span>Welcome, <span className="text-foreground">{userDoc.displayName || user?.email?.split('@')[0]}</span></span>
+              <div className="hidden md:flex items-center gap-2 text-sm font-semibold text-muted-foreground me-2">
+                <span>{language === 'ar' ? 'مرحباً، ' : 'Welcome, '}<span className="text-foreground">{userDoc.displayName || user?.email?.split('@')[0]}</span></span>
               </div>
             )}
 
@@ -488,10 +488,10 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                 value={currentBranch}
                 onChange={(e) => setBranch(e.target.value as BranchId)}
                 className="bg-transparent border-none text-xs font-semibold focus:ring-0 cursor-pointer outline-none text-foreground"
-                title="Select Branch"
+                title={language === "ar" ? "اختر الفرع" : "Select Branch"}
               >
                 {availableBranches.map((b) => (
-                  <option key={b.id} value={b.id} className="bg-card">{b.name}</option>
+                  <option key={b.id} value={b.id} className="bg-card">{language === "ar" && b.id === "alamein4" ? "العلمين 4" : language === "ar" && b.id === "ola" ? "علا القرنفل" : b.name}</option>
                 ))}
               </select>
             </div>
@@ -503,7 +503,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
             <button
               onClick={() => setLanguage(language === "en" ? "ar" : "en")}
               className="p-2 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-              title="Toggle Language"
+              title={language === "ar" ? "تغيير اللغة" : "Toggle Language"}
             >
               <Languages className="h-4 w-4" />
               <span className="text-[10px] font-bold uppercase">{language === "en" ? "عربي" : "EN"}</span>
@@ -514,7 +514,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
               id="btn-toggle-theme"
               onClick={toggleTheme}
               className="p-2 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-              title="Toggle Dark/Light Mode"
+              title={language === "ar" ? "تبديل المظهر" : "Toggle Dark/Light Mode"}
             >
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
@@ -523,14 +523,14 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
             <button
               onClick={() => signOut(auth)}
               className="p-2 rounded-lg border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors hidden sm:flex"
-              title="Sign Out"
+              title={language === "ar" ? "تسجيل الخروج" : "Sign Out"}
             >
               <LogOut className="h-4 w-4" />
             </button>
 
             {/* Mobile Hamburger Toggle */}
             <button 
-              className="lg:hidden p-2 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground transition-colors ml-1"
+              className="lg:hidden p-2 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground transition-colors ms-1"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}

@@ -357,7 +357,7 @@ export default function SupplierReturnsDashboard() {
             </div>
             <div>
               <h1 className="text-2xl font-black uppercase tracking-tight">Supplier Returns</h1>
-              <p className="text-sm text-muted-foreground mt-1">Manage return handovers, pending financial settlements, and history.</p>
+              <p className="text-sm text-muted-foreground mt-1">{lang === "ar" ? "إدارة عمليات تسليم المرتجعات، والتسويات المالية المعلقة، والتاريخ." : "Manage return handovers, pending financial settlements, and history."}</p>
             </div>
           </div>
           <div className="flex gap-2 w-full md:w-auto">
@@ -365,7 +365,7 @@ export default function SupplierReturnsDashboard() {
               onClick={() => setShowManualReturn(true)}
               className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center justify-center gap-2"
             >
-              + Manual Return
+              + {lang === "ar" ? "مرتجع يدوي" : "Manual Return"}
             </button>
           </div>
         </div>
@@ -405,7 +405,7 @@ export default function SupplierReturnsDashboard() {
                 {Object.keys(returnsBySupplier).length === 0 ? (
                   <div className="glass-panel p-16 text-center border-2 border-dashed border-border rounded-2xl">
                     <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-                    <h3 className="text-lg font-bold">No Pending Returns</h3>
+                    <h3 className="text-lg font-bold">{lang === "ar" ? "لا توجد مرتجعات معلقة" : "No Pending Returns"}</h3>
                     <p className="text-muted-foreground text-sm mt-1">There are no items waiting to be returned to suppliers.</p>
                   </div>
                 ) : (
@@ -551,29 +551,29 @@ export default function SupplierReturnsDashboard() {
               <div className="p-6 border-b border-border bg-muted/30">
                 <h3 className="text-2xl font-black tracking-tight flex items-center gap-2">
                   <Truck className="h-6 w-6 text-blue-500" />
-                  Direct Supplier Return (Manual)
+                  {lang === "ar" ? "مرتجع مورد مباشر (يدوي)" : "Direct Supplier Return (Manual)"}
                 </h3>
-                <p className="text-sm text-muted-foreground mt-1">Input all items and supplier data to generate a return receipt immediately.</p>
+                <p className="text-sm text-muted-foreground mt-1">{lang === "ar" ? "أدخل جميع الأصناف وبيانات المورد لإنشاء إيصال المرتجع فوراً." : "Input all items and supplier data to generate a return receipt immediately."}</p>
               </div>
 
               <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-8">
                 {/* 1. Supplier Selection */}
                 <div>
-                  <h4 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-3">1. Select Supplier</h4>
+                  <h4 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-3">{lang === "ar" ? "1. اختر المورد" : "1. Select Supplier"}</h4>
                   <div className="flex gap-2">
                     <select 
                       value={directSupplier}
                       onChange={e => setDirectSupplier(e.target.value)}
                       className="w-full md:w-1/2 p-3 border border-border rounded-xl bg-background outline-none focus:border-blue-500 font-bold"
                     >
-                      <option value="" disabled>-- Select a Supplier --</option>
+                      <option value="" disabled>{lang === "ar" ? "-- اختر المورد --" : "-- Select a Supplier --"}</option>
                       {allSuppliers.map(s => (
                         <option key={s} value={s}>{s}</option>
                       ))}
                     </select>
                     <input 
                       type="text" 
-                      placeholder="Or type new supplier name..."
+                      placeholder={lang === "ar" ? "أو اكتب اسم مورد جديد..." : "Or type new supplier name..."}
                       value={directSupplier}
                       onChange={e => setDirectSupplier(e.target.value)}
                       className="w-full md:w-1/2 p-3 border border-border rounded-xl bg-background outline-none focus:border-blue-500 text-sm"
@@ -583,11 +583,11 @@ export default function SupplierReturnsDashboard() {
 
                 {/* 2. Items List */}
                 <div>
-                  <h4 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-3">2. Add Return Items</h4>
+                  <h4 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-3">{lang === "ar" ? "2. إضافة أصناف المرتجع" : "2. Add Return Items"}</h4>
                   
                   <div className="flex flex-col md:flex-row gap-2 mb-4 p-4 bg-blue-500/5 rounded-xl border border-blue-500/20">
                     <div className="flex-1">
-                      <label className="text-xs font-bold text-muted-foreground mb-1 block">Barcode</label>
+                      <label className="text-xs font-bold text-muted-foreground mb-1 block">{lang === "ar" ? "الباركود" : "Barcode"}</label>
                       <div className="flex gap-2">
                         <input 
                           type="text" 
@@ -597,7 +597,7 @@ export default function SupplierReturnsDashboard() {
                           onKeyDown={e => {
                             if (e.key === 'Enter') handleSearchProduct(currentBarcode);
                           }}
-                          placeholder="Scan or type..."
+                          placeholder={lang === "ar" ? "امسح أو اكتب..." : "Scan or type..."}
                           className="w-full p-2 border border-border rounded-lg bg-background outline-none focus:border-blue-500 font-mono text-sm"
                         />
                         <button 
@@ -610,7 +610,7 @@ export default function SupplierReturnsDashboard() {
                       </div>
                     </div>
                     <div className="flex-1">
-                      <label className="text-xs font-bold text-muted-foreground mb-1 block">Item Name</label>
+                      <label className="text-xs font-bold text-muted-foreground mb-1 block">{lang === "ar" ? "اسم الصنف" : "Item Name"}</label>
                       <input 
                         type="text" 
                         value={currentName}
@@ -620,7 +620,7 @@ export default function SupplierReturnsDashboard() {
                       />
                     </div>
                     <div className="w-24">
-                      <label className="text-xs font-bold text-muted-foreground mb-1 block">Qty</label>
+                      <label className="text-xs font-bold text-muted-foreground mb-1 block">{lang === "ar" ? "الكمية" : "Qty"}</label>
                       <input 
                         type="number" 
                         min="1"
@@ -648,10 +648,10 @@ export default function SupplierReturnsDashboard() {
                       <table className="w-full text-left text-sm">
                         <thead className="bg-muted">
                           <tr>
-                            <th className="p-3 font-semibold">Item Name</th>
-                            <th className="p-3 font-semibold">Barcode</th>
-                            <th className="p-3 font-semibold text-center">Qty</th>
-                            <th className="p-3 font-semibold text-right">Action</th>
+                            <th className="p-3 font-semibold">{lang === "ar" ? "اسم الصنف" : "Item Name"}</th>
+                            <th className="p-3 font-semibold">{lang === "ar" ? "الباركود" : "Barcode"}</th>
+                            <th className="p-3 font-semibold text-center">{lang === "ar" ? "الكمية" : "Qty"}</th>
+                            <th className="p-3 font-semibold text-right">{lang === "ar" ? "إجراء" : "Action"}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
@@ -673,7 +673,7 @@ export default function SupplierReturnsDashboard() {
                         </tbody>
                         <tfoot className="bg-muted/50">
                           <tr>
-                            <td colSpan={2} className="p-3 font-bold text-right uppercase text-xs">Total Items:</td>
+                            <td colSpan={2} className="p-3 font-bold text-right uppercase text-xs">{lang === "ar" ? "إجمالي الأصناف:" : "Total Items:"}</td>
                             <td className="p-3 text-center font-black text-xl">{directItems.reduce((sum, item) => sum + item.quantity, 0)}</td>
                             <td></td>
                           </tr>
@@ -682,7 +682,7 @@ export default function SupplierReturnsDashboard() {
                     </div>
                   ) : (
                     <div className="p-8 text-center border-2 border-dashed border-border rounded-xl text-muted-foreground">
-                      No items added yet. Scan a barcode above to add items to this return.
+                      {lang === "ar" ? "لم تتم إضافة أصناف بعد. قم بمسح باركود لإضافة أصناف لهذا المرتجع." : "No items added yet. Scan a barcode above to add items to this return."}
                     </div>
                   )}
                 </div>
@@ -690,35 +690,35 @@ export default function SupplierReturnsDashboard() {
                 {/* 3. Agent Info */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border border-border rounded-xl bg-muted/20">
                   <div className="col-span-1 md:col-span-2">
-                    <h4 className="font-bold text-sm text-muted-foreground uppercase tracking-wider">3. Delivery Agent Info</h4>
+                    <h4 className="font-bold text-sm text-muted-foreground uppercase tracking-wider">{lang === "ar" ? "3. بيانات المندوب" : "3. Delivery Agent Info"}</h4>
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-muted-foreground mb-1 block">Agent Name</label>
+                    <label className="text-xs font-bold text-muted-foreground mb-1 block">{lang === "ar" ? "اسم المندوب" : "Agent Name"}</label>
                     <input 
                       type="text" 
                       value={agentName}
                       onChange={e => setAgentName(e.target.value)}
-                      placeholder="Full Name"
+                      placeholder={lang === "ar" ? "الاسم الكامل" : "Full Name"}
                       className="w-full p-2 border border-border rounded-lg bg-background outline-none focus:border-blue-500 text-sm"
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-muted-foreground mb-1 block">National ID</label>
+                    <label className="text-xs font-bold text-muted-foreground mb-1 block">{lang === "ar" ? "الرقم القومي" : "National ID"}</label>
                     <input 
                       type="text" 
                       value={agentNationalId}
                       onChange={e => setAgentNationalId(e.target.value)}
-                      placeholder="14-digit ID"
+                      placeholder={lang === "ar" ? "الرقم القومي المكون من 14 رقم" : "14-digit ID"}
                       className="w-full p-2 border border-border rounded-lg bg-background outline-none focus:border-blue-500 text-sm"
                     />
                   </div>
                   <div className="col-span-1 md:col-span-2">
-                    <label className="text-xs font-bold text-muted-foreground mb-1 block">Mobile Number</label>
+                    <label className="text-xs font-bold text-muted-foreground mb-1 block">{lang === "ar" ? "رقم الموبايل" : "Mobile Number"}</label>
                     <input 
                       type="text" 
                       value={agentMobile}
                       onChange={e => setAgentMobile(e.target.value)}
-                      placeholder="E.g. 01012345678"
+                      placeholder={lang === "ar" ? "مثال: 01012345678" : "E.g. 01012345678"}
                       className="w-full p-2 border border-border rounded-lg bg-background outline-none focus:border-blue-500 text-sm"
                     />
                   </div>
@@ -727,45 +727,45 @@ export default function SupplierReturnsDashboard() {
                 {/* 4. Settlement Details */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border border-border rounded-xl bg-amber-500/5 border-amber-500/20">
                   <div className="col-span-1 md:col-span-2">
-                    <h4 className="font-bold text-sm text-amber-700 dark:text-amber-500 uppercase tracking-wider">4. Settlement Details & Payment</h4>
+                    <h4 className="font-bold text-sm text-amber-700 dark:text-amber-500 uppercase tracking-wider">{lang === "ar" ? "4. تفاصيل التسوية والدفع" : "4. Settlement Details & Payment"}</h4>
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-muted-foreground mb-1 block">Total Expected Value (EGP)</label>
+                    <label className="text-xs font-bold text-muted-foreground mb-1 block">{lang === "ar" ? "إجمالي القيمة المتوقعة (ج.م)" : "Total Expected Value (EGP)"}</label>
                     <input 
                       type="number" 
                       value={totalPrice}
                       onChange={e => setTotalPrice(e.target.value === "" ? "" : Number(e.target.value))}
-                      placeholder="Total EGP Value of Return"
+                      placeholder={lang === "ar" ? "إجمالي قيمة المرتجع" : "Total EGP Value of Return"}
                       className="w-full p-2 border border-amber-500/30 rounded-lg bg-background outline-none focus:border-amber-500 font-bold text-amber-600 text-lg"
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-muted-foreground mb-1 block">Settlement Method</label>
+                    <label className="text-xs font-bold text-muted-foreground mb-1 block">{lang === "ar" ? "طريقة التسوية" : "Settlement Method"}</label>
                     <select
                       value={settlementMethod}
                       onChange={e => setSettlementMethod(e.target.value as "money" | "products")}
                       className="w-full p-2 border border-border rounded-lg bg-background outline-none focus:border-blue-500 text-sm"
                     >
-                      <option value="money">Money (Cash/Transfer)</option>
-                      <option value="products">Products (Exchange)</option>
+                      <option value="money">{lang === "ar" ? "نقدي (كاش/تحويل)" : "Money (Cash/Transfer)"}</option>
+                      <option value="products">{lang === "ar" ? "بضاعة (استبدال)" : "Products (Exchange)"}</option>
                     </select>
                   </div>
                   {settlementMethod === "money" && (
                     <>
                       <div>
-                        <label className="text-xs font-bold text-muted-foreground mb-1 block">Payment Timing</label>
+                        <label className="text-xs font-bold text-muted-foreground mb-1 block">{lang === "ar" ? "وقت الدفع" : "Payment Timing"}</label>
                         <select
                           value={paymentTiming}
                           onChange={e => setPaymentTiming(e.target.value as "now" | "later")}
                           className="w-full p-2 border border-border rounded-lg bg-background outline-none focus:border-blue-500 text-sm"
                         >
-                          <option value="now">Received Now (Settled)</option>
-                          <option value="later">Will Pay Later (Pending)</option>
+                          <option value="now">{lang === "ar" ? "تم الاستلام الآن (مسدد)" : "Received Now (Settled)"}</option>
+                          <option value="later">{lang === "ar" ? "الدفع لاحقاً (معلق)" : "Will Pay Later (Pending)"}</option>
                         </select>
                       </div>
                       {paymentTiming === "later" && (
                         <div>
-                          <label className="text-xs font-bold text-muted-foreground mb-1 block">Expected Date</label>
+                          <label className="text-xs font-bold text-muted-foreground mb-1 block">{lang === "ar" ? "التاريخ المتوقع" : "Expected Date"}</label>
                           <input 
                             type="date" 
                             value={expectedPaymentDate}
@@ -818,7 +818,7 @@ export default function SupplierReturnsDashboard() {
                     <thead>
                       <tr className="border-b border-border">
                         <th className="pb-2 font-semibold">Item</th>
-                        <th className="pb-2 font-semibold">Barcode</th>
+                        <th className="pb-2 font-semibold">{lang === "ar" ? "الباركود" : "Barcode"}</th>
                         <th className="pb-2 font-semibold text-right">Handover Qty</th>
                       </tr>
                     </thead>
@@ -852,32 +852,32 @@ export default function SupplierReturnsDashboard() {
                     <h4 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-2">Delivery Agent Info</h4>
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-muted-foreground mb-1 block">Agent Name</label>
+                    <label className="text-xs font-bold text-muted-foreground mb-1 block">{lang === "ar" ? "اسم المندوب" : "Agent Name"}</label>
                     <input 
                       type="text" 
                       value={agentName}
                       onChange={e => setAgentName(e.target.value)}
-                      placeholder="Full Name"
+                      placeholder={lang === "ar" ? "الاسم الكامل" : "Full Name"}
                       className="w-full p-2 border border-border rounded-lg bg-background outline-none focus:border-blue-500 text-sm"
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-muted-foreground mb-1 block">National ID</label>
+                    <label className="text-xs font-bold text-muted-foreground mb-1 block">{lang === "ar" ? "الرقم القومي" : "National ID"}</label>
                     <input 
                       type="text" 
                       value={agentNationalId}
                       onChange={e => setAgentNationalId(e.target.value)}
-                      placeholder="14-digit ID"
+                      placeholder={lang === "ar" ? "الرقم القومي المكون من 14 رقم" : "14-digit ID"}
                       className="w-full p-2 border border-border rounded-lg bg-background outline-none focus:border-blue-500 text-sm"
                     />
                   </div>
                   <div className="col-span-1 md:col-span-2">
-                    <label className="text-xs font-bold text-muted-foreground mb-1 block">Mobile Number</label>
+                    <label className="text-xs font-bold text-muted-foreground mb-1 block">{lang === "ar" ? "رقم الموبايل" : "Mobile Number"}</label>
                     <input 
                       type="text" 
                       value={agentMobile}
                       onChange={e => setAgentMobile(e.target.value)}
-                      placeholder="E.g. 01012345678"
+                      placeholder={lang === "ar" ? "مثال: 01012345678" : "E.g. 01012345678"}
                       className="w-full p-2 border border-border rounded-lg bg-background outline-none focus:border-blue-500 text-sm"
                     />
                   </div>
@@ -898,20 +898,20 @@ export default function SupplierReturnsDashboard() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-muted-foreground mb-1 block">Settlement Method</label>
+                    <label className="text-xs font-bold text-muted-foreground mb-1 block">{lang === "ar" ? "طريقة التسوية" : "Settlement Method"}</label>
                     <select
                       value={settlementMethod}
                       onChange={e => setSettlementMethod(e.target.value as "money" | "products")}
                       className="w-full p-2 border border-border rounded-lg bg-background outline-none focus:border-blue-500 text-sm"
                     >
-                      <option value="money">Money (Cash/Transfer)</option>
-                      <option value="products">Products (Exchange)</option>
+                      <option value="money">{lang === "ar" ? "نقدي (كاش/تحويل)" : "Money (Cash/Transfer)"}</option>
+                      <option value="products">{lang === "ar" ? "بضاعة (استبدال)" : "Products (Exchange)"}</option>
                     </select>
                   </div>
                   {settlementMethod === "money" && (
                     <>
                       <div>
-                        <label className="text-xs font-bold text-muted-foreground mb-1 block">Payment Timing</label>
+                        <label className="text-xs font-bold text-muted-foreground mb-1 block">{lang === "ar" ? "وقت الدفع" : "Payment Timing"}</label>
                         <select
                           value={paymentTiming}
                           onChange={e => setPaymentTiming(e.target.value as "now" | "later")}
@@ -923,7 +923,7 @@ export default function SupplierReturnsDashboard() {
                       </div>
                       {paymentTiming === "later" && (
                         <div>
-                          <label className="text-xs font-bold text-muted-foreground mb-1 block">Expected Date</label>
+                          <label className="text-xs font-bold text-muted-foreground mb-1 block">{lang === "ar" ? "التاريخ المتوقع" : "Expected Date"}</label>
                           <input 
                             type="date" 
                             value={expectedPaymentDate}
@@ -1050,11 +1050,11 @@ export default function SupplierReturnsDashboard() {
                       <tr className="bg-gray-100 border-b-2 border-black">
                         <th className="py-2 border-r-2 border-black font-bold">
                           <div>الصنف</div>
-                          <div className="text-xs text-gray-600">Item Name</div>
+                          <div className="text-xs text-gray-600">{lang === "ar" ? "اسم الصنف" : "Item Name"}</div>
                         </th>
                         <th className="py-2 border-r-2 border-black font-bold">
                           <div>الباركود</div>
-                          <div className="text-xs text-gray-600">Barcode</div>
+                          <div className="text-xs text-gray-600">{lang === "ar" ? "الباركود" : "Barcode"}</div>
                         </th>
                         <th className="py-2 font-bold w-32">
                           <div>الكمية</div>
@@ -1096,11 +1096,11 @@ export default function SupplierReturnsDashboard() {
                   <div className="border-t-2 border-red-600 pt-6">
                     <div className="grid grid-cols-3 gap-6 text-center text-black mb-4">
                       <div>
-                        <div className="flex justify-between text-sm font-bold text-gray-500 mb-1"><span>Agent Name</span><span>اسم المندوب</span></div>
+                        <div className="flex justify-between text-sm font-bold text-gray-500 mb-1"><span>{lang === "ar" ? "اسم المندوب" : "Agent Name"}</span><span>اسم المندوب</span></div>
                         <div className="border-b-2 border-black pb-1 font-bold text-lg">{printData.agentName}</div>
                       </div>
                       <div>
-                        <div className="flex justify-between text-sm font-bold text-gray-500 mb-1"><span>National ID</span><span>رقم البطاقة</span></div>
+                        <div className="flex justify-between text-sm font-bold text-gray-500 mb-1"><span>{lang === "ar" ? "الرقم القومي" : "National ID"}</span><span>رقم البطاقة</span></div>
                         <div className="border-b-2 border-black pb-1 font-bold text-lg tracking-widest">{printData.agentNationalId}</div>
                       </div>
                       <div>
