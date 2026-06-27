@@ -29,6 +29,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [pendingShiftCount, setPendingShiftCount] = useState(0);
   const [pendingVoidCount, setPendingVoidCount] = useState(0);
+  const [pendingExpiriesCount, setPendingExpiriesCount] = useState(0);
   const pathname = usePathname();
 
   // Initialize theme, role, and mock status from localStorage
@@ -128,6 +129,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     // Fetch Badges
     let unsubscribeShifts: any = null;
     let unsubscribeVoids: any = null;
+    let unsubscribeExpiries: any = null;
 
     if (user && currentBranch) {
       // Assuming managers query specific branch or all
@@ -148,6 +150,23 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       unsubscribeVoids = onSnapshot(voidQ, (snap) => {
         setPendingVoidCount(snap.docs.length);
       }, (err) => console.log("Void badge err", err));
+
+      const expiriesQ = query(collection(db, "expiries"), where("status", "==", "pulled"));
+      unsubscribeExpiries = onSnapshot(expiriesQ, (snap) => {
+        let count = 0;
+        snap.docs.forEach(doc => {
+          const d = doc.data();
+          if (currentBranch === "all") {
+            count++;
+          } else {
+            const inferred = (d.storeId || "").toLowerCase().includes("ola") || (d.storeId || "").toLowerCase().includes("koronfol") ? "ola" : "alamein4";
+            if ((d.branchId && d.branchId === currentBranch) || (!d.branchId && inferred === currentBranch)) {
+              count++;
+            }
+          }
+        });
+        setPendingExpiriesCount(count);
+      }, (err) => console.log("Expiries badge err", err));
     }
 
     // Global Sound Effects
@@ -181,6 +200,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       window.removeEventListener('click', handleClick);
       if (unsubscribeShifts) unsubscribeShifts();
       if (unsubscribeVoids) unsubscribeVoids();
+      if (unsubscribeExpiries) unsubscribeExpiries();
     };
   }, []);
 
@@ -359,6 +379,11 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                              {pendingVoidCount}
                            </span>
                         )}
+                        {item.name === "Expired" && pendingExpiriesCount > 0 && (
+                           <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-1 animate-pulse shadow-sm shadow-red-500/30">
+                             {pendingExpiriesCount}
+                           </span>
+                        )}
                       </button>
                       <div className="absolute left-0 mt-1 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 flex flex-col py-1">
                         {item.children.map(child => (
@@ -379,6 +404,11 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                             {child.name === "Voids & Returns" && pendingVoidCount > 0 && (
                               <span className="bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
                                 {pendingVoidCount}
+                              </span>
+                            )}
+                            {child.name === "Expiry Audits" && pendingExpiriesCount > 0 && (
+                              <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
+                                {pendingExpiriesCount}
                               </span>
                             )}
                           </Link>
@@ -476,9 +506,26 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
               if (item.children) {
                 return (
                   <div key={item.name} className="flex flex-col gap-1">
-                    <div className="flex items-center gap-3 px-4 py-2 text-sm font-bold text-slate-500 uppercase tracking-widest border-b border-border mt-2">
-                      <item.icon className="h-4 w-4" />
-                      {item.name}
+                    <div className="flex justify-between items-center px-4 py-2 text-sm font-bold text-slate-500 uppercase tracking-widest border-b border-border mt-2">
+                      <div className="flex items-center gap-3">
+                        <item.icon className="h-4 w-4" />
+                        {item.name}
+                      </div>
+                      {item.name === "Financials" && pendingShiftCount > 0 && (
+                         <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-pulse shadow-sm">
+                           {pendingShiftCount}
+                         </span>
+                      )}
+                      {item.name === "Financials" && pendingVoidCount > 0 && pendingShiftCount === 0 && (
+                         <span className="bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
+                           {pendingVoidCount}
+                         </span>
+                      )}
+                      {item.name === "Expired" && pendingExpiriesCount > 0 && (
+                         <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-pulse shadow-sm">
+                           {pendingExpiriesCount}
+                         </span>
+                      )}
                     </div>
                     {item.children.map(child => {
                       const isActive = pathname === child.href;
@@ -487,14 +534,31 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                           key={child.href}
                           href={child.href}
                           onClick={() => setMobileMenuOpen(false)}
-                          className={`flex items-center gap-3 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                          className={`flex justify-between items-center px-6 py-2.5 rounded-lg text-sm font-semibold transition-all ${
                             isActive
                               ? "bg-red-500/10 text-red-600 dark:text-red-500"
                               : "text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-foreground"
                           }`}
                         >
-                          <child.icon className="h-4 w-4" />
-                          {child.name}
+                          <div className="flex items-center gap-3">
+                            <child.icon className="h-4 w-4" />
+                            {child.name}
+                          </div>
+                          {child.name === "Shift Audit" && pendingShiftCount > 0 && (
+                            <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
+                              {pendingShiftCount}
+                            </span>
+                          )}
+                          {child.name === "Voids & Returns" && pendingVoidCount > 0 && (
+                            <span className="bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
+                              {pendingVoidCount}
+                            </span>
+                          )}
+                          {child.name === "Expiry Audits" && pendingExpiriesCount > 0 && (
+                            <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
+                              {pendingExpiriesCount}
+                            </span>
+                          )}
                         </Link>
                       );
                     })}
