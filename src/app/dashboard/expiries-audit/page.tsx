@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
-import { collection, query, getDocs, updateDoc, doc, orderBy, limit, addDoc, deleteDoc } from "firebase/firestore";
+import { collection, query, getDocs, updateDoc, doc, orderBy, limit, addDoc, deleteDoc, onSnapshot } from "firebase/firestore";
 import { CheckCircle, AlertTriangle, Printer, Calendar, Search, Package, Clock, ShieldCheck, Trash2 } from "lucide-react";
 import Barcode from "react-barcode";
 import QRCode from "react-qr-code";
@@ -24,6 +24,10 @@ export default function ExpiryAuditPage() {
   const [editDate, setEditDate] = useState<string>("");
   const [processing, setProcessing] = useState<string | null>(null);
 
+  // Audit Modal State
+  const [auditModalItem, setAuditModalItem] = useState<any | null>(null);
+  const [auditSoldQty, setAuditSoldQty] = useState<string>("0");
+
   // Advanced Filters
   const [reportFilters, setReportFilters] = useState({
     status: "all", // all, active, pulled, audited
@@ -34,38 +38,41 @@ export default function ExpiryAuditPage() {
   });
 
   useEffect(() => {
-    fetchItems();
-  }, []);
-
-  const fetchItems = async () => {
     setLoading(true);
-    try {
-      const q = query(collection(db, "expiries"), orderBy("createdAt", "desc"), limit(2000));
-      const snap = await getDocs(q);
+    const q = query(collection(db, "expiries"), orderBy("createdAt", "desc"), limit(2000));
+    const unsubscribe = onSnapshot(q, (snap) => {
       const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       
       // Sort by expiry date ascending (closest to expire first)
       data.sort((a: any, b: any) => (a.expiryDate || "").localeCompare(b.expiryDate || ""));
       setAllExpiries(data);
-    } catch (err) {
-      console.error("Error fetching expiries:", err);
-    } finally {
       setLoading(false);
-    }
+    }, (error) => {
+      console.error("Error fetching expiries:", error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleOpenAuditModal = (item: any) => {
+    setAuditModalItem(item);
+    setAuditSoldQty("0");
   };
 
-  const processExpiryAudit = async (item: any) => {
+  const processExpiryAudit = async () => {
+    if (!auditModalItem) return;
+    const item = auditModalItem;
+    
     setProcessing(item.id);
     try {
       const currentQty = editingId === item.id ? editQuantity : (Number(item.quantity) || 0);
       const currentDate = editingId === item.id ? editDate : item.expiryDate;
       
-      const soldQtyStr = prompt(`Audit Expiry: Item ${item.itemName} (${item.barcode || "N/A"})\n\nTotal tracked quantity: ${currentQty}\n\nWere any of these SOLD before expiring? If yes, enter the SOLD quantity. If none were sold, enter 0:`, "0");
-      if (soldQtyStr === null) return; // Cancelled
-      
-      const soldQty = Number(soldQtyStr);
+      const soldQty = Number(auditSoldQty);
       if (isNaN(soldQty) || soldQty < 0 || soldQty > currentQty) {
-        alert("Invalid sold quantity. It must be a number between 0 and " + currentQty + ". Action cancelled.");
+        alert("Invalid sold quantity. It must be a number between 0 and " + currentQty + ".");
+        setProcessing(null);
         return;
       }
 
@@ -113,7 +120,7 @@ export default function ExpiryAuditPage() {
         });
       }
       
-      alert(`Audit completed!\nSold: ${soldQty}\nExpired: ${expiredQty}\n\nThe expired quantity has been recorded in the database.`);
+      setAuditModalItem(null); // Close modal
       setEditingId(null);
     } catch (err) {
       console.error("Error auditing item:", err);
@@ -123,12 +130,12 @@ export default function ExpiryAuditPage() {
     }
   };
 
-  const handleAudit = async (item: any) => {
-    await processExpiryAudit(item);
+  const handleAudit = (item: any) => {
+    handleOpenAuditModal(item);
   };
 
-  const handleMarkExpiryPulled = async (item: any) => {
-    await processExpiryAudit(item);
+  const handleMarkExpiryPulled = (item: any) => {
+    handleOpenAuditModal(item);
   };
 
   const handleDeleteExpiry = async (id: string) => {
@@ -423,9 +430,16 @@ export default function ExpiryAuditPage() {
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${badgeClass}`}>{badgeText}</span>
                         </div>
                         <div className="font-semibold text-lg text-foreground mb-1">{item.itemName}</div>
-                        <div className="text-xs text-muted-foreground font-mono flex items-center justify-between">
-                          <span>Barcode: {item.barcode}</span>
-                          <span className="font-bold text-foreground bg-muted px-1.5 py-0.5 rounded">Qty: {item.quantity}</span>
+                        <div className="text-xs text-muted-foreground font-mono mt-2">
+                          <div className="flex justify-between items-center mb-2">
+                            <span>{item.barcode}</span>
+                            <span className="font-bold text-foreground bg-muted px-1.5 py-0.5 rounded">Qty: {item.quantity}</span>
+                          </div>
+                          {item.barcode && item.barcode !== "N/A" && (
+                            <div className="scale-[0.8] origin-left -ml-1">
+                              <Barcode value={item.barcode} height={30} width={1.2} fontSize={12} margin={0} background="transparent" />
+                            </div>
+                          )}
                         </div>
                       </button>
                     );
@@ -562,7 +576,11 @@ export default function ExpiryAuditPage() {
                                       <span className={`w-1.5 h-1.5 rounded-full ${isExpired ? "bg-red-500 animate-ping" : "bg-orange-500"}`}></span>
                                       {item.itemName}
                                     </td>
-                                    <td className="p-2.5 font-mono text-muted-foreground">{item.barcode}</td>
+                                    <td className="p-2.5 font-mono text-muted-foreground">
+                                      {item.barcode && item.barcode !== "N/A" ? (
+                                        <div className="scale-75 origin-left -ml-2"><Barcode value={item.barcode} height={30} width={1.2} fontSize={12} margin={0} background="transparent" /></div>
+                                      ) : item.barcode}
+                                    </td>
                                     <td className="p-2.5 text-muted-foreground">{item.storeId}</td>
                                     <td className={`p-2.5 font-bold ${isExpired ? "text-red-600 dark:text-red-400" : "text-orange-600 dark:text-orange-400"}`}>
                                       {item.expiryDate} {isExpired ? "(EXPIRED)" : ""}
@@ -594,9 +612,12 @@ export default function ExpiryAuditPage() {
                     <div className="flex justify-between items-start mb-4">
                       <div>
                         <h2 className="text-2xl font-black">{selectedExpiry.itemName}</h2>
-                        <p className="text-slate-400 text-sm mt-1">
-                          Barcode: {selectedExpiry.barcode} • Store: {selectedExpiry.storeId}
-                        </p>
+                        <div className="text-slate-400 text-sm mt-1 flex items-center gap-3">
+                          <div className="scale-75 origin-left bg-white/10 p-1 rounded">
+                            <Barcode value={selectedExpiry.barcode || "N/A"} height={40} width={1.5} fontSize={14} margin={0} background="transparent" lineColor="#ffffff" />
+                          </div>
+                          <span>• Store: {selectedExpiry.storeId}</span>
+                        </div>
                         <div className="mt-3 flex items-center gap-2">
                           {/* Status Badges */}
                           {selectedExpiry.status === "pulled" ? (
@@ -962,6 +983,79 @@ export default function ExpiryAuditPage() {
           </div>
         )}
       </div>
+
+      {/* Audit Modal */}
+      {auditModalItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
+          <div className="bg-card w-full max-w-md rounded-2xl shadow-2xl border border-border overflow-hidden">
+            <div className="bg-muted p-4 border-b border-border flex justify-between items-center">
+              <h3 className="font-bold flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5 text-red-500" /> Audit Expiry
+              </h3>
+              <button 
+                onClick={() => setAuditModalItem(null)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div className="glass-panel p-4 rounded-xl text-center">
+                <p className="text-sm text-muted-foreground font-bold">Item Name</p>
+                <p className="text-xl font-black text-foreground">{auditModalItem.itemName}</p>
+                <p className="text-xs text-muted-foreground mt-1">Barcode: {auditModalItem.barcode || "N/A"}</p>
+              </div>
+
+              <div className="flex justify-between items-center bg-background border border-border p-4 rounded-xl">
+                <p className="text-sm font-bold text-muted-foreground">Total Tracked Quantity:</p>
+                <p className="text-2xl font-black text-foreground">
+                  {editingId === auditModalItem.id ? editQuantity : (Number(auditModalItem.quantity) || 0)}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-muted-foreground">Were any of these SOLD before expiring?</label>
+                <p className="text-xs text-muted-foreground">If yes, enter the SOLD quantity. If none were sold, leave as 0.</p>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    max={editingId === auditModalItem.id ? editQuantity : (Number(auditModalItem.quantity) || 0)}
+                    value={auditSoldQty}
+                    onChange={(e) => setAuditSoldQty(e.target.value)}
+                    className="w-full bg-background border border-border rounded-xl p-3 pl-4 text-xl font-black text-foreground outline-none focus:border-red-500 transition-colors"
+                  />
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground">
+                    Units Sold
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-muted/50 border-t border-border flex gap-3">
+              <button
+                onClick={() => setAuditModalItem(null)}
+                className="flex-1 px-4 py-3 bg-background border border-border rounded-xl font-bold text-sm hover:bg-muted transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={processExpiryAudit}
+                disabled={processing === auditModalItem.id}
+                className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-red-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {processing === auditModalItem.id ? (
+                  <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
+                ) : (
+                  <CheckCircle className="h-5 w-5" />
+                )}
+                Confirm Audit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

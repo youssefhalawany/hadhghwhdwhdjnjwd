@@ -2,13 +2,14 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, getDocs, query, orderBy, deleteDoc, doc, updateDoc, getDoc, setDoc } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, orderBy, deleteDoc, doc, updateDoc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { 
   ArrowLeft, Calendar as CalendarIcon, PlusCircle, AlertTriangle, 
-  CheckCircle, Clock, Trash2, Package, Globe, Camera, X, QrCode, Search
+  CheckCircle, Clock, Trash2, Package, Globe, Camera, X, QrCode, Search, ShieldCheck
 } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
+import Barcode from "react-barcode";
 import { vibrateSuccess } from "@/lib/haptics";
 
 import { PatternFormat } from "react-number-format";
@@ -42,7 +43,11 @@ export default function ExpiryTrackerPage() {
 
   // Scanner States
   const [showScanner, setShowScanner] = useState(false);
-  const [scannerError, setScannerError] = useState("");
+  const [scannerError, setScannerError] = useState<string | null>(null);
+
+  // Modal Confirmations
+  const [pullConfirmId, setPullConfirmId] = useState<string | null>(null);
+  const [soldConfirmItem, setSoldConfirmItem] = useState<any | null>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
 
@@ -56,21 +61,18 @@ export default function ExpiryTrackerPage() {
     const sessionData = JSON.parse(savedUserStr);
     setAuthenticatedUser(sessionData);
 
-    const fetchExpiries = async () => {
-      try {
-        const q = query(collection(db, "expiries"), orderBy("expiryDate", "asc"));
-        const snap = await getDocs(q);
-        setExpiries(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      } catch (error) {
-        console.error("Error fetching expiries:", error);
-      } finally {
-        setLoading(false);
-        // Focus barcode when ready
-        setTimeout(() => barcodeInputRef.current?.focus(), 100);
-      }
-    };
+    const q = query(collection(db, "expiries"), orderBy("expiryDate", "asc"));
+    const unsubscribe = onSnapshot(q, (snap) => {
+      setExpiries(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setLoading(false);
+      // Focus barcode when ready
+      setTimeout(() => barcodeInputRef.current?.focus(), 100);
+    }, (error) => {
+      console.error("Error fetching expiries:", error);
+      setLoading(false);
+    });
 
-    fetchExpiries();
+    return () => unsubscribe();
   }, [router]);
 
   // Product Lookup
@@ -349,25 +351,32 @@ export default function ExpiryTrackerPage() {
     }
   };
 
-  const markAsPulled = async (id: string) => {
-    if (!confirm(lang === "en" ? "Are you sure you want to pull this item? It will be sent to the manager for auditing." : "هل أنت متأكد من سحب هذا المنتج؟ سيتم إرساله للمدير للمراجعة.")) return;
+  const confirmMarkAsPulled = async () => {
+    if (!pullConfirmId) return;
     try {
-      await updateDoc(doc(db, "expiries", id), { status: "pulled" });
-      setExpiries(prev => prev.map(item => item.id === id ? { ...item, status: "pulled" } : item));
+      await updateDoc(doc(db, "expiries", pullConfirmId), { status: "pulled" });
+      setExpiries(prev => prev.map(item => item.id === pullConfirmId ? { ...item, status: "pulled" } : item));
+      setPullConfirmId(null);
     } catch (e) {
       console.error("Error updating:", e);
     }
   };
 
+  const confirmSaveZeroQty = async (item: any) => {
+    try {
+      await deleteDoc(doc(db, "expiries", item.id));
+      setExpiries(prev => prev.filter(i => i.id !== item.id));
+    } catch (e) {
+      console.error("Error deleting:", e);
+    }
+    setSoldConfirmItem(null);
+    setEditingQtyId(null);
+  };
+
   const saveQuantity = async (item: any) => {
     if (editItemQty === 0) {
-      if (!confirm(lang === "en" ? "Marking quantity as 0 means the item was sold. It will be removed from records. Proceed?" : "الكمية 0 تعني أن العنصر قد تم بيعه. سيتم حذفه من السجلات. متابعة؟")) return;
-      try {
-        await deleteDoc(doc(db, "expiries", item.id));
-        setExpiries(prev => prev.filter(i => i.id !== item.id));
-      } catch (e) {
-        console.error("Error deleting:", e);
-      }
+      setSoldConfirmItem(item);
+      return;
     } else {
       try {
         await updateDoc(doc(db, "expiries", item.id), { quantity: editItemQty });
@@ -612,7 +621,14 @@ export default function ExpiryTrackerPage() {
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {expiries.filter(item => item.status !== "pulled").map(item => {
+            {expiries.filter(item => {
+              if (item.status === "pulled") return false;
+              const itemDate = new Date(item.expiryDate);
+              itemDate.setHours(0,0,0,0);
+              const diffTime = itemDate.getTime() - today.getTime();
+              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+              return diffDays <= 30; // Only show 1 month or less
+            }).map(item => {
               const itemDate = new Date(item.expiryDate);
               itemDate.setHours(0,0,0,0);
               
@@ -677,9 +693,9 @@ export default function ExpiryTrackerPage() {
                             <span className="text-[10px] font-medium text-slate-500">Supplier: {item.supplier}</span>
                           )}
                           {item.barcode && (
-                            <span className="text-[10px] font-mono bg-slate-100 dark:bg-slate-800 text-slate-550 dark:text-slate-400 px-1.5 py-0.5 rounded font-bold border border-slate-200/40 dark:border-slate-700/40 w-fit flex items-center gap-0.5">
-                              <QrCode className="h-3 w-3" /> {item.barcode}
-                            </span>
+                            <div className="mt-1 scale-[0.85] origin-left">
+                              <Barcode value={item.barcode} height={30} width={1.2} fontSize={12} margin={0} background="transparent" />
+                            </div>
                           )}
                         </div>
                       </div>
@@ -703,7 +719,7 @@ export default function ExpiryTrackerPage() {
                       </button>
                       <button 
                         type="button"
-                        onClick={() => markAsPulled(item.id)}
+                        onClick={() => setPullConfirmId(item.id)}
                         className="flex items-center gap-1 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-3 py-1.5 rounded-lg text-xs font-bold hover:scale-105 active:scale-95 transition-all cursor-pointer"
                       >
                         <CheckCircle className="h-4 w-4" />
@@ -776,6 +792,64 @@ export default function ExpiryTrackerPage() {
               </div>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Pull Confirmation Modal */}
+      {pullConfirmId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-700 max-w-sm w-full text-center">
+            <ShieldCheck className="h-12 w-12 text-blue-500 mx-auto mb-4 animate-bounce" />
+            <h3 className="font-bold text-lg mb-2">{lang === "en" ? "Pull Item?" : "سحب المنتج؟"}</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+              {lang === "en" 
+                ? "Are you sure you want to pull this item? It will be sent to the manager for auditing." 
+                : "هل أنت متأكد من سحب هذا المنتج؟ سيتم إرساله للمدير للمراجعة."}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setPullConfirmId(null)}
+                className="flex-1 py-3 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-xl font-bold text-sm transition-colors"
+              >
+                {lang === "en" ? "Cancel" : "إلغاء"}
+              </button>
+              <button
+                onClick={confirmMarkAsPulled}
+                className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-lg transition-all"
+              >
+                {lang === "en" ? "Confirm" : "تأكيد"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sold 0 Qty Confirmation Modal */}
+      {soldConfirmItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-700 max-w-sm w-full text-center">
+            <CheckCircle className="h-12 w-12 text-emerald-500 mx-auto mb-4 animate-bounce" />
+            <h3 className="font-bold text-lg mb-2">{lang === "en" ? "Item Sold Out?" : "تم بيع المنتج؟"}</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+              {lang === "en" 
+                ? "Marking quantity as 0 means the item was sold. It will be removed from records. Proceed?" 
+                : "الكمية 0 تعني أن العنصر قد تم بيعه. سيتم حذفه من السجلات. متابعة؟"}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setSoldConfirmItem(null)}
+                className="flex-1 py-3 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-xl font-bold text-sm transition-colors"
+              >
+                {lang === "en" ? "Cancel" : "إلغاء"}
+              </button>
+              <button
+                onClick={() => confirmSaveZeroQty(soldConfirmItem)}
+                className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm shadow-lg transition-all"
+              >
+                {lang === "en" ? "Proceed" : "متابعة"}
+              </button>
+            </div>
           </div>
         </div>
       )}
