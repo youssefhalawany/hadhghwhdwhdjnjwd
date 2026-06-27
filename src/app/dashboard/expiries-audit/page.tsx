@@ -191,7 +191,7 @@ export default function ExpiryAuditPage() {
       setEditingId(null);
     } catch (err) {
       console.error("Error auditing item:", err);
-      alert("Failed to audit item: " + (err.message || JSON.stringify(err)));
+      alert("Failed to audit item: " + ((err as any).message || JSON.stringify(err)));
     } finally {
       setProcessing(null);
     }
