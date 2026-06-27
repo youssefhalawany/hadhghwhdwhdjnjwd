@@ -12,8 +12,9 @@ import { useBranch } from "@/context/BranchContext";
 export default function ExpiryAuditPage() {
   const { currentBranch } = useBranch();
   const [allExpiries, setAllExpiries] = useState<any[]>([]);
+  const [supplierReturns, setSupplierReturns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"active" | "pending" | "reports">("active");
+  const [activeTab, setActiveTab] = useState<"active" | "pending" | "returns" | "reports">("active");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedExpiry, setSelectedExpiry] = useState<any | null>(null);
   const [isEditingExpiry, setIsEditingExpiry] = useState(false);
@@ -27,6 +28,15 @@ export default function ExpiryAuditPage() {
   // Audit Modal State
   const [auditModalItem, setAuditModalItem] = useState<any | null>(null);
   const [auditSoldQty, setAuditSoldQty] = useState<string>("0");
+  const [auditAction, setAuditAction] = useState<"destroy" | "return">("destroy");
+
+  // Handover Modal State
+  const [handoverSupplier, setHandoverSupplier] = useState<string | null>(null);
+  const [handoverItems, setHandoverItems] = useState<any[]>([]);
+  const [agentName, setAgentName] = useState("");
+  const [agentNationalId, setAgentNationalId] = useState("");
+  const [agentMobile, setAgentMobile] = useState("");
+  const [printData, setPrintData] = useState<any | null>(null);
 
   // Advanced Filters
   const [reportFilters, setReportFilters] = useState({
@@ -52,12 +62,21 @@ export default function ExpiryAuditPage() {
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    const qReturns = query(collection(db, "supplier_returns"), orderBy("createdAt", "desc"));
+    const unsubscribeReturns = onSnapshot(qReturns, (snap) => {
+      setSupplierReturns(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    return () => {
+      unsubscribe();
+      unsubscribeReturns();
+    };
   }, []);
 
   const handleOpenAuditModal = (item: any) => {
     setAuditModalItem(item);
     setAuditSoldQty("0");
+    setAuditAction("destroy");
   };
 
   const processExpiryAudit = async () => {
@@ -79,7 +98,7 @@ export default function ExpiryAuditPage() {
       const expiredQty = currentQty - soldQty;
       
       const auditPayload = {
-        status: "audited",
+        status: auditAction === "return" ? "pending_return" : "audited",
         quantity: expiredQty,
         soldQuantity: soldQty,
         originalQuantity: currentQty,
@@ -105,7 +124,7 @@ export default function ExpiryAuditPage() {
         setAllExpiries(prev => prev.map(i => i.id === item.id ? { ...i, ...auditPayload } : i));
       }
 
-      // 2. Add to expired_items ONLY if there's actually an expired quantity
+      // 2. Add to appropriate collection ONLY if there's actually an expired quantity
       if (expiredQty > 0) {
         const savedUserStr = localStorage.getItem("active_cashier_session");
         let managerEmail = "Unknown Manager";
@@ -134,16 +153,32 @@ export default function ExpiryAuditPage() {
           normalizedStoreId = "ola-el-koronfol";
         }
 
-        await addDoc(collection(db, "expired_items"), {
-          barcode: item.barcode || "1",
-          category: item.category || "uncategorized",
-          createdAt: new Date().toISOString(),
-          createdBy: managerEmail,
-          date: todayStr,
-          name: item.itemName,
-          quantity: expiredQty,
-          storeId: normalizedStoreId
-        });
+        if (auditAction === "return") {
+          await addDoc(collection(db, "supplier_returns"), {
+            barcode: item.barcode || "1",
+            itemName: item.itemName,
+            category: item.category || "uncategorized",
+            supplier: item.supplier || "Unknown Supplier",
+            quantity: expiredQty,
+            storeId: normalizedStoreId,
+            branchId: targetBranch,
+            status: "pending", // pending, returned
+            createdAt: new Date().toISOString(),
+            createdBy: managerEmail,
+            expiryId: item.id // Link back to expiries if needed
+          });
+        } else {
+          await addDoc(collection(db, "expired_items"), {
+            barcode: item.barcode || "1",
+            category: item.category || "uncategorized",
+            createdAt: new Date().toISOString(),
+            createdBy: managerEmail,
+            date: todayStr,
+            name: item.itemName,
+            quantity: expiredQty,
+            storeId: normalizedStoreId
+          });
+        }
       }
       
       setAuditModalItem(null); // Close modal
@@ -151,6 +186,70 @@ export default function ExpiryAuditPage() {
     } catch (err) {
       console.error("Error auditing item:", err);
       alert("Failed to audit item.");
+    } finally {
+      setProcessing(null);
+    }
+  };
+
+  const processHandover = async () => {
+    if (!handoverSupplier || handoverItems.length === 0) return;
+    if (!agentName.trim() || !agentNationalId.trim() || !agentMobile.trim()) {
+      alert("Please fill in all Agent Information fields.");
+      return;
+    }
+
+    setProcessing("handover");
+    try {
+      const finalItems = [];
+
+      for (const item of handoverItems) {
+        if (item.handoverQty > 0) {
+          await updateDoc(doc(db, "supplier_returns", item.id), {
+            status: "returned",
+            quantity: item.handoverQty,
+            returnedAt: new Date().toISOString(),
+            agentName,
+            agentNationalId,
+            agentMobile
+          });
+          finalItems.push({
+            ...item,
+            quantity: item.handoverQty
+          });
+        } else {
+          // If 0, just delete it or leave it as pending? Let's delete it if they took 0.
+          await deleteDoc(doc(db, "supplier_returns", item.id));
+        }
+      }
+
+      const receiptData = {
+        supplier: handoverSupplier,
+        date: new Date().toLocaleDateString('en-GB'),
+        returnNumber: `RTV-${Date.now().toString().slice(-6)}`,
+        agentName,
+        agentNationalId,
+        agentMobile,
+        items: finalItems
+      };
+
+      setPrintData(receiptData);
+      
+      // Cleanup modal
+      setHandoverSupplier(null);
+      setHandoverItems([]);
+      setAgentName("");
+      setAgentNationalId("");
+      setAgentMobile("");
+      
+      // Give DOM time to render print view, then print
+      setTimeout(() => {
+        window.print();
+        setTimeout(() => setPrintData(null), 1000); // clear after print dialog closes
+      }, 500);
+
+    } catch (error) {
+      console.error("Error processing handover:", error);
+      alert("Failed to process handover.");
     } finally {
       setProcessing(null);
     }
@@ -378,9 +477,23 @@ export default function ExpiryAuditPage() {
             </button>
             <button 
               onClick={() => setActiveTab("reports")}
-              className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === "reports" ? "bg-background text-foreground shadow-sm border border-border" : "text-muted-foreground hover:text-foreground"}`}
+              className={`flex-1 py-3 px-4 text-center font-bold text-sm transition-all whitespace-nowrap ${
+                activeTab === "reports" 
+                  ? "bg-foreground text-background shadow-md" 
+                  : "bg-transparent text-muted-foreground hover:bg-muted"
+              }`}
             >
               Audit Reports
+            </button>
+            <button 
+              onClick={() => setActiveTab("returns")}
+              className={`flex-1 py-3 px-4 text-center font-bold text-sm transition-all whitespace-nowrap ${
+                activeTab === "returns" 
+                  ? "bg-foreground text-background shadow-md" 
+                  : "bg-transparent text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              Supplier Returns
             </button>
           </div>
         </div>
@@ -887,7 +1000,64 @@ export default function ExpiryAuditPage() {
               </div>
             )}
           </div>
-        ) : (
+        ) : activeTab === "returns" ? (
+          <div className="space-y-6">
+            <div className="bg-card p-5 border border-border rounded-xl space-y-4">
+              <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                <Package className="h-4 w-4" /> Pending Supplier Returns
+              </h3>
+              <p className="text-xs text-muted-foreground">Select a supplier below to initiate a handover and print a return receipt.</p>
+            </div>
+            {(() => {
+              const pendingReturns = supplierReturns.filter(r => r.status === "pending" && (currentBranch === "all" || r.branchId === "all" || r.branchId === currentBranch || (r.storeId && r.storeId.toLowerCase().includes(currentBranch === "ola" ? "ola" : "alamein"))));
+              if (pendingReturns.length === 0) {
+                return (
+                  <div className="text-center p-16 bg-card border border-border rounded-2xl">
+                    <CheckCircle className="h-12 w-12 text-emerald-500 mx-auto mb-4" />
+                    <h3 className="text-lg font-bold">No Pending Returns</h3>
+                    <p className="text-muted-foreground text-sm mt-1">There are no items waiting to be returned to suppliers.</p>
+                  </div>
+                );
+              }
+
+              const groupedReturns = pendingReturns.reduce((acc: any, curr: any) => {
+                const sup = curr.supplier || "Unknown Supplier";
+                if (!acc[sup]) acc[sup] = [];
+                acc[sup].push(curr);
+                return acc;
+              }, {});
+
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {Object.entries(groupedReturns).map(([supplier, rItems]: [string, any]) => (
+                    <button
+                      key={supplier}
+                      onClick={() => {
+                        setHandoverSupplier(supplier);
+                        setHandoverItems(rItems.map((i: any) => ({ ...i, handoverQty: i.quantity })));
+                        setAgentName("");
+                        setAgentNationalId("");
+                        setAgentMobile("");
+                      }}
+                      className="glass-panel p-6 rounded-xl border border-border hover:border-blue-500/50 transition-all text-left flex flex-col justify-between cursor-pointer"
+                    >
+                      <div>
+                        <h4 className="font-black text-xl mb-1">{supplier}</h4>
+                        <p className="text-sm font-bold text-muted-foreground">{rItems.length} Unique Items</p>
+                      </div>
+                      <div className="mt-4 pt-4 border-t border-border flex justify-between items-center">
+                        <span className="text-sm font-bold text-blue-500">Initiate Handover ➔</span>
+                        <span className="bg-blue-500/10 text-blue-500 px-3 py-1 rounded-lg text-xs font-black">
+                          {rItems.reduce((sum: number, i: any) => sum + Number(i.quantity), 0)} Total Units
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+        ) : activeTab === "reports" ? (
           <div className="space-y-6">
             <div className="bg-card p-5 border border-border rounded-xl space-y-4">
               <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-2">
@@ -1012,7 +1182,7 @@ export default function ExpiryAuditPage() {
             )}
 
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* Audit Modal */}
@@ -1064,6 +1234,26 @@ export default function ExpiryAuditPage() {
               </div>
             </div>
 
+            <div className="px-6 pb-2">
+              <label className="text-sm font-bold text-muted-foreground mb-2 block">Action for Expired Quantity</label>
+              <div className="flex gap-2 p-1 bg-muted rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setAuditAction("destroy")}
+                  className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${auditAction === "destroy" ? "bg-red-500 text-white shadow-md" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  Destroy
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAuditAction("return")}
+                  className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${auditAction === "return" ? "bg-blue-500 text-white shadow-md" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  Return to Supplier
+                </button>
+              </div>
+            </div>
+
             <div className="p-4 bg-muted/50 border-t border-border flex gap-3">
               <button
                 onClick={() => setAuditModalItem(null)}
@@ -1087,6 +1277,193 @@ export default function ExpiryAuditPage() {
           </div>
         </div>
       )}
+
+      {/* Handover Modal */}
+      {handoverSupplier && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
+          <div className="bg-card w-full max-w-4xl rounded-2xl shadow-2xl border border-border overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="bg-blue-600 text-white p-5 flex justify-between items-center shrink-0">
+              <h3 className="font-bold text-lg flex items-center gap-2">
+                <Package className="h-5 w-5" /> Supplier Return Handover: {handoverSupplier}
+              </h3>
+              <button 
+                onClick={() => setHandoverSupplier(null)}
+                className="text-blue-200 hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto flex-1 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="col-span-1 md:col-span-3">
+                  <h4 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-3">Delivery Agent Details</h4>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground mb-1 block">Agent Name</label>
+                  <input 
+                    type="text" 
+                    value={agentName}
+                    onChange={e => setAgentName(e.target.value)}
+                    placeholder="E.g. Ahmed Ali"
+                    className="w-full p-2 border border-border rounded-lg bg-background outline-none focus:border-blue-500 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground mb-1 block">National ID</label>
+                  <input 
+                    type="text" 
+                    value={agentNationalId}
+                    onChange={e => setAgentNationalId(e.target.value)}
+                    placeholder="14-digit National ID"
+                    className="w-full p-2 border border-border rounded-lg bg-background outline-none focus:border-blue-500 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground mb-1 block">Mobile Number</label>
+                  <input 
+                    type="text" 
+                    value={agentMobile}
+                    onChange={e => setAgentMobile(e.target.value)}
+                    placeholder="E.g. 01012345678"
+                    className="w-full p-2 border border-border rounded-lg bg-background outline-none focus:border-blue-500 text-sm"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-3 mt-4">Items to Return</h4>
+                <div className="bg-muted/30 border border-border rounded-xl overflow-hidden">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-muted">
+                      <tr>
+                        <th className="p-3 font-bold text-xs uppercase text-muted-foreground">Item Name</th>
+                        <th className="p-3 font-bold text-xs uppercase text-muted-foreground w-32">Actual Qty</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {handoverItems.map((item, index) => (
+                        <tr key={item.id}>
+                          <td className="p-3 font-semibold">{item.itemName}</td>
+                          <td className="p-3">
+                            <input 
+                              type="number"
+                              min="0"
+                              max={item.quantity}
+                              value={item.handoverQty}
+                              onChange={e => {
+                                const newItems = [...handoverItems];
+                                newItems[index].handoverQty = Number(e.target.value);
+                                setHandoverItems(newItems);
+                              }}
+                              className="w-20 p-2 border border-border rounded-lg bg-background font-black outline-none focus:border-blue-500"
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-muted/50 border-t border-border flex justify-end gap-3 shrink-0">
+              <button
+                onClick={() => setHandoverSupplier(null)}
+                className="px-6 py-3 bg-background border border-border rounded-xl font-bold text-sm hover:bg-muted transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={processHandover}
+                disabled={processing === "handover"}
+                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2 disabled:opacity-50"
+              >
+                {processing === "handover" ? (
+                  <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
+                ) : (
+                  <Printer className="h-5 w-5" />
+                )}
+                Complete Handover & Print
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Print View for Return Receipt */}
+      {printData && (
+        <div className="fixed inset-0 z-[100] bg-white print-only-container hidden print:block text-black p-8">
+          <div className="max-w-4xl mx-auto">
+            <div className="border-b-2 border-black pb-6 mb-8 flex justify-between items-end">
+              <div>
+                <h1 className="text-4xl font-black mb-2 uppercase tracking-tighter">Supplier Return Invoice</h1>
+                <p className="text-lg font-bold text-gray-600">Company: {printData.supplier}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xl font-bold">{printData.returnNumber}</p>
+                <p className="font-semibold text-gray-600 mt-1">Date: {printData.date}</p>
+              </div>
+            </div>
+
+            <div className="mb-8 p-6 border-2 border-black rounded-xl">
+              <h3 className="font-bold uppercase tracking-wider text-sm mb-4 border-b border-gray-300 pb-2">Delivery Agent Information</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <p><span className="font-bold text-gray-500">Name:</span> <span className="font-bold text-lg ml-2">{printData.agentName}</span></p>
+                <p><span className="font-bold text-gray-500">Mobile:</span> <span className="font-bold text-lg ml-2">{printData.agentMobile}</span></p>
+                <p className="col-span-2"><span className="font-bold text-gray-500">National ID:</span> <span className="font-bold text-lg ml-2 tracking-widest">{printData.agentNationalId}</span></p>
+              </div>
+            </div>
+
+            <table className="w-full text-left border-collapse mb-8">
+              <thead>
+                <tr className="border-b-2 border-black">
+                  <th className="py-3 px-4 font-bold uppercase tracking-wider">Item Name / Description</th>
+                  <th className="py-3 px-4 font-bold uppercase tracking-wider">Barcode</th>
+                  <th className="py-3 px-4 font-bold uppercase tracking-wider text-right">Returned Qty</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-300">
+                {printData.items.map((item: any, i: number) => (
+                  <tr key={i}>
+                    <td className="py-4 px-4 font-semibold text-lg">{item.itemName}</td>
+                    <td className="py-4 px-4 font-mono">{item.barcode}</td>
+                    <td className="py-4 px-4 font-black text-2xl text-right">{item.quantity}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-black">
+                  <td colSpan={2} className="py-4 px-4 font-bold text-right uppercase">Total Items Returned:</td>
+                  <td className="py-4 px-4 font-black text-3xl text-right">
+                    {printData.items.reduce((sum: number, item: any) => sum + item.quantity, 0)}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+
+            <div className="mt-16 pt-8 border-t-2 border-black grid grid-cols-2 gap-16">
+              <div className="text-center">
+                <p className="font-bold uppercase tracking-wider mb-16">Store Manager Signature</p>
+                <div className="border-b-2 border-black w-64 mx-auto"></div>
+              </div>
+              <div className="text-center">
+                <p className="font-bold uppercase tracking-wider mb-16">Delivery Agent Signature</p>
+                <div className="border-b-2 border-black w-64 mx-auto"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Inject print styles */}
+      <style dangerouslySetInnerHTML={{__html: `
+        @media print {
+          body * { visibility: hidden; }
+          .print-only-container, .print-only-container * { visibility: visible !important; }
+          .print-only-container { position: absolute; left: 0; top: 0; width: 100%; }
+        }
+      `}} />
 
     </div>
   );
