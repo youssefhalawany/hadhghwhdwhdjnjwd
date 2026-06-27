@@ -97,11 +97,45 @@ export default function CashierSchedulePage() {
       const targetMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
       
       const sId = resolveStoreId(currentUser);
-      const res = await fetch(`/api/schedule?storeId=${sId}&month=${targetMonth}`);
-      const data = await res.json();
+      const ALL_BRANCH_IDS = ["eL-alamein-4", "ola-el-koronfol"];
       
-      if (data.schedule?.isPublished) {
-        setSchedule(data.schedule);
+      const allSchedulesData = await Promise.all(
+        ALL_BRANCH_IDS.map(bId => 
+          fetch(`/api/schedule?storeId=${bId}&month=${targetMonth}`).then(r => r.json())
+        )
+      );
+      
+      const publishedSchedules = allSchedulesData
+        .map(d => d.schedule)
+        .filter(s => s && s.isPublished);
+
+      if (publishedSchedules.length > 0) {
+        // Use home schedule as base, or first available if home isn't published
+        const baseSchedule = publishedSchedules.find(s => s.storeId === sId) || publishedSchedules[0];
+        const combinedSchedule = { ...baseSchedule };
+        
+        // Aggregate shifts for this user from all branches
+        combinedSchedule.assignments = combinedSchedule.assignments.map((day: any) => {
+          const userShifts: any[] = [];
+          publishedSchedules.forEach(ps => {
+            const psDay = ps.assignments.find((d: any) => d.date === day.date);
+            if (psDay) {
+              const myS = psDay.shifts.find((s: any) => 
+                s.employeeId === currentUser.id || 
+                s.employeeName === currentUser.name || 
+                s.employeeId === currentUser.employeeId
+              );
+              if (myS) {
+                userShifts.push({ ...myS, scheduledBranch: ps.storeId });
+              }
+            }
+          });
+          return { ...day, shifts: userShifts }; // Replace generic shifts with ONLY user's shifts
+        });
+        
+        setSchedule(combinedSchedule);
+      } else {
+        setSchedule(null);
       }
 
       // Fetch requests
@@ -212,8 +246,66 @@ export default function CashierSchedulePage() {
 
       <div className="max-w-5xl mx-auto p-4 sm:p-6 mt-4">
         
-        {/* Month Toggle */}
-        <div className="flex justify-center mb-8">
+        {/* Actions & Month Toggle */}
+        <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
+          <button
+            onClick={() => {
+              if (!schedule || !schedule.assignments) return;
+              let ics = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Circle K//Schedule//EN\n";
+              
+              schedule.assignments.forEach((day: any) => {
+                const myShift = day.shifts.find((s: any) => 
+                  s.employeeId === user?.id || 
+                  s.employeeName === user?.name || 
+                  s.employeeId === user?.employeeId
+                );
+                
+                if (myShift && !myShift.shiftTime.includes('Off')) {
+                  const [yyyy, mm, dd] = day.date.split("-");
+                  let startHour = "090000";
+                  let endHour = "170000";
+                  
+                  if (myShift.shiftTime === 'Morning') { startHour = "080000"; endHour = "160000"; }
+                  if (myShift.shiftTime === 'Noon') { startHour = "160000"; endHour = "235900"; }
+                  if (myShift.shiftTime === 'Night') { startHour = "235900"; endHour = "080000"; }
+                  
+                  const dtStart = `${yyyy}${mm}${dd}T${startHour}`;
+                  // Quick logic to calculate dtEnd (roughly)
+                  let dtEnd = `${yyyy}${mm}${dd}T${endHour}`;
+                  if (myShift.shiftTime === 'Night') {
+                    // For night shift, add 1 day to end date
+                    const nextD = new Date(day.date);
+                    nextD.setDate(nextD.getDate() + 1);
+                    const [ny, nm, nd] = nextD.toISOString().split("T")[0].split("-");
+                    dtEnd = `${ny}${nm}${nd}T${endHour}`;
+                  }
+                  
+                  const location = myShift.scheduledBranch ? myShift.scheduledBranch : resolveStoreId(user);
+
+                  ics += "BEGIN:VEVENT\n";
+                  ics += `DTSTART;TZID=Africa/Cairo:${dtStart}\n`;
+                  ics += `DTEND;TZID=Africa/Cairo:${dtEnd}\n`;
+                  ics += `SUMMARY:Shift - ${myShift.shiftTime}\n`;
+                  ics += `LOCATION:${location}\n`;
+                  ics += "END:VEVENT\n";
+                }
+              });
+              ics += "END:VCALENDAR";
+
+              const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `Schedule_${resolveStoreId(user)}_${schedule.month || 'Current'}.ics`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-900 dark:bg-slate-800 dark:hover:bg-slate-700 text-white px-5 py-2.5 rounded-full text-sm font-bold transition-all shadow-lg hover:shadow-xl"
+          >
+            <CalendarDays className="w-4 h-4" />
+            Sync to Calendar
+          </button>
+
           <div className="inline-flex bg-slate-200/50 dark:bg-slate-800/50 backdrop-blur-sm p-1.5 rounded-full shadow-inner border border-slate-200 dark:border-slate-700">
             <button 
               onClick={() => handleToggleMonth(0)}
@@ -297,9 +389,16 @@ export default function CashierSchedulePage() {
                             </div>
                           </div>
 
-                          <div className={`text-sm font-bold px-4 py-2 rounded-xl flex items-center gap-2 ${getShiftColor(myShift.shiftTime)}`}>
-                            {isOff ? <Sun className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
-                            {myShift.shiftTime}
+                          <div className={`text-sm font-bold px-4 py-2 rounded-xl flex flex-col items-end gap-1 ${getShiftColor(myShift.shiftTime)}`}>
+                            <div className="flex items-center gap-2">
+                              {isOff ? <Sun className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+                              {myShift.shiftTime}
+                            </div>
+                            {myShift.scheduledBranch && myShift.scheduledBranch !== resolveStoreId(user) && (
+                              <span className="text-[9px] bg-black/10 dark:bg-white/10 px-1.5 py-0.5 rounded-sm uppercase tracking-wide">
+                                At {myShift.scheduledBranch.replace('eL-', '').replace('ola-el-', 'Ola ')}
+                              </span>
+                            )}
                           </div>
                         </motion.div>
                       );
