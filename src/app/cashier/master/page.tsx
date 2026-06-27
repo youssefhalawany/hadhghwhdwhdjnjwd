@@ -142,10 +142,15 @@ export default function MasterCashierDashboard() {
           const isExpanded = expandedId === item.id;
           
           if (item._type === "shift_report") {
-            const shortOverage = (item.totalActualSales || 0) - (item.totalSystemSales || 0);
+            const isPending = item.status === 'pending_manager';
+            const systemSales = isPending ? null : ((item.managerAudit?.expectedCash || 0) + (item.managerAudit?.expectedVisa || 0));
+            const actualSales = item.cashierCounts?.total || item.totalActualSales || 0;
+            const shortOverage = isPending ? null : (item.managerAudit?.overShort ?? (actualSales - (systemSales || 0)));
+            const totalDrops = item.safeDrops?.reduce((sum: number, drop: any) => sum + Number(drop.amount), 0) || 0;
+
             return (
-              <div key={item.id} onClick={() => setExpandedId(isExpanded ? null : item.id)} className="cursor-pointer bg-white dark:bg-slate-800 p-5 rounded-2xl shadow border border-slate-200 dark:border-slate-700 hover:shadow-md transition-shadow">
-                <div className="flex justify-between items-start mb-3">
+              <div key={item.id} className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow border border-slate-200 dark:border-slate-700 hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-start mb-3 cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : item.id)}>
                   <div className="flex gap-3">
                     <div className="bg-blue-100 text-blue-600 p-2.5 rounded-xl h-fit"><FileText className="h-6 w-6"/></div>
                     <div>
@@ -154,28 +159,30 @@ export default function MasterCashierDashboard() {
                       <p className="text-xs text-slate-400 mt-0.5">{new Date(item.createdAt).toLocaleString()}</p>
                     </div>
                   </div>
-                  <span className={`text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider ${item.status === 'pending_manager' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'}`}>
+                  <span className={`text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider ${isPending ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'}`}>
                     {item.status.replace("_", " ")}
                   </span>
                 </div>
-                <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-100 dark:border-slate-700/50">
+                <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-100 dark:border-slate-700/50 cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : item.id)}>
                   <div>
                     <p className="text-xs text-slate-500 uppercase tracking-wider">System Sales</p>
-                    <p className="font-bold text-slate-800 dark:text-slate-200">{Number(item.totalSystemSales || 0).toLocaleString()} EGP</p>
+                    <p className="font-bold text-slate-800 dark:text-slate-200">
+                      {isPending ? "Pending Audit" : `${Number(systemSales).toLocaleString()} EGP`}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-slate-500 uppercase tracking-wider">Actual Drawer</p>
-                    <p className="font-bold text-slate-800 dark:text-slate-200">{Number(item.totalActualSales || 0).toLocaleString()} EGP</p>
+                    <p className="font-bold text-slate-800 dark:text-slate-200">{Number(actualSales).toLocaleString()} EGP</p>
                   </div>
                   <div>
                     <p className="text-xs text-slate-500 uppercase tracking-wider">Difference</p>
-                    <p className={`font-bold ${shortOverage < 0 ? "text-red-500" : shortOverage > 0 ? "text-blue-500" : "text-emerald-500"}`}>
-                      {shortOverage < 0 ? "-" : "+"}{Math.abs(shortOverage).toLocaleString()} EGP
+                    <p className={`font-bold ${isPending ? "text-slate-500" : shortOverage! < 0 ? "text-red-500" : shortOverage! > 0 ? "text-blue-500" : "text-emerald-500"}`}>
+                      {isPending ? "Pending Audit" : `${shortOverage! < 0 ? "-" : "+"}${Math.abs(shortOverage!).toLocaleString()} EGP`}
                     </p>
                   </div>
                   <div>
                     <p className="text-xs text-slate-500 uppercase tracking-wider">Total Drops</p>
-                    <p className="font-bold text-slate-800 dark:text-slate-200">{Number(item.safeDrops?.reduce((sum: number, drop: any) => sum + Number(drop.amount), 0) || 0).toLocaleString()} EGP</p>
+                    <p className="font-bold text-slate-800 dark:text-slate-200">{Number(totalDrops).toLocaleString()} EGP</p>
                   </div>
                 </div>
                 {item.expenses && item.expenses.length > 0 && (
@@ -225,11 +232,23 @@ export default function MasterCashierDashboard() {
                     {item.managerAudit && (
                       <div className="mt-4 bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
                         <p className="font-bold text-slate-800 dark:text-slate-200 text-sm mb-2">Manager Audit:</p>
-                        <p className="text-sm">Audited By: {item.managerAudit.auditedBy}</p>
-                        <p className="text-sm">Status: <span className={item.managerAudit.status === 'approved' ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>{item.managerAudit.status}</span></p>
-                        {item.managerAudit.notes && <p className="text-sm mt-1 text-slate-600 italic">"{item.managerAudit.notes}"</p>}
+                        <p className="text-sm">Audited By: {item.managerAudit.managerName || item.managerAudit.auditedBy || 'Manager'}</p>
+                        <p className="text-sm">Status: <span className={item.status === 'approved' ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>{item.status}</span></p>
+                        {item.managerAudit.comments && <p className="text-sm mt-1 text-slate-600 italic">"{item.managerAudit.comments}"</p>}
                       </div>
                     )}
+                    
+                    <div className="mt-4 pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/shift-reports/view?id=${item.id}`);
+                        }}
+                        className="bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 px-4 py-2 rounded-lg text-sm font-bold transition-colors shadow-sm"
+                      >
+                        View Full Details & Print
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -237,8 +256,8 @@ export default function MasterCashierDashboard() {
           }
           if (item._type === "void_request") {
             return (
-              <div key={item.id} onClick={() => setExpandedId(isExpanded ? null : item.id)} className="cursor-pointer bg-white dark:bg-slate-800 p-5 rounded-2xl shadow border border-slate-200 dark:border-slate-700 hover:shadow-md transition-shadow">
-                <div className="flex justify-between items-start mb-3">
+              <div key={item.id} className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow border border-slate-200 dark:border-slate-700 hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-start mb-3 cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : item.id)}>
                   <div className="flex gap-3">
                     <div className="bg-red-100 text-red-600 p-2.5 rounded-xl h-fit"><Shield className="h-6 w-6"/></div>
                     <div>
@@ -286,7 +305,7 @@ export default function MasterCashierDashboard() {
                   <div className="flex gap-3">
                     <div className="bg-orange-100 text-orange-600 p-2.5 rounded-xl h-fit"><Calendar className="h-6 w-6"/></div>
                     <div>
-                      <p className="font-bold text-lg text-slate-900 dark:text-white">Expiry Logged: {item.productName}</p>
+                      <p className="font-bold text-lg text-slate-900 dark:text-white">Expiry Logged: {item.itemName}</p>
                       <p className="text-sm font-medium text-slate-500">Store: {item.storeId || item.branchId || 'Unknown'}</p>
                       <p className="text-xs text-slate-400 mt-0.5">{new Date(item.createdAt).toLocaleString()}</p>
                     </div>
@@ -300,10 +319,12 @@ export default function MasterCashierDashboard() {
                     <p className="text-xs text-slate-500 uppercase tracking-wider">Quantity</p>
                     <p className="font-bold text-slate-800 dark:text-slate-200">{item.quantity} units</p>
                   </div>
-                  <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl">
-                    <p className="text-xs text-slate-500 uppercase tracking-wider">Estimated Value</p>
-                    <p className="font-bold text-slate-800 dark:text-slate-200">{Number(item.estimatedValue || (item.quantity * 2.50)).toLocaleString()} EGP</p>
-                  </div>
+                  {item.supplier && (
+                    <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl">
+                      <p className="text-xs text-slate-500 uppercase tracking-wider">Supplier</p>
+                      <p className="font-bold text-slate-800 dark:text-slate-200">{item.supplier}</p>
+                    </div>
+                  )}
                 </div>
                 
                 {isExpanded && (

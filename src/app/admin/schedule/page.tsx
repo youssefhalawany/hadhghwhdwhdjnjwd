@@ -5,11 +5,12 @@ import {
   CalendarDays, Settings, Users, CheckCircle, 
   XCircle, Printer, Send, RefreshCw, AlertCircle, BarChart3, Plus 
 } from "lucide-react";
-import ClientLayoutWrapper from "@/components/ClientLayoutWrapper";
+import { useBranch } from "@/context/BranchContext";
 import { db } from "@/lib/firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, addDoc, updateDoc, doc, onSnapshot, query, where, orderBy } from "firebase/firestore";
 
 export default function AdminSchedulePage() {
+  const { currentBranch } = useBranch();
   const [storeId, setStoreId] = useState("eL-alamein-4");
   const [month, setMonth] = useState("");
   const [schedule, setSchedule] = useState<any>(null);
@@ -20,6 +21,9 @@ export default function AdminSchedulePage() {
   const [showBorrowModal, setShowBorrowModal] = useState<number | null>(null); // dayIndex
   const [borrowSelectedEmp, setBorrowSelectedEmp] = useState<any>(null);
   const [borrowShiftTime, setBorrowShiftTime] = useState("Morning");
+  const [borrowRequests, setBorrowRequests] = useState<any[]>([]);
+  const [borrowType, setBorrowType] = useState<"days" | "forever">("days");
+  const [borrowDates, setBorrowDates] = useState<string[]>([]);
   const [rules, setRules] = useState({
     minEmployeesMorning: 2,
     minEmployeesNoon: 0,
@@ -35,7 +39,6 @@ export default function AdminSchedulePage() {
     d.setMonth(d.getMonth() + 1);
     setMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
 
-    // Fetch all employees for borrowing feature
     const fetchAllEmps = async () => {
       try {
         const snap = await getDocs(collection(db, "cashiers"));
@@ -47,6 +50,31 @@ export default function AdminSchedulePage() {
     };
     fetchAllEmps();
   }, []);
+
+  useEffect(() => {
+    if (currentBranch === "alamein4") setStoreId("eL-alamein-4");
+    else if (currentBranch === "ola") setStoreId("ola-el-koronfol");
+    // if "all", we keep whatever was selected
+  }, [currentBranch]);
+
+  useEffect(() => {
+    if (!storeId) return;
+    const unsub = onSnapshot(collection(db, "borrow_requests"), (snap) => {
+      const reqs = snap.docs.map(d => ({id: d.id, ...d.data()}))
+        .filter((r: any) => r.sourceStoreId === storeId || r.targetStoreId === storeId)
+        .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setBorrowRequests(reqs);
+    });
+    return () => unsub();
+  }, [storeId]);
+
+  useEffect(() => {
+    if (showBorrowModal !== null && schedule?.assignments[showBorrowModal]) {
+      setBorrowDates([schedule.assignments[showBorrowModal].date]);
+    } else {
+      setBorrowDates([]);
+    }
+  }, [showBorrowModal, schedule]);
 
   useEffect(() => {
     if (storeId && month) {
@@ -147,10 +175,11 @@ export default function AdminSchedulePage() {
             <select 
               value={storeId} 
               onChange={(e) => setStoreId(e.target.value)}
-              className="bg-background border border-border rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500"
+              className={`bg-background border border-border rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500 ${currentBranch !== "all" ? "opacity-75 cursor-not-allowed" : ""}`}
+              disabled={currentBranch !== "all"}
             >
-              <option value="eL-alamein-4">El Alamein 4</option>
-              <option value="ola-el-koronfol">Ola El Koronfol</option>
+              {(currentBranch === "all" || currentBranch === "alamein4") && <option value="eL-alamein-4">El Alamein 4</option>}
+              {(currentBranch === "all" || currentBranch === "ola") && <option value="ola-el-koronfol">Ola El Koronfol</option>}
             </select>
             <input 
               type="month" 
@@ -301,21 +330,32 @@ export default function AdminSchedulePage() {
               
               {/* Toolbar */}
               <div className="print:hidden flex justify-between items-center mb-6 px-4 pt-4 md:p-0 border-b border-border pb-4">
-                <div className="flex space-x-6">
+                <div className="flex space-x-6 overflow-x-auto custom-scrollbar pr-4">
                   <button 
                     onClick={() => setActiveTab('roster')}
-                    className={`pb-4 -mb-4 font-bold text-lg border-b-2 transition-colors ${activeTab === 'roster' ? 'border-blue-500 text-blue-500' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                    className={`pb-4 -mb-4 font-bold text-lg border-b-2 transition-colors whitespace-nowrap ${activeTab === 'roster' ? 'border-blue-500 text-blue-500' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
                   >
                     Schedule Roster
                   </button>
                   <button 
                     onClick={() => setActiveTab('analytics')}
-                    className={`pb-4 -mb-4 font-bold text-lg border-b-2 transition-colors ${activeTab === 'analytics' ? 'border-blue-500 text-blue-500' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                    className={`pb-4 -mb-4 font-bold text-lg border-b-2 transition-colors whitespace-nowrap ${activeTab === 'analytics' ? 'border-blue-500 text-blue-500' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
                   >
                     Employee Analytics
                   </button>
+                  <button 
+                    onClick={() => setActiveTab('requests')}
+                    className={`pb-4 -mb-4 font-bold text-lg border-b-2 transition-colors flex items-center whitespace-nowrap ${activeTab === 'requests' ? 'border-blue-500 text-blue-500' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                  >
+                    Staff Requests
+                    {borrowRequests.filter(r => r.sourceStoreId === storeId && r.status === 'pending').length > 0 && (
+                      <span className="ml-2 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                        {borrowRequests.filter(r => r.sourceStoreId === storeId && r.status === 'pending').length}
+                      </span>
+                    )}
+                  </button>
                 </div>
-                
+
                 {schedule && activeTab === 'roster' && (
                   <div className="flex space-x-3 items-center">
                     {schedule?.isPublished ? (
@@ -526,6 +566,152 @@ export default function AdminSchedulePage() {
                       </div>
                     </div>
                   )}
+
+                  {activeTab === 'requests' && (
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Incoming Requests */}
+                        <div className="bg-card border border-border rounded-xl p-4">
+                          <h3 className="font-bold text-lg mb-4 flex items-center">
+                            <span className="bg-blue-100 text-blue-700 p-1.5 rounded-lg mr-2">
+                              <Users className="w-4 h-4" />
+                            </span>
+                            Incoming Requests
+                          </h3>
+                          <div className="space-y-3">
+                            {borrowRequests.filter(r => r.sourceStoreId === storeId).length === 0 ? (
+                              <p className="text-sm text-muted-foreground text-center py-4">No incoming requests.</p>
+                            ) : (
+                              borrowRequests.filter(r => r.sourceStoreId === storeId).map((req) => (
+                                <div key={req.id} className="bg-background border border-border rounded-xl p-3">
+                                  <div className="flex justify-between items-start mb-2">
+                                    <p className="font-bold text-sm">{req.employeeName}</p>
+                                    <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase font-bold
+                                      ${req.status === 'approved' ? 'bg-green-500/20 text-green-500' : 
+                                        req.status === 'rejected' ? 'bg-red-500/20 text-red-500' : 
+                                        'bg-yellow-500/20 text-yellow-500'}`}>
+                                      {req.status}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground mb-1">
+                                    Requested by: <span className="font-semibold text-foreground">{req.targetStoreId}</span>
+                                  </p>
+                                  {req.type === 'forever' ? (
+                                    <p className="text-xs text-purple-500 font-medium mb-3 border border-purple-200 bg-purple-50 inline-block px-2 py-0.5 rounded">Permanent Transfer</p>
+                                  ) : (
+                                    <div className="text-xs text-muted-foreground mb-3">
+                                      <p>Temporary Borrow: {req.dates?.length} day(s)</p>
+                                      <p className="line-clamp-1">{req.dates?.join(', ')}</p>
+                                    </div>
+                                  )}
+                                  
+                                  {req.status === 'pending' && (
+                                    <div className="flex space-x-2">
+                                      <button 
+                                        onClick={async () => {
+                                          try {
+                                            await updateDoc(doc(db, "borrow_requests", req.id), { status: "approved" });
+                                            if (req.type === "forever") {
+                                              await updateDoc(doc(db, "cashiers", req.employeeId), {
+                                                branchId: req.targetStoreId,
+                                                storeId: req.targetStoreId
+                                              });
+                                              alert("Employee permanently transferred!");
+                                            } else {
+                                              // Auto-inject into target schedule
+                                              const firstDate = req.dates[0];
+                                              const reqMonth = firstDate.substring(0, 7);
+                                              const targetRes = await fetch(`/api/schedule?storeId=${req.targetStoreId}&month=${reqMonth}`);
+                                              const targetData = await targetRes.json();
+                                              
+                                              if (targetData.schedule) {
+                                                const newTargetSchedule = JSON.parse(JSON.stringify(targetData.schedule));
+                                                req.dates.forEach((dateStr: string) => {
+                                                  const dayIndex = newTargetSchedule.assignments.findIndex((a: any) => a.date === dateStr);
+                                                  if (dayIndex !== -1) {
+                                                    newTargetSchedule.assignments[dayIndex].shifts.push({
+                                                      employeeId: req.employeeId,
+                                                      employeeName: req.employeeName,
+                                                      shiftTime: req.shiftTime || 'Morning',
+                                                      isBorrowed: true,
+                                                      borrowedFrom: req.sourceStoreId
+                                                    });
+                                                  }
+                                                });
+                                                await fetch('/api/schedule', {
+                                                  method: 'POST',
+                                                  headers: { 'Content-Type': 'application/json' },
+                                                  body: JSON.stringify(newTargetSchedule)
+                                                });
+                                              }
+                                              alert("Request approved and added to their schedule!");
+                                            }
+                                          } catch(e) {
+                                            alert("Error approving request");
+                                          }
+                                        }}
+                                        className="flex-1 bg-green-500 hover:bg-green-600 text-white py-1.5 rounded-lg transition-colors text-xs font-bold"
+                                      >
+                                        Approve
+                                      </button>
+                                      <button 
+                                        onClick={async () => {
+                                          await updateDoc(doc(db, "borrow_requests", req.id), { status: "rejected" });
+                                        }}
+                                        className="flex-1 bg-red-500 hover:bg-red-600 text-white py-1.5 rounded-lg transition-colors text-xs font-bold"
+                                      >
+                                        Reject
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Outgoing Requests */}
+                        <div className="bg-card border border-border rounded-xl p-4">
+                          <h3 className="font-bold text-lg mb-4 flex items-center">
+                            <span className="bg-orange-100 text-orange-700 p-1.5 rounded-lg mr-2">
+                              <Send className="w-4 h-4" />
+                            </span>
+                            Outgoing Requests
+                          </h3>
+                          <div className="space-y-3">
+                            {borrowRequests.filter(r => r.targetStoreId === storeId).length === 0 ? (
+                              <p className="text-sm text-muted-foreground text-center py-4">No outgoing requests.</p>
+                            ) : (
+                              borrowRequests.filter(r => r.targetStoreId === storeId).map((req) => (
+                                <div key={req.id} className="bg-background border border-border rounded-xl p-3">
+                                  <div className="flex justify-between items-start mb-2">
+                                    <p className="font-bold text-sm">{req.employeeName}</p>
+                                    <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase font-bold
+                                      ${req.status === 'approved' ? 'bg-green-500/20 text-green-500' : 
+                                        req.status === 'rejected' ? 'bg-red-500/20 text-red-500' : 
+                                        'bg-yellow-500/20 text-yellow-500'}`}>
+                                      {req.status}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground mb-1">
+                                    Request to: <span className="font-semibold text-foreground">{req.sourceStoreId}</span>
+                                  </p>
+                                  {req.type === 'forever' ? (
+                                    <p className="text-xs text-purple-500 font-medium mb-1 border border-purple-200 bg-purple-50 inline-block px-2 py-0.5 rounded">Permanent Transfer</p>
+                                  ) : (
+                                    <div className="text-xs text-muted-foreground mb-1">
+                                      <p>Temporary Borrow: {req.dates?.length} day(s)</p>
+                                      <p className="line-clamp-1">{req.dates?.join(', ')}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -535,13 +721,31 @@ export default function AdminSchedulePage() {
         {/* Borrow Employee Modal */}
         {showBorrowModal !== null && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="bg-card w-full max-w-md rounded-2xl shadow-2xl border border-border p-6 animate-in zoom-in-95 duration-200">
-              <h3 className="text-xl font-bold mb-1">Borrow Employee</h3>
+            <div className="bg-card w-full max-w-md rounded-2xl shadow-2xl border border-border p-6 animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto custom-scrollbar">
+              <h3 className="text-xl font-bold mb-1">Request Staff</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Assign an employee from another branch for {schedule?.assignments[showBorrowModal]?.date}.
+                Request an employee from another branch.
               </p>
               
               <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase mb-1 block">Request Type</label>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => setBorrowType("days")}
+                      className={`flex-1 py-2 text-sm rounded-xl border transition-colors ${borrowType === "days" ? "bg-blue-50 border-blue-200 text-blue-700 font-bold" : "bg-card border-border hover:bg-secondary"}`}
+                    >
+                      Temporary Borrow
+                    </button>
+                    <button 
+                      onClick={() => setBorrowType("forever")}
+                      className={`flex-1 py-2 text-sm rounded-xl border transition-colors ${borrowType === "forever" ? "bg-purple-50 border-purple-200 text-purple-700 font-bold" : "bg-card border-border hover:bg-secondary"}`}
+                    >
+                      Permanent Transfer
+                    </button>
+                  </div>
+                </div>
+
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground uppercase mb-1 block">Select Employee</label>
                   <select 
@@ -563,18 +767,45 @@ export default function AdminSchedulePage() {
                   </select>
                 </div>
 
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground uppercase mb-1 block">Shift Time</label>
-                  <select 
-                    value={borrowShiftTime}
-                    onChange={(e) => setBorrowShiftTime(e.target.value)}
-                    className="w-full bg-background border border-border rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="Morning">Morning</option>
-                    <option value="Noon">Noon</option>
-                    <option value="Night">Night</option>
-                  </select>
-                </div>
+                {borrowType === "days" ? (
+                  <>
+                    <div>
+                      <label className="text-xs font-semibold text-muted-foreground uppercase mb-1 block">Select Days</label>
+                      <div className="max-h-32 overflow-y-auto border border-border rounded-xl p-2 bg-background/50 grid grid-cols-2 gap-2 custom-scrollbar">
+                        {schedule?.assignments.map((assignment: any, idx: number) => (
+                          <label key={idx} className="flex items-center space-x-2 text-sm cursor-pointer p-1 hover:bg-secondary rounded">
+                            <input 
+                              type="checkbox" 
+                              checked={borrowDates.includes(assignment.date)} 
+                              onChange={(e) => {
+                                if (e.target.checked) setBorrowDates([...borrowDates, assignment.date]);
+                                else setBorrowDates(borrowDates.filter(d => d !== assignment.date));
+                              }}
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span>{assignment.date}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-muted-foreground uppercase mb-1 block">Shift Time</label>
+                      <select 
+                        value={borrowShiftTime}
+                        onChange={(e) => setBorrowShiftTime(e.target.value)}
+                        className="w-full bg-background border border-border rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="Morning">Morning</option>
+                        <option value="Noon">Noon</option>
+                        <option value="Night">Night</option>
+                      </select>
+                    </div>
+                  </>
+                ) : (
+                  <div className="bg-purple-50 text-purple-700 p-4 rounded-xl text-sm border border-purple-100">
+                    <strong>Note:</strong> This will send a request to permanently move this employee to <strong>{storeId}</strong>. They will no longer appear on their original branch's schedule.
+                  </div>
+                )}
               </div>
 
               <div className="flex space-x-3 mt-6">
@@ -582,39 +813,46 @@ export default function AdminSchedulePage() {
                   onClick={() => {
                     setShowBorrowModal(null);
                     setBorrowSelectedEmp(null);
+                    setBorrowDates([]);
                   }}
                   className="flex-1 px-4 py-2 bg-secondary text-foreground rounded-xl hover:bg-secondary/80 font-medium"
                 >
                   Cancel
                 </button>
                 <button 
-                  onClick={() => {
+                  onClick={async () => {
                     if (!borrowSelectedEmp) return;
-                    const newSchedule = JSON.parse(JSON.stringify(schedule));
-                    newSchedule.assignments[showBorrowModal].shifts.push({
+                    
+                    const requestData = {
+                      type: borrowType,
                       employeeId: borrowSelectedEmp.id,
                       employeeName: borrowSelectedEmp.name,
-                      shiftTime: borrowShiftTime,
-                      isBorrowed: true,
-                      borrowedFrom: borrowSelectedEmp.branchId || borrowSelectedEmp.storeId
-                    });
+                      sourceStoreId: borrowSelectedEmp.branchId || borrowSelectedEmp.storeId || "Unknown",
+                      targetStoreId: storeId,
+                      status: "pending",
+                      createdAt: new Date().toISOString(),
+                      ...(borrowType === "days" ? {
+                        dates: borrowDates.length > 0 ? borrowDates : [schedule?.assignments[showBorrowModal]?.date].filter(Boolean),
+                        shiftTime: borrowShiftTime
+                      } : {})
+                    };
+
+                    try {
+                      await addDoc(collection(db, "borrow_requests"), requestData);
+                      alert("Request sent successfully to the other manager!");
+                    } catch (e) {
+                      console.error("Error creating request", e);
+                      alert("Failed to send request.");
+                    }
                     
-                    setSchedule(newSchedule);
                     setShowBorrowModal(null);
                     setBorrowSelectedEmp(null);
-                    
-                    if (schedule.isPublished) {
-                      fetch('/api/schedule', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(newSchedule)
-                      }).catch(console.error);
-                    }
+                    setBorrowDates([]);
                   }}
                   disabled={!borrowSelectedEmp}
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Confirm Borrow
+                  Send Request
                 </button>
               </div>
             </div>
