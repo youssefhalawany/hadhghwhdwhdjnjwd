@@ -247,7 +247,7 @@ export default function ExpiryAuditPage() {
     (item.barcode || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     (item.storeId || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     (item.addedBy || "").toLowerCase().includes(searchQuery.toLowerCase())) &&
-    item.status !== "audited" && item.status !== "pending_return"
+    item.status !== "audited" && item.status !== "pending_return" && item.status !== "returned" && item.status !== "damaged"
   );
 
   const pendingItems = items.filter(i => (i.status || "").toLowerCase() === "pulled" && (i.itemName || "").toLowerCase().includes((reportFilters.item || "").toLowerCase()));
@@ -545,7 +545,7 @@ export default function ExpiryAuditPage() {
                     <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-border shadow-sm flex flex-col justify-between">
                       <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Tracking</span>
                       <span className="text-3xl font-black text-blue-600 mt-2">
-                        {items.filter(e => e.status !== "pulled" && e.status !== "audited").length}
+                        {items.filter(e => !["pulled", "audited", "pending_return", "returned", "damaged"].includes(e.status || "")).length}
                       </span>
                       <span className="text-[10px] text-slate-400 mt-1">Active items</span>
                     </div>
@@ -553,7 +553,7 @@ export default function ExpiryAuditPage() {
                     {/* Expired */}
                     {(() => {
                       const expiredCount = items.filter(e => {
-                        if (e.status === "pulled" || e.status === "audited") return false;
+                        if (["pulled", "audited", "pending_return", "returned", "damaged"].includes(e.status || "")) return false;
                         const exp = new Date(e.expiryDate);
                         exp.setHours(0,0,0,0);
                         const t = new Date();
@@ -575,7 +575,7 @@ export default function ExpiryAuditPage() {
                     {/* Expiring Soon */}
                     {(() => {
                       const soonCount = items.filter(e => {
-                        if (e.status === "pulled" || e.status === "audited") return false;
+                        if (["pulled", "audited", "pending_return", "returned", "damaged"].includes(e.status || "")) return false;
                         const exp = new Date(e.expiryDate);
                         exp.setHours(0,0,0,0);
                         const t = new Date();
@@ -612,7 +612,7 @@ export default function ExpiryAuditPage() {
                     
                     {(() => {
                       const criticalItems = items.filter(e => {
-                        if (e.status === "pulled" || e.status === "audited") return false;
+                        if (["pulled", "audited", "pending_return", "returned", "damaged"].includes(e.status || "")) return false;
                         const exp = new Date(e.expiryDate);
                         exp.setHours(0,0,0,0);
                         const t = new Date();
