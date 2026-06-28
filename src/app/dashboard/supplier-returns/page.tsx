@@ -39,22 +39,27 @@ export default function SupplierReturnsDashboard() {
   const [currentQty, setCurrentQty] = useState(1);
   const [isSearchingProduct, setIsSearchingProduct] = useState(false);
   const [allSuppliers, setAllSuppliers] = useState<string[]>([]);
+  const [allProducts, setAllProducts] = useState<any[]>([]);
   
   useEffect(() => {
-    // Fetch unique suppliers from products collection
-    const fetchSuppliers = async () => {
+    // Fetch all products to cache for instant barcode lookups and extract suppliers
+    const fetchProductsAndSuppliers = async () => {
       try {
         const snap = await getDocs(collection(db, "products"));
         const suppliers = new Set<string>();
+        const productsMap: any[] = [];
         snap.forEach(doc => {
-          if (doc.data().supplier) suppliers.add(doc.data().supplier);
+          const data = doc.data();
+          if (data.supplier) suppliers.add(data.supplier);
+          productsMap.push({ id: doc.id, ...data });
         });
         setAllSuppliers(Array.from(suppliers).sort());
+        setAllProducts(productsMap);
       } catch (e) {
-        console.error("Error fetching suppliers:", e);
+        console.error("Error fetching products:", e);
       }
     };
-    fetchSuppliers();
+    fetchProductsAndSuppliers();
   }, []);
 
   useEffect(() => {
@@ -67,26 +72,31 @@ export default function SupplierReturnsDashboard() {
     return () => unsubSR();
   }, []);
 
-  const handleSearchProduct = async (barcodeStr: string) => {
+  const handleSearchProduct = (barcodeStr: string) => {
     if (!barcodeStr) return;
     setIsSearchingProduct(true);
-    try {
-      const q = query(collection(db, "products"), where("barcode", "==", barcodeStr));
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        const productData = snap.docs[0].data();
-        setCurrentName(productData.name || "");
-        if (productData.supplier && !directSupplier) {
-          setDirectSupplier(productData.supplier);
-        }
-      } else {
-        setCurrentName("Unknown Item (Not in DB)");
+    
+    // Fast, local, robust search handling leading zeros and string/number types
+    const cleanStr = barcodeStr.toString().trim();
+    const strNoZero = cleanStr.replace(/^0+/, '');
+    
+    const match = allProducts.find(p => {
+      if (!p.barcode) return false;
+      const pBarcodeStr = String(p.barcode).trim();
+      const pStrNoZero = pBarcodeStr.replace(/^0+/, '');
+      return pBarcodeStr === cleanStr || pStrNoZero === strNoZero;
+    });
+
+    if (match) {
+      setCurrentName(match.name || "");
+      if (match.supplier && !directSupplier) {
+        setDirectSupplier(match.supplier);
       }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsSearchingProduct(false);
+    } else {
+      setCurrentName("Unknown Item (Not in DB)");
     }
+    
+    setIsSearchingProduct(false);
   };
   
   const handleAddDirectItem = () => {
