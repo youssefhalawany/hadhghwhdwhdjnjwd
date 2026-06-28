@@ -62,7 +62,7 @@ export default function AdminSchedulePage() {
     if (!storeId) return;
     const unsub = onSnapshot(collection(db, "borrow_requests"), (snap) => {
       const reqs = snap.docs.map(d => ({id: d.id, ...d.data()}))
-        .filter((r: any) => r.sourceStoreId === storeId || r.targetStoreId === storeId)
+        .filter((r: any) => isStoreMatch(r.sourceStoreId) || isStoreMatch(r.targetStoreId))
         .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setBorrowRequests(reqs);
     });
@@ -349,9 +349,9 @@ export default function AdminSchedulePage() {
                     className={`pb-4 -mb-4 font-bold text-lg border-b-2 transition-colors flex items-center whitespace-nowrap ${activeTab === 'requests' ? 'border-blue-500 text-blue-500' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
                   >
                     Staff Requests
-                    {borrowRequests.filter(r => r.sourceStoreId === storeId && r.status === 'pending').length > 0 && (
+                    {borrowRequests.filter(r => isStoreMatch(r.sourceStoreId) && r.status === 'pending').length > 0 && (
                       <span className="ml-2 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
-                        {borrowRequests.filter(r => r.sourceStoreId === storeId && r.status === 'pending').length}
+                        {borrowRequests.filter(r => isStoreMatch(r.sourceStoreId) && r.status === 'pending').length}
                       </span>
                     )}
                   </button>
@@ -580,10 +580,10 @@ export default function AdminSchedulePage() {
                             Incoming Requests
                           </h3>
                           <div className="space-y-3">
-                            {borrowRequests.filter(r => r.sourceStoreId === storeId).length === 0 ? (
+                            {borrowRequests.filter(r => isStoreMatch(r.sourceStoreId)).length === 0 ? (
                               <p className="text-sm text-muted-foreground text-center py-4">No incoming requests.</p>
                             ) : (
-                              borrowRequests.filter(r => r.sourceStoreId === storeId).map((req) => (
+                              borrowRequests.filter(r => isStoreMatch(r.sourceStoreId)).map((req) => (
                                 <div key={req.id} className="bg-background border border-border rounded-xl p-3">
                                   <div className="flex justify-between items-start mb-2">
                                     <p className="font-bold text-sm">{req.employeeName}</p>
@@ -680,10 +680,10 @@ export default function AdminSchedulePage() {
                             Outgoing Requests
                           </h3>
                           <div className="space-y-3">
-                            {borrowRequests.filter(r => r.targetStoreId === storeId).length === 0 ? (
+                            {borrowRequests.filter(r => isStoreMatch(r.targetStoreId)).length === 0 ? (
                               <p className="text-sm text-muted-foreground text-center py-4">No outgoing requests.</p>
                             ) : (
-                              borrowRequests.filter(r => r.targetStoreId === storeId).map((req) => (
+                              borrowRequests.filter(r => isStoreMatch(r.targetStoreId)).map((req) => (
                                 <div key={req.id} className="bg-background border border-border rounded-xl p-3">
                                   <div className="flex justify-between items-start mb-2">
                                     <p className="font-bold text-sm">{req.employeeName}</p>
