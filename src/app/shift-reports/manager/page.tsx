@@ -1089,6 +1089,8 @@ export default function ManagerAuditPage() {
                     <option value="">-- Choose a Cashier --</option>
                     {cashiersList.filter((c: any) => {
                       if (currentBranch === "all") return true;
+                      if (c.branchId) return c.branchId === currentBranch;
+                      
                       const store = (c.storeId || "").toLowerCase();
                       if (currentBranch === "alamein4") return store.includes("alamein") || (!store.includes("alamein") && !store.includes("ola"));
                       if (currentBranch === "ola") return store.includes("ola");
