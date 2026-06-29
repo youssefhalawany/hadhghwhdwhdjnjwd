@@ -292,7 +292,14 @@ export default function CashierShiftReportPage() {
       );
       const earlyDaySnap = await getDocs(earlyDayQuery);
       if (!earlyDaySnap.empty) {
-        setEarlyDayRequest({ id: earlyDaySnap.docs[0].id, ...earlyDaySnap.docs[0].data() });
+        const earlyDayData = { id: earlyDaySnap.docs[0].id, ...earlyDaySnap.docs[0].data() };
+        setEarlyDayRequest(earlyDayData);
+        // Pre-fill date and shift from early day request
+        if (earlyDayData.targetDate) setDate(earlyDayData.targetDate);
+        if (earlyDayData.targetShift) {
+          setShift(earlyDayData.targetShift);
+          setAssignedShiftType(earlyDayData.targetShift);
+        }
       }
 
       // 1. Check if there is a rejected report for this cashier today
@@ -751,7 +758,11 @@ export default function CashierShiftReportPage() {
               <div>
                 <h3 className="text-indigo-900 dark:text-indigo-400 font-black text-sm sm:text-base uppercase tracking-wider">Early Day Drop Requested</h3>
                 <p className="text-indigo-750 dark:text-indigo-300 text-xs sm:text-sm mt-1 font-semibold leading-relaxed">
-                  Your manager has requested an early shift report. <span className="font-black">You must submit your report immediately.</span>
+                  Your manager has requested an early shift report 
+                  {earlyDayRequest.targetDate && ` for Date: ${earlyDayRequest.targetDate}`}
+                  {earlyDayRequest.targetShift && ` and Shift: ${earlyDayRequest.targetShift}`}.
+                  <br/>
+                  <span className="font-black text-indigo-900 dark:text-indigo-300 mt-2 block">You must submit your report immediately.</span>
                 </p>
               </div>
             </div>

@@ -67,6 +67,8 @@ export default function ManagerAuditPage() {
   const [earlyDayModalOpen, setEarlyDayModalOpen] = useState(false);
   const [cashiersList, setCashiersList] = useState<any[]>([]);
   const [selectedCashierForEarlyDay, setSelectedCashierForEarlyDay] = useState("");
+  const [earlyDayTargetDate, setEarlyDayTargetDate] = useState(new Date().toISOString().substring(0, 10));
+  const [earlyDayTargetShift, setEarlyDayTargetShift] = useState("Morning");
   const [requestingEarlyDay, setRequestingEarlyDay] = useState(false);
 
   useEffect(() => {
@@ -91,10 +93,14 @@ export default function ManagerAuditPage() {
         status: "pending",
         requestedAt: new Date().toISOString(),
         branchId: currentBranch,
+        targetDate: earlyDayTargetDate,
+        targetShift: earlyDayTargetShift,
       });
       toast.success("Early Day Request Sent to Cashier!");
       setEarlyDayModalOpen(false);
       setSelectedCashierForEarlyDay("");
+      setEarlyDayTargetDate(new Date().toISOString().substring(0, 10));
+      setEarlyDayTargetShift("Morning");
     } catch (e) {
       toast.error("Failed to request early day");
       console.error(e);
@@ -1091,6 +1097,30 @@ export default function ManagerAuditPage() {
                       <option key={c.id} value={c.id}>{c.name} - Store {c.storeId}</option>
                     ))}
                   </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">Target Date</label>
+                    <input
+                      type="date"
+                      value={earlyDayTargetDate}
+                      onChange={(e) => setEarlyDayTargetDate(e.target.value)}
+                      className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">Target Shift</label>
+                    <select
+                      value={earlyDayTargetShift}
+                      onChange={(e) => setEarlyDayTargetShift(e.target.value)}
+                      className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
+                    >
+                      <option value="Morning">Morning</option>
+                      <option value="Evening">Evening</option>
+                      <option value="Night">Night</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
