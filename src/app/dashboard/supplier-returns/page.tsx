@@ -162,9 +162,9 @@ export default function SupplierReturnsDashboard() {
           agentMobile,
           totalPrice: Number(totalPrice) || 0,
           settlementMethod,
-          paymentTiming: settlementMethod === "money" ? paymentTiming : null,
-          expectedPaymentDate: settlementMethod === "money" && paymentTiming === "later" ? expectedPaymentDate : null,
-          isSettled: settlementMethod === "products" || paymentTiming === "now"
+          paymentTiming: paymentTiming,
+          expectedPaymentDate: paymentTiming === "later" ? expectedPaymentDate : null,
+          isSettled: paymentTiming === "now"
         });
         finalItems.push({
           ...item,
@@ -235,9 +235,9 @@ export default function SupplierReturnsDashboard() {
             agentMobile,
             totalPrice: Number(totalPrice) || 0,
             settlementMethod,
-            paymentTiming: settlementMethod === "money" ? paymentTiming : null,
-            expectedPaymentDate: settlementMethod === "money" && paymentTiming === "later" ? expectedPaymentDate : null,
-            isSettled: settlementMethod === "products" || paymentTiming === "now"
+            paymentTiming: paymentTiming,
+            expectedPaymentDate: paymentTiming === "later" ? expectedPaymentDate : null,
+            isSettled: paymentTiming === "now"
           });
           finalItems.push({
             ...item,
@@ -296,6 +296,24 @@ export default function SupplierReturnsDashboard() {
       alert("Failed to mark settlement.");
     }
   };
+
+  const handleDeleteReturn = async () => {
+    if (!printData || !printData.eventIds) return;
+    if (!confirm(lang === "ar" ? "هل أنت متأكد من حذف هذه الفاتورة نهائياً؟ لا يمكن التراجع عن هذا الإجراء." : "Are you sure you want to permanently delete this entire return invoice and all its items? This action cannot be undone.")) return;
+    try {
+      setProcessing("delete");
+      for (const id of printData.eventIds) {
+        await deleteDoc(doc(db, "supplier_returns", id));
+      }
+      setPrintData(null);
+    } catch (err) {
+      console.error("Error deleting return:", err);
+      alert("Failed to delete the return.");
+    } finally {
+      setProcessing(null);
+    }
+  };
+
 
   const triggerPrint = () => {
     window.print();
@@ -793,21 +811,19 @@ export default function SupplierReturnsDashboard() {
                       <option value="products">{lang === "ar" ? "بضاعة (استبدال)" : "Products (Exchange)"}</option>
                     </select>
                   </div>
-                  {settlementMethod === "money" && (
-                    <>
-                      <div>
-                        <label className="text-xs font-bold text-muted-foreground mb-1 block">{lang === "ar" ? "وقت الدفع" : "Payment Timing"}</label>
+                      <div className="mt-4 md:mt-0">
+                        <label className="text-xs font-bold text-muted-foreground mb-1 block">{lang === "ar" ? "وقت الدفع/التسليم" : "Payment/Delivery Timing"}</label>
                         <select
                           value={paymentTiming}
                           onChange={e => setPaymentTiming(e.target.value as "now" | "later")}
                           className="w-full p-2 border border-border rounded-lg bg-background outline-none focus:border-blue-500 text-sm"
                         >
                           <option value="now">{lang === "ar" ? "تم الاستلام الآن (مسدد)" : "Received Now (Settled)"}</option>
-                          <option value="later">{lang === "ar" ? "الدفع لاحقاً (معلق)" : "Will Pay Later (Pending)"}</option>
+                          <option value="later">{lang === "ar" ? "آجل (معلق)" : "Will Pay/Deliver Later (Pending)"}</option>
                         </select>
                       </div>
                       {paymentTiming === "later" && (
-                        <div>
+                        <div className="mt-4 md:mt-0">
                           <label className="text-xs font-bold text-muted-foreground mb-1 block">{lang === "ar" ? "التاريخ المتوقع" : "Expected Date"}</label>
                           <input 
                             type="date" 
@@ -817,8 +833,6 @@ export default function SupplierReturnsDashboard() {
                           />
                         </div>
                       )}
-                    </>
-                  )}
                 </div>
 
               </div>
@@ -951,21 +965,19 @@ export default function SupplierReturnsDashboard() {
                       <option value="products">{lang === "ar" ? "بضاعة (استبدال)" : "Products (Exchange)"}</option>
                     </select>
                   </div>
-                  {settlementMethod === "money" && (
-                    <>
-                      <div>
-                        <label className="text-xs font-bold text-muted-foreground mb-1 block">{lang === "ar" ? "وقت الدفع" : "Payment Timing"}</label>
+                      <div className="mt-4 md:mt-0">
+                        <label className="text-xs font-bold text-muted-foreground mb-1 block">{lang === "ar" ? "وقت الدفع/التسليم" : "Payment/Delivery Timing"}</label>
                         <select
                           value={paymentTiming}
                           onChange={e => setPaymentTiming(e.target.value as "now" | "later")}
                           className="w-full p-2 border border-border rounded-lg bg-background outline-none focus:border-blue-500 text-sm"
                         >
-                          <option value="now">Received Now</option>
-                          <option value="later">Will Pay Later</option>
+                          <option value="now">{lang === "ar" ? "تم الاستلام الآن (مسدد)" : "Received Now (Settled)"}</option>
+                          <option value="later">{lang === "ar" ? "آجل (معلق)" : "Will Pay/Deliver Later (Pending)"}</option>
                         </select>
                       </div>
                       {paymentTiming === "later" && (
-                        <div>
+                        <div className="mt-4 md:mt-0">
                           <label className="text-xs font-bold text-muted-foreground mb-1 block">{lang === "ar" ? "التاريخ المتوقع" : "Expected Date"}</label>
                           <input 
                             type="date" 
@@ -975,8 +987,6 @@ export default function SupplierReturnsDashboard() {
                           />
                         </div>
                       )}
-                    </>
-                  )}
                 </div>
               </div>
               
@@ -1011,7 +1021,14 @@ export default function SupplierReturnsDashboard() {
             <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto flex flex-col shadow-2xl relative">
               <div className="p-6 border-b sticky top-0 bg-white/80 backdrop-blur-sm z-10 flex justify-between items-center no-print">
                 <h3 className="text-xl font-bold text-black">{lang === "ar" ? "إيصال المرتجع" : "Return Receipt"}</h3>
-                <div className="space-x-2">
+                <div className="space-x-2 flex items-center">
+                  <button 
+                    onClick={handleDeleteReturn}
+                    disabled={processing === "delete"}
+                    className="px-4 py-2 bg-red-600 text-white rounded-xl font-bold shadow-md hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center min-w-[120px]"
+                  >
+                    {processing === "delete" ? "..." : (lang === "ar" ? "حذف الفاتورة" : "Delete Invoice")}
+                  </button>
                   {!printData.isSettled && printData.eventIds && (
                     <button 
                       onClick={() => {
@@ -1042,7 +1059,7 @@ export default function SupplierReturnsDashboard() {
                     </div>
                   </div>
                   <div className="text-right" dir="ltr">
-                    <h2 className="text-4xl font-black text-gray-900 tracking-tighter">RTV RECEIPT</h2>
+                    <h2 className="text-3xl font-black text-gray-900 tracking-tighter">إيصال مرتجع | RTV RECEIPT</h2>
                     <p className="text-xl font-bold text-red-600 mt-1"># {printData.returnNumber}</p>
                     <p className="text-sm font-semibold text-gray-500 mt-1">{printData.date}</p>
                   </div>
@@ -1052,19 +1069,19 @@ export default function SupplierReturnsDashboard() {
                 <div className="grid grid-cols-2 gap-8 mb-8 border-b-2 border-gray-200 pb-8">
                   {/* Supplier Box */}
                   <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200">
-                    <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">{lang === "ar" ? "بيانات المورد" : "Supplier Information"}</h3>
+                    <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">بيانات المورد | Supplier Info</h3>
                     <p className="text-2xl font-black text-gray-900 mb-4">{printData.supplier}</p>
                     <div className="space-y-2">
                       <div className="flex justify-between border-b border-gray-200 pb-2">
-                        <span className="text-sm font-semibold text-gray-500">{lang === "ar" ? "اسم المندوب" : "Agent Name"}</span>
+                        <span className="text-sm font-semibold text-gray-500">المندوب | Agent</span>
                         <span className="text-sm font-bold text-gray-900">{printData.agentName}</span>
                       </div>
                       <div className="flex justify-between border-b border-gray-200 pb-2">
-                        <span className="text-sm font-semibold text-gray-500">{lang === "ar" ? "رقم الهاتف" : "Mobile"}</span>
+                        <span className="text-sm font-semibold text-gray-500">الهاتف | Mobile</span>
                         <span className="text-sm font-bold text-gray-900">{printData.agentMobile}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-sm font-semibold text-gray-500">{lang === "ar" ? "الرقم القومي" : "National ID"}</span>
+                        <span className="text-sm font-semibold text-gray-500">الرقم القومي | National ID</span>
                         <span className="text-sm font-black tracking-widest text-gray-900">{printData.agentNationalId}</span>
                       </div>
                     </div>
@@ -1073,10 +1090,10 @@ export default function SupplierReturnsDashboard() {
                   {/* Financials Box */}
                   <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200 flex flex-col justify-between">
                     <div>
-                      <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">{lang === "ar" ? "تفاصيل التسوية" : "Settlement Details"}</h3>
+                      <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">التسوية | Settlement</h3>
                       <div className="space-y-3">
                         <div className="flex justify-between items-center">
-                          <span className="text-sm font-semibold text-gray-500">{lang === "ar" ? "طريقة التسوية" : "Method"}</span>
+                          <span className="text-sm font-semibold text-gray-500">الطريقة | Method</span>
                           <span className="text-xs font-black uppercase bg-gray-200 px-3 py-1.5 rounded-md text-gray-800">
                             {printData.settlementMethod === 'money' ? (lang === "ar" ? 'نقدى/تحويل' : 'Money/Transfer') : (lang === "ar" ? 'استبدال بضاعة' : 'Products Exchange')}
                           </span>
@@ -1084,19 +1101,19 @@ export default function SupplierReturnsDashboard() {
                         {printData.settlementMethod === 'money' && (
                           <>
                             <div className="flex justify-between items-center">
-                              <span className="text-sm font-semibold text-gray-500">{lang === "ar" ? "موعد الدفع" : "Timing"}</span>
+                              <span className="text-sm font-semibold text-gray-500">الوقت | Timing</span>
                               <span className="text-sm font-bold text-gray-900">{printData.paymentTiming === 'now' ? (lang === "ar" ? 'فوري' : 'Immediate') : (lang === "ar" ? 'آجل' : 'Later')}</span>
                             </div>
                             {printData.paymentTiming === 'later' && printData.expectedPaymentDate && (
                               <div className="flex justify-between items-center">
-                                <span className="text-sm font-semibold text-gray-500">{lang === "ar" ? "تاريخ الاستحقاق" : "Due Date"}</span>
+                                <span className="text-sm font-semibold text-gray-500">تاريخ الاستحقاق | Due Date</span>
                                 <span className="text-sm font-bold text-red-600">{new Date(printData.expectedPaymentDate).toLocaleDateString()}</span>
                               </div>
                             )}
                           </>
                         )}
                         <div className="flex justify-between items-center">
-                          <span className="text-sm font-semibold text-gray-500">{lang === "ar" ? "الحالة" : "Status"}</span>
+                          <span className="text-sm font-semibold text-gray-500">الحالة | Status</span>
                           <span className={`text-xs font-black uppercase px-3 py-1.5 rounded-md ${printData.isSettled ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
                             {printData.isSettled ? (lang === "ar" ? "تمت التسوية" : "Settled") : (lang === "ar" ? "قيد الانتظار" : "Pending")}
                           </span>
@@ -1104,7 +1121,7 @@ export default function SupplierReturnsDashboard() {
                       </div>
                     </div>
                     <div className="mt-6 text-left" dir="ltr">
-                      <span className="text-xs font-black text-gray-400 uppercase tracking-widest block mb-1">Total Value</span>
+                      <span className="text-xs font-black text-gray-400 uppercase tracking-widest block mb-1">Total Value | إجمالي القيمة</span>
                       <div className="flex items-end gap-2">
                         <span className="text-5xl font-black text-gray-900 leading-none">{printData.totalPrice || 0}</span>
                         <span className="text-xl font-bold text-gray-500 mb-1">EGP</span>
@@ -1115,7 +1132,7 @@ export default function SupplierReturnsDashboard() {
 
                 {/* Items Block */}
                 <div className="mb-12">
-                  <h3 className="text-lg font-black mb-4 uppercase tracking-tight text-gray-800">{lang === "ar" ? "تفاصيل الأصناف المرتجعة" : "Returned Items Inventory"}</h3>
+                  <h3 className="text-lg font-black mb-4 uppercase tracking-tight text-gray-800">تفاصيل الأصناف المرتجعة | Returned Items</h3>
                   
                   {printData.items.length === 1 && printData.items[0].barcode === "N/A" ? (
                     <div className="border-4 border-gray-200 border-dashed rounded-3xl p-10 text-center bg-gray-50 my-8">
@@ -1130,10 +1147,10 @@ export default function SupplierReturnsDashboard() {
                       <table className="w-full text-left border-collapse">
                         <thead className="bg-gray-100">
                           <tr className="border-b-2 border-black">
-                            <th className="py-4 px-4 font-black text-xs text-gray-500 uppercase tracking-wider w-16 text-center border-r-2 border-black">#</th>
-                            <th className="py-4 px-4 font-black text-xs text-gray-500 uppercase tracking-wider w-48 border-r-2 border-black">{lang === "ar" ? "الباركود" : "Barcode"}</th>
-                            <th className="py-4 px-4 font-black text-xs text-gray-500 uppercase tracking-wider border-r-2 border-black">{lang === "ar" ? "الصنف" : "Item Description"}</th>
-                            <th className="py-4 px-4 font-black text-xs text-gray-500 uppercase tracking-wider w-24 text-center">{lang === "ar" ? "الكمية" : "Qty"}</th>
+                            <th className="py-4 px-4 font-black text-xs text-gray-500 uppercase tracking-wider w-16 text-center border-r-2 border-black">م</th>
+                            <th className="py-4 px-4 font-black text-xs text-gray-500 uppercase tracking-wider w-48 border-r-2 border-black">Barcode | باركود</th>
+                            <th className="py-4 px-4 font-black text-xs text-gray-500 uppercase tracking-wider border-r-2 border-black">Item | الصنف</th>
+                            <th className="py-4 px-4 font-black text-xs text-gray-500 uppercase tracking-wider w-24 text-center">Qty | كمية</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y border-black">
@@ -1149,7 +1166,7 @@ export default function SupplierReturnsDashboard() {
                         <tfoot className="bg-gray-100 border-t-2 border-black">
                           <tr>
                             <td colSpan={3} className="py-4 px-6 text-right font-black text-gray-600 uppercase tracking-wider border-r-2 border-black">
-                              {lang === "ar" ? "إجمالي عدد الوحدات المرتجعة" : "Total Units Returned"}
+                              Total Units | إجمالي الوحدات
                             </td>
                             <td className="py-4 px-4 text-center font-black text-3xl text-gray-900">
                               {printData.items.reduce((sum: number, it: any) => sum + Number(it.quantity || 0), 0)}
@@ -1164,14 +1181,14 @@ export default function SupplierReturnsDashboard() {
                 {/* Signatures & Approvals */}
                 <div className="mt-16 pt-8 border-t-4 border-gray-100 break-inside-avoid">
                   <div className="text-center mb-12">
-                    <p className="font-black text-lg text-gray-900 mb-1">{lang === "ar" ? "* مرفق صورة البطاقة الخاصة بالمندوب *" : "* Copy of Agent ID is attached *"}</p>
-                    <p className="text-sm font-bold text-gray-500">Document valid only with authorized signatures and ID copy attached.</p>
+                    <p className="font-black text-lg text-gray-900 mb-1">* Copy of Agent ID is attached | مرفق صورة البطاقة *</p>
+                    <p className="text-sm font-bold text-gray-500">Document valid only with authorized signatures.</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-24 px-12">
                     <div className="text-center relative">
                       <div className="absolute -top-10 left-0 right-0 opacity-10 font-black text-6xl pointer-events-none text-gray-400">AGENT</div>
-                      <p className="font-black text-gray-400 text-xs uppercase tracking-widest mb-16">{lang === "ar" ? "توقيع المندوب" : "Supplier Agent Signature"}</p>
+                      <p className="font-black text-gray-400 text-xs uppercase tracking-widest mb-16">المندوب | Supplier Agent</p>
                       <div className="border-t-2 border-black pt-3">
                         <p className="font-black text-gray-900 text-lg uppercase">{printData.agentName}</p>
                         <p className="text-xs font-bold text-gray-500 mt-1 uppercase tracking-widest">Delivered By</p>
@@ -1179,7 +1196,7 @@ export default function SupplierReturnsDashboard() {
                     </div>
                     <div className="text-center relative">
                       <div className="absolute -top-10 left-0 right-0 opacity-10 font-black text-6xl pointer-events-none text-gray-400">STORE</div>
-                      <p className="font-black text-gray-400 text-xs uppercase tracking-widest mb-16">{lang === "ar" ? "توقيع المدير / المستلم" : "Store Manager Signature"}</p>
+                      <p className="font-black text-gray-400 text-xs uppercase tracking-widest mb-16">المستلم | Store Manager</p>
                       <div className="border-t-2 border-black pt-3">
                         <p className="font-black text-gray-900 text-lg uppercase">{printData.items[0]?.createdBy || "Store Manager"}</p>
                         <p className="text-xs font-bold text-gray-500 mt-1 uppercase tracking-widest">Received By</p>
@@ -1199,10 +1216,12 @@ export default function SupplierReturnsDashboard() {
 
         <style dangerouslySetInnerHTML={{__html: `
           @media print {
+            html, body { height: auto !important; overflow: visible !important; background: white !important; }
             body * { visibility: hidden; }
             #print-area, #print-area * { visibility: visible; }
-            #print-area { position: absolute; left: 0; top: 0; width: 100%; }
-            .no-print { display: none !important; }
+            #print-area { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 20px; }
+            .no-print, .no-print * { display: none !important; }
+            @page { size: auto; margin: 10mm; }
           }
         `}} />
 
