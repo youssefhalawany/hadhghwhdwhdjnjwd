@@ -1216,12 +1216,60 @@ export default function SupplierReturnsDashboard() {
 
         <style dangerouslySetInnerHTML={{__html: `
           @media print {
-            html, body { height: auto !important; overflow: visible !important; background: white !important; }
-            body * { visibility: hidden; }
-            #print-area, #print-area * { visibility: visible; }
-            #print-area { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 20px; }
-            .no-print, .no-print * { display: none !important; }
-            @page { size: auto; margin: 10mm; }
+            html, body { 
+              height: auto !important; 
+              overflow: visible !important; 
+              background: white !important; 
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+            body * { 
+              visibility: hidden; 
+            }
+            .print-only-container {
+              position: absolute !important;
+              left: 0 !important;
+              top: 0 !important;
+              width: 100% !important;
+              height: auto !important;
+              min-height: 100vh !important;
+              background: white !important;
+              display: block !important;
+              overflow: visible !important;
+              padding: 0 !important;
+              margin: 0 !important;
+              z-index: 999999 !important;
+            }
+            .print-only-container > div {
+              display: block !important;
+              max-height: none !important;
+              height: auto !important;
+              overflow: visible !important;
+              box-shadow: none !important;
+              width: 100% !important;
+              max-width: 100% !important;
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+            #print-area, #print-area * { 
+              visibility: visible; 
+            }
+            #print-area { 
+              position: absolute !important;
+              left: 0 !important; 
+              top: 0 !important; 
+              width: 100% !important; 
+              margin: 0 !important; 
+              padding: 10px !important; 
+              display: block !important;
+            }
+            .no-print, .no-print * { 
+              display: none !important; 
+            }
+            @page { 
+              size: auto; 
+              margin: 5mm; 
+            }
           }
         `}} />
 
