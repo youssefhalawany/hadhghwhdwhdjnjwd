@@ -133,6 +133,8 @@ export default function CashierShiftReportPage() {
 
   const [cashierSignature, setCashierSignature] = useState<string>("");
 
+  const [earlyDayRequest, setEarlyDayRequest] = useState<any | null>(null);
+
   const [loading, setLoading] = useState(false);
   
   // Offline Mode States
@@ -282,6 +284,17 @@ export default function CashierShiftReportPage() {
     }
 
     try {
+      // 0. Check for Early Day requests
+      const earlyDayQuery = query(
+        collection(db, "early_day_requests"),
+        where("cashierId", "==", c.id),
+        where("status", "==", "pending")
+      );
+      const earlyDaySnap = await getDocs(earlyDayQuery);
+      if (!earlyDaySnap.empty) {
+        setEarlyDayRequest({ id: earlyDaySnap.docs[0].id, ...earlyDaySnap.docs[0].data() });
+      }
+
       // 1. Check if there is a rejected report for this cashier today
       const rejectQuery = query(
         collection(db, "shift_reports"),
@@ -427,6 +440,7 @@ export default function CashierShiftReportPage() {
         storeId: c?.storeId || "Unknown",
       },
       branchId: c?.branchId || "alamein4",
+      isEarlyDay: !!earlyDayRequest,
       cashierRole,
       cashierCounts: {
         cash: calculateTotalCash(),
@@ -478,6 +492,18 @@ export default function CashierShiftReportPage() {
         // Create new report
         const docRef = await addDoc(collection(db, "shift_reports"), payload);
         submittedId = docRef.id;
+      }
+      
+      // Complete early day request if it exists
+      if (earlyDayRequest) {
+        try {
+          await updateDoc(doc(db, "early_day_requests", earlyDayRequest.id), {
+            status: "completed",
+            completedAt: new Date().toISOString()
+          });
+        } catch (e) {
+          console.error("Failed to complete early day request", e);
+        }
       }
       
       try {
@@ -710,6 +736,22 @@ export default function CashierShiftReportPage() {
                 </p>
                 <p className="text-red-600 dark:text-red-400 text-[10px] sm:text-xs mt-3 font-bold uppercase tracking-wider">
                   {dict.rejectedSubtitle}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {earlyDayRequest && (
+          <div className="bg-indigo-50 dark:bg-indigo-950/20 border-2 border-indigo-500 p-5 rounded-2xl shadow-lg animate-pulse">
+            <div className="flex items-start gap-3.5">
+              <div className="bg-indigo-100 dark:bg-indigo-900/30 p-2.5 rounded-xl flex-shrink-0 text-indigo-600 dark:text-indigo-400">
+                <Clock className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="text-indigo-900 dark:text-indigo-400 font-black text-sm sm:text-base uppercase tracking-wider">Early Day Drop Requested</h3>
+                <p className="text-indigo-750 dark:text-indigo-300 text-xs sm:text-sm mt-1 font-semibold leading-relaxed">
+                  Your manager has requested an early shift report. <span className="font-black">You must submit your report immediately.</span>
                 </p>
               </div>
             </div>

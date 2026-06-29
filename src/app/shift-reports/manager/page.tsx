@@ -64,6 +64,45 @@ export default function ManagerAuditPage() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deletePin, setDeletePin] = useState("");
 
+  const [earlyDayModalOpen, setEarlyDayModalOpen] = useState(false);
+  const [cashiersList, setCashiersList] = useState<any[]>([]);
+  const [selectedCashierForEarlyDay, setSelectedCashierForEarlyDay] = useState("");
+  const [requestingEarlyDay, setRequestingEarlyDay] = useState(false);
+
+  useEffect(() => {
+    if (earlyDayModalOpen && cashiersList.length === 0) {
+      const fetchCashiers = async () => {
+        const snap = await getDocs(collection(db, "cashiers"));
+        setCashiersList(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      };
+      fetchCashiers();
+    }
+  }, [earlyDayModalOpen]);
+
+  const handleRequestEarlyDay = async () => {
+    if (!selectedCashierForEarlyDay) {
+      toast.error("Please select a cashier");
+      return;
+    }
+    setRequestingEarlyDay(true);
+    try {
+      await addDoc(collection(db, "early_day_requests"), {
+        cashierId: selectedCashierForEarlyDay,
+        status: "pending",
+        requestedAt: new Date().toISOString(),
+        branchId: currentBranch,
+      });
+      toast.success("Early Day Request Sent to Cashier!");
+      setEarlyDayModalOpen(false);
+      setSelectedCashierForEarlyDay("");
+    } catch (e) {
+      toast.error("Failed to request early day");
+      console.error(e);
+    } finally {
+      setRequestingEarlyDay(false);
+    }
+  };
+
 
   useEffect(() => {
     const getReportBranch = (r: any) => {
@@ -337,10 +376,18 @@ export default function ManagerAuditPage() {
           <p className="text-sm text-muted-foreground mt-1">Review, approve, and print end-of-shift reports</p>
         </div>
 
-        {/* TAB SWITCHER */}
-        <div className="flex bg-muted/50 p-1 rounded-xl border border-border">
+        {/* TAB SWITCHER AND ACTION */}
+        <div className="flex items-center gap-4 flex-wrap">
           <button
-            onClick={() => { setActiveTab("pending"); setSelectedReport(null); }}
+            onClick={() => setEarlyDayModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold transition-all shadow-md whitespace-nowrap cursor-pointer"
+          >
+            <Clock className="h-4 w-4" /> Request Early Day
+          </button>
+          
+          <div className="flex bg-muted/50 p-1 rounded-xl border border-border">
+            <button
+              onClick={() => { setActiveTab("pending"); setSelectedReport(null); }}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "pending" ? "bg-card shadow text-red-500 border border-border" : "text-muted-foreground hover:text-foreground"}`}
           >
             <Clock className="h-4 w-4" /> Pending ({pendingReports.filter((r: any) => {
@@ -365,6 +412,7 @@ export default function ManagerAuditPage() {
               return true;
             }).length})
           </button>
+          </div>
         </div>
       </div>
 
@@ -412,7 +460,14 @@ export default function ManagerAuditPage() {
                     <span className="font-bold text-foreground text-sm">{report?.cashierDetails?.date}</span>
                     <span className="text-xs font-bold px-2 py-1 bg-red-500/10 rounded-md text-red-500 border border-red-200/20 dark:border-red-950/30">{report?.cashierDetails?.shift}</span>
                   </div>
-                  <div className="font-semibold text-lg text-foreground mb-1">{report?.cashierDetails?.name}</div>
+                  <div className="font-semibold text-lg text-foreground mb-1">
+                    {report?.cashierDetails?.name}
+                    {report?.isEarlyDay && (
+                      <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-700 text-[10px] font-bold uppercase tracking-wider">
+                        <Clock className="h-3 w-3" /> Early Day
+                      </span>
+                    )}
+                  </div>
                   <div className="text-xs text-muted-foreground font-mono mb-3">Store: {report?.cashierDetails?.storeId}</div>
 
                   {activeTab === "history" && report.managerAudit && (
@@ -447,7 +502,14 @@ export default function ManagerAuditPage() {
               <div className="bg-slate-900 text-white p-6">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <h2 className="text-2xl font-black">{selectedReport?.cashierDetails?.name}</h2>
+                    <h2 className="text-2xl font-black">
+                      {selectedReport?.cashierDetails?.name}
+                      {selectedReport?.isEarlyDay && (
+                        <span className="ml-2 align-middle inline-flex items-center gap-1 px-2 py-1 rounded-md bg-indigo-500/20 text-indigo-300 text-xs font-bold uppercase tracking-wider border border-indigo-500/30">
+                          <Clock className="h-3.5 w-3.5" /> Early Day
+                        </span>
+                      )}
+                    </h2>
                     <p className="text-slate-400 text-sm mt-1 flex flex-wrap items-center gap-2">
                       <span>{selectedReport?.cashierDetails?.date}</span>
                       <span className="text-slate-600">•</span>
@@ -996,6 +1058,57 @@ export default function ManagerAuditPage() {
               >
                 Permanently Delete
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* EARLY DAY MODAL */}
+      {earlyDayModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-card w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-border">
+            <div className="p-6">
+              <h3 className="text-xl font-black text-foreground mb-2 flex items-center gap-2">
+                <Clock className="h-5 w-5 text-indigo-500" /> Request Early Day Drop
+              </h3>
+              <p className="text-sm text-muted-foreground mb-6">Select a cashier to force an early day report fill on their next login or refresh.</p>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">Select Cashier</label>
+                  <select
+                    value={selectedCashierForEarlyDay}
+                    onChange={(e) => setSelectedCashierForEarlyDay(e.target.value)}
+                    className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
+                  >
+                    <option value="">-- Choose a Cashier --</option>
+                    {cashiersList.filter((c: any) => {
+                      if (currentBranch === "all") return true;
+                      const store = (c.storeId || "").toLowerCase();
+                      if (currentBranch === "alamein4") return store.includes("alamein") || (!store.includes("alamein") && !store.includes("ola"));
+                      if (currentBranch === "ola") return store.includes("ola");
+                      return true;
+                    }).map((c: any) => (
+                      <option key={c.id} value={c.id}>{c.name} - Store {c.storeId}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-8">
+                <button
+                  onClick={() => setEarlyDayModalOpen(false)}
+                  className="px-4 py-2 rounded-lg font-bold text-muted-foreground hover:bg-muted transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleRequestEarlyDay}
+                  disabled={requestingEarlyDay || !selectedCashierForEarlyDay}
+                  className="px-6 py-2 rounded-lg font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md disabled:opacity-50 transition-all cursor-pointer"
+                >
+                  {requestingEarlyDay ? "Sending..." : "Send Request"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
