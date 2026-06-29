@@ -92,17 +92,17 @@ export default function ManagerAuditPage() {
         cashierId: selectedCashierForEarlyDay,
         status: "pending",
         requestedAt: new Date().toISOString(),
-        branchId: currentBranch,
-        targetDate: earlyDayTargetDate,
-        targetShift: earlyDayTargetShift,
+        branchId: currentBranch || "all",
+        targetDate: earlyDayTargetDate || new Date().toISOString().substring(0, 10),
+        targetShift: earlyDayTargetShift || "Morning",
       });
       toast.success("Early Day Request Sent to Cashier!");
       setEarlyDayModalOpen(false);
       setSelectedCashierForEarlyDay("");
       setEarlyDayTargetDate(new Date().toISOString().substring(0, 10));
       setEarlyDayTargetShift("Morning");
-    } catch (e) {
-      toast.error("Failed to request early day");
+    } catch (e: any) {
+      toast.error(`Failed to request early day: ${e.message || String(e)}`);
       console.error(e);
     } finally {
       setRequestingEarlyDay(false);
