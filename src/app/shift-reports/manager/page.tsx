@@ -63,6 +63,53 @@ export default function ManagerAuditPage() {
     return Math.round(total / pastShifts.length);
   };
 
+  const detectedAnomalies = React.useMemo(() => {
+    const anomalies: { type: string, message: string, severity: "high" | "medium" }[] = [];
+    const cashierGroups = new Map<string, any[]>();
+    
+    // Group approved reports by cashier
+    historyReports.forEach(r => {
+      const name = r.cashierDetails?.name;
+      if (!name || !r.managerAudit) return;
+      if (!cashierGroups.has(name)) cashierGroups.set(name, []);
+      cashierGroups.get(name)!.push(r);
+    });
+
+    // Analyze patterns for each cashier
+    cashierGroups.forEach((reports, name) => {
+      // 1. Repeated exact same negative variance
+      const varianceCounts = new Map<number, number>();
+      reports.forEach(r => {
+        const v = r.managerAudit.overShort;
+        if (v < 0) {
+          varianceCounts.set(v, (varianceCounts.get(v) || 0) + 1);
+        }
+      });
+      
+      varianceCounts.forEach((count, variance) => {
+        if (count >= 3) {
+          anomalies.push({
+            type: "repeated_shortage",
+            severity: "high",
+            message: `Notice: Cashier ${name} has reported an exact cash shortage of EGP ${Math.abs(variance)} on ${count} different shifts recently. This is a highly unusual pattern and may indicate targeted theft.`
+          });
+        }
+      });
+
+      // 2. Consistently high shrink percentages
+      const highShrinkReports = reports.filter(r => (r.managerAudit.cigarettesPercent > 2 || r.managerAudit.coffeePercent > 5));
+      if (highShrinkReports.length >= 3) {
+         anomalies.push({
+            type: "high_shrink",
+            severity: "medium",
+            message: `Notice: Cashier ${name} has reported unusually high inventory shrink (Cigarettes >2% or Coffee >5%) on ${highShrinkReports.length} recent shifts.`
+          });
+      }
+    });
+
+    return anomalies;
+  }, [historyReports]);
+
   const formatTimeMinus2Hours = (dateValue: any) => {
     if (!dateValue) return "";
     try {
@@ -466,6 +513,23 @@ export default function ManagerAuditPage() {
           </div>
         </div>
       </div>
+
+      {/* Pattern Recognition Alerts */}
+      {detectedAnomalies.length > 0 && (
+        <div className="mb-6 space-y-3">
+          {detectedAnomalies.map((anomaly, idx) => (
+            <div key={idx} className={`p-4 rounded-xl border flex gap-3 animate-in fade-in slide-in-from-top-4 ${anomaly.severity === 'high' ? 'bg-red-500/10 border-red-500/50 text-red-800 dark:text-red-300' : 'bg-amber-500/10 border-amber-500/50 text-amber-800 dark:text-amber-300'}`}>
+              <AlertTriangle className={`h-6 w-6 shrink-0 ${anomaly.severity === 'high' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`} />
+              <div>
+                <h4 className="font-bold text-sm uppercase tracking-wider mb-1">
+                  Pattern Detected: {anomaly.type.replace('_', ' ')}
+                </h4>
+                <p className="text-sm font-medium">{anomaly.message}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {activeTab === "performance" ? (
         <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden animate-in fade-in zoom-in-95 duration-300">

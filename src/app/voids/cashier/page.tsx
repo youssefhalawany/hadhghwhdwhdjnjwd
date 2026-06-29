@@ -2,9 +2,9 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { collection, addDoc } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Shield, UploadCloud, ChevronLeft, AlertTriangle, User as UserIcon, Globe } from "lucide-react";
+import { Shield, UploadCloud, ChevronLeft, AlertTriangle, User as UserIcon, Globe, Camera, X } from "lucide-react";
 import { vibrateSuccess, vibrateError } from "@/lib/haptics";
 import { NumericFormat } from "react-number-format";
 import { useBranch } from "@/context/BranchContext";
@@ -172,11 +172,12 @@ export default function CashierVoidPage() {
   const [cashierSignature, setCashierSignature] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // New State for receipt scanner
   const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [extractedReceipt, setExtractedReceipt] = useState<any>(null);
   const [selectedItems, setSelectedItems] = useState<any[]>([]);
+  const [attachedPhotos, setAttachedPhotos] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const multiPhotoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const savedUserStr = localStorage.getItem("active_cashier_session");
@@ -295,6 +296,62 @@ export default function CashierVoidPage() {
     }
   };
 
+  const handleMultiPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    setIsProcessingImage(true);
+    
+    const compressImage = (f: File): Promise<string> => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(f);
+        reader.onload = (event) => {
+          const img = new Image();
+          img.src = event.target?.result as string;
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const MAX_WIDTH = 1000;
+            const MAX_HEIGHT = 1000;
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+              if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+            } else {
+              if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+            }
+            canvas.width = width; canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, width, height);
+              resolve(canvas.toDataURL('image/jpeg', 0.5)); // Heavy compression for multiple files
+            } else {
+              resolve(event.target?.result as string);
+            }
+          };
+          img.onerror = (e) => reject(e);
+        };
+        reader.onerror = error => reject(error);
+      });
+    };
+
+    try {
+      const newPhotos: string[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const compressed = await compressImage(files[i]);
+        newPhotos.push(compressed);
+      }
+      setAttachedPhotos(prev => [...prev, ...newPhotos]);
+    } catch (err) {
+      console.error("Photo compression error:", err);
+    } finally {
+      setIsProcessingImage(false);
+      if (multiPhotoInputRef.current) multiPhotoInputRef.current.value = "";
+    }
+  };
+
+
   const toggleItemSelection = (item: any, index: number) => {
     const isSelected = selectedItems.some((s) => s.desc === item.description && s.index === index);
     if (isSelected) {
@@ -313,6 +370,19 @@ export default function CashierVoidPage() {
     }
     setLoading(true);
     try {
+      // Duplicate Submission Check
+      const tenMinsAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      let isDuplicateFlag = false;
+      try {
+        const duplicateQuery = query(collection(db, "void_requests"), where("amount", "==", Number(amount)), where("cashierName", "==", cashierName), where("createdAt", ">=", tenMinsAgo));
+        const dupeSnap = await getDocs(duplicateQuery);
+        if (!dupeSnap.empty) {
+           isDuplicateFlag = true;
+        }
+      } catch (err) {
+        console.warn("Could not check duplicates", err);
+      }
+
       const payload = {
         transactionNumber,
         cashierName,
@@ -325,6 +395,8 @@ export default function CashierVoidPage() {
         status: "pending",
         extractedReceipt,
         selectedReturnedItems: selectedItems,
+        attachedPhotos,
+        isDuplicateFlag,
         createdAt: new Date().toISOString(),
         branchId: currentBranch,
         printed: false,
@@ -581,6 +653,41 @@ export default function CashierVoidPage() {
                   placeholder="01xxxxxxxxx"
                 />
               </div>
+
+              {/* Multi-Photo Evidence Upload */}
+              <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Attach Evidence Photos</label>
+                <p className="text-[10px] text-slate-500 mb-3 leading-tight">Attach photos of the torn product, the physical receipt, or POS error screens.</p>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  multiple
+                  ref={multiPhotoInputRef} 
+                  onChange={handleMultiPhotoUpload} 
+                  className="hidden" 
+                />
+                
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  {attachedPhotos.map((photo, i) => (
+                    <div key={i} className="relative aspect-square rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden bg-slate-100 dark:bg-slate-800">
+                      <img src={photo} className="w-full h-full object-cover" alt="Evidence" />
+                      <button type="button" onClick={() => setAttachedPhotos(prev => prev.filter((_, idx) => idx !== i))} className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-1 hover:bg-red-500 transition-colors">
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => multiPhotoInputRef.current?.click()}
+                    disabled={isProcessingImage}
+                    className="aspect-square flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500 cursor-pointer disabled:opacity-50"
+                  >
+                    <Camera className="h-6 w-6" />
+                    <span className="text-[10px] font-bold">Add Photo</span>
+                  </button>
+                </div>
+              </div>
+
             </div>
             
             {/* Right Column: Reason and Signature */}

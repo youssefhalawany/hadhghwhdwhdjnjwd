@@ -41,6 +41,7 @@ export default function SupplierReturnsDashboard() {
   const [settlementMethod, setSettlementMethod] = useState<"money" | "products">("money");
   const [paymentTiming, setPaymentTiming] = useState<"now" | "later">("now");
   const [expectedPaymentDate, setExpectedPaymentDate] = useState("");
+  const [transferOutNumber, setTransferOutNumber] = useState("");
   const [printData, setPrintData] = useState<any | null>(null);
   const [processing, setProcessing] = useState<string | null>(null);
 
@@ -171,6 +172,7 @@ export default function SupplierReturnsDashboard() {
           createdBy: managerEmail,
           returnedAt: generatedReturnedAt,
           returnNumber: generatedReturnNumber,
+          transferOutNumber,
           agentName,
           agentNationalId,
           agentMobile,
@@ -198,6 +200,7 @@ export default function SupplierReturnsDashboard() {
         settlementMethod,
         paymentTiming,
         expectedPaymentDate,
+        transferOutNumber,
         isSettled: settlementMethod === "products" || paymentTiming === "now",
         eventIds: finalItems.map(i => i.id)
       };
@@ -217,6 +220,7 @@ export default function SupplierReturnsDashboard() {
       setSettlementMethod("money");
       setPaymentTiming("now");
       setExpectedPaymentDate("");
+      setTransferOutNumber("");
     } catch (err: any) {
       alert("Failed to submit direct return: " + err.message);
     } finally {
@@ -244,6 +248,7 @@ export default function SupplierReturnsDashboard() {
             quantity: item.handoverQty,
             returnedAt: generatedReturnedAt,
             returnNumber: generatedReturnNumber,
+            transferOutNumber,
             agentName,
             agentNationalId,
             agentMobile,
@@ -273,7 +278,8 @@ export default function SupplierReturnsDashboard() {
         totalPrice: Number(totalPrice) || 0,
         settlementMethod,
         paymentTiming,
-        expectedPaymentDate
+        expectedPaymentDate,
+        transferOutNumber
       };
 
       setPrintData(receiptData);
@@ -288,6 +294,7 @@ export default function SupplierReturnsDashboard() {
       setSettlementMethod("money");
       setPaymentTiming("now");
       setExpectedPaymentDate("");
+      setTransferOutNumber("");
       
       // We will rely on a "Print" button in the printData view to actually trigger print,
       // avoiding the pop-up blocking issues.
@@ -413,6 +420,7 @@ export default function SupplierReturnsDashboard() {
       settlementMethod: first.settlementMethod,
       paymentTiming: first.paymentTiming,
       expectedPaymentDate: first.expectedPaymentDate,
+      transferOutNumber: first.transferOutNumber,
       isSettled: first.isSettled,
       eventIds: eventItems.map(i => i.id) // keep track of ids in case we need to settle them all
     });
@@ -849,6 +857,16 @@ export default function SupplierReturnsDashboard() {
                     />
                   </div>
                   <div>
+                    <label className="text-xs font-bold text-muted-foreground mb-1 block">Transfer Out / Credit Note No.</label>
+                    <input 
+                      type="text" 
+                      value={transferOutNumber}
+                      onChange={e => setTransferOutNumber(e.target.value)}
+                      placeholder="e.g. TR-998822"
+                      className="w-full p-2 border border-border rounded-lg bg-background outline-none focus:border-blue-500 text-sm"
+                    />
+                  </div>
+                  <div>
                     <label className="text-xs font-bold text-muted-foreground mb-1 block">{lang === "ar" ? "الرقم القومي" : "National ID"}</label>
                     <input 
                       type="text" 
@@ -1000,6 +1018,16 @@ export default function SupplierReturnsDashboard() {
                       value={agentName}
                       onChange={e => setAgentName(e.target.value)}
                       placeholder={lang === "ar" ? "الاسم الكامل" : "Full Name"}
+                      className="w-full p-2 border border-border rounded-lg bg-background outline-none focus:border-blue-500 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-muted-foreground mb-1 block">Transfer Out / Credit Note No.</label>
+                    <input 
+                      type="text" 
+                      value={transferOutNumber}
+                      onChange={e => setTransferOutNumber(e.target.value)}
+                      placeholder="e.g. TR-998822"
                       className="w-full p-2 border border-border rounded-lg bg-background outline-none focus:border-blue-500 text-sm"
                     />
                   </div>
@@ -1160,6 +1188,9 @@ export default function SupplierReturnsDashboard() {
                   <div className="text-right" dir="ltr">
                     <h2 className="text-2xl font-black text-gray-900 tracking-tighter">إيصال مرتجع | RTV RECEIPT</h2>
                     <p className="text-lg font-bold text-red-600 mt-1"># {printData.returnNumber}</p>
+                    {printData.transferOutNumber && (
+                      <p className="text-sm font-bold text-gray-600 mt-1">TR/Credit Note: {printData.transferOutNumber}</p>
+                    )}
                     <p className="text-xs font-semibold text-gray-500 mt-1">{printData.date}</p>
                   </div>
                 </div>

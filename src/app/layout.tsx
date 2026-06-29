@@ -8,6 +8,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { BranchProvider } from "@/context/BranchContext";
 import { LanguageProvider } from "@/context/LanguageContext";
+import { BrandProvider } from "@/context/BrandContext";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -44,16 +45,18 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col bg-background text-foreground font-sans transition-colors duration-300">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <BranchProvider>
-            <LanguageProvider>
-              <div className="fixed bottom-4 right-4 z-50 print:hidden">
-                <ThemeToggle />
-              </div>
-              <OfflineBanner />
-              <ClientLayoutWrapper>{children}</ClientLayoutWrapper>
-              <Toaster position="top-center" richColors closeButton theme="system" />
-            </LanguageProvider>
-          </BranchProvider>
+          <BrandProvider>
+            <BranchProvider>
+              <LanguageProvider>
+                <div className="fixed bottom-4 right-4 z-50 print:hidden">
+                  <ThemeToggle />
+                </div>
+                <OfflineBanner />
+                <ClientLayoutWrapper>{children}</ClientLayoutWrapper>
+                <Toaster position="top-center" richColors closeButton theme="system" />
+              </LanguageProvider>
+            </BranchProvider>
+          </BrandProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Search, Printer, Shield, Image as ImageIcon, ArrowLeftRight, Calendar, CheckCircle, ArrowLeft, TrendingUp } from "lucide-react";
+import { Search, Printer, Shield, Image as ImageIcon, ArrowLeftRight, Calendar, CheckCircle, ArrowLeft, TrendingUp, X } from "lucide-react";
 import Barcode from "react-barcode";
 import { useBranch } from "@/context/BranchContext";
 
@@ -129,6 +129,21 @@ export default function ManagerVoidsPage() {
     };
   };
 
+  const handleDeletePhoto = async (photoIndex: number) => {
+    if (!selectedVoid || !selectedVoid.attachedPhotos) return;
+    if (!confirm("Are you sure you want to permanently delete this evidence photo?")) return;
+    
+    try {
+      const updatedPhotos = selectedVoid.attachedPhotos.filter((_: any, i: number) => i !== photoIndex);
+      await updateDoc(doc(db, "void_requests", selectedVoid.id), { attachedPhotos: updatedPhotos });
+      setSelectedVoid({ ...selectedVoid, attachedPhotos: updatedPhotos });
+      setVoids(voids.map(v => v.id === selectedVoid.id ? { ...v, attachedPhotos: updatedPhotos } : v));
+    } catch (e) {
+      console.error("Failed to delete photo", e);
+      alert("Failed to delete photo");
+    }
+  };
+
   const cashierHistory = selectedVoid ? getCashierHistory(selectedVoid.cashierName, selectedVoid.id) : null;
 
   if (loading) {
@@ -184,6 +199,7 @@ export default function ManagerVoidsPage() {
           <div className="space-y-3">
             {filteredVoids.map(v => {
               const isHighValue = Number(v.amount) > 150;
+              const isUrgent = v.status === "pending" && (Date.now() - new Date(v.createdAt).getTime() > 5 * 60 * 1000);
               return (
                 <button
                   key={v.id}
@@ -192,11 +208,16 @@ export default function ManagerVoidsPage() {
                     selectedVoid?.id === v.id 
                       ? "bg-slate-900 text-white border-slate-900 shadow-lg" 
                       : "glass-panel hover:border-slate-400"
-                  }`}
+                  } ${isUrgent ? 'breathing-urgency' : ''}`}
                 >
                   {isHighValue && (
                     <div className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg border-2 border-white dark:border-slate-900 flex items-center gap-1 animate-pulse">
                       ⚠️ High Value
+                    </div>
+                  )}
+                  {v.isDuplicateFlag && (
+                    <div className="absolute -bottom-2 -left-2 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg border-2 border-white dark:border-slate-900 flex items-center gap-1">
+                      ⚠️ Duplicate
                     </div>
                   )}
                   <div className="flex justify-between items-start mb-2">
@@ -340,6 +361,26 @@ export default function ManagerVoidsPage() {
                       {selectedVoid.reason}
                     </div>
                   </div>
+
+                  {/* Attached Evidence Photos (Not Printed directly, but shown in UI) */}
+                  {selectedVoid.attachedPhotos && selectedVoid.attachedPhotos.length > 0 && (
+                    <div className="print:hidden mb-6 border-2 border-slate-200 rounded-xl overflow-hidden">
+                      <div className="bg-slate-50 px-4 py-2 border-b border-slate-200 text-xs font-bold uppercase text-slate-800">
+                        Attached Evidence Photos ({selectedVoid.attachedPhotos.length})
+                      </div>
+                      <div className="p-4 bg-white grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        {selectedVoid.attachedPhotos.map((photo: string, i: number) => (
+                          <div key={i} className="relative group rounded-lg overflow-hidden border border-slate-200 shadow-sm aspect-square bg-slate-100">
+                            <img src={photo} className="w-full h-full object-cover" alt="Evidence" />
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+                              <a href={photo} target="_blank" rel="noreferrer" className="text-white text-xs font-bold px-3 py-1 bg-blue-600 rounded-full hover:bg-blue-700">View</a>
+                              <button onClick={() => handleDeletePhoto(i)} className="text-white text-xs font-bold px-3 py-1 bg-red-600 rounded-full hover:bg-red-700">Delete</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Barcode block */}
                   <div style={{ textAlign: 'center', marginBottom: '15px', padding: '10px', backgroundColor: '#ffffff', borderRadius: '12px', border: '2px dashed #cbd5e1', pageBreakInside: 'avoid', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>

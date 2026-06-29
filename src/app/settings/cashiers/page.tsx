@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "firebase/firestore";
-import { Users, Trash2, PlusCircle, Lock, Store, Clock, Building } from "lucide-react";
+import { Users, Trash2, PlusCircle, Lock, Store, Clock, Building, Dices } from "lucide-react";
 import { useBranch } from "@/context/BranchContext";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,6 +27,17 @@ export default function CashierSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+
+  const generateUniquePin = () => {
+    let newPin = "";
+    let isUnique = false;
+    while (!isUnique) {
+      newPin = Math.floor(1000 + Math.random() * 9000).toString();
+      isUnique = !cashiers.some(c => c.pin === newPin);
+    }
+    setPin(newPin);
+    toast.success("Generated secure unique PIN");
+  };
 
   const fetchCashiers = async () => {
     setLoading(true);
@@ -243,7 +254,12 @@ export default function CashierSettingsPage() {
 
             <div>
               <label className="text-xs font-bold text-muted-foreground uppercase mb-1 flex items-center gap-1"><Lock className="h-3 w-3" /> 4-Digit PIN</label>
-              <input required value={pin} onChange={e => setPin(e.target.value)} type="text" pattern="[0-9]{4}" maxLength={4} className="w-full p-2.5 bg-background border border-border rounded-lg outline-none focus:border-red-500 font-mono tracking-widest text-center text-lg" placeholder="1234" />
+              <div className="flex gap-2">
+                <input required value={pin} onChange={e => setPin(e.target.value)} type="text" pattern="[0-9]{4}" maxLength={4} className="flex-1 p-2.5 bg-background border border-border rounded-lg outline-none focus:border-red-500 font-mono tracking-widest text-center text-lg" placeholder="1234" />
+                <button type="button" onClick={generateUniquePin} className="p-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-border rounded-lg text-slate-500 transition-colors" title="Generate Unique PIN">
+                  <Dices className="h-5 w-5" />
+                </button>
+              </div>
             </div>
 
             <button disabled={adding} type="submit" className={`w-full py-3 text-white rounded-lg font-bold disabled:opacity-50 transition-colors ${editId ? 'bg-blue-600 hover:bg-blue-700' : 'bg-red-600 hover:bg-red-700'}`}>

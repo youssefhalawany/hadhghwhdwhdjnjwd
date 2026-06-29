@@ -12,6 +12,8 @@ import PwaInstallPrompt from "./PwaInstallPrompt";
 import type { User as FirebaseUser } from "firebase/auth";
 import { useBranch, BranchId } from "@/context/BranchContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { useBrand } from "@/context/BrandContext";
+import { ThemeToggle } from "./ThemeToggle";
 import { Store, Languages } from "lucide-react";
 import GlobalReminders from "./GlobalReminders";
 import toast from "react-hot-toast";
@@ -19,6 +21,7 @@ import toast from "react-hot-toast";
 export default function ClientLayoutWrapper({ children }: { children: React.ReactNode }) {
   const { currentBranch, setBranch, availableBranches, setAvailableBranches } = useBranch();
   const { language, setLanguage, t } = useLanguage();
+  const { logoUrl, brandColor } = useBrand();
   const [theme, setTheme] = useState<"light" | "dark">("dark");
   const [role, setRole] = useState<string>("owner");
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -271,6 +274,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       { name: "Smart Scheduler", href: "/admin/schedule", icon: CalendarDays },
       { name: "Cashier Accounts", href: "/settings/cashiers", icon: Users },
       { name: "Send Notifications", href: "/settings/notifications", icon: Bell },
+      { name: "Security Audit Log", href: "/settings/audit-log", icon: Shield },
       { name: "Import Products", href: "/admin/import-csv", icon: Database }
     ]},
     { name: "Checklists", href: "/checklists/manager", icon: ClipboardList },
@@ -385,10 +389,14 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-6">
             <Link href="/" className="flex items-center gap-3">
-              {/* Circle K Premium Logo Emblem */}
-              <div className="h-9 w-9 rounded-full bg-red-600 flex items-center justify-center font-black text-white text-lg border-2 border-orange-500 shadow-md">
-                K
-              </div>
+              {/* Premium Logo Emblem */}
+              {logoUrl ? (
+                <img src={logoUrl} alt="Store Logo" className="h-9 w-9 rounded-full object-cover border-2 shadow-md" style={{ borderColor: brandColor || '#f97316' }} />
+              ) : (
+                <div className="h-9 w-9 rounded-full bg-red-600 flex items-center justify-center font-black text-white text-lg border-2 border-orange-500 shadow-md transition-colors" style={brandColor ? { backgroundColor: brandColor, borderColor: brandColor } : {}}>
+                  K
+                </div>
+              )}
               <div className="flex flex-col text-start">
                 <span className="font-bold tracking-wider text-sm sm:text-base text-red-600 dark:text-red-500">CIRCLE K</span>
                 <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">
