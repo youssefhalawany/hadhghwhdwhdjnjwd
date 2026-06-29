@@ -228,6 +228,18 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     };
   }, []);
 
+  useEffect(() => {
+    // Dynamically inject the correct PWA manifest based on the portal
+    let link = document.querySelector("link[rel~='manifest']") as HTMLLinkElement;
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'manifest';
+      document.head.appendChild(link);
+    }
+    const isCashierPortal = pathname?.startsWith('/cashier') || pathname?.startsWith('/shift-reports/cashier') || pathname?.startsWith('/voids/cashier') || pathname?.startsWith('/checklists/cashier');
+    link.href = isCashierPortal ? '/manifest-cashier.json' : '/manifest-manager.json';
+  }, [pathname]);
+
   const toggleTheme = () => {
     const nextTheme = theme === "dark" ? "light" : "dark";
     setTheme(nextTheme);

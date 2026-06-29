@@ -2,8 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import { Download, X, Share } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 export default function PwaInstallPrompt() {
+  const pathname = usePathname();
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
@@ -65,21 +67,6 @@ export default function PwaInstallPrompt() {
       return;
     }
 
-    if (isAndroid) {
-      const link = document.createElement("a");
-      link.href = "/circlek-cashier.apk";
-      link.download = "circlek-cashier.apk";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      alert("Downloading App... Once downloaded, tap the file to install it. You may need to 'Allow installing from unknown sources'.");
-      
-      setIsInstalled(true);
-      setShowPrompt(false);
-      return;
-    }
-
     if (!deferredPrompt) return;
 
     deferredPrompt.prompt();
@@ -95,6 +82,9 @@ export default function PwaInstallPrompt() {
 
   if (!showPrompt || isInstalled) return null;
 
+  const isCashierPortal = pathname?.startsWith('/cashier') || pathname?.startsWith('/shift-reports/cashier') || pathname?.startsWith('/voids/cashier') || pathname?.startsWith('/checklists/cashier');
+  const appName = isCashierPortal ? "Cashier App" : "Manager App";
+
   return (
     <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-80 bg-background border-2 border-red-500 rounded-xl shadow-2xl p-4 z-50 animate-in slide-in-from-bottom-5">
       <button 
@@ -109,7 +99,7 @@ export default function PwaInstallPrompt() {
           <Download className="h-5 w-5 text-red-500" />
         </div>
         <div>
-          <h3 className="font-bold text-sm">Install Cashier App</h3>
+          <h3 className="font-bold text-sm">Install {appName}</h3>
           <p className="text-xs text-muted-foreground mt-1 mb-3">
             {isIOS 
               ? "Install this app on your iPhone for quick access and offline capabilities."

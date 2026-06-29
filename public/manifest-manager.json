@@ -1,8 +1,8 @@
 {
-  "name": "ANH Employee Portal",
-  "short_name": "ANH Portal",
+  "name": "CK Manager Portal",
+  "short_name": "CK Manager",
   "description": "Circle K Franchise Management — Shifts, Checklists, Inventory & Reports",
-  "start_url": "/cashier",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
@@ -25,21 +25,21 @@
   ],
   "shortcuts": [
     {
-      "name": "Shift Report",
-      "short_name": "Shift",
-      "url": "/shift-reports/cashier",
+      "name": "Shift Audit",
+      "short_name": "Audit",
+      "url": "/shift-reports/manager",
       "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Checklists",
+      "name": "Manager Checklists",
       "short_name": "Check",
-      "url": "/checklists/cashier",
+      "url": "/checklists/manager",
       "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Expiries",
-      "short_name": "Expiry",
-      "url": "/expiries",
+      "name": "Supplier Returns",
+      "short_name": "Returns",
+      "url": "/dashboard/supplier-returns",
       "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
     }
   ]

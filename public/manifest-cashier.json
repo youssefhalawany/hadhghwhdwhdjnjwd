@@ -1,0 +1,46 @@
+{
+  "name": "CK Cashier Portal",
+  "short_name": "CK Cashier",
+  "description": "Circle K Cashier Portal — Shift Reports, Checklists, Expiries",
+  "start_url": "/cashier",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#09090b",
+  "theme_color": "#e11937",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Shift Report",
+      "short_name": "Shift",
+      "url": "/shift-reports/cashier",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Checklists",
+      "short_name": "Check",
+      "url": "/checklists/cashier",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Expiries",
+      "short_name": "Expiry",
+      "url": "/expiries",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    }
+  ]
+}
