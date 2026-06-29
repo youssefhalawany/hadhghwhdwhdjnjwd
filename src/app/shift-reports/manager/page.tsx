@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { db } from "@/lib/firebase";
 import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, addDoc, orderBy, limit, getDocs, setDoc } from "firebase/firestore";
-import { CheckCircle, Clock, FileText, Banknote, Package, Lock, Printer, Archive, Trash2, Calendar, QrCode, Search, AlertTriangle } from "lucide-react";
+import { CheckCircle, Clock, FileText, Banknote, Package, Lock, Printer, Archive, Trash2, Calendar, QrCode, Search, AlertTriangle, X } from "lucide-react";
 import Barcode from "react-barcode";
 import QRCode from "react-qr-code";
 import html2canvas from "html2canvas";
@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function ManagerAuditPage() {
   const { currentBranch } = useBranch();
   const [activeTab, setActiveTab] = useState<"pending" | "history" | "performance">("pending");
+  const [dismissedAnomalies, setDismissedAnomalies] = useState<string[]>([]);
 
   const [pendingReports, setPendingReports] = useState<any[]>([]);
   const [historyReports, setHistoryReports] = useState<any[]>([]);
@@ -515,17 +516,23 @@ export default function ManagerAuditPage() {
       </div>
 
       {/* Pattern Recognition Alerts */}
-      {detectedAnomalies.length > 0 && (
+      {detectedAnomalies.filter(a => !dismissedAnomalies.includes(a.message)).length > 0 && (
         <div className="mb-6 space-y-3">
-          {detectedAnomalies.map((anomaly, idx) => (
-            <div key={idx} className={`p-4 rounded-xl border flex gap-3 animate-in fade-in slide-in-from-top-4 ${anomaly.severity === 'high' ? 'bg-red-500/10 border-red-500/50 text-red-800 dark:text-red-300' : 'bg-amber-500/10 border-amber-500/50 text-amber-800 dark:text-amber-300'}`}>
+          {detectedAnomalies.filter(a => !dismissedAnomalies.includes(a.message)).map((anomaly, idx) => (
+            <div key={idx} className={`relative p-4 rounded-xl border flex gap-3 animate-in fade-in slide-in-from-top-4 ${anomaly.severity === 'high' ? 'bg-red-500/10 border-red-500/50 text-red-800 dark:text-red-300' : 'bg-amber-500/10 border-amber-500/50 text-amber-800 dark:text-amber-300'}`}>
               <AlertTriangle className={`h-6 w-6 shrink-0 ${anomaly.severity === 'high' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`} />
-              <div>
+              <div className="pr-6">
                 <h4 className="font-bold text-sm uppercase tracking-wider mb-1">
                   Pattern Detected: {anomaly.type.replace('_', ' ')}
                 </h4>
                 <p className="text-sm font-medium">{anomaly.message}</p>
               </div>
+              <button 
+                onClick={() => setDismissedAnomalies(prev => [...prev, anomaly.message])}
+                className={`absolute top-3 right-3 p-1 rounded-full transition-colors ${anomaly.severity === 'high' ? 'hover:bg-red-500/20 text-red-600' : 'hover:bg-amber-500/20 text-amber-600'}`}
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
           ))}
         </div>
