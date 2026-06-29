@@ -292,7 +292,7 @@ export default function CashierShiftReportPage() {
       );
       const earlyDaySnap = await getDocs(earlyDayQuery);
       if (!earlyDaySnap.empty) {
-        const earlyDayData = { id: earlyDaySnap.docs[0].id, ...earlyDaySnap.docs[0].data() };
+        const earlyDayData: any = { id: earlyDaySnap.docs[0].id, ...earlyDaySnap.docs[0].data() };
         setEarlyDayRequest(earlyDayData);
         // Pre-fill date and shift from early day request
         if (earlyDayData.targetDate) setDate(earlyDayData.targetDate);

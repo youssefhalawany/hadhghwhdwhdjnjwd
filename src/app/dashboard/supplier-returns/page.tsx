@@ -70,11 +70,7 @@ export default function SupplierReturnsDashboard() {
       setLoading(false);
     });
   
-  const totalPendingMoney = pendingSettlementEvents.reduce((sum, ev) => sum + (Number(ev[0].totalPrice) || 0), 0);
-  const totalSettledMoney = returnHistoryEvents.reduce((sum, ev) => sum + (Number(ev[0].totalPrice) || 0), 0);
-
-  return (
-) => unsubSR();
+    return () => unsubSR();
   }, []);
 
   const handleSearchProduct = (barcodeStr: string) => {
@@ -346,6 +342,9 @@ export default function SupplierReturnsDashboard() {
 
   const pendingSettlementEvents = groupReturnEvents(pendingSettlements);
   const returnHistoryEvents = groupReturnEvents(returnHistory);
+
+  const totalPendingMoney = pendingSettlementEvents.reduce((sum, ev) => sum + (Number(ev[0].totalPrice) || 0), 0);
+  const totalSettledMoney = returnHistoryEvents.reduce((sum, ev) => sum + (Number(ev[0].totalPrice) || 0), 0);
 
   const viewReturnDetails = (eventItems: any[]) => {
     const first = eventItems[0];

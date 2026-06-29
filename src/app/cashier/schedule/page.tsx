@@ -82,7 +82,7 @@ export default function CashierSchedulePage() {
 
   const resolveStoreId = (u: any) => {
     // Ensure we map the standard branch IDs to the ones used by the schedule generator
-    let sid = u.storeId && u.storeId !== "N/A" && u.storeId !== "ALL" ? u.storeId : u.branchId;
+    const sid = u.storeId && u.storeId !== "N/A" && u.storeId !== "ALL" ? u.storeId : u.branchId;
     if (sid === "alamein4" || !sid) return "eL-alamein-4";
     if (sid === "ola") return "ola-el-koronfol";
     return sid;

@@ -1,0 +1,6 @@
+cashier-apk/
+android/
+ios/
+build/
+node_modules/
+.next/

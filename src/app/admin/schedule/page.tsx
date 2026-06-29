@@ -58,6 +58,8 @@ export default function AdminSchedulePage() {
     // if "all", we keep whatever was selected
   }, [currentBranch]);
 
+  const isStoreMatch = (id: string) => storeId === "all" || id === storeId || !storeId;
+
   useEffect(() => {
     if (!storeId) return;
     const unsub = onSnapshot(collection(db, "borrow_requests"), (snap) => {
