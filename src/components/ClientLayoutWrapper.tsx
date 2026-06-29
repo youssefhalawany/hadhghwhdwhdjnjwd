@@ -29,6 +29,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [pendingShiftCount, setPendingShiftCount] = useState(0);
   const [pendingVoidCount, setPendingVoidCount] = useState(0);
   const [pendingExpiriesCount, setPendingExpiriesCount] = useState(0);
@@ -274,6 +275,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     }
   };
 
+  const totalNotifications = pendingShiftCount + pendingVoidCount + pendingExpiriesCount + pendingReturnsCount;
+
   // Completely isolate Cashier pages (No Enterprise Auth, No Sidebar)
   if (pathname?.startsWith('/shift-reports/cashier') || pathname?.startsWith('/voids/cashier') || pathname?.startsWith('/cashier') || pathname?.startsWith('/expiries') || pathname?.startsWith('/checklists/cashier')) {
     return (
@@ -498,6 +501,63 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
             )}
 
 
+
+            {/* Notification Bell */}
+            <div className="relative">
+              <button
+                onClick={() => setNotificationsOpen(!notificationsOpen)}
+                className="relative p-2 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                title="Notifications"
+              >
+                <Bell className={`h-4 w-4 ${totalNotifications > 0 ? "animate-pulse text-red-500" : ""}`} />
+                {totalNotifications > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-lg">
+                    {totalNotifications}
+                  </span>
+                )}
+              </button>
+              
+              {notificationsOpen && (
+                <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-900 border border-border rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col">
+                  <div className="bg-slate-50 dark:bg-slate-950 border-b border-border p-3 font-bold text-sm text-foreground flex justify-between items-center">
+                    <span>Notifications</span>
+                    <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full">{totalNotifications}</span>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto custom-scrollbar">
+                    {totalNotifications === 0 ? (
+                      <div className="p-4 text-center text-sm text-muted-foreground">All caught up!</div>
+                    ) : (
+                      <>
+                        {pendingShiftCount > 0 && (
+                          <Link href="/shift-reports/manager" onClick={() => setNotificationsOpen(false)} className="block p-3 border-b border-border hover:bg-muted/50 transition-colors">
+                            <p className="text-sm font-semibold text-foreground">Shift Audits</p>
+                            <p className="text-xs text-muted-foreground">{pendingShiftCount} pending shifts require approval.</p>
+                          </Link>
+                        )}
+                        {pendingVoidCount > 0 && (
+                          <Link href="/voids/manager" onClick={() => setNotificationsOpen(false)} className="block p-3 border-b border-border hover:bg-muted/50 transition-colors">
+                            <p className="text-sm font-semibold text-foreground">Voids & Returns</p>
+                            <p className="text-xs text-muted-foreground">{pendingVoidCount} requests require review.</p>
+                          </Link>
+                        )}
+                        {pendingReturnsCount > 0 && (
+                          <Link href="/dashboard/supplier-returns" onClick={() => setNotificationsOpen(false)} className="block p-3 border-b border-border hover:bg-muted/50 transition-colors">
+                            <p className="text-sm font-semibold text-foreground">Supplier Returns</p>
+                            <p className="text-xs text-muted-foreground">{pendingReturnsCount} returns pending settlement.</p>
+                          </Link>
+                        )}
+                        {pendingExpiriesCount > 0 && (
+                          <Link href="/dashboard/expiries-audit" onClick={() => setNotificationsOpen(false)} className="block p-3 hover:bg-muted/50 transition-colors">
+                            <p className="text-sm font-semibold text-foreground">Expiry Audits</p>
+                            <p className="text-xs text-muted-foreground">{pendingExpiriesCount} audits require review.</p>
+                          </Link>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Language Toggle */}
             <button

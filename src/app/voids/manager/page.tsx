@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Search, Printer, Shield, Image as ImageIcon, ArrowLeftRight, Calendar, CheckCircle } from "lucide-react";
+import { Search, Printer, Shield, Image as ImageIcon, ArrowLeftRight, Calendar, CheckCircle, ArrowLeft, TrendingUp } from "lucide-react";
 import Barcode from "react-barcode";
 import { useBranch } from "@/context/BranchContext";
 
@@ -14,8 +14,20 @@ export default function ManagerVoidsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [generatingPDF, setGeneratingPDF] = useState(false);
   const { currentBranch } = useBranch();
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const [errorMsg, setErrorMsg] = useState("");
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   useEffect(() => {
     const q = query(collection(db, "void_requests"), orderBy("createdAt", "desc"), limit(500));
@@ -105,6 +117,20 @@ export default function ManagerVoidsPage() {
     return matchesBranch && matchesSearch;
   });
 
+  const getCashierHistory = (cashierName: string, currentVoidId: string) => {
+    if (!cashierName) return null;
+    const pastVoids = voids.filter(v => (v.cashierName || "").trim() === cashierName.trim() && v.id !== currentVoidId).slice(0, 5);
+    if (pastVoids.length === 0) return null;
+    
+    const avg = pastVoids.reduce((sum, v) => sum + Number(v.amount), 0) / pastVoids.length;
+    return {
+      count: pastVoids.length,
+      avg: avg.toFixed(2)
+    };
+  };
+
+  const cashierHistory = selectedVoid ? getCashierHistory(selectedVoid.cashierName, selectedVoid.id) : null;
+
   if (loading) {
     return <div className="flex justify-center p-10"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-red-600"></div></div>;
   }
@@ -137,43 +163,55 @@ export default function ManagerVoidsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* Left Column: List */}
-        <div className="lg:col-span-1 space-y-4 max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar">
+        <div className={`lg:col-span-1 space-y-4 max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar ${selectedVoid ? 'hidden lg:block' : 'block'}`}>
           <div className="sticky top-0 z-10 bg-background pb-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input 
+                ref={searchInputRef}
                 type="text"
                 placeholder="Search by TXN or Name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-3 rounded-xl border border-border bg-muted/50 focus:bg-background outline-none focus:ring-2 focus:ring-red-500 text-sm"
+                className="w-full pl-9 pr-12 py-3 rounded-xl border border-border bg-muted/50 focus:bg-background outline-none focus:ring-2 focus:ring-red-500 text-sm"
               />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 bg-slate-200/50 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 hidden sm:block">
+                ⌘K
+              </div>
             </div>
           </div>
 
           <div className="space-y-3">
-            {filteredVoids.map(v => (
-              <button
-                key={v.id}
-                onClick={() => setSelectedVoid(v)}
-                className={`w-full text-left p-4 rounded-xl transition-all border ${
-                  selectedVoid?.id === v.id 
-                    ? "bg-slate-900 text-white border-slate-900 shadow-lg" 
-                    : "glass-panel hover:border-slate-400"
-                }`}
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${selectedVoid?.id === v.id ? 'bg-slate-800' : 'bg-red-500/10 text-red-500 border border-red-200/20 dark:border-red-950/30'}`}>
-                    {v.transactionNumber}
-                  </span>
-                  <span className="font-mono font-bold">{Number(v.amount).toFixed(2)} EGP</span>
-                </div>
-                <p className="font-semibold text-sm truncate">{v.customerName}</p>
-                <p className={`text-xs mt-1 ${selectedVoid?.id === v.id ? 'text-slate-400' : 'text-muted-foreground'}`}>
-                  {new Date(v.createdAt).toLocaleString('en-GB')}
-                </p>
-              </button>
-            ))}
+            {filteredVoids.map(v => {
+              const isHighValue = Number(v.amount) > 150;
+              return (
+                <button
+                  key={v.id}
+                  onClick={() => setSelectedVoid(v)}
+                  className={`w-full text-left p-4 rounded-xl transition-all border relative ${
+                    selectedVoid?.id === v.id 
+                      ? "bg-slate-900 text-white border-slate-900 shadow-lg" 
+                      : "glass-panel hover:border-slate-400"
+                  }`}
+                >
+                  {isHighValue && (
+                    <div className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg border-2 border-white dark:border-slate-900 flex items-center gap-1 animate-pulse">
+                      ⚠️ High Value
+                    </div>
+                  )}
+                  <div className="flex justify-between items-start mb-2">
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${selectedVoid?.id === v.id ? 'bg-slate-800' : 'bg-red-500/10 text-red-500 border border-red-200/20 dark:border-red-950/30'}`}>
+                      {v.transactionNumber}
+                    </span>
+                    <span className={`font-mono font-bold ${isHighValue && selectedVoid?.id !== v.id ? 'text-red-500' : ''}`}>{Number(v.amount).toFixed(2)} EGP</span>
+                  </div>
+                  <p className="font-semibold text-sm truncate">{v.customerName}</p>
+                  <p className={`text-xs mt-1 ${selectedVoid?.id === v.id ? 'text-slate-400' : 'text-muted-foreground'}`}>
+                    {new Date(v.createdAt).toLocaleString('en-GB')}
+                  </p>
+                </button>
+              );
+            })}
             {filteredVoids.length === 0 && (
               <p className="text-center text-muted-foreground py-10">No requests found.</p>
             )}
@@ -181,12 +219,20 @@ export default function ManagerVoidsPage() {
         </div>
 
         {/* Right Column: Details & PDF Template */}
-        <div className="lg:col-span-2">
+        <div className={`lg:col-span-2 ${!selectedVoid ? 'hidden lg:block' : 'block'}`}>
           {selectedVoid ? (
             <div className="space-y-6">
               
-              <div className="flex justify-end gap-3">
-                <button
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-between items-start sm:items-center gap-4">
+                <button 
+                  className="lg:hidden flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground p-2 -ml-2 rounded-lg" 
+                  onClick={() => setSelectedVoid(null)}
+                >
+                  <ArrowLeft className="h-4 w-4" /> Back to list
+                </button>
+
+                <div className="flex w-full sm:w-auto justify-end gap-3">
+                  <button
                   onClick={async () => {
                     try {
                       await updateDoc(doc(db, "void_requests", selectedVoid.id), {
@@ -213,6 +259,7 @@ export default function ManagerVoidsPage() {
                   <Printer className="h-4 w-4" />
                   Print Void Report
                 </button>
+                </div>
               </div>
 
               {/* PDF Container - Hidden on screen, only used for innerHTML extraction, or styled beautifully for preview */}
@@ -256,6 +303,15 @@ export default function ManagerVoidsPage() {
                         <div>
                           <span style={{ display: 'block', fontSize: '11px', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px', fontWeight: '700' }}>Cashier Name</span>
                           <span style={{ fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>{selectedVoid.cashierName || 'N/A'}</span>
+                        </div>
+                        {/* Historical Context Inserted into PDF Preview for Manager Context */}
+                        <div className="print:hidden mt-4 pt-4 border-t border-slate-200" style={{ display: cashierHistory ? 'block' : 'none' }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px', fontWeight: '700' }}>
+                            <TrendingUp className="w-3 h-3 text-blue-500" /> Historical Context
+                          </span>
+                          <span style={{ fontSize: '12px', fontWeight: '600', color: '#334155' }}>
+                            Last {cashierHistory?.count} voids avg: <span style={{ color: '#dc2626', fontWeight: '800' }}>{cashierHistory?.avg} EGP</span>
+                          </span>
                         </div>
                       </div>
                     </div>
