@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { db } from "@/lib/firebase";
 import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, addDoc, orderBy, limit, getDocs, setDoc } from "firebase/firestore";
-import { CheckCircle, Clock, FileText, Banknote, Package, Lock, Printer, Archive, Trash2, Calendar, QrCode } from "lucide-react";
+import { CheckCircle, Clock, FileText, Banknote, Package, Lock, Printer, Archive, Trash2, Calendar, QrCode, Search, AlertTriangle } from "lucide-react";
 import Barcode from "react-barcode";
 import QRCode from "react-qr-code";
 import html2canvas from "html2canvas";
@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ManagerAuditPage() {
   const { currentBranch } = useBranch();
-  const [activeTab, setActiveTab] = useState<"pending" | "history">("pending");
+  const [activeTab, setActiveTab] = useState<"pending" | "history" | "performance">("pending");
 
   const [pendingReports, setPendingReports] = useState<any[]>([]);
   const [historyReports, setHistoryReports] = useState<any[]>([]);
@@ -23,6 +23,45 @@ export default function ManagerAuditPage() {
   const [selectedReport, setSelectedReport] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setActiveTab("history");
+        setTimeout(() => searchInputRef.current?.focus(), 50);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const cashierLeaderboard = React.useMemo(() => {
+    const map = new Map();
+    historyReports.forEach(r => {
+      const name = r.cashierDetails?.name;
+      if (!name) return;
+      const os = r.managerAudit?.overShort || 0;
+      if (!map.has(name)) map.set(name, { overShort: 0, shifts: 0 });
+      const current = map.get(name);
+      current.overShort += os;
+      current.shifts += 1;
+    });
+    return Array.from(map.entries())
+      .map(([name, data]) => ({ name, ...data }))
+      .sort((a, b) => a.overShort - b.overShort);
+  }, [historyReports]);
+
+  const getCashierDelta = (cashierName: string) => {
+    if (!cashierName) return 0;
+    const pastShifts = historyReports
+      .filter(r => r.cashierDetails?.name === cashierName && r.id !== selectedReport?.id)
+      .slice(0, 5);
+    if (pastShifts.length === 0) return 0;
+    const total = pastShifts.reduce((sum, r) => sum + (r.managerAudit?.overShort || 0), 0);
+    return Math.round(total / pastShifts.length);
+  };
 
   const formatTimeMinus2Hours = (dateValue: any) => {
     if (!dateValue) return "";
@@ -418,10 +457,65 @@ export default function ManagerAuditPage() {
               return true;
             }).length})
           </button>
+          <button
+            onClick={() => { setActiveTab("performance"); setSelectedReport(null); }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "performance" ? "bg-card shadow text-blue-600 border border-border" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            Performance
+          </button>
           </div>
         </div>
       </div>
 
+      {activeTab === "performance" ? (
+        <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+          <div className="bg-slate-900 p-6 text-white">
+            <h2 className="text-2xl font-black mb-1">Cumulative Cashier Performance</h2>
+            <p className="text-slate-400 text-sm">Aggregated over/short variances from the last 50 processed shifts.</p>
+          </div>
+          <div className="p-0 overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="bg-muted text-muted-foreground uppercase text-xs">
+                <tr>
+                  <th className="p-4 font-bold">Cashier Name</th>
+                  <th className="p-4 font-bold text-center">Processed Shifts</th>
+                  <th className="p-4 font-bold text-right">Cumulative Over/Short</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {cashierLeaderboard.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="p-8 text-center text-muted-foreground font-medium">
+                      No shift data available.
+                    </td>
+                  </tr>
+                ) : (
+                  cashierLeaderboard.map((cashier, idx) => {
+                    const isShort = cashier.overShort < 0;
+                    const isOver = cashier.overShort > 0;
+                    const isZero = cashier.overShort === 0;
+                    return (
+                      <tr key={idx} className="hover:bg-muted/30 transition-colors">
+                        <td className="p-4 font-black text-foreground">{cashier.name}</td>
+                        <td className="p-4 text-center font-bold text-muted-foreground">{cashier.shifts}</td>
+                        <td className="p-4 text-right">
+                          <span className={`inline-block px-3 py-1 rounded-lg text-sm font-black ${
+                            isShort ? "bg-red-500/10 text-red-600 border border-red-500/20" : 
+                            isOver ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20" : 
+                            "bg-slate-100 text-slate-500 border border-slate-200 dark:bg-slate-800 dark:border-slate-700"
+                          }`}>
+                            {isShort ? "-" : isOver ? "+" : ""}EGP {Math.abs(cashier.overShort).toLocaleString()}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
         {/* LEFT COLUMN: LIST */}
@@ -429,13 +523,22 @@ export default function ManagerAuditPage() {
           
           {(activeTab === "history") && (
             <div className="sticky top-0 z-10 bg-background pb-2">
-              <input 
-                type="text"
-                placeholder="Search by Barcode or Cashier Name..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full p-3 rounded-xl border border-border bg-muted/50 focus:bg-background outline-none focus:ring-2 focus:ring-red-500 text-sm"
-              />
+              <div className="relative">
+                <input 
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder="Search by Barcode or Cashier Name..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full p-3 pl-10 rounded-xl border border-border bg-muted/50 focus:bg-background outline-none focus:ring-2 focus:ring-red-500 text-sm"
+                />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                  <kbd className="hidden sm:inline-flex items-center gap-1 bg-background border border-border px-1.5 rounded text-[10px] font-bold text-muted-foreground uppercase shadow-sm">
+                    <span className="text-[12px]">⌘</span>K
+                  </kbd>
+                </div>
+              </div>
             </div>
           )}
 
@@ -477,11 +580,19 @@ export default function ManagerAuditPage() {
                   <div className="text-xs text-muted-foreground font-mono mb-3">Store: {report?.cashierDetails?.storeId}</div>
 
                   {activeTab === "history" && report.managerAudit && (
-                    <div className={`mb-3 text-xs flex justify-between bg-card p-2 rounded border border-border ${report.managerAudit.overShort !== 0 ? 'animate-pulse border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.2)]' : ''}`}>
-                      <span className="text-muted-foreground">Variance:</span>
-                      <span className={`font-bold ${report.managerAudit.overShort < 0 ? 'text-red-600' : report.managerAudit.overShort > 0 ? 'text-emerald-600' : 'text-slate-500'}`}>
-                        {report.managerAudit.overShort < 0 ? '-' : report.managerAudit.overShort > 0 ? '+' : ''}EGP {Math.abs(report.managerAudit.overShort)}
-                      </span>
+                    <div className="mb-3 space-y-2">
+                      <div className={`text-xs flex justify-between bg-card p-2 rounded border border-border ${report.managerAudit.overShort !== 0 ? 'border-red-500/30' : ''}`}>
+                        <span className="text-muted-foreground">Variance:</span>
+                        <span className={`font-bold ${report.managerAudit.overShort < 0 ? 'text-red-600' : report.managerAudit.overShort > 0 ? 'text-emerald-600' : 'text-slate-500'}`}>
+                          {report.managerAudit.overShort < 0 ? '-' : report.managerAudit.overShort > 0 ? '+' : ''}EGP {Math.abs(report.managerAudit.overShort)}
+                        </span>
+                      </div>
+                      
+                      {Math.abs(report.managerAudit.overShort) > 150 && (
+                        <div className="animate-pulse flex items-center justify-center gap-1.5 w-full bg-red-500 text-white text-[10px] font-black uppercase tracking-wider py-1.5 rounded shadow-sm">
+                          <AlertTriangle className="h-3 w-3" /> High Variance
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -545,9 +656,20 @@ export default function ManagerAuditPage() {
                       </span>
                     )}
                   </div>
-                  <div className="text-right">
+                  <div className="text-right flex flex-col items-end">
                     <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Declared Total</p>
                     <p className="text-2xl font-black text-green-400">EGP {activeTab === "pending" ? ((Number(cashierOverrideCash) || 0) + (Number(cashierOverrideVisa) || 0)).toLocaleString() : selectedReport?.cashierCounts?.total?.toLocaleString()}</p>
+                    {activeTab === "history" && (
+                      <div className="mt-4 text-right bg-slate-800/80 border border-slate-700 px-3 py-2 rounded-xl">
+                        <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-0.5">Historical Context</p>
+                        <p className="text-xs text-white font-medium">Last 5 Shifts Avg: 
+                          <span className={`ml-1 font-black ${getCashierDelta(selectedReport.cashierDetails?.name) < 0 ? 'text-red-400' : getCashierDelta(selectedReport.cashierDetails?.name) > 0 ? 'text-green-400' : 'text-slate-300'}`}>
+                            {getCashierDelta(selectedReport.cashierDetails?.name) < 0 ? '-' : getCashierDelta(selectedReport.cashierDetails?.name) > 0 ? '+' : ''}
+                            EGP {Math.abs(getCashierDelta(selectedReport.cashierDetails?.name))}
+                          </span>
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -769,6 +891,7 @@ export default function ManagerAuditPage() {
           )}
         </div>
       </div>
+      )}
 
       {/* --- HIDDEN FORMAL A4 PRINT TEMPLATE FOR MANAGER --- */}
       {selectedReport && (

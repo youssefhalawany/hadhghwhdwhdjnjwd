@@ -5,7 +5,7 @@ import { collection, onSnapshot, doc, updateDoc, deleteDoc, addDoc, query, where
 import { db } from "@/lib/firebase";
 import { useBranch } from "@/context/BranchContext";
 import { useLanguage } from "@/context/LanguageContext";
-import { Truck, CheckCircle, Search, Calendar, FileText, ArrowLeft, Printer } from "lucide-react";
+import { Truck, CheckCircle, Search, Calendar, FileText, ArrowLeft, Printer, AlertTriangle } from "lucide-react";
 import Barcode from "react-barcode";
 import Link from "next/link";
 
@@ -16,6 +16,20 @@ export default function SupplierReturnsDashboard() {
   const [supplierReturns, setSupplierReturns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"pending" | "settlements" | "history">("pending");
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setActiveTab("history");
+        setTimeout(() => searchInputRef.current?.focus(), 50);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Handover state
   const [handoverSupplier, setHandoverSupplier] = useState<string | null>(null);
@@ -358,8 +372,29 @@ export default function SupplierReturnsDashboard() {
     });
   };
 
-  const pendingSettlementEvents = groupReturnEvents(pendingSettlements);
-  const returnHistoryEvents = groupReturnEvents(returnHistory);
+  const pendingSettlementEvents = groupReturnEvents(pendingSettlements).filter(eventItems => {
+    const first = eventItems[0];
+    const sStr = searchQuery.toLowerCase();
+    return (first.supplier || "").toLowerCase().includes(sStr) ||
+           (first.returnNumber || "").toLowerCase().includes(sStr);
+  });
+  
+  const returnHistoryEventsRaw = groupReturnEvents(returnHistory);
+  
+  const returnHistoryEvents = returnHistoryEventsRaw.filter(eventItems => {
+    const first = eventItems[0];
+    const sStr = searchQuery.toLowerCase();
+    return (first.supplier || "").toLowerCase().includes(sStr) ||
+           (first.returnNumber || "").toLowerCase().includes(sStr);
+  });
+
+  const getSupplierTotalReturns = (supplierName: string) => {
+    if (!supplierName) return { count: 0, total: 0 };
+    const supplierEvents = returnHistoryEventsRaw.filter(ev => ev[0]?.supplier === supplierName);
+    const count = supplierEvents.length;
+    const total = supplierEvents.reduce((sum, ev) => sum + (Number(ev[0].totalPrice) || 0), 0);
+    return { count, total };
+  };
 
   const totalPendingMoney = pendingSettlementEvents.reduce((sum, ev) => sum + (Number(ev[0].totalPrice) || 0), 0);
   const totalSettledMoney = returnHistoryEvents.reduce((sum, ev) => sum + (Number(ev[0].totalPrice) || 0), 0);
@@ -507,7 +542,26 @@ export default function SupplierReturnsDashboard() {
             {/* PENDING SETTLEMENTS */}
             {activeTab === "settlements" && (
               <div className="space-y-4">
-                {pendingSettlements.length === 0 ? (
+                <div className="sticky top-0 z-10 bg-background pb-2">
+                  <div className="relative">
+                    <input 
+                      ref={searchInputRef}
+                      type="text"
+                      placeholder="Search by Supplier or Return Number..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full p-3 pl-10 rounded-xl border border-border bg-muted/50 focus:bg-background outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <kbd className="hidden sm:inline-flex items-center gap-1 bg-background border border-border px-1.5 rounded text-[10px] font-bold text-muted-foreground uppercase shadow-sm">
+                        <span className="text-[12px]">⌘</span>K
+                      </kbd>
+                    </div>
+                  </div>
+                </div>
+
+                {pendingSettlementEvents.length === 0 ? (
                   <div className="glass-panel p-16 text-center border-2 border-dashed border-border rounded-2xl">
                     <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
                     <h3 className="text-lg font-bold">All Settled</h3>
@@ -516,13 +570,19 @@ export default function SupplierReturnsDashboard() {
                 ) : (
                   pendingSettlementEvents.map((eventItems, idx) => {
                     const first = eventItems[0];
+                    const isHighValue = first.totalPrice > 500;
                     return (
-                      <div key={idx} onClick={() => viewReturnDetails(eventItems)} className="bg-card border border-amber-500/30 rounded-xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-sm hover:border-amber-500/50 hover:bg-amber-50/50 dark:hover:bg-amber-950/20 cursor-pointer transition-colors group">
+                      <div key={idx} onClick={() => viewReturnDetails(eventItems)} className={`bg-card border ${isHighValue ? 'border-red-500/50' : 'border-amber-500/30'} rounded-xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-sm hover:border-amber-500/50 hover:bg-amber-50/50 dark:hover:bg-amber-950/20 cursor-pointer transition-colors group`}>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
                             <h4 className="font-bold text-lg">{first.supplier}</h4>
                             <span className="bg-amber-500 text-white text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full font-bold">Awaiting Payment</span>
                             <span className="bg-muted text-muted-foreground text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full font-bold border border-border">{first.returnNumber || "Legacy Return"}</span>
+                            {isHighValue && (
+                              <span className="animate-pulse flex items-center gap-1 bg-red-500 text-white text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full font-bold shadow-sm">
+                                <AlertTriangle className="h-3 w-3" /> High Value
+                              </span>
+                            )}
                           </div>
                           <p className="text-sm font-semibold text-muted-foreground">Amount: <span className="text-foreground text-base">{first.totalPrice} EGP</span> • <span className="text-foreground">{eventItems.length} items</span></p>
                           <p className="text-xs text-muted-foreground mt-2">
@@ -563,7 +623,26 @@ export default function SupplierReturnsDashboard() {
             {/* RETURN HISTORY */}
             {activeTab === "history" && (
               <div className="space-y-4">
-                {returnHistory.length === 0 ? (
+                <div className="sticky top-0 z-10 bg-background pb-2">
+                  <div className="relative">
+                    <input 
+                      ref={searchInputRef}
+                      type="text"
+                      placeholder="Search by Supplier or Return Number..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full p-3 pl-10 rounded-xl border border-border bg-muted/50 focus:bg-background outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <kbd className="hidden sm:inline-flex items-center gap-1 bg-background border border-border px-1.5 rounded text-[10px] font-bold text-muted-foreground uppercase shadow-sm">
+                        <span className="text-[12px]">⌘</span>K
+                      </kbd>
+                    </div>
+                  </div>
+                </div>
+
+                {returnHistoryEvents.length === 0 ? (
                   <div className="glass-panel p-16 text-center border-2 border-dashed border-border rounded-2xl">
                     <FileText className="h-12 w-12 text-slate-400 mx-auto mb-4 opacity-50" />
                     <h3 className="text-lg font-bold">No History</h3>
@@ -572,13 +651,19 @@ export default function SupplierReturnsDashboard() {
                 ) : (
                   returnHistoryEvents.map((eventItems, idx) => {
                     const first = eventItems[0];
+                    const isHighValue = first.totalPrice > 500;
                     return (
-                      <div key={idx} onClick={() => viewReturnDetails(eventItems)} className="bg-card border border-border rounded-xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 opacity-80 hover:opacity-100 hover:bg-muted/30 cursor-pointer transition-all">
+                      <div key={idx} onClick={() => viewReturnDetails(eventItems)} className={`bg-card border ${isHighValue ? 'border-red-500/50' : 'border-border'} rounded-xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 opacity-80 hover:opacity-100 hover:bg-muted/30 cursor-pointer transition-all`}>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
                             <h4 className="font-bold text-lg">{first.supplier}</h4>
                             <span className="bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full font-bold border border-border">Settled</span>
                             <span className="bg-muted text-muted-foreground text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full font-bold border border-border">{first.returnNumber || "Legacy Return"}</span>
+                            {isHighValue && (
+                              <span className="animate-pulse flex items-center gap-1 bg-red-500 text-white text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full font-bold shadow-sm">
+                                <AlertTriangle className="h-3 w-3" /> High Value
+                              </span>
+                            )}
                           </div>
                           <p className="text-sm font-semibold text-muted-foreground">Amount: <span className="text-foreground">{first.totalPrice || 0} EGP</span> • <span className="text-foreground">{eventItems.length} items</span></p>
                           <p className="text-xs text-muted-foreground mt-2">
@@ -1043,6 +1128,20 @@ export default function SupplierReturnsDashboard() {
                   )}
                   <button onClick={() => window.print()} className="px-6 py-2 bg-blue-600 text-white rounded-xl font-bold shadow-md hover:bg-blue-700 transition-colors">{lang === "ar" ? "طباعة" : "Print"}</button>
                   <button onClick={() => setPrintData(null)} className="px-6 py-2 bg-slate-200 text-slate-800 rounded-xl font-bold hover:bg-slate-300 transition-colors">{lang === "ar" ? "إغلاق" : "Close"}</button>
+                </div>
+              </div>
+
+              {/* Historical Context (Not Printed) */}
+              <div className="no-print bg-slate-800 m-6 p-4 rounded-xl text-white border border-slate-700">
+                <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-2">Historical Context</p>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-sm font-medium">Total Lifetime Returns for <span className="font-black text-blue-400">{printData.supplier}</span></p>
+                    <p className="text-xs text-slate-400">{getSupplierTotalReturns(printData.supplier).count} total return events</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-black text-emerald-400">EGP {getSupplierTotalReturns(printData.supplier).total.toLocaleString()}</p>
+                  </div>
                 </div>
               </div>
 

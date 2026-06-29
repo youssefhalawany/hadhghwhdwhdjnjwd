@@ -18,6 +18,28 @@ export default function ExpiryAuditPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"active" | "pending" | "returns" | "reports">("active");
   const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setActiveTab("active");
+        setTimeout(() => searchInputRef.current?.focus(), 50);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const getHistoricalExpiryAvg = (barcode: string) => {
+    if (!barcode || barcode === "N/A") return 0;
+    const history = allExpiries.filter(e => e.barcode === barcode && e.status === "audited");
+    if (history.length === 0) return 0;
+    const total = history.reduce((sum, e) => sum + (Number(e.quantity) || 0), 0);
+    return Math.round(total / history.length);
+  };
+
   const [selectedExpiry, setSelectedExpiry] = useState<any | null>(null);
   const [isEditingExpiry, setIsEditingExpiry] = useState(false);
   const [editExpiryDate, setEditExpiryDate] = useState("");
@@ -443,13 +465,22 @@ export default function ExpiryAuditPage() {
             {/* LEFT COLUMN: LIST */}
             <div className="lg:col-span-1 space-y-4 max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar">
               <div className="sticky top-0 z-10 bg-background pb-2">
-                <input 
-                  type="text"
-                  placeholder="Search by Item, Barcode, or Store..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-border bg-muted/50 focus:bg-background outline-none focus:ring-2 focus:ring-red-500 text-sm"
-                />
+                <div className="relative">
+                  <input 
+                    ref={searchInputRef}
+                    type="text"
+                    placeholder="Search by Item, Barcode, or Store..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full p-3 pl-10 rounded-xl border border-border bg-muted/50 focus:bg-background outline-none focus:ring-2 focus:ring-red-500 text-sm"
+                  />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <kbd className="hidden sm:inline-flex items-center gap-1 bg-background border border-border px-1.5 rounded text-[10px] font-bold text-muted-foreground uppercase shadow-sm">
+                      <span className="text-[12px]">⌘</span>K
+                    </kbd>
+                  </div>
+                </div>
               </div>
 
               {filteredExpiries.length === 0 ? (
@@ -497,6 +528,7 @@ export default function ExpiryAuditPage() {
                     }
 
                     const isSelected = selectedExpiry?.id === item.id;
+                    const isHighVolume = Number(item.quantity) > 10;
 
                     return (
                       <button
@@ -509,7 +541,14 @@ export default function ExpiryAuditPage() {
                       >
                         <div className="flex justify-between items-start mb-2">
                           <span className="font-bold text-foreground text-sm">{item.expiryDate}</span>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${badgeClass}`}>{badgeText}</span>
+                          <div className="flex gap-1">
+                            {isHighVolume && (
+                              <span className="animate-pulse flex items-center gap-1 bg-red-500 text-white text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full font-bold shadow-sm">
+                                <AlertTriangle className="h-3 w-3" /> High Volume
+                              </span>
+                            )}
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${badgeClass}`}>{badgeText}</span>
+                          </div>
                         </div>
                         <div className="font-semibold text-lg text-foreground mb-1">{item.itemName}</div>
                         <div className="text-xs text-muted-foreground font-mono mt-2">
@@ -746,18 +785,26 @@ export default function ExpiryAuditPage() {
                           })()}
                         </div>
                       </div>
-                      <div className="text-right flex items-center justify-end gap-4">
+                      <div className="text-right flex flex-col items-end gap-2">
                         {isEditingExpiry ? (
                           <div className="text-left bg-slate-800 p-2 rounded-lg">
                             <label className="text-[10px] text-slate-400 font-bold block uppercase mb-1">New Quantity</label>
                             <input type="number" value={editExpiryQty} onChange={e => setEditExpiryQty(e.target.value)} className="w-16 p-1 text-slate-900 font-bold rounded text-center outline-none" />
                           </div>
                         ) : (
-                          <div>
+                          <div className="text-right">
                             <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Quantity</p>
                             <p className="text-2xl font-black text-green-400">{selectedExpiry.quantity}</p>
                           </div>
                         )}
+                        <div className="mt-2 text-right bg-slate-800 border border-slate-700 px-3 py-2 rounded-xl">
+                          <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-0.5">Historical Context</p>
+                          <p className="text-xs text-white font-medium">Avg Audited: 
+                            <span className="ml-1 font-black text-emerald-400">
+                              {getHistoricalExpiryAvg(selectedExpiry.barcode)} units/pull
+                            </span>
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
