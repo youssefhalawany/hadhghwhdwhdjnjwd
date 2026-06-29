@@ -327,6 +327,7 @@ export default function CashierVoidPage() {
         selectedReturnedItems: selectedItems,
         createdAt: new Date().toISOString(),
         branchId: currentBranch,
+        printed: false,
       };
 
       await addDoc(collection(db, "void_requests"), payload);
