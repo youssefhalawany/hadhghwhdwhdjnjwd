@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Search, Printer, Shield, Image as ImageIcon, ArrowLeftRight, Calendar, CheckCircle, ArrowLeft, TrendingUp, X } from "lucide-react";
+import { Search, Printer, Shield, Image as ImageIcon, ArrowLeftRight, Calendar, CheckCircle, ArrowLeft, TrendingUp, X, Clock } from "lucide-react";
 import Barcode from "react-barcode";
 import { useBranch } from "@/context/BranchContext";
 
@@ -227,9 +227,18 @@ export default function ManagerVoidsPage() {
                     <span className={`font-mono font-bold ${isHighValue && selectedVoid?.id !== v.id ? 'text-red-500' : ''}`}>{Number(v.amount).toFixed(2)} EGP</span>
                   </div>
                   <p className="font-semibold text-sm truncate">{v.customerName}</p>
-                  <p className={`text-xs mt-1 ${selectedVoid?.id === v.id ? 'text-slate-400' : 'text-muted-foreground'}`}>
-                    {new Date(v.createdAt).toLocaleString('en-GB')}
-                  </p>
+                  <div className="flex justify-between items-end mt-1">
+                    <p className={`text-xs ${selectedVoid?.id === v.id ? 'text-slate-400' : 'text-muted-foreground'}`}>
+                      {new Date(v.createdAt).toLocaleString('en-GB')}
+                    </p>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                      v.status === "closed_on_system" 
+                        ? (selectedVoid?.id === v.id ? "bg-green-900/50 text-green-300" : "bg-green-100 text-green-700") 
+                        : (selectedVoid?.id === v.id ? "bg-amber-900/50 text-amber-300" : "bg-amber-100 text-amber-700")
+                    }`}>
+                      {v.status === "closed_on_system" ? "Closed" : "Pending"}
+                    </span>
+                  </div>
                 </button>
               );
             })}
@@ -257,7 +266,7 @@ export default function ManagerVoidsPage() {
                   onClick={async () => {
                     try {
                       await updateDoc(doc(db, "void_requests", selectedVoid.id), {
-                        status: selectedVoid.status === "closed_on_system" ? "logged" : "closed_on_system"
+                        status: selectedVoid.status === "closed_on_system" ? "pending" : "closed_on_system"
                       });
                     } catch(e) {
                       console.error("Failed to update status", e);
@@ -267,11 +276,11 @@ export default function ManagerVoidsPage() {
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold shadow transition-all ${
                     selectedVoid.status === "closed_on_system" 
                       ? "bg-green-100 text-green-700 hover:bg-green-200 border border-green-200" 
-                      : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
+                      : "bg-amber-100 border border-amber-200 text-amber-700 hover:bg-amber-200"
                   }`}
                 >
-                  <CheckCircle className="h-4 w-4" />
-                  {selectedVoid.status === "closed_on_system" ? "Marked Closed on System" : "Mark Closed on System"}
+                  {selectedVoid.status === "closed_on_system" ? <CheckCircle className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
+                  {selectedVoid.status === "closed_on_system" ? "Closed on System" : "Pending (Mark as Closed)"}
                 </button>
                 <button
                   onClick={generatePDF}
