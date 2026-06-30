@@ -43,24 +43,58 @@ export default function ManagerAuditPage() {
     historyReports.forEach(r => {
       const name = r.cashierDetails?.name;
       if (!name) return;
-      const os = r.managerAudit?.overShort || 0;
-      if (!map.has(name)) map.set(name, { overShort: 0, shifts: 0 });
+      
+      const cashVar = r.managerAudit?.cashVariance || 0;
+      const visaVar = r.managerAudit?.visaVariance || 0;
+      const totalDec = (r.cashierCounts?.cash || 0) + (r.cashierCounts?.visa || 0);
+      const shiftDate = new Date(r.createdAt || r.date || Date.now()).getTime();
+
+      if (!map.has(name)) {
+        map.set(name, { 
+          cashVariance: 0, 
+          visaVariance: 0, 
+          totalDeclared: 0,
+          shifts: 0,
+          firstShiftDate: shiftDate
+        });
+      }
+      
       const current = map.get(name);
-      current.overShort += os;
+      current.cashVariance += cashVar;
+      current.visaVariance += visaVar;
+      current.totalDeclared += totalDec;
       current.shifts += 1;
+      if (shiftDate < current.firstShiftDate) {
+        current.firstShiftDate = shiftDate;
+      }
     });
+    
     return Array.from(map.entries())
-      .map(([name, data]) => ({ name, ...data }))
-      .sort((a, b) => a.overShort - b.overShort);
+      .map(([name, data]) => {
+        const daysActive = Math.max(1, Math.ceil((Date.now() - data.firstShiftDate) / (1000 * 60 * 60 * 24)));
+        const avgPerShift = data.shifts > 0 ? (data.totalDeclared / data.shifts) : 0;
+        return { name, ...data, daysActive, avgPerShift };
+      })
+      .sort((a, b) => b.totalDeclared - a.totalDeclared);
   }, [historyReports]);
 
-  const getCashierDelta = (cashierName: string) => {
+  const getCashierCashDelta = (cashierName: string) => {
     if (!cashierName) return 0;
     const pastShifts = historyReports
       .filter(r => r.cashierDetails?.name === cashierName && r.id !== selectedReport?.id)
       .slice(0, 5);
     if (pastShifts.length === 0) return 0;
-    const total = pastShifts.reduce((sum, r) => sum + (r.managerAudit?.overShort || 0), 0);
+    const total = pastShifts.reduce((sum, r) => sum + (r.managerAudit?.cashVariance || 0), 0);
+    return Math.round(total / pastShifts.length);
+  };
+
+  const getCashierVisaDelta = (cashierName: string) => {
+    if (!cashierName) return 0;
+    const pastShifts = historyReports
+      .filter(r => r.cashierDetails?.name === cashierName && r.id !== selectedReport?.id)
+      .slice(0, 5);
+    if (pastShifts.length === 0) return 0;
+    const total = pastShifts.reduce((sum, r) => sum + (r.managerAudit?.visaVariance || 0), 0);
     return Math.round(total / pastShifts.length);
   };
 
@@ -78,10 +112,10 @@ export default function ManagerAuditPage() {
 
     // Analyze patterns for each cashier
     cashierGroups.forEach((reports, name) => {
-      // 1. Repeated exact same negative variance
+      // 1. Repeated exact same negative CASH variance
       const varianceCounts = new Map<number, number>();
       reports.forEach(r => {
-        const v = r.managerAudit.overShort;
+        const v = r.managerAudit.cashVariance;
         if (v < 0) {
           varianceCounts.set(v, (varianceCounts.get(v) || 0) + 1);
         }
@@ -97,13 +131,13 @@ export default function ManagerAuditPage() {
         }
       });
 
-      // 2. Consistently high shrink percentages
-      const highShrinkReports = reports.filter(r => (r.managerAudit.cigarettesPercent > 2 || r.managerAudit.coffeePercent > 5));
+      // 2. High Cigarette Shrink
+      const highShrinkReports = reports.filter(r => (r.managerAudit.cigarettesPercent > 10));
       if (highShrinkReports.length >= 3) {
          anomalies.push({
-            type: "high_shrink",
-            severity: "medium",
-            message: `Notice: Cashier ${name} has reported unusually high inventory shrink (Cigarettes >2% or Coffee >5%) on ${highShrinkReports.length} recent shifts.`
+            type: "high_cigarette_shrink",
+            severity: "high",
+            message: `Notice: Cashier ${name} has reported cigarette shrink exceeding 10% on ${highShrinkReports.length} recent shifts. While coffee shrink variations are expected, cigarette variances should remain strictly minimal. Please review these inventory logs.`
           });
       }
     });
@@ -539,51 +573,85 @@ export default function ManagerAuditPage() {
       )}
 
       {activeTab === "performance" ? (
-        <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden animate-in fade-in zoom-in-95 duration-300">
-          <div className="bg-slate-900 p-6 text-white">
-            <h2 className="text-2xl font-black mb-1">Cumulative Cashier Performance</h2>
-            <p className="text-slate-400 text-sm">Aggregated over/short variances from the last 50 processed shifts.</p>
+        <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
+          <div className="bg-slate-900 rounded-2xl p-6 text-white shadow-lg border border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h2 className="text-2xl font-black mb-1">Cashier Intelligence</h2>
+              <p className="text-slate-400 text-sm">Aggregated performance and variance metrics from the last 50 processed shifts.</p>
+            </div>
+            <div className="bg-slate-800/50 px-4 py-2 rounded-lg border border-slate-700">
+              <span className="text-sm font-bold text-slate-300">Total Active Cashiers: </span>
+              <span className="text-lg font-black text-white">{cashierLeaderboard.length}</span>
+            </div>
           </div>
-          <div className="p-0 overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="bg-muted text-muted-foreground uppercase text-xs">
-                <tr>
-                  <th className="p-4 font-bold">Cashier Name</th>
-                  <th className="p-4 font-bold text-center">Processed Shifts</th>
-                  <th className="p-4 font-bold text-right">Cumulative Over/Short</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {cashierLeaderboard.length === 0 ? (
-                  <tr>
-                    <td colSpan={3} className="p-8 text-center text-muted-foreground font-medium">
-                      No shift data available.
-                    </td>
-                  </tr>
-                ) : (
-                  cashierLeaderboard.map((cashier, idx) => {
-                    const isShort = cashier.overShort < 0;
-                    const isOver = cashier.overShort > 0;
-                    const isZero = cashier.overShort === 0;
-                    return (
-                      <tr key={idx} className="hover:bg-muted/30 transition-colors">
-                        <td className="p-4 font-black text-foreground">{cashier.name}</td>
-                        <td className="p-4 text-center font-bold text-muted-foreground">{cashier.shifts}</td>
-                        <td className="p-4 text-right">
-                          <span className={`inline-block px-3 py-1 rounded-lg text-sm font-black ${
-                            isShort ? "bg-red-500/10 text-red-600 border border-red-500/20" : 
-                            isOver ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20" : 
-                            "bg-slate-100 text-slate-500 border border-slate-200 dark:bg-slate-800 dark:border-slate-700"
+
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {cashierLeaderboard.length === 0 ? (
+              <div className="col-span-full glass-panel p-10 text-center text-muted-foreground font-medium rounded-2xl">
+                No shift data available to calculate performance.
+              </div>
+            ) : (
+              cashierLeaderboard.map((cashier, idx) => {
+                const isCashShort = cashier.cashVariance < 0;
+                const isCashOver = cashier.cashVariance > 0;
+                const isVisaShort = cashier.visaVariance < 0;
+                const isVisaOver = cashier.visaVariance > 0;
+
+                return (
+                  <div key={idx} className="glass-panel bg-card border border-border rounded-2xl overflow-hidden hover:shadow-xl transition-all hover:border-slate-300 dark:hover:border-slate-700 relative flex flex-col">
+                    {idx < 3 && (
+                      <div className="absolute top-0 right-0 bg-yellow-500 text-yellow-950 text-[10px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-wider">
+                        Top Earner #{idx + 1}
+                      </div>
+                    )}
+                    <div className="p-5 border-b border-border/50">
+                      <h3 className="text-lg font-black text-foreground mb-1">{cashier.name}</h3>
+                      <div className="text-3xl font-black text-emerald-500 mb-2 font-mono">
+                        EGP {cashier.totalDeclared.toLocaleString()}
+                      </div>
+                      <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">Total Money Handled</p>
+                    </div>
+
+                    <div className="p-5 flex-grow space-y-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+                          <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Cash Variance</p>
+                          <span className={`inline-block text-sm font-black ${
+                            isCashShort ? "text-red-600" : 
+                            isCashOver ? "text-emerald-600" : 
+                            "text-slate-500"
                           }`}>
-                            {isShort ? "-" : isOver ? "+" : ""}EGP {Math.abs(cashier.overShort).toLocaleString()}
+                            {isCashShort ? "-" : isCashOver ? "+" : ""}EGP {Math.abs(cashier.cashVariance).toLocaleString()}
                           </span>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+                          <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Visa Variance</p>
+                          <span className={`inline-block text-sm font-black ${
+                            isVisaShort ? "text-red-600" : 
+                            isVisaOver ? "text-emerald-600" : 
+                            "text-slate-500"
+                          }`}>
+                            {isVisaShort ? "-" : isVisaOver ? "+" : ""}EGP {Math.abs(cashier.visaVariance).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-muted/30 px-5 py-3 border-t border-border flex justify-between items-center text-xs text-muted-foreground font-medium">
+                      <div className="flex items-center gap-1" title="Days Active">
+                        <Calendar className="h-3.5 w-3.5" /> {cashier.daysActive}d
+                      </div>
+                      <div className="flex items-center gap-1" title="Total Shifts">
+                        <Clock className="h-3.5 w-3.5" /> {cashier.shifts} shifts
+                      </div>
+                      <div className="flex items-center gap-1" title="Average Revenue per Shift">
+                        <Banknote className="h-3.5 w-3.5" /> EGP {Math.round(cashier.avgPerShift).toLocaleString()}/sh
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       ) : (
@@ -730,15 +798,25 @@ export default function ManagerAuditPage() {
                   <div className="text-right flex flex-col items-end">
                     <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Declared Total</p>
                     <p className="text-2xl font-black text-green-400">EGP {activeTab === "pending" ? ((Number(cashierOverrideCash) || 0) + (Number(cashierOverrideVisa) || 0)).toLocaleString() : selectedReport?.cashierCounts?.total?.toLocaleString()}</p>
-                    {activeTab === "history" && (
-                      <div className="mt-4 text-right bg-slate-800/80 border border-slate-700 px-3 py-2 rounded-xl">
-                        <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-0.5">Historical Context</p>
-                        <p className="text-xs text-white font-medium">Last 5 Shifts Avg: 
-                          <span className={`ml-1 font-black ${getCashierDelta(selectedReport.cashierDetails?.name) < 0 ? 'text-red-400' : getCashierDelta(selectedReport.cashierDetails?.name) > 0 ? 'text-green-400' : 'text-slate-300'}`}>
-                            {getCashierDelta(selectedReport.cashierDetails?.name) < 0 ? '-' : getCashierDelta(selectedReport.cashierDetails?.name) > 0 ? '+' : ''}
-                            EGP {Math.abs(getCashierDelta(selectedReport.cashierDetails?.name))}
+                    {(activeTab === "history" || activeTab === "pending") && (
+                      <div className="mt-4 text-right bg-slate-800/90 border border-slate-700 px-3 py-2 rounded-xl shadow-inner min-w-[180px]">
+                        <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1 border-b border-slate-700 pb-1">Historical Context</p>
+                        
+                        <div className="flex justify-between items-center text-xs mb-1">
+                          <span className="text-slate-400 font-medium mr-3">Cash Avg (5sh):</span>
+                          <span className={`font-black ${getCashierCashDelta(selectedReport.cashierDetails?.name) < 0 ? 'text-red-400' : getCashierCashDelta(selectedReport.cashierDetails?.name) > 0 ? 'text-emerald-400' : 'text-slate-300'}`}>
+                            {getCashierCashDelta(selectedReport.cashierDetails?.name) < 0 ? '-' : getCashierCashDelta(selectedReport.cashierDetails?.name) > 0 ? '+' : ''}
+                            EGP {Math.abs(getCashierCashDelta(selectedReport.cashierDetails?.name))}
                           </span>
-                        </p>
+                        </div>
+
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-slate-400 font-medium mr-3">Visa Avg (5sh):</span>
+                          <span className={`font-black ${getCashierVisaDelta(selectedReport.cashierDetails?.name) < 0 ? 'text-red-400' : getCashierVisaDelta(selectedReport.cashierDetails?.name) > 0 ? 'text-emerald-400' : 'text-slate-300'}`}>
+                            {getCashierVisaDelta(selectedReport.cashierDetails?.name) < 0 ? '-' : getCashierVisaDelta(selectedReport.cashierDetails?.name) > 0 ? '+' : ''}
+                            EGP {Math.abs(getCashierVisaDelta(selectedReport.cashierDetails?.name))}
+                          </span>
+                        </div>
                       </div>
                     )}
                   </div>
