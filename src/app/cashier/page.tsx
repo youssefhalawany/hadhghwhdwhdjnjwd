@@ -67,7 +67,6 @@ export default function CashierHubPage() {
 
   const handleInstallClick = async () => {
     const isIOS = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
-    const isAndroid = /android/.test(window.navigator.userAgent.toLowerCase());
 
     if (isIOS) {
       toast.info(lang === "en" 
@@ -76,25 +75,7 @@ export default function CashierHubPage() {
       return;
     }
 
-    if (isAndroid) {
-      // Direct APK download for Android
-      const link = document.createElement("a");
-      link.href = "/circlek-cashier.apk";
-      link.download = "circlek-cashier.apk";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      
-      toast.success(lang === "en" 
-        ? "Downloading App... Tap the file to install it."
-        : "جاري تحميل التطبيق... اضغط على الملف لتثبيته.");
-      
-      setIsInstalled(true);
-      return;
-    }
-
-    // Fallback for Desktop/Chrome if not explicitly Android/iOS
+    // Rely entirely on PWA for Android & Desktop
     if (!deferredPrompt) {
       toast.warning(lang === "en"
         ? "Your browser doesn't support automatic installation. Use browser menu -> Add to Home screen."

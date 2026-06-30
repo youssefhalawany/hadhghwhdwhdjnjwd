@@ -131,13 +131,23 @@ export default function ManagerAuditPage() {
         }
       });
 
-      // 2. High Cigarette Shrink
-      const highShrinkReports = reports.filter(r => (r.managerAudit.cigarettesPercent > 10));
-      if (highShrinkReports.length >= 3) {
+      // 2. High Shrink Alerts (Cigarettes > 10% OR Coffee > 10%)
+      const highCigaretteShrink = reports.filter(r => (r.managerAudit?.cigarettesPercent > 10));
+      const highCoffeeShrink = reports.filter(r => (r.managerAudit?.coffeePercent > 10));
+      
+      if (highCigaretteShrink.length >= 3) {
          anomalies.push({
             type: "high_cigarette_shrink",
             severity: "high",
-            message: `Notice: Cashier ${name} has reported cigarette shrink exceeding 10% on ${highShrinkReports.length} recent shifts. While coffee shrink variations are expected, cigarette variances should remain strictly minimal. Please review these inventory logs.`
+            message: `Notice: Cashier ${name} has reported cigarette shrink exceeding 10% on ${highCigaretteShrink.length} recent shifts. While coffee shrink variations are expected, cigarette variances should remain strictly minimal. Please review these inventory logs.`
+          });
+      }
+
+      if (highCoffeeShrink.length >= 3) {
+         anomalies.push({
+            type: "high_coffee_shrink",
+            severity: "high",
+            message: `Notice: Cashier ${name} has reported coffee shrink exceeding 10% on ${highCoffeeShrink.length} recent shifts. While coffee shrink is usually higher, anything above 10% is considered critically high. Please review these inventory logs.`
           });
       }
     });
