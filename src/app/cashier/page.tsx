@@ -343,15 +343,16 @@ export default function CashierHubPage() {
             <div className="flex items-center gap-2">
               <button 
                 onClick={handleEnableNotifications} 
-                className={`relative flex items-center justify-center p-2 rounded-full border transition-all duration-300 ${
+                className={`relative flex items-center gap-2 justify-center px-4 py-1.5 rounded-full border transition-all duration-300 font-bold shadow-sm ${
                   isNotificationEnabled 
-                    ? "bg-emerald-50 border-emerald-200 text-emerald-600 dark:bg-emerald-900/20 dark:border-emerald-800/50 dark:text-emerald-400" 
-                    : "bg-slate-50 border-slate-200 text-slate-500 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-800/50 dark:text-emerald-400 shadow-emerald-500/10 hover:bg-emerald-100" 
+                    : "bg-gradient-to-r from-red-600 to-red-500 border-red-500 text-white shadow-red-500/20 hover:scale-105 hover:shadow-lg hover:shadow-red-500/30"
                 }`}
                 title={isNotificationEnabled ? (lang === "en" ? "Notifications On" : "الإشعارات مفعلة") : (lang === "en" ? "Enable Notifications" : "تفعيل الإشعارات")}
               >
                 <Bell className={`h-4 w-4 ${!isNotificationEnabled && "animate-pulse"}`} />
-                {isNotificationEnabled && <span className="absolute top-0 right-0 w-2 h-2 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-800"></span>}
+                <span className="hidden sm:inline text-[11px] uppercase tracking-wider">{isNotificationEnabled ? (lang === "en" ? "Alerts On" : "إشعارات") : (lang === "en" ? "Get Alerts" : "تفعيل")}</span>
+                {isNotificationEnabled && <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-800 shadow-sm"></span>}
               </button>
               {!isInstalled && (
                 <button onClick={handleInstallClick} className="flex items-center gap-1 bg-red-100 dark:bg-red-900/30 px-3 py-1.5 rounded-full text-xs font-bold text-red-700 dark:text-red-400"><Download className="h-4 w-4" /> {lang === "en" ? "Install App" : "تثبيت التطبيق"}</button>
@@ -496,15 +497,18 @@ export default function CashierHubPage() {
           <div className="flex items-center gap-2">
             <button 
               onClick={handleEnableNotifications} 
-              className={`relative flex items-center justify-center p-2 rounded-full border transition-all duration-300 ${
+              className={`relative flex flex-col items-center justify-center p-2 transition-colors rounded-xl ${
                 isNotificationEnabled 
-                  ? "bg-emerald-50/80 backdrop-blur-md border-emerald-200/60 text-emerald-600 dark:bg-emerald-900/30 dark:border-emerald-800/50 dark:text-emerald-400" 
-                  : "bg-white/80 backdrop-blur-md border-slate-200/60 text-slate-500 dark:bg-slate-800/80 dark:border-slate-700/50 dark:text-slate-400 hover:bg-white hover:text-blue-600 hover:border-blue-200 hover:shadow-md"
+                  ? "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20" 
+                  : "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 animate-pulse"
               }`}
               title={isNotificationEnabled ? (lang === "en" ? "Notifications On" : "الإشعارات مفعلة") : (lang === "en" ? "Enable Notifications" : "تفعيل الإشعارات")}
             >
-              <Bell className={`h-4 w-4 ${!isNotificationEnabled && "animate-pulse"}`} />
-              {isNotificationEnabled && <span className="absolute top-0 right-0 w-2 h-2 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-800"></span>}
+              <div className="relative">
+                <Bell className="h-5 w-5 mb-1" />
+                {isNotificationEnabled && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-800"></span>}
+              </div>
+              <span className="text-[10px] font-bold">{isNotificationEnabled ? (lang === "en" ? "Alerts On" : "تنبيهات") : (lang === "en" ? "Get Alerts" : "تفعيل")}</span>
             </button>
             {!isInstalled && (
               <button 

@@ -131,23 +131,23 @@ export default function ManagerAuditPage() {
         }
       });
 
-      // 2. High Shrink Alerts (Cigarettes > 10% OR Coffee > 10%)
+      // 2. High Shrink Alerts (Cigarettes > 10% OR Coffee < 30%)
       const highCigaretteShrink = reports.filter(r => (r.managerAudit?.cigarettesPercent > 10));
-      const highCoffeeShrink = reports.filter(r => (r.managerAudit?.coffeePercent > 10));
+      const lowCoffeeShrink = reports.filter(r => (r.managerAudit?.coffeePercent < 30 && r.managerAudit?.coffeePercent !== undefined && r.managerAudit?.coffeePercent !== null && r.managerAudit?.coffeePercent !== ""));
       
       if (highCigaretteShrink.length >= 3) {
          anomalies.push({
             type: "high_cigarette_shrink",
             severity: "high",
-            message: `Notice: Cashier ${name} has reported cigarette shrink exceeding 10% on ${highCigaretteShrink.length} recent shifts. While coffee shrink variations are expected, cigarette variances should remain strictly minimal. Please review these inventory logs.`
+            message: `Notice: Cashier ${name} has reported cigarette shrink exceeding 10% on ${highCigaretteShrink.length} recent shifts. Cigarette variances should remain strictly minimal. Please review these inventory logs.`
           });
       }
 
-      if (highCoffeeShrink.length >= 3) {
+      if (lowCoffeeShrink.length >= 3) {
          anomalies.push({
-            type: "high_coffee_shrink",
+            type: "low_coffee_shrink",
             severity: "high",
-            message: `Notice: Cashier ${name} has reported coffee shrink exceeding 10% on ${highCoffeeShrink.length} recent shifts. While coffee shrink is usually higher, anything above 10% is considered critically high. Please review these inventory logs.`
+            message: `Notice: Cashier ${name} has reported coffee yield below 30% on ${lowCoffeeShrink.length} recent shifts. Good coffee yield should be above 30%. Please review these inventory logs.`
           });
       }
     });

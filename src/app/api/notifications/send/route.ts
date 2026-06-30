@@ -42,6 +42,19 @@ export async function POST(request: Request) {
         title: title,
         body: body,
       },
+      webpush: {
+        notification: {
+          icon: '/icon.png', // Assuming we have an icon here or standard red branding
+          badge: '/icon.png',
+          requireInteraction: true,
+          data: {
+            url: "https://hadhghwhdwhdjnjwd.vercel.app/cashier"
+          }
+        },
+        fcmOptions: {
+          link: "https://hadhghwhdwhdjnjwd.vercel.app/cashier"
+        }
+      },
       tokens: tokens, // Note: tokens array for multicast
     };
 
