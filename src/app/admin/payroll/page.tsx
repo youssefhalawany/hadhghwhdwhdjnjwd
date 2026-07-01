@@ -58,7 +58,13 @@ export default function AdminPayrollPage() {
   const [showPaidModal, setShowPaidModal] = useState<PayrollRecord | null>(null);
   const [paidDate, setPaidDate] = useState<string>(new Date().toISOString().split("T")[0]);
 
+  const [currentDate, setCurrentDate] = useState("");
+
   const [isPrinting, setIsPrinting] = useState(false);
+
+  useEffect(() => {
+    setCurrentDate(new Date().toLocaleString('en-GB'));
+  }, []);
 
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, async (user) => {
@@ -667,7 +673,7 @@ export default function AdminPayrollPage() {
           Branch: {filterBranch === 'all' ? 'All Branches' : availableBranches.find(b => b.id === filterBranch)?.name || filterBranch} | 
           Month: {filterMonth === 'all' ? 'All Months' : filterMonth}
         </p>
-        <p className="text-xs text-gray-500 mt-1">Generated: {new Date().toLocaleString('en-GB')}</p>
+        <p className="text-xs text-gray-500 mt-1">Generated: {currentDate}</p>
       </div>
 
       {filteredDrafts.length > 0 && (
