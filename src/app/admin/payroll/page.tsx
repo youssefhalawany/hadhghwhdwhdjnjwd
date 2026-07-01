@@ -4,9 +4,10 @@ import React, { useState, useEffect } from "react";
 import { db, auth } from "@/lib/firebase";
 import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, getDocs, getDoc, updateDoc, where } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
-import { Plus, Check, X, ShieldAlert, DollarSign, Calendar, Save, Trash2, CheckCircle2 } from "lucide-react";
+import { Plus, Check, X, ShieldAlert, DollarSign, Calendar, Save, Trash2, CheckCircle2, Printer, Filter } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useBranch, BranchId } from "@/context/BranchContext";
 
 type PayrollRecord = {
   id?: string;
@@ -49,6 +50,15 @@ export default function AdminPayrollPage() {
     paymentMethod: "cash",
   });
   const [selectedEmp, setSelectedEmp] = useState<any>(null);
+
+  const { currentBranch, availableBranches } = useBranch();
+  const [filterBranch, setFilterBranch] = useState<BranchId | "all">("all");
+  const [filterMonth, setFilterMonth] = useState<string>("all");
+
+  const [showPaidModal, setShowPaidModal] = useState<PayrollRecord | null>(null);
+  const [paidDate, setPaidDate] = useState<string>(new Date().toISOString().split("T")[0]);
+
+  const [isPrinting, setIsPrinting] = useState(false);
 
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, async (user) => {
@@ -230,14 +240,22 @@ export default function AdminPayrollPage() {
     }
   };
 
-  const markAsPaid = async (draft: PayrollRecord) => {
-    if (!confirm(`Mark payroll for ${employees.find(e => e.id === draft.employeeId)?.name || 'Employee'} as PAID?`)) return;
+  const openMarkPaidModal = (draft: PayrollRecord) => {
+    setShowPaidModal(draft);
+    setPaidDate(new Date().toISOString().split("T")[0]);
+  };
+
+  const confirmMarkPaid = async () => {
+    if (!showPaidModal) return;
+    const draft = showPaidModal;
 
     try {
       // Create in payroll_lines
       const finalRecord = { ...draft };
       delete finalRecord.id;
-      finalRecord.postedToFinanceAt = new Date().toLocaleString('en-GB', { timeZone: 'Africa/Cairo' });
+      // Format selected date
+      const selectedDate = new Date(paidDate);
+      finalRecord.postedToFinanceAt = selectedDate.toLocaleString('en-GB', { timeZone: 'Africa/Cairo' });
       finalRecord.status = "paid";
 
       const newDocRef = await addDoc(collection(db, "payroll_lines"), finalRecord);
@@ -257,8 +275,9 @@ export default function AdminPayrollPage() {
       }
       
       toast.success("Payroll Marked as Paid and posted to Finance");
+      setShowPaidModal(null);
     } catch (err: any) {
-      toast.error("Failed to mark as paid: " + err.message);
+      toast.error("Failed: " + err.message);
     }
   };
 
@@ -294,7 +313,8 @@ export default function AdminPayrollPage() {
   const { standardPay, netPay } = calcPays();
 
   return (
-    <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8 animate-in fade-in duration-500 pb-24">
+    <>
+    <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8 animate-in fade-in duration-500 pb-24 print:hidden">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
         <div>
           <div className="flex items-center gap-3 mb-2">
@@ -449,14 +469,51 @@ export default function AdminPayrollPage() {
         </div>
       )}
 
+      {/* FILTER BAR */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl flex flex-col md:flex-row items-center gap-4 shadow-sm print:hidden">
+        <div className="flex items-center gap-2 text-slate-500">
+          <Filter className="w-5 h-5" />
+          <span className="font-bold">Filters:</span>
+        </div>
+        <select
+          value={filterBranch}
+          onChange={(e) => setFilterBranch(e.target.value as BranchId | "all")}
+          className="p-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-lg text-sm"
+        >
+          <option value="all">All Branches</option>
+          {availableBranches.map(b => (
+            <option key={b.id} value={b.id}>{b.name}</option>
+          ))}
+        </select>
+        <select
+          value={filterMonth}
+          onChange={(e) => setFilterMonth(e.target.value)}
+          className="p-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-lg text-sm"
+        >
+          <option value="all">All Months</option>
+          {allMonths.map(m => (
+            <option key={m} value={m}>{m}</option>
+          ))}
+        </select>
+        <div className="flex-1"></div>
+        <button
+          onClick={() => {
+            window.print();
+          }}
+          className="bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 text-sm transition-colors"
+        >
+          <Printer className="w-4 h-4" /> Print Report
+        </button>
+      </div>
+
       {/* DRAFTS */}
       <div className="space-y-4">
         <h2 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse"></span>
-          Unpaid Drafts ({drafts.length})
+          Unpaid Drafts ({filteredDrafts.length})
         </h2>
         
-        {drafts.length === 0 ? (
+        {filteredDrafts.length === 0 ? (
           <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-8 rounded-2xl text-center text-slate-500">
             No unpaid payroll drafts at the moment.
           </div>
@@ -475,7 +532,7 @@ export default function AdminPayrollPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
-                  {drafts.map(d => {
+                  {filteredDrafts.map(d => {
                     const emp = employees.find(e => e.id === d.employeeId);
                     return (
                       <tr key={d.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
@@ -488,14 +545,14 @@ export default function AdminPayrollPage() {
                           <div className="flex justify-end gap-2">
                             <button 
                               onClick={() => deleteDraft(d.id!)}
-                              className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded"
+                              className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded print:hidden"
                               title="Delete Draft"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
                             <button 
-                              onClick={() => markAsPaid(d)}
-                              className="px-3 py-1.5 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50 rounded-lg font-bold text-xs flex items-center gap-1 transition-colors"
+                              onClick={() => openMarkPaidModal(d)}
+                              className="px-3 py-1.5 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50 rounded-lg font-bold text-xs flex items-center gap-1 transition-colors print:hidden"
                             >
                               <CheckCircle2 className="w-3.5 h-3.5" /> Mark Paid
                             </button>
@@ -531,7 +588,7 @@ export default function AdminPayrollPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
-                {paidLines.map((d, i) => {
+                {filteredLines.map((d, i) => {
                   const emp = employees.find(e => e.id === d.employeeId);
                   return (
                     <tr key={d.id || i} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
@@ -547,7 +604,7 @@ export default function AdminPayrollPage() {
                     </tr>
                   );
                 })}
-                {paidLines.length === 0 && (
+                {filteredLines.length === 0 && (
                   <tr>
                     <td colSpan={5} className="px-4 py-8 text-center text-slate-500">No paid history found.</td>
                   </tr>
@@ -559,5 +616,171 @@ export default function AdminPayrollPage() {
       </div>
 
     </div>
+
+    {/* MARK PAID MODAL */}
+    {showPaidModal && (
+      <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 print:hidden">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+          <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+            <h3 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+              Confirm Payment Date
+            </h3>
+            <p className="text-sm text-slate-500 mt-1">
+              Mark payroll for {employees.find(e => e.id === showPaidModal.employeeId)?.name || 'Employee'} as PAID.
+            </p>
+          </div>
+          <div className="p-6 space-y-4">
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Payment Date</label>
+              <input 
+                type="date" 
+                value={paidDate}
+                onChange={e => setPaidDate(e.target.value)}
+                className="w-full p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium"
+              />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button 
+                onClick={() => setShowPaidModal(null)}
+                className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmMarkPaid}
+                className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold flex justify-center items-center gap-2 transition-colors"
+              >
+                <Check className="w-4 h-4" /> Confirm Paid
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* PRINTABLE REPORT */}
+    <div className="hidden print:block w-full text-black bg-white">
+      <div className="mb-6 text-center border-b-2 border-black pb-4">
+        <h1 className="text-2xl font-black uppercase tracking-widest">Payroll Report</h1>
+        <p className="text-sm text-gray-600 mt-1">
+          Branch: {filterBranch === 'all' ? 'All Branches' : availableBranches.find(b => b.id === filterBranch)?.name || filterBranch} | 
+          Month: {filterMonth === 'all' ? 'All Months' : filterMonth}
+        </p>
+        <p className="text-xs text-gray-500 mt-1">Generated: {new Date().toLocaleString('en-GB')}</p>
+      </div>
+
+      {filteredDrafts.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-lg font-bold mb-3 uppercase border-b border-gray-300 pb-1">Unpaid Drafts</h2>
+          <table className="w-full text-xs text-left border-collapse">
+            <thead>
+              <tr className="border-b-2 border-black">
+                <th className="py-2">Employee</th>
+                <th className="py-2">Branch</th>
+                <th className="py-2">Month</th>
+                <th className="py-2 text-center">Days</th>
+                <th className="py-2 text-right">Standard</th>
+                <th className="py-2 text-right">Overtime</th>
+                <th className="py-2 text-right">Bonus</th>
+                <th className="py-2 text-right text-red-600">Deductions</th>
+                <th className="py-2 text-right text-red-600">Loans</th>
+                <th className="py-2 text-right text-red-600">Insurance</th>
+                <th className="py-2 text-right font-bold">Net Pay</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {filteredDrafts.map((d, i) => {
+                const emp = employees.find(e => e.id === d.employeeId);
+                const bName = availableBranches.find(b => b.id === (emp?.branchId || d.storeId))?.name || d.storeId || "-";
+                return (
+                  <tr key={d.id || i}>
+                    <td className="py-2 font-semibold">{emp?.name || d.employeeId}</td>
+                    <td className="py-2">{bName}</td>
+                    <td className="py-2">{d.month}</td>
+                    <td className="py-2 text-center">{d.days}</td>
+                    <td className="py-2 text-right">{(d.standardPay || 0).toLocaleString()}</td>
+                    <td className="py-2 text-right">{(d.overtime || 0).toLocaleString()}</td>
+                    <td className="py-2 text-right">{(d.bonus || 0).toLocaleString()}</td>
+                    <td className="py-2 text-right text-red-600">{(d.deductions || 0).toLocaleString()}</td>
+                    <td className="py-2 text-right text-red-600">{(d.loanThisMonth || 0).toLocaleString()}</td>
+                    <td className="py-2 text-right text-red-600">{(d.insurance || 0).toLocaleString()}</td>
+                    <td className="py-2 text-right font-bold">{(d.netPay || 0).toLocaleString()}</td>
+                  </tr>
+                );
+              })}
+              <tr className="border-t-2 border-black font-bold">
+                <td colSpan={10} className="py-3 text-right uppercase">Total Pending (Unpaid):</td>
+                <td className="py-3 text-right">{filteredDrafts.reduce((sum, d) => sum + (Number(d.netPay) || 0), 0).toLocaleString()} EGP</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {filteredLines.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-lg font-bold mb-3 uppercase border-b border-gray-300 pb-1">Paid Payroll History</h2>
+          <table className="w-full text-xs text-left border-collapse">
+            <thead>
+              <tr className="border-b-2 border-black">
+                <th className="py-2">Employee</th>
+                <th className="py-2">Branch</th>
+                <th className="py-2">Month</th>
+                <th className="py-2 text-center">Days</th>
+                <th className="py-2 text-right">Standard</th>
+                <th className="py-2 text-right">Overtime</th>
+                <th className="py-2 text-right">Bonus</th>
+                <th className="py-2 text-right text-red-600">Deductions</th>
+                <th className="py-2 text-right text-red-600">Loans</th>
+                <th className="py-2 text-right text-red-600">Insurance</th>
+                <th className="py-2 text-right font-bold">Net Pay</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {filteredLines.map((d, i) => {
+                const emp = employees.find(e => e.id === d.employeeId);
+                const bName = availableBranches.find(b => b.id === (emp?.branchId || d.storeId))?.name || d.storeId || "-";
+                return (
+                  <tr key={d.id || i}>
+                    <td className="py-2 font-semibold">{emp?.name || d.employeeId}</td>
+                    <td className="py-2">{bName}</td>
+                    <td className="py-2">{d.month}</td>
+                    <td className="py-2 text-center">{d.days}</td>
+                    <td className="py-2 text-right">{(d.standardPay || 0).toLocaleString()}</td>
+                    <td className="py-2 text-right">{(d.overtime || 0).toLocaleString()}</td>
+                    <td className="py-2 text-right">{(d.bonus || 0).toLocaleString()}</td>
+                    <td className="py-2 text-right text-red-600">{(d.deductions || 0).toLocaleString()}</td>
+                    <td className="py-2 text-right text-red-600">{(d.loanThisMonth || 0).toLocaleString()}</td>
+                    <td className="py-2 text-right text-red-600">{(d.insurance || 0).toLocaleString()}</td>
+                    <td className="py-2 text-right font-bold">{(d.netPay || 0).toLocaleString()}</td>
+                  </tr>
+                );
+              })}
+              <tr className="border-t-2 border-black font-bold">
+                <td colSpan={10} className="py-3 text-right uppercase">Total Paid:</td>
+                <td className="py-3 text-right">{filteredLines.reduce((sum, d) => sum + (Number(d.netPay) || 0), 0).toLocaleString()} EGP</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+      
+      {filteredDrafts.length === 0 && filteredLines.length === 0 && (
+        <div className="text-center py-10 text-gray-500 italic border border-gray-200">
+          No records found for the selected filters.
+        </div>
+      )}
+
+      <div className="mt-12 flex justify-between items-end border-t border-gray-300 pt-8">
+        <div className="w-48 border-t-2 border-black pt-2 text-center text-sm font-bold">
+          Prepared By
+        </div>
+        <div className="w-48 border-t-2 border-black pt-2 text-center text-sm font-bold">
+          Approved By
+        </div>
+      </div>
+    </div>
+    </>
   );
 }

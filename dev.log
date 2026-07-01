@@ -51,3 +51,9 @@ FirebaseError: Missing or insufficient permissions. (src/app/admin/payroll/page.
 ⚠ Fast Refresh had to perform a full reload due to a runtime error.
  GET /admin/payroll 200 in 178ms (next.js: 37ms, application-code: 142ms)
 ✓ Compiled in 797ms
+[browser] A component is changing an uncontrolled input to be controlled. This is likely caused by the value changing from undefined to a defined value, which should not happen. Decide between using a controlled or uncontrolled input element for the lifetime of the component. More info: https://react.dev/link/controlled-components 
+ GET /admin/payroll 200 in 545ms (next.js: 407ms, application-code: 138ms)
+ GET /financial-reports 200 in 219ms (next.js: 38ms, application-code: 181ms)
+○ Compiling /shift-reports/manager ...
+ GET /shift-reports/manager 200 in 6.8s (next.js: 6.6s, application-code: 186ms)
+ GET /admin/payroll 200 in 121ms (next.js: 49ms, application-code: 73ms)
