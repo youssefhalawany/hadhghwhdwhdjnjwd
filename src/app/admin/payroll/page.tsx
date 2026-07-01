@@ -10,24 +10,24 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 type PayrollRecord = {
   id?: string;
-  bonus: number;
-  createdAt: string;
-  createdBy: string;
-  days: number;
-  deductions: number;
   employeeId: string;
-  employeeName?: string; // transient for UI
-  insurance: number;
-  loanThisMonth: number;
+  storeId?: string;
   month: string;
-  netPay: number;
-  overtime: number;
-  paymentMethod: "cash" | "visa" | "bank";
-  postedToFinanceAt?: string | null;
+  days: number;
   standardPay: number;
-  storeId: string;
+  bonus: number;
+  deductions: number;
+  loanThisMonth: number;
+  insurance: number;
+  overtime: number;
+  netPay: number;
+  createdAt: string | any;
+  createdBy: string;
+  postedToFinanceAt?: string | any;
+  paymentMethod: 'cash' | 'bank' | 'cheque';
   appliedDeductionIds?: string[];
   appliedLoanIds?: string[];
+  status?: string;
 };
 
 export default function AdminPayrollPage() {
@@ -83,7 +83,11 @@ export default function AdminPayrollPage() {
     fetchEmps();
 
     const unsubDrafts = onSnapshot(collection(db, "payroll_drafts"), (snap) => {
-      setDrafts(snap.docs.map(d => ({ id: d.id, ...d.data() } as PayrollRecord)).sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "")));
+      setDrafts(snap.docs.map(d => ({ id: d.id, ...d.data() } as PayrollRecord)).sort((a, b) => {
+        const aTime = typeof a.createdAt === 'object' && a.createdAt?.seconds ? a.createdAt.seconds : (a.createdAt || "");
+        const bTime = typeof b.createdAt === 'object' && b.createdAt?.seconds ? b.createdAt.seconds : (b.createdAt || "");
+        return String(bTime).localeCompare(String(aTime));
+      }));
     });
 
     const unsubLines = onSnapshot(query(collection(db, "payroll_lines"), orderBy("createdAt", "desc")), (snap) => {
@@ -534,8 +538,12 @@ export default function AdminPayrollPage() {
                       <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-300">{emp?.name || d.employeeId}</td>
                       <td className="px-4 py-3 font-mono text-xs">{d.month}</td>
                       <td className="px-4 py-3 font-mono font-bold text-emerald-600 dark:text-emerald-400">{(d.netPay || 0).toLocaleString()} EGP</td>
-                      <td className="px-4 py-3 text-xs text-slate-500">{d.postedToFinanceAt}</td>
-                      <td className="px-4 py-3 text-xs text-slate-500">{d.createdBy}</td>
+                      <td className="px-4 py-3 text-xs text-slate-500">
+                        {typeof d.postedToFinanceAt === 'object' && d.postedToFinanceAt?.seconds 
+                          ? new Date(d.postedToFinanceAt.seconds * 1000).toLocaleString('en-GB') 
+                          : String(d.postedToFinanceAt || "N/A")}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-500">{String(d.createdBy || "")}</td>
                     </tr>
                   );
                 })}
