@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 type DetailItem = {
   description: string;
   po: string;
+  price?: number | string;
 };
 
 type EndShiftRecord = {
@@ -167,21 +168,29 @@ export default function EndShiftCashPage() {
       cash: 0,
       visa: 0,
       deduction: 0,
-      items: [{ description: "", po: "" }] // Start with one empty item
+      items: [{ description: "", po: "", price: "" }] // Start with one empty item
     });
   };
 
   const handleAddItem = () => {
     setEditForm(prev => ({
       ...prev,
-      items: [...(prev.items || []), { description: "", po: "" }]
+      items: [...(prev.items || []), { description: "", po: "", price: "" }]
     }));
   };
 
-  const handleUpdateItem = (index: number, field: keyof DetailItem, value: string) => {
+  const handleUpdateItem = (index: number, field: keyof DetailItem, value: string | number) => {
     setEditForm(prev => {
       const newItems = [...(prev.items || [])];
       newItems[index] = { ...newItems[index], [field]: value };
+      
+      // Automatically calculate deduction if any item has a price
+      const hasPrices = newItems.some(i => i.price !== undefined && i.price !== "");
+      if (hasPrices) {
+        const totalDeduction = newItems.reduce((sum, item) => sum + (Number(item.price) || 0), 0);
+        return { ...prev, items: newItems, deduction: totalDeduction };
+      }
+      
       return { ...prev, items: newItems };
     });
   };
@@ -190,6 +199,13 @@ export default function EndShiftCashPage() {
     setEditForm(prev => {
       const newItems = [...(prev.items || [])];
       newItems.splice(index, 1);
+      
+      const hasPrices = newItems.some(i => i.price !== undefined && i.price !== "");
+      if (hasPrices || newItems.length === 0) {
+         const totalDeduction = newItems.reduce((sum, item) => sum + (Number(item.price) || 0), 0);
+         return { ...prev, items: newItems, deduction: totalDeduction };
+      }
+      
       return { ...prev, items: newItems };
     });
   };
@@ -409,7 +425,14 @@ export default function EndShiftCashPage() {
                           {/* Deduction */}
                           <td className="px-3 py-3 font-bold text-red-600 dark:text-red-400 text-right print:text-black align-top">
                             {isEditing ? (
-                              <input type="number" value={editForm.deduction} onChange={e => setEditForm({...editForm, deduction: Number(e.target.value)})} className="w-20 px-2 py-1 border border-teal-200 dark:border-teal-800 focus:border-teal-500 rounded-md text-right bg-white dark:bg-slate-950 font-mono text-sm" />
+                              <input 
+                                type="number" 
+                                value={editForm.deduction} 
+                                onChange={e => setEditForm({...editForm, deduction: Number(e.target.value)})} 
+                                className={`w-20 px-2 py-1 border ${editForm.items?.some(i => i.price !== undefined && i.price !== "") ? "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-500" : "border-teal-200 dark:border-teal-800 focus:border-teal-500 bg-white dark:bg-slate-950"} rounded-md text-right font-mono text-sm`} 
+                                readOnly={editForm.items?.some(i => i.price !== undefined && i.price !== "")}
+                                title={editForm.items?.some(i => i.price !== undefined && i.price !== "") ? "Calculated automatically from invoice prices" : "Manual deduction"}
+                              />
                             ) : (
                               r.deduction.toLocaleString()
                             )}
@@ -429,13 +452,22 @@ export default function EndShiftCashPage() {
                                         onChange={e => handleUpdateItem(i, "description", e.target.value)} 
                                         className="w-full px-2 py-1.5 border border-teal-200 dark:border-teal-800 focus:border-teal-500 rounded-md bg-white dark:bg-slate-950 text-sm" 
                                       />
-                                      <input 
-                                        type="text" 
-                                        placeholder="PO # (Optional)"
-                                        value={item.po} 
-                                        onChange={e => handleUpdateItem(i, "po", e.target.value)} 
-                                        className="w-full px-2 py-1 border border-teal-200 dark:border-teal-800 focus:border-teal-500 rounded-md bg-white dark:bg-slate-950 text-xs font-mono" 
-                                      />
+                                      <div className="flex gap-2">
+                                        <input 
+                                          type="text" 
+                                          placeholder="PO #"
+                                          value={item.po} 
+                                          onChange={e => handleUpdateItem(i, "po", e.target.value)} 
+                                          className="w-1/2 px-2 py-1 border border-teal-200 dark:border-teal-800 focus:border-teal-500 rounded-md bg-white dark:bg-slate-950 text-xs font-mono" 
+                                        />
+                                        <input 
+                                          type="number" 
+                                          placeholder="Price (EGP)"
+                                          value={item.price ?? ""} 
+                                          onChange={e => handleUpdateItem(i, "price", e.target.value)} 
+                                          className="w-1/2 px-2 py-1 border border-teal-200 dark:border-teal-800 focus:border-teal-500 rounded-md bg-white dark:bg-slate-950 text-xs font-mono text-red-600 dark:text-red-400 font-bold text-right" 
+                                        />
+                                      </div>
                                     </div>
                                     <button onClick={() => handleRemoveItem(i)} className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded mt-1">
                                       <X className="h-4 w-4" />
@@ -453,13 +485,20 @@ export default function EndShiftCashPage() {
                               <div className="space-y-2">
                                 {r.items && r.items.length > 0 ? (
                                   r.items.map((item, i) => (
-                                    <div key={i} className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between border-b border-slate-100 dark:border-slate-800/50 print:border-gray-200 last:border-0 pb-1.5 last:pb-0 gap-1">
-                                      <span className="text-slate-700 dark:text-slate-300 print:text-black font-medium leading-tight">
-                                        • {item.description}
-                                      </span>
-                                      {item.po && (
-                                        <span className="text-[10px] sm:text-xs font-mono text-slate-500 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded print:bg-transparent print:border print:border-gray-300">
-                                          PO: {item.po}
+                                    <div key={i} className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between border-b border-slate-100 dark:border-slate-800/50 print:border-gray-200 last:border-0 pb-1.5 last:pb-0 gap-1 mt-1">
+                                      <div className="flex flex-col gap-1">
+                                        <span className="text-slate-700 dark:text-slate-300 print:text-black font-medium leading-tight">
+                                          • {item.description}
+                                        </span>
+                                        {item.po && (
+                                          <span className="text-[10px] sm:text-xs font-mono text-slate-500 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded w-fit print:bg-transparent print:border print:border-gray-300">
+                                            PO: {item.po}
+                                          </span>
+                                        )}
+                                      </div>
+                                      {item.price && (
+                                        <span className="text-xs sm:text-sm font-mono font-bold text-red-600 dark:text-red-400">
+                                          {Number(item.price).toLocaleString()} EGP
                                         </span>
                                       )}
                                     </div>
@@ -524,7 +563,15 @@ export default function EndShiftCashPage() {
                           <input type="number" value={editForm.visa} onChange={e => setEditForm({...editForm, visa: Number(e.target.value)})} className="w-20 px-2 py-1 border border-teal-300 dark:border-teal-700 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 rounded-md text-right bg-white dark:bg-slate-950 font-mono text-sm shadow-sm" placeholder="0" />
                         </td>
                         <td className="px-3 py-3 align-top">
-                          <input type="number" value={editForm.deduction} onChange={e => setEditForm({...editForm, deduction: Number(e.target.value)})} className="w-20 px-2 py-1 border border-teal-300 dark:border-teal-700 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 rounded-md text-right bg-white dark:bg-slate-950 font-mono text-sm shadow-sm" placeholder="0" />
+                          <input 
+                            type="number" 
+                            value={editForm.deduction} 
+                            onChange={e => setEditForm({...editForm, deduction: Number(e.target.value)})} 
+                            className={`w-20 px-2 py-1 border ${editForm.items?.some(i => i.price !== undefined && i.price !== "") ? "border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-500" : "border-teal-300 dark:border-teal-700 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 bg-white dark:bg-slate-950"} rounded-md text-right font-mono text-sm shadow-sm`} 
+                            placeholder="0" 
+                            readOnly={editForm.items?.some(i => i.price !== undefined && i.price !== "")}
+                            title={editForm.items?.some(i => i.price !== undefined && i.price !== "") ? "Calculated automatically from invoice prices" : "Manual deduction"}
+                          />
                         </td>
                         <td className="px-4 py-3 align-top min-w-[250px]">
                           <div className="space-y-2">
@@ -538,13 +585,22 @@ export default function EndShiftCashPage() {
                                     onChange={e => handleUpdateItem(i, "description", e.target.value)} 
                                     className="w-full px-2 py-1.5 border border-slate-200 dark:border-slate-800 focus:border-teal-500 rounded-md bg-white dark:bg-slate-950 text-sm" 
                                   />
-                                  <input 
-                                    type="text" 
-                                    placeholder="PO # (Optional)"
-                                    value={item.po} 
-                                    onChange={e => handleUpdateItem(i, "po", e.target.value)} 
-                                    className="w-full px-2 py-1 border border-slate-200 dark:border-slate-800 focus:border-teal-500 rounded-md bg-slate-50 dark:bg-slate-900 text-xs font-mono" 
-                                  />
+                                  <div className="flex gap-2">
+                                    <input 
+                                      type="text" 
+                                      placeholder="PO #"
+                                      value={item.po} 
+                                      onChange={e => handleUpdateItem(i, "po", e.target.value)} 
+                                      className="w-1/2 px-2 py-1 border border-slate-200 dark:border-slate-800 focus:border-teal-500 rounded-md bg-slate-50 dark:bg-slate-900 text-xs font-mono" 
+                                    />
+                                    <input 
+                                      type="number" 
+                                      placeholder="Price (EGP)"
+                                      value={item.price ?? ""} 
+                                      onChange={e => handleUpdateItem(i, "price", e.target.value)} 
+                                      className="w-1/2 px-2 py-1 border border-slate-200 dark:border-slate-800 focus:border-teal-500 rounded-md bg-slate-50 dark:bg-slate-900 text-xs font-mono text-red-600 dark:text-red-400 font-bold text-right" 
+                                    />
+                                  </div>
                                 </div>
                                 <button onClick={() => handleRemoveItem(i)} className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded mt-1">
                                   <X className="h-4 w-4" />
