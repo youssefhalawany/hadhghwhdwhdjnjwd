@@ -33,7 +33,7 @@ export default function VendorStatementsPage() {
     setLoading(true);
     try {
       // 1. Fetch Cash Payments
-      const cashQ = query(collection(db, "cash_payments"), orderBy("timestamp", "desc"), limit(2000));
+      const cashQ = query(collection(db, "cash_payments"), limit(10000));
       const cashSnap = await getDocs(cashQ);
       const cashData = cashSnap.docs.map(doc => {
         const d = doc.data();
@@ -50,7 +50,7 @@ export default function VendorStatementsPage() {
       }).filter(Boolean);
 
       // 2. Fetch Credits (User requested: "and credit if paid only")
-      const creditQ = query(collection(db, "credits"), orderBy("timestamp", "desc"), limit(2000));
+      const creditQ = query(collection(db, "credits"), limit(10000));
       const creditSnap = await getDocs(creditQ);
       const creditData = creditSnap.docs.map(doc => {
         const d = doc.data();
