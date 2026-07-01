@@ -5,8 +5,10 @@ import { dbService } from "@/lib/firebase";
 import { 
   FileText, Plus, Save, Trash2, Eye, Copy, 
   ArrowLeftRight, FileCode, Check, Settings, 
-  FileDown, Landmark, Signature, Heading, Footprints, RotateCcw
+  FileDown, Landmark, Signature, Heading, Footprints, RotateCcw, Download
 } from "lucide-react";
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 interface ReportTemplate {
   id: string;
@@ -35,6 +37,7 @@ export default function ReportBuilderPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [versionHistory, setVersionHistory] = useState<any[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const mockupRef = React.useRef<HTMLDivElement>(null);
 
   // Form State
   const [name, setName] = useState("");
@@ -175,6 +178,32 @@ export default function ReportBuilderPage() {
       setFields(fields.filter(f => f !== field));
     } else {
       setFields([...fields, field]);
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!mockupRef.current) return;
+    try {
+      const canvas = await html2canvas(mockupRef.current, {
+        scale: 4,
+        useCORS: true,
+        logging: false
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: pageOrientation === "Portrait" ? "portrait" : "landscape",
+        unit: 'mm',
+        format: 'a4'
+      });
+      
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`${name.replace(/\\s+/g, '_')}_Preview.pdf`);
+    } catch (err) {
+      console.error("Failed to generate PDF:", err);
+      alert("Failed to generate PDF preview.");
     }
   };
 
@@ -461,13 +490,22 @@ export default function ReportBuilderPage() {
 
         {/* Right: Live A4 Mockup Preview */}
         <div className="glass-panel p-5 rounded-xl lg:col-span-4 space-y-4">
-          <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-            <Eye className="h-4 w-4" /> Live Document Mockup
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <Eye className="h-4 w-4" /> Live Document Mockup
+            </h3>
+            <button
+              onClick={handleDownloadPDF}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold transition-colors"
+            >
+              <Download className="h-3.5 w-3.5" /> Export PDF
+            </button>
+          </div>
 
           <div className="w-full bg-zinc-800 p-4 rounded-xl flex items-center justify-center border border-border shadow-inner">
             {/* The simulated page sheet */}
             <div 
+              ref={mockupRef}
               className={`bg-white text-zinc-950 p-4 border border-zinc-300 shadow-md relative overflow-hidden transition-all duration-300 ${
                 pageOrientation === "Portrait" 
                   ? "w-64 h-[360px]" 

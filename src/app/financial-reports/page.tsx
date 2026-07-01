@@ -31,44 +31,12 @@ export default function FinancialReportsHub() {
       status: "Active"
     },
     {
-      title: "Sales, Cash & Credits",
-      description: "Shift-level summaries including itemized sales, cash drops, and credit payments.",
-      icon: BarChart3,
-      href: "/financial-reports/sales-and-credits",
-      color: "text-rose-600 dark:text-rose-400 bg-rose-500/10 border-rose-500/20",
-      status: "Active"
-    },
-    {
       title: "Custom Report Builder",
       description: "Dynamically design custom printable A4/PDF layouts and report templates.",
       icon: FileCode,
       href: "/report-builder",
       color: "text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20",
       status: "Active"
-    },
-    {
-      title: "Expense & Payouts",
-      description: "Track store expenses, vendor payouts, COGS, rent, and petty cash logs.",
-      icon: Wallet,
-      href: "/financial-reports/expenses",
-      color: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
-      status: "Active"
-    },
-    {
-      title: "Profit & Loss (P&L)",
-      description: "Generate corporate P&L and Cash Flow statements with PDF export.",
-      icon: TrendingUp,
-      href: "/financial-reports/pnl",
-      color: "text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20",
-      status: "Active"
-    },
-    {
-      title: "Inventory Valuation",
-      description: "Current stock value, adjustments, shrinkage, and reorder alerts.",
-      icon: Database,
-      href: "#",
-      color: "text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 border-indigo-500/20",
-      status: "Coming Soon"
     },
     {
       title: "Vendor Statements",

@@ -56,21 +56,21 @@ export default function VendorStatementsPage() {
         const d = doc.data();
         if (!d.companyName) return null;
         
-        // "credit if paid only"
-        if (d.status !== "paid" && d.status !== "Paid") return null;
+        // Removed filter for paid only to include pending credits
         
         let rDate = d.date || d.collectionDate;
         if (!rDate && d.createdAt && typeof d.createdAt.toDate === 'function') {
            rDate = d.createdAt.toDate().toISOString().substring(0, 10);
         }
         
+        const isPaid = (d.status === "paid" || d.status === "Paid");
         return {
           id: doc.id,
           companyName: d.companyName,
           receiptDate: rDate || new Date().toISOString().substring(0, 10),
           poNumber: d.poNumber || d.invoiceNumber || "",
           price: Number(d.amountDue || d.total || 0),
-          status: "Paid",
+          status: isPaid ? "Paid" : "Credit - For us",
           paymentDate: d.paidAt ? d.paidAt.substring(0, 10) : null
         };
       }).filter(Boolean);
@@ -117,7 +117,7 @@ export default function VendorStatementsPage() {
 
   const totalPurchased = filteredReceipts.reduce((sum, r) => sum + Number(r.price), 0);
   const totalPaid = filteredReceipts.filter(r => r.status === "Paid").reduce((sum, r) => sum + Number(r.price), 0);
-  const totalCredit = filteredReceipts.filter(r => r.status === "Credit").reduce((sum, r) => sum + Number(r.price), 0);
+  const totalCredit = filteredReceipts.filter(r => r.status === "Credit" || r.status === "Credit - For us").reduce((sum, r) => sum + Number(r.price), 0);
 
   const [yearStr, monthStr] = selectedMonth.split('-');
   const monthName = new Date(Number(yearStr), Number(monthStr) - 1).toLocaleString('en-US', { month: 'long' });
@@ -253,7 +253,7 @@ export default function VendorStatementsPage() {
                             {r.paymentDate && <div className="text-[10px] text-slate-500 mt-1 font-semibold">on {r.paymentDate}</div>}
                           </div>
                         ) : (
-                          <span className="text-xs font-bold text-amber-700 bg-amber-100 px-2 py-1 rounded-md">CREDIT</span>
+                          <span className="text-xs font-bold text-amber-700 bg-amber-100 px-2 py-1 rounded-md uppercase">{r.status}</span>
                         )}
                       </td>
                       <td className="py-4 px-2 text-sm font-black text-slate-900 text-right">
