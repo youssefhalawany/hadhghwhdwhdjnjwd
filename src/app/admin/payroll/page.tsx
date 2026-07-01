@@ -316,16 +316,32 @@ export default function AdminPayrollPage() {
     );
   }
 
+  const isBranchMatch = (emp: any, recordStoreId: string | undefined, filter: string) => {
+    if (filter === "all") return true;
+    
+    const legacyMap: Record<string, string> = {
+      "alamein4": "eL-alamein-4",
+      "ola": "ola-el-koronfol"
+    };
+    const legacyId = legacyMap[filter] || filter;
+
+    if (emp?.branchId === filter) return true;
+    if (emp?.storeId === legacyId || emp?.storeId === filter) return true;
+    if (recordStoreId === filter || recordStoreId === legacyId) return true;
+
+    return false;
+  };
+
   const filteredDrafts = drafts.filter(d => {
     const emp = employees.find(e => e.id === d.employeeId);
-    const branchMatch = filterBranch === "all" || (emp && emp.branchId === filterBranch) || d.storeId === filterBranch;
+    const branchMatch = isBranchMatch(emp, d.storeId, filterBranch);
     const monthMatch = filterMonth === "all" || d.month === filterMonth;
     return branchMatch && monthMatch;
   });
 
   const filteredLines = paidLines.filter(d => {
     const emp = employees.find(e => e.id === d.employeeId);
-    const branchMatch = filterBranch === "all" || (emp && emp.branchId === filterBranch) || d.storeId === filterBranch;
+    const branchMatch = isBranchMatch(emp, d.storeId, filterBranch);
     const monthMatch = filterMonth === "all" || d.month === filterMonth;
     return branchMatch && monthMatch;
   });
