@@ -1,0 +1,35 @@
+▲ Next.js 16.2.9 (Turbopack)
+- Local:         http://localhost:3006
+- Network:       http://192.168.1.112:3006
+- Environments: .env.local
+✓ Ready in 952ms
+⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of /Users/youssefhalawanyy/package-lock.json as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * /Users/youssefhalawanyy/Documents/anhreports/package-lock.json
+
+
+○ Compiling /admin/payroll ...
+ GET /admin/payroll 200 in 20.0s (next.js: 15.9s, application-code: 4.0s)
+ GET /admin/payroll 200 in 700ms (next.js: 267ms, application-code: 433ms)
+○ Compiling /financial-reports/vendor-statements ...
+ GET /financial-reports/vendor-statements 200 in 6.8s (next.js: 4.8s, application-code: 1994ms)
+[browser] Error fetching receipts from unified collections: FirebaseError: Missing or insufficient permissions.
+FirebaseError: Missing or insufficient permissions. (src/app/financial-reports/vendor-statements/page.tsx:92:15)
+[browser] Error fetching receipts from unified collections: FirebaseError: Missing or insufficient permissions.
+FirebaseError: Missing or insufficient permissions. (src/app/financial-reports/vendor-statements/page.tsx:92:15)
+ GET /admin/payroll 200 in 2.0s (next.js: 397ms, application-code: 1608ms)
+[browser] [2026-07-01T16:20:07.874Z]  @firebase/firestore: Firestore (12.15.0): Uncaught Error in snapshot listener: FirebaseError: [code=permission-denied]: Missing or insufficient permissions. 
+[browser] [2026-07-01T16:20:07.879Z]  @firebase/firestore: Firestore (12.15.0): Uncaught Error in snapshot listener: FirebaseError: [code=permission-denied]: Missing or insufficient permissions. 
+[browser] Error fetching employees FirebaseError: Missing or insufficient permissions.
+FirebaseError: Missing or insufficient permissions. (src/app/admin/payroll/page.tsx:80:17)
+[browser] Error fetching deductions/loans FirebaseError: Missing or insufficient permissions.
+FirebaseError: Missing or insufficient permissions. (src/app/admin/payroll/page.tsx:125:15)
+[browser] A component is changing an uncontrolled input to be controlled. This is likely caused by the value changing from undefined to a defined value, which should not happen. Decide between using a controlled or uncontrolled input element for the lifetime of the component. More info: https://react.dev/link/controlled-components 
+✓ Compiled in 556ms
+✓ Compiled in 237ms
+✓ Compiled in 318ms
+○ Compiling /financial-reports ...
+ GET /financial-reports 200 in 8.0s (next.js: 7.7s, application-code: 305ms)

@@ -175,7 +175,7 @@ export default function AdminPayrollPage() {
   // Auto-calculate Standard Pay and Net Pay
   const calcPays = () => {
     if (!selectedEmp) return { standardPay: 0, netPay: 0 };
-    const base = Number(selectedEmp.baseSalary) || 0;
+    const base = Number(selectedEmp.baseSalary) || Number(selectedEmp.salary) || 3000;
     const days = Number(editForm.days) || 0;
     
     const standardPay = Math.round((base / 30) * days);
@@ -234,6 +234,7 @@ export default function AdminPayrollPage() {
       const finalRecord = { ...draft };
       delete finalRecord.id;
       finalRecord.postedToFinanceAt = new Date().toLocaleString('en-GB', { timeZone: 'Africa/Cairo' });
+      finalRecord.status = "paid";
 
       const newDocRef = await addDoc(collection(db, "payroll_lines"), finalRecord);
       
@@ -353,7 +354,7 @@ export default function AdminPayrollPage() {
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Base Salary (Info)</label>
                   <div className="w-full p-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono text-slate-500">
-                    {(Number(selectedEmp.baseSalary) || 0).toLocaleString()} EGP
+                    {(Number(selectedEmp.baseSalary) || Number(selectedEmp.salary) || 3000).toLocaleString()} EGP
                   </div>
                 </div>
 
