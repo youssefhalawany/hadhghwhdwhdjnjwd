@@ -83,7 +83,7 @@ export default function AdminPayrollPage() {
     fetchEmps();
 
     const unsubDrafts = onSnapshot(collection(db, "payroll_drafts"), (snap) => {
-      setDrafts(snap.docs.map(d => ({ id: d.id, ...d.data() } as PayrollRecord)).sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+      setDrafts(snap.docs.map(d => ({ id: d.id, ...d.data() } as PayrollRecord)).sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "")));
     });
 
     const unsubLines = onSnapshot(query(collection(db, "payroll_lines"), orderBy("createdAt", "desc")), (snap) => {
@@ -353,7 +353,7 @@ export default function AdminPayrollPage() {
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Base Salary (Info)</label>
                   <div className="w-full p-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono text-slate-500">
-                    {Number(selectedEmp.baseSalary).toLocaleString()} EGP
+                    {(Number(selectedEmp.baseSalary) || 0).toLocaleString()} EGP
                   </div>
                 </div>
 
@@ -477,8 +477,8 @@ export default function AdminPayrollPage() {
                         <td className="px-4 py-3 font-medium text-slate-800 dark:text-white">{emp?.name || d.employeeId}</td>
                         <td className="px-4 py-3 font-mono text-xs">{d.month}</td>
                         <td className="px-4 py-3">{d.days}</td>
-                        <td className="px-4 py-3 font-mono text-slate-500">{d.standardPay.toLocaleString()}</td>
-                        <td className="px-4 py-3 font-mono font-bold text-indigo-600 dark:text-indigo-400">{d.netPay.toLocaleString()} EGP</td>
+                        <td className="px-4 py-3 font-mono text-slate-500">{(d.standardPay || 0).toLocaleString()}</td>
+                        <td className="px-4 py-3 font-mono font-bold text-indigo-600 dark:text-indigo-400">{(d.netPay || 0).toLocaleString()} EGP</td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex justify-end gap-2">
                             <button 
@@ -532,7 +532,7 @@ export default function AdminPayrollPage() {
                     <tr key={d.id || i} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                       <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-300">{emp?.name || d.employeeId}</td>
                       <td className="px-4 py-3 font-mono text-xs">{d.month}</td>
-                      <td className="px-4 py-3 font-mono font-bold text-emerald-600 dark:text-emerald-400">{d.netPay.toLocaleString()} EGP</td>
+                      <td className="px-4 py-3 font-mono font-bold text-emerald-600 dark:text-emerald-400">{(d.netPay || 0).toLocaleString()} EGP</td>
                       <td className="px-4 py-3 text-xs text-slate-500">{d.postedToFinanceAt}</td>
                       <td className="px-4 py-3 text-xs text-slate-500">{d.createdBy}</td>
                     </tr>
