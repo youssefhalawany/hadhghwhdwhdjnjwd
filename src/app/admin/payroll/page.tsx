@@ -316,6 +316,22 @@ export default function AdminPayrollPage() {
     );
   }
 
+  const filteredDrafts = drafts.filter(d => {
+    const emp = employees.find(e => e.id === d.employeeId);
+    const branchMatch = filterBranch === "all" || (emp && emp.branchId === filterBranch) || d.storeId === filterBranch;
+    const monthMatch = filterMonth === "all" || d.month === filterMonth;
+    return branchMatch && monthMatch;
+  });
+
+  const filteredLines = paidLines.filter(d => {
+    const emp = employees.find(e => e.id === d.employeeId);
+    const branchMatch = filterBranch === "all" || (emp && emp.branchId === filterBranch) || d.storeId === filterBranch;
+    const monthMatch = filterMonth === "all" || d.month === filterMonth;
+    return branchMatch && monthMatch;
+  });
+
+  const allMonths = Array.from(new Set([...drafts, ...paidLines].map(d => d.month))).sort().reverse();
+
   const { standardPay, netPay } = calcPays();
 
   return (
