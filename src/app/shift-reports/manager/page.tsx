@@ -18,6 +18,13 @@ export default function ManagerAuditPage() {
   const [activeTab, setActiveTab] = useState<"pending" | "history" | "performance">("pending");
   const [dismissedAnomalies, setDismissedAnomalies] = useState<string[]>([]);
 
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("anh_dismissed_anomalies");
+      if (stored) setDismissedAnomalies(JSON.parse(stored));
+    } catch (e) {}
+  }, []);
+
   const [pendingReports, setPendingReports] = useState<any[]>([]);
   const [historyReports, setHistoryReports] = useState<any[]>([]);
 
@@ -268,8 +275,8 @@ export default function ManagerAuditPage() {
       setLoading(false);
     });
 
-    // 2. Fetch History (Approved) - limit to avoid massive reads and speed up portal
-    const qHistory = query(collection(db, "shift_reports"), orderBy("createdAt", "desc"), limit(50));
+    // 2. Fetch History (Approved) - fetch all to allow infinite history auditing
+    const qHistory = query(collection(db, "shift_reports"), orderBy("createdAt", "desc"));
     const unsubHistory = onSnapshot(qHistory, (snapshot) => {
       const reports = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
       // Filter locally to avoid composite index requirement
@@ -572,7 +579,13 @@ export default function ManagerAuditPage() {
                 <p className="text-sm font-medium">{anomaly.message}</p>
               </div>
               <button 
-                onClick={() => setDismissedAnomalies(prev => [...prev, anomaly.message])}
+                onClick={() => {
+                  setDismissedAnomalies(prev => {
+                    const updated = [...prev, anomaly.message];
+                    localStorage.setItem("anh_dismissed_anomalies", JSON.stringify(updated));
+                    return updated;
+                  });
+                }}
                 className={`absolute top-3 right-3 p-1 rounded-full transition-colors ${anomaly.severity === 'high' ? 'hover:bg-red-500/20 text-red-600' : 'hover:bg-amber-500/20 text-amber-600'}`}
               >
                 <X className="h-4 w-4" />

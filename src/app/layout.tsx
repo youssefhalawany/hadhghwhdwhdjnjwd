@@ -23,6 +23,7 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "CK Cashier"
   },
+  manifest: "/manifest.json",
   icons: {
     icon: "/icons8-circled-k-50.png",
     apple: "/apple-icon.png",

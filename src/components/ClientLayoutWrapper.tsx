@@ -273,6 +273,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     { name: "Admin", icon: Shield, children: [
       { name: "Smart Scheduler", href: "/admin/schedule", icon: CalendarDays },
       { name: "Payroll System", href: "/admin/payroll", icon: DollarSign },
+      { name: "Inventory Predict", href: "/admin/inventory-predict", icon: Database },
       { name: "Cashier Accounts", href: "/settings/cashiers", icon: Users },
       { name: "Send Notifications", href: "/settings/notifications", icon: Bell },
       { name: "Security Audit Log", href: "/settings/audit-log", icon: Shield },
