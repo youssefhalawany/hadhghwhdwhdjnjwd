@@ -13,6 +13,7 @@ import Barcode from "react-barcode";
 import { vibrateSuccess } from "@/lib/haptics";
 
 import { PatternFormat } from "react-number-format";
+import { ContinuousScannerModal } from "@/components/ContinuousScannerModal";
 
 export default function ExpiryTrackerPage() {
   const router = useRouter();
@@ -43,6 +44,7 @@ export default function ExpiryTrackerPage() {
 
   // Scanner States
   const [showScanner, setShowScanner] = useState(false);
+  const [showContinuousScanner, setShowContinuousScanner] = useState(false);
   const [scannerError, setScannerError] = useState<string | null>(null);
 
   // Modal Confirmations
@@ -351,6 +353,56 @@ export default function ExpiryTrackerPage() {
     }
   };
 
+  const handleContinuousScan = async (scannedBarcode: string) => {
+    const cleanBarcode = scannedBarcode.trim();
+    if (!cleanBarcode) return;
+    
+    let pName = "Unknown Scanned Item";
+    let pSupplier = "";
+    
+    try {
+      const productRef = doc(db, "products", cleanBarcode);
+      const productSnap = await getDoc(productRef);
+      if (productSnap.exists()) {
+        const data = productSnap.data();
+        pName = data.description || data.name || data.itemName || pName;
+        pSupplier = data.supplier || pSupplier;
+      } else {
+        await setDoc(doc(db, "products", cleanBarcode), {
+          barcode: cleanBarcode,
+          description: pName,
+          supplier: pSupplier,
+          addedFromExpiryContinuous: true,
+          createdAt: new Date().toISOString()
+        });
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const newItem = {
+      itemName: pName,
+      barcode: cleanBarcode,
+      supplier: pSupplier,
+      quantity: 1, 
+      expiryDate: todayStr, 
+      storeId: authenticatedUser?.storeId || "Unknown Store",
+      branchId: (authenticatedUser?.storeId || "").toLowerCase().includes("ola") || (authenticatedUser?.storeId || "").toLowerCase().includes("koronfol") ? "ola" : "alamein4",
+      addedBy: authenticatedUser?.name || authenticatedUser?.email || "Unknown User",
+      createdAt: new Date().toISOString(),
+      status: "active" 
+    };
+
+    try {
+      const docRef = await addDoc(collection(db, "expiries"), newItem);
+      // Wait for snapshot to update list organically, or local update
+    } catch(e) {
+      console.error(e);
+    }
+  };
+
   const confirmMarkAsPulled = async () => {
     if (!pullConfirmId) return;
     try {
@@ -433,6 +485,13 @@ export default function ExpiryTrackerPage() {
 
       <main className="max-w-4xl mx-auto p-4 sm:p-6 space-y-8">
         
+        {showContinuousScanner && (
+          <ContinuousScannerModal 
+            onClose={() => setShowContinuousScanner(false)} 
+            onScan={handleContinuousScan} 
+          />
+        )}
+        
         {/* Early Warning System Banner */}
         <div className="bg-orange-50/75 dark:bg-orange-950/15 border-l-4 border-orange-500 p-4 rounded-r-xl shadow-sm">
           <div className="flex items-start gap-3">
@@ -490,6 +549,15 @@ export default function ExpiryTrackerPage() {
                   title={lang === "en" ? "Scan Barcode" : "مسح الباركود"}
                 >
                   <Camera className="h-5 w-5 text-blue-500" />
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setShowContinuousScanner(true)}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-xl font-bold active:scale-[0.98] transition-all flex items-center justify-center cursor-pointer shadow border border-indigo-700 w-full sm:w-auto"
+                  title={lang === "en" ? "Continuous Batch Scan" : "مسح مستمر"}
+                >
+                  <Package className="h-5 w-5 mr-2" /> 
+                  <span className="hidden sm:inline">Batch Scan</span>
                 </button>
               </div>
               {lookupLoading && <p className="text-xs text-blue-500 mt-1 animate-pulse">Looking up...</p>}

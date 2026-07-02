@@ -229,7 +229,7 @@ export default function ManagerVoidsPage() {
                   <p className="font-semibold text-sm truncate">{v.customerName}</p>
                   <div className="flex justify-between items-end mt-1">
                     <p className={`text-xs ${selectedVoid?.id === v.id ? 'text-slate-400' : 'text-muted-foreground'}`}>
-                      {new Date(v.createdAt).toLocaleString('en-GB')}
+                      {v.preciseTimestamp ? v.preciseTimestamp : new Date(v.createdAt).toLocaleString('en-GB')}
                     </p>
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
                       v.status === "closed_on_system" 
@@ -304,8 +304,8 @@ export default function ManagerVoidsPage() {
                       <p style={{ margin: '5px 0 0 0', fontSize: '12px', color: '#475569', fontWeight: '600' }}>Circle K Franchise Enterprise</p>
                     </div>
                     <div style={{ textAlign: 'right', backgroundColor: '#f8fafc', padding: '10px 15px', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                      <p style={{ margin: '0 0 5px', fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>Date Logged</p>
-                      <p style={{ margin: 0, fontSize: '14px', fontWeight: '800', color: '#0f172a' }}>{new Date(selectedVoid.createdAt).toLocaleString('en-GB')}</p>
+                      <p style={{ margin: '0 0 5px', fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>Exact Time</p>
+                      <p style={{ margin: 0, fontSize: '14px', fontWeight: '800', color: '#0f172a' }}>{selectedVoid.preciseTimestamp ? selectedVoid.preciseTimestamp : new Date(selectedVoid.createdAt).toLocaleString('en-GB')}</p>
                     </div>
                   </div>
 

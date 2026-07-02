@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { db } from "@/lib/firebase";
 import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, addDoc, orderBy, limit, getDocs, setDoc } from "firebase/firestore";
-import { CheckCircle, Clock, FileText, Banknote, Package, Lock, Printer, Archive, Trash2, Calendar, QrCode, Search, AlertTriangle, X } from "lucide-react";
+import { CheckCircle, Clock, FileText, Banknote, Package, Lock, Printer, Archive, Trash2, Calendar, QrCode, Search, AlertTriangle, X, ShieldAlert } from "lucide-react";
 import Barcode from "react-barcode";
 import QRCode from "react-qr-code";
 import html2canvas from "html2canvas";
@@ -198,6 +198,9 @@ export default function ManagerAuditPage() {
 
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+
+  const [disputeModalOpen, setDisputeModalOpen] = useState(false);
+  const [disputeReason, setDisputeReason] = useState("");
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deletePin, setDeletePin] = useState("");
@@ -434,6 +437,42 @@ export default function ManagerAuditPage() {
     } catch (error) {
       console.error("Error rejecting report:", error);
       toast.error("Failed to reject report.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const triggerDispute = () => {
+    if (!selectedReport) return;
+    setDisputeReason("");
+    setDisputeModalOpen(true);
+  };
+
+  const confirmDispute = async () => {
+    if (!selectedReport || !disputeReason.trim()) {
+      toast.error("Please enter a valid reason for the dispute/investigation.");
+      return;
+    }
+    setSubmitting(true);
+    setDisputeModalOpen(false);
+    try {
+      const reportRef = doc(db, "shift_reports", selectedReport.id);
+
+      await updateDoc(reportRef, {
+        status: "disputed",
+        managerAudit: {
+          disputeReason: disputeReason,
+          disputedAt: new Date().toISOString(),
+          managerName: managerName || "Manager"
+        }
+      });
+
+      toast.success("Report flagged for investigation & sent back to cashier!");
+      setActiveTab("pending");
+      setSelectedReport(null);
+    } catch (error) {
+      console.error("Error disputing report:", error);
+      toast.error("Failed to flag report.");
     } finally {
       setSubmitting(false);
     }
@@ -999,6 +1038,14 @@ export default function ManagerAuditPage() {
                         )}
                       </div>
                     )}
+                    {selectedReport.cashierWriteUp && (
+                      <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
+                        <label className="block text-[10px] font-bold text-purple-800 uppercase tracking-wider mb-1 flex items-center gap-1">
+                          <ShieldAlert className="w-3 h-3" /> Cashier's Investigation Write-Up
+                        </label>
+                        <p className="text-purple-900 text-sm font-medium whitespace-pre-wrap">"{selectedReport.cashierWriteUp}"</p>
+                      </div>
+                    )}
                     <div>
                       <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Audit Comments (Optional)</label>
                       <textarea value={comments} onChange={e => setComments(e.target.value)} rows={3} className="w-full p-3 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-slate-500" placeholder="Notes regarding variances, issues, etc." />
@@ -1010,13 +1057,20 @@ export default function ManagerAuditPage() {
                 <div className="pt-4 border-t border-border grid grid-cols-1 gap-4">
                   {activeTab === "pending" ? (
                     <>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         <button 
                           onClick={triggerReject}
                           disabled={submitting}
                           className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-bold rounded-lg shadow-sm transition-all"
                         >
                           {submitting ? "Rejecting..." : "Reject Report"}
+                        </button>
+                        <button 
+                          onClick={triggerDispute}
+                          disabled={submitting}
+                          className="px-6 py-2.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold rounded-lg shadow-sm transition-all flex items-center justify-center gap-2"
+                        >
+                          <ShieldAlert className="w-5 h-5" /> Flag for Investigation
                         </button>
                         <button
                           type="button"
@@ -1324,6 +1378,43 @@ export default function ManagerAuditPage() {
                 className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg"
               >
                 Confirm Reject
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dispute Modal */}
+      {disputeModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl p-6 shadow-2xl border-2 border-purple-500">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-purple-100 dark:bg-purple-900/30 p-2 rounded-full text-purple-600">
+                <ShieldAlert className="h-6 w-6" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-white">Flag for Investigation</h3>
+            </div>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 font-medium">
+              This will lock the report and require the cashier to write a formal explanation (Write-Up) and sign it before the shift can be closed.
+            </p>
+            <textarea
+              className="w-full border-2 border-purple-200 dark:border-purple-800/50 bg-purple-50 dark:bg-purple-900/10 rounded-lg p-3 text-slate-800 dark:text-white outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200 mb-4 min-h-[100px] font-medium"
+              placeholder="Detail the issue (e.g. Major cash shortage of EGP 500, missing stock, etc.)"
+              value={disputeReason}
+              onChange={(e) => setDisputeReason(e.target.value)}
+            />
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => setDisputeModalOpen(false)}
+                className="px-4 py-2 font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmDispute}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg shadow-md"
+              >
+                Flag Report
               </button>
             </div>
           </div>

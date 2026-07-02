@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, getDocs, getDoc, query, where, updateDoc, doc } from "firebase/firestore";
-import { Calculator, Package, Banknote, Calendar, Clock, ArrowRight, ArrowLeft, Lock, User as UserIcon, Globe, WifiOff, RefreshCw, ChevronDown, Shield, ShieldCheck } from "lucide-react";
+import { Calculator, Package, Banknote, Calendar, Clock, ArrowRight, ArrowLeft, Lock, User as UserIcon, Globe, WifiOff, RefreshCw, ChevronDown, Shield, ShieldCheck, ShieldAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { PinPad } from "@/components/PinPad";
 import { RadarOfflineScreen } from "@/components/RadarOfflineScreen";
@@ -128,7 +128,10 @@ export default function CashierShiftReportPage() {
   const [lighters, setLighters] = useState({ start: "", delivery: "", end: "" });
 
   const [existingReportId, setExistingReportId] = useState<string | null>(null);
+  const [reportStatus, setReportStatus] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState<string | null>(null);
+  const [disputeReason, setDisputeReason] = useState<string | null>(null);
+  const [cashierWriteUp, setCashierWriteUp] = useState<string>("");
   const [originalData, setOriginalData] = useState<any>(null);
 
   const [cashierSignature, setCashierSignature] = useState<string>("");
@@ -302,11 +305,11 @@ export default function CashierShiftReportPage() {
         }
       }
 
-      // 1. Check if there is a rejected report for this cashier today
+      // 1. Check if there is a rejected or disputed report for this cashier today
       const rejectQuery = query(
         collection(db, "shift_reports"),
         where("cashierDetails.name", "==", c.name),
-        where("status", "==", "rejected")
+        where("status", "in", ["rejected", "disputed"])
       );
       
       const rejectSnap = await getDocs(rejectQuery);
@@ -319,7 +322,12 @@ export default function CashierShiftReportPage() {
         const data = rejectedReport.data();
         
         setExistingReportId(rejectedReport.id);
-        setRejectReason(data.managerAudit?.rejectReason || "No reason provided by manager.");
+        setReportStatus(data.status);
+        if (data.status === "rejected") {
+          setRejectReason(data.managerAudit?.rejectReason || "No reason provided by manager.");
+        } else if (data.status === "disputed") {
+          setDisputeReason(data.managerAudit?.disputeReason || "No reason provided by manager.");
+        }
         setOriginalData({
           cash: data.cashierCounts.cash,
           visa: data.cashierCounts.visa,
@@ -464,6 +472,7 @@ export default function CashierShiftReportPage() {
         total: calculateTotalMoney()
       },
       cashierSignature: signature,
+      cashierWriteUp: reportStatus === "disputed" ? cashierWriteUp : undefined,
       inventoryCounts: {
         cigarettes: {
           start: Number(cigarettes.start) || 0,
@@ -730,7 +739,7 @@ export default function CashierShiftReportPage() {
       {/* Main Container */}
       <main className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
         
-        {rejectReason && (
+        {rejectReason && reportStatus === "rejected" && (
           <div className="bg-red-50 dark:bg-red-950/10 border border-red-200 dark:border-red-900/50 p-5 rounded-2xl shadow-sm">
             <div className="flex items-start gap-3.5">
               <div className="bg-red-100 dark:bg-red-900/30 p-2.5 rounded-xl flex-shrink-0 text-red-600 dark:text-red-400">
@@ -744,6 +753,35 @@ export default function CashierShiftReportPage() {
                 <p className="text-red-600 dark:text-red-400 text-[10px] sm:text-xs mt-3 font-bold uppercase tracking-wider">
                   {dict.rejectedSubtitle}
                 </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {disputeReason && reportStatus === "disputed" && (
+          <div className="bg-purple-50 dark:bg-purple-950/10 border-2 border-purple-500 p-5 rounded-2xl shadow-lg animate-in fade-in">
+            <div className="flex items-start gap-3.5">
+              <div className="bg-purple-100 dark:bg-purple-900/30 p-2.5 rounded-xl flex-shrink-0 text-purple-600 dark:text-purple-400">
+                <ShieldAlert className="h-6 w-6 animate-pulse" />
+              </div>
+              <div className="w-full">
+                <h3 className="text-purple-900 dark:text-purple-400 font-black text-sm sm:text-base uppercase tracking-wider">Report Flagged For Investigation</h3>
+                <p className="text-purple-800 dark:text-purple-300 text-xs sm:text-sm mt-2 font-medium leading-relaxed bg-white/50 dark:bg-black/20 p-3 rounded-lg border border-purple-200 dark:border-purple-800">
+                  <span className="font-black text-purple-900 dark:text-purple-400">Manager's Note:</span> "{disputeReason}"
+                </p>
+                
+                <div className="mt-4">
+                  <label className="block text-xs font-bold text-purple-700 dark:text-purple-300 uppercase mb-2">
+                    Cashier Write-Up / Explanation (Required)
+                  </label>
+                  <textarea 
+                    required
+                    value={cashierWriteUp}
+                    onChange={(e) => setCashierWriteUp(e.target.value)}
+                    placeholder="Please explain the shortage/issue in detail..."
+                    className="w-full p-4 rounded-xl border-2 border-purple-300 dark:border-purple-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white placeholder-slate-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none min-h-[120px] font-medium resize-y"
+                  />
+                </div>
               </div>
             </div>
           </div>

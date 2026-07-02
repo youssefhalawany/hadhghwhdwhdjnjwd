@@ -58,3 +58,4 @@ FirebaseError: Missing or insufficient permissions. (src/app/admin/payroll/page.
  GET /shift-reports/manager 200 in 6.8s (next.js: 6.6s, application-code: 186ms)
  GET /admin/payroll 200 in 121ms (next.js: 49ms, application-code: 73ms)
 ✓ Compiled in 813ms
+✓ Compiled in 842ms
