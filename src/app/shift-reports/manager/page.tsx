@@ -1110,6 +1110,14 @@ export default function ManagerAuditPage() {
                       >
                         {generatingPDF ? "Generating PDF..." : <><Printer className="h-5 w-5" /> Print A4 Sign-Off Sheet</>}
                       </button>
+                      <button
+                        type="button"
+                        onClick={triggerDelete}
+                        disabled={submitting}
+                        className="w-full py-3 border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 mt-2 cursor-pointer"
+                      >
+                        <Trash2 className="h-4 w-4" /> Permanently Delete Report
+                      </button>
                     </>
                   )}
                 </div>
