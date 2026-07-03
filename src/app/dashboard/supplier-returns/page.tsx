@@ -8,6 +8,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { Truck, CheckCircle, Search, Calendar, FileText, ArrowLeft, Printer, AlertTriangle } from "lucide-react";
 import Barcode from "react-barcode";
 import Link from "next/link";
+import { PageTransition } from "@/components/PageTransition";
 
 export default function SupplierReturnsDashboard() {
   const { currentBranch } = useBranch();
@@ -428,6 +429,7 @@ export default function SupplierReturnsDashboard() {
 
 
   return (
+    <PageTransition>
     <div className="min-h-screen bg-background text-foreground pb-20 lg:pb-0">
       <div className="max-w-7xl mx-auto p-4 lg:p-8 space-y-8 animate-in fade-in duration-300">
         
@@ -1404,5 +1406,6 @@ export default function SupplierReturnsDashboard() {
 
       </div>
     </div>
+    </PageTransition>
   );
 }

@@ -9,6 +9,9 @@ import QRCode from "react-qr-code";
 import Link from "next/link";
 import { useBranch } from "@/context/BranchContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { DataTable } from "@/components/ui/DataTable";
+import { PageTransition } from "@/components/PageTransition";
+import { X } from "lucide-react";
 
 export default function ExpiryAuditPage() {
   const { currentBranch } = useBranch();
@@ -314,6 +317,7 @@ export default function ExpiryAuditPage() {
   };
 
   return (
+    <PageTransition>
     <div className="space-y-6 print:m-0 print:p-0 print:space-y-0">
       
       {/* --- PRINT ONLY A4 REPORT VIEW --- */}
@@ -461,275 +465,165 @@ export default function ExpiryAuditPage() {
         {loading ? (
           <div className="flex justify-center p-20"><div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-red-500"></div></div>
         ) : activeTab === "active" ? (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* LEFT COLUMN: LIST */}
-            <div className="lg:col-span-1 space-y-4 max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar">
-              <div className="sticky top-0 z-10 bg-background pb-2">
-                <div className="relative">
-                  <input 
-                    ref={searchInputRef}
-                    type="text"
-                    placeholder="Search by Item, Barcode, or Store..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full p-3 pl-10 rounded-xl border border-border bg-muted/50 focus:bg-background outline-none focus:ring-2 focus:ring-red-500 text-sm"
-                  />
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <kbd className="hidden sm:inline-flex items-center gap-1 bg-background border border-border px-1.5 rounded text-[10px] font-bold text-muted-foreground uppercase shadow-sm">
-                      <span className="text-[12px]">⌘</span>K
-                    </kbd>
-                  </div>
-                </div>
+          <div className="space-y-8">
+            {/* Top Dashboard Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="p-4 bg-card rounded-xl border border-border shadow-sm flex flex-col justify-between">
+                <span className="text-xs font-bold text-muted-foreground uppercase">Tracking</span>
+                <span className="text-3xl font-black text-blue-600 dark:text-blue-500 mt-2">
+                  {items.filter(e => !["pulled", "audited", "pending_return", "returned", "damaged"].includes(e.status || "")).length}
+                </span>
+                <span className="text-[10px] text-muted-foreground mt-1">Active items</span>
               </div>
+              
+              {(() => {
+                const expiredCount = items.filter(e => {
+                  if (["pulled", "audited", "pending_return", "returned", "damaged"].includes(e.status || "")) return false;
+                  const exp = new Date(e.expiryDate);
+                  exp.setHours(0,0,0,0);
+                  const t = new Date();
+                  t.setHours(0,0,0,0);
+                  return exp < t;
+                }).length;
+                return (
+                  <div className="p-4 bg-card rounded-xl border border-border shadow-sm flex flex-col justify-between">
+                    <span className="text-xs font-bold text-muted-foreground uppercase">Expired</span>
+                    <span className={`text-3xl font-black mt-2 ${expiredCount > 0 ? "text-red-600 animate-pulse" : "text-muted-foreground"}`}>
+                      {expiredCount}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground mt-1">Requires pulling</span>
+                  </div>
+                );
+              })()}
 
-              {filteredExpiries.length === 0 ? (
-                <div className="glass-panel p-8 text-center rounded-2xl">
-                  <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
-                  <p className="font-bold text-foreground">No active expiries tracked.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {filteredExpiries.map(item => {
-                    const itemDate = new Date(item.expiryDate);
-                    itemDate.setHours(0,0,0,0);
-                    const today = new Date();
-                    today.setHours(0,0,0,0);
-                    const tomorrow = new Date(today);
-                    tomorrow.setDate(tomorrow.getDate() + 1);
+              {(() => {
+                const soonCount = items.filter(e => {
+                  if (["pulled", "audited", "pending_return", "returned", "damaged"].includes(e.status || "")) return false;
+                  const exp = new Date(e.expiryDate);
+                  exp.setHours(0,0,0,0);
+                  const t = new Date();
+                  t.setHours(0,0,0,0);
+                  const tom = new Date(t);
+                  tom.setDate(tom.getDate() + 1);
+                  return exp.getTime() === t.getTime() || exp.getTime() === tom.getTime();
+                }).length;
+                return (
+                  <div className="p-4 bg-card rounded-xl border border-border shadow-sm flex flex-col justify-between">
+                    <span className="text-xs font-bold text-muted-foreground uppercase">Expires 48h</span>
+                    <span className="text-3xl font-black text-orange-500 mt-2">{soonCount}</span>
+                    <span className="text-[10px] text-muted-foreground mt-1">Pull window close</span>
+                  </div>
+                );
+              })()}
 
-                    const diffTime = itemDate.getTime() - today.getTime();
-                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-                    let badgeClass = "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 border border-green-200/30";
-                    let badgeText = "Safe (>2M)";
-
-                    if (item.status === "pulled") {
-                      badgeClass = "bg-slate-200 text-slate-500 dark:bg-slate-800/80 dark:text-slate-500 border border-slate-300/30";
-                      badgeText = "Pulled";
-                    } else if (item.status === "audited") {
-                      badgeClass = "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400 border border-blue-200/30";
-                      badgeText = "Audited";
-                    } else if (diffDays < 0) {
-                      badgeClass = "bg-red-200 text-red-800 dark:bg-red-950/40 dark:text-red-400 border border-red-400/50 font-black animate-pulse";
-                      badgeText = "EXPIRED";
-                    } else if (diffDays <= 2) {
-                      badgeClass = "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 border border-red-300/30 font-bold";
-                      badgeText = "≤ 48 Hrs";
-                    } else if (diffDays <= 7) {
-                      badgeClass = "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400 border border-orange-300/30";
-                      badgeText = "Soon";
-                    } else if (diffDays <= 30) {
-                      badgeClass = "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-400 border border-yellow-300/30";
-                      badgeText = "1 Month";
-                    } else if (diffDays <= 60) {
-                      badgeClass = "bg-[#f3e5d8] text-[#8b5a2b] dark:bg-[#3d2a1a] dark:text-[#d4b499] border border-[#d4b499]/30";
-                      badgeText = "2 Months";
-                    }
-
-                    const isSelected = selectedExpiry?.id === item.id;
-                    const isHighVolume = Number(item.quantity) > 10;
-
-                    return (
-                      <button
-                        key={item.id}
-                        onClick={() => { setSelectedExpiry(item); setEditExpiryDate(item.expiryDate); setEditExpiryQty(String(item.quantity)); setIsEditingExpiry(false); }}
-                        className={`w-full text-left p-4 rounded-xl border transition-all ${isSelected
-                            ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/15 shadow-md shadow-blue-500/10'
-                            : 'border-border bg-card hover:border-blue-300'
-                          }`}
-                      >
-                        <div className="flex justify-between items-start mb-2">
-                          <span className="font-bold text-foreground text-sm">{item.expiryDate}</span>
-                          <div className="flex gap-1">
-                            {isHighVolume && (
-                              <span className="animate-pulse flex items-center gap-1 bg-red-500 text-white text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full font-bold shadow-sm">
-                                <AlertTriangle className="h-3 w-3" /> High Volume
-                              </span>
-                            )}
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${badgeClass}`}>{badgeText}</span>
-                          </div>
-                        </div>
-                        <div className="font-semibold text-lg text-foreground mb-1">{item.itemName}</div>
-                        <div className="text-xs text-muted-foreground font-mono mt-2">
-                          <div className="flex justify-between items-center mb-2">
-                            <span>{item.barcode}</span>
-                            <span className="font-bold text-foreground bg-muted px-1.5 py-0.5 rounded">Qty: {item.quantity}</span>
-                          </div>
-                          {item.barcode && item.barcode !== "N/A" && (
-                            <div className="scale-[0.8] origin-left -ml-1">
-                              <Barcode value={item.barcode} height={30} width={1.2} fontSize={12} margin={0} background="transparent" />
-                            </div>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+              <div className="p-4 bg-card rounded-xl border border-border shadow-sm flex flex-col justify-between">
+                <span className="text-xs font-bold text-muted-foreground uppercase">Pulled</span>
+                <span className="text-3xl font-black text-emerald-600 dark:text-emerald-500 mt-2">
+                  {items.filter(e => e.status === "pulled").length}
+                </span>
+                <span className="text-[10px] text-muted-foreground mt-1">Awaiting Audit</span>
+              </div>
             </div>
 
-            {/* RIGHT COLUMN: AUDIT WORKSPACE */}
-            <div className="lg:col-span-2">
-              {!selectedExpiry ? (
-                <div className="glass-panel h-full min-h-[500px] p-6 rounded-2xl border border-border bg-muted/10 space-y-6">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Package className="h-6 w-6 text-blue-500 animate-pulse" />
-                    <h3 className="text-xl font-black text-foreground">Expiries Tracker Summary</h3>
-                  </div>
+            {/* Data Grid for Active Expiries */}
+            <div className="bg-card border border-border rounded-xl p-4 sm:p-6 shadow-sm">
+              <DataTable
+                columns={[
+                  {
+                    accessorKey: "itemName",
+                    header: "Item Name",
+                    cell: ({ row }) => (
+                      <div>
+                        <div className="font-bold">{row.getValue("itemName")}</div>
+                        <div className="text-xs font-mono text-muted-foreground">{row.original.barcode}</div>
+                      </div>
+                    )
+                  },
+                  {
+                    accessorKey: "expiryDate",
+                    header: "Expiry Risk",
+                    cell: ({ row }) => {
+                      const item = row.original;
+                      const itemDate = new Date(item.expiryDate);
+                      itemDate.setHours(0,0,0,0);
+                      const today = new Date();
+                      today.setHours(0,0,0,0);
+                      const tomorrow = new Date(today);
+                      tomorrow.setDate(tomorrow.getDate() + 1);
+                      const diffTime = itemDate.getTime() - today.getTime();
+                      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-                  {/* Stat Cards Grid */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {/* Total Active */}
-                    <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-border shadow-sm flex flex-col justify-between">
-                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Tracking</span>
-                      <span className="text-3xl font-black text-blue-600 mt-2">
-                        {items.filter(e => !["pulled", "audited", "pending_return", "returned", "damaged"].includes(e.status || "")).length}
-                      </span>
-                      <span className="text-[10px] text-slate-400 mt-1">Active items</span>
-                    </div>
+                      let badgeClass = "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 border-green-200";
+                      let badgeText = "Safe";
 
-                    {/* Expired */}
-                    {(() => {
-                      const expiredCount = items.filter(e => {
-                        if (["pulled", "audited", "pending_return", "returned", "damaged"].includes(e.status || "")) return false;
-                        const exp = new Date(e.expiryDate);
-                        exp.setHours(0,0,0,0);
-                        const t = new Date();
-                        t.setHours(0,0,0,0);
-                        return exp < t;
-                      }).length;
-
-                      return (
-                        <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-border shadow-sm flex flex-col justify-between">
-                          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Expired</span>
-                          <span className={`text-3xl font-black mt-2 ${expiredCount > 0 ? "text-red-600 animate-pulse" : "text-slate-500"}`}>
-                            {expiredCount}
-                          </span>
-                          <span className="text-[10px] text-slate-400 mt-1">Requires pulling</span>
-                        </div>
-                      );
-                    })()}
-
-                    {/* Expiring Soon */}
-                    {(() => {
-                      const soonCount = items.filter(e => {
-                        if (["pulled", "audited", "pending_return", "returned", "damaged"].includes(e.status || "")) return false;
-                        const exp = new Date(e.expiryDate);
-                        exp.setHours(0,0,0,0);
-                        const t = new Date();
-                        t.setHours(0,0,0,0);
-                        const tom = new Date(t);
-                        tom.setDate(tom.getDate() + 1);
-                        return exp.getTime() === t.getTime() || exp.getTime() === tom.getTime();
-                      }).length;
-
-                      return (
-                        <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-border shadow-sm flex flex-col justify-between">
-                          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Expires 48h</span>
-                          <span className="text-3xl font-black text-orange-500 mt-2">
-                            {soonCount}
-                          </span>
-                          <span className="text-[10px] text-slate-400 mt-1">Pull window close</span>
-                        </div>
-                      );
-                    })()}
-
-                    {/* Total Pulled */}
-                    <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-border shadow-sm flex flex-col justify-between">
-                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Pulled</span>
-                      <span className="text-3xl font-black text-green-600 mt-2">
-                        {items.filter(e => e.status === "pulled").length}
-                      </span>
-                      <span className="text-[10px] text-slate-400 mt-1">Awaiting Audit</span>
-                    </div>
-                  </div>
-
-                  {/* Expiry Action List (Critical First) */}
-                  <div className="bg-white dark:bg-slate-850 p-5 rounded-xl border border-border space-y-4">
-                    <h4 className="text-sm font-black text-foreground uppercase tracking-wider">Critical Daily Action List</h4>
-                    
-                    {(() => {
-                      const criticalItems = items.filter(e => {
-                        if (["pulled", "audited", "pending_return", "returned", "damaged"].includes(e.status || "")) return false;
-                        const exp = new Date(e.expiryDate);
-                        exp.setHours(0,0,0,0);
-                        const t = new Date();
-                        t.setHours(0,0,0,0);
-                        const tom = new Date(t);
-                        tom.setDate(tom.getDate() + 1);
-                        return exp < t || exp.getTime() === t.getTime() || exp.getTime() === tom.getTime();
-                      });
-
-                      if (criticalItems.length === 0) {
-                        return (
-                          <div className="p-6 text-center border border-dashed border-slate-200 dark:border-slate-700 rounded-lg">
-                            <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                            <p className="text-xs font-semibold text-slate-500">No items expiring today, tomorrow, or already expired! Excellent work.</p>
-                          </div>
-                        );
+                      if (item.status === "pulled") {
+                        badgeClass = "bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border-slate-300";
+                        badgeText = "Pulled";
+                      } else if (diffDays < 0) {
+                        badgeClass = "bg-red-200 text-red-800 dark:bg-red-900/40 dark:text-red-400 border-red-400 font-black animate-pulse";
+                        badgeText = "EXPIRED";
+                      } else if (diffDays <= 2) {
+                        badgeClass = "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 border-red-300 font-bold";
+                        badgeText = "≤ 48 Hrs";
+                      } else if (diffDays <= 7) {
+                        badgeClass = "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400 border-orange-300";
+                        badgeText = "Soon";
+                      } else if (diffDays <= 30) {
+                        badgeClass = "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-400 border-yellow-300";
+                        badgeText = "1 Month";
                       }
 
                       return (
-                        <div className="overflow-x-auto rounded-lg border border-border">
-                          <table className="w-full text-xs text-left">
-                            <thead className="bg-muted text-muted-foreground uppercase text-[10px]">
-                              <tr>
-                                <th className="p-2.5">Item Name</th>
-                                <th className="p-2.5">Barcode</th>
-                                <th className="p-2.5">Store</th>
-                                <th className="p-2.5">Expiry Date</th>
-                                <th className="p-2.5 text-center">Qty</th>
-                                <th className="p-2.5 text-right">Actions</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border">
-                              {criticalItems.map(item => {
-                                const exp = new Date(item.expiryDate);
-                                exp.setHours(0,0,0,0);
-                                const t = new Date();
-                                t.setHours(0,0,0,0);
-                                const isExpired = exp < t;
-
-                                return (
-                                  <tr key={item.id} className={isExpired ? "bg-red-500/5" : "bg-transparent"}>
-                                    <td className="p-2.5 font-bold text-foreground flex items-center gap-1.5">
-                                      <span className={`w-1.5 h-1.5 rounded-full ${isExpired ? "bg-red-500 animate-ping" : "bg-orange-500"}`}></span>
-                                      {item.itemName}
-                                    </td>
-                                    <td className="p-2.5 font-mono text-muted-foreground">
-                                      {item.barcode && item.barcode !== "N/A" ? (
-                                        <div className="scale-75 origin-left -ml-2"><Barcode value={item.barcode} height={30} width={1.2} fontSize={12} margin={0} background="transparent" /></div>
-                                      ) : item.barcode}
-                                    </td>
-                                    <td className="p-2.5 text-muted-foreground">{item.storeId}</td>
-                                    <td className={`p-2.5 font-bold ${isExpired ? "text-red-600 dark:text-red-400" : "text-orange-600 dark:text-orange-400"}`}>
-                                      {item.expiryDate} {isExpired ? "(EXPIRED)" : ""}
-                                    </td>
-                                    <td className="p-2.5 text-center font-bold text-foreground">{item.quantity}</td>
-                                    <td className="p-2.5 text-right flex items-center justify-end gap-1.5">
-                                      <button
-                                        type="button"
-                                        onClick={() => handleMarkExpiryPulled(item)}
-                                        className="px-2 py-1 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded font-bold text-[10px] hover:scale-105 active:scale-95 transition-all cursor-pointer"
-                                      >
-                                        Pull
-                                      </button>
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
+                        <div className="flex flex-col gap-1 items-start">
+                          <span className="font-bold font-mono">{item.expiryDate}</span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${badgeClass}`}>{badgeText}</span>
                         </div>
                       );
-                    })()}
-                  </div>
-                </div>
-              ) : (
-                <div className="glass-panel rounded-2xl border border-border overflow-hidden">
-                  {/* Header */}
-                  <div className="bg-slate-900 text-white p-6">
+                    }
+                  },
+                  {
+                    accessorKey: "storeId",
+                    header: "Store",
+                    cell: ({ row }) => <span className="text-sm">{row.getValue("storeId") || "Unknown"}</span>
+                  },
+                  {
+                    accessorKey: "quantity",
+                    header: "Qty",
+                    cell: ({ row }) => (
+                      <span className={`font-black text-lg ${Number(row.getValue("quantity")) > 10 ? 'text-red-500 animate-pulse' : ''}`}>
+                        {row.getValue("quantity")}
+                      </span>
+                    )
+                  },
+                  {
+                    id: "actions",
+                    cell: ({ row }) => (
+                      <button
+                        onClick={() => { setSelectedExpiry(row.original); setEditExpiryDate(row.original.expiryDate); setEditExpiryQty(String(row.original.quantity)); setIsEditingExpiry(false); }}
+                        className="px-3 py-1.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-lg text-xs font-bold shadow-sm hover:scale-105 transition-transform"
+                      >
+                        Review
+                      </button>
+                    )
+                  }
+                ]}
+                data={filteredExpiries}
+                searchPlaceholder="Search Items, Barcode..."
+              />
+            </div>
+
+            {/* Modal for Item Details & Audit */}
+            {selectedExpiry && (
+              <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
+                <div className="bg-card w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                  {/* Modal Header */}
+                  <div className="bg-slate-900 text-white p-6 relative">
+                    <button 
+                      onClick={() => setSelectedExpiry(null)}
+                      className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
                     <div className="flex justify-between items-start mb-4">
                       <div>
                         <h2 className="text-2xl font-black">{selectedExpiry.itemName}</h2>
@@ -887,8 +781,8 @@ export default function ExpiryAuditPage() {
                     </div>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
         ) : activeTab === "pending" ? (
@@ -1209,5 +1103,6 @@ export default function ExpiryAuditPage() {
 
 
     </div>
+    </PageTransition>
   );
 }

@@ -4,7 +4,8 @@ import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { collection, addDoc, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Shield, UploadCloud, ChevronLeft, AlertTriangle, User as UserIcon, Globe, Camera, X } from "lucide-react";
+import { Shield, UploadCloud, ChevronLeft, AlertTriangle, User as UserIcon, Globe, Camera, X, Radar } from "lucide-react";
+import { getOfflineQueue, addToOfflineQueue, removeFromOfflineQueue } from '@/lib/offlineDb';
 import { vibrateSuccess, vibrateError } from "@/lib/haptics";
 import { NumericFormat } from "react-number-format";
 import { useBranch } from "@/context/BranchContext";
@@ -185,6 +186,61 @@ export default function CashierVoidPage() {
   const [attachedPhotos, setAttachedPhotos] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const multiPhotoInputRef = useRef<HTMLInputElement>(null);
+
+  const [offlineCount, setOfflineCount] = useState(0);
+  const [syncing, setSyncing] = useState(false);
+  const [showRadar, setShowRadar] = useState(false);
+
+  useEffect(() => {
+    checkOfflineQueue();
+    const handleOnline = () => {
+      syncOfflineReports();
+    };
+    window.addEventListener('online', handleOnline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+    };
+  }, []);
+
+  async function checkOfflineQueue() {
+    try {
+      const q = await getOfflineQueue();
+      const myQ = q.filter(x => x.endpoint === 'void_requests');
+      setOfflineCount(myQ.length);
+    } catch (e) {
+      setOfflineCount(0);
+    }
+  }
+
+  async function syncOfflineReports() {
+    try {
+      const q = await getOfflineQueue();
+      const myQ = q.filter(x => x.endpoint === 'void_requests');
+      if (myQ.length === 0) return;
+      
+      setSyncing(true);
+      let remainingCount = myQ.length;
+      
+      for (const item of myQ) {
+        try {
+          await addDoc(collection(db, "void_requests"), item.payload.data);
+          await removeFromOfflineQueue(item.id);
+          remainingCount--;
+        } catch (e) {
+          console.error("Failed to sync void", e);
+        }
+      }
+      
+      if (remainingCount === 0) {
+        setShowRadar(true);
+      }
+      checkOfflineQueue();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   useEffect(() => {
     const savedUserStr = localStorage.getItem("active_cashier_session");
@@ -368,7 +424,7 @@ export default function CashierVoidPage() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent | null) => {
     if (e) e.preventDefault();
     if (!cashierSignature) {
       vibrateError();
@@ -384,21 +440,8 @@ export default function CashierVoidPage() {
     }
     
     setLoading(true);
-    try {
-      // Duplicate Submission Check
-      const tenMinsAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-      let isDuplicateFlag = false;
-      try {
-        const duplicateQuery = query(collection(db, "void_requests"), where("amount", "==", Number(amount)), where("cashierName", "==", cashierName), where("createdAt", ">=", tenMinsAgo));
-        const dupeSnap = await getDocs(duplicateQuery);
-        if (!dupeSnap.empty) {
-           isDuplicateFlag = true;
-        }
-      } catch (err) {
-        console.warn("Could not check duplicates", err);
-      }
-
-      const payload = {
+    
+    const payload = {
         transactionNumber,
         cashierName,
         customerName,
@@ -411,13 +454,12 @@ export default function CashierVoidPage() {
         extractedReceipt,
         selectedReturnedItems: selectedItems,
         attachedPhotos,
-        isDuplicateFlag,
-        createdAt: new Date().toISOString(), // Precise seconds-level timestamp
-        preciseTimestamp: new Date().toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute:'2-digit', second:'2-digit' }),
+        createdAt: new Date().toISOString(),
         branchId: currentBranch,
         printed: false,
-      };
+    };
 
+    try {
       await addDoc(collection(db, "void_requests"), payload);
       
       try {
@@ -426,7 +468,7 @@ export default function CashierVoidPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             title: "New Void/Return Request",
-            body: `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' })}\nCashier: ${cashierName || 'Unknown'}\nAmount: ${amount} EGP\nReason: ${reason || 'N/A'}\nRef: ${transactionNumber}\nCustomer: ${customerName || 'N/A'}\nPhone: ${customerPhone || 'N/A'}\nRegister: ${register}\nSignature: ${cashierSignature ? 'Captured' : 'None'}`
+            body: `Cashier: ${cashierName || 'Unknown'}\nAmount: ${amount} EGP`
           })
         }).catch(e => console.error("Notify error", e));
       } catch (err) {}
@@ -434,9 +476,13 @@ export default function CashierVoidPage() {
       vibrateSuccess();
       router.push("/voids/cashier/success");
     } catch (error: any) {
-      vibrateError();
-      console.error("Error submitting void request:", error);
-      alert(lang === "en" ? "Failed to submit request: " + error.message : "فشل إرسال الطلب: " + error.message);
+      vibrateSuccess();
+      await addToOfflineQueue('void_requests', {
+        data: { ...payload, _offlineSavedAt: new Date().toISOString() }
+      });
+      checkOfflineQueue();
+      alert(lang === "en" ? "Saved offline. Will sync when online." : "تم الحفظ بدون اتصال. سيتم المزامنة عند الاتصال.");
+      router.push("/cashier");
     } finally {
       setLoading(false);
     }
@@ -449,7 +495,6 @@ export default function CashierVoidPage() {
       setShowManagerOverride(false);
       setOverrideError("");
       vibrateSuccess();
-      // Auto-submit after successful override
       setTimeout(() => {
         handleSubmit(null as any);
       }, 500);
@@ -457,7 +502,6 @@ export default function CashierVoidPage() {
     }
 
     try {
-      // Check if pin matches any master/manager user
       const q = query(collection(db, "users"), where("pin", "==", pin));
       const snap = await getDocs(q);
       let isValidManager = false;

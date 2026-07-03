@@ -383,245 +383,225 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground transition-colors duration-300">
+    <div className="min-h-screen flex bg-background text-foreground transition-colors duration-300">
       <GlobalReminders />
-      {/* Dynamic Header */}
+
+      {/* Desktop Sidebar */}
       {!pathname.startsWith('/cashier') && (
-        <header className="glass-header z-40 border-b border-border" id="app-main-header">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-6">
+        <aside className="hidden lg:flex flex-col w-64 border-r border-border bg-card z-50 flex-shrink-0">
+          <div className="p-4 border-b border-border flex flex-col gap-4">
             <Link href="/" className="flex items-center gap-3">
-              {/* Premium Logo Emblem */}
               {logoUrl ? (
-                <img src={logoUrl} alt="Store Logo" className="h-9 w-9 rounded-full object-cover border-2 shadow-md" style={{ borderColor: brandColor || '#f97316' }} />
+                <img src={logoUrl} alt="Store Logo" className="h-10 w-10 rounded-full object-cover border-2 shadow-md" style={{ borderColor: brandColor || '#f97316' }} />
               ) : (
-                <div className="h-9 w-9 rounded-full bg-red-600 flex items-center justify-center font-black text-white text-lg border-2 border-orange-500 shadow-md transition-colors" style={brandColor ? { backgroundColor: brandColor, borderColor: brandColor } : {}}>
+                <div className="h-10 w-10 rounded-full bg-red-600 flex items-center justify-center font-black text-white text-xl border-2 border-orange-500 shadow-md transition-colors" style={brandColor ? { backgroundColor: brandColor, borderColor: brandColor } : {}}>
                   K
                 </div>
               )}
               <div className="flex flex-col text-start">
-                <span className="font-bold tracking-wider text-sm sm:text-base text-red-600 dark:text-red-500">CIRCLE K</span>
+                <span className="font-bold tracking-wider text-base text-red-600 dark:text-red-500">CIRCLE K</span>
                 <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">
-                  {currentBranch === 'alamein4' ? (language === 'ar' ? 'بوابة العلمين 4' : 'El Alamein 4 Portal') : currentBranch === 'ola' ? (language === 'ar' ? 'بوابة علا القرنفل' : 'Ola El Koronfol Portal') : (language === 'ar' ? 'بوابة جميع الفروع' : 'All Branches Portal')}
+                  {currentBranch === 'alamein4' ? (language === 'ar' ? 'بوابة العلمين 4' : 'El Alamein 4 Portal') : currentBranch === 'ola' ? (language === 'ar' ? 'بوابة علا القرنفل' : 'Ola El Koronfol Portal') : (language === 'ar' ? 'بوابة الفروع' : 'All Branches')}
                 </span>
               </div>
             </Link>
-
-            <nav className="hidden lg:flex items-center gap-2 ms-4">
-              {navItems.map((item) => {
-                const isActive = item.href ? pathname === item.href : item.children?.some(child => pathname === child.href);
-                const Icon = item.icon;
-                
-                if (item.children) {
-                  return (
-                    <div key={item.name} className="relative group">
-                      <button className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all duration-300 ${isActive ? "text-red-600 dark:text-red-500" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"}`}>
-                        <Icon className={`h-4 w-4 ${isActive ? 'scale-110 drop-shadow-sm' : 'opacity-70 group-hover:opacity-100 transition-opacity'}`} />
-                        <span>{item.name}</span>
-                        {item.name === "Financials" && pendingShiftCount > 0 && (
-                           <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ms-1 animate-pulse shadow-sm shadow-red-500/30">
-                             {pendingShiftCount}
-                           </span>
-                        )}
-                        {item.name === "Financials" && pendingVoidCount > 0 && pendingShiftCount === 0 && (
-                           <span className="bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ms-1 shadow-sm shadow-orange-500/30">
-                             {pendingVoidCount}
-                           </span>
-                        )}
-                        {item.name === "Expired" && pendingExpiriesCount > 0 && (
-                           <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ms-1 animate-pulse shadow-sm shadow-red-500/30">
-                             {pendingExpiriesCount}
-                           </span>
-                        )}
-                      </button>
-                      <div className="absolute left-0 mt-1 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 flex flex-col py-1">
-                        {item.children.map(child => (
-                          <Link
-                            key={child.href}
-                            href={child.href}
-                            className={`flex items-center justify-between px-4 py-2 text-sm font-medium transition-colors ${pathname === child.href ? "text-red-600 dark:text-red-500 bg-red-50 dark:bg-red-950/30" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"}`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <child.icon className="h-4 w-4" />
-                              <span>{child.name}</span>
-                            </div>
-                            {child.name === "Shift Audit" && pendingShiftCount > 0 && (
-                              <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
-                                {pendingShiftCount}
-                              </span>
-                            )}
-                            {child.name === "Voids & Returns" && pendingVoidCount > 0 && (
-                              <span className="bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
-                                {pendingVoidCount}
-                              </span>
-                            )}
-                            {child.name === "Expiry Audits" && (pendingExpiriesCount + pendingReturnsCount) > 0 && (
-                              <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
-                                {pendingExpiriesCount}
-                              </span>
-                            )}
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                }
-
-                return (
-                  <Link
-                    key={item.href || item.name}
-                    id={`nav-${item.name.toLowerCase().replace(/\s+/g, "-")}`}
-                    href={item.href!}
-                    className={`group relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all duration-300 ${
-                      isActive
-                        ? "text-red-600 dark:text-red-500"
-                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
-                    }`}
-                  >
-                    {isActive && (
-                      <span className="absolute inset-0 bg-red-50 dark:bg-red-950/30 rounded-xl -z-10 border border-red-100 dark:border-red-900/50 shadow-sm"></span>
-                    )}
-                    {!isActive && (
-                      <span className="absolute inset-0 bg-slate-100 dark:bg-slate-800 rounded-xl opacity-0 group-hover:opacity-100 scale-95 group-hover:scale-100 transition-all duration-200 -z-10"></span>
-                    )}
-                    <Icon className={`h-4 w-4 ${isActive ? 'scale-110 drop-shadow-sm' : 'opacity-70 group-hover:opacity-100 transition-opacity'}`} />
-                    {!item.isIconOnly && <span>{language === 'ar' && item.name === 'Returns' ? 'مرتجعات' : language === 'ar' && item.name === 'Expired' ? 'منتهية الصلاحية' : language === 'ar' && item.name === 'Admin' ? 'الإدارة' : language === 'ar' && item.name === 'Checklists' ? 'قوائم المراجعة' : language === 'ar' && item.name === 'Financials' ? 'الماليات' : item.name}</span>}
-                    {item.name === "Returns" && pendingReturnsCount > 0 && (
-                      <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ms-1 animate-pulse shadow-sm shadow-red-500/30">
-                        {pendingReturnsCount}
-                      </span>
-                    )}
-                  </Link>
-                );
-              })}
-            </nav>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-4">
-            {/* User Greeting */}
-            {userDoc && (
-              <div className="hidden md:flex items-center gap-2 text-sm font-semibold text-muted-foreground me-2">
-                <span>{language === 'ar' ? 'مرحباً، ' : 'Welcome, '}<span className="text-foreground">{userDoc.displayName || user?.email?.split('@')[0]}</span></span>
-              </div>
-            )}
-
-            {/* Branch Switcher (Only show if multiple branches available) */}
-            {availableBranches.length > 1 && (
-              <div className="flex items-center gap-1.5 bg-muted/60 border border-border px-2.5 py-1.5 rounded-lg">
-                <Store className="h-3.5 w-3.5 text-blue-500" />
-              <select
-                value={currentBranch}
-                onChange={(e) => setBranch(e.target.value as BranchId)}
-                className="bg-transparent border-none text-xs font-semibold focus:ring-0 cursor-pointer outline-none text-foreground"
-                title={language === "ar" ? "اختر الفرع" : "Select Branch"}
-              >
-                {availableBranches.map((b) => (
-                  <option key={b.id} value={b.id} className="bg-card">{language === "ar" && b.id === "alamein4" ? "العلمين 4" : language === "ar" && b.id === "ola" ? "علا القرنفل" : b.name}</option>
-                ))}
-              </select>
-            </div>
-            )}
-
-
-
-            {/* Notification Bell */}
-            <div className="relative">
-              <button
-                onClick={() => setNotificationsOpen(!notificationsOpen)}
-                className="relative p-2 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                title="Notifications"
-              >
-                <Bell className={`h-4 w-4 ${totalNotifications > 0 ? "animate-pulse text-red-500" : ""}`} />
-                {totalNotifications > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-lg">
-                    {totalNotifications}
-                  </span>
-                )}
-              </button>
+          <div className="flex-grow overflow-y-auto custom-scrollbar p-3 flex flex-col gap-2">
+            {navItems.map((item) => {
+              const isActive = item.href ? pathname === item.href : item.children?.some(child => pathname === child.href);
+              const Icon = item.icon;
               
-              {notificationsOpen && (
-                <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-900 border border-border rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col">
-                  <div className="bg-slate-50 dark:bg-slate-950 border-b border-border p-3 font-bold text-sm text-foreground flex justify-between items-center">
-                    <span>Notifications</span>
-                    <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full">{totalNotifications}</span>
+              if (item.children) {
+                return (
+                  <div key={item.name} className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">
+                      <span>{item.name}</span>
+                    </div>
+                    {item.children.map(child => {
+                      const isChildActive = pathname === child.href;
+                      return (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          className={`group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${isChildActive ? "bg-red-500/10 text-red-600 dark:text-red-500" : "text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-foreground"}`}
+                        >
+                          <child.icon className={`h-4 w-4 ${isChildActive ? 'scale-110 drop-shadow-sm' : 'opacity-70 group-hover:opacity-100'}`} />
+                          <span>{child.name}</span>
+                          {child.name === "Shift Audit" && pendingShiftCount > 0 && (
+                            <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+                              {pendingShiftCount}
+                            </span>
+                          )}
+                          {child.name === "Voids & Returns" && pendingVoidCount > 0 && (
+                            <span className="ml-auto bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+                              {pendingVoidCount}
+                            </span>
+                          )}
+                          {child.name === "Expiry Audits" && pendingExpiriesCount > 0 && (
+                            <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+                              {pendingExpiriesCount}
+                            </span>
+                          )}
+                        </Link>
+                      );
+                    })}
                   </div>
-                  <div className="max-h-64 overflow-y-auto custom-scrollbar">
-                    {totalNotifications === 0 ? (
-                      <div className="p-4 text-center text-sm text-muted-foreground">All caught up!</div>
-                    ) : (
-                      <>
-                        {pendingShiftCount > 0 && (
-                          <Link href="/shift-reports/manager" onClick={() => setNotificationsOpen(false)} className="block p-3 border-b border-border hover:bg-muted/50 transition-colors">
-                            <p className="text-sm font-semibold text-foreground">Shift Audits</p>
-                            <p className="text-xs text-muted-foreground">{pendingShiftCount} pending shifts require approval.</p>
-                          </Link>
-                        )}
-                        {pendingVoidCount > 0 && (
-                          <Link href="/voids/manager" onClick={() => setNotificationsOpen(false)} className="block p-3 border-b border-border hover:bg-muted/50 transition-colors">
-                            <p className="text-sm font-semibold text-foreground">Voids & Returns</p>
-                            <p className="text-xs text-muted-foreground">{pendingVoidCount} requests require review.</p>
-                          </Link>
-                        )}
-                        {pendingReturnsCount > 0 && (
-                          <Link href="/dashboard/supplier-returns" onClick={() => setNotificationsOpen(false)} className="block p-3 border-b border-border hover:bg-muted/50 transition-colors">
-                            <p className="text-sm font-semibold text-foreground">Supplier Returns</p>
-                            <p className="text-xs text-muted-foreground">{pendingReturnsCount} returns pending settlement.</p>
-                          </Link>
-                        )}
-                        {pendingExpiriesCount > 0 && (
-                          <Link href="/dashboard/expiries-audit" onClick={() => setNotificationsOpen(false)} className="block p-3 hover:bg-muted/50 transition-colors">
-                            <p className="text-sm font-semibold text-foreground">Expiry Audits</p>
-                            <p className="text-xs text-muted-foreground">{pendingExpiriesCount} audits require review.</p>
-                          </Link>
-                        )}
-                      </>
-                    )}
-                  </div>
+                );
+              }
+
+              return (
+                <Link
+                  key={item.href || item.name}
+                  href={item.href!}
+                  className={`group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive ? "bg-red-500/10 text-red-600 dark:text-red-500" : "text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-foreground"}`}
+                >
+                  <Icon className={`h-4 w-4 ${isActive ? 'scale-110 drop-shadow-sm' : 'opacity-70 group-hover:opacity-100'}`} />
+                  {!item.isIconOnly && <span>{language === 'ar' && item.name === 'Returns' ? 'مرتجعات' : language === 'ar' && item.name === 'Admin' ? 'الإدارة' : item.name}</span>}
+                  {item.name === "Returns" && pendingReturnsCount > 0 && (
+                    <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse shadow-sm shadow-red-500/30">
+                      {pendingReturnsCount}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+
+          <div className="p-4 border-t border-border mt-auto">
+             <button
+                onClick={() => signOut(auth)}
+                className="w-full flex items-center justify-center gap-2 p-2.5 rounded-lg border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors text-sm font-bold"
+              >
+                <LogOut className="h-4 w-4" /> {language === "ar" ? "تسجيل الخروج" : "Sign Out"}
+              </button>
+          </div>
+        </aside>
+      )}
+
+      {/* Main Content Area */}
+      <div className="flex-grow flex flex-col min-w-0 max-h-screen overflow-hidden">
+        {/* Top Header */}
+        {!pathname.startsWith('/cashier') && (
+          <header className="h-16 flex-shrink-0 glass-header border-b border-border flex items-center justify-between px-4 sm:px-6 z-40">
+            
+            {/* Mobile Left: Logo & Hamburger */}
+            <div className="flex lg:hidden items-center gap-3">
+              <button 
+                className="p-2 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground transition-colors"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              >
+                {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+              </button>
+              <span className="font-bold tracking-wider text-sm text-red-600 dark:text-red-500">CIRCLE K</span>
+            </div>
+
+            {/* Desktop Left: Breadcrumb or Greeting */}
+            <div className="hidden lg:flex items-center">
+              {userDoc && (
+                <div className="text-sm font-semibold text-muted-foreground">
+                  <span>{language === 'ar' ? 'مرحباً، ' : 'Welcome, '}<span className="text-foreground">{userDoc.displayName || user?.email?.split('@')[0]}</span></span>
                 </div>
               )}
             </div>
 
-            {/* Language Toggle */}
-            <button
-              onClick={() => setLanguage(language === "en" ? "ar" : "en")}
-              className="p-2 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-              title={language === "ar" ? "تغيير اللغة" : "Toggle Language"}
-            >
-              <Languages className="h-4 w-4" />
-              <span className="text-[10px] font-bold uppercase">{language === "en" ? "عربي" : "EN"}</span>
-            </button>
+            {/* Right: Controls */}
+            <div className="flex items-center gap-2 sm:gap-3 ml-auto">
+              {/* Branch Switcher */}
+              {availableBranches.length > 1 && (
+                <div className="flex items-center gap-1.5 bg-muted/60 border border-border px-2.5 py-1.5 rounded-lg">
+                  <Store className="h-3.5 w-3.5 text-blue-500" />
+                  <select
+                    value={currentBranch}
+                    onChange={(e) => setBranch(e.target.value as BranchId)}
+                    className="bg-transparent border-none text-xs font-semibold focus:ring-0 cursor-pointer outline-none text-foreground"
+                  >
+                    {availableBranches.map((b) => (
+                      <option key={b.id} value={b.id} className="bg-card">{language === "ar" && b.id === "alamein4" ? "العلمين 4" : language === "ar" && b.id === "ola" ? "علا القرنفل" : b.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
-            {/* Theme Toggle */}
-            <button
-              id="btn-toggle-theme"
-              onClick={toggleTheme}
-              className="p-2 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-              title={language === "ar" ? "تبديل المظهر" : "Toggle Dark/Light Mode"}
-            >
-              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </button>
-            
-            {/* Logout */}
-            <button
-              onClick={() => signOut(auth)}
-              className="p-2 rounded-lg border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors hidden sm:flex"
-              title={language === "ar" ? "تسجيل الخروج" : "Sign Out"}
-            >
-              <LogOut className="h-4 w-4" />
-            </button>
+              {/* Notification Bell */}
+              <div className="relative">
+                <button
+                  onClick={() => setNotificationsOpen(!notificationsOpen)}
+                  className="relative p-2 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Bell className={`h-4 w-4 ${totalNotifications > 0 ? "animate-pulse text-red-500" : ""}`} />
+                  {totalNotifications > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-lg">
+                      {totalNotifications}
+                    </span>
+                  )}
+                </button>
+                
+                {/* Dropdown omitted for brevity but keeps original logic */}
+                {notificationsOpen && (
+                  <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-900 border border-border rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col">
+                    <div className="bg-slate-50 dark:bg-slate-950 border-b border-border p-3 font-bold text-sm text-foreground flex justify-between items-center">
+                      <span>Notifications</span>
+                      <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full">{totalNotifications}</span>
+                    </div>
+                    <div className="max-h-64 overflow-y-auto custom-scrollbar">
+                      {totalNotifications === 0 ? (
+                        <div className="p-4 text-center text-sm text-muted-foreground">All caught up!</div>
+                      ) : (
+                        <>
+                          {pendingShiftCount > 0 && (
+                            <Link href="/shift-reports/manager" onClick={() => setNotificationsOpen(false)} className="block p-3 border-b border-border hover:bg-muted/50 transition-colors">
+                              <p className="text-sm font-semibold text-foreground">Shift Audits</p>
+                              <p className="text-xs text-muted-foreground">{pendingShiftCount} pending shifts require approval.</p>
+                            </Link>
+                          )}
+                          {pendingVoidCount > 0 && (
+                            <Link href="/voids/manager" onClick={() => setNotificationsOpen(false)} className="block p-3 border-b border-border hover:bg-muted/50 transition-colors">
+                              <p className="text-sm font-semibold text-foreground">Voids & Returns</p>
+                              <p className="text-xs text-muted-foreground">{pendingVoidCount} requests require review.</p>
+                            </Link>
+                          )}
+                          {pendingReturnsCount > 0 && (
+                            <Link href="/dashboard/supplier-returns" onClick={() => setNotificationsOpen(false)} className="block p-3 border-b border-border hover:bg-muted/50 transition-colors">
+                              <p className="text-sm font-semibold text-foreground">Supplier Returns</p>
+                              <p className="text-xs text-muted-foreground">{pendingReturnsCount} returns pending settlement.</p>
+                            </Link>
+                          )}
+                          {pendingExpiriesCount > 0 && (
+                            <Link href="/dashboard/expiries-audit" onClick={() => setNotificationsOpen(false)} className="block p-3 hover:bg-muted/50 transition-colors">
+                              <p className="text-sm font-semibold text-foreground">Expiry Audits</p>
+                              <p className="text-xs text-muted-foreground">{pendingExpiriesCount} audits require review.</p>
+                            </Link>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
 
-            {/* Mobile Hamburger Toggle */}
-            <button 
-              className="lg:hidden p-2 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground transition-colors ms-1"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
-              {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-            </button>
-          </div>
-        </div>
+              {/* Language Toggle */}
+              <button
+                onClick={() => setLanguage(language === "en" ? "ar" : "en")}
+                className="p-2 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+              >
+                <Languages className="h-4 w-4" />
+                <span className="text-[10px] font-bold uppercase">{language === "en" ? "عربي" : "EN"}</span>
+              </button>
 
-        {/* Mobile Dropdown Menu */}
-        {mobileMenuOpen && (
+              {/* Theme Toggle */}
+              <button
+                onClick={toggleTheme}
+                className="p-2 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </button>
+            </div>
+          </header>
+        )}
+
+        {/* Mobile Dropdown Menu (Only shown on small screens) */}
+        {mobileMenuOpen && !pathname.startsWith('/cashier') && (
           <div className="lg:hidden absolute top-16 left-0 w-full bg-white dark:bg-slate-950 border-b border-border shadow-xl z-50 flex flex-col p-4 gap-2 h-[calc(100vh-4rem)] overflow-y-auto">
             {navItems.map((item) => {
               if (item.children) {
@@ -632,21 +612,6 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                         <item.icon className="h-4 w-4" />
                         {item.name}
                       </div>
-                      {item.name === "Financials" && pendingShiftCount > 0 && (
-                         <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-pulse shadow-sm">
-                           {pendingShiftCount}
-                         </span>
-                      )}
-                      {item.name === "Financials" && pendingVoidCount > 0 && pendingShiftCount === 0 && (
-                         <span className="bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
-                           {pendingVoidCount}
-                         </span>
-                      )}
-                      {item.name === "Expired" && pendingExpiriesCount > 0 && (
-                         <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-pulse shadow-sm">
-                           {pendingExpiriesCount}
-                         </span>
-                      )}
                     </div>
                     {item.children.map(child => {
                       const isActive = pathname === child.href;
@@ -665,21 +630,6 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                             <child.icon className="h-4 w-4" />
                             {child.name}
                           </div>
-                          {child.name === "Shift Audit" && pendingShiftCount > 0 && (
-                            <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
-                              {pendingShiftCount}
-                            </span>
-                          )}
-                          {child.name === "Voids & Returns" && pendingVoidCount > 0 && (
-                            <span className="bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
-                              {pendingVoidCount}
-                            </span>
-                          )}
-                          {child.name === "Expiry Audits" && (pendingExpiriesCount + pendingReturnsCount) > 0 && (
-                            <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
-                              {pendingExpiriesCount}
-                            </span>
-                          )}
                         </Link>
                       );
                     })}
@@ -705,10 +655,12 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                 </Link>
               );
             })}
-            <div className="border-t border-border mt-2 pt-4 flex flex-col gap-3">
-
+            <div className="border-t border-border mt-2 pt-4">
               <button
-                onClick={() => signOut(auth)}
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  signOut(auth);
+                }}
                 className="w-full flex items-center justify-center gap-2 p-3 rounded-lg border border-red-500/30 bg-red-500/10 text-red-500 font-bold"
               >
                 <LogOut className="h-4 w-4" /> Sign Out
@@ -716,32 +668,29 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
             </div>
           </div>
         )}
-      </header>
-      )}
 
-      {/* Main Content Area */}
-      <main className={`flex-grow flex flex-col ${pathname.startsWith('/cashier') ? '' : 'pt-6 pb-20 lg:pb-6'}`}>
-        <div className={`flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${pathname.startsWith('/cashier') ? 'h-screen p-0 m-0 max-w-full' : ''}`}>
-        {children}
-        </div>
-      </main>
-
-      {/* Footer */}
-      {!pathname.startsWith('/cashier') && (
-        <footer className="border-t border-border bg-card py-4 text-center text-xs text-muted-foreground mt-auto no-print">
-          <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-            <p>© 2026 Circle K Franchise Group. All rights reserved.</p>
-            <div className="flex items-center gap-4">
-              <span className="flex items-center gap-1">
-                <CheckCircle className="h-3 w-3 text-green-500" /> SHA-256 Hash Validation Enabled
-              </span>
-              <Link href="/verify/check" className="hover:text-foreground transition-colors flex items-center gap-1">
-                <Search className="h-3 w-3" /> Verify Document
-              </Link>
-            </div>
+        {/* Scrollable Main Content */}
+        <main className={`flex-grow overflow-y-auto custom-scrollbar flex flex-col ${pathname.startsWith('/cashier') ? '' : 'p-4 sm:p-6 lg:p-8 bg-slate-50/50 dark:bg-slate-950/20'}`}>
+          <div className={`flex-grow w-full max-w-7xl mx-auto ${pathname.startsWith('/cashier') ? 'h-full p-0 m-0 max-w-full' : ''}`}>
+            {children}
           </div>
-        </footer>
-      )}
+
+          {/* Footer inside scrollable area */}
+          {!pathname.startsWith('/cashier') && (
+            <footer className="mt-8 border-t border-border/50 py-4 text-center text-xs text-muted-foreground no-print">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+                <p>© 2026 Circle K Franchise Group. All rights reserved.</p>
+                <div className="flex items-center gap-4">
+                  <span className="flex items-center gap-1">
+                    <CheckCircle className="h-3 w-3 text-green-500" /> SHA-256 Hash Validation Enabled
+                  </span>
+                </div>
+              </div>
+            </footer>
+          )}
+        </main>
+      </div>
+
       <PwaInstallPrompt />
     </div>
   );

@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, getDocs, getDoc, query, where, updateDoc, doc } from "firebase/firestore";
-import { Calculator, Package, Banknote, Calendar, Clock, ArrowRight, ArrowLeft, Lock, User as UserIcon, Globe, WifiOff, RefreshCw, ChevronDown, Shield, ShieldCheck, ShieldAlert } from "lucide-react";
+import { Calculator, Package, Banknote, Calendar, Clock, ArrowRight, ArrowLeft, Lock, User as UserIcon, Globe, WifiOff, RefreshCw, ChevronDown, Shield, ShieldCheck, ShieldAlert, Radar } from "lucide-react";
+import { getOfflineQueue, addToOfflineQueue, removeFromOfflineQueue } from '@/lib/offlineDb';
 import { useRouter } from "next/navigation";
 import { PinPad } from "@/components/PinPad";
 import { RadarOfflineScreen } from "@/components/RadarOfflineScreen";
@@ -181,51 +182,46 @@ export default function CashierShiftReportPage() {
     };
   }, []);
 
-  function checkOfflineQueue() {
-    const stored = localStorage.getItem('offline_reports_queue');
-    if (stored) {
-      const q = JSON.parse(stored);
+  async function checkOfflineQueue() {
+    try {
+      const q = await getOfflineQueue();
       setOfflineCount(q.length);
-    } else {
+    } catch (e) {
       setOfflineCount(0);
     }
   }
 
   async function syncOfflineReports() {
-    const stored = localStorage.getItem('offline_reports_queue');
-    if (!stored) return;
-    
     try {
+      const queue = await getOfflineQueue();
+      if (queue.length === 0) return;
+      
       setSyncing(true);
-      const queue = JSON.parse(stored);
-      const remaining = [];
+      let remainingCount = queue.length;
       
       for (const item of queue) {
         try {
-          if (item.existingReportId) {
-            await updateDoc(doc(db, "shift_reports", item.existingReportId), item.payload);
+          if (item.payload.existingReportId) {
+            await updateDoc(doc(db, "shift_reports", item.payload.existingReportId), item.payload.data);
           } else {
-            await addDoc(collection(db, "shift_reports"), item.payload);
+            await addDoc(collection(db, "shift_reports"), item.payload.data);
           }
+          await removeFromOfflineQueue(item.id);
+          remainingCount--;
         } catch (e) {
           console.error("Failed to sync report", e);
-          remaining.push(item);
         }
       }
       
-      if (remaining.length === 0) {
-        localStorage.removeItem('offline_reports_queue');
-        
+      if (remainingCount === 0) {
         // Show success animation on radar if it's open
         setShowRadar(true);
-        setSyncing(false);
         toast.success(lang === 'en' ? "Offline reports successfully synced to the server!" : "تم مزامنة التقارير المحفوظة بنجاح!");
-      } else {
-        localStorage.setItem('offline_reports_queue', JSON.stringify(remaining));
       }
       checkOfflineQueue();
     } catch (e) {
       console.error(e);
+    } finally {
       setSyncing(false);
     }
   }
@@ -543,16 +539,13 @@ export default function CashierShiftReportPage() {
       
       if (isNetworkError) {
         vibrateSuccess(); // Still a success UX since it saved offline
-        const stored = localStorage.getItem('offline_reports_queue');
-        const queue = stored ? JSON.parse(stored) : [];
-        queue.push({
+        await addToOfflineQueue('shift_reports', {
           existingReportId: existingReportId || null,
-          payload: {
+          data: {
             ...payload,
             _offlineSavedAt: new Date().toISOString()
           }
         });
-        localStorage.setItem('offline_reports_queue', JSON.stringify(queue));
         checkOfflineQueue();
         
         // Show radar

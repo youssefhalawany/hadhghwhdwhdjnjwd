@@ -6,6 +6,8 @@ import { db } from "@/lib/firebase";
 import { Search, Printer, Shield, Image as ImageIcon, ArrowLeftRight, Calendar, CheckCircle, ArrowLeft, TrendingUp, X, Clock } from "lucide-react";
 import Barcode from "react-barcode";
 import { useBranch } from "@/context/BranchContext";
+import { DataTable } from "@/components/ui/DataTable";
+import { PageTransition } from "@/components/PageTransition";
 
 export default function ManagerVoidsPage() {
   const [voids, setVoids] = useState<any[]>([]);
@@ -169,99 +171,96 @@ export default function ManagerVoidsPage() {
   }
 
   return (
+    <PageTransition>
     <div className="max-w-6xl mx-auto space-y-6">
       <div className="border-b border-border pb-4 mb-8">
         <h1 className="text-3xl font-black text-foreground tracking-tight">Void & Return Requests</h1>
         <p className="text-sm text-muted-foreground mt-1">Review and print customer return logs and receipts.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* Left Column: List */}
-        <div className={`lg:col-span-1 space-y-4 max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar ${selectedVoid ? 'hidden lg:block' : 'block'}`}>
-          <div className="sticky top-0 z-10 bg-background pb-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input 
-                ref={searchInputRef}
-                type="text"
-                placeholder="Search by TXN or Name..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-12 py-3 rounded-xl border border-border bg-muted/50 focus:bg-background outline-none focus:ring-2 focus:ring-red-500 text-sm"
-              />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 bg-slate-200/50 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 hidden sm:block">
-                ⌘K
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            {filteredVoids.map(v => {
-              const isHighValue = Number(v.amount) > 150;
-              const isUrgent = v.status === "pending" && (Date.now() - new Date(v.createdAt).getTime() > 5 * 60 * 1000);
-              return (
+      <div className="bg-card border border-border rounded-xl p-4 sm:p-6 shadow-sm relative z-10">
+        <DataTable
+          columns={[
+            {
+              accessorKey: "createdAt",
+              header: "Date/Time",
+              cell: ({ row }) => {
+                const voidData = row.original;
+                return (
+                  <div>
+                    <div className="font-bold">{voidData.preciseTimestamp || new Date(voidData.createdAt).toLocaleString('en-GB')}</div>
+                    {Number(voidData.amount) > 150 && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 bg-red-500 text-white rounded-full">High Value</span>
+                    )}
+                  </div>
+                );
+              }
+            },
+            {
+              accessorKey: "transactionNumber",
+              header: "TXN #",
+              cell: ({ row }) => <span className="font-mono text-slate-500 font-bold">{row.getValue("transactionNumber")}</span>
+            },
+            {
+              accessorKey: "cashierName",
+              header: "Cashier",
+              cell: ({ row }) => <span className="font-semibold">{row.getValue("cashierName") || 'N/A'}</span>
+            },
+            {
+              accessorKey: "customerName",
+              header: "Customer",
+              cell: ({ row }) => <span className="font-semibold">{row.getValue("customerName")}</span>
+            },
+            {
+              accessorKey: "amount",
+              header: "Amount",
+              cell: ({ row }) => (
+                <span className={`font-mono font-bold ${Number(row.getValue("amount")) > 150 ? 'text-red-600' : ''}`}>
+                  {Number(row.getValue("amount")).toFixed(2)} EGP
+                </span>
+              )
+            },
+            {
+              accessorKey: "status",
+              header: "Status",
+              cell: ({ row }) => {
+                const status = row.getValue("status") as string;
+                return (
+                  <span className={`text-xs font-bold px-2 py-1 rounded-lg ${
+                    status === "closed_on_system" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+                  }`}>
+                    {status === "closed_on_system" ? "Closed" : "Pending"}
+                  </span>
+                );
+              }
+            },
+            {
+              id: "actions",
+              cell: ({ row }) => (
                 <button
-                  key={v.id}
-                  onClick={() => setSelectedVoid(v)}
-                  className={`w-full text-left p-4 rounded-xl transition-all border relative ${
-                    selectedVoid?.id === v.id 
-                      ? "bg-slate-900 text-white border-slate-900 shadow-lg" 
-                      : "glass-panel hover:border-slate-400"
-                  } ${isUrgent ? 'breathing-urgency' : ''}`}
+                  onClick={() => setSelectedVoid(row.original)}
+                  className="px-3 py-1.5 bg-slate-900 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-slate-800 transition-colors"
                 >
-                  {isHighValue && (
-                    <div className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg border-2 border-white dark:border-slate-900 flex items-center gap-1 animate-pulse">
-                      ⚠️ High Value
-                    </div>
-                  )}
-                  {v.isDuplicateFlag && (
-                    <div className="absolute -bottom-2 -left-2 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg border-2 border-white dark:border-slate-900 flex items-center gap-1">
-                      ⚠️ Duplicate
-                    </div>
-                  )}
-                  <div className="flex justify-between items-start mb-2">
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${selectedVoid?.id === v.id ? 'bg-slate-800' : 'bg-red-500/10 text-red-500 border border-red-200/20 dark:border-red-950/30'}`}>
-                      {v.transactionNumber}
-                    </span>
-                    <span className={`font-mono font-bold ${isHighValue && selectedVoid?.id !== v.id ? 'text-red-500' : ''}`}>{Number(v.amount).toFixed(2)} EGP</span>
-                  </div>
-                  <p className="font-semibold text-sm truncate">{v.customerName}</p>
-                  <div className="flex justify-between items-end mt-1">
-                    <p className={`text-xs ${selectedVoid?.id === v.id ? 'text-slate-400' : 'text-muted-foreground'}`}>
-                      {v.preciseTimestamp ? v.preciseTimestamp : new Date(v.createdAt).toLocaleString('en-GB')}
-                    </p>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                      v.status === "closed_on_system" 
-                        ? (selectedVoid?.id === v.id ? "bg-green-900/50 text-green-300" : "bg-green-100 text-green-700") 
-                        : (selectedVoid?.id === v.id ? "bg-amber-900/50 text-amber-300" : "bg-amber-100 text-amber-700")
-                    }`}>
-                      {v.status === "closed_on_system" ? "Closed" : "Pending"}
-                    </span>
-                  </div>
+                  Review
                 </button>
-              );
-            })}
-            {filteredVoids.length === 0 && (
-              <p className="text-center text-muted-foreground py-10">No requests found.</p>
-            )}
-          </div>
-        </div>
+              )
+            }
+          ]}
+          data={filteredVoids}
+          searchPlaceholder="Search by TXN, Cashier, or Customer..."
+        />
+      </div>
 
-        {/* Right Column: Details & PDF Template */}
-        <div className={`lg:col-span-2 ${!selectedVoid ? 'hidden lg:block' : 'block'}`}>
-          {selectedVoid ? (
-            <div className="space-y-6">
-              
-              <div className="flex flex-col-reverse sm:flex-row sm:justify-between items-start sm:items-center gap-4">
-                <button 
-                  className="lg:hidden flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground p-2 -ml-2 rounded-lg" 
-                  onClick={() => setSelectedVoid(null)}
-                >
-                  <ArrowLeft className="h-4 w-4" /> Back to list
-                </button>
-
-                <div className="flex w-full sm:w-auto justify-end gap-3">
+      {/* Detail Modal */}
+      {selectedVoid && (
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-card w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+              <div className="flex justify-between items-center p-4 sm:p-6 border-b border-border bg-muted/30">
+                <h2 className="text-xl font-black flex items-center gap-2">
+                  <span className="bg-red-500/10 text-red-500 p-2 rounded-lg"><ArrowLeftRight className="h-5 w-5" /></span>
+                  Void/Return Review
+                </h2>
+                <div className="flex items-center gap-3">
                   <button
                   onClick={async () => {
                     try {
@@ -281,19 +280,24 @@ export default function ManagerVoidsPage() {
                 >
                   {selectedVoid.status === "closed_on_system" ? <CheckCircle className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
                   {selectedVoid.status === "closed_on_system" ? "Closed on System" : "Pending (Mark as Closed)"}
-                </button>
-                <button
-                  onClick={generatePDF}
-                  className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg font-bold shadow-lg hover:bg-slate-800 transition-all"
-                >
-                  <Printer className="h-4 w-4" />
-                  Print Void Report
-                </button>
+                  </button>
+                  <button
+                    onClick={generatePDF}
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg font-bold shadow hover:bg-slate-800 transition-all"
+                  >
+                    <Printer className="h-4 w-4" />
+                    Print PDF
+                  </button>
+                  <button
+                    onClick={() => setSelectedVoid(null)}
+                    className="p-2 bg-muted hover:bg-slate-300 dark:hover:bg-slate-700 rounded-lg text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition-colors"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
                 </div>
               </div>
 
-              {/* PDF Container - Hidden on screen, only used for innerHTML extraction, or styled beautifully for preview */}
-              <div className="bg-card text-foreground p-8 shadow-2xl rounded-xl border border-border overflow-x-auto print:p-0 print:shadow-none print:border-none print:rounded-none">
+              <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar bg-background">
                 <div id="void-print-capture" style={{ width: '100%', maxWidth: '210mm', margin: '0 auto', backgroundColor: 'white', boxSizing: 'border-box', color: '#0f172a', padding: '20px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
                   
                   {/* Header */}
@@ -441,21 +445,10 @@ export default function ManagerVoidsPage() {
 
                 </div>
               </div>
-
             </div>
-          ) : (
-            <div className="glass-panel p-10 flex flex-col items-center justify-center text-center rounded-2xl border border-border h-full min-h-[400px]">
-              <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-full mb-4">
-                <ArrowLeftRight className="h-10 w-10 text-slate-400" />
-              </div>
-              <h2 className="text-xl font-bold mb-2">No Request Selected</h2>
-              <p className="text-muted-foreground text-sm max-w-sm">
-                Select a void or return request from the sidebar to view its full details and print the physical report.
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
+          </div>
+      )}
     </div>
+    </PageTransition>
   );
 }

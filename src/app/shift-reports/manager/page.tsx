@@ -12,6 +12,7 @@ import jsPDF from "jspdf";
 import { useBranch } from "@/context/BranchContext";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageTransition } from "@/components/PageTransition";
 
 export default function ManagerAuditPage() {
   const { currentBranch } = useBranch();
@@ -551,6 +552,7 @@ export default function ManagerAuditPage() {
 
 
   return (
+    <PageTransition>
     <div className="max-w-6xl mx-auto space-y-6">
 
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end border-b border-border pb-4 mb-8 gap-4">
@@ -1532,5 +1534,6 @@ export default function ManagerAuditPage() {
         </div>
       )}
     </div>
+    </PageTransition>
   );
 }
