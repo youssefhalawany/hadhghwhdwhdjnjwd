@@ -443,7 +443,7 @@ export default function CashierShiftReportPage() {
     setLoading(true);
 
     const c = cashiers.find(x => x.id === selectedCashierId);
-    const signature = sigPadRef.current?.toDataURL();
+    const signature = sigPadRef.current?.toDataURL() || null;
 
     const payload: any = {
       status: "pending_manager",
@@ -472,7 +472,7 @@ export default function CashierShiftReportPage() {
         total: calculateTotalMoney()
       },
       cashierSignature: signature,
-      cashierWriteUp: reportStatus === "disputed" ? cashierWriteUp : undefined,
+      cashierWriteUp: reportStatus === "disputed" ? cashierWriteUp : null,
       inventoryCounts: {
         cigarettes: {
           start: Number(cigarettes.start) || 0,
