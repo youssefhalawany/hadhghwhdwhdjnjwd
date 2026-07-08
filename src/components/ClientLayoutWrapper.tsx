@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sun, Moon, Shield, Database, LayoutDashboard, FileText, Printer, ClipboardList, CheckCircle, Search, LogOut, User, Users, Menu, X, Bell, PackageX, Truck, CalendarDays, DollarSign } from "lucide-react";
+import { Sun, Moon, Shield, Database, LayoutDashboard, FileText, Printer, ClipboardList, CheckCircle, Search, LogOut, User, Users, Menu, X, Bell, PackageX, Truck, CalendarDays, DollarSign, Activity } from "lucide-react";
 import { auth, messaging, dbService, db } from "@/lib/firebase";
 import { getToken } from "firebase/messaging";
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
@@ -263,7 +263,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       { name: t("nav.reports"), href: "/financial-reports", icon: FileText },
       { name: "Voids & Returns", href: "/voids/manager", icon: Shield },
       { name: "Shift Audit", href: "/shift-reports/manager", icon: Shield },
-      { name: "Report Search", href: "/financials/report-search", icon: Search }
+      { name: "Report Search", href: "/financials/report-search", icon: Search },
+      { name: "Margin Strategy", href: "/dashboard/margin-calculator", icon: Activity }
     ]},
     { name: "Returns", href: "/dashboard/supplier-returns", icon: Truck },
     { name: "Expired", icon: PackageX, children: [
