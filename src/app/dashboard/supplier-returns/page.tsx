@@ -105,7 +105,7 @@ export default function SupplierReturnsDashboard() {
     });
 
     if (match) {
-      setCurrentName(match.name || "");
+      setCurrentName(match.description || match.name || match.itemName || "");
       if (match.supplier && !directSupplier) {
         setDirectSupplier(match.supplier);
       }
