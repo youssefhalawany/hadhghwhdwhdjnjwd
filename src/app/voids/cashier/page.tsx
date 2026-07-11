@@ -177,6 +177,7 @@ export default function CashierVoidPage() {
   const [extractedReceipt, setExtractedReceipt] = useState<any>(null);
   const [selectedItems, setSelectedItems] = useState<any[]>([]);
   const [attachedPhotos, setAttachedPhotos] = useState<string[]>([]);
+  const [hasAttemptedScan, setHasAttemptedScan] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const multiPhotoInputRef = useRef<HTMLInputElement>(null);
 
@@ -338,6 +339,7 @@ export default function CashierVoidPage() {
           if (num.includes("1")) setRegister("Cash 1");
           else if (num.includes("2")) setRegister("Cash 2");
         }
+        setHasAttemptedScan(true);
         vibrateSuccess();
       } else {
         throw new Error(json.error || "Failed to extract");
@@ -345,6 +347,7 @@ export default function CashierVoidPage() {
     } catch (err: any) {
       console.error("Extraction error:", err);
       alert(dict.scanError + " (" + (err.message || "Unknown error") + ")");
+      setHasAttemptedScan(true);
       vibrateError();
     } finally {
       setIsProcessingImage(false);
@@ -419,6 +422,14 @@ export default function CashierVoidPage() {
 
   const handleSubmit = async (e: React.FormEvent | null) => {
     if (e) e.preventDefault();
+    if (!hasAttemptedScan && !extractedReceipt) {
+      alert(lang === "en" ? "You must scan the receipt first." : "يجب عليك مسح الإيصال أولاً.");
+      return;
+    }
+    if (attachedPhotos.length === 0) {
+      alert(lang === "en" ? "You must attach at least one evidence photo." : "يجب إرفاق صورة إثبات واحدة على الأقل.");
+      return;
+    }
     if (!cashierSignature) {
       vibrateError();
       alert(lang === "en" ? "Please sign your request before submitting." : "يرجى توقيع الطلب قبل الإرسال.");
@@ -560,7 +571,15 @@ export default function CashierVoidPage() {
                 </button>
               </div>
 
-              <div>
+              {!hasAttemptedScan && !extractedReceipt && (
+                <div className="bg-amber-50 dark:bg-amber-900/30 p-3 rounded-xl border border-amber-200 dark:border-amber-800/50 text-center">
+                  <p className="text-sm font-bold text-amber-800 dark:text-amber-200 mb-1">Receipt Scan Required</p>
+                  <p className="text-xs text-amber-700 dark:text-amber-300">You must scan the receipt to automatically extract the details before you can proceed.</p>
+                </div>
+              )}
+
+              <div className={`space-y-4 ${!hasAttemptedScan && !extractedReceipt ? 'opacity-40 pointer-events-none' : ''}`}>
+                <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">{dict.txnNum}</label>
                 <input 
                   type="text" 
@@ -736,10 +755,11 @@ export default function CashierVoidPage() {
                 </div>
               </div>
 
+              </div>
             </div>
             
             {/* Right Column: Reason and Signature */}
-            <div className="space-y-6">
+            <div className={`space-y-6 ${!hasAttemptedScan && !extractedReceipt ? 'opacity-40 pointer-events-none' : ''}`}>
               
               {/* Reason */}
               <section className="glass-panel p-5 rounded-2xl space-y-4">

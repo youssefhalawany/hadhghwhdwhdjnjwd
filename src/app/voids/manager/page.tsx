@@ -300,13 +300,13 @@ export default function ManagerVoidsPage() {
               </div>
 
               <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar bg-background">
-                <div id="void-print-capture" style={{ width: '100%', maxWidth: '210mm', margin: '0 auto', backgroundColor: 'white', boxSizing: 'border-box', color: '#0f172a', padding: '15px', borderRadius: '8px' }}>
+                <div id="void-print-capture" style={{ width: '100%', maxWidth: '210mm', minHeight: '290mm', margin: '0 auto', backgroundColor: 'white', boxSizing: 'border-box', color: '#0f172a', padding: '15px', borderRadius: '8px', display: 'flex', flexDirection: 'column' }}>
                   
                   {/* Header */}
                   <div style={{ borderBottom: '2px solid #dc2626', paddingBottom: '5px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                     <div>
                       <h1 style={{ fontSize: '20px', fontWeight: '900', margin: '0 0 2px 0', textTransform: 'uppercase', color: '#0f172a' }}>VOID & RETURN RECORD</h1>
-                      <p style={{ margin: '0', fontSize: '10px', color: '#475569', fontWeight: '600' }}>Circle K Franchise Enterprise</p>
+                      <p style={{ margin: '0', fontSize: '10px', color: '#475569', fontWeight: '600' }}>Circle K Franchise Enterprise • Cashier: <span style={{ fontWeight: '800', color: '#0f172a' }}>{selectedVoid.cashierName || 'N/A'}</span></p>
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <p style={{ margin: '0 0 2px', fontSize: '9px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>Time: {selectedVoid.preciseTimestamp ? selectedVoid.preciseTimestamp : new Date(selectedVoid.createdAt).toLocaleString('en-GB')}</p>
@@ -315,7 +315,7 @@ export default function ManagerVoidsPage() {
                   </div>
 
                   {/* 2-Column Main Body */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '10px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', flex: 1, marginBottom: '10px' }}>
                     
                     {/* Left Column: Details & Items */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -413,7 +413,7 @@ export default function ManagerVoidsPage() {
                   </div>
 
                   {/* Signatures & Barcode */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '2px solid #e2e8f0', paddingTop: '10px', pageBreakInside: 'avoid' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '2px solid #e2e8f0', paddingTop: '10px', marginTop: 'auto', pageBreakInside: 'avoid' }}>
                     <div style={{ width: '30%' }}>
                       <p style={{ fontSize: '9px', fontWeight: '800', color: '#64748b', margin: '0 0 5px 0', textTransform: 'uppercase' }}>Cashier Signature</p>
                       {selectedVoid.cashierSignature ? (
