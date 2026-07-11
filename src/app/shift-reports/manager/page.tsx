@@ -1201,9 +1201,9 @@ export default function ManagerAuditPage() {
               <div style={{ textAlign: 'right', display: 'flex', gap: '15px', alignItems: 'center' }}>
                 
                 {/* Gamification: Shift Grade */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: gradeBg, border: `3px solid ${gradeBorder}`, borderRadius: '12px', padding: '8px 15px', minWidth: '70px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
-                  <p style={{ margin: '0 0 4px', fontSize: '10px', fontWeight: '900', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px', lineHeight: 1 }}>Grade</p>
-                  <p style={{ margin: 0, fontSize: '38px', fontWeight: '900', color: gradeText, lineHeight: 1 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: gradeBg, border: `3px solid ${gradeBorder}`, borderRadius: '12px', padding: '10px 15px', minWidth: '70px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
+                  <p style={{ margin: '0 0 5px', fontSize: '11px', fontWeight: '900', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px', lineHeight: 1 }}>Grade</p>
+                  <p style={{ margin: 0, fontSize: '34px', fontWeight: '900', color: gradeText, lineHeight: 1 }}>
                     {shiftGrade}
                   </p>
                 </div>
@@ -1404,11 +1404,11 @@ export default function ManagerAuditPage() {
                 </div>
               </div>
 
-              {/* Official Signatures Block */}
+              {/* Official Signatures & Stamp Block */}
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '15px' }}>
 
                 {/* Cashier Signature */}
-                <div style={{ width: '40%' }}>
+                <div style={{ width: '33%' }}>
                   <p style={{ fontSize: '9px', color: '#64748b', fontStyle: 'italic', marginBottom: '8px', lineHeight: 1.4 }}>
                     I, the undersigned cashier, declare that the physical counts provided above are accurate, and I have surrendered the declared funds to the manager.
                   </p>
@@ -1418,18 +1418,31 @@ export default function ManagerAuditPage() {
                     <div style={{ height: '50px', marginBottom: '5px' }}></div>
                   )}
                   <div style={{ borderBottom: '2px solid #1e293b', width: '100%', marginBottom: '8px' }}></div>
-                  <p style={{ fontSize: '12px', fontWeight: 'bold', color: '#1e293b', margin: 0, textTransform: 'uppercase' }}>Cashier Signature</p>
-                  <p style={{ fontSize: '14px', fontWeight: '900', color: '#000000', margin: '2px 0 0' }}>{selectedReport?.cashierDetails?.name}</p>
+                  <p style={{ fontSize: '11px', fontWeight: '900', color: '#1e293b', margin: 0, textTransform: 'uppercase' }}>{selectedReport.cashierDetails.name}</p>
+                  <p style={{ fontSize: '9px', fontWeight: 'bold', color: '#64748b', margin: '2px 0 0', textTransform: 'uppercase' }}>Declaring Cashier</p>
                 </div>
 
                 {/* Manager Signature */}
-                <div style={{ width: '40%' }}>
-                  <p style={{ fontSize: '9px', color: '#64748b', fontStyle: 'italic', marginBottom: '20px', lineHeight: 1.4 }}>
-                    I, the undersigned manager, declare that I have audited the shift, received the declared funds, and entered the corresponding POS totals.
+                <div style={{ width: '33%' }}>
+                  <p style={{ fontSize: '9px', color: '#64748b', fontStyle: 'italic', marginBottom: '8px', lineHeight: 1.4 }}>
+                    I, the undersigned manager, declare that I have physically counted the funds and verified the variances against the system expectations.
                   </p>
+                  {selectedReport.managerAudit?.signature ? (
+                    <img src={selectedReport.managerAudit.signature} alt="Signature" style={{ display: 'block', maxWidth: '100%', height: '50px', objectFit: 'contain', marginBottom: '5px' }} />
+                  ) : (
+                    <div style={{ height: '50px', marginBottom: '5px' }}></div>
+                  )}
                   <div style={{ borderBottom: '2px solid #1e293b', width: '100%', marginBottom: '8px' }}></div>
-                  <p style={{ fontSize: '12px', fontWeight: 'bold', color: '#1e293b', margin: 0, textTransform: 'uppercase' }}>Manager Signature</p>
-                  <p style={{ fontSize: '14px', fontWeight: '900', color: '#000000', margin: '2px 0 0' }}>{managerName || "__________________"}</p>
+                  <p style={{ fontSize: '11px', fontWeight: '900', color: '#1e293b', margin: 0, textTransform: 'uppercase' }}>{managerName}</p>
+                  <p style={{ fontSize: '9px', fontWeight: 'bold', color: '#64748b', margin: '2px 0 0', textTransform: 'uppercase' }}>Auditing Manager</p>
+                </div>
+
+                {/* Official Stamp Box */}
+                <div style={{ width: '25%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end' }}>
+                  <div style={{ width: '100%', height: '90px', border: '2px dashed #94a3b8', borderRadius: '4px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc' }}>
+                    <span style={{ fontSize: '20px', color: '#cbd5e1', marginBottom: '4px' }}>🏛</span>
+                    <span style={{ fontSize: '9px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', textAlign: 'center', letterSpacing: '0.5px' }}>Official Branch<br/>Stamp / Seal</span>
+                  </div>
                 </div>
 
               </div>
