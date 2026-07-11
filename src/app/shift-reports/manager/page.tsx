@@ -1198,12 +1198,12 @@ export default function ManagerAuditPage() {
                   <p style={{ fontSize: '14px', color: '#64748b', margin: '2px 0 0', fontWeight: '600' }}>SHIFT REPORT</p>
                 </div>
               </div>
-              <div style={{ textAlign: 'right', display: 'flex', gap: '15px', alignItems: 'stretch' }}>
+              <div style={{ textAlign: 'right', display: 'flex', gap: '15px', alignItems: 'center' }}>
                 
                 {/* Gamification: Shift Grade */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: gradeBg, border: `3px solid ${gradeBorder}`, borderRadius: '12px', padding: '5px 15px', minWidth: '70px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
-                  <p style={{ margin: '0 0 2px', fontSize: '9px', fontWeight: '900', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Grade</p>
-                  <p style={{ margin: 0, fontSize: '32px', fontWeight: '900', color: gradeText, lineHeight: 1 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: gradeBg, border: `3px solid ${gradeBorder}`, borderRadius: '12px', padding: '8px 15px', minWidth: '70px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
+                  <p style={{ margin: '0 0 4px', fontSize: '10px', fontWeight: '900', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px', lineHeight: 1 }}>Grade</p>
+                  <p style={{ margin: 0, fontSize: '38px', fontWeight: '900', color: gradeText, lineHeight: 1 }}>
                     {shiftGrade}
                   </p>
                 </div>
