@@ -116,6 +116,15 @@ export default function SupplierReturnsDashboard() {
     setIsSearchingProduct(false);
   };
   
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (currentBarcode && currentBarcode.trim().length > 3) {
+        handleSearchProduct(currentBarcode);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [currentBarcode]);
+  
   const handleAddDirectItem = () => {
     if (!currentBarcode || !currentName || currentQty <= 0) return;
     setDirectItems([...directItems, {
@@ -717,23 +726,19 @@ export default function SupplierReturnsDashboard() {
                 <div>
                   <h4 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-3">{lang === "ar" ? "1. اختر المورد" : "1. Select Supplier"}</h4>
                   <div className="flex gap-2">
-                    <select 
-                      value={directSupplier}
-                      onChange={e => setDirectSupplier(e.target.value)}
-                      className="w-full md:w-1/2 p-3 border border-border rounded-xl bg-background outline-none focus:border-blue-500 font-bold"
-                    >
-                      <option value="" disabled>{lang === "ar" ? "-- اختر المورد --" : "-- Select a Supplier --"}</option>
-                      {allSuppliers.map(s => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
                     <input 
                       type="text" 
-                      placeholder={lang === "ar" ? "أو اكتب اسم مورد جديد..." : "Or type new supplier name..."}
+                      list="supplier-list"
+                      placeholder={lang === "ar" ? "اكتب أو اختر اسم مورد..." : "Type or select a supplier..."}
                       value={directSupplier}
                       onChange={e => setDirectSupplier(e.target.value)}
-                      className="w-full md:w-1/2 p-3 border border-border rounded-xl bg-background outline-none focus:border-blue-500 text-sm"
+                      className="w-full p-3 border border-border rounded-xl bg-background outline-none focus:border-blue-500 font-bold text-sm"
                     />
+                    <datalist id="supplier-list">
+                      {allSuppliers.map(s => (
+                        <option key={s} value={s} />
+                      ))}
+                    </datalist>
                   </div>
                 </div>
 
