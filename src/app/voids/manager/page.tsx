@@ -70,7 +70,7 @@ export default function ManagerVoidsPage() {
         <head>
           <title>Void Report - ${selectedVoid.transactionNumber}</title>
           <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@700&display=swap');
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&family=JetBrains+Mono:wght@700&display=swap');
             body { 
               font-family: 'Inter', sans-serif; 
               margin: 0; 
@@ -82,19 +82,25 @@ export default function ManagerVoidsPage() {
             }
             @page { 
               size: A4 portrait; 
-              margin: 10mm; 
+              margin: 0; 
             }
-            /* Hide print headers/footers in some browsers */
-            @media print {
-              body { padding: 0; }
-              #print-container { width: 100%; }
-              .print-hide { display: none !important; }
+            .print-page {
+              width: 210mm;
+              height: 297mm;
+              padding: 15mm;
+              box-sizing: border-box;
+              display: flex;
+              flex-direction: column;
+              background: white;
+              position: relative;
+              page-break-after: avoid;
+              overflow: hidden;
             }
-            .print-hide { display: none !important; } /* Fallback */
+            .print-hide { display: none !important; }
           </style>
         </head>
         <body>
-          <div id="print-container">
+          <div class="print-page">
             ${printContent.innerHTML}
           </div>
         </body>
@@ -102,7 +108,7 @@ export default function ManagerVoidsPage() {
     `);
     printWindow.document.close();
     printWindow.focus();
-    
+
     // Give images a second to load before triggering print
     setTimeout(() => {
       printWindow.print();
@@ -113,11 +119,11 @@ export default function ManagerVoidsPage() {
   const filteredVoids = voids.filter(v => {
     // Branch Filter (handle legacy voids which have no branchId)
     const matchesBranch = !v.branchId || v.branchId === currentBranch;
-    
+
     // Text Filter
     const matchesSearch = (v.transactionNumber || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          (v.customerName || "").toLowerCase().includes(searchQuery.toLowerCase());
-                          
+      (v.customerName || "").toLowerCase().includes(searchQuery.toLowerCase());
+
     return matchesBranch && matchesSearch;
   });
 
@@ -125,7 +131,7 @@ export default function ManagerVoidsPage() {
     if (!cashierName) return null;
     const pastVoids = voids.filter(v => (v.cashierName || "").trim() === cashierName.trim() && v.id !== currentVoidId).slice(0, 5);
     if (pastVoids.length === 0) return null;
-    
+
     const avg = pastVoids.reduce((sum, v) => sum + Number(v.amount), 0) / pastVoids.length;
     return {
       count: pastVoids.length,
@@ -136,7 +142,7 @@ export default function ManagerVoidsPage() {
   const handleDeletePhoto = async (photoIndex: number) => {
     if (!selectedVoid || !selectedVoid.attachedPhotos) return;
     if (!confirm("Are you sure you want to permanently delete this evidence photo?")) return;
-    
+
     try {
       const updatedPhotos = selectedVoid.attachedPhotos.filter((_: any, i: number) => i !== photoIndex);
       await updateDoc(doc(db, "void_requests", selectedVoid.id), { attachedPhotos: updatedPhotos });
@@ -163,7 +169,7 @@ export default function ManagerVoidsPage() {
         <div className="bg-slate-900 text-left p-4 rounded-xl overflow-x-auto">
           <p className="text-slate-400 text-sm font-bold mb-2">To fix this, add this to your Firebase Firestore Rules:</p>
           <pre className="text-emerald-400 text-sm font-mono">
-{`match /void_requests/{document=**} {
+            {`match /void_requests/{document=**} {
   allow read, write: if true;
 }`}
           </pre>
@@ -174,89 +180,88 @@ export default function ManagerVoidsPage() {
 
   return (
     <PageTransition>
-    <div className="max-w-6xl mx-auto space-y-6">
-      <div className="border-b border-border pb-4 mb-8">
-        <h1 className="text-3xl font-black text-foreground tracking-tight">Void & Return Requests</h1>
-        <p className="text-sm text-muted-foreground mt-1">Review and print customer return logs and receipts.</p>
-      </div>
+      <div className="max-w-6xl mx-auto space-y-6">
+        <div className="border-b border-border pb-4 mb-8">
+          <h1 className="text-3xl font-black text-foreground tracking-tight">Void & Return Requests</h1>
+          <p className="text-sm text-muted-foreground mt-1">Review and print customer return logs and receipts.</p>
+        </div>
 
-      <div className="bg-card border border-border rounded-xl p-4 sm:p-6 shadow-sm relative z-10">
-        <DataTable
-          columns={[
-            {
-              accessorKey: "createdAt",
-              header: "Date/Time",
-              cell: ({ row }) => {
-                const voidData = row.original;
-                return (
-                  <div>
-                    <div className="font-bold">{voidData.preciseTimestamp || new Date(voidData.createdAt).toLocaleString('en-GB')}</div>
-                    {Number(voidData.amount) > 150 && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 bg-red-500 text-white rounded-full">High Value</span>
-                    )}
-                  </div>
-                );
-              }
-            },
-            {
-              accessorKey: "transactionNumber",
-              header: "TXN #",
-              cell: ({ row }) => <span className="font-mono text-slate-500 font-bold">{row.getValue("transactionNumber")}</span>
-            },
-            {
-              accessorKey: "cashierName",
-              header: "Cashier",
-              cell: ({ row }) => <span className="font-semibold">{row.getValue("cashierName") || 'N/A'}</span>
-            },
-            {
-              accessorKey: "customerName",
-              header: "Customer",
-              cell: ({ row }) => <span className="font-semibold">{row.getValue("customerName")}</span>
-            },
-            {
-              accessorKey: "amount",
-              header: "Amount",
-              cell: ({ row }) => (
-                <span className={`font-mono font-bold ${Number(row.getValue("amount")) > 150 ? 'text-red-600' : ''}`}>
-                  {Number(row.getValue("amount")).toFixed(2)} EGP
-                </span>
-              )
-            },
-            {
-              accessorKey: "status",
-              header: "Status",
-              cell: ({ row }) => {
-                const status = row.getValue("status") as string;
-                return (
-                  <span className={`text-xs font-bold px-2 py-1 rounded-lg ${
-                    status === "closed_on_system" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
-                  }`}>
-                    {status === "closed_on_system" ? "Closed" : "Pending"}
+        <div className="bg-card border border-border rounded-xl p-4 sm:p-6 shadow-sm relative z-10">
+          <DataTable
+            columns={[
+              {
+                accessorKey: "createdAt",
+                header: "Date/Time",
+                cell: ({ row }) => {
+                  const voidData = row.original;
+                  return (
+                    <div>
+                      <div className="font-bold">{voidData.preciseTimestamp || new Date(voidData.createdAt).toLocaleString('en-GB')}</div>
+                      {Number(voidData.amount) > 150 && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 bg-red-500 text-white rounded-full">High Value</span>
+                      )}
+                    </div>
+                  );
+                }
+              },
+              {
+                accessorKey: "transactionNumber",
+                header: "TXN #",
+                cell: ({ row }) => <span className="font-mono text-slate-500 font-bold">{row.getValue("transactionNumber")}</span>
+              },
+              {
+                accessorKey: "cashierName",
+                header: "Cashier",
+                cell: ({ row }) => <span className="font-semibold">{row.getValue("cashierName") || 'N/A'}</span>
+              },
+              {
+                accessorKey: "customerName",
+                header: "Customer",
+                cell: ({ row }) => <span className="font-semibold">{row.getValue("customerName")}</span>
+              },
+              {
+                accessorKey: "amount",
+                header: "Amount",
+                cell: ({ row }) => (
+                  <span className={`font-mono font-bold ${Number(row.getValue("amount")) > 150 ? 'text-red-600' : ''}`}>
+                    {Number(row.getValue("amount")).toFixed(2)} EGP
                   </span>
-                );
+                )
+              },
+              {
+                accessorKey: "status",
+                header: "Status",
+                cell: ({ row }) => {
+                  const status = row.getValue("status") as string;
+                  return (
+                    <span className={`text-xs font-bold px-2 py-1 rounded-lg ${status === "closed_on_system" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+                      }`}>
+                      {status === "closed_on_system" ? "Closed" : "Pending"}
+                    </span>
+                  );
+                }
+              },
+              {
+                id: "actions",
+                cell: ({ row }) => (
+                  <button
+                    onClick={() => setSelectedVoid(row.original)}
+                    className="px-3 py-1.5 bg-slate-900 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-slate-800 transition-colors"
+                  >
+                    Review
+                  </button>
+                )
               }
-            },
-            {
-              id: "actions",
-              cell: ({ row }) => (
-                <button
-                  onClick={() => setSelectedVoid(row.original)}
-                  className="px-3 py-1.5 bg-slate-900 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-slate-800 transition-colors"
-                >
-                  Review
-                </button>
-              )
-            }
-          ]}
-          data={filteredVoids}
-          searchPlaceholder="Search by TXN, Cashier, or Customer..."
-        />
-      </div>
+            ]}
+            data={filteredVoids}
+            searchPlaceholder="Search by TXN, Cashier, or Customer..."
+          />
+        </div>
 
-      {/* Detail Modal */}
-      {selectedVoid && (
-        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-card w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        {/* Detail Modal */}
+        {selectedVoid && (
+          <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
+            <div className="bg-card w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
               <div className="flex justify-between items-center p-4 sm:p-6 border-b border-border bg-muted/30">
                 <h2 className="text-xl font-black flex items-center gap-2">
                   <span className="bg-red-500/10 text-red-500 p-2 rounded-lg"><ArrowLeftRight className="h-5 w-5" /></span>
@@ -264,24 +269,23 @@ export default function ManagerVoidsPage() {
                 </h2>
                 <div className="flex items-center gap-3">
                   <button
-                  onClick={async () => {
-                    try {
-                      await updateDoc(doc(db, "void_requests", selectedVoid.id), {
-                        status: selectedVoid.status === "closed_on_system" ? "pending" : "closed_on_system"
-                      });
-                    } catch(e) {
-                      console.error("Failed to update status", e);
-                      alert("Failed to update status. Check permissions.");
-                    }
-                  }}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold shadow transition-all ${
-                    selectedVoid.status === "closed_on_system" 
-                      ? "bg-green-100 text-green-700 hover:bg-green-200 border border-green-200" 
+                    onClick={async () => {
+                      try {
+                        await updateDoc(doc(db, "void_requests", selectedVoid.id), {
+                          status: selectedVoid.status === "closed_on_system" ? "pending" : "closed_on_system"
+                        });
+                      } catch (e) {
+                        console.error("Failed to update status", e);
+                        alert("Failed to update status. Check permissions.");
+                      }
+                    }}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold shadow transition-all ${selectedVoid.status === "closed_on_system"
+                      ? "bg-green-100 text-green-700 hover:bg-green-200 border border-green-200"
                       : "bg-amber-100 border border-amber-200 text-amber-700 hover:bg-amber-200"
-                  }`}
-                >
-                  {selectedVoid.status === "closed_on_system" ? <CheckCircle className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
-                  {selectedVoid.status === "closed_on_system" ? "Closed on System" : "Pending (Mark as Closed)"}
+                      }`}
+                  >
+                    {selectedVoid.status === "closed_on_system" ? <CheckCircle className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
+                    {selectedVoid.status === "closed_on_system" ? "Closed on System" : "Pending (Mark as Closed)"}
                   </button>
                   <button
                     onClick={generatePDF}
@@ -300,103 +304,103 @@ export default function ManagerVoidsPage() {
               </div>
 
               <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar bg-background">
-                <div id="void-print-capture" style={{ width: '190mm', height: '270mm', margin: '0 auto', backgroundColor: 'white', boxSizing: 'border-box', color: '#0f172a', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-                  
+                <div id="void-print-capture" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+
                   {/* Header Section */}
-                  <div style={{ paddingBottom: '10px', borderBottom: '3px solid #dc2626', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ paddingBottom: '15px', borderBottom: '4px solid #dc2626', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
-                      <h1 style={{ fontSize: '26px', fontWeight: '900', margin: '0 0 5px 0', textTransform: 'uppercase', letterSpacing: '-0.5px' }}>OFFICIAL VOID & RETURN</h1>
-                      <p style={{ margin: '0 0 5px 0', fontSize: '12px', color: '#475569', fontWeight: '600', textTransform: 'uppercase' }}>Circle K Franchise Enterprise</p>
-                      <div style={{ display: 'inline-block', padding: '4px 8px', backgroundColor: '#f1f5f9', borderRadius: '4px', fontSize: '11px', fontWeight: '800', color: '#334155' }}>
-                        Cashier: <span style={{ color: '#0f172a' }}>{selectedVoid.cashierName || 'N/A'}</span>
+                      <h1 style={{ fontSize: '32px', fontWeight: '900', margin: '0 0 5px 0', textTransform: 'uppercase', letterSpacing: '-0.5px', color: '#0f172a' }}>OFFICIAL VOID</h1>
+                      <p style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#475569', fontWeight: '700', textTransform: 'uppercase' }}>Circle K Corporate Return Record</p>
+                      <div style={{ display: 'inline-block', padding: '6px 12px', backgroundColor: '#f1f5f9', borderRadius: '6px', fontSize: '13px', fontWeight: '800', color: '#334155', border: '1px solid #e2e8f0' }}>
+                        Cashier: <span style={{ color: '#0f172a', fontWeight: '900' }}>{selectedVoid.cashierName || 'N/A'}</span>
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <p style={{ margin: '0 0 5px', fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '700' }}>Transaction Time</p>
-                      <p style={{ margin: '0 0 10px', fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>{selectedVoid.preciseTimestamp ? selectedVoid.preciseTimestamp : new Date(selectedVoid.createdAt).toLocaleString('en-GB')}</p>
-                      <div style={{ border: '2px solid #dc2626', padding: '6px 12px', borderRadius: '6px', display: 'inline-block' }}>
-                        <p style={{ margin: 0, fontSize: '10px', color: '#dc2626', textTransform: 'uppercase', fontWeight: '800', textAlign: 'center' }}>Total Returned</p>
-                        <p style={{ margin: 0, fontSize: '20px', fontWeight: '900', color: '#dc2626', fontFamily: '"JetBrains Mono", monospace' }}>EGP {Number(selectedVoid.amount).toFixed(2)}</p>
+                      <p style={{ margin: '0 0 5px', fontSize: '12px', color: '#64748b', textTransform: 'uppercase', fontWeight: '700' }}>Transaction Time</p>
+                      <p style={{ margin: '0 0 15px', fontSize: '16px', fontWeight: '800', color: '#0f172a' }}>{selectedVoid.preciseTimestamp ? selectedVoid.preciseTimestamp : new Date(selectedVoid.createdAt).toLocaleString('en-GB')}</p>
+                      <div style={{ border: '3px solid #dc2626', padding: '10px 16px', borderRadius: '8px', backgroundColor: '#fef2f2' }}>
+                        <p style={{ margin: 0, fontSize: '11px', color: '#dc2626', textTransform: 'uppercase', fontWeight: '800', textAlign: 'center', marginBottom: '4px' }}>Total Void Amount</p>
+                        <p style={{ margin: 0, fontSize: '24px', fontWeight: '900', color: '#dc2626', fontFamily: '"JetBrains Mono", monospace' }}>EGP {Number(selectedVoid.amount).toFixed(2)}</p>
                       </div>
                     </div>
                   </div>
 
+                  {/* Meta Info Row */}
+                  <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
+                    <div style={{ flex: 1, backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                      <span style={{ display: 'block', fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '800', marginBottom: '4px' }}>TXN Number</span>
+                      <span style={{ fontSize: '15px', fontWeight: '900', fontFamily: '"JetBrains Mono", monospace', color: '#0f172a' }}>{selectedVoid.transactionNumber}</span>
+                    </div>
+                    <div style={{ flex: 1, backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                      <span style={{ display: 'block', fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '800', marginBottom: '4px' }}>Register</span>
+                      <span style={{ fontSize: '15px', fontWeight: '800', color: '#0f172a' }}>{selectedVoid.register}</span>
+                    </div>
+                    <div style={{ flex: 1.5, backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                      <span style={{ display: 'block', fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '800', marginBottom: '4px' }}>Customer</span>
+                      <span style={{ fontSize: '15px', fontWeight: '800', color: '#0f172a' }}>{selectedVoid.customerName}</span>
+                    </div>
+                    <div style={{ flex: 1.5, backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                      <span style={{ display: 'block', fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '800', marginBottom: '4px' }}>Phone</span>
+                      <span style={{ fontSize: '15px', fontWeight: '800', fontFamily: '"JetBrains Mono", monospace', color: '#0f172a' }}>{selectedVoid.customerPhone}</span>
+                    </div>
+                  </div>
+
                   {/* Middle Section: 2 Columns */}
-                  <div style={{ display: 'flex', gap: '20px', flex: 1, minHeight: 0 }}>
-                    
-                    {/* Left Column: Data & Items (Width 45%) */}
-                    <div style={{ flex: '0 0 45%', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                      
-                      {/* Meta Info */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                        <div>
-                          <span style={{ display: 'block', fontSize: '10px', color: '#64748b', textTransform: 'uppercase', fontWeight: '700', marginBottom: '2px' }}>TXN Number</span>
-                          <span style={{ fontSize: '12px', fontWeight: '800', fontFamily: '"JetBrains Mono", monospace' }}>{selectedVoid.transactionNumber}</span>
-                        </div>
-                        <div>
-                          <span style={{ display: 'block', fontSize: '10px', color: '#64748b', textTransform: 'uppercase', fontWeight: '700', marginBottom: '2px' }}>Register</span>
-                          <span style={{ fontSize: '12px', fontWeight: '700' }}>{selectedVoid.register}</span>
-                        </div>
-                        <div>
-                          <span style={{ display: 'block', fontSize: '10px', color: '#64748b', textTransform: 'uppercase', fontWeight: '700', marginBottom: '2px' }}>Customer</span>
-                          <span style={{ fontSize: '12px', fontWeight: '700' }}>{selectedVoid.customerName}</span>
-                        </div>
-                        <div>
-                          <span style={{ display: 'block', fontSize: '10px', color: '#64748b', textTransform: 'uppercase', fontWeight: '700', marginBottom: '2px' }}>Phone</span>
-                          <span style={{ fontSize: '12px', fontWeight: '700', fontFamily: '"JetBrains Mono", monospace' }}>{selectedVoid.customerPhone}</span>
-                        </div>
-                      </div>
+                  <div style={{ display: 'flex', gap: '25px', flex: 1, minHeight: 0 }}>
+
+                    {/* Left Column: Reason & Items */}
+                    <div style={{ flex: '0 0 45%', display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
                       {/* Reason Box */}
-                      <div style={{ padding: '10px', backgroundColor: '#f8fafc', borderLeft: '3px solid #cbd5e1', borderRadius: '0 6px 6px 0' }}>
-                        <span style={{ display: 'block', fontSize: '10px', color: '#64748b', textTransform: 'uppercase', fontWeight: '800', marginBottom: '4px' }}>Reason for Return</span>
-                        <div style={{ fontSize: '11px', lineHeight: 1.4, fontWeight: '500', color: '#1e293b' }}>
+                      <div style={{ padding: '15px', backgroundColor: '#f1f5f9', borderLeft: '4px solid #94a3b8', borderRadius: '0 8px 8px 0' }}>
+                        <span style={{ display: 'block', fontSize: '12px', color: '#475569', textTransform: 'uppercase', fontWeight: '800', marginBottom: '8px' }}>Reason for Void/Return</span>
+                        <div style={{ fontSize: '13px', lineHeight: 1.5, fontWeight: '500', color: '#0f172a' }}>
                           {selectedVoid.reason}
                         </div>
                       </div>
 
                       {/* Receipt Data Table */}
                       {selectedVoid.extractedReceipt && selectedVoid.extractedReceipt.items && (
-                        <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                          <div style={{ backgroundColor: '#f1f5f9', padding: '6px 10px', borderBottom: '1px solid #e2e8f0', fontSize: '10px', fontWeight: '800', textTransform: 'uppercase', color: '#334155' }}>
-                            Scanned Receipt Items
+                        <div style={{ border: '1px solid #cbd5e1', borderRadius: '8px', overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: 'white' }}>
+                          <div style={{ backgroundColor: '#f8fafc', padding: '10px 15px', borderBottom: '2px solid #e2e8f0', fontSize: '12px', fontWeight: '900', textTransform: 'uppercase', color: '#1e293b' }}>
+                            Scanned Items List
                           </div>
-                          <div style={{ padding: '8px', flex: 1, overflow: 'hidden' }}>
-                            <table style={{ width: '100%', fontSize: '9px', borderCollapse: 'collapse' }}>
+                          <div style={{ padding: '10px', flex: 1, overflow: 'hidden' }}>
+                            <table style={{ width: '100%', fontSize: '11px', borderCollapse: 'collapse' }}>
                               <thead>
-                                <tr style={{ borderBottom: '2px solid #e2e8f0', color: '#64748b' }}>
-                                  <th style={{ textAlign: 'left', padding: '4px 2px' }}>Item</th>
-                                  <th style={{ textAlign: 'center', padding: '4px 2px' }}>Qty</th>
-                                  <th style={{ textAlign: 'right', padding: '4px 2px' }}>Price</th>
-                                  <th style={{ textAlign: 'right', padding: '4px 2px' }}>Total</th>
+                                <tr style={{ borderBottom: '2px solid #cbd5e1', color: '#64748b' }}>
+                                  <th style={{ textAlign: 'left', padding: '6px 4px', fontWeight: '800' }}>Item</th>
+                                  <th style={{ textAlign: 'center', padding: '6px 4px', fontWeight: '800' }}>Qty</th>
+                                  <th style={{ textAlign: 'right', padding: '6px 4px', fontWeight: '800' }}>Price</th>
+                                  <th style={{ textAlign: 'right', padding: '6px 4px', fontWeight: '800' }}>Total</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {selectedVoid.extractedReceipt.items.map((item: any, i: number) => {
-                                  const isReturned = selectedVoid.selectedReturnedItems?.some((s:any) => s.desc === item.description);
+                                  const isReturned = selectedVoid.selectedReturnedItems?.some((s: any) => s.desc === item.description);
                                   return (
                                     <tr key={i} style={{ backgroundColor: isReturned ? '#fef2f2' : 'transparent', borderBottom: '1px solid #f1f5f9' }}>
-                                      <td style={{ padding: '4px 2px', fontWeight: isReturned ? '800' : '500', color: isReturned ? '#991b1b' : '#0f172a' }}>{item.description} {isReturned ? '(RTN)' : ''}</td>
-                                      <td style={{ padding: '4px 2px', textAlign: 'center', fontWeight: '600' }}>{item.quantity}</td>
-                                      <td style={{ padding: '4px 2px', textAlign: 'right', color: '#475569' }}>{item.price}</td>
-                                      <td style={{ padding: '4px 2px', textAlign: 'right', fontWeight: '700' }}>{item.total}</td>
+                                      <td style={{ padding: '6px 4px', fontWeight: isReturned ? '800' : '500', color: isReturned ? '#991b1b' : '#0f172a' }}>{item.description} {isReturned ? '(VOID)' : ''}</td>
+                                      <td style={{ padding: '6px 4px', textAlign: 'center', fontWeight: '600' }}>{item.quantity}</td>
+                                      <td style={{ padding: '6px 4px', textAlign: 'right', color: '#475569' }}>{item.price}</td>
+                                      <td style={{ padding: '6px 4px', textAlign: 'right', fontWeight: '800' }}>{item.total}</td>
                                     </tr>
                                   );
                                 })}
                               </tbody>
                             </table>
-                            
-                            <div style={{ marginTop: '10px', padding: '8px', backgroundColor: '#f8fafc', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', marginBottom: '4px' }}>
-                                <span style={{ color: '#64748b', fontWeight: '600' }}>Net Amount:</span>
-                                <span style={{ fontWeight: '700' }}>{selectedVoid.extractedReceipt.net_amount || '0'}</span>
+
+                            <div style={{ marginTop: '15px', padding: '10px 15px', backgroundColor: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '6px' }}>
+                                <span style={{ color: '#64748b', fontWeight: '700' }}>Net Amount:</span>
+                                <span style={{ fontWeight: '800' }}>{selectedVoid.extractedReceipt.net_amount || '0'}</span>
                               </div>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', marginBottom: '6px' }}>
-                                <span style={{ color: '#64748b', fontWeight: '600' }}>Tax:</span>
-                                <span style={{ fontWeight: '700' }}>{selectedVoid.extractedReceipt.tax_amount || '0'}</span>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '8px' }}>
+                                <span style={{ color: '#64748b', fontWeight: '700' }}>Tax:</span>
+                                <span style={{ fontWeight: '800' }}>{selectedVoid.extractedReceipt.tax_amount || '0'}</span>
                               </div>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #cbd5e1', paddingTop: '6px', fontSize: '11px' }}>
-                                <span style={{ color: '#0f172a', fontWeight: '800' }}>Total Receipt:</span>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #cbd5e1', paddingTop: '8px', fontSize: '13px' }}>
+                                <span style={{ color: '#0f172a', fontWeight: '900' }}>Total Receipt:</span>
                                 <span style={{ fontWeight: '900', color: '#0f172a' }}>{selectedVoid.extractedReceipt.total_amount || '0'} EGP</span>
                               </div>
                             </div>
@@ -406,17 +410,17 @@ export default function ManagerVoidsPage() {
 
                     </div>
 
-                    {/* Right Column: Large Photo (Width 55%) */}
+                    {/* Right Column: Large Photo */}
                     <div style={{ flex: '0 0 55%', display: 'flex', flexDirection: 'column' }}>
-                      <div style={{ border: '2px solid #e2e8f0', borderRadius: '8px', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-                        <div style={{ backgroundColor: '#f1f5f9', padding: '8px 12px', borderBottom: '2px solid #e2e8f0', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', textAlign: 'center', color: '#334155', letterSpacing: '1px' }}>
+                      <div style={{ border: '2px solid #cbd5e1', borderRadius: '8px', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', backgroundColor: '#f8fafc' }}>
+                        <div style={{ backgroundColor: '#e2e8f0', padding: '10px 15px', borderBottom: '2px solid #cbd5e1', fontSize: '12px', fontWeight: '900', textTransform: 'uppercase', textAlign: 'center', color: '#1e293b', letterSpacing: '1px' }}>
                           Physical Receipt Evidence
                         </div>
-                        <div style={{ flex: 1, backgroundColor: '#ffffff', padding: '10px', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
+                        <div style={{ flex: 1, padding: '15px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                           {selectedVoid.attachedPhotos && selectedVoid.attachedPhotos.length > 0 ? (
-                            <img src={selectedVoid.attachedPhotos[0]} style={{ width: '100%', height: '100%', objectFit: 'contain', maxHeight: '180mm' }} alt="Receipt Evidence" />
+                            <img src={selectedVoid.attachedPhotos[0]} style={{ width: '100%', height: '100%', objectFit: 'contain', border: '1px solid #e2e8f0', backgroundColor: 'white', padding: '5px' }} alt="Receipt Evidence" />
                           ) : (
-                            <div style={{ color: '#94a3b8', fontSize: '14px', fontWeight: '700' }}>No Photo Attached</div>
+                            <div style={{ color: '#94a3b8', fontSize: '16px', fontWeight: '800' }}>No Photo Attached</div>
                           )}
                         </div>
                       </div>
@@ -425,36 +429,36 @@ export default function ManagerVoidsPage() {
                   </div>
 
                   {/* Footer Signatures */}
-                  <div style={{ borderTop: '3px solid #e2e8f0', paddingTop: '15px', marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingBottom: '10px' }}>
+                  <div style={{ borderTop: '4px solid #e2e8f0', paddingTop: '20px', marginTop: '25px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingBottom: '10px' }}>
                     <div style={{ width: '30%' }}>
-                      <p style={{ fontSize: '10px', fontWeight: '800', color: '#64748b', margin: '0 0 5px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Cashier Signature</p>
+                      <p style={{ fontSize: '11px', fontWeight: '800', color: '#64748b', margin: '0 0 5px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Cashier Signature</p>
                       {selectedVoid.cashierSignature ? (
-                        <img src={selectedVoid.cashierSignature} alt="Signature" style={{ display: 'block', maxWidth: '100%', height: '50px', objectFit: 'contain', marginBottom: '2px' }} />
+                        <img src={selectedVoid.cashierSignature} alt="Signature" style={{ display: 'block', maxWidth: '100%', height: '60px', objectFit: 'contain', marginBottom: '5px' }} />
                       ) : (
-                        <div style={{ height: '50px', marginBottom: '2px' }}></div>
+                        <div style={{ height: '60px', marginBottom: '5px' }}></div>
                       )}
-                      <div style={{ borderBottom: '2px solid #0f172a', width: '100%', marginBottom: '4px' }}></div>
-                      <p style={{ fontSize: '12px', fontWeight: '900', margin: 0, textTransform: 'uppercase' }}>{selectedVoid.cashierName}</p>
+                      <div style={{ borderBottom: '2px solid #0f172a', width: '100%', marginBottom: '6px' }}></div>
+                      <p style={{ fontSize: '14px', fontWeight: '900', margin: 0, textTransform: 'uppercase', color: '#0f172a' }}>{selectedVoid.cashierName}</p>
                     </div>
 
                     <div style={{ width: '30%', textAlign: 'center' }}>
-                      <Barcode 
-                        value={selectedVoid.transactionNumber} 
-                        width={1.4} 
-                        height={45} 
-                        fontSize={11} 
-                        font="monospace" 
-                        margin={0} 
-                        background="#ffffff" 
-                        displayValue={true} 
+                      <Barcode
+                        value={selectedVoid.transactionNumber}
+                        width={1.6}
+                        height={55}
+                        fontSize={13}
+                        font="monospace"
+                        margin={0}
+                        background="#ffffff"
+                        displayValue={true}
                       />
                     </div>
 
                     <div style={{ width: '30%' }}>
-                      <p style={{ fontSize: '10px', fontWeight: '800', color: '#64748b', margin: '0 0 5px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Manager Authorization</p>
-                      <div style={{ height: '50px', marginBottom: '2px' }}></div>
-                      <div style={{ borderBottom: '2px solid #0f172a', width: '100%', marginBottom: '4px' }}></div>
-                      <p style={{ fontSize: '12px', fontWeight: '900', margin: 0, textTransform: 'uppercase' }}>__________________</p>
+                      <p style={{ fontSize: '11px', fontWeight: '800', color: '#64748b', margin: '0 0 5px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Manager Authorization</p>
+                      <div style={{ height: '60px', marginBottom: '5px' }}></div>
+                      <div style={{ borderBottom: '2px solid #0f172a', width: '100%', marginBottom: '6px' }}></div>
+                      <p style={{ fontSize: '14px', fontWeight: '900', margin: 0, textTransform: 'uppercase', color: '#0f172a' }}>Signature / Stamp</p>
                     </div>
                   </div>
 
@@ -462,8 +466,8 @@ export default function ManagerVoidsPage() {
               </div>
             </div>
           </div>
-      )}
-    </div>
+        )}
+      </div>
     </PageTransition>
   );
 }

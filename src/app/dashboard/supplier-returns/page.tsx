@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { collection, onSnapshot, doc, updateDoc, deleteDoc, addDoc, query, where, getDocs, orderBy } from "firebase/firestore";
+import { collection, onSnapshot, doc, updateDoc, deleteDoc, addDoc, query, where, getDocs, orderBy, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useBranch } from "@/context/BranchContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -58,25 +58,14 @@ export default function SupplierReturnsDashboard() {
   const [allProducts, setAllProducts] = useState<any[]>([]);
   
   useEffect(() => {
-    // Fetch all products to cache for instant barcode lookups and extract suppliers
-    const fetchProductsAndSuppliers = async () => {
-      try {
-        const snap = await getDocs(collection(db, "products"));
-        const suppliers = new Set<string>();
-        const productsMap: any[] = [];
-        snap.forEach(doc => {
-          const data = doc.data();
-          if (data.supplier) suppliers.add(data.supplier);
-          productsMap.push({ id: doc.id, ...data });
-        });
-        setAllSuppliers(Array.from(suppliers).sort());
-        setAllProducts(productsMap);
-      } catch (e) {
-        console.error("Error fetching products:", e);
-      }
-    };
-    fetchProductsAndSuppliers();
-  }, []);
+    // Derive all suppliers from the existing supplierReturns cache
+    // This costs 0 extra reads!
+    const suppliers = new Set<string>();
+    supplierReturns.forEach(r => {
+      if (r.supplier) suppliers.add(r.supplier);
+    });
+    setAllSuppliers(Array.from(suppliers).sort());
+  }, [supplierReturns]);
 
   useEffect(() => {
     const srQ = query(collection(db, "supplier_returns"), orderBy("createdAt", "desc"));
@@ -89,27 +78,43 @@ export default function SupplierReturnsDashboard() {
     return () => unsubSR();
   }, []);
 
-  const handleSearchProduct = (barcodeStr: string) => {
+  const handleSearchProduct = async (barcodeStr: string) => {
     if (!barcodeStr) return;
     setIsSearchingProduct(true);
     
-    // Fast, local, robust search handling leading zeros and string/number types
-    const cleanStr = barcodeStr.toString().trim();
-    const strNoZero = cleanStr.replace(/^0+/, '');
-    
-    const match = allProducts.find(p => {
-      if (!p.barcode) return false;
-      const pBarcodeStr = String(p.barcode).trim();
-      const pStrNoZero = pBarcodeStr.replace(/^0+/, '');
-      return pBarcodeStr === cleanStr || pStrNoZero === strNoZero;
-    });
-
-    if (match) {
-      setCurrentName(match.description || match.name || match.itemName || "");
-      if (match.supplier && !directSupplier) {
-        setDirectSupplier(match.supplier);
+    try {
+      const cleanStr = barcodeStr.toString().trim();
+      
+      // Query Firestore for this exact barcode (Costs 1 read instead of thousands)
+      const q1 = query(collection(db, "products"), where("barcode", "==", cleanStr), limit(1));
+      const snap1 = await getDocs(q1);
+      
+      if (!snap1.empty) {
+        const match = snap1.docs[0].data();
+        setCurrentName(match.description || match.name || match.itemName || "");
+        if (match.supplier && !directSupplier) {
+          setDirectSupplier(match.supplier);
+        }
+      } else {
+        // Try stripping leading zeros
+        const strNoZero = cleanStr.replace(/^0+/, '');
+        if (strNoZero !== cleanStr) {
+          const q2 = query(collection(db, "products"), where("barcode", "==", strNoZero), limit(1));
+          const snap2 = await getDocs(q2);
+          if (!snap2.empty) {
+            const match = snap2.docs[0].data();
+            setCurrentName(match.description || match.name || match.itemName || "");
+            if (match.supplier && !directSupplier) {
+              setDirectSupplier(match.supplier);
+            }
+            setIsSearchingProduct(false);
+            return;
+          }
+        }
+        setCurrentName("Unknown Item (Not in DB)");
       }
-    } else {
+    } catch (err) {
+      console.error(err);
       setCurrentName("Unknown Item (Not in DB)");
     }
     

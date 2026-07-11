@@ -185,11 +185,15 @@ export default function MyAccountPage() {
         // 7. Fetch all shifts this month globally for Top Seller badge
         try {
           const currentMonthPrefix = new Date().toISOString().substring(0, 7);
-          // Very simplified calculation: just grab all shifts that start with this month
-          // For performance, we limit this or rely on a cloud function, but here we just grab all
-          const globalShiftsSnap = await getDocs(collection(db, "shift_reports"));
+          // Limit the fetch to strictly shifts created this month using a where clause
+          const q = query(
+            collection(db, "shift_reports"), 
+            where("createdAt", ">=", currentMonthPrefix),
+            where("createdAt", "<=", currentMonthPrefix + "\uf8ff")
+          );
+          const globalShiftsSnap = await getDocs(q);
           const globalShifts = globalShiftsSnap.docs.map(d => d.data());
-          setAllShiftsGlobally(globalShifts.filter(s => s.createdAt?.startsWith(currentMonthPrefix)));
+          setAllShiftsGlobally(globalShifts);
         } catch (e) {
           console.warn("Could not fetch global shifts for badges", e);
         }

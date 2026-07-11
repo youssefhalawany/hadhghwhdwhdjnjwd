@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, limit, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useBranch } from "@/context/BranchContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -32,24 +32,33 @@ export default function AdvancedAnalyticsDashboard() {
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         const thirtyDaysAgoIso = thirtyDaysAgo.toISOString();
 
-        // 1. Fetch Voids (Last 30 Days)
-        const voidsQuery = query(collection(db, "voids"), where("createdAt", ">=", thirtyDaysAgoIso));
+        // 1. Fetch Voids (Strictly capped to save reads)
+        const voidsQuery = query(collection(db, "void_requests"), orderBy("createdAt", "desc"), limit(500));
         const voidsSnap = await getDocs(voidsQuery);
         const voids = voidsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        // 2. Fetch Returns (Last 30 Days)
-        const returnsQuery = query(collection(db, "supplier_returns"), where("createdAt", ">=", thirtyDaysAgoIso));
+        // 2. Fetch Returns (Strictly capped to save reads)
+        const returnsQuery = query(collection(db, "supplier_returns"), orderBy("createdAt", "desc"), limit(500));
         const returnsSnap = await getDocs(returnsQuery);
         const returns = returnsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        // 3. Fetch Expiries (Last 30 Days)
-        const expiriesQuery = query(collection(db, "expiries"), where("createdAt", ">=", thirtyDaysAgoIso));
+        // 3. Fetch Expiries (Strictly capped to save reads)
+        const expiriesQuery = query(collection(db, "expiries"), orderBy("createdAt", "desc"), limit(500));
         const expiriesSnap = await getDocs(expiriesQuery);
         const expiries = expiriesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        setVoidsData(voids);
-        setReturnsData(returns);
-        setExpiriesData(expiries);
+        // Apply branch filtering
+        const filterByBranch = (item: any) => {
+          if (currentBranch === "all") return true;
+          // Some old records might not have branchId, we could optionally filter by inferred logic or strict branchId
+          const storeId = (item.storeId || "").toLowerCase();
+          const inferred = storeId.includes("ola") || storeId.includes("koronfol") ? "ola" : "alamein4";
+          return (item.branchId && item.branchId === currentBranch) || (!item.branchId && inferred === currentBranch);
+        };
+
+        setVoidsData(voids.filter(filterByBranch));
+        setReturnsData(returns.filter(filterByBranch));
+        setExpiriesData(expiries.filter(filterByBranch));
         
       } catch (error) {
         console.error("Error fetching analytics data:", error);
