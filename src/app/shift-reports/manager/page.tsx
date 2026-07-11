@@ -1134,8 +1134,33 @@ export default function ManagerAuditPage() {
         <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
           <div id="manager-signoff-pdf-capture" style={{ width: '794px', minHeight: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', display: 'flex', flexDirection: 'column' }}>
 
+            {/* Micro-Typography Security Borders */}
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: 'none', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '4px', overflow: 'hidden' }}>
+              <div style={{ fontSize: '6px', color: '#cbd5e1', fontFamily: 'monospace', letterSpacing: '3px', whiteSpace: 'nowrap', opacity: 0.8 }}>
+                {Array(25).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
+              </div>
+              <div style={{ fontSize: '6px', color: '#cbd5e1', fontFamily: 'monospace', letterSpacing: '3px', whiteSpace: 'nowrap', opacity: 0.8 }}>
+                {Array(25).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
+              </div>
+            </div>
+            <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, zIndex: 1, pointerEvents: 'none', display: 'flex', flexDirection: 'column', padding: '4px', overflow: 'hidden', writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
+               <div style={{ fontSize: '6px', color: '#cbd5e1', fontFamily: 'monospace', letterSpacing: '3px', whiteSpace: 'nowrap', opacity: 0.8 }}>
+                {Array(35).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
+              </div>
+            </div>
+            <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: 'none', display: 'flex', flexDirection: 'column', padding: '4px', overflow: 'hidden', writingMode: 'vertical-rl' }}>
+               <div style={{ fontSize: '6px', color: '#cbd5e1', fontFamily: 'monospace', letterSpacing: '3px', whiteSpace: 'nowrap', opacity: 0.8 }}>
+                {Array(35).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
+              </div>
+            </div>
+
+            {/* Automated Digital Audit Stamp (Giant Watermark) */}
+            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-35deg)', fontSize: '90px', fontWeight: '900', color: (Math.abs(calculateCashVariance()) > 20 || Math.abs(calculateVisaVariance()) > 1) ? 'rgba(220, 38, 38, 0.08)' : 'rgba(22, 163, 74, 0.06)', zIndex: 5, whiteSpace: 'nowrap', pointerEvents: 'none', textTransform: 'uppercase', letterSpacing: '5px' }}>
+              {(Math.abs(calculateCashVariance()) > 20 || Math.abs(calculateVisaVariance()) > 1) ? "AUDIT REQUIRED" : "VERIFIED: BALANCED"}
+            </div>
+
             {/* Header / Letterhead */}
-            <div style={{ padding: '40px 40px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '4px solid #1e293b' }}>
+            <div style={{ padding: '40px 40px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '4px solid #1e293b', position: 'relative', zIndex: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                 <div style={{ width: '80px', height: '80px', backgroundColor: '#dc2626', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <span style={{ fontSize: '50px', fontWeight: '900', color: '#ffffff', lineHeight: 1 }}>K</span>
@@ -1146,10 +1171,19 @@ export default function ManagerAuditPage() {
                 </div>
               </div>
               <div style={{ textAlign: 'right', display: 'flex', gap: '15px', alignItems: 'center' }}>
-                <div style={{ textAlign: 'center' }}>
+                
+                {/* Gamification: Shift Grade */}
+                <div style={{ textAlign: 'center', backgroundColor: (Math.abs(calculateCashVariance()) === 0 && Math.abs(calculateVisaVariance()) === 0) ? '#f0fdf4' : (Math.abs(calculateCashVariance()) <= 20 && Math.abs(calculateVisaVariance()) <= 1) ? '#fefce8' : '#fef2f2', border: `3px solid ${(Math.abs(calculateCashVariance()) === 0 && Math.abs(calculateVisaVariance()) === 0) ? '#22c55e' : (Math.abs(calculateCashVariance()) <= 20 && Math.abs(calculateVisaVariance()) <= 1) ? '#eab308' : '#ef4444'}`, borderRadius: '12px', padding: '5px 15px', minWidth: '80px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
+                  <p style={{ margin: '0 0 2px', fontSize: '9px', fontWeight: '900', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Shift Grade</p>
+                  <p style={{ margin: 0, fontSize: '38px', fontWeight: '900', color: (Math.abs(calculateCashVariance()) === 0 && Math.abs(calculateVisaVariance()) === 0) ? '#16a34a' : (Math.abs(calculateCashVariance()) <= 20 && Math.abs(calculateVisaVariance()) <= 1) ? '#ca8a04' : '#dc2626', lineHeight: 1 }}>
+                    {(Math.abs(calculateCashVariance()) === 0 && Math.abs(calculateVisaVariance()) === 0) ? "A+" : (Math.abs(calculateCashVariance()) <= 20 && Math.abs(calculateVisaVariance()) <= 1) ? "B" : "C"}
+                  </p>
+                </div>
+
+                <div style={{ textAlign: 'center', borderLeft: '2px solid #e2e8f0', paddingLeft: '15px' }}>
                   <Barcode value={selectedReport.id.substring(0, 10).toUpperCase()} width={1.5} height={40} fontSize={12} displayValue={true} />
                 </div>
-                <div style={{ borderLeft: '1px solid #e2e8f0', paddingLeft: '15px' }}>
+                <div style={{ borderLeft: '2px solid #e2e8f0', paddingLeft: '15px' }}>
                   {typeof window !== 'undefined' && (
                     <QRCode 
                       value={window.location.origin + '/shift-reports/view?id=' + selectedReport.id} 
@@ -1164,8 +1198,31 @@ export default function ManagerAuditPage() {
             {/* Content Area */}
             <div style={{ padding: '30px 40px', position: 'relative', zIndex: 10 }}>
 
+              {/* High-Level Financial Summary Block */}
+              <div style={{ backgroundColor: '#f8fafc', border: '2px solid #cbd5e1', borderRadius: '8px', padding: '15px 20px', marginBottom: '25px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{ margin: '0 0 6px', fontSize: '10px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Expected System Cash</p>
+                  <p style={{ margin: 0, fontSize: '20px', fontWeight: '900', color: '#0f172a' }}>EGP {Number(expectedCash).toLocaleString()}</p>
+                </div>
+                <div style={{ width: '2px', backgroundColor: '#e2e8f0', alignSelf: 'stretch' }}></div>
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{ margin: '0 0 6px', fontSize: '10px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Actual Cashier Cash</p>
+                  <p style={{ margin: 0, fontSize: '20px', fontWeight: '900', color: '#0f172a' }}>EGP {selectedReport?.cashierCounts?.cash?.toLocaleString()}</p>
+                </div>
+                <div style={{ width: '2px', backgroundColor: '#e2e8f0', alignSelf: 'stretch' }}></div>
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{ margin: '0 0 6px', fontSize: '10px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total System Visa</p>
+                  <p style={{ margin: 0, fontSize: '20px', fontWeight: '900', color: '#0f172a' }}>EGP {Number(expectedVisa).toLocaleString()}</p>
+                </div>
+                <div style={{ width: '2px', backgroundColor: '#e2e8f0', alignSelf: 'stretch' }}></div>
+                <div style={{ textAlign: 'center', backgroundColor: '#0f172a', color: '#ffffff', padding: '10px 20px', borderRadius: '6px', margin: '-10px 0' }}>
+                  <p style={{ margin: '0 0 4px', fontSize: '10px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Net Sales (Sys)</p>
+                  <p style={{ margin: 0, fontSize: '22px', fontWeight: '900' }}>EGP {(Number(expectedCash) + Number(expectedVisa)).toLocaleString()}</p>
+                </div>
+              </div>
+
               {/* Branch & Shift Details (Strict Grid) */}
-              <div style={{ border: '2px solid #e2e8f0', marginBottom: '30px', borderRadius: '4px', overflow: 'hidden' }}>
+              <div style={{ border: '2px solid #e2e8f0', marginBottom: '25px', borderRadius: '4px', overflow: 'hidden' }}>
                 <div style={{ backgroundColor: '#f8fafc', padding: '10px 15px', borderBottom: '2px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '1px' }}>
                   1. Shift & Branch Information
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginTop: '10px' }}>
@@ -1350,18 +1407,17 @@ export default function ManagerAuditPage() {
               </div>
             </div>
 
-            {/* Footer */}
-            <div style={{ marginTop: 'auto', marginBottom: '30px', marginLeft: '40px', marginRight: '40px', borderTop: '2px solid #e2e8f0', paddingTop: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase' }}>El Masreya For Trade Internal Document</span>
-                <p style={{ fontSize: '9px', color: '#cbd5e1', margin: '2px 0 0' }}>Generated: {formatTimeMinus2Hours(new Date().toISOString())}</p>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <span style={{ fontSize: '10px', color: '#94a3b8', fontFamily: 'monospace', fontWeight: 'bold' }}>AUDIT TIMESTAMP: {formatTimeMinus2Hours(selectedReport.managerAudit?.auditedAt || selectedReport.createdAt)}</span>
-              </div>
+            </div>
+
+            {/* Advanced Digital Forensics Footer */}
+            <div style={{ marginTop: 'auto', marginBottom: '20px', marginLeft: '40px', marginRight: '40px', borderTop: '2px solid #1e293b', paddingTop: '10px', textAlign: 'center', position: 'relative', zIndex: 10 }}>
+              <p style={{ fontSize: '9px', color: '#475569', fontFamily: 'monospace', margin: 0, letterSpacing: '0.5px', fontWeight: 'bold' }}>
+                DOCUMENT SHIFT-{selectedReport.id.substring(0, 10).toUpperCase()} | PRINTED: {formatTimeMinus2Hours(new Date().toISOString())} | AUTHORIZED BY: MANAGER_{managerName.replace(/\s+/g, '_').toUpperCase() || "PENDING"} | SYSTEM: ANH PORTAL V2.0
+              </p>
             </div>
 
           </div>
+
         </div>
       )}
 
