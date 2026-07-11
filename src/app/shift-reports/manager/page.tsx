@@ -1137,6 +1137,35 @@ export default function ManagerAuditPage() {
           let gradeBorder = "#ef4444";
           let gradeText = "#dc2626";
 
+          const generateEgyptianSummary = () => {
+            const totalSales = (Number(expectedCash) || 0) + (Number(expectedVisa) || 0);
+            const name = selectedReport?.cashierDetails?.name?.split(' ')[0] || "الكاشير";
+
+            let visaStr = "";
+            if (visaVar === 0) {
+              visaStr = "حسابات الفيزا متقفلة مظبوط بالقرش";
+            } else if (visaVar > 0) {
+              visaStr = `في زيادة في الفيزا بقيمة ${Math.abs(visaVar)} جنيه`;
+            } else {
+              visaStr = `عنده عجز في الفيزا بقيمة ${Math.abs(visaVar)} جنيه`;
+            }
+
+            let cashStr = "";
+            if (cashVar === 0) {
+              cashStr = "والنقدية سليمة 100% بدون أي عجز أو زيادة";
+            } else if (cashVar > 0 && cashVar <= 100) {
+              cashStr = `ومعاه زيادة بسيطة في النقدية بقيمة ${Math.abs(cashVar)} جنيه`;
+            } else if (cashVar > 100) {
+              cashStr = `بس عنده زيادة ملحوظة في النقدية بقيمة ${Math.abs(cashVar)} جنيه`;
+            } else if (cashVar < 0 && cashVar >= -50) {
+              cashStr = `ومعاه عجز بسيط في النقدية بقيمة ${Math.abs(cashVar)} جنيه`;
+            } else {
+              cashStr = `وللأسف عنده عجز كبير في النقدية بقيمة ${Math.abs(cashVar)} جنيه محتاج مراجعة فورية`;
+            }
+
+            return `ملخص النظام: ${name} قفل ورديته بمبيعات إجمالية ${totalSales.toLocaleString()} جنيه. ${visaStr}، ${cashStr}.`;
+          };
+
           if (visaVar !== 0 || cashVar > 500 || cashVar < -500) {
             shiftGrade = "F";
             gradeBg = "#fef2f2";
@@ -1231,6 +1260,14 @@ export default function ManagerAuditPage() {
 
                 {/* Content Area */}
                 <div style={{ padding: '20px 40px', position: 'relative', zIndex: 10 }}>
+
+                  {/* AI Summary Sentence (Egyptian Arabic) */}
+                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRight: '4px solid #3b82f6', borderRadius: '8px', padding: '10px 15px', direction: 'rtl', textAlign: 'right', marginBottom: '15px' }}>
+                    <p style={{ margin: 0, fontSize: '11px', color: '#1e293b', lineHeight: 1.6, fontWeight: 'bold' }}>
+                      <span style={{ color: '#3b82f6', marginLeft: '6px' }}>✦</span>
+                      {generateEgyptianSummary()}
+                    </p>
+                  </div>
 
                   {/* High-Level Financial Summary Block */}
                   <div style={{ backgroundColor: '#f8fafc', border: '2px solid #cbd5e1', borderRadius: '8px', padding: '10px 20px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
