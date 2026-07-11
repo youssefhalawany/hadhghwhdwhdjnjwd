@@ -23,7 +23,7 @@ export default function ManagerAuditPage() {
     try {
       const stored = localStorage.getItem("anh_dismissed_anomalies");
       if (stored) setDismissedAnomalies(JSON.parse(stored));
-    } catch (e) {}
+    } catch (e) { }
   }, []);
 
   const [pendingReports, setPendingReports] = useState<any[]>([]);
@@ -51,22 +51,22 @@ export default function ManagerAuditPage() {
     historyReports.forEach(r => {
       const name = r.cashierDetails?.name;
       if (!name) return;
-      
+
       const cashVar = r.managerAudit?.cashVariance || 0;
       const visaVar = r.managerAudit?.visaVariance || 0;
       const totalDec = (r.cashierCounts?.cash || 0) + (r.cashierCounts?.visa || 0);
       const shiftDate = new Date(r.createdAt || r.date || Date.now()).getTime();
 
       if (!map.has(name)) {
-        map.set(name, { 
-          cashVariance: 0, 
-          visaVariance: 0, 
+        map.set(name, {
+          cashVariance: 0,
+          visaVariance: 0,
           totalDeclared: 0,
           shifts: 0,
           firstShiftDate: shiftDate
         });
       }
-      
+
       const current = map.get(name);
       current.cashVariance += cashVar;
       current.visaVariance += visaVar;
@@ -76,7 +76,7 @@ export default function ManagerAuditPage() {
         current.firstShiftDate = shiftDate;
       }
     });
-    
+
     return Array.from(map.entries())
       .map(([name, data]) => {
         const daysActive = Math.max(1, Math.ceil((Date.now() - data.firstShiftDate) / (1000 * 60 * 60 * 24)));
@@ -109,7 +109,7 @@ export default function ManagerAuditPage() {
   const detectedAnomalies = React.useMemo(() => {
     const anomalies: { type: string, message: string, severity: "high" | "medium" }[] = [];
     const cashierGroups = new Map<string, any[]>();
-    
+
     // Group approved reports by cashier
     historyReports.forEach(r => {
       const name = r.cashierDetails?.name;
@@ -128,7 +128,7 @@ export default function ManagerAuditPage() {
           varianceCounts.set(v, (varianceCounts.get(v) || 0) + 1);
         }
       });
-      
+
       varianceCounts.forEach((count, variance) => {
         if (count >= 3) {
           anomalies.push({
@@ -142,21 +142,21 @@ export default function ManagerAuditPage() {
       // 2. High Shrink Alerts (Cigarettes > 10% OR Coffee < 30%)
       const highCigaretteShrink = reports.filter(r => (r.managerAudit?.cigarettesPercent > 10));
       const lowCoffeeShrink = reports.filter(r => (r.managerAudit?.coffeePercent < 30 && r.managerAudit?.coffeePercent !== undefined && r.managerAudit?.coffeePercent !== null && r.managerAudit?.coffeePercent !== ""));
-      
+
       if (highCigaretteShrink.length >= 3) {
-         anomalies.push({
-            type: "high_cigarette_shrink",
-            severity: "high",
-            message: `Notice: Cashier ${name} has reported cigarette shrink exceeding 10% on ${highCigaretteShrink.length} recent shifts. Cigarette variances should remain strictly minimal. Please review these inventory logs.`
-          });
+        anomalies.push({
+          type: "high_cigarette_shrink",
+          severity: "high",
+          message: `Notice: Cashier ${name} has reported cigarette shrink exceeding 10% on ${highCigaretteShrink.length} recent shifts. Cigarette variances should remain strictly minimal. Please review these inventory logs.`
+        });
       }
 
       if (lowCoffeeShrink.length >= 3) {
-         anomalies.push({
-            type: "low_coffee_shrink",
-            severity: "high",
-            message: `Notice: Cashier ${name} has reported coffee yield below 30% on ${lowCoffeeShrink.length} recent shifts. Good coffee yield should be above 30%. Please review these inventory logs.`
-          });
+        anomalies.push({
+          type: "low_coffee_shrink",
+          severity: "high",
+          message: `Notice: Cashier ${name} has reported coffee yield below 30% on ${lowCoffeeShrink.length} recent shifts. Good coffee yield should be above 30%. Please review these inventory logs.`
+        });
       }
     });
 
@@ -173,9 +173,9 @@ export default function ManagerAuditPage() {
       } else {
         d = new Date(dateValue);
       }
-      
+
       if (isNaN(d.getTime())) return "Invalid Date";
-      
+
       d.setHours(d.getHours() - 2);
       return d.toLocaleString('en-GB');
     } catch {
@@ -380,7 +380,7 @@ export default function ManagerAuditPage() {
         createdBy: managerName,
         date: selectedReport?.cashierDetails?.date,
         notes: finalNotes.trim(),
-        overShort: calculateCashVariance(), 
+        overShort: calculateCashVariance(),
         shift: auditShift.toLowerCase(),
         storeId: selectedReport?.cashierDetails?.storeId,
         branchId: selectedReport.branchId || currentBranch,
@@ -487,7 +487,7 @@ export default function ManagerAuditPage() {
 
   const confirmDelete = async () => {
     if (!selectedReport) return;
-    
+
     if (deletePin !== "1111") {
       toast.error("Incorrect PIN. Deletion cancelled.");
       return;
@@ -543,1101 +543,1107 @@ export default function ManagerAuditPage() {
     );
   }
 
-  const reportsList = activeTab === "pending" 
-    ? pendingReports 
-    : historyReports.filter(r => 
-        r.id.toUpperCase().includes(searchQuery.toUpperCase()) || 
-        (r.cashierDetails?.name || "").toLowerCase().includes(searchQuery.toLowerCase())
-      );
+  const reportsList = activeTab === "pending"
+    ? pendingReports
+    : historyReports.filter(r =>
+      r.id.toUpperCase().includes(searchQuery.toUpperCase()) ||
+      (r.cashierDetails?.name || "").toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
 
   return (
     <PageTransition>
-    <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-6">
 
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end border-b border-border pb-4 mb-8 gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-foreground tracking-tight">Manager Audit Portal</h1>
-          <p className="text-sm text-muted-foreground mt-1">Review, approve, and print end-of-shift reports</p>
-        </div>
-
-        {/* TAB SWITCHER AND ACTION */}
-        <div className="flex items-center gap-4 flex-wrap">
-          <button
-            onClick={() => setEarlyDayModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold transition-all shadow-md whitespace-nowrap cursor-pointer"
-          >
-            <Clock className="h-4 w-4" /> Request Early Day
-          </button>
-          
-          <div className="flex bg-muted/50 p-1 rounded-xl border border-border">
-            <button
-              onClick={() => { setActiveTab("pending"); setSelectedReport(null); }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "pending" ? "bg-card shadow text-red-500 border border-border" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <Clock className="h-4 w-4" /> Pending ({pendingReports.filter((r: any) => {
-              if (currentBranch === "all") return true;
-              if (r.branchId) return r.branchId === currentBranch;
-              const store = (r.cashierDetails?.storeId || "").toLowerCase();
-              if (currentBranch === "alamein4") return store.includes("alamein") || (!store.includes("alamein") && !store.includes("ola"));
-              if (currentBranch === "ola") return store.includes("ola");
-              return true;
-            }).length})
-          </button>
-          <button
-            onClick={() => { setActiveTab("history"); setSelectedReport(null); }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "history" ? "bg-card shadow text-foreground border border-border" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <Archive className="h-4 w-4" /> Audit History ({historyReports.filter((r: any) => {
-              if (currentBranch === "all") return true;
-              if (r.branchId) return r.branchId === currentBranch;
-              const store = (r.cashierDetails?.storeId || "").toLowerCase();
-              if (currentBranch === "alamein4") return store.includes("alamein") || (!store.includes("alamein") && !store.includes("ola"));
-              if (currentBranch === "ola") return store.includes("ola");
-              return true;
-            }).length})
-          </button>
-          <button
-            onClick={() => { setActiveTab("performance"); setSelectedReport(null); }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "performance" ? "bg-card shadow text-blue-600 border border-border" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            Performance
-          </button>
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end border-b border-border pb-4 mb-8 gap-4">
+          <div>
+            <h1 className="text-3xl font-black text-foreground tracking-tight">Manager Audit Portal</h1>
+            <p className="text-sm text-muted-foreground mt-1">Review, approve, and print end-of-shift reports</p>
           </div>
-        </div>
-      </div>
 
-      {/* Pattern Recognition Alerts */}
-      {detectedAnomalies.filter(a => !dismissedAnomalies.includes(a.message)).length > 0 && (
-        <div className="mb-6 space-y-3">
-          {detectedAnomalies.filter(a => !dismissedAnomalies.includes(a.message)).map((anomaly, idx) => (
-            <div key={idx} className={`relative p-4 rounded-xl border flex gap-3 animate-in fade-in slide-in-from-top-4 ${anomaly.severity === 'high' ? 'bg-red-500/10 border-red-500/50 text-red-800 dark:text-red-300' : 'bg-amber-500/10 border-amber-500/50 text-amber-800 dark:text-amber-300'}`}>
-              <AlertTriangle className={`h-6 w-6 shrink-0 ${anomaly.severity === 'high' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`} />
-              <div className="pr-6">
-                <h4 className="font-bold text-sm uppercase tracking-wider mb-1">
-                  Pattern Detected: {anomaly.type.replace('_', ' ')}
-                </h4>
-                <p className="text-sm font-medium">{anomaly.message}</p>
-              </div>
-              <button 
-                onClick={() => {
-                  setDismissedAnomalies(prev => {
-                    const updated = [...prev, anomaly.message];
-                    localStorage.setItem("anh_dismissed_anomalies", JSON.stringify(updated));
-                    return updated;
-                  });
-                }}
-                className={`absolute top-3 right-3 p-1 rounded-full transition-colors ${anomaly.severity === 'high' ? 'hover:bg-red-500/20 text-red-600' : 'hover:bg-amber-500/20 text-amber-600'}`}
+          {/* TAB SWITCHER AND ACTION */}
+          <div className="flex items-center gap-4 flex-wrap">
+            <button
+              onClick={() => setEarlyDayModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold transition-all shadow-md whitespace-nowrap cursor-pointer"
+            >
+              <Clock className="h-4 w-4" /> Request Early Day
+            </button>
+
+            <div className="flex bg-muted/50 p-1 rounded-xl border border-border">
+              <button
+                onClick={() => { setActiveTab("pending"); setSelectedReport(null); }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "pending" ? "bg-card shadow text-red-500 border border-border" : "text-muted-foreground hover:text-foreground"}`}
               >
-                <X className="h-4 w-4" />
+                <Clock className="h-4 w-4" /> Pending ({pendingReports.filter((r: any) => {
+                  if (currentBranch === "all") return true;
+                  if (r.branchId) return r.branchId === currentBranch;
+                  const store = (r.cashierDetails?.storeId || "").toLowerCase();
+                  if (currentBranch === "alamein4") return store.includes("alamein") || (!store.includes("alamein") && !store.includes("ola"));
+                  if (currentBranch === "ola") return store.includes("ola");
+                  return true;
+                }).length})
+              </button>
+              <button
+                onClick={() => { setActiveTab("history"); setSelectedReport(null); }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "history" ? "bg-card shadow text-foreground border border-border" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                <Archive className="h-4 w-4" /> Audit History ({historyReports.filter((r: any) => {
+                  if (currentBranch === "all") return true;
+                  if (r.branchId) return r.branchId === currentBranch;
+                  const store = (r.cashierDetails?.storeId || "").toLowerCase();
+                  if (currentBranch === "alamein4") return store.includes("alamein") || (!store.includes("alamein") && !store.includes("ola"));
+                  if (currentBranch === "ola") return store.includes("ola");
+                  return true;
+                }).length})
+              </button>
+              <button
+                onClick={() => { setActiveTab("performance"); setSelectedReport(null); }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "performance" ? "bg-card shadow text-blue-600 border border-border" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                Performance
               </button>
             </div>
-          ))}
-        </div>
-      )}
-
-      {activeTab === "performance" ? (
-        <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
-          <div className="bg-slate-900 rounded-2xl p-6 text-white shadow-lg border border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <h2 className="text-2xl font-black mb-1">Cashier Intelligence</h2>
-              <p className="text-slate-400 text-sm">Aggregated performance and variance metrics from the last 50 processed shifts.</p>
-            </div>
-            <div className="bg-slate-800/50 px-4 py-2 rounded-lg border border-slate-700">
-              <span className="text-sm font-bold text-slate-300">Total Active Cashiers: </span>
-              <span className="text-lg font-black text-white">{cashierLeaderboard.length}</span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {cashierLeaderboard.length === 0 ? (
-              <div className="col-span-full glass-panel p-10 text-center text-muted-foreground font-medium rounded-2xl">
-                No shift data available to calculate performance.
-              </div>
-            ) : (
-              cashierLeaderboard.map((cashier, idx) => {
-                const isCashShort = cashier.cashVariance < 0;
-                const isCashOver = cashier.cashVariance > 0;
-                const isVisaShort = cashier.visaVariance < 0;
-                const isVisaOver = cashier.visaVariance > 0;
-
-                return (
-                  <div key={idx} className="glass-panel bg-card border border-border rounded-2xl overflow-hidden hover:shadow-xl transition-all hover:border-slate-300 dark:hover:border-slate-700 relative flex flex-col">
-                    {idx < 3 && (
-                      <div className="absolute top-0 right-0 bg-yellow-500 text-yellow-950 text-[10px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-wider">
-                        Top Earner #{idx + 1}
-                      </div>
-                    )}
-                    <div className="p-5 border-b border-border/50">
-                      <h3 className="text-lg font-black text-foreground mb-1">{cashier.name}</h3>
-                      <div className="text-3xl font-black text-emerald-500 mb-2 font-mono">
-                        EGP {cashier.totalDeclared.toLocaleString()}
-                      </div>
-                      <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">Total Money Handled</p>
-                    </div>
-
-                    <div className="p-5 flex-grow space-y-4">
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
-                          <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Cash Variance</p>
-                          <span className={`inline-block text-sm font-black ${
-                            isCashShort ? "text-red-600" : 
-                            isCashOver ? "text-emerald-600" : 
-                            "text-slate-500"
-                          }`}>
-                            {isCashShort ? "-" : isCashOver ? "+" : ""}EGP {Math.abs(cashier.cashVariance).toLocaleString()}
-                          </span>
-                        </div>
-                        <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
-                          <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Visa Variance</p>
-                          <span className={`inline-block text-sm font-black ${
-                            isVisaShort ? "text-red-600" : 
-                            isVisaOver ? "text-emerald-600" : 
-                            "text-slate-500"
-                          }`}>
-                            {isVisaShort ? "-" : isVisaOver ? "+" : ""}EGP {Math.abs(cashier.visaVariance).toLocaleString()}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-muted/30 px-5 py-3 border-t border-border flex justify-between items-center text-xs text-muted-foreground font-medium">
-                      <div className="flex items-center gap-1" title="Days Active">
-                        <Calendar className="h-3.5 w-3.5" /> {cashier.daysActive}d
-                      </div>
-                      <div className="flex items-center gap-1" title="Total Shifts">
-                        <Clock className="h-3.5 w-3.5" /> {cashier.shifts} shifts
-                      </div>
-                      <div className="flex items-center gap-1" title="Average Revenue per Shift">
-                        <Banknote className="h-3.5 w-3.5" /> EGP {Math.round(cashier.avgPerShift).toLocaleString()}/sh
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
           </div>
         </div>
-      ) : (
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-        {/* LEFT COLUMN: LIST */}
-        <div className="lg:col-span-1 space-y-4 max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar">
-          
-          {(activeTab === "history") && (
-            <div className="sticky top-0 z-10 bg-background pb-2">
-              <div className="relative">
-                <input 
-                  ref={searchInputRef}
-                  type="text"
-                  placeholder="Search by Barcode or Cashier Name..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full p-3 pl-10 rounded-xl border border-border bg-muted/50 focus:bg-background outline-none focus:ring-2 focus:ring-red-500 text-sm"
-                />
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                  <kbd className="hidden sm:inline-flex items-center gap-1 bg-background border border-border px-1.5 rounded text-[10px] font-bold text-muted-foreground uppercase shadow-sm">
-                    <span className="text-[12px]">⌘</span>K
-                  </kbd>
+        {/* Pattern Recognition Alerts */}
+        {detectedAnomalies.filter(a => !dismissedAnomalies.includes(a.message)).length > 0 && (
+          <div className="mb-6 space-y-3">
+            {detectedAnomalies.filter(a => !dismissedAnomalies.includes(a.message)).map((anomaly, idx) => (
+              <div key={idx} className={`relative p-4 rounded-xl border flex gap-3 animate-in fade-in slide-in-from-top-4 ${anomaly.severity === 'high' ? 'bg-red-500/10 border-red-500/50 text-red-800 dark:text-red-300' : 'bg-amber-500/10 border-amber-500/50 text-amber-800 dark:text-amber-300'}`}>
+                <AlertTriangle className={`h-6 w-6 shrink-0 ${anomaly.severity === 'high' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`} />
+                <div className="pr-6">
+                  <h4 className="font-bold text-sm uppercase tracking-wider mb-1">
+                    Pattern Detected: {anomaly.type.replace('_', ' ')}
+                  </h4>
+                  <p className="text-sm font-medium">{anomaly.message}</p>
                 </div>
-              </div>
-            </div>
-          )}
-
-          {reportsList.length === 0 ? (
-            <div className="glass-panel p-8 text-center rounded-2xl">
-              <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
-              <p className="font-bold text-foreground">{activeTab === "pending" ? "All caught up!" : "No history found."}</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {reportsList.filter((r: any) => {
-                if (currentBranch === "all") return true;
-                if (r.branchId) return r.branchId === currentBranch;
-                const store = (r.cashierDetails?.storeId || "").toLowerCase();
-                if (currentBranch === "alamein4") return store.includes("alamein") || (!store.includes("alamein") && !store.includes("ola"));
-                if (currentBranch === "ola") return store.includes("ola");
-                return true;
-              }).map(report => (
                 <button
-                  key={report.id}
-                  onClick={() => { handleSelectReport(report); }}
-                  className={`w-full text-left p-4 rounded-xl border transition-all relative overflow-hidden ${selectedReport?.id === report.id
-                      ? 'border-red-500 bg-red-50 dark:bg-red-950/20 shadow-md shadow-red-500/10'
-                      : 'border-border bg-card hover:border-red-300'
-                    }`}
+                  onClick={() => {
+                    setDismissedAnomalies(prev => {
+                      const updated = [...prev, anomaly.message];
+                      localStorage.setItem("anh_dismissed_anomalies", JSON.stringify(updated));
+                      return updated;
+                    });
+                  }}
+                  className={`absolute top-3 right-3 p-1 rounded-full transition-colors ${anomaly.severity === 'high' ? 'hover:bg-red-500/20 text-red-600' : 'hover:bg-amber-500/20 text-amber-600'}`}
                 >
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="font-bold text-foreground text-sm">{report?.cashierDetails?.date}</span>
-                    <span className="text-xs font-bold px-2 py-1 bg-red-500/10 rounded-md text-red-500 border border-red-200/20 dark:border-red-950/30">{report?.cashierDetails?.shift}</span>
-                  </div>
-                  <div className="font-semibold text-lg text-foreground mb-1">
-                    {report?.cashierDetails?.name}
-                    {report?.isEarlyDay && (
-                      <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-700 text-[10px] font-bold uppercase tracking-wider">
-                        <Clock className="h-3 w-3" /> Early Day
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-xs text-muted-foreground font-mono mb-3">Store: {report?.cashierDetails?.storeId}</div>
-
-                  {activeTab === "history" && report.managerAudit && (
-                    <div className="mb-3 space-y-2">
-                      <div className={`text-xs flex justify-between bg-card p-2 rounded border border-border ${report.managerAudit.overShort !== 0 ? 'border-red-500/30' : ''}`}>
-                        <span className="text-muted-foreground">Variance:</span>
-                        <span className={`font-bold ${report.managerAudit.overShort < 0 ? 'text-red-600' : report.managerAudit.overShort > 0 ? 'text-emerald-600' : 'text-slate-500'}`}>
-                          {report.managerAudit.overShort < 0 ? '-' : report.managerAudit.overShort > 0 ? '+' : ''}EGP {Math.abs(report.managerAudit.overShort)}
-                        </span>
-                      </div>
-                      
-                      {Math.abs(report.managerAudit.overShort) > 150 && (
-                        <div className="animate-pulse flex items-center justify-center gap-1.5 w-full bg-red-500 text-white text-[10px] font-black uppercase tracking-wider py-1.5 rounded shadow-sm">
-                          <AlertTriangle className="h-3 w-3" /> High Variance
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="flex justify-between items-center pt-3 border-t border-red-100 dark:border-red-900/30">
-                    <span className="text-xs font-bold text-muted-foreground uppercase">Declared Total</span>
-                    <span className="font-bold text-red-600 dark:text-red-400">EGP {report?.cashierCounts?.total?.toLocaleString()}</span>
-                  </div>
+                  <X className="h-4 w-4" />
                 </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* RIGHT COLUMN: AUDIT WORKSPACE */}
-        <div className="lg:col-span-2">
-          {!selectedReport ? (
-            <div className="glass-panel h-full min-h-[500px] flex flex-col items-center justify-center text-center rounded-2xl border border-border bg-muted/20">
-              <FileText className="h-16 w-16 text-muted-foreground/30 mb-4" />
-              <p className="text-lg font-bold text-muted-foreground">Select a report to view/audit</p>
-            </div>
-          ) : (
-            <div className="glass-panel rounded-2xl border border-border overflow-hidden">
-              {/* Header */}
-              <div className="bg-slate-900 text-white p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h2 className="text-2xl font-black">
-                      {selectedReport?.cashierDetails?.name}
-                      {selectedReport?.isEarlyDay && (
-                        <span className="ml-2 align-middle inline-flex items-center gap-1 px-2 py-1 rounded-md bg-indigo-500/20 text-indigo-300 text-xs font-bold uppercase tracking-wider border border-indigo-500/30">
-                          <Clock className="h-3.5 w-3.5" /> Early Day
-                        </span>
-                      )}
-                    </h2>
-                    <p className="text-slate-400 text-sm mt-1 flex flex-wrap items-center gap-2">
-                      <span>{selectedReport?.cashierDetails?.date}</span>
-                      <span className="text-slate-600">•</span>
-                      {activeTab === "pending" ? (
-                        <select 
-                          value={auditShift} 
-                          onChange={(e) => setAuditShift(e.target.value)} 
-                          className="bg-slate-800 border border-slate-600 text-white rounded px-2 py-0.5 outline-none font-bold text-xs focus:border-red-500 transition-colors"
-                        >
-                          <option value="Morning">Morning Shift</option>
-                          <option value="Noon">Noon Shift</option>
-                          <option value="Night">Night Shift</option>
-                        </select>
-                      ) : (
-                        <span>{selectedReport?.cashierDetails?.shift} Shift</span>
-                      )}
-                      <span className="text-slate-600">•</span>
-                      <span>{selectedReport?.cashierDetails?.storeId}</span>
-                    </p>
-                    <p className="text-slate-500 text-xs mt-1 font-semibold text-blue-600">
-                      {selectedReport.cashierRole === 2 ? 'Cashier 2 (Money Only)' : 'Cashier 1 (Full Register)'}
-                    </p>
-                    <p className="text-slate-400 text-xs mt-1">Submitted: {formatTimeMinus2Hours(selectedReport.createdAt)}</p>
-                    {activeTab === "history" && (
-                      <span className="inline-block mt-3 px-2 py-1 bg-green-500/20 text-green-400 text-xs font-bold rounded border border-green-500/30">
-                        <CheckCircle className="inline h-3 w-3 mr-1" /> Approved by {selectedReport.managerAudit?.managerName}
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-right flex flex-col items-end">
-                    <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Declared Total</p>
-                    <p className="text-2xl font-black text-green-400">EGP {activeTab === "pending" ? ((Number(cashierOverrideCash) || 0) + (Number(cashierOverrideVisa) || 0)).toLocaleString() : selectedReport?.cashierCounts?.total?.toLocaleString()}</p>
-                    {(activeTab === "history" || activeTab === "pending") && (
-                      <div className="mt-4 text-right bg-slate-800/90 border border-slate-700 px-3 py-2 rounded-xl shadow-inner min-w-[180px]">
-                        <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1 border-b border-slate-700 pb-1">Historical Context</p>
-                        
-                        <div className="flex justify-between items-center text-xs mb-1">
-                          <span className="text-slate-400 font-medium mr-3">Cash Avg (5sh):</span>
-                          <span className={`font-black ${getCashierCashDelta(selectedReport.cashierDetails?.name) < 0 ? 'text-red-400' : getCashierCashDelta(selectedReport.cashierDetails?.name) > 0 ? 'text-emerald-400' : 'text-slate-300'}`}>
-                            {getCashierCashDelta(selectedReport.cashierDetails?.name) < 0 ? '-' : getCashierCashDelta(selectedReport.cashierDetails?.name) > 0 ? '+' : ''}
-                            EGP {Math.abs(getCashierCashDelta(selectedReport.cashierDetails?.name))}
-                          </span>
-                        </div>
-
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="text-slate-400 font-medium mr-3">Visa Avg (5sh):</span>
-                          <span className={`font-black ${getCashierVisaDelta(selectedReport.cashierDetails?.name) < 0 ? 'text-red-400' : getCashierVisaDelta(selectedReport.cashierDetails?.name) > 0 ? 'text-emerald-400' : 'text-slate-300'}`}>
-                            {getCashierVisaDelta(selectedReport.cashierDetails?.name) < 0 ? '-' : getCashierVisaDelta(selectedReport.cashierDetails?.name) > 0 ? '+' : ''}
-                            EGP {Math.abs(getCashierVisaDelta(selectedReport.cashierDetails?.name))}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
               </div>
+            ))}
+          </div>
+        )}
 
-              <div className="p-6 space-y-8 bg-background">
+        {activeTab === "performance" ? (
+          <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
+            <div className="bg-slate-900 rounded-2xl p-6 text-white shadow-lg border border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h2 className="text-2xl font-black mb-1">Cashier Intelligence</h2>
+                <p className="text-slate-400 text-sm">Aggregated performance and variance metrics from the last 50 processed shifts.</p>
+              </div>
+              <div className="bg-slate-800/50 px-4 py-2 rounded-lg border border-slate-700">
+                <span className="text-sm font-bold text-slate-300">Total Active Cashiers: </span>
+                <span className="text-lg font-black text-white">{cashierLeaderboard.length}</span>
+              </div>
+            </div>
 
-                {/* 1. Cashier Counts vs System Expected */}
-                <section>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Banknote className="h-5 w-5 text-red-500" />
-                    <h3 className="text-lg font-bold">Financial Audit (Over/Short)</h3>
-                  </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {cashierLeaderboard.length === 0 ? (
+                <div className="col-span-full glass-panel p-10 text-center text-muted-foreground font-medium rounded-2xl">
+                  No shift data available to calculate performance.
+                </div>
+              ) : (
+                cashierLeaderboard.map((cashier, idx) => {
+                  const isCashShort = cashier.cashVariance < 0;
+                  const isCashOver = cashier.cashVariance > 0;
+                  const isVisaShort = cashier.visaVariance < 0;
+                  const isVisaOver = cashier.visaVariance > 0;
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-3 p-4 bg-muted/30 rounded-xl border border-border relative">
-                      <div className="absolute -top-3 left-4 bg-background px-2 text-[10px] font-bold text-muted-foreground uppercase border border-border rounded-full">Cashier's Physical Count</div>
-                      <div className="flex justify-between items-center gap-2 p-2 bg-card rounded border border-border">
-                        <span className="text-sm font-semibold">Cash</span>
-                        {activeTab === "pending" ? (
-                          <input type="number" value={cashierOverrideCash} onChange={e => setCashierOverrideCash(e.target.value)} className="w-28 p-1 text-right font-mono border border-border bg-background rounded outline-none focus:ring-1 focus:ring-blue-500 text-sm" placeholder="Override" />
-                        ) : (
-                          <span className="font-mono font-bold">EGP {selectedReport?.cashierCounts?.cash?.toLocaleString()}</span>
-                        )}
+                  return (
+                    <div key={idx} className="glass-panel bg-card border border-border rounded-2xl overflow-hidden hover:shadow-xl transition-all hover:border-slate-300 dark:hover:border-slate-700 relative flex flex-col">
+                      {idx < 3 && (
+                        <div className="absolute top-0 right-0 bg-yellow-500 text-yellow-950 text-[10px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-wider">
+                          Top Earner #{idx + 1}
+                        </div>
+                      )}
+                      <div className="p-5 border-b border-border/50">
+                        <h3 className="text-lg font-black text-foreground mb-1">{cashier.name}</h3>
+                        <div className="text-3xl font-black text-emerald-500 mb-2 font-mono">
+                          EGP {cashier.totalDeclared.toLocaleString()}
+                        </div>
+                        <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">Total Money Handled</p>
                       </div>
-                      <div className="flex justify-between items-center gap-2 p-2 bg-card rounded border border-border">
-                        <span className="text-sm font-semibold">Visa</span>
-                        {activeTab === "pending" ? (
-                          <input type="number" value={cashierOverrideVisa} onChange={e => setCashierOverrideVisa(e.target.value)} className="w-28 p-1 text-right font-mono border border-border bg-background rounded outline-none focus:ring-1 focus:ring-blue-500 text-sm" placeholder="Override" />
-                        ) : (
-                          <span className="font-mono font-bold">EGP {selectedReport?.cashierCounts?.visa?.toLocaleString()}</span>
-                        )}
-                      </div>
-                    </div>
 
-                    {/* Manager Input (System Expected) */}
-                    <div className="space-y-3 p-4 bg-red-500/5 dark:bg-red-950/10 rounded-xl border border-red-200/50 dark:border-red-900/30 relative">
-                      <div className="absolute -top-3 left-4 bg-red-100 dark:bg-red-950/80 px-2 text-[10px] font-bold text-red-800 dark:text-red-300 uppercase border border-red-200/50 dark:border-red-900/40 rounded-full">POS Expected Totals</div>
-                      <div className="flex justify-between items-center gap-2">
-                        <span className="text-sm font-semibold text-red-900">Cash</span>
-                        <input type="number" value={expectedCash} onChange={e => setExpectedCash(e.target.value)} className="w-32 p-1.5 text-right font-mono border rounded outline-none focus:ring-2 focus:ring-red-500" placeholder="0.00" />
-                      </div>
-                      <div className="flex justify-between items-center gap-2">
-                        <span className="text-sm font-semibold text-red-900">Visa</span>
-                        <input type="number" value={expectedVisa} onChange={e => setExpectedVisa(e.target.value)} className="w-32 p-1.5 text-right font-mono border rounded outline-none focus:ring-2 focus:ring-red-500" placeholder="0.00" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Variance Result */}
-                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 rounded-xl border flex justify-between items-center bg-slate-50 border-slate-200">
-                      <span className="font-bold text-slate-700">Cash Variance</span>
-                      {(() => {
-                        const variance = calculateCashVariance();
-                        const isZero = variance === 0;
-                        const isShort = variance < 0;
-                        return (
-                          <span className={`text-xl font-black ${isZero ? 'text-slate-500' : isShort ? 'text-red-600' : 'text-green-600'}`}>
-                            {isShort ? '-' : isZero ? '' : '+'}EGP {Math.abs(variance).toLocaleString()}
-                          </span>
-                        );
-                      })()}
-                    </div>
-                    <div className="p-4 rounded-xl border flex justify-between items-center bg-slate-50 border-slate-200">
-                      <span className="font-bold text-slate-700">Visa Variance</span>
-                      {(() => {
-                        const variance = calculateVisaVariance();
-                        const isZero = variance === 0;
-                        const isShort = variance < 0;
-                        return (
-                          <span className={`text-xl font-black ${isZero ? 'text-slate-500' : isShort ? 'text-red-600' : 'text-green-600'}`}>
-                            {isShort ? '-' : isZero ? '' : '+'}EGP {Math.abs(variance).toLocaleString()}
-                          </span>
-                        );
-                      })()}
-                    </div>
-                  </div>
-                </section>
-
-                {/* 2. Inventory Review (Only for Cashier 1) */}
-                {selectedReport.cashierRole !== 2 && (
-                  <section>
-                    <div className="flex items-center gap-2 mb-4">
-                      <Package className="h-5 w-5 text-amber-500" />
-                      <h3 className="text-lg font-bold">Inventory Review</h3>
-                    </div>
-
-                    <div className="overflow-x-auto rounded-xl border border-border">
-                      <table className="w-full text-sm text-left">
-                        <thead className="bg-muted text-muted-foreground uppercase text-xs">
-                          <tr>
-                            <th className="p-3 font-bold">Item</th>
-                            <th className="p-3">Start</th>
-                            <th className="p-3">Delivery</th>
-                            <th className="p-3">End</th>
-                            <th className="p-3 font-bold text-right">Calculated Sold</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border bg-card">
-                          <tr>
-                            <td className="p-3 font-bold">Cigarettes (سجائر)</td>
-                            <td className="p-3">{selectedReport.inventoryCounts?.cigarettes?.start || 0}</td>
-                            <td className="p-3">{selectedReport.inventoryCounts?.cigarettes?.delivery || 0}</td>
-                            <td className="p-3">{selectedReport.inventoryCounts?.cigarettes?.end || 0}</td>
-                            <td className="p-3 font-bold text-right bg-amber-50 text-amber-900">{selectedReport.inventoryCounts?.cigarettes?.sold || 0}</td>
-                          </tr>
-                          <tr>
-                            <td className="p-3 font-bold">Lighters (ولاعات)</td>
-                            <td className="p-3">{selectedReport.inventoryCounts?.lighters?.start || 0}</td>
-                            <td className="p-3">{selectedReport.inventoryCounts?.lighters?.delivery || 0}</td>
-                            <td className="p-3">{selectedReport.inventoryCounts?.lighters?.end || 0}</td>
-                            <td className="p-3 font-bold text-right bg-amber-50 text-amber-900">{selectedReport.inventoryCounts?.lighters?.sold || 0}</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 mt-4">
-                      <div>
-                        <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Cigarettes Shrink %</label>
-                        <input type="number" step="0.01" value={cigarettesPercent} onChange={e => setCigarettesPercent(e.target.value)} className="w-full p-2.5 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-amber-500" placeholder="e.g. 1.2" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Coffee Shrink %</label>
-                        <input type="number" step="0.01" value={coffeePercent} onChange={e => setCoffeePercent(e.target.value)} className="w-full p-2.5 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-amber-500" placeholder="e.g. 2.5" />
-                      </div>
-                    </div>
-                  </section>
-                )}
-
-                {/* 3. Final Sign Off */}
-                <section>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Lock className="h-5 w-5 text-slate-500" />
-                    <h3 className="text-lg font-bold">Manager Audit Notes</h3>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Auditing Manager Name</label>
-                      <input type="text" value={managerName} onChange={e => setManagerName(e.target.value)} className="w-full p-3 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-slate-500" placeholder="Enter your full name" />
-                    </div>
-                    {selectedReport.managerAudit?.rejectReason && (
-                      <div className="bg-red-50 p-3 rounded-lg border border-red-200">
-                        <label className="block text-[10px] font-bold text-red-800 uppercase tracking-wider mb-1">Previous Rejection Reason</label>
-                        <p className="text-red-600 text-sm italic font-medium">"{selectedReport.managerAudit.rejectReason}"</p>
-                        {selectedReport.previousSubmission && (
-                          <div className="mt-2 pt-2 border-t border-red-200">
-                            <p className="text-[10px] font-bold text-red-800 uppercase">Original Incorrect Submission:</p>
-                            <p className="text-xs text-red-700 font-mono mt-0.5">
-                              Cash: EGP {selectedReport.previousSubmission.cash} | Visa: EGP {selectedReport.previousSubmission.visa}
-                              {selectedReport.cashierRole === 1 && ` | Cigarettes End: ${selectedReport.previousSubmission.cigEnd} | Lighters End: ${selectedReport.previousSubmission.lightEnd}`}
-                            </p>
+                      <div className="p-5 flex-grow space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+                            <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Cash Variance</p>
+                            <span className={`inline-block text-sm font-black ${isCashShort ? "text-red-600" :
+                                isCashOver ? "text-emerald-600" :
+                                  "text-slate-500"
+                              }`}>
+                              {isCashShort ? "-" : isCashOver ? "+" : ""}EGP {Math.abs(cashier.cashVariance).toLocaleString()}
+                            </span>
                           </div>
-                        )}
+                          <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+                            <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Visa Variance</p>
+                            <span className={`inline-block text-sm font-black ${isVisaShort ? "text-red-600" :
+                                isVisaOver ? "text-emerald-600" :
+                                  "text-slate-500"
+                              }`}>
+                              {isVisaShort ? "-" : isVisaOver ? "+" : ""}EGP {Math.abs(cashier.visaVariance).toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                    )}
-                    {selectedReport.cashierWriteUp && (
-                      <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
-                        <label className="block text-[10px] font-bold text-purple-800 uppercase tracking-wider mb-1 flex items-center gap-1">
-                          <ShieldAlert className="w-3 h-3" /> Cashier's Investigation Write-Up
-                        </label>
-                        <p className="text-purple-900 text-sm font-medium whitespace-pre-wrap">"{selectedReport.cashierWriteUp}"</p>
+
+                      <div className="bg-muted/30 px-5 py-3 border-t border-border flex justify-between items-center text-xs text-muted-foreground font-medium">
+                        <div className="flex items-center gap-1" title="Days Active">
+                          <Calendar className="h-3.5 w-3.5" /> {cashier.daysActive}d
+                        </div>
+                        <div className="flex items-center gap-1" title="Total Shifts">
+                          <Clock className="h-3.5 w-3.5" /> {cashier.shifts} shifts
+                        </div>
+                        <div className="flex items-center gap-1" title="Average Revenue per Shift">
+                          <Banknote className="h-3.5 w-3.5" /> EGP {Math.round(cashier.avgPerShift).toLocaleString()}/sh
+                        </div>
                       </div>
-                    )}
-                    <div>
-                      <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Audit Comments (Optional)</label>
-                      <textarea value={comments} onChange={e => setComments(e.target.value)} rows={3} className="w-full p-3 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-slate-500" placeholder="Notes regarding variances, issues, etc." />
                     </div>
-                  </div>
-                </section>
-
-                {/* Actions */}
-                <div className="pt-4 border-t border-border grid grid-cols-1 gap-4">
-                  {activeTab === "pending" ? (
-                    <>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <button 
-                          onClick={triggerReject}
-                          disabled={submitting}
-                          className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-bold rounded-lg shadow-sm transition-all"
-                        >
-                          {submitting ? "Rejecting..." : "Reject Report"}
-                        </button>
-                        <button 
-                          onClick={triggerDispute}
-                          disabled={submitting}
-                          className="px-6 py-2.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold rounded-lg shadow-sm transition-all flex items-center justify-center gap-2"
-                        >
-                          <ShieldAlert className="w-5 h-5" /> Flag for Investigation
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleApprove}
-                          disabled={submitting}
-                          className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-lg shadow-xl shadow-slate-900/20 disabled:opacity-50 transition-all flex items-center justify-center gap-2 cursor-pointer"
-                        >
-                          {submitting ? "Saving..." : <><CheckCircle className="h-5 w-5" /> Approve</>}
-                        </button>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={triggerDelete}
-                        disabled={submitting}
-                        className="w-full py-3 border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 mt-2 cursor-pointer"
-                      >
-                        <Trash2 className="h-4 w-4" /> Permanently Delete Report
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        onClick={handleApprove}
-                        disabled={submitting}
-                        className="w-full py-4 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold text-sm transition-all cursor-pointer"
-                      >
-                        {submitting ? "Saving..." : "Update Audit Notes"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={generatePDF}
-                        disabled={generatingPDF}
-                        className="w-full py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-sm shadow-xl shadow-red-500/20 disabled:opacity-50 transition-all flex items-center justify-center gap-2 cursor-pointer"
-                      >
-                        {generatingPDF ? "Generating PDF..." : <><Printer className="h-5 w-5" /> Print A4 Sign-Off Sheet</>}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={triggerDelete}
-                        disabled={submitting}
-                        className="w-full py-3 border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 mt-2 cursor-pointer"
-                      >
-                        <Trash2 className="h-4 w-4" /> Permanently Delete Report
-                      </button>
-                    </>
-                  )}
-                </div>
-
-              </div>
+                  );
+                })
+              )}
             </div>
-          )}
-        </div>
-      </div>
-      )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-      {/* --- HIDDEN FORMAL A4 PRINT TEMPLATE FOR MANAGER --- */}
-      {selectedReport && (() => {
-        const cashVar = calculateCashVariance();
-        const visaVar = calculateVisaVariance();
-        
-        let shiftGrade = "F";
-        let gradeBg = "#fef2f2";
-        let gradeBorder = "#ef4444";
-        let gradeText = "#dc2626";
+            {/* LEFT COLUMN: LIST */}
+            <div className="lg:col-span-1 space-y-4 max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar">
 
-        if (visaVar !== 0) {
-          shiftGrade = "F";
-        } else if (cashVar === 0) {
-          shiftGrade = "A+";
-          gradeBg = "#f0fdf4";
-          gradeBorder = "#22c55e";
-          gradeText = "#16a34a";
-        } else if (cashVar > 0 && cashVar <= 100) {
-          shiftGrade = "B";
-          gradeBg = "#fefce8";
-          gradeBorder = "#eab308";
-          gradeText = "#ca8a04";
-        } else if (cashVar >= -50 && cashVar < 0) {
-          shiftGrade = "C";
-          gradeBg = "#fff7ed";
-          gradeBorder = "#f97316";
-          gradeText = "#ea580c";
-        }
-
-        return (
-        <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
-          <div id="manager-signoff-pdf-capture" style={{ width: '794px', minHeight: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', display: 'flex', flexDirection: 'column' }}>
-
-            {/* Micro-Typography Security Borders */}
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: 'none', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '4px', overflow: 'hidden' }}>
-              <div style={{ fontSize: '6px', color: '#cbd5e1', fontFamily: 'monospace', letterSpacing: '3px', whiteSpace: 'nowrap', opacity: 0.8 }}>
-                {Array(25).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
-              </div>
-              <div style={{ fontSize: '6px', color: '#cbd5e1', fontFamily: 'monospace', letterSpacing: '3px', whiteSpace: 'nowrap', opacity: 0.8 }}>
-                {Array(25).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
-              </div>
-            </div>
-            <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, zIndex: 1, pointerEvents: 'none', display: 'flex', flexDirection: 'column', padding: '4px', overflow: 'hidden', writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
-               <div style={{ fontSize: '6px', color: '#cbd5e1', fontFamily: 'monospace', letterSpacing: '3px', whiteSpace: 'nowrap', opacity: 0.8 }}>
-                {Array(35).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
-              </div>
-            </div>
-            <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: 'none', display: 'flex', flexDirection: 'column', padding: '4px', overflow: 'hidden', writingMode: 'vertical-rl' }}>
-               <div style={{ fontSize: '6px', color: '#cbd5e1', fontFamily: 'monospace', letterSpacing: '3px', whiteSpace: 'nowrap', opacity: 0.8 }}>
-                {Array(35).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
-              </div>
-            </div>
-
-            {/* Automated Digital Audit Stamp (Giant Watermark) */}
-            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-35deg)', fontSize: '90px', fontWeight: '900', color: (shiftGrade === "F" || shiftGrade === "C") ? 'rgba(220, 38, 38, 0.08)' : 'rgba(22, 163, 74, 0.06)', zIndex: 5, whiteSpace: 'nowrap', pointerEvents: 'none', textTransform: 'uppercase', letterSpacing: '5px' }}>
-              {(shiftGrade === "F" || shiftGrade === "C") ? "AUDIT REQUIRED" : "VERIFIED: BALANCED"}
-            </div>
-
-            {/* Header / Letterhead */}
-            <div style={{ padding: '30px 40px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '4px solid #1e293b', position: 'relative', zIndex: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                <div style={{ width: '70px', height: '70px', backgroundColor: '#dc2626', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ fontSize: '42px', fontWeight: '900', color: '#ffffff', lineHeight: 1 }}>K</span>
-                </div>
-                <div>
-                  <h1 style={{ fontSize: '28px', fontWeight: '900', color: '#1e293b', margin: 0, textTransform: 'uppercase', letterSpacing: '-0.5px' }}>CIRCLE K EL-ALAMEIN 4</h1>
-                  <p style={{ fontSize: '14px', color: '#64748b', margin: '2px 0 0', fontWeight: '600' }}>SHIFT REPORT</p>
-                </div>
-              </div>
-              <div style={{ textAlign: 'right', display: 'flex', gap: '15px', alignItems: 'center' }}>
-                
-                {/* Gamification: Shift Grade */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: gradeBg, border: `3px solid ${gradeBorder}`, borderRadius: '12px', padding: '10px 15px', minWidth: '70px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
-                  <p style={{ margin: '0 0 5px', fontSize: '11px', fontWeight: '900', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px', lineHeight: 1 }}>Grade</p>
-                  <p style={{ margin: 0, fontSize: '34px', fontWeight: '900', color: gradeText, lineHeight: 1 }}>
-                    {shiftGrade}
-                  </p>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', borderLeft: '2px solid #e2e8f0', paddingLeft: '15px' }}>
-                  <Barcode value={selectedReport.id.substring(0, 10).toUpperCase()} width={1.5} height={35} fontSize={10} displayValue={true} margin={0} />
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', borderLeft: '2px solid #e2e8f0', paddingLeft: '15px' }}>
-                  {typeof window !== 'undefined' && (
-                    <QRCode 
-                      value={window.location.origin + '/shift-reports/view?id=' + selectedReport.id} 
-                      size={54} 
-                      level="M" 
+              {(activeTab === "history") && (
+                <div className="sticky top-0 z-10 bg-background pb-2">
+                  <div className="relative">
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      placeholder="Search by Barcode or Cashier Name..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full p-3 pl-10 rounded-xl border border-border bg-muted/50 focus:bg-background outline-none focus:ring-2 focus:ring-red-500 text-sm"
                     />
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Content Area */}
-            <div style={{ padding: '20px 40px', position: 'relative', zIndex: 10 }}>
-
-              {/* High-Level Financial Summary Block */}
-              <div style={{ backgroundColor: '#f8fafc', border: '2px solid #cbd5e1', borderRadius: '8px', padding: '10px 20px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
-                <div style={{ textAlign: 'center' }}>
-                  <p style={{ margin: '0 0 4px', fontSize: '9px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Expected System Cash</p>
-                  <p style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#0f172a' }}>EGP {Number(expectedCash).toLocaleString()}</p>
-                </div>
-                <div style={{ width: '2px', backgroundColor: '#e2e8f0', alignSelf: 'stretch' }}></div>
-                <div style={{ textAlign: 'center' }}>
-                  <p style={{ margin: '0 0 4px', fontSize: '9px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Actual Cashier Cash</p>
-                  <p style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#0f172a' }}>EGP {selectedReport?.cashierCounts?.cash?.toLocaleString()}</p>
-                </div>
-                <div style={{ width: '2px', backgroundColor: '#e2e8f0', alignSelf: 'stretch' }}></div>
-                <div style={{ textAlign: 'center' }}>
-                  <p style={{ margin: '0 0 4px', fontSize: '9px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total System Visa</p>
-                  <p style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#0f172a' }}>EGP {Number(expectedVisa).toLocaleString()}</p>
-                </div>
-                <div style={{ width: '2px', backgroundColor: '#e2e8f0', alignSelf: 'stretch' }}></div>
-                <div style={{ textAlign: 'center', backgroundColor: '#0f172a', color: '#ffffff', padding: '8px 20px', borderRadius: '6px', margin: '-5px 0' }}>
-                  <p style={{ margin: '0 0 2px', fontSize: '9px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Net Sales (Sys)</p>
-                  <p style={{ margin: 0, fontSize: '20px', fontWeight: '900' }}>EGP {(Number(expectedCash) + Number(expectedVisa)).toLocaleString()}</p>
-                </div>
-              </div>
-
-              {/* Branch & Shift Details (Strict Grid) */}
-              <div style={{ border: '2px solid #e2e8f0', marginBottom: '15px', borderRadius: '4px', overflow: 'hidden' }}>
-                <div style={{ backgroundColor: '#f8fafc', padding: '10px 15px', borderBottom: '2px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                  1. Shift & Branch Information
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginTop: '10px' }}>
-                    <div>
-                      <p style={{ margin: '0 0 5px', color: '#64748b' }}>Audited By</p>
-                      <p style={{ margin: 0, fontWeight: 'bold', fontSize: '14px', color: '#0f172a' }}>{managerName || "Pending"}</p>
-                    </div>
-                    <div>
-                      <p style={{ margin: '0 0 5px', color: '#64748b' }}>Date Audited</p>
-                      <p style={{ margin: 0, fontWeight: 'bold', fontSize: '14px', color: '#0f172a' }}>{formatTimeMinus2Hours(selectedReport.managerAudit?.auditedAt || new Date().toISOString())}</p>
-                    </div>
-                  </div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.5fr', gap: '0' }}>
-                  <div style={{ padding: '15px', borderRight: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
-                    <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Branch / Store ID</p>
-                    <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.storeId}</p>
-                  </div>
-                  <div style={{ padding: '15px', borderRight: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
-                    <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Shift Period</p>
-                    <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.shift} Shift</p>
-                  </div>
-                  <div style={{ padding: '15px', borderBottom: '1px solid #e2e8f0' }}>
-                    <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Cashier Name</p>
-                    <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.name}</p>
-                  </div>
-                  <div style={{ padding: '15px', borderRight: '1px solid #e2e8f0' }}>
-                    <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Operating Date</p>
-                    <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.date}</p>
-                  </div>
-                  <div style={{ padding: '15px', borderRight: '1px solid #e2e8f0' }}>
-                    <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Cashier Role</p>
-                    <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>
-                      {selectedReport.cashierRole === 2 ? 'Cashier 2 (Money Only)' : 'Cashier 1 (Full)'}
-                    </p>
-                  </div>
-                  <div style={{ padding: '15px' }}>
-                    <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Cashier Submission Timestamp</p>
-                    <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{formatTimeMinus2Hours(selectedReport.createdAt)}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Financial Audit */}
-              <div style={{ border: '2px solid #e2e8f0', marginBottom: '10px', borderRadius: '4px', overflow: 'hidden' }}>
-                <div style={{ backgroundColor: '#f8fafc', padding: '6px 15px', borderBottom: '2px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                  2. Financial Audit & Variance
-                </div>
-
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '11px' }}>
-                  <thead style={{ backgroundColor: '#f1f5f9' }}>
-                    <tr>
-                      <th style={{ padding: '6px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Tender Type</th>
-                      <th style={{ padding: '6px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Cashier Declared</th>
-                      <th style={{ padding: '6px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Manager / POS Expected</th>
-                      <th style={{ padding: '6px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569', textAlign: 'right' }}>Variance (Over/Short)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>Cash</td>
-                      <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '13px' }}>EGP {selectedReport?.cashierCounts?.cash?.toLocaleString()}</td>
-                      <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '13px' }}>EGP {Number(expectedCash).toLocaleString() || "0"}</td>
-                      <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '13px', textAlign: 'right', fontWeight: 'bold', color: calculateCashVariance() < 0 ? '#dc2626' : '#16a34a' }}>
-                        {calculateCashVariance() < 0 ? '-' : '+'}EGP {Math.abs(calculateCashVariance()).toLocaleString()}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>Visa</td>
-                      <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '13px' }}>EGP {selectedReport?.cashierCounts?.visa?.toLocaleString()}</td>
-                      <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '13px' }}>EGP {Number(expectedVisa).toLocaleString() || "0"}</td>
-                      <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '13px', textAlign: 'right', fontWeight: 'bold', color: calculateVisaVariance() < 0 ? '#dc2626' : '#16a34a' }}>
-                        {calculateVisaVariance() < 0 ? '-' : '+'}EGP {Math.abs(calculateVisaVariance()).toLocaleString()}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Inventory Review */}
-              {selectedReport.cashierRole !== 2 && (
-                <div style={{ border: '2px solid #e2e8f0', marginBottom: '10px', borderRadius: '4px', overflow: 'hidden' }}>
-                  <div style={{ backgroundColor: '#f8fafc', padding: '6px 15px', borderBottom: '2px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                    3. Inventory Counts & Shrinkage
-                  </div>
-
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '11px' }}>
-                    <thead style={{ backgroundColor: '#f1f5f9' }}>
-                      <tr>
-                        <th style={{ padding: '6px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Item</th>
-                        <th style={{ padding: '6px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Start</th>
-                        <th style={{ padding: '6px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Delivery</th>
-                        <th style={{ padding: '6px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>End</th>
-                        <th style={{ padding: '6px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569', textAlign: 'right' }}>Calculated Sold</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>Cigarettes</td>
-                        <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0' }}>{selectedReport.inventoryCounts?.cigarettes?.start || 0}</td>
-                        <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0' }}>{selectedReport.inventoryCounts?.cigarettes?.delivery || 0}</td>
-                        <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0' }}>{selectedReport.inventoryCounts?.cigarettes?.end || 0}</td>
-                        <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 'bold' }}>{selectedReport.inventoryCounts?.cigarettes?.sold || 0}</td>
-                      </tr>
-                      <tr>
-                        <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>Lighters</td>
-                        <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0' }}>{selectedReport.inventoryCounts?.lighters?.start || 0}</td>
-                        <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0' }}>{selectedReport.inventoryCounts?.lighters?.delivery || 0}</td>
-                        <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0' }}>{selectedReport.inventoryCounts?.lighters?.end || 0}</td>
-                        <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 'bold' }}>{selectedReport.inventoryCounts?.lighters?.sold || 0}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', backgroundColor: '#f8fafc', borderTop: '2px solid #cbd5e1' }}>
-                    <div style={{ padding: '6px 15px', borderRight: '1px solid #e2e8f0' }}>
-                      <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', marginRight: '10px' }}>Cigarettes Shrink</span>
-                      <span style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a' }}>{Number(cigarettesPercent) || 0}%</span>
-                    </div>
-                    <div style={{ padding: '6px 15px' }}>
-                      <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', marginRight: '10px' }}>Coffee Shrink</span>
-                      <span style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a' }}>{Number(coffeePercent) || 0}%</span>
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <kbd className="hidden sm:inline-flex items-center gap-1 bg-background border border-border px-1.5 rounded text-[10px] font-bold text-muted-foreground uppercase shadow-sm">
+                        <span className="text-[12px]">⌘</span>K
+                      </kbd>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Manager Notes & Rejection History */}
-              <div style={{ border: '2px solid #e2e8f0', marginBottom: '15px', borderRadius: '4px', overflow: 'hidden' }}>
-                <div style={{ backgroundColor: '#f8fafc', padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                  4. Manager Comments & Review
+              {reportsList.length === 0 ? (
+                <div className="glass-panel p-8 text-center rounded-2xl">
+                  <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
+                  <p className="font-bold text-foreground">{activeTab === "pending" ? "All caught up!" : "No history found."}</p>
                 </div>
-                <div style={{ padding: '10px 15px', fontSize: '11px', color: '#334155' }}>
-                  {selectedReport.managerAudit?.rejectReason && (
-                    <div style={{ marginBottom: '8px', paddingBottom: '8px', borderBottom: '1px dashed #cbd5e1' }}>
-                      <p style={{ margin: '0 0 2px', fontSize: '9px', fontWeight: 'bold', color: '#dc2626', textTransform: 'uppercase' }}>Previous Rejection Reason (Corrected by Cashier)</p>
-                      <p style={{ margin: 0, fontStyle: 'italic', color: '#dc2626' }}>"{selectedReport.managerAudit.rejectReason}"</p>
-                      {selectedReport.previousSubmission && (
-                        <div style={{ marginTop: '5px', paddingTop: '5px', borderTop: '1px solid #fca5a5' }}>
-                          <p style={{ margin: 0, fontSize: '8px', fontWeight: 'bold', color: '#b91c1c', textTransform: 'uppercase' }}>Original Incorrect Submission</p>
-                          <p style={{ margin: '2px 0 0', fontSize: '10px', color: '#b91c1c', fontFamily: 'monospace' }}>
-                            Cash: EGP {selectedReport.previousSubmission.cash} | Visa: EGP {selectedReport.previousSubmission.visa}
-                            {selectedReport.cashierRole === 1 && ` | Cigarettes End: ${selectedReport.previousSubmission.cigEnd} | Lighters End: ${selectedReport.previousSubmission.lightEnd}`}
-                          </p>
+              ) : (
+                <div className="space-y-3">
+                  {reportsList.filter((r: any) => {
+                    if (currentBranch === "all") return true;
+                    if (r.branchId) return r.branchId === currentBranch;
+                    const store = (r.cashierDetails?.storeId || "").toLowerCase();
+                    if (currentBranch === "alamein4") return store.includes("alamein") || (!store.includes("alamein") && !store.includes("ola"));
+                    if (currentBranch === "ola") return store.includes("ola");
+                    return true;
+                  }).map(report => (
+                    <button
+                      key={report.id}
+                      onClick={() => { handleSelectReport(report); }}
+                      className={`w-full text-left p-4 rounded-xl border transition-all relative overflow-hidden ${selectedReport?.id === report.id
+                        ? 'border-red-500 bg-red-50 dark:bg-red-950/20 shadow-md shadow-red-500/10'
+                        : 'border-border bg-card hover:border-red-300'
+                        }`}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="font-bold text-foreground text-sm">{report?.cashierDetails?.date}</span>
+                        <span className="text-xs font-bold px-2 py-1 bg-red-500/10 rounded-md text-red-500 border border-red-200/20 dark:border-red-950/30">{report?.cashierDetails?.shift}</span>
+                      </div>
+                      <div className="font-semibold text-lg text-foreground mb-1">
+                        {report?.cashierDetails?.name}
+                        {report?.isEarlyDay && (
+                          <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-700 text-[10px] font-bold uppercase tracking-wider">
+                            <Clock className="h-3 w-3" /> Early Day
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground font-mono mb-3">Store: {report?.cashierDetails?.storeId}</div>
+
+                      {activeTab === "history" && report.managerAudit && (
+                        <div className="mb-3 space-y-2">
+                          <div className={`text-xs flex justify-between bg-card p-2 rounded border border-border ${report.managerAudit.overShort !== 0 ? 'border-red-500/30' : ''}`}>
+                            <span className="text-muted-foreground">Variance:</span>
+                            <span className={`font-bold ${report.managerAudit.overShort < 0 ? 'text-red-600' : report.managerAudit.overShort > 0 ? 'text-emerald-600' : 'text-slate-500'}`}>
+                              {report.managerAudit.overShort < 0 ? '-' : report.managerAudit.overShort > 0 ? '+' : ''}EGP {Math.abs(report.managerAudit.overShort)}
+                            </span>
+                          </div>
+
+                          {Math.abs(report.managerAudit.overShort) > 150 && (
+                            <div className="animate-pulse flex items-center justify-center gap-1.5 w-full bg-red-500 text-white text-[10px] font-black uppercase tracking-wider py-1.5 rounded shadow-sm">
+                              <AlertTriangle className="h-3 w-3" /> High Variance
+                            </div>
+                          )}
                         </div>
                       )}
+
+                      <div className="flex justify-between items-center pt-3 border-t border-red-100 dark:border-red-900/30">
+                        <span className="text-xs font-bold text-muted-foreground uppercase">Declared Total</span>
+                        <span className="font-bold text-red-600 dark:text-red-400">EGP {report?.cashierCounts?.total?.toLocaleString()}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* RIGHT COLUMN: AUDIT WORKSPACE */}
+            <div className="lg:col-span-2">
+              {!selectedReport ? (
+                <div className="glass-panel h-full min-h-[500px] flex flex-col items-center justify-center text-center rounded-2xl border border-border bg-muted/20">
+                  <FileText className="h-16 w-16 text-muted-foreground/30 mb-4" />
+                  <p className="text-lg font-bold text-muted-foreground">Select a report to view/audit</p>
+                </div>
+              ) : (
+                <div className="glass-panel rounded-2xl border border-border overflow-hidden">
+                  {/* Header */}
+                  <div className="bg-slate-900 text-white p-6">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h2 className="text-2xl font-black">
+                          {selectedReport?.cashierDetails?.name}
+                          {selectedReport?.isEarlyDay && (
+                            <span className="ml-2 align-middle inline-flex items-center gap-1 px-2 py-1 rounded-md bg-indigo-500/20 text-indigo-300 text-xs font-bold uppercase tracking-wider border border-indigo-500/30">
+                              <Clock className="h-3.5 w-3.5" /> Early Day
+                            </span>
+                          )}
+                        </h2>
+                        <p className="text-slate-400 text-sm mt-1 flex flex-wrap items-center gap-2">
+                          <span>{selectedReport?.cashierDetails?.date}</span>
+                          <span className="text-slate-600">•</span>
+                          {activeTab === "pending" ? (
+                            <select
+                              value={auditShift}
+                              onChange={(e) => setAuditShift(e.target.value)}
+                              className="bg-slate-800 border border-slate-600 text-white rounded px-2 py-0.5 outline-none font-bold text-xs focus:border-red-500 transition-colors"
+                            >
+                              <option value="Morning">Morning Shift</option>
+                              <option value="Noon">Noon Shift</option>
+                              <option value="Night">Night Shift</option>
+                            </select>
+                          ) : (
+                            <span>{selectedReport?.cashierDetails?.shift} Shift</span>
+                          )}
+                          <span className="text-slate-600">•</span>
+                          <span>{selectedReport?.cashierDetails?.storeId}</span>
+                        </p>
+                        <p className="text-slate-500 text-xs mt-1 font-semibold text-blue-600">
+                          {selectedReport.cashierRole === 2 ? 'Cashier 2 (Money Only)' : 'Cashier 1 (Full Register)'}
+                        </p>
+                        <p className="text-slate-400 text-xs mt-1">Submitted: {formatTimeMinus2Hours(selectedReport.createdAt)}</p>
+                        {activeTab === "history" && (
+                          <span className="inline-block mt-3 px-2 py-1 bg-green-500/20 text-green-400 text-xs font-bold rounded border border-green-500/30">
+                            <CheckCircle className="inline h-3 w-3 mr-1" /> Approved by {selectedReport.managerAudit?.managerName}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-right flex flex-col items-end">
+                        <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Declared Total</p>
+                        <p className="text-2xl font-black text-green-400">EGP {activeTab === "pending" ? ((Number(cashierOverrideCash) || 0) + (Number(cashierOverrideVisa) || 0)).toLocaleString() : selectedReport?.cashierCounts?.total?.toLocaleString()}</p>
+                        {(activeTab === "history" || activeTab === "pending") && (
+                          <div className="mt-4 text-right bg-slate-800/90 border border-slate-700 px-3 py-2 rounded-xl shadow-inner min-w-[180px]">
+                            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1 border-b border-slate-700 pb-1">Historical Context</p>
+
+                            <div className="flex justify-between items-center text-xs mb-1">
+                              <span className="text-slate-400 font-medium mr-3">Cash Avg (5sh):</span>
+                              <span className={`font-black ${getCashierCashDelta(selectedReport.cashierDetails?.name) < 0 ? 'text-red-400' : getCashierCashDelta(selectedReport.cashierDetails?.name) > 0 ? 'text-emerald-400' : 'text-slate-300'}`}>
+                                {getCashierCashDelta(selectedReport.cashierDetails?.name) < 0 ? '-' : getCashierCashDelta(selectedReport.cashierDetails?.name) > 0 ? '+' : ''}
+                                EGP {Math.abs(getCashierCashDelta(selectedReport.cashierDetails?.name))}
+                              </span>
+                            </div>
+
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="text-slate-400 font-medium mr-3">Visa Avg (5sh):</span>
+                              <span className={`font-black ${getCashierVisaDelta(selectedReport.cashierDetails?.name) < 0 ? 'text-red-400' : getCashierVisaDelta(selectedReport.cashierDetails?.name) > 0 ? 'text-emerald-400' : 'text-slate-300'}`}>
+                                {getCashierVisaDelta(selectedReport.cashierDetails?.name) < 0 ? '-' : getCashierVisaDelta(selectedReport.cashierDetails?.name) > 0 ? '+' : ''}
+                                EGP {Math.abs(getCashierVisaDelta(selectedReport.cashierDetails?.name))}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-6 space-y-8 bg-background">
+
+                    {/* 1. Cashier Counts vs System Expected */}
+                    <section>
+                      <div className="flex items-center gap-2 mb-4">
+                        <Banknote className="h-5 w-5 text-red-500" />
+                        <h3 className="text-lg font-bold">Financial Audit (Over/Short)</h3>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-3 p-4 bg-muted/30 rounded-xl border border-border relative">
+                          <div className="absolute -top-3 left-4 bg-background px-2 text-[10px] font-bold text-muted-foreground uppercase border border-border rounded-full">Cashier's Physical Count</div>
+                          <div className="flex justify-between items-center gap-2 p-2 bg-card rounded border border-border">
+                            <span className="text-sm font-semibold">Cash</span>
+                            {activeTab === "pending" ? (
+                              <input type="number" value={cashierOverrideCash} onChange={e => setCashierOverrideCash(e.target.value)} className="w-28 p-1 text-right font-mono border border-border bg-background rounded outline-none focus:ring-1 focus:ring-blue-500 text-sm" placeholder="Override" />
+                            ) : (
+                              <span className="font-mono font-bold">EGP {selectedReport?.cashierCounts?.cash?.toLocaleString()}</span>
+                            )}
+                          </div>
+                          <div className="flex justify-between items-center gap-2 p-2 bg-card rounded border border-border">
+                            <span className="text-sm font-semibold">Visa</span>
+                            {activeTab === "pending" ? (
+                              <input type="number" value={cashierOverrideVisa} onChange={e => setCashierOverrideVisa(e.target.value)} className="w-28 p-1 text-right font-mono border border-border bg-background rounded outline-none focus:ring-1 focus:ring-blue-500 text-sm" placeholder="Override" />
+                            ) : (
+                              <span className="font-mono font-bold">EGP {selectedReport?.cashierCounts?.visa?.toLocaleString()}</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Manager Input (System Expected) */}
+                        <div className="space-y-3 p-4 bg-red-500/5 dark:bg-red-950/10 rounded-xl border border-red-200/50 dark:border-red-900/30 relative">
+                          <div className="absolute -top-3 left-4 bg-red-100 dark:bg-red-950/80 px-2 text-[10px] font-bold text-red-800 dark:text-red-300 uppercase border border-red-200/50 dark:border-red-900/40 rounded-full">POS Expected Totals</div>
+                          <div className="flex justify-between items-center gap-2">
+                            <span className="text-sm font-semibold text-red-900">Cash</span>
+                            <input type="number" value={expectedCash} onChange={e => setExpectedCash(e.target.value)} className="w-32 p-1.5 text-right font-mono border rounded outline-none focus:ring-2 focus:ring-red-500" placeholder="0.00" />
+                          </div>
+                          <div className="flex justify-between items-center gap-2">
+                            <span className="text-sm font-semibold text-red-900">Visa</span>
+                            <input type="number" value={expectedVisa} onChange={e => setExpectedVisa(e.target.value)} className="w-32 p-1.5 text-right font-mono border rounded outline-none focus:ring-2 focus:ring-red-500" placeholder="0.00" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Variance Result */}
+                      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-4 rounded-xl border flex justify-between items-center bg-slate-50 border-slate-200">
+                          <span className="font-bold text-slate-700">Cash Variance</span>
+                          {(() => {
+                            const variance = calculateCashVariance();
+                            const isZero = variance === 0;
+                            const isShort = variance < 0;
+                            return (
+                              <span className={`text-xl font-black ${isZero ? 'text-slate-500' : isShort ? 'text-red-600' : 'text-green-600'}`}>
+                                {isShort ? '-' : isZero ? '' : '+'}EGP {Math.abs(variance).toLocaleString()}
+                              </span>
+                            );
+                          })()}
+                        </div>
+                        <div className="p-4 rounded-xl border flex justify-between items-center bg-slate-50 border-slate-200">
+                          <span className="font-bold text-slate-700">Visa Variance</span>
+                          {(() => {
+                            const variance = calculateVisaVariance();
+                            const isZero = variance === 0;
+                            const isShort = variance < 0;
+                            return (
+                              <span className={`text-xl font-black ${isZero ? 'text-slate-500' : isShort ? 'text-red-600' : 'text-green-600'}`}>
+                                {isShort ? '-' : isZero ? '' : '+'}EGP {Math.abs(variance).toLocaleString()}
+                              </span>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    </section>
+
+                    {/* 2. Inventory Review (Only for Cashier 1) */}
+                    {selectedReport.cashierRole !== 2 && (
+                      <section>
+                        <div className="flex items-center gap-2 mb-4">
+                          <Package className="h-5 w-5 text-amber-500" />
+                          <h3 className="text-lg font-bold">Inventory Review</h3>
+                        </div>
+
+                        <div className="overflow-x-auto rounded-xl border border-border">
+                          <table className="w-full text-sm text-left">
+                            <thead className="bg-muted text-muted-foreground uppercase text-xs">
+                              <tr>
+                                <th className="p-3 font-bold">Item</th>
+                                <th className="p-3">Start</th>
+                                <th className="p-3">Delivery</th>
+                                <th className="p-3">End</th>
+                                <th className="p-3 font-bold text-right">Calculated Sold</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border bg-card">
+                              <tr>
+                                <td className="p-3 font-bold">Cigarettes (سجائر)</td>
+                                <td className="p-3">{selectedReport.inventoryCounts?.cigarettes?.start || 0}</td>
+                                <td className="p-3">{selectedReport.inventoryCounts?.cigarettes?.delivery || 0}</td>
+                                <td className="p-3">{selectedReport.inventoryCounts?.cigarettes?.end || 0}</td>
+                                <td className="p-3 font-bold text-right bg-amber-50 text-amber-900">{selectedReport.inventoryCounts?.cigarettes?.sold || 0}</td>
+                              </tr>
+                              <tr>
+                                <td className="p-3 font-bold">Lighters (ولاعات)</td>
+                                <td className="p-3">{selectedReport.inventoryCounts?.lighters?.start || 0}</td>
+                                <td className="p-3">{selectedReport.inventoryCounts?.lighters?.delivery || 0}</td>
+                                <td className="p-3">{selectedReport.inventoryCounts?.lighters?.end || 0}</td>
+                                <td className="p-3 font-bold text-right bg-amber-50 text-amber-900">{selectedReport.inventoryCounts?.lighters?.sold || 0}</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 mt-4">
+                          <div>
+                            <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Cigarettes Shrink %</label>
+                            <input type="number" step="0.01" value={cigarettesPercent} onChange={e => setCigarettesPercent(e.target.value)} className="w-full p-2.5 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-amber-500" placeholder="e.g. 1.2" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Coffee Shrink %</label>
+                            <input type="number" step="0.01" value={coffeePercent} onChange={e => setCoffeePercent(e.target.value)} className="w-full p-2.5 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-amber-500" placeholder="e.g. 2.5" />
+                          </div>
+                        </div>
+                      </section>
+                    )}
+
+                    {/* 3. Final Sign Off */}
+                    <section>
+                      <div className="flex items-center gap-2 mb-4">
+                        <Lock className="h-5 w-5 text-slate-500" />
+                        <h3 className="text-lg font-bold">Manager Audit Notes</h3>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Auditing Manager Name</label>
+                          <input type="text" value={managerName} onChange={e => setManagerName(e.target.value)} className="w-full p-3 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-slate-500" placeholder="Enter your full name" />
+                        </div>
+                        {selectedReport.managerAudit?.rejectReason && (
+                          <div className="bg-red-50 p-3 rounded-lg border border-red-200">
+                            <label className="block text-[10px] font-bold text-red-800 uppercase tracking-wider mb-1">Previous Rejection Reason</label>
+                            <p className="text-red-600 text-sm italic font-medium">"{selectedReport.managerAudit.rejectReason}"</p>
+                            {selectedReport.previousSubmission && (
+                              <div className="mt-2 pt-2 border-t border-red-200">
+                                <p className="text-[10px] font-bold text-red-800 uppercase">Original Incorrect Submission:</p>
+                                <p className="text-xs text-red-700 font-mono mt-0.5">
+                                  Cash: EGP {selectedReport.previousSubmission.cash} | Visa: EGP {selectedReport.previousSubmission.visa}
+                                  {selectedReport.cashierRole === 1 && ` | Cigarettes End: ${selectedReport.previousSubmission.cigEnd} | Lighters End: ${selectedReport.previousSubmission.lightEnd}`}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {selectedReport.cashierWriteUp && (
+                          <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
+                            <label className="block text-[10px] font-bold text-purple-800 uppercase tracking-wider mb-1 flex items-center gap-1">
+                              <ShieldAlert className="w-3 h-3" /> Cashier's Investigation Write-Up
+                            </label>
+                            <p className="text-purple-900 text-sm font-medium whitespace-pre-wrap">"{selectedReport.cashierWriteUp}"</p>
+                          </div>
+                        )}
+                        <div>
+                          <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Audit Comments (Optional)</label>
+                          <textarea value={comments} onChange={e => setComments(e.target.value)} rows={3} className="w-full p-3 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-slate-500" placeholder="Notes regarding variances, issues, etc." />
+                        </div>
+                      </div>
+                    </section>
+
+                    {/* Actions */}
+                    <div className="pt-4 border-t border-border grid grid-cols-1 gap-4">
+                      {activeTab === "pending" ? (
+                        <>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <button
+                              onClick={triggerReject}
+                              disabled={submitting}
+                              className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-bold rounded-lg shadow-sm transition-all"
+                            >
+                              {submitting ? "Rejecting..." : "Reject Report"}
+                            </button>
+                            <button
+                              onClick={triggerDispute}
+                              disabled={submitting}
+                              className="px-6 py-2.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold rounded-lg shadow-sm transition-all flex items-center justify-center gap-2"
+                            >
+                              <ShieldAlert className="w-5 h-5" /> Flag for Investigation
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleApprove}
+                              disabled={submitting}
+                              className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-lg shadow-xl shadow-slate-900/20 disabled:opacity-50 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                            >
+                              {submitting ? "Saving..." : <><CheckCircle className="h-5 w-5" /> Approve</>}
+                            </button>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={triggerDelete}
+                            disabled={submitting}
+                            className="w-full py-3 border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 mt-2 cursor-pointer"
+                          >
+                            <Trash2 className="h-4 w-4" /> Permanently Delete Report
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={handleApprove}
+                            disabled={submitting}
+                            className="w-full py-4 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold text-sm transition-all cursor-pointer"
+                          >
+                            {submitting ? "Saving..." : "Update Audit Notes"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={generatePDF}
+                            disabled={generatingPDF}
+                            className="w-full py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-sm shadow-xl shadow-red-500/20 disabled:opacity-50 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                          >
+                            {generatingPDF ? "Generating PDF..." : <><Printer className="h-5 w-5" /> Print A4 Sign-Off Sheet</>}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={triggerDelete}
+                            disabled={submitting}
+                            className="w-full py-3 border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 mt-2 cursor-pointer"
+                          >
+                            <Trash2 className="h-4 w-4" /> Permanently Delete Report
+                          </button>
+                        </>
+                      )}
+                    </div>
+
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* --- HIDDEN FORMAL A4 PRINT TEMPLATE FOR MANAGER --- */}
+        {selectedReport && (() => {
+          const cashVar = calculateCashVariance();
+          const visaVar = calculateVisaVariance();
+
+          let shiftGrade = "F";
+          let gradeBg = "#fef2f2";
+          let gradeBorder = "#ef4444";
+          let gradeText = "#dc2626";
+
+          if (visaVar !== 0 || cashVar > 500 || cashVar < -500) {
+            shiftGrade = "F";
+            gradeBg = "#fef2f2";
+            gradeBorder = "#ef4444";
+            gradeText = "#dc2626";
+          } else if (cashVar === 0) {
+            shiftGrade = "A+";
+            gradeBg = "#f0fdf4";
+            gradeBorder = "#22c55e";
+            gradeText = "#16a34a";
+          } else if (cashVar > 0 && cashVar <= 100) {
+            shiftGrade = "B";
+            gradeBg = "#fefce8";
+            gradeBorder = "#eab308";
+            gradeText = "#ca8a04";
+          } else if (cashVar >= -50 && cashVar < 0) {
+            shiftGrade = "C";
+            gradeBg = "#fff7ed";
+            gradeBorder = "#f97316";
+            gradeText = "#ea580c";
+          } else {
+            shiftGrade = "D";
+            gradeBg = "#fff1f2";
+            gradeBorder = "#e11d48";
+            gradeText = "#be123c";
+          }
+
+          return (
+            <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+              <div id="manager-signoff-pdf-capture" style={{ width: '794px', minHeight: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', display: 'flex', flexDirection: 'column' }}>
+
+                {/* Micro-Typography Security Borders */}
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: 'none', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '4px', overflow: 'hidden' }}>
+                  <div style={{ fontSize: '6px', color: '#cbd5e1', fontFamily: 'monospace', letterSpacing: '3px', whiteSpace: 'nowrap', opacity: 0.8 }}>
+                    {Array(25).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
+                  </div>
+                  <div style={{ fontSize: '6px', color: '#cbd5e1', fontFamily: 'monospace', letterSpacing: '3px', whiteSpace: 'nowrap', opacity: 0.8 }}>
+                    {Array(25).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
+                  </div>
+                </div>
+                <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, zIndex: 1, pointerEvents: 'none', display: 'flex', flexDirection: 'column', padding: '4px', overflow: 'hidden', writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
+                  <div style={{ fontSize: '6px', color: '#cbd5e1', fontFamily: 'monospace', letterSpacing: '3px', whiteSpace: 'nowrap', opacity: 0.8 }}>
+                    {Array(35).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
+                  </div>
+                </div>
+                <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: 'none', display: 'flex', flexDirection: 'column', padding: '4px', overflow: 'hidden', writingMode: 'vertical-rl' }}>
+                  <div style={{ fontSize: '6px', color: '#cbd5e1', fontFamily: 'monospace', letterSpacing: '3px', whiteSpace: 'nowrap', opacity: 0.8 }}>
+                    {Array(35).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
+                  </div>
+                </div>
+
+                {/* Automated Digital Audit Stamp (Giant Watermark) */}
+                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-35deg)', fontSize: '90px', fontWeight: '900', color: (shiftGrade === "F" || shiftGrade === "C" || shiftGrade === "D") ? 'rgba(220, 38, 38, 0.08)' : 'rgba(22, 163, 74, 0.06)', zIndex: 5, whiteSpace: 'nowrap', pointerEvents: 'none', textTransform: 'uppercase', letterSpacing: '5px' }}>
+                  {(shiftGrade === "F" || shiftGrade === "C" || shiftGrade === "D") ? "AUDIT REQUIRED" : "VERIFIED: BALANCED"}
+                </div>
+
+                {/* Header / Letterhead */}
+                <div style={{ padding: '30px 40px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '4px solid #1e293b', position: 'relative', zIndex: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                    <div style={{ width: '70px', height: '70px', backgroundColor: '#dc2626', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: '42px', fontWeight: '900', color: '#ffffff', lineHeight: 1 }}>K</span>
+                    </div>
+                    <div>
+                      <h1 style={{ fontSize: '28px', fontWeight: '900', color: '#1e293b', margin: 0, textTransform: 'uppercase', letterSpacing: '-0.5px' }}>CIRCLE K EL-ALAMEIN 4</h1>
+                      <p style={{ fontSize: '14px', color: '#64748b', margin: '2px 0 0', fontWeight: '600' }}>SHIFT REPORT</p>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right', display: 'flex', gap: '15px', alignItems: 'center' }}>
+
+                    {/* Gamification: Shift Grade */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: gradeBg, border: `3px solid ${gradeBorder}`, borderRadius: '12px', padding: '10px 15px', minWidth: '70px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
+                      <p style={{ margin: '0 0 5px', fontSize: '11px', fontWeight: '900', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px', lineHeight: 1 }}>Grade</p>
+                      <p style={{ margin: 0, fontSize: '34px', fontWeight: '900', color: gradeText, lineHeight: 1 }}>
+                        {shiftGrade}
+                      </p>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', borderLeft: '2px solid #e2e8f0', paddingLeft: '15px' }}>
+                      <Barcode value={selectedReport.id.substring(0, 10).toUpperCase()} width={1.5} height={35} fontSize={10} displayValue={true} margin={0} />
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', borderLeft: '2px solid #e2e8f0', paddingLeft: '15px' }}>
+                      {typeof window !== 'undefined' && (
+                        <QRCode
+                          value={window.location.origin + '/shift-reports/view?id=' + selectedReport.id}
+                          size={54}
+                          level="M"
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Content Area */}
+                <div style={{ padding: '20px 40px', position: 'relative', zIndex: 10 }}>
+
+                  {/* High-Level Financial Summary Block */}
+                  <div style={{ backgroundColor: '#f8fafc', border: '2px solid #cbd5e1', borderRadius: '8px', padding: '10px 20px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
+                    <div style={{ textAlign: 'center' }}>
+                      <p style={{ margin: '0 0 4px', fontSize: '9px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Expected System Cash</p>
+                      <p style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#0f172a' }}>EGP {Number(expectedCash).toLocaleString()}</p>
+                    </div>
+                    <div style={{ width: '2px', backgroundColor: '#e2e8f0', alignSelf: 'stretch' }}></div>
+                    <div style={{ textAlign: 'center' }}>
+                      <p style={{ margin: '0 0 4px', fontSize: '9px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Actual Cashier Cash</p>
+                      <p style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#0f172a' }}>EGP {selectedReport?.cashierCounts?.cash?.toLocaleString()}</p>
+                    </div>
+                    <div style={{ width: '2px', backgroundColor: '#e2e8f0', alignSelf: 'stretch' }}></div>
+                    <div style={{ textAlign: 'center' }}>
+                      <p style={{ margin: '0 0 4px', fontSize: '9px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total System Visa</p>
+                      <p style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#0f172a' }}>EGP {Number(expectedVisa).toLocaleString()}</p>
+                    </div>
+                    <div style={{ width: '2px', backgroundColor: '#e2e8f0', alignSelf: 'stretch' }}></div>
+                    <div style={{ textAlign: 'center', backgroundColor: '#0f172a', color: '#ffffff', padding: '8px 20px', borderRadius: '6px', margin: '-5px 0' }}>
+                      <p style={{ margin: '0 0 2px', fontSize: '9px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Net Sales (Sys)</p>
+                      <p style={{ margin: 0, fontSize: '20px', fontWeight: '900' }}>EGP {(Number(expectedCash) + Number(expectedVisa)).toLocaleString()}</p>
+                    </div>
+                  </div>
+
+                  {/* Branch & Shift Details (Strict Grid) */}
+                  <div style={{ border: '2px solid #e2e8f0', marginBottom: '15px', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ backgroundColor: '#f8fafc', padding: '10px 15px', borderBottom: '2px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                      1. Shift & Branch Information
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginTop: '10px' }}>
+                        <div>
+                          <p style={{ margin: '0 0 5px', color: '#64748b' }}>Audited By</p>
+                          <p style={{ margin: 0, fontWeight: 'bold', fontSize: '14px', color: '#0f172a' }}>{managerName || "Pending"}</p>
+                        </div>
+                        <div>
+                          <p style={{ margin: '0 0 5px', color: '#64748b' }}>Date Audited</p>
+                          <p style={{ margin: 0, fontWeight: 'bold', fontSize: '14px', color: '#0f172a' }}>{formatTimeMinus2Hours(selectedReport.managerAudit?.auditedAt || new Date().toISOString())}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.5fr', gap: '0' }}>
+                      <div style={{ padding: '15px', borderRight: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
+                        <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Branch / Store ID</p>
+                        <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.storeId}</p>
+                      </div>
+                      <div style={{ padding: '15px', borderRight: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
+                        <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Shift Period</p>
+                        <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.shift} Shift</p>
+                      </div>
+                      <div style={{ padding: '15px', borderBottom: '1px solid #e2e8f0' }}>
+                        <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Cashier Name</p>
+                        <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.name}</p>
+                      </div>
+                      <div style={{ padding: '15px', borderRight: '1px solid #e2e8f0' }}>
+                        <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Operating Date</p>
+                        <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.date}</p>
+                      </div>
+                      <div style={{ padding: '15px', borderRight: '1px solid #e2e8f0' }}>
+                        <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Cashier Role</p>
+                        <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>
+                          {selectedReport.cashierRole === 2 ? 'Cashier 2 (Money Only)' : 'Cashier 1 (Full)'}
+                        </p>
+                      </div>
+                      <div style={{ padding: '15px' }}>
+                        <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Cashier Submission Timestamp</p>
+                        <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{formatTimeMinus2Hours(selectedReport.createdAt)}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Financial Audit */}
+                  <div style={{ border: '2px solid #e2e8f0', marginBottom: '10px', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ backgroundColor: '#f8fafc', padding: '6px 15px', borderBottom: '2px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                      2. Financial Audit & Variance
+                    </div>
+
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '11px' }}>
+                      <thead style={{ backgroundColor: '#f1f5f9' }}>
+                        <tr>
+                          <th style={{ padding: '6px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Tender Type</th>
+                          <th style={{ padding: '6px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Cashier Declared</th>
+                          <th style={{ padding: '6px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Manager / POS Expected</th>
+                          <th style={{ padding: '6px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569', textAlign: 'right' }}>Variance (Over/Short)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>Cash</td>
+                          <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '13px' }}>EGP {selectedReport?.cashierCounts?.cash?.toLocaleString()}</td>
+                          <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '13px' }}>EGP {Number(expectedCash).toLocaleString() || "0"}</td>
+                          <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '13px', textAlign: 'right', fontWeight: 'bold', color: calculateCashVariance() < 0 ? '#dc2626' : '#16a34a' }}>
+                            {calculateCashVariance() < 0 ? '-' : '+'}EGP {Math.abs(calculateCashVariance()).toLocaleString()}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>Visa</td>
+                          <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '13px' }}>EGP {selectedReport?.cashierCounts?.visa?.toLocaleString()}</td>
+                          <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '13px' }}>EGP {Number(expectedVisa).toLocaleString() || "0"}</td>
+                          <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '13px', textAlign: 'right', fontWeight: 'bold', color: calculateVisaVariance() < 0 ? '#dc2626' : '#16a34a' }}>
+                            {calculateVisaVariance() < 0 ? '-' : '+'}EGP {Math.abs(calculateVisaVariance()).toLocaleString()}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Inventory Review */}
+                  {selectedReport.cashierRole !== 2 && (
+                    <div style={{ border: '2px solid #e2e8f0', marginBottom: '10px', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{ backgroundColor: '#f8fafc', padding: '6px 15px', borderBottom: '2px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                        3. Inventory Counts & Shrinkage
+                      </div>
+
+                      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '11px' }}>
+                        <thead style={{ backgroundColor: '#f1f5f9' }}>
+                          <tr>
+                            <th style={{ padding: '6px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Item</th>
+                            <th style={{ padding: '6px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Start</th>
+                            <th style={{ padding: '6px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Delivery</th>
+                            <th style={{ padding: '6px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>End</th>
+                            <th style={{ padding: '6px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569', textAlign: 'right' }}>Calculated Sold</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>Cigarettes</td>
+                            <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0' }}>{selectedReport.inventoryCounts?.cigarettes?.start || 0}</td>
+                            <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0' }}>{selectedReport.inventoryCounts?.cigarettes?.delivery || 0}</td>
+                            <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0' }}>{selectedReport.inventoryCounts?.cigarettes?.end || 0}</td>
+                            <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 'bold' }}>{selectedReport.inventoryCounts?.cigarettes?.sold || 0}</td>
+                          </tr>
+                          <tr>
+                            <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>Lighters</td>
+                            <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0' }}>{selectedReport.inventoryCounts?.lighters?.start || 0}</td>
+                            <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0' }}>{selectedReport.inventoryCounts?.lighters?.delivery || 0}</td>
+                            <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0' }}>{selectedReport.inventoryCounts?.lighters?.end || 0}</td>
+                            <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 'bold' }}>{selectedReport.inventoryCounts?.lighters?.sold || 0}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', backgroundColor: '#f8fafc', borderTop: '2px solid #cbd5e1' }}>
+                        <div style={{ padding: '6px 15px', borderRight: '1px solid #e2e8f0' }}>
+                          <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', marginRight: '10px' }}>Cigarettes Shrink</span>
+                          <span style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a' }}>{Number(cigarettesPercent) || 0}%</span>
+                        </div>
+                        <div style={{ padding: '6px 15px' }}>
+                          <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', marginRight: '10px' }}>Coffee Shrink</span>
+                          <span style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a' }}>{Number(coffeePercent) || 0}%</span>
+                        </div>
+                      </div>
                     </div>
                   )}
-                  <div style={{ fontStyle: selectedReport.managerAudit?.comments ? 'normal' : 'italic' }}>
-                    {selectedReport.managerAudit?.comments || "No additional comments provided by the auditing manager."}
+
+                  {/* Manager Notes & Rejection History */}
+                  <div style={{ border: '2px solid #e2e8f0', marginBottom: '15px', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ backgroundColor: '#f8fafc', padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                      4. Manager Comments & Review
+                    </div>
+                    <div style={{ padding: '10px 15px', fontSize: '11px', color: '#334155' }}>
+                      {selectedReport.managerAudit?.rejectReason && (
+                        <div style={{ marginBottom: '8px', paddingBottom: '8px', borderBottom: '1px dashed #cbd5e1' }}>
+                          <p style={{ margin: '0 0 2px', fontSize: '9px', fontWeight: 'bold', color: '#dc2626', textTransform: 'uppercase' }}>Previous Rejection Reason (Corrected by Cashier)</p>
+                          <p style={{ margin: 0, fontStyle: 'italic', color: '#dc2626' }}>"{selectedReport.managerAudit.rejectReason}"</p>
+                          {selectedReport.previousSubmission && (
+                            <div style={{ marginTop: '5px', paddingTop: '5px', borderTop: '1px solid #fca5a5' }}>
+                              <p style={{ margin: 0, fontSize: '8px', fontWeight: 'bold', color: '#b91c1c', textTransform: 'uppercase' }}>Original Incorrect Submission</p>
+                              <p style={{ margin: '2px 0 0', fontSize: '10px', color: '#b91c1c', fontFamily: 'monospace' }}>
+                                Cash: EGP {selectedReport.previousSubmission.cash} | Visa: EGP {selectedReport.previousSubmission.visa}
+                                {selectedReport.cashierRole === 1 && ` | Cigarettes End: ${selectedReport.previousSubmission.cigEnd} | Lighters End: ${selectedReport.previousSubmission.lightEnd}`}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      <div style={{ fontStyle: selectedReport.managerAudit?.comments ? 'normal' : 'italic' }}>
+                        {selectedReport.managerAudit?.comments || "No additional comments provided by the auditing manager."}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Official Signatures & Stamp Block */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '15px' }}>
+
+                    {/* Cashier Signature */}
+                    <div style={{ width: '33%' }}>
+                      <p style={{ fontSize: '9px', color: '#64748b', fontStyle: 'italic', marginBottom: '8px', lineHeight: 1.4 }}>
+                        I, the undersigned cashier, declare that the physical counts provided above are accurate, and I have surrendered the declared funds to the manager.
+                      </p>
+                      {selectedReport.cashierSignature ? (
+                        <img src={selectedReport.cashierSignature} alt="Signature" style={{ display: 'block', maxWidth: '100%', height: '50px', objectFit: 'contain', marginBottom: '5px' }} />
+                      ) : (
+                        <div style={{ height: '50px', marginBottom: '5px' }}></div>
+                      )}
+                      <div style={{ borderBottom: '2px solid #1e293b', width: '100%', marginBottom: '8px' }}></div>
+                      <p style={{ fontSize: '11px', fontWeight: '900', color: '#1e293b', margin: 0, textTransform: 'uppercase' }}>{selectedReport.cashierDetails.name}</p>
+                      <p style={{ fontSize: '9px', fontWeight: 'bold', color: '#64748b', margin: '2px 0 0', textTransform: 'uppercase' }}>Declaring Cashier</p>
+                    </div>
+
+                    {/* Manager Signature */}
+                    <div style={{ width: '33%' }}>
+                      <p style={{ fontSize: '9px', color: '#64748b', fontStyle: 'italic', marginBottom: '8px', lineHeight: 1.4 }}>
+                        I, the undersigned manager, declare that I have physically counted the funds and verified the variances against the system expectations.
+                      </p>
+                      {selectedReport.managerAudit?.signature ? (
+                        <img src={selectedReport.managerAudit.signature} alt="Signature" style={{ display: 'block', maxWidth: '100%', height: '50px', objectFit: 'contain', marginBottom: '5px' }} />
+                      ) : (
+                        <div style={{ height: '50px', marginBottom: '5px' }}></div>
+                      )}
+                      <div style={{ borderBottom: '2px solid #1e293b', width: '100%', marginBottom: '8px' }}></div>
+                      <p style={{ fontSize: '11px', fontWeight: '900', color: '#1e293b', margin: 0, textTransform: 'uppercase' }}>{managerName}</p>
+                      <p style={{ fontSize: '9px', fontWeight: 'bold', color: '#64748b', margin: '2px 0 0', textTransform: 'uppercase' }}>Auditing Manager</p>
+                    </div>
+
+                    {/* Official Stamp Box */}
+                    <div style={{ width: '25%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end' }}>
+                      <div style={{ width: '100%', height: '90px', border: '2px dashed #94a3b8', borderRadius: '4px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc' }}>
+                        <span style={{ fontSize: '20px', color: '#cbd5e1', marginBottom: '4px' }}></span>
+                        <span style={{ fontSize: '9px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', textAlign: 'center', letterSpacing: '0.5px' }}>Official Branch<br />Stamp / Seal</span>
+                      </div>
+                    </div>
+
                   </div>
                 </div>
-              </div>
 
-              {/* Official Signatures & Stamp Block */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '15px' }}>
-
-                {/* Cashier Signature */}
-                <div style={{ width: '33%' }}>
-                  <p style={{ fontSize: '9px', color: '#64748b', fontStyle: 'italic', marginBottom: '8px', lineHeight: 1.4 }}>
-                    I, the undersigned cashier, declare that the physical counts provided above are accurate, and I have surrendered the declared funds to the manager.
+                {/* Advanced Digital Forensics Footer */}
+                <div style={{ marginTop: 'auto', marginBottom: '20px', marginLeft: '40px', marginRight: '40px', borderTop: '2px solid #1e293b', paddingTop: '10px', textAlign: 'center', position: 'relative', zIndex: 10 }}>
+                  <p style={{ fontSize: '9px', color: '#475569', fontFamily: 'monospace', margin: 0, letterSpacing: '0.5px', fontWeight: 'bold' }}>
+                    DOCUMENT SHIFT-{selectedReport.id.substring(0, 10).toUpperCase()} | PRINTED: {formatTimeMinus2Hours(new Date().toISOString())} | AUTHORIZED BY: MANAGER_{managerName.replace(/\s+/g, '_').toUpperCase() || "PENDING"} | SYSTEM: ANH PORTAL V2.0
                   </p>
-                  {selectedReport.cashierSignature ? (
-                    <img src={selectedReport.cashierSignature} alt="Signature" style={{ display: 'block', maxWidth: '100%', height: '50px', objectFit: 'contain', marginBottom: '5px' }} />
-                  ) : (
-                    <div style={{ height: '50px', marginBottom: '5px' }}></div>
-                  )}
-                  <div style={{ borderBottom: '2px solid #1e293b', width: '100%', marginBottom: '8px' }}></div>
-                  <p style={{ fontSize: '11px', fontWeight: '900', color: '#1e293b', margin: 0, textTransform: 'uppercase' }}>{selectedReport.cashierDetails.name}</p>
-                  <p style={{ fontSize: '9px', fontWeight: 'bold', color: '#64748b', margin: '2px 0 0', textTransform: 'uppercase' }}>Declaring Cashier</p>
-                </div>
-
-                {/* Manager Signature */}
-                <div style={{ width: '33%' }}>
-                  <p style={{ fontSize: '9px', color: '#64748b', fontStyle: 'italic', marginBottom: '8px', lineHeight: 1.4 }}>
-                    I, the undersigned manager, declare that I have physically counted the funds and verified the variances against the system expectations.
-                  </p>
-                  {selectedReport.managerAudit?.signature ? (
-                    <img src={selectedReport.managerAudit.signature} alt="Signature" style={{ display: 'block', maxWidth: '100%', height: '50px', objectFit: 'contain', marginBottom: '5px' }} />
-                  ) : (
-                    <div style={{ height: '50px', marginBottom: '5px' }}></div>
-                  )}
-                  <div style={{ borderBottom: '2px solid #1e293b', width: '100%', marginBottom: '8px' }}></div>
-                  <p style={{ fontSize: '11px', fontWeight: '900', color: '#1e293b', margin: 0, textTransform: 'uppercase' }}>{managerName}</p>
-                  <p style={{ fontSize: '9px', fontWeight: 'bold', color: '#64748b', margin: '2px 0 0', textTransform: 'uppercase' }}>Auditing Manager</p>
-                </div>
-
-                {/* Official Stamp Box */}
-                <div style={{ width: '25%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end' }}>
-                  <div style={{ width: '100%', height: '90px', border: '2px dashed #94a3b8', borderRadius: '4px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc' }}>
-                    <span style={{ fontSize: '20px', color: '#cbd5e1', marginBottom: '4px' }}>🏛</span>
-                    <span style={{ fontSize: '9px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', textAlign: 'center', letterSpacing: '0.5px' }}>Official Branch<br/>Stamp / Seal</span>
-                  </div>
                 </div>
 
               </div>
+
             </div>
+          );
+        })()}
 
-            {/* Advanced Digital Forensics Footer */}
-            <div style={{ marginTop: 'auto', marginBottom: '20px', marginLeft: '40px', marginRight: '40px', borderTop: '2px solid #1e293b', paddingTop: '10px', textAlign: 'center', position: 'relative', zIndex: 10 }}>
-              <p style={{ fontSize: '9px', color: '#475569', fontFamily: 'monospace', margin: 0, letterSpacing: '0.5px', fontWeight: 'bold' }}>
-                DOCUMENT SHIFT-{selectedReport.id.substring(0, 10).toUpperCase()} | PRINTED: {formatTimeMinus2Hours(new Date().toISOString())} | AUTHORIZED BY: MANAGER_{managerName.replace(/\s+/g, '_').toUpperCase() || "PENDING"} | SYSTEM: ANH PORTAL V2.0
-              </p>
-            </div>
-
-          </div>
-
-        </div>
-        );
-      })()}
-
-      {/* Reject Modal */}
-      {rejectModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Reject Shift Report</h3>
-            <textarea
-              className="w-full border border-slate-300 dark:border-slate-700 bg-transparent rounded-lg p-3 text-slate-800 dark:text-white outline-none focus:border-red-500 mb-4 min-h-[100px]"
-              placeholder="Enter reason for rejection (this will be shown to the cashier)"
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-            />
-            <div className="flex justify-end gap-3">
-              <button 
-                onClick={() => setRejectModalOpen(false)}
-                className="px-4 py-2 font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={confirmReject}
-                className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg"
-              >
-                Confirm Reject
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Dispute Modal */}
-      {disputeModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl p-6 shadow-2xl border-2 border-purple-500">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="bg-purple-100 dark:bg-purple-900/30 p-2 rounded-full text-purple-600">
-                <ShieldAlert className="h-6 w-6" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-800 dark:text-white">Flag for Investigation</h3>
-            </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 font-medium">
-              This will lock the report and require the cashier to write a formal explanation (Write-Up) and sign it before the shift can be closed.
-            </p>
-            <textarea
-              className="w-full border-2 border-purple-200 dark:border-purple-800/50 bg-purple-50 dark:bg-purple-900/10 rounded-lg p-3 text-slate-800 dark:text-white outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200 mb-4 min-h-[100px] font-medium"
-              placeholder="Detail the issue (e.g. Major cash shortage of EGP 500, missing stock, etc.)"
-              value={disputeReason}
-              onChange={(e) => setDisputeReason(e.target.value)}
-            />
-            <div className="flex justify-end gap-3">
-              <button 
-                onClick={() => setDisputeModalOpen(false)}
-                className="px-4 py-2 font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={confirmDispute}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg shadow-md"
-              >
-                Flag Report
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Modal */}
-      {deleteModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl p-6 shadow-2xl border border-red-500/20">
-            <h3 className="text-lg font-bold text-red-600 mb-2">CRITICAL WARNING</h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-              You are about to permanently delete this shift report. This action cannot be undone and will erase all data associated with this shift.
-            </p>
-            <input
-              type="password"
-              className="w-full border border-slate-300 dark:border-slate-700 bg-transparent rounded-lg p-3 text-slate-800 dark:text-white outline-none focus:border-red-500 mb-4 text-center font-bold tracking-[0.5em]"
-              placeholder="Enter 4-digit Manager PIN"
-              value={deletePin}
-              onChange={(e) => setDeletePin(e.target.value)}
-              maxLength={4}
-            />
-            <div className="flex justify-end gap-3">
-              <button 
-                onClick={() => setDeleteModalOpen(false)}
-                className="px-4 py-2 font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={confirmDelete}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg"
-              >
-                Permanently Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* EARLY DAY MODAL */}
-      {earlyDayModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-card w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-border">
-            <div className="p-6">
-              <h3 className="text-xl font-black text-foreground mb-2 flex items-center gap-2">
-                <Clock className="h-5 w-5 text-indigo-500" /> Request Early Day Drop
-              </h3>
-              <p className="text-sm text-muted-foreground mb-6">Select a cashier to force an early day report fill on their next login or refresh.</p>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">Select Cashier</label>
-                  <select
-                    value={selectedCashierForEarlyDay}
-                    onChange={(e) => setSelectedCashierForEarlyDay(e.target.value)}
-                    className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
-                  >
-                    <option value="">-- Choose a Cashier --</option>
-                    {cashiersList.filter((c: any) => {
-                      if (currentBranch === "all") return true;
-                      if (c.branchId) return c.branchId === currentBranch;
-                      
-                      const store = (c.storeId || "").toLowerCase();
-                      if (currentBranch === "alamein4") return store.includes("alamein") || (!store.includes("alamein") && !store.includes("ola"));
-                      if (currentBranch === "ola") return store.includes("ola");
-                      return true;
-                    }).map((c: any) => (
-                      <option key={c.id} value={c.id}>{c.name} - Store {c.storeId}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">Target Date</label>
-                    <input
-                      type="date"
-                      value={earlyDayTargetDate}
-                      onChange={(e) => setEarlyDayTargetDate(e.target.value)}
-                      className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">Target Shift</label>
-                    <select
-                      value={earlyDayTargetShift}
-                      onChange={(e) => setEarlyDayTargetShift(e.target.value)}
-                      className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
-                    >
-                      <option value="Morning">Morning</option>
-                      <option value="Evening">Evening</option>
-                      <option value="Night">Night</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 mt-8">
+        {/* Reject Modal */}
+        {rejectModalOpen && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl p-6 shadow-2xl">
+              <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Reject Shift Report</h3>
+              <textarea
+                className="w-full border border-slate-300 dark:border-slate-700 bg-transparent rounded-lg p-3 text-slate-800 dark:text-white outline-none focus:border-red-500 mb-4 min-h-[100px]"
+                placeholder="Enter reason for rejection (this will be shown to the cashier)"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+              />
+              <div className="flex justify-end gap-3">
                 <button
-                  onClick={() => setEarlyDayModalOpen(false)}
-                  className="px-4 py-2 rounded-lg font-bold text-muted-foreground hover:bg-muted transition-colors cursor-pointer"
+                  onClick={() => setRejectModalOpen(false)}
+                  className="px-4 py-2 font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={handleRequestEarlyDay}
-                  disabled={requestingEarlyDay || !selectedCashierForEarlyDay}
-                  className="px-6 py-2 rounded-lg font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md disabled:opacity-50 transition-all cursor-pointer"
+                  onClick={confirmReject}
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg"
                 >
-                  {requestingEarlyDay ? "Sending..." : "Send Request"}
+                  Confirm Reject
                 </button>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+
+        {/* Dispute Modal */}
+        {disputeModalOpen && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in">
+            <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl p-6 shadow-2xl border-2 border-purple-500">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="bg-purple-100 dark:bg-purple-900/30 p-2 rounded-full text-purple-600">
+                  <ShieldAlert className="h-6 w-6" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white">Flag for Investigation</h3>
+              </div>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 font-medium">
+                This will lock the report and require the cashier to write a formal explanation (Write-Up) and sign it before the shift can be closed.
+              </p>
+              <textarea
+                className="w-full border-2 border-purple-200 dark:border-purple-800/50 bg-purple-50 dark:bg-purple-900/10 rounded-lg p-3 text-slate-800 dark:text-white outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200 mb-4 min-h-[100px] font-medium"
+                placeholder="Detail the issue (e.g. Major cash shortage of EGP 500, missing stock, etc.)"
+                value={disputeReason}
+                onChange={(e) => setDisputeReason(e.target.value)}
+              />
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setDisputeModalOpen(false)}
+                  className="px-4 py-2 font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDispute}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg shadow-md"
+                >
+                  Flag Report
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Modal */}
+        {deleteModalOpen && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl p-6 shadow-2xl border border-red-500/20">
+              <h3 className="text-lg font-bold text-red-600 mb-2">CRITICAL WARNING</h3>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                You are about to permanently delete this shift report. This action cannot be undone and will erase all data associated with this shift.
+              </p>
+              <input
+                type="password"
+                className="w-full border border-slate-300 dark:border-slate-700 bg-transparent rounded-lg p-3 text-slate-800 dark:text-white outline-none focus:border-red-500 mb-4 text-center font-bold tracking-[0.5em]"
+                placeholder="Enter 4-digit Manager PIN"
+                value={deletePin}
+                onChange={(e) => setDeletePin(e.target.value)}
+                maxLength={4}
+              />
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setDeleteModalOpen(false)}
+                  className="px-4 py-2 font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg"
+                >
+                  Permanently Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* EARLY DAY MODAL */}
+        {earlyDayModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="bg-card w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-border">
+              <div className="p-6">
+                <h3 className="text-xl font-black text-foreground mb-2 flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-indigo-500" /> Request Early Day Drop
+                </h3>
+                <p className="text-sm text-muted-foreground mb-6">Select a cashier to force an early day report fill on their next login or refresh.</p>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">Select Cashier</label>
+                    <select
+                      value={selectedCashierForEarlyDay}
+                      onChange={(e) => setSelectedCashierForEarlyDay(e.target.value)}
+                      className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
+                    >
+                      <option value="">-- Choose a Cashier --</option>
+                      {cashiersList.filter((c: any) => {
+                        if (currentBranch === "all") return true;
+                        if (c.branchId) return c.branchId === currentBranch;
+
+                        const store = (c.storeId || "").toLowerCase();
+                        if (currentBranch === "alamein4") return store.includes("alamein") || (!store.includes("alamein") && !store.includes("ola"));
+                        if (currentBranch === "ola") return store.includes("ola");
+                        return true;
+                      }).map((c: any) => (
+                        <option key={c.id} value={c.id}>{c.name} - Store {c.storeId}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">Target Date</label>
+                      <input
+                        type="date"
+                        value={earlyDayTargetDate}
+                        onChange={(e) => setEarlyDayTargetDate(e.target.value)}
+                        className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">Target Shift</label>
+                      <select
+                        value={earlyDayTargetShift}
+                        onChange={(e) => setEarlyDayTargetShift(e.target.value)}
+                        className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
+                      >
+                        <option value="Morning">Morning</option>
+                        <option value="Evening">Evening</option>
+                        <option value="Night">Night</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 mt-8">
+                  <button
+                    onClick={() => setEarlyDayModalOpen(false)}
+                    className="px-4 py-2 rounded-lg font-bold text-muted-foreground hover:bg-muted transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleRequestEarlyDay}
+                    disabled={requestingEarlyDay || !selectedCashierForEarlyDay}
+                    className="px-6 py-2 rounded-lg font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md disabled:opacity-50 transition-all cursor-pointer"
+                  >
+                    {requestingEarlyDay ? "Sending..." : "Send Request"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </PageTransition>
   );
 }
