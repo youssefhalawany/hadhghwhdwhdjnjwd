@@ -1407,8 +1407,6 @@ export default function ManagerAuditPage() {
               </div>
             </div>
 
-            </div>
-
             {/* Advanced Digital Forensics Footer */}
             <div style={{ marginTop: 'auto', marginBottom: '20px', marginLeft: '40px', marginRight: '40px', borderTop: '2px solid #1e293b', paddingTop: '10px', textAlign: 'center', position: 'relative', zIndex: 10 }}>
               <p style={{ fontSize: '9px', color: '#475569', fontFamily: 'monospace', margin: 0, letterSpacing: '0.5px', fontWeight: 'bold' }}>
