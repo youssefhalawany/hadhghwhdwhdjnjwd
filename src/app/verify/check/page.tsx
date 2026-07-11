@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { collection, query, limit, orderBy } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { dbService } from "@/lib/firebase";
 import { Search, ShieldCheck, HelpCircle, FileText, ArrowRight, ShieldAlert } from "lucide-react";
 
@@ -12,9 +14,13 @@ export default function VerifySearchPage() {
 
   useEffect(() => {
     const fetchRecentVerifications = async () => {
-      const records = await dbService.getDocs("verifications");
-      // Sort to show latest
-      setRecentVerifications(records.slice(-3).reverse());
+      try {
+        const q = query(collection(db, "verifications"), orderBy("createdAt", "desc"), limit(3));
+        const records = await dbService.getDocs(q);
+        setRecentVerifications(records);
+      } catch (e) {
+        console.error("Error fetching verifications", e);
+      }
     };
     fetchRecentVerifications();
   }, []);

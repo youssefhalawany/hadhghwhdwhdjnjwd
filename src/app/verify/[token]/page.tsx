@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { dbService } from "@/lib/firebase";
+import { collection, query, where, limit, orderBy } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { 
   ShieldCheck, ShieldAlert, FileDown, Printer, Share2, 
   Calendar, Building2, User, RefreshCw, Clock, History, AlertCircle
@@ -24,7 +26,9 @@ export default function VerificationPage() {
       setLoading(true);
       try {
         // Find verification metadata by token
-        const records = await dbService.getDocs("verifications");
+        // Fetch recent verifications with a limit to avoid massive read spikes, then fuzzy match
+        const q = query(collection(db, "verifications"), limit(500));
+        const records = await dbService.getDocs(q);
         const match = records.find(r => r.verificationToken === token || r.id === token || `mock_token_${r.reportId}` === token);
 
         if (match) {
@@ -42,8 +46,9 @@ export default function VerificationPage() {
           const passed = computedHash === match.sha256Hash;
           setIntegrityPassed(passed);
 
-          // Get related audit logs for this specific report
-          const allAuditLogs = await dbService.getDocs("audit_logs");
+          // Get related audit logs for this specific report, safely capped at 200
+          const qAudit = query(collection(db, "audit_logs"), orderBy("timestamp", "desc"), limit(200));
+          const allAuditLogs = await dbService.getDocs(qAudit);
           const relatedLogs = allAuditLogs.filter(log => 
             log.action.includes(match.reportId) || 
             log.newValue.includes(match.reportId) ||
