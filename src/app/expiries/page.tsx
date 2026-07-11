@@ -275,22 +275,26 @@ export default function ExpiryTrackerPage() {
 
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!hasLookedUp) {
-      alert(lang === "en" ? "Please search or scan the barcode first." : "يرجى البحث أو مسح الباركود أولاً.");
-      return;
-    }
     if (!itemName || !quantity || !expiryDate || !barcode) return;
 
-    // If new product, save to products collection
-    if (isNewProduct) {
+    let isBrandNew = isNewProduct;
+    if (!hasLookedUp) {
       try {
-        await setDoc(doc(db, "products", barcode), {
-          barcode: barcode,
+        const productSnap = await getDoc(doc(db, "products", barcode.trim()));
+        isBrandNew = !productSnap.exists();
+      } catch(e) {}
+    }
+
+    // If new product, save to products collection
+    if (isBrandNew) {
+      try {
+        await setDoc(doc(db, "products", barcode.trim()), {
+          barcode: barcode.trim(),
           description: itemName,
           supplier: supplier,
           addedFromExpiry: true,
           createdAt: new Date().toISOString()
-        });
+        }, { merge: true });
         setIsNewProduct(false);
       } catch (e) {
         console.error("Failed to add new product:", e);
@@ -572,21 +576,18 @@ export default function ExpiryTrackerPage() {
               </div>
             )}
 
-            {hasLookedUp && (
-              <>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
-                    {lang === "en" ? "Product Name" : "اسم المنتج"}
-                  </label>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
+                {lang === "en" ? "Product Name" : "اسم المنتج"}
+              </label>
                   <input 
                     ref={itemNameInputRef}
                     required 
                     type="text" 
                     value={itemName} 
                     onChange={(e) => setItemName(e.target.value)}
-                    disabled={!isNewProduct}
                     placeholder={lang === "en" ? "e.g., Juhayna Milk" : "مثل: لبن جهينة"}
-                    className={`w-full p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 transition-all font-semibold ${!isNewProduct ? "opacity-70 cursor-not-allowed text-slate-500" : ""}`}
+                    className="w-full p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 transition-all font-semibold"
                   />
                 </div>
                 <div>
@@ -598,13 +599,10 @@ export default function ExpiryTrackerPage() {
                     type="text" 
                     value={supplier} 
                     onChange={(e) => setSupplier(e.target.value)}
-                    disabled={!isNewProduct}
                     placeholder={lang === "en" ? "Supplier Name" : "اسم المورد"}
-                    className={`w-full p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 transition-all font-semibold ${!isNewProduct ? "opacity-70 cursor-not-allowed text-slate-500" : ""}`}
+                    className="w-full p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 transition-all font-semibold"
                   />
                 </div>
-              </>
-            )}
             <div>
               <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
                 {lang === "en" ? "Quantity" : "الكمية"}
