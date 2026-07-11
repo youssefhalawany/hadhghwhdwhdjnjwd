@@ -73,9 +73,17 @@ export default function ExpiryTrackerPage() {
       console.error("Error fetching expiries:", error);
       setLoading(false);
     });
-
     return () => unsubscribe();
   }, [router]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (barcode && barcode.trim().length > 3 && !hasLookedUp) {
+        lookupBarcode(barcode);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [barcode, hasLookedUp]);
 
   // Product Lookup
   const lookupBarcode = async (rawBarcode: string) => {
