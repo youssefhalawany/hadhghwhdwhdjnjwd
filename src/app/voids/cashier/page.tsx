@@ -709,7 +709,7 @@ export default function CashierVoidPage() {
                 <input 
                   type="file" 
                   accept="image/*" 
-                  multiple
+                  capture="environment"
                   ref={multiPhotoInputRef} 
                   onChange={handleMultiPhotoUpload} 
                   className="hidden" 

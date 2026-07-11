@@ -300,92 +300,63 @@ export default function ManagerVoidsPage() {
               </div>
 
               <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar bg-background">
-                <div id="void-print-capture" style={{ width: '100%', maxWidth: '210mm', margin: '0 auto', backgroundColor: 'white', boxSizing: 'border-box', color: '#0f172a', padding: '20px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                <div id="void-print-capture" style={{ width: '100%', maxWidth: '210mm', margin: '0 auto', backgroundColor: 'white', boxSizing: 'border-box', color: '#0f172a', padding: '15px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
                   
                   {/* Header */}
-                  <div style={{ borderBottom: '4px solid #dc2626', paddingBottom: '10px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ borderBottom: '3px solid #dc2626', paddingBottom: '8px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                     <div>
-                      <h1 style={{ fontSize: '28px', fontWeight: '900', margin: '0 0 5px 0', textTransform: 'uppercase', letterSpacing: '-0.5px', color: '#0f172a' }}>VOID & RETURN</h1>
-                      <h2 style={{ fontSize: '16px', fontWeight: '800', margin: '0', color: '#dc2626', textTransform: 'uppercase', letterSpacing: '2px' }}>OFFICIAL RECORD</h2>
-                      <p style={{ margin: '5px 0 0 0', fontSize: '12px', color: '#475569', fontWeight: '600' }}>Circle K Franchise Enterprise</p>
+                      <h1 style={{ fontSize: '24px', fontWeight: '900', margin: '0 0 2px 0', textTransform: 'uppercase', color: '#0f172a' }}>VOID & RETURN RECORD</h1>
+                      <p style={{ margin: '0', fontSize: '11px', color: '#475569', fontWeight: '600' }}>Circle K Franchise Enterprise</p>
                     </div>
-                    <div style={{ textAlign: 'right', backgroundColor: '#f8fafc', padding: '10px 15px', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                      <p style={{ margin: '0 0 5px', fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>Exact Time</p>
-                      <p style={{ margin: 0, fontSize: '14px', fontWeight: '800', color: '#0f172a' }}>{selectedVoid.preciseTimestamp ? selectedVoid.preciseTimestamp : new Date(selectedVoid.createdAt).toLocaleString('en-GB')}</p>
+                    <div style={{ textAlign: 'right' }}>
+                      <p style={{ margin: '0 0 2px', fontSize: '10px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>Time: {selectedVoid.preciseTimestamp ? selectedVoid.preciseTimestamp : new Date(selectedVoid.createdAt).toLocaleString('en-GB')}</p>
+                      <p style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#dc2626', fontFamily: '"JetBrains Mono", monospace' }}>EGP {Number(selectedVoid.amount).toFixed(2)}</p>
                     </div>
                   </div>
 
-                  {/* Amount Highlight */}
-                  <div style={{ backgroundColor: '#fef2f2', border: '2px solid #fca5a5', borderRadius: '12px', padding: '15px', textAlign: 'center', marginBottom: '15px' }}>
-                    <p style={{ margin: '0 0 5px', fontSize: '12px', color: '#991b1b', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '1px' }}>Total Amount Returned</p>
-                    <p style={{ margin: 0, fontSize: '32px', fontWeight: '900', color: '#dc2626', fontFamily: '"JetBrains Mono", monospace' }}>EGP {Number(selectedVoid.amount).toFixed(2)}</p>
-                  </div>
-
-                  {/* Body Grid */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
-                    
-                    {/* Left Info */}
-                    <div style={{ border: '2px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
-                      <div style={{ backgroundColor: '#f8fafc', padding: '8px 15px', borderBottom: '2px solid #e2e8f0', fontSize: '12px', fontWeight: '800', textTransform: 'uppercase', color: '#0f172a', letterSpacing: '0.5px' }}>Transaction Info</div>
-                      <div style={{ padding: '15px' }}>
-                        <div style={{ marginBottom: '10px' }}>
-                          <span style={{ display: 'block', fontSize: '11px', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px', fontWeight: '700' }}>Transaction Number</span>
-                          <span style={{ fontSize: '15px', fontWeight: '800', fontFamily: '"JetBrains Mono", monospace', backgroundColor: '#f1f5f9', padding: '4px 8px', borderRadius: '4px', display: 'inline-block' }}>{selectedVoid.transactionNumber}</span>
-                        </div>
-                        <div style={{ marginBottom: '10px' }}>
-                          <span style={{ display: 'block', fontSize: '11px', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px', fontWeight: '700' }}>Register Used</span>
-                          <span style={{ fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>{selectedVoid.register}</span>
-                        </div>
-                        <div>
-                          <span style={{ display: 'block', fontSize: '11px', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px', fontWeight: '700' }}>Cashier Name</span>
-                          <span style={{ fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>{selectedVoid.cashierName || 'N/A'}</span>
-                        </div>
-                        {/* Historical Context Inserted into PDF Preview for Manager Context */}
-                        <div className="print-hide mt-4 pt-4 border-t border-slate-200" style={{ display: cashierHistory ? 'block' : 'none' }}>
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px', fontWeight: '700' }}>
-                            <TrendingUp className="w-3 h-3 text-blue-500" /> Historical Context
-                          </span>
-                          <span style={{ fontSize: '12px', fontWeight: '600', color: '#334155' }}>
-                            Last {cashierHistory?.count} voids avg: <span style={{ color: '#dc2626', fontWeight: '800' }}>{cashierHistory?.avg} EGP</span>
-                          </span>
-                        </div>
+                  {/* Info Grid - 3 columns */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.5fr', gap: '10px', marginBottom: '10px' }}>
+                    {/* Transaction */}
+                    <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', padding: '8px' }}>
+                      <span style={{ display: 'block', fontSize: '9px', color: '#64748b', textTransform: 'uppercase', fontWeight: '700' }}>TXN Number</span>
+                      <span style={{ fontSize: '13px', fontWeight: '800', fontFamily: '"JetBrains Mono", monospace' }}>{selectedVoid.transactionNumber}</span>
+                      <div style={{ marginTop: '5px' }}>
+                        <span style={{ display: 'block', fontSize: '9px', color: '#64748b', textTransform: 'uppercase', fontWeight: '700' }}>Register</span>
+                        <span style={{ fontSize: '12px', fontWeight: '700' }}>{selectedVoid.register}</span>
                       </div>
                     </div>
-
-                    {/* Right Info */}
-                    <div style={{ border: '2px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
-                      <div style={{ backgroundColor: '#f8fafc', padding: '8px 15px', borderBottom: '2px solid #e2e8f0', fontSize: '12px', fontWeight: '800', textTransform: 'uppercase', color: '#0f172a', letterSpacing: '0.5px' }}>Customer Info</div>
-                      <div style={{ padding: '15px' }}>
-                        <div style={{ marginBottom: '10px' }}>
-                          <span style={{ display: 'block', fontSize: '11px', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px', fontWeight: '700' }}>Customer Name</span>
-                          <span style={{ fontSize: '15px', fontWeight: '700', color: '#0f172a' }}>{selectedVoid.customerName}</span>
-                        </div>
-                        <div>
-                          <span style={{ display: 'block', fontSize: '11px', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px', fontWeight: '700' }}>Customer Phone</span>
-                          <span style={{ fontSize: '15px', fontWeight: '700', fontFamily: '"JetBrains Mono", monospace', color: '#0f172a' }}>{selectedVoid.customerPhone}</span>
-                        </div>
+                    {/* Customer */}
+                    <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', padding: '8px' }}>
+                      <span style={{ display: 'block', fontSize: '9px', color: '#64748b', textTransform: 'uppercase', fontWeight: '700' }}>Customer Name</span>
+                      <span style={{ fontSize: '12px', fontWeight: '700' }}>{selectedVoid.customerName}</span>
+                      <div style={{ marginTop: '5px' }}>
+                        <span style={{ display: 'block', fontSize: '9px', color: '#64748b', textTransform: 'uppercase', fontWeight: '700' }}>Phone</span>
+                        <span style={{ fontSize: '12px', fontWeight: '700', fontFamily: '"JetBrains Mono", monospace' }}>{selectedVoid.customerPhone}</span>
                       </div>
                     </div>
-
-                  </div>
-
-                  {/* Reason Block */}
-                  <div style={{ border: '2px solid #e2e8f0', borderRadius: '8px', marginBottom: '15px', overflow: 'hidden', pageBreakInside: 'avoid' }}>
-                    <div style={{ backgroundColor: '#f8fafc', padding: '8px 15px', borderBottom: '2px solid #e2e8f0', fontSize: '12px', fontWeight: '800', textTransform: 'uppercase', color: '#0f172a', letterSpacing: '0.5px' }}>Reason For Void / Return</div>
-                    <div style={{ padding: '12px 15px', fontSize: '14px', lineHeight: 1.4, color: '#1e293b', fontWeight: '500', backgroundColor: '#ffffff', minHeight: '40px' }}>
-                      {selectedVoid.reason}
+                    {/* Reason */}
+                    <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', padding: '8px' }}>
+                      <span style={{ display: 'block', fontSize: '9px', color: '#64748b', textTransform: 'uppercase', fontWeight: '700' }}>Reason for Void</span>
+                      <div style={{ fontSize: '11px', lineHeight: 1.3, fontWeight: '500', maxHeight: '40px', overflow: 'hidden' }}>
+                        {selectedVoid.reason}
+                      </div>
+                      <div className="print-hide mt-1 pt-1 border-t border-slate-200" style={{ display: cashierHistory ? 'block' : 'none' }}>
+                        <span style={{ fontSize: '9px', fontWeight: '600', color: '#334155' }}>
+                          Cashier ({selectedVoid.cashierName || 'N/A'}) history: Last {cashierHistory?.count} voids avg: <span style={{ color: '#dc2626', fontWeight: '800' }}>{cashierHistory?.avg} EGP</span>
+                        </span>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Attached Evidence Photos (Not Printed directly, but shown in UI) */}
+                  {/* Attached Photos (Made much larger) */}
                   {selectedVoid.attachedPhotos && selectedVoid.attachedPhotos.length > 0 && (
-                    <div style={{ border: '2px solid #e2e8f0', borderRadius: '8px', marginBottom: '15px', overflow: 'hidden', pageBreakInside: 'avoid' }}>
-                      <div style={{ backgroundColor: '#f8fafc', padding: '8px 15px', borderBottom: '2px solid #e2e8f0', fontSize: '12px', fontWeight: '800', textTransform: 'uppercase', color: '#0f172a', letterSpacing: '0.5px' }}>
-                        Attached Evidence Photos ({selectedVoid.attachedPhotos.length})
+                    <div style={{ border: '2px solid #e2e8f0', borderRadius: '8px', marginBottom: '10px', overflow: 'hidden', height: '400px', display: 'flex', flexDirection: 'column' }}>
+                      <div style={{ backgroundColor: '#f8fafc', padding: '4px 10px', borderBottom: '1px solid #e2e8f0', fontSize: '10px', fontWeight: '800', textTransform: 'uppercase' }}>
+                        Receipt / Evidence Photos ({selectedVoid.attachedPhotos.length})
                       </div>
-                      <div style={{ padding: '15px', display: 'flex', gap: '10px', flexWrap: 'wrap', backgroundColor: '#ffffff', justifyContent: 'center' }}>
+                      <div style={{ flex: 1, padding: '5px', display: 'flex', gap: '5px', justifyContent: 'center', backgroundColor: '#f1f5f9' }}>
                         {selectedVoid.attachedPhotos.map((photo: string, i: number) => (
-                          <div key={i} className="group" style={{ position: 'relative', width: '120px', height: '120px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e2e8f0', backgroundColor: '#f1f5f9' }}>
+                          <div key={i} className="group" style={{ position: 'relative', flex: 1, minWidth: 0, height: '100%', borderRadius: '4px', overflow: 'hidden', border: '1px solid #cbd5e1', backgroundColor: '#fff' }}>
                             <img src={photo} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Evidence" />
                             <div className="print-hide absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
                               <a href={photo} target="_blank" rel="noreferrer" className="text-white text-xs font-bold px-3 py-1 bg-blue-600 rounded-full hover:bg-blue-700">View</a>
@@ -397,52 +368,38 @@ export default function ManagerVoidsPage() {
                     </div>
                   )}
 
-                  {/* Barcode block */}
-                  <div style={{ textAlign: 'center', marginBottom: '15px', padding: '10px', backgroundColor: '#ffffff', borderRadius: '12px', border: '2px dashed #cbd5e1', pageBreakInside: 'avoid', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <p style={{ margin: '0 0 5px 0', fontSize: '12px', fontWeight: '900', color: '#dc2626', textTransform: 'uppercase', letterSpacing: '2px' }}>SCAN BARCODE</p>
-                    <Barcode 
-                      value={selectedVoid.transactionNumber} 
-                      width={2.2} 
-                      height={60} 
-                      fontSize={16} 
-                      font="monospace" 
-                      margin={5} 
-                      background="#ffffff" 
-                      displayValue={true} 
-                    />
-                  </div>
-
-                  {/* Signatures */}
-                  <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between', paddingTop: '10px', pageBreakInside: 'avoid' }}>
-                    {/* Cashier Signature */}
-                    <div style={{ width: '40%' }}>
-                      <p style={{ fontSize: '10px', fontWeight: '800', color: '#64748b', margin: '0 0 10px 0', textTransform: 'uppercase', letterSpacing: '1px' }}>Cashier Signature</p>
+                  {/* Signatures & Barcode */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '2px solid #e2e8f0', paddingTop: '10px' }}>
+                    <div style={{ width: '30%' }}>
+                      <p style={{ fontSize: '9px', fontWeight: '800', color: '#64748b', margin: '0 0 5px 0', textTransform: 'uppercase' }}>Cashier Signature</p>
                       {selectedVoid.cashierSignature ? (
-                        <img src={selectedVoid.cashierSignature} alt="Signature" style={{ display: 'block', maxWidth: '100%', height: '80px', objectFit: 'contain', marginBottom: '5px' }} />
+                        <img src={selectedVoid.cashierSignature} alt="Signature" style={{ display: 'block', maxWidth: '100%', height: '40px', objectFit: 'contain', marginBottom: '2px' }} />
                       ) : (
-                        <div style={{ height: '80px', marginBottom: '5px' }}></div>
+                        <div style={{ height: '40px', marginBottom: '2px' }}></div>
                       )}
-                      <div style={{ borderBottom: '2px solid #0f172a', width: '100%', marginBottom: '5px' }}></div>
-                      <p style={{ fontSize: '16px', fontWeight: '900', color: '#000000', margin: 0 }}>{selectedVoid.cashierName}</p>
+                      <div style={{ borderBottom: '1px solid #0f172a', width: '100%', marginBottom: '2px' }}></div>
+                      <p style={{ fontSize: '11px', fontWeight: '900', margin: 0 }}>{selectedVoid.cashierName}</p>
                     </div>
 
-                    {/* Manager Signature */}
-                    <div style={{ width: '40%' }}>
-                      <p style={{ fontSize: '10px', fontWeight: '800', color: '#64748b', margin: '0 0 10px 0', textTransform: 'uppercase', letterSpacing: '1px' }}>Manager Authorization</p>
-                      <div style={{ height: '80px', marginBottom: '5px' }}></div>
-                      <div style={{ borderBottom: '2px solid #0f172a', width: '100%', marginBottom: '5px' }}></div>
-                      <p style={{ fontSize: '16px', fontWeight: '900', color: '#000000', margin: 0 }}>__________________</p>
+                    <div style={{ width: '30%', textAlign: 'center' }}>
+                      <Barcode 
+                        value={selectedVoid.transactionNumber} 
+                        width={1.5} 
+                        height={40} 
+                        fontSize={12} 
+                        font="monospace" 
+                        margin={0} 
+                        background="#ffffff" 
+                        displayValue={true} 
+                      />
                     </div>
-                  </div>
 
-                  {/* Footer */}
-                  <div style={{ marginTop: '15px', textAlign: 'center', pageBreakInside: 'avoid', borderTop: '2px solid #e2e8f0', paddingTop: '10px' }}>
-                    <p style={{ fontSize: '11px', color: '#0f172a', margin: '0 0 3px 0', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                      ⚠️ IMPORTANT REQUIREMENT
-                    </p>
-                    <p style={{ fontSize: '10px', color: '#475569', margin: 0, fontWeight: '600' }}>
-                      BOTH THE ORIGINAL PURCHASE RECEIPT AND THE SYSTEM VOID/RETURN RECEIPT MUST BE STAPLED OR ATTACHED TO THIS FORM.
-                    </p>
+                    <div style={{ width: '30%' }}>
+                      <p style={{ fontSize: '9px', fontWeight: '800', color: '#64748b', margin: '0 0 5px 0', textTransform: 'uppercase' }}>Manager Authorization</p>
+                      <div style={{ height: '40px', marginBottom: '2px' }}></div>
+                      <div style={{ borderBottom: '1px solid #0f172a', width: '100%', marginBottom: '2px' }}></div>
+                      <p style={{ fontSize: '11px', fontWeight: '900', margin: 0 }}>__________________</p>
+                    </div>
                   </div>
 
                 </div>
