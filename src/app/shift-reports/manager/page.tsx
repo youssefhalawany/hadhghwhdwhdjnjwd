@@ -1166,6 +1166,22 @@ export default function ManagerAuditPage() {
             return `ملخص النظام: ${name} قفل ورديته بمبيعات إجمالية ${totalSales.toLocaleString()} جنيه. ${visaStr}، ${cashStr}.`;
           };
 
+          const generateVolumeContext = () => {
+            const totalSales = (Number(expectedCash) || 0) + (Number(expectedVisa) || 0);
+            const isBusy = totalSales > 15000;
+            const isGoodGrade = shiftGrade === "A+" || shiftGrade === "B";
+
+            if (isBusy && isGoodGrade) {
+              return "تحليل المبيعات: الوردية دي كانت زحمة ومبيعاتها معدية ١٥ ألف، وبسم الله ما شاء الله الكاشير كان مركز ومقفل حساباته صح.";
+            } else if (isBusy && !isGoodGrade) {
+              return "تحليل المبيعات: الوردية كانت زحمة جداً (أكتر من ١٥ ألف)، فممكن اللخبطة دي بسبب ضغط الشغل، بس برضه المراجعة مطلوبة.";
+            } else if (!isBusy && !isGoodGrade) {
+              return "تحليل المبيعات: الوردية كانت هادية ومفيش ضغط، ومع ذلك في لخبطة أو عجز! الموضوع ده غريب ومحتاج تراجع وراه كويس.";
+            } else {
+              return "تحليل المبيعات: الوردية كانت هادية وطبيعية، والكاشير قفل حساباته مظبوط.";
+            }
+          };
+
           if (visaVar !== 0 || cashVar > 500 || cashVar < -500) {
             shiftGrade = "F";
             gradeBg = "#fef2f2";
@@ -1262,10 +1278,14 @@ export default function ManagerAuditPage() {
                 <div style={{ padding: '10px 40px', position: 'relative', zIndex: 10 }}>
 
                   {/* AI Summary Sentence (Egyptian Arabic) */}
-                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRight: '4px solid #3b82f6', borderRadius: '8px', padding: '6px 15px', direction: 'rtl', textAlign: 'right', marginBottom: '10px' }}>
-                    <p style={{ margin: 0, fontSize: '11px', color: '#1e293b', lineHeight: 1.6, fontWeight: 'bold' }}>
+                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRight: '4px solid #3b82f6', borderRadius: '8px', padding: '4px 10px', direction: 'rtl', textAlign: 'right', marginBottom: '8px' }}>
+                    <p style={{ margin: '0 0 2px', fontSize: '10px', color: '#1e293b', lineHeight: 1.5, fontWeight: 'bold' }}>
                       <span style={{ color: '#3b82f6', marginLeft: '6px' }}>✦</span>
                       {generateEgyptianSummary()}
+                    </p>
+                    <p style={{ margin: 0, fontSize: '10px', color: '#1e293b', lineHeight: 1.5, fontWeight: 'bold' }}>
+                      <span style={{ color: '#3b82f6', marginLeft: '6px' }}>✦</span>
+                      {generateVolumeContext()}
                     </p>
                   </div>
 
