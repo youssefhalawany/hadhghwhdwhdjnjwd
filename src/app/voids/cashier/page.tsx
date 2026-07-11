@@ -173,13 +173,6 @@ export default function CashierVoidPage() {
   const [register, setRegister] = useState("Cash 1");
   const [cashierSignature, setCashierSignature] = useState("");
   const [loading, setLoading] = useState(false);
-
-  // High-Risk Manager Override
-  const [showManagerOverride, setShowManagerOverride] = useState(false);
-  const [managerOverrideSuccess, setManagerOverrideSuccess] = useState(false);
-  const [overridePin, setOverridePin] = useState("");
-  const [overrideError, setOverrideError] = useState("");
-
   const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [extractedReceipt, setExtractedReceipt] = useState<any>(null);
   const [selectedItems, setSelectedItems] = useState<any[]>([]);
@@ -432,13 +425,6 @@ export default function CashierVoidPage() {
       return;
     }
     
-    // High-Risk Check
-    if (Number(amount) >= 20 && !managerOverrideSuccess) {
-      vibrateError();
-      setShowManagerOverride(true);
-      return;
-    }
-    
     setLoading(true);
     
     const payload = {
@@ -488,82 +474,9 @@ export default function CashierVoidPage() {
     }
   };
 
-  const handleOverrideSubmit = async (pinToSubmit?: string) => {
-    const pin = pinToSubmit || overridePin;
-    if (pin === "1234" || pin === "0000") {
-      setManagerOverrideSuccess(true);
-      setShowManagerOverride(false);
-      setOverrideError("");
-      vibrateSuccess();
-      setTimeout(() => {
-        handleSubmit(null as any);
-      }, 500);
-      return;
-    }
-
-    try {
-      const q = query(collection(db, "users"), where("pin", "==", pin));
-      const snap = await getDocs(q);
-      let isValidManager = false;
-      
-      snap.forEach(doc => {
-        const data = doc.data();
-        if (data.role === "master" || data.role === "manager") {
-          isValidManager = true;
-        }
-      });
-
-      if (isValidManager) {
-        setManagerOverrideSuccess(true);
-        setShowManagerOverride(false);
-        setOverrideError("");
-        vibrateSuccess();
-        setTimeout(() => {
-          handleSubmit(null as any);
-        }, 500);
-      } else {
-        setOverrideError("Invalid Manager PIN.");
-        setOverridePin("");
-        vibrateError();
-      }
-    } catch (err) {
-      console.error(err);
-      setOverrideError("Error verifying PIN.");
-      vibrateError();
-    }
-  };
-
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950/20 text-slate-900 dark:text-slate-100 transition-colors duration-300 pb-28" dir={lang === "ar" ? "rtl" : "ltr"}>
       
-      {showManagerOverride && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border-4 border-red-500 flex flex-col items-center">
-            <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-4 animate-pulse">
-              <Shield className="h-8 w-8" />
-            </div>
-            <h3 className="text-xl font-black text-center text-slate-800 dark:text-white mb-2 uppercase tracking-wide">Manager Override</h3>
-            <p className="text-sm text-center text-slate-500 mb-6">
-              High-value void detected (${amount}).<br/>A manager PIN is required to proceed.
-            </p>
-
-            <PinPad 
-              onPinChange={(val) => setOverridePin(val)} 
-              onSubmit={(val) => handleOverrideSubmit(val)}
-              maxLength={4}
-            />
-            {overrideError && <p className="text-red-500 font-bold mt-2 text-sm">{overrideError}</p>}
-
-            <button 
-              onClick={() => { setShowManagerOverride(false); setOverridePin(""); setOverrideError(""); }}
-              className="mt-6 w-full py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold rounded-xl transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Header */}
       <header className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md shadow-sm border-b border-slate-200 dark:border-slate-750 p-4 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto flex items-center justify-between">

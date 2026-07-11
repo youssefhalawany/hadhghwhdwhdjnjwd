@@ -88,7 +88,9 @@ export default function ManagerVoidsPage() {
             @media print {
               body { padding: 0; }
               #print-container { width: 100%; }
+              .print-hide { display: none !important; }
             }
+            .print-hide { display: none !important; } /* Fallback */
           </style>
         </head>
         <body>
@@ -339,7 +341,7 @@ export default function ManagerVoidsPage() {
                           <span style={{ fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>{selectedVoid.cashierName || 'N/A'}</span>
                         </div>
                         {/* Historical Context Inserted into PDF Preview for Manager Context */}
-                        <div className="print:hidden mt-4 pt-4 border-t border-slate-200" style={{ display: cashierHistory ? 'block' : 'none' }}>
+                        <div className="print-hide mt-4 pt-4 border-t border-slate-200" style={{ display: cashierHistory ? 'block' : 'none' }}>
                           <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px', fontWeight: '700' }}>
                             <TrendingUp className="w-3 h-3 text-blue-500" /> Historical Context
                           </span>
@@ -377,15 +379,15 @@ export default function ManagerVoidsPage() {
 
                   {/* Attached Evidence Photos (Not Printed directly, but shown in UI) */}
                   {selectedVoid.attachedPhotos && selectedVoid.attachedPhotos.length > 0 && (
-                    <div className="print:hidden mb-6 border-2 border-slate-200 rounded-xl overflow-hidden">
-                      <div className="bg-slate-50 px-4 py-2 border-b border-slate-200 text-xs font-bold uppercase text-slate-800">
+                    <div style={{ border: '2px solid #e2e8f0', borderRadius: '8px', marginBottom: '15px', overflow: 'hidden', pageBreakInside: 'avoid' }}>
+                      <div style={{ backgroundColor: '#f8fafc', padding: '8px 15px', borderBottom: '2px solid #e2e8f0', fontSize: '12px', fontWeight: '800', textTransform: 'uppercase', color: '#0f172a', letterSpacing: '0.5px' }}>
                         Attached Evidence Photos ({selectedVoid.attachedPhotos.length})
                       </div>
-                      <div className="p-4 bg-white grid grid-cols-2 sm:grid-cols-3 gap-4">
+                      <div style={{ padding: '15px', display: 'flex', gap: '10px', flexWrap: 'wrap', backgroundColor: '#ffffff', justifyContent: 'center' }}>
                         {selectedVoid.attachedPhotos.map((photo: string, i: number) => (
-                          <div key={i} className="relative group rounded-lg overflow-hidden border border-slate-200 shadow-sm aspect-square bg-slate-100">
-                            <img src={photo} className="w-full h-full object-cover" alt="Evidence" />
-                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+                          <div key={i} className="group" style={{ position: 'relative', width: '120px', height: '120px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e2e8f0', backgroundColor: '#f1f5f9' }}>
+                            <img src={photo} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Evidence" />
+                            <div className="print-hide absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
                               <a href={photo} target="_blank" rel="noreferrer" className="text-white text-xs font-bold px-3 py-1 bg-blue-600 rounded-full hover:bg-blue-700">View</a>
                               <button onClick={() => handleDeletePhoto(i)} className="text-white text-xs font-bold px-3 py-1 bg-red-600 rounded-full hover:bg-red-700">Delete</button>
                             </div>
