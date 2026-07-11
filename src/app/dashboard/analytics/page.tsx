@@ -224,7 +224,7 @@ export default function AdvancedAnalyticsDashboard() {
                     <Tooltip 
                       cursor={{ fill: 'rgba(239, 68, 68, 0.1)' }}
                       contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
-                      formatter={(value: number) => [`${value.toLocaleString()} EGP`, 'Total Voided']}
+                      formatter={(value: any) => [`${Number(value).toLocaleString()} EGP`, 'Total Voided']}
                     />
                     <Bar dataKey="voidAmount" fill="#ef4444" radius={[6, 6, 0, 0]} />
                   </BarChart>
@@ -261,7 +261,7 @@ export default function AdvancedAnalyticsDashboard() {
                     </Pie>
                     <Tooltip 
                       contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
-                      formatter={(value: number) => [`${value.toLocaleString()} EGP`, 'Returns']}
+                      formatter={(value: any) => [`${Number(value).toLocaleString()} EGP`, 'Returns']}
                     />
                     <Legend 
                       verticalAlign="bottom" 
