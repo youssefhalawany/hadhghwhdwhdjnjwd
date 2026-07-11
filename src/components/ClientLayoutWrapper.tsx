@@ -264,8 +264,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       { name: "Voids & Returns", href: "/voids/manager", icon: Shield },
       { name: "Shift Audit", href: "/shift-reports/manager", icon: Shield },
       { name: "Report Search", href: "/financials/report-search", icon: Search },
-      { name: "Margin Strategy", href: "/dashboard/margin-calculator", icon: Activity },
-      { name: "Advanced Analytics", href: "/dashboard/analytics", icon: Activity }
+      { name: "Margin Strategy", href: "/dashboard/margin-calculator", icon: Activity }
     ]},
     { name: "Returns", href: "/dashboard/supplier-returns", icon: Truck },
     { name: "Expired", icon: PackageX, children: [
