@@ -36,10 +36,10 @@ export default function FinancialReportsPage() {
 
     const loadData = async () => {
       setLoading(true);
-      unsubSales = dbService.onSnapshot(query(collection(db, "sales"), orderBy("timestamp", "desc"), limit(2000)), setSales);
-      unsubCredits = dbService.onSnapshot(query(collection(db, "credits"), orderBy("timestamp", "desc"), limit(1000)), setCredits);
-      unsubCreditPayments = dbService.onSnapshot(query(collection(db, "credit_payments"), orderBy("timestamp", "desc"), limit(1000)), setCreditPayments);
-      unsubCashPayments = dbService.onSnapshot(query(collection(db, "cash_payments"), orderBy("timestamp", "desc"), limit(1000)), setCashPayments);
+      unsubSales = dbService.onSnapshot(query(collection(db, "sales"), orderBy("timestamp", "desc"), limit(200)), setSales);
+      unsubCredits = dbService.onSnapshot(query(collection(db, "credits"), orderBy("timestamp", "desc"), limit(100)), setCredits);
+      unsubCreditPayments = dbService.onSnapshot(query(collection(db, "credit_payments"), orderBy("timestamp", "desc"), limit(100)), setCreditPayments);
+      unsubCashPayments = dbService.onSnapshot(query(collection(db, "cash_payments"), orderBy("timestamp", "desc"), limit(100)), setCashPayments);
       setLoading(false);
     };
 

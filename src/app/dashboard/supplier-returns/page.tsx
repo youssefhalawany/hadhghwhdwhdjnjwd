@@ -68,7 +68,7 @@ export default function SupplierReturnsDashboard() {
   }, [supplierReturns]);
 
   useEffect(() => {
-    const srQ = query(collection(db, "supplier_returns"), orderBy("createdAt", "desc"));
+    const srQ = query(collection(db, "supplier_returns"), orderBy("createdAt", "desc"), limit(100));
     const unsubSR = onSnapshot(srQ, (snap) => {
       const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setSupplierReturns(items);

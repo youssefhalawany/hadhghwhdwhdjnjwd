@@ -71,7 +71,7 @@ export default function ExpiryAuditPage() {
 
   useEffect(() => {
     setLoading(true);
-    const q = query(collection(db, "expiries"), orderBy("createdAt", "desc"), limit(2000));
+    const q = query(collection(db, "expiries"), orderBy("createdAt", "desc"), limit(200));
     const unsubscribe = onSnapshot(q, (snap) => {
       const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       
@@ -84,7 +84,7 @@ export default function ExpiryAuditPage() {
       setLoading(false);
     });
 
-    const qReturns = query(collection(db, "supplier_returns"), orderBy("createdAt", "desc"));
+    const qReturns = query(collection(db, "supplier_returns"), orderBy("createdAt", "desc"), limit(100));
     const unsubscribeReturns = onSnapshot(qReturns, (snap) => {
       setSupplierReturns(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
