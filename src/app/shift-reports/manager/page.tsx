@@ -1223,7 +1223,7 @@ export default function ManagerAuditPage() {
                 </div>
 
                 {/* Header / Letterhead */}
-                <div style={{ padding: '30px 40px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '4px solid #1e293b', position: 'relative', zIndex: 10 }}>
+                <div style={{ padding: '20px 40px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '4px solid #1e293b', position: 'relative', zIndex: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                     <div style={{ width: '70px', height: '70px', backgroundColor: '#dc2626', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <span style={{ fontSize: '42px', fontWeight: '900', color: '#ffffff', lineHeight: 1 }}>K</span>
@@ -1259,10 +1259,10 @@ export default function ManagerAuditPage() {
                 </div>
 
                 {/* Content Area */}
-                <div style={{ padding: '20px 40px', position: 'relative', zIndex: 10 }}>
+                <div style={{ padding: '10px 40px', position: 'relative', zIndex: 10 }}>
 
                   {/* AI Summary Sentence (Egyptian Arabic) */}
-                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRight: '4px solid #3b82f6', borderRadius: '8px', padding: '10px 15px', direction: 'rtl', textAlign: 'right', marginBottom: '15px' }}>
+                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRight: '4px solid #3b82f6', borderRadius: '8px', padding: '6px 15px', direction: 'rtl', textAlign: 'right', marginBottom: '10px' }}>
                     <p style={{ margin: 0, fontSize: '11px', color: '#1e293b', lineHeight: 1.6, fontWeight: 'bold' }}>
                       <span style={{ color: '#3b82f6', marginLeft: '6px' }}>✦</span>
                       {generateEgyptianSummary()}
@@ -1270,7 +1270,7 @@ export default function ManagerAuditPage() {
                   </div>
 
                   {/* High-Level Financial Summary Block */}
-                  <div style={{ backgroundColor: '#f8fafc', border: '2px solid #cbd5e1', borderRadius: '8px', padding: '10px 20px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
+                  <div style={{ backgroundColor: '#f8fafc', border: '2px solid #cbd5e1', borderRadius: '8px', padding: '8px 20px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
                     <div style={{ textAlign: 'center' }}>
                       <p style={{ margin: '0 0 4px', fontSize: '9px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Expected System Cash</p>
                       <p style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#0f172a' }}>EGP {Number(expectedCash).toLocaleString()}</p>
@@ -1293,10 +1293,10 @@ export default function ManagerAuditPage() {
                   </div>
 
                   {/* Branch & Shift Details (Strict Grid) */}
-                  <div style={{ border: '2px solid #e2e8f0', marginBottom: '15px', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ backgroundColor: '#f8fafc', padding: '10px 15px', borderBottom: '2px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  <div style={{ border: '2px solid #e2e8f0', marginBottom: '10px', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ backgroundColor: '#f8fafc', padding: '6px 15px', borderBottom: '2px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '1px' }}>
                       1. Shift & Branch Information
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginTop: '10px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginTop: '6px' }}>
                         <div>
                           <p style={{ margin: '0 0 5px', color: '#64748b' }}>Audited By</p>
                           <p style={{ margin: 0, fontWeight: 'bold', fontSize: '14px', color: '#0f172a' }}>{managerName || "Pending"}</p>
@@ -1308,29 +1308,29 @@ export default function ManagerAuditPage() {
                       </div>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.5fr', gap: '0' }}>
-                      <div style={{ padding: '15px', borderRight: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
+                      <div style={{ padding: '10px 15px', borderRight: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
                         <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Branch / Store ID</p>
                         <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.storeId}</p>
                       </div>
-                      <div style={{ padding: '15px', borderRight: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
+                      <div style={{ padding: '10px 15px', borderRight: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
                         <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Shift Period</p>
                         <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.shift} Shift</p>
                       </div>
-                      <div style={{ padding: '15px', borderBottom: '1px solid #e2e8f0' }}>
+                      <div style={{ padding: '10px 15px', borderBottom: '1px solid #e2e8f0' }}>
                         <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Cashier Name</p>
                         <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.name}</p>
                       </div>
-                      <div style={{ padding: '15px', borderRight: '1px solid #e2e8f0' }}>
+                      <div style={{ padding: '10px 15px', borderRight: '1px solid #e2e8f0' }}>
                         <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Operating Date</p>
                         <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.date}</p>
                       </div>
-                      <div style={{ padding: '15px', borderRight: '1px solid #e2e8f0' }}>
+                      <div style={{ padding: '10px 15px', borderRight: '1px solid #e2e8f0' }}>
                         <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Cashier Role</p>
                         <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>
                           {selectedReport.cashierRole === 2 ? 'Cashier 2 (Money Only)' : 'Cashier 1 (Full)'}
                         </p>
                       </div>
-                      <div style={{ padding: '15px' }}>
+                      <div style={{ padding: '10px 15px' }}>
                         <p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Cashier Submission Timestamp</p>
                         <p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{formatTimeMinus2Hours(selectedReport.createdAt)}</p>
                       </div>
@@ -1338,18 +1338,18 @@ export default function ManagerAuditPage() {
                   </div>
 
                   {/* Financial Audit */}
-                  <div style={{ border: '2px solid #e2e8f0', marginBottom: '10px', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ backgroundColor: '#f8fafc', padding: '6px 15px', borderBottom: '2px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  <div style={{ border: '2px solid #e2e8f0', marginBottom: '8px', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ backgroundColor: '#f8fafc', padding: '4px 15px', borderBottom: '2px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>
                       2. Financial Audit & Variance
                     </div>
 
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '11px' }}>
                       <thead style={{ backgroundColor: '#f1f5f9' }}>
                         <tr>
-                          <th style={{ padding: '6px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Tender Type</th>
-                          <th style={{ padding: '6px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Cashier Declared</th>
-                          <th style={{ padding: '6px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Manager / POS Expected</th>
-                          <th style={{ padding: '6px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569', textAlign: 'right' }}>Variance (Over/Short)</th>
+                          <th style={{ padding: '4px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Tender Type</th>
+                          <th style={{ padding: '4px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Cashier Declared</th>
+                          <th style={{ padding: '4px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Manager / POS Expected</th>
+                          <th style={{ padding: '4px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569', textAlign: 'right' }}>Variance (Over/Short)</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1375,19 +1375,19 @@ export default function ManagerAuditPage() {
 
                   {/* Inventory Review */}
                   {selectedReport.cashierRole !== 2 && (
-                    <div style={{ border: '2px solid #e2e8f0', marginBottom: '10px', borderRadius: '4px', overflow: 'hidden' }}>
-                      <div style={{ backgroundColor: '#f8fafc', padding: '6px 15px', borderBottom: '2px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                    <div style={{ border: '2px solid #e2e8f0', marginBottom: '8px', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{ backgroundColor: '#f8fafc', padding: '4px 15px', borderBottom: '2px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>
                         3. Inventory Counts & Shrinkage
                       </div>
 
                       <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '11px' }}>
                         <thead style={{ backgroundColor: '#f1f5f9' }}>
                           <tr>
-                            <th style={{ padding: '6px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Item</th>
-                            <th style={{ padding: '6px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Start</th>
-                            <th style={{ padding: '6px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Delivery</th>
-                            <th style={{ padding: '6px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>End</th>
-                            <th style={{ padding: '6px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569', textAlign: 'right' }}>Calculated Sold</th>
+                            <th style={{ padding: '4px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Item</th>
+                            <th style={{ padding: '4px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Start</th>
+                            <th style={{ padding: '4px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>Delivery</th>
+                            <th style={{ padding: '4px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>End</th>
+                            <th style={{ padding: '4px 15px', borderBottom: '1px solid #cbd5e1', color: '#475569', textAlign: 'right' }}>Calculated Sold</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1421,11 +1421,11 @@ export default function ManagerAuditPage() {
                   )}
 
                   {/* Manager Notes & Rejection History */}
-                  <div style={{ border: '2px solid #e2e8f0', marginBottom: '15px', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ backgroundColor: '#f8fafc', padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  <div style={{ border: '2px solid #e2e8f0', marginBottom: '8px', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ backgroundColor: '#f8fafc', padding: '4px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>
                       4. Manager Comments & Review
                     </div>
-                    <div style={{ padding: '10px 15px', fontSize: '11px', color: '#334155' }}>
+                    <div style={{ padding: '6px 15px', fontSize: '11px', color: '#334155' }}>
                       {selectedReport.managerAudit?.rejectReason && (
                         <div style={{ marginBottom: '8px', paddingBottom: '8px', borderBottom: '1px dashed #cbd5e1' }}>
                           <p style={{ margin: '0 0 2px', fontSize: '9px', fontWeight: 'bold', color: '#dc2626', textTransform: 'uppercase' }}>Previous Rejection Reason (Corrected by Cashier)</p>
@@ -1448,7 +1448,7 @@ export default function ManagerAuditPage() {
                   </div>
 
                   {/* Official Signatures & Stamp Block */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '15px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
 
                     {/* Cashier Signature */}
                     <div style={{ width: '33%' }}>
