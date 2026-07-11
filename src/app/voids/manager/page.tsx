@@ -310,7 +310,7 @@ export default function ManagerVoidsPage() {
                   <div style={{ paddingBottom: '15px', borderBottom: '4px solid #dc2626', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
                       <h1 style={{ fontSize: '32px', fontWeight: '900', margin: '0 0 5px 0', textTransform: 'uppercase', letterSpacing: '-0.5px', color: '#0f172a' }}>OFFICIAL VOID</h1>
-                      <p style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#475569', fontWeight: '700', textTransform: 'uppercase' }}>Circle K Corporate Return Record</p>
+                      <p style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#475569', fontWeight: '700', textTransform: 'uppercase' }}>Circle K ANH Portal Void</p>
                       <div style={{ display: 'inline-block', padding: '6px 12px', backgroundColor: '#f1f5f9', borderRadius: '6px', fontSize: '13px', fontWeight: '800', color: '#334155', border: '1px solid #e2e8f0' }}>
                         Cashier: <span style={{ color: '#0f172a', fontWeight: '900' }}>{selectedVoid.cashierName || 'N/A'}</span>
                       </div>
