@@ -1130,7 +1130,35 @@ export default function ManagerAuditPage() {
       )}
 
       {/* --- HIDDEN FORMAL A4 PRINT TEMPLATE FOR MANAGER --- */}
-      {selectedReport && (
+      {selectedReport && (() => {
+        const cashVar = calculateCashVariance();
+        const visaVar = calculateVisaVariance();
+        
+        let shiftGrade = "F";
+        let gradeBg = "#fef2f2";
+        let gradeBorder = "#ef4444";
+        let gradeText = "#dc2626";
+
+        if (visaVar !== 0) {
+          shiftGrade = "F";
+        } else if (cashVar === 0) {
+          shiftGrade = "A+";
+          gradeBg = "#f0fdf4";
+          gradeBorder = "#22c55e";
+          gradeText = "#16a34a";
+        } else if (cashVar > 0 && cashVar <= 100) {
+          shiftGrade = "B";
+          gradeBg = "#fefce8";
+          gradeBorder = "#eab308";
+          gradeText = "#ca8a04";
+        } else if (cashVar >= -50 && cashVar < 0) {
+          shiftGrade = "C";
+          gradeBg = "#fff7ed";
+          gradeBorder = "#f97316";
+          gradeText = "#ea580c";
+        }
+
+        return (
         <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
           <div id="manager-signoff-pdf-capture" style={{ width: '794px', minHeight: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', display: 'flex', flexDirection: 'column' }}>
 
@@ -1155,8 +1183,8 @@ export default function ManagerAuditPage() {
             </div>
 
             {/* Automated Digital Audit Stamp (Giant Watermark) */}
-            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-35deg)', fontSize: '90px', fontWeight: '900', color: (Math.abs(calculateCashVariance()) > 20 || Math.abs(calculateVisaVariance()) > 1) ? 'rgba(220, 38, 38, 0.08)' : 'rgba(22, 163, 74, 0.06)', zIndex: 5, whiteSpace: 'nowrap', pointerEvents: 'none', textTransform: 'uppercase', letterSpacing: '5px' }}>
-              {(Math.abs(calculateCashVariance()) > 20 || Math.abs(calculateVisaVariance()) > 1) ? "AUDIT REQUIRED" : "VERIFIED: BALANCED"}
+            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-35deg)', fontSize: '90px', fontWeight: '900', color: (shiftGrade === "F" || shiftGrade === "C") ? 'rgba(220, 38, 38, 0.08)' : 'rgba(22, 163, 74, 0.06)', zIndex: 5, whiteSpace: 'nowrap', pointerEvents: 'none', textTransform: 'uppercase', letterSpacing: '5px' }}>
+              {(shiftGrade === "F" || shiftGrade === "C") ? "AUDIT REQUIRED" : "VERIFIED: BALANCED"}
             </div>
 
             {/* Header / Letterhead */}
@@ -1173,10 +1201,10 @@ export default function ManagerAuditPage() {
               <div style={{ textAlign: 'right', display: 'flex', gap: '15px', alignItems: 'stretch' }}>
                 
                 {/* Gamification: Shift Grade */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: (Math.abs(calculateCashVariance()) === 0 && Math.abs(calculateVisaVariance()) === 0) ? '#f0fdf4' : (Math.abs(calculateCashVariance()) <= 20 && Math.abs(calculateVisaVariance()) <= 1) ? '#fefce8' : '#fef2f2', border: `3px solid ${(Math.abs(calculateCashVariance()) === 0 && Math.abs(calculateVisaVariance()) === 0) ? '#22c55e' : (Math.abs(calculateCashVariance()) <= 20 && Math.abs(calculateVisaVariance()) <= 1) ? '#eab308' : '#ef4444'}`, borderRadius: '12px', padding: '5px 15px', minWidth: '70px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: gradeBg, border: `3px solid ${gradeBorder}`, borderRadius: '12px', padding: '5px 15px', minWidth: '70px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
                   <p style={{ margin: '0 0 2px', fontSize: '9px', fontWeight: '900', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Grade</p>
-                  <p style={{ margin: 0, fontSize: '32px', fontWeight: '900', color: (Math.abs(calculateCashVariance()) === 0 && Math.abs(calculateVisaVariance()) === 0) ? '#16a34a' : (Math.abs(calculateCashVariance()) <= 20 && Math.abs(calculateVisaVariance()) <= 1) ? '#ca8a04' : '#dc2626', lineHeight: 1 }}>
-                    {(Math.abs(calculateCashVariance()) === 0 && Math.abs(calculateVisaVariance()) === 0) ? "A+" : (Math.abs(calculateCashVariance()) <= 20 && Math.abs(calculateVisaVariance()) <= 1) ? "B" : "C"}
+                  <p style={{ margin: 0, fontSize: '32px', fontWeight: '900', color: gradeText, lineHeight: 1 }}>
+                    {shiftGrade}
                   </p>
                 </div>
 
@@ -1417,7 +1445,8 @@ export default function ManagerAuditPage() {
           </div>
 
         </div>
-      )}
+        );
+      })()}
 
       {/* Reject Modal */}
       {rejectModalOpen && (
