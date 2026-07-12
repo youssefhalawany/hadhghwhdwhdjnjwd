@@ -92,6 +92,7 @@ export default function ManagerInventoryAudit() {
   }, [activeBatch?.id]);
 
   const currentBatchIdRef = useRef<string | null>(null);
+  const draftLoadedRef = useRef<string | null>(null);
 
   // 3. Aggregate scans into reconciliation data whenever scans or batch changes
   useEffect(() => {
@@ -132,16 +133,23 @@ export default function ManagerInventoryAudit() {
       aggregated[scan.barcode].actualQuantity += scan.quantity;
     });
 
-    // Merge any existing items that were manually added but not scanned yet
-    // Include drafts from the server
+    // Only merge draft from server on the very first load of this batch, to prevent
+    // race conditions where deleting an item locally is overwritten by a stale snapshot
+    const isFirstLoadOfDraft = activeBatch?.id && activeBatch.id !== draftLoadedRef.current;
+    const draftSource = isFirstLoadOfDraft ? (activeBatch?.reconciliationDraft || {}) : {};
+    
+    if (isFirstLoadOfDraft && activeBatch?.id) {
+        draftLoadedRef.current = activeBatch.id;
+    }
+
     const keysToMerge = new Set([
       ...Object.keys(reconciliationData),
-      ...Object.keys(activeBatch?.reconciliationDraft || {})
+      ...Object.keys(draftSource)
     ]);
 
     keysToMerge.forEach(barcode => {
       if (!aggregated[barcode]) {
-         const draft = activeBatch?.reconciliationDraft?.[barcode] || {};
+         const draft = draftSource[barcode] || {};
          const local = reconciliationData[barcode] || {};
          aggregated[barcode] = {
            barcode,
