@@ -650,9 +650,9 @@ export default function ManagerInventoryAudit() {
               {/* Header */}
               <div className="flex justify-between items-start border-b-4 border-black pb-4 mb-6">
                 <div className="flex items-center gap-3">
-                  <div className="bg-red-600 text-white p-2 rounded-xl font-black text-3xl tracking-tighter w-12 h-12 flex items-center justify-center">K</div>
+                  <div className="bg-black text-white p-2 rounded-xl font-black text-3xl tracking-tighter w-12 h-12 flex items-center justify-center">K</div>
                   <div>
-                    <h1 className="text-2xl font-black uppercase tracking-tight leading-none">Circle K</h1>
+                    <h1 className="text-2xl font-black uppercase tracking-tight leading-none text-black">Circle K</h1>
                     <p className="text-xs font-bold text-gray-500 mt-1 uppercase tracking-widest">Branch Inventory Audit</p>
                   </div>
                 </div>
@@ -690,13 +690,13 @@ export default function ManagerInventoryAudit() {
                             </div>
                             {it.productName && <div className="text-[9px] font-bold text-slate-700 leading-tight mt-1 max-w-[120px] whitespace-normal">{it.productName}</div>}
                           </td>
-                          <td className="py-1 px-3 font-black text-gray-900 text-center border-r-2 border-black text-sm">{activeActual}</td>
-                          <td className="py-1 px-3 font-black text-gray-300 text-center border-r-2 border-black text-sm">{it.systemQuantity || (printBatch.status === "OPEN" ? "___________" : "-")}</td>
-                          <td className={`py-1 px-3 font-black text-center border-r-2 border-black text-sm ${variance < 0 ? 'text-red-600' : variance > 0 ? 'text-amber-600' : 'text-gray-900'}`}>
+                          <td className="py-1 px-3 font-black text-black text-center border-r-2 border-black text-sm">{activeActual}</td>
+                          <td className="py-1 px-3 font-black text-gray-500 text-center border-r-2 border-black text-sm">{it.systemQuantity || (printBatch.status === "OPEN" ? "___________" : "-")}</td>
+                          <td className="py-1 px-3 font-black text-center border-r-2 border-black text-sm text-black">
                             {it.systemQuantity === "" ? "-" : (variance > 0 ? "+" : "") + variance}
                           </td>
-                          <td className="py-1 px-3 font-mono font-bold text-[10px] text-gray-800 border-r-2 border-black text-center tracking-wider">{it.transferIn || "-"}</td>
-                          <td className="py-1 px-3 font-mono font-bold text-[10px] text-gray-800 text-center tracking-wider">{it.transferOut || "-"}</td>
+                          <td className="py-1 px-3 font-mono font-bold text-[10px] text-black border-r-2 border-black text-center tracking-wider">{it.transferIn || "-"}</td>
+                          <td className="py-1 px-3 font-mono font-bold text-[10px] text-black text-center tracking-wider">{it.transferOut || "-"}</td>
                         </tr>
                       );
                     })}
@@ -725,14 +725,14 @@ export default function ManagerInventoryAudit() {
                     <h3 className="font-black text-sm uppercase mb-2 border-b-2 border-black inline-block">Action Required Summary</h3>
                     <div className="flex gap-4">
                       {needsTransferIn.length > 0 && (
-                        <div className="flex-1">
-                          <h4 className="font-bold text-xs mb-1 text-emerald-700 uppercase bg-emerald-50 px-2 py-1">Items To Transfer IN (Overage)</h4>
-                          <table className="w-full text-left border border-black text-[10px]">
-                            <thead className="bg-gray-100">
-                              <tr>
-                                <th className="p-1 border-r border-black font-bold">Item</th>
-                                <th className="p-1 border-r border-black font-bold text-center">Qty to IN</th>
-                                <th className="p-1 font-bold text-center">TR IN Ref</th>
+                        <div className="flex-1 border-2 border-black p-1">
+                          <h4 className="font-black text-xs mb-1 text-black uppercase bg-gray-200 px-2 py-1 border-b-2 border-black">Items To Transfer IN (Overage)</h4>
+                          <table className="w-full text-left border-collapse text-[10px]">
+                            <thead>
+                              <tr className="border-b-2 border-black">
+                                <th className="p-1 border-r-2 border-black font-black uppercase">Item</th>
+                                <th className="p-1 border-r-2 border-black font-black text-center uppercase">Qty to IN</th>
+                                <th className="p-1 font-black text-center uppercase">TR IN Ref</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -741,13 +741,13 @@ export default function ManagerInventoryAudit() {
                                 const activeActual = it.adjustedActualQuantity !== "" && it.adjustedActualQuantity !== undefined ? Number(it.adjustedActualQuantity) : it.actualQuantity;
                                 const variance = activeActual - sysQty;
                                 return (
-                                  <tr key={i} className="border-t border-black">
-                                    <td className="p-1 border-r border-black">
-                                      <div className="font-mono">{it.barcode}</div>
-                                      {it.productName && <div className="text-[8px] text-gray-600">{it.productName}</div>}
+                                  <tr key={i} className="border-b border-black last:border-b-0">
+                                    <td className="p-1 border-r-2 border-black">
+                                      <div className="font-mono font-bold">{it.barcode}</div>
+                                      {it.productName && <div className="text-[8px] text-black font-bold leading-tight">{it.productName}</div>}
                                     </td>
-                                    <td className="p-1 border-r border-black text-center font-bold text-emerald-700">+{variance}</td>
-                                    <td className="p-1 text-center font-mono">{it.transferIn || "_______"}</td>
+                                    <td className="p-1 border-r-2 border-black text-center font-black text-lg">+{variance}</td>
+                                    <td className="p-1 text-center font-mono font-bold">{it.transferIn || "_______"}</td>
                                   </tr>
                                 );
                               })}
@@ -756,14 +756,14 @@ export default function ManagerInventoryAudit() {
                         </div>
                       )}
                       {needsTransferOut.length > 0 && (
-                        <div className="flex-1">
-                          <h4 className="font-bold text-xs mb-1 text-red-700 uppercase bg-red-50 px-2 py-1">Items To Transfer OUT (Shortage)</h4>
-                          <table className="w-full text-left border border-black text-[10px]">
-                            <thead className="bg-gray-100">
-                              <tr>
-                                <th className="p-1 border-r border-black font-bold">Item</th>
-                                <th className="p-1 border-r border-black font-bold text-center">Qty to OUT</th>
-                                <th className="p-1 font-bold text-center">TR OUT Ref</th>
+                        <div className="flex-1 border-2 border-black p-1">
+                          <h4 className="font-black text-xs mb-1 text-black uppercase bg-gray-200 px-2 py-1 border-b-2 border-black">Items To Transfer OUT (Shortage)</h4>
+                          <table className="w-full text-left border-collapse text-[10px]">
+                            <thead>
+                              <tr className="border-b-2 border-black">
+                                <th className="p-1 border-r-2 border-black font-black uppercase">Item</th>
+                                <th className="p-1 border-r-2 border-black font-black text-center uppercase">Qty to OUT</th>
+                                <th className="p-1 font-black text-center uppercase">TR OUT Ref</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -772,13 +772,13 @@ export default function ManagerInventoryAudit() {
                                 const activeActual = it.adjustedActualQuantity !== "" && it.adjustedActualQuantity !== undefined ? Number(it.adjustedActualQuantity) : it.actualQuantity;
                                 const variance = activeActual - sysQty;
                                 return (
-                                  <tr key={i} className="border-t border-black">
-                                    <td className="p-1 border-r border-black">
-                                      <div className="font-mono">{it.barcode}</div>
-                                      {it.productName && <div className="text-[8px] text-gray-600">{it.productName}</div>}
+                                  <tr key={i} className="border-b border-black last:border-b-0">
+                                    <td className="p-1 border-r-2 border-black">
+                                      <div className="font-mono font-bold">{it.barcode}</div>
+                                      {it.productName && <div className="text-[8px] text-black font-bold leading-tight">{it.productName}</div>}
                                     </td>
-                                    <td className="p-1 border-r border-black text-center font-bold text-red-700">{Math.abs(variance)}</td>
-                                    <td className="p-1 text-center font-mono">{it.transferOut || "_______"}</td>
+                                    <td className="p-1 border-r-2 border-black text-center font-black text-lg">{Math.abs(variance)}</td>
+                                    <td className="p-1 text-center font-mono font-bold">{it.transferOut || "_______"}</td>
                                   </tr>
                                 );
                               })}
