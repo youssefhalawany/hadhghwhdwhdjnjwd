@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-pro", // Use pro for complex reasoning
+      model: "gemini-1.5-flash", // Use flash since it's supported and fast
     });
 
     // Format the data for the prompt
