@@ -235,24 +235,110 @@ export default function ManagerInventoryAudit() {
     if (!selectedHistoryBatch) return;
     setIsGeneratingAI(true);
     try {
-      const res = await fetch("/api/audit-summary", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reconData: selectedHistoryBatch.reconciliationData || [] })
+      const reconData = selectedHistoryBatch.reconciliationData || [];
+      
+      const shorts: any[] = [];
+      const overs: any[] = [];
+      
+      reconData.forEach((it: any) => {
+        const sysQty = Number(it.systemQuantity) || 0;
+        const actQty = it.adjustedActualQuantity !== "" && it.adjustedActualQuantity !== undefined ? Number(it.adjustedActualQuantity) : Number(it.actualQuantity) || 0;
+        const variance = actQty - sysQty;
+        if (variance < 0) shorts.push({ ...it, variance });
+        if (variance > 0) overs.push({ ...it, variance });
       });
-      const data = await res.json();
-      if (data.success) {
-        await dbService.updateDoc("audit_batches", selectedHistoryBatch.id, {
-          aiSummary: data.summary
+
+      const crossScans: any[] = [];
+      const genuineShorts: any[] = [];
+      const genuineOvers: any[] = [...overs];
+
+      // Detect cross scans (same first word in product name)
+      shorts.forEach(shortItem => {
+        const shortName = shortItem.productName || "";
+        const shortBrand = shortName.split(" ")[0]?.toLowerCase();
+        
+        const overMatchIndex = genuineOvers.findIndex(overItem => {
+          const overBrand = (overItem.productName || "").split(" ")[0]?.toLowerCase();
+          return overBrand === shortBrand && shortBrand !== "";
         });
-        setSelectedHistoryBatch({ ...selectedHistoryBatch, aiSummary: data.summary });
-        alert(lang === "ar" ? "تم إنشاء الملخص الذكي بنجاح!" : "AI Summary generated successfully!");
-      } else {
-        throw new Error(data.error);
+
+        if (overMatchIndex !== -1) {
+          const overItem = genuineOvers[overMatchIndex];
+          crossScans.push({ short: shortItem, over: overItem });
+          genuineOvers.splice(overMatchIndex, 1);
+        } else {
+          genuineShorts.push(shortItem);
+        }
+      });
+
+      let englishText = `[EXECUTIVE AUDIT SUMMARY]\n\n`;
+      englishText += `Total Items Short: ${shorts.length}\n`;
+      englishText += `Total Items Over: ${overs.length}\n\n`;
+
+      if (crossScans.length > 0) {
+        englishText += `⚠️ POTENTIAL CROSS-SCANNING ERRORS (Wrong variant/flavor scanned):\n`;
+        crossScans.forEach(cs => {
+          englishText += `- Cashier likely scanned [${cs.over.productName || cs.over.barcode}] (+${cs.over.variance}) INSTEAD OF [${cs.short.productName || cs.short.barcode}] (${cs.short.variance}).\n`;
+        });
+        englishText += `\n`;
       }
+
+      if (genuineShorts.length > 0) {
+        englishText += `🔴 GENUINE SHORTAGES (Requires Transfer OUT):\n`;
+        genuineShorts.forEach(s => {
+          englishText += `- ${s.productName || s.barcode} (Variance: ${s.variance})\n`;
+        });
+        englishText += `\n`;
+      }
+
+      if (genuineOvers.length > 0) {
+        englishText += `🟢 GENUINE OVERAGES (Requires Transfer IN):\n`;
+        genuineOvers.forEach(o => {
+          englishText += `- ${o.productName || o.barcode} (Variance: +${o.variance})\n`;
+        });
+        englishText += `\n`;
+      }
+
+      let arabicText = `[ملخص تنفيذي للمراجعة]\n\n`;
+      arabicText += `إجمالي الأصناف العجز: ${shorts.length}\n`;
+      arabicText += `إجمالي الأصناف الزيادة: ${overs.length}\n\n`;
+
+      if (crossScans.length > 0) {
+        arabicText += `⚠️ أخطاء محتملة في مسح الباركود (مسح صنف بدلاً من صنف آخر لنفس الشركة):\n`;
+        crossScans.forEach(cs => {
+          arabicText += `- الكاشير على الأرجح قام بمسح [${cs.over.productName || cs.over.barcode}] (+${cs.over.variance}) بدلاً من [${cs.short.productName || cs.short.barcode}] (${cs.short.variance}).\n`;
+        });
+        arabicText += `\n`;
+      }
+
+      if (genuineShorts.length > 0) {
+        arabicText += `🔴 عجز حقيقي (يحتاج نقل للخارج - Transfer OUT):\n`;
+        genuineShorts.forEach(s => {
+          arabicText += `- ${s.productName || s.barcode} (العجز: ${s.variance})\n`;
+        });
+        arabicText += `\n`;
+      }
+
+      if (genuineOvers.length > 0) {
+        arabicText += `🟢 زيادة حقيقية (تحتاج نقل للداخل - Transfer IN):\n`;
+        genuineOvers.forEach(o => {
+          arabicText += `- ${o.productName || o.barcode} (الزيادة: +${o.variance})\n`;
+        });
+        arabicText += `\n`;
+      }
+
+      const summaryText = englishText + `\n-----------------------------------\n\n` + arabicText;
+
+      await dbService.updateDoc("audit_batches", selectedHistoryBatch.id, {
+        aiSummary: summaryText
+      });
+      setSelectedHistoryBatch({ ...selectedHistoryBatch, aiSummary: summaryText });
+      
+      alert(lang === "ar" ? "تم إنشاء الملخص بنجاح!" : "Executive Summary generated successfully!");
+      
     } catch (e: any) {
       console.error(e);
-      alert("Error generating AI summary: " + e.message);
+      alert("Error generating summary: " + e.message);
     } finally {
       setIsGeneratingAI(false);
     }
