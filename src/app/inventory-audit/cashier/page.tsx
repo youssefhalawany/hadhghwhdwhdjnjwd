@@ -33,10 +33,31 @@ export default function CashierInventoryAudit() {
   const [successMsg, setSuccessMsg] = useState("");
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   
-  // Scans history state
   const [myScans, setMyScans] = useState<any[]>([]);
   const [editingScanId, setEditingScanId] = useState<string | null>(null);
   const [editQuantity, setEditQuantity] = useState("");
+  const [productNameDisplay, setProductNameDisplay] = useState("");
+
+  // Listen for barcode changes to show product name instantly
+  useEffect(() => {
+    if (!barcode.trim()) {
+      setProductNameDisplay("");
+      return;
+    }
+    const fetchName = async () => {
+      try {
+         const pQuery = query(collection(db, "products"), where("barcode", "==", barcode.trim()), limit(1));
+         const pSnap = await getDocs(pQuery);
+         if (!pSnap.empty) {
+           const data = pSnap.docs[0].data();
+           setProductNameDisplay(data.itemName || data.description || "");
+         } else {
+           setProductNameDisplay("");
+         }
+      } catch(e) {}
+    };
+    fetchName();
+  }, [barcode]);
 
   // Listen for open audit batches
   useEffect(() => {
@@ -75,8 +96,8 @@ export default function CashierInventoryAudit() {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const allScans = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      // Filter to only show the logged-in cashier's scans
-      const filtered = allScans.filter((s: any) => s.cashierEmail === user.email);
+      // Filter to only show the logged-in cashier's scans (comparing name since email might not exist)
+      const filtered = allScans.filter((s: any) => s.cashierName === user.name || s.cashierEmail === user.email);
       // Sort by timestamp descending
       filtered.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       setMyScans(filtered);
@@ -217,10 +238,12 @@ export default function CashierInventoryAudit() {
                   <input
                     id="barcode-input"
                     type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     value={barcode}
                     onChange={(e) => setBarcode(e.target.value)}
                     placeholder={lang === "ar" ? "امسح الباركود..." : "Scan barcode..."}
-                    className="flex-1 p-4 border-2 border-slate-200 rounded-xl bg-slate-50 font-mono text-lg font-bold outline-none focus:border-blue-500 focus:bg-white transition-all shadow-inner"
+                    className="flex-1 p-4 border-2 border-slate-200 rounded-xl bg-slate-50 font-mono text-lg font-bold text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all shadow-inner"
                     required
                     autoFocus
                     autoComplete="off"
@@ -233,6 +256,11 @@ export default function CashierInventoryAudit() {
                     <Camera className="w-6 h-6" />
                   </button>
                 </div>
+                {productNameDisplay && (
+                  <p className="mt-2 text-sm font-bold text-blue-600 bg-blue-50 p-2 rounded-lg border border-blue-100 animate-in fade-in">
+                    {productNameDisplay}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -241,12 +269,14 @@ export default function CashierInventoryAudit() {
                 </label>
                 <input
                   type="number"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
                   placeholder="0"
                   min="0"
                   step="any"
-                  className="w-full p-4 border-2 border-slate-200 rounded-xl bg-slate-50 text-2xl font-black outline-none focus:border-blue-500 focus:bg-white transition-all text-center shadow-inner"
+                  className="w-full p-4 border-2 border-slate-200 rounded-xl bg-slate-50 text-2xl font-black text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all text-center shadow-inner"
                   required
                 />
               </div>

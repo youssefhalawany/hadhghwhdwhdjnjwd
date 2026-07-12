@@ -113,6 +113,7 @@ export default function ManagerInventoryAudit() {
           barcode: scan.barcode,
           productName: scan.productName || existing.productName || draft?.productName || "",
           actualQuantity: 0,
+          adjustedActualQuantity: existing.adjustedActualQuantity ?? draft?.adjustedActualQuantity ?? "",
           systemQuantity: existing.systemQuantity || "",
           transferIn: existing.transferIn || "",
           transferOut: existing.transferOut || ""
@@ -136,6 +137,7 @@ export default function ManagerInventoryAudit() {
            barcode,
            productName: local.productName || draft.productName || "",
            actualQuantity: 0,
+           adjustedActualQuantity: local.adjustedActualQuantity ?? draft.adjustedActualQuantity ?? "",
            systemQuantity: local.systemQuantity || draft.systemQuantity || "",
            transferIn: local.transferIn || draft.transferIn || "",
            transferOut: local.transferOut || draft.transferOut || ""
@@ -151,6 +153,8 @@ export default function ManagerInventoryAudit() {
     const batchId = `AUDIT-${new Date().toISOString().replace(/[-:T.]/g, "").slice(0, 14)}`;
     try {
       console.log("Attempting to create batch:", batchId);
+      // Clear local reconciliation data for the new batch
+      setReconciliationData({});
       await dbService.setDoc("audit_batches", batchId, {
         status: "OPEN",
         openedAt: new Date().toISOString(),
@@ -452,7 +456,8 @@ export default function ManagerInventoryAudit() {
                   ) : (
                     reconList.map(item => {
                       const sysQty = Number(item.systemQuantity) || 0;
-                      const variance = item.systemQuantity === "" ? 0 : item.actualQuantity - sysQty;
+                      const activeActual = item.adjustedActualQuantity !== "" && item.adjustedActualQuantity !== undefined ? Number(item.adjustedActualQuantity) : item.actualQuantity;
+                      const variance = item.systemQuantity === "" ? 0 : activeActual - sysQty;
                       const isShort = variance < 0;
                       const isOver = variance > 0;
                       
@@ -469,7 +474,13 @@ export default function ManagerInventoryAudit() {
                             )}
                           </td>
                           <td className="p-4 text-center bg-blue-50/30">
-                            <span className="text-xl font-black text-blue-700">{item.actualQuantity}</span>
+                            <input 
+                              type="number"
+                              disabled={activeBatch.status === "OPEN" || activeBatch.status === "FINALIZED"}
+                              value={item.adjustedActualQuantity !== "" && item.adjustedActualQuantity !== undefined ? item.adjustedActualQuantity : item.actualQuantity}
+                              onChange={(e) => updateReconField(item.barcode, "adjustedActualQuantity", e.target.value)}
+                              className="w-24 p-2 text-center border-2 border-transparent hover:border-slate-200 rounded-lg font-black text-xl text-blue-700 bg-transparent outline-none focus:border-blue-500 focus:bg-white disabled:opacity-50"
+                            />
                           </td>
                           <td className="p-4 text-center">
                             <input 
