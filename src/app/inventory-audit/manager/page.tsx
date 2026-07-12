@@ -476,7 +476,7 @@ export default function ManagerInventoryAudit() {
                           <td className="p-4 text-center bg-blue-50/30">
                             <input 
                               type="number"
-                              disabled={activeBatch.status === "OPEN" || activeBatch.status === "FINALIZED"}
+                              disabled={activeBatch.status === "FINALIZED"}
                               value={item.adjustedActualQuantity !== "" && item.adjustedActualQuantity !== undefined ? item.adjustedActualQuantity : item.actualQuantity}
                               onChange={(e) => updateReconField(item.barcode, "adjustedActualQuantity", e.target.value)}
                               className="w-24 p-2 text-center border-2 border-transparent hover:border-slate-200 rounded-lg font-black text-xl text-blue-700 bg-transparent outline-none focus:border-blue-500 focus:bg-white disabled:opacity-50"
@@ -485,7 +485,7 @@ export default function ManagerInventoryAudit() {
                           <td className="p-4 text-center">
                             <input 
                               type="number"
-                              disabled={activeBatch.status === "OPEN" || activeBatch.status === "FINALIZED"}
+                              disabled={activeBatch.status === "FINALIZED"}
                               value={item.systemQuantity}
                               onChange={(e) => updateReconField(item.barcode, "systemQuantity", e.target.value)}
                               placeholder="System"
@@ -502,7 +502,7 @@ export default function ManagerInventoryAudit() {
                           <td className="p-4">
                             <input 
                               type="text"
-                              disabled={activeBatch.status === "OPEN" || activeBatch.status === "FINALIZED" || variance >= 0}
+                              disabled={activeBatch.status === "FINALIZED" || variance >= 0}
                               value={item.transferIn}
                               onChange={(e) => updateReconField(item.barcode, "transferIn", e.target.value)}
                               placeholder={isShort ? "Req: Document #" : "-"}
@@ -512,7 +512,7 @@ export default function ManagerInventoryAudit() {
                           <td className="p-4">
                             <input 
                               type="text"
-                              disabled={activeBatch.status === "OPEN" || activeBatch.status === "FINALIZED" || variance <= 0}
+                              disabled={activeBatch.status === "FINALIZED" || variance <= 0}
                               value={item.transferOut}
                               onChange={(e) => updateReconField(item.barcode, "transferOut", e.target.value)}
                               placeholder={isOver ? "Req: Document #" : "-"}
