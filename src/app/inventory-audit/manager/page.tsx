@@ -24,6 +24,7 @@ export default function ManagerInventoryAudit() {
   const [allBatches, setAllBatches] = useState<any[]>([]);
   const [viewMode, setViewMode] = useState<"active" | "history">("active");
   const [selectedHistoryBatch, setSelectedHistoryBatch] = useState<any | null>(null);
+  const [isSavingHistory, setIsSavingHistory] = useState(false);
 
   // Grouped and reconciled data
   const [reconciliationData, setReconciliationData] = useState<Record<string, any>>({});
@@ -198,7 +199,34 @@ export default function ManagerInventoryAudit() {
       // Since status changes to FINALIZED, it will drop off the activeBatch listener.
       // But we still want to show the print layout for a moment.
     } catch (e) {
-      console.error("Error finalizing", e);
+      console.error("Error finalizing batch", e);
+    }
+  };
+
+  const updateHistoryReconField = (barcode: string, field: string, value: string) => {
+    if (!selectedHistoryBatch) return;
+    const newData = (selectedHistoryBatch.reconciliationData || []).map((item: any) => {
+      if (item.barcode === barcode) {
+        return { ...item, [field]: value };
+      }
+      return item;
+    });
+    setSelectedHistoryBatch({ ...selectedHistoryBatch, reconciliationData: newData });
+  };
+
+  const handleSaveHistory = async () => {
+    if (!selectedHistoryBatch) return;
+    setIsSavingHistory(true);
+    try {
+      await dbService.updateDoc("audit_batches", selectedHistoryBatch.id, {
+        reconciliationData: selectedHistoryBatch.reconciliationData
+      });
+      alert(lang === "ar" ? "تم الحفظ بنجاح!" : "Changes saved successfully!");
+    } catch (e) {
+      console.error("Error saving history", e);
+      alert("Error saving changes.");
+    } finally {
+      setIsSavingHistory(false);
     }
   };
 
@@ -320,6 +348,9 @@ export default function ManagerInventoryAudit() {
                   <div className="flex justify-between items-center mb-6">
                     <h2 className="text-2xl font-black uppercase tracking-tight">Audit Report: {selectedHistoryBatch.id}</h2>
                     <div className="flex gap-3 no-print">
+                      <button onClick={handleSaveHistory} disabled={isSavingHistory} className="px-6 py-2 bg-emerald-600 text-white rounded-xl font-black hover:bg-emerald-700 transition-colors shadow-lg disabled:opacity-50">
+                        {isSavingHistory ? "SAVING..." : "SAVE CHANGES"}
+                      </button>
                       <button onClick={() => window.print()} className="px-6 py-2 bg-blue-600 text-white rounded-xl font-black hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-lg">
                         <FileText className="w-5 h-5" /> PRINT
                       </button>
@@ -331,28 +362,74 @@ export default function ManagerInventoryAudit() {
                   
                   <table className="w-full text-left border-collapse border border-slate-200 text-sm">
                     <thead>
-                      <tr className="bg-slate-100">
-                        <th className="p-3 border border-slate-200 font-bold uppercase tracking-widest text-slate-500 text-[10px]">Item</th>
-                        <th className="p-3 border border-slate-200 font-bold uppercase tracking-widest text-slate-500 text-[10px] text-center">Actual (Scanned)</th>
-                        <th className="p-3 border border-slate-200 font-bold uppercase tracking-widest text-slate-500 text-[10px] text-center">System Qty</th>
-                        <th className="p-3 border border-slate-200 font-bold uppercase tracking-widest text-slate-500 text-[10px] text-center">Variance</th>
+                      <tr className="bg-slate-100 border-b-2 border-slate-200">
+                        <th className="p-3 font-black text-slate-500 text-xs uppercase">Barcode</th>
+                        <th className="p-3 font-black text-blue-600 text-xs uppercase text-center bg-blue-50/50">Actual Qty</th>
+                        <th className="p-3 font-black text-slate-500 text-xs uppercase text-center">System Qty</th>
+                        <th className="p-3 font-black text-slate-500 text-xs uppercase text-center">Variance</th>
+                        <th className="p-3 font-black text-slate-500 text-xs uppercase">Transfer In Ref</th>
+                        <th className="p-3 font-black text-slate-500 text-xs uppercase">Transfer Out Ref</th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-slate-100">
                       {(selectedHistoryBatch.reconciliationData || []).map((item: any) => {
-                        const variance = (Number(item.actualQuantity) || 0) - (Number(item.systemQuantity) || 0);
+                        const sysQty = Number(item.systemQuantity) || 0;
+                        const activeActual = item.adjustedActualQuantity !== "" && item.adjustedActualQuantity !== undefined ? Number(item.adjustedActualQuantity) : item.actualQuantity;
+                        const variance = item.systemQuantity === "" ? 0 : activeActual - sysQty;
+                        const isShort = variance < 0;
+                        const isOver = variance > 0;
+                        
                         return (
-                          <tr key={item.barcode} className="hover:bg-slate-50">
-                            <td className="p-3 border border-slate-200">
+                          <tr key={item.barcode} className="hover:bg-slate-50 transition-colors">
+                            <td className="p-3">
                               <div className="bg-white p-2 rounded-lg border border-slate-200 inline-block mb-1">
                                 <Barcode value={item.barcode} width={1.5} height={40} fontSize={12} margin={0} />
                               </div>
-                              {item.productName && <div className="text-xs font-bold text-slate-600 truncate max-w-[200px]" title={item.productName}>{item.productName}</div>}
+                              {item.productName && <div className="text-xs font-bold text-slate-600 truncate max-w-[160px]" title={item.productName}>{item.productName}</div>}
                             </td>
-                            <td className="p-3 border border-slate-200 text-center font-black text-xl text-blue-700 bg-blue-50/50">{item.actualQuantity}</td>
-                            <td className="p-3 border border-slate-200 text-center font-black text-xl text-slate-700 bg-slate-50/50">{item.systemQuantity}</td>
-                            <td className={`p-3 border border-slate-200 text-center font-black text-xl ${variance === 0 ? "text-emerald-600 bg-emerald-50/50" : "text-red-600 bg-red-50/50"}`}>
-                              {variance > 0 ? `+${variance}` : variance}
+                            <td className="p-3 text-center bg-blue-50/30">
+                              <input 
+                                type="number"
+                                value={item.adjustedActualQuantity !== "" && item.adjustedActualQuantity !== undefined ? item.adjustedActualQuantity : item.actualQuantity}
+                                onChange={(e) => updateHistoryReconField(item.barcode, "adjustedActualQuantity", e.target.value)}
+                                className="w-20 p-2 text-center border-2 border-transparent hover:border-slate-200 rounded-lg font-black text-xl text-blue-700 bg-transparent outline-none focus:border-blue-500 focus:bg-white"
+                              />
+                            </td>
+                            <td className="p-3 text-center">
+                              <input 
+                                type="number"
+                                value={item.systemQuantity || ""}
+                                onChange={(e) => updateHistoryReconField(item.barcode, "systemQuantity", e.target.value)}
+                                placeholder="System"
+                                className="w-20 p-2 text-center border-2 border-slate-200 rounded-lg font-bold outline-none focus:border-blue-500"
+                              />
+                            </td>
+                            <td className="p-3 text-center">
+                              {item.systemQuantity !== "" && (
+                                <span className={`inline-flex px-3 py-1 rounded-full text-sm font-black ${isShort ? 'bg-red-100 text-red-700' : isOver ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                                  {variance > 0 ? "+" : ""}{variance}
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-3">
+                              <input 
+                                type="text"
+                                disabled={variance >= 0}
+                                value={item.transferIn || ""}
+                                onChange={(e) => updateHistoryReconField(item.barcode, "transferIn", e.target.value)}
+                                placeholder={isShort ? "Req: Document #" : "-"}
+                                className={`w-full p-2 border-2 rounded-lg font-mono text-xs outline-none focus:border-blue-500 ${isShort && !item.transferIn ? 'border-red-300 bg-red-50 placeholder:text-red-300' : 'border-slate-200 disabled:opacity-50'}`}
+                              />
+                            </td>
+                            <td className="p-3">
+                              <input 
+                                type="text"
+                                disabled={variance <= 0}
+                                value={item.transferOut || ""}
+                                onChange={(e) => updateHistoryReconField(item.barcode, "transferOut", e.target.value)}
+                                placeholder={isOver ? "Req: Document #" : "-"}
+                                className={`w-full p-2 border-2 rounded-lg font-mono text-xs outline-none focus:border-blue-500 ${isOver && !item.transferOut ? 'border-amber-300 bg-amber-50 placeholder:text-amber-300' : 'border-slate-200 disabled:opacity-50'}`}
+                              />
                             </td>
                           </tr>
                         );
