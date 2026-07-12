@@ -5,13 +5,19 @@ import { db, dbService } from "@/lib/firebase";
 import { collection, query, where, onSnapshot, getDocs, limit } from "firebase/firestore";
 import { PageTransition } from "@/components/PageTransition";
 import { useLanguage } from "@/context/LanguageContext";
+import { useTheme } from "next-themes";
 
-import { AlertCircle, CheckCircle2, Lock, ScanLine, Camera, Edit2, Save, X } from "lucide-react";
+import { AlertCircle, CheckCircle2, Lock, ScanLine, Camera, Edit2, Save, X, Package } from "lucide-react";
 import { CameraScanner } from "@/components/ui/CameraScanner";
 
 export default function CashierInventoryAudit() {
   const { language: lang } = useLanguage();
+  const { setTheme } = useTheme();
   const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    setTheme("light");
+  }, [setTheme]);
 
   useEffect(() => {
     const savedUserStr = localStorage.getItem("active_cashier_session");
@@ -257,9 +263,15 @@ export default function CashierInventoryAudit() {
                   </button>
                 </div>
                 {productNameDisplay && (
-                  <p className="mt-2 text-sm font-bold text-blue-600 bg-blue-50 p-2 rounded-lg border border-blue-100 animate-in fade-in">
-                    {productNameDisplay}
-                  </p>
+                  <div className="mt-4 p-4 rounded-xl border-2 border-blue-200 bg-blue-50 shadow-inner flex flex-col items-center justify-center animate-in zoom-in fade-in duration-300">
+                    <span className="text-xs font-bold text-blue-500 mb-1 flex items-center gap-1 uppercase tracking-widest">
+                      <Package className="w-4 h-4" /> 
+                      {lang === "ar" ? "الصنف" : "Item Scanned"}
+                    </span>
+                    <p className="text-2xl font-black text-blue-800 text-center leading-tight">
+                      {productNameDisplay}
+                    </p>
+                  </div>
                 )}
               </div>
 

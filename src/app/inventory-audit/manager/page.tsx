@@ -319,9 +319,14 @@ export default function ManagerInventoryAudit() {
                 <div className="bg-white rounded-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto p-6 relative">
                   <div className="flex justify-between items-center mb-6">
                     <h2 className="text-2xl font-black uppercase tracking-tight">Audit Report: {selectedHistoryBatch.id}</h2>
-                    <button onClick={() => setSelectedHistoryBatch(null)} className="px-4 py-2 bg-red-100 text-red-600 rounded-xl font-black hover:bg-red-200 transition-colors">
-                      CLOSE
-                    </button>
+                    <div className="flex gap-3 no-print">
+                      <button onClick={() => window.print()} className="px-6 py-2 bg-blue-600 text-white rounded-xl font-black hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-lg">
+                        <FileText className="w-5 h-5" /> PRINT
+                      </button>
+                      <button onClick={() => setSelectedHistoryBatch(null)} className="px-6 py-2 bg-slate-200 text-slate-800 rounded-xl font-black hover:bg-slate-300 transition-colors">
+                        CLOSE
+                      </button>
+                    </div>
                   </div>
                   
                   <table className="w-full text-left border-collapse border border-slate-200 text-sm">
@@ -530,7 +535,11 @@ export default function ManagerInventoryAudit() {
         )}
 
         {/* THE OFFICIAL PRINT REPORT (HIDDEN ON SCREEN, VISIBLE ON PRINT) */}
-        {activeBatch && activeBatch.status !== "OPEN" && (
+        {(() => {
+          const printBatch = selectedHistoryBatch || activeBatch;
+          const printReconList = selectedHistoryBatch ? (selectedHistoryBatch.reconciliationData || []) : reconList;
+          if (!printBatch || printBatch.status === "OPEN") return null;
+          return (
           <div id="print-area" className="text-black bg-white" dir="ltr" style={{ position: 'relative', overflow: 'hidden', padding: '15mm', minHeight: '100vh', display: 'none' }}>
             {/* Micro-Typography Security Borders */}
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: 'none', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '4px', overflow: 'hidden' }}>
@@ -560,7 +569,7 @@ export default function ManagerInventoryAudit() {
                 </div>
                 <div className="text-right">
                   <h2 className="text-2xl font-black text-gray-900 tracking-tighter">CYCLE COUNT RECONCILIATION</h2>
-                  <p className="text-sm font-mono font-bold text-gray-600 mt-1">{activeBatch.id}</p>
+                  <p className="text-sm font-mono font-bold text-gray-600 mt-1">{printBatch.id}</p>
                 </div>
               </div>
 
@@ -578,9 +587,10 @@ export default function ManagerInventoryAudit() {
                     </tr>
                   </thead>
                   <tbody className="divide-y border-black">
-                    {reconList.map((it: any, i: number) => {
+                    {printReconList.map((it: any, i: number) => {
                       const sysQty = Number(it.systemQuantity) || 0;
-                      const variance = it.systemQuantity === "" ? 0 : it.actualQuantity - sysQty;
+                      const activeActual = it.adjustedActualQuantity !== "" && it.adjustedActualQuantity !== undefined ? Number(it.adjustedActualQuantity) : it.actualQuantity;
+                      const variance = it.systemQuantity === "" ? 0 : activeActual - sysQty;
                       return (
                         <tr key={it.barcode || i}>
                           <td className="py-2 px-3 border-r-2 border-black">
@@ -588,7 +598,7 @@ export default function ManagerInventoryAudit() {
                               <Barcode value={it.barcode} width={1.5} height={30} fontSize={10} margin={0} />
                             </div>
                           </td>
-                          <td className="py-1 px-3 font-black text-gray-900 text-center border-r-2 border-black text-sm">{it.actualQuantity}</td>
+                          <td className="py-1 px-3 font-black text-gray-900 text-center border-r-2 border-black text-sm">{activeActual}</td>
                           <td className="py-1 px-3 font-black text-gray-900 text-center border-r-2 border-black text-sm">{it.systemQuantity || "-"}</td>
                           <td className={`py-1 px-3 font-black text-center border-r-2 border-black text-sm ${variance < 0 ? 'text-red-600' : variance > 0 ? 'text-amber-600' : 'text-gray-900'}`}>
                             {variance > 0 ? "+" : ""}{variance}
@@ -613,7 +623,7 @@ export default function ManagerInventoryAudit() {
                   <div className="text-center relative w-1/3">
                     <p className="font-black text-gray-400 text-[10px] uppercase tracking-widest mb-10">Manager Signature</p>
                     <div className="border-t-2 border-black pt-2">
-                      <p className="font-black text-gray-900 text-[11px] uppercase truncate">{activeBatch.managerEmail}</p>
+                      <p className="font-black text-gray-900 text-[11px] uppercase truncate">{printBatch.managerEmail}</p>
                       <p className="text-[9px] font-bold text-gray-500 mt-0.5 uppercase tracking-widest">Reconciled By</p>
                     </div>
                   </div>
@@ -638,13 +648,14 @@ export default function ManagerInventoryAudit() {
               {/* Advanced Digital Forensics Footer */}
               <div style={{ borderTop: '2px solid #1e293b', paddingTop: '6px', textAlign: 'center', marginTop: '10px' }}>
                 <p style={{ fontSize: '7px', color: '#475569', fontFamily: 'monospace', margin: 0, letterSpacing: '0.5px', fontWeight: 'bold' }}>
-                  BATCH {activeBatch.id} | OPENED: {new Date(activeBatch.openedAt).toLocaleString('en-GB')} | PRINTED: {new Date().toLocaleString('en-GB')} | SYSTEM: ANH PORTAL V2.0
+                  BATCH {printBatch.id} | OPENED: {new Date(printBatch.openedAt).toLocaleString('en-GB')} | PRINTED: {new Date().toLocaleString('en-GB')} | SYSTEM: ANH PORTAL V2.0
                 </p>
               </div>
 
             </div>
           </div>
-        )}
+          );
+        })()}
 
           </>
         )}
