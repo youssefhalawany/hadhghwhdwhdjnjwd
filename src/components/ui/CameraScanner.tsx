@@ -35,6 +35,25 @@ export function CameraScanner({ onScan, onClose }: CameraScannerProps) {
            scannerRef.current.pause(true);
         }
         
+        // Play beep sound
+        try {
+          const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+          if (AudioContext) {
+            const ctx = new AudioContext();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(800, ctx.currentTime);
+            gain.gain.setValueAtTime(0.1, ctx.currentTime);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.15);
+          }
+        } catch (e) {
+          console.error("Audio beep failed", e);
+        }
+
         onScan(decodedText);
         
         // Auto close after successful scan
