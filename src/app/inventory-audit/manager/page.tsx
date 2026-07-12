@@ -9,7 +9,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { CheckCircle2, Lock, ShieldAlert, FileText } from "lucide-react";
 
 export default function ManagerInventoryAudit() {
-  const { lang } = useLanguage();
+  const { language: lang } = useLanguage();
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {

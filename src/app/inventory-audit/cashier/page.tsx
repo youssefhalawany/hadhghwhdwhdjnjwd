@@ -9,7 +9,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { AlertCircle, CheckCircle2, Lock, ScanLine } from "lucide-react";
 
 export default function CashierInventoryAudit() {
-  const { lang } = useLanguage();
+  const { language: lang } = useLanguage();
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
