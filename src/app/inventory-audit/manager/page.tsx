@@ -21,6 +21,10 @@ export default function ManagerInventoryAudit() {
   const [scans, setScans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [allBatches, setAllBatches] = useState<any[]>([]);
+  const [viewMode, setViewMode] = useState<"active" | "history">("active");
+  const [selectedHistoryBatch, setSelectedHistoryBatch] = useState<any | null>(null);
+
   // Grouped and reconciled data
   const [reconciliationData, setReconciliationData] = useState<Record<string, any>>({});
 
@@ -48,12 +52,15 @@ export default function ManagerInventoryAudit() {
           return timeB - timeA;
         });
         
+        setAllBatches(batches);
+        
         // Prioritize active sessions: OPEN -> CLOSED -> FINALIZED
         const openBatch = batches.find((b: any) => b.status === "OPEN");
         const closedBatch = batches.find((b: any) => b.status === "CLOSED");
         
-        setActiveBatch(openBatch || closedBatch || batches[0]);
+        setActiveBatch(openBatch || closedBatch || null);
       } else {
+        setAllBatches([]);
         setActiveBatch(null);
       }
       setLoading(false);
@@ -104,6 +111,7 @@ export default function ManagerInventoryAudit() {
         
         aggregated[scan.barcode] = {
           barcode: scan.barcode,
+          productName: scan.productName || existing.productName || draft?.productName || "",
           actualQuantity: 0,
           systemQuantity: existing.systemQuantity || "",
           transferIn: existing.transferIn || "",
@@ -126,6 +134,7 @@ export default function ManagerInventoryAudit() {
          const local = reconciliationData[barcode] || {};
          aggregated[barcode] = {
            barcode,
+           productName: local.productName || draft.productName || "",
            actualQuantity: 0,
            systemQuantity: local.systemQuantity || draft.systemQuantity || "",
            transferIn: local.transferIn || draft.transferIn || "",
@@ -260,6 +269,93 @@ export default function ManagerInventoryAudit() {
           </div>
         </div>
 
+        {/* TABS */}
+        <div className="flex gap-4 mb-6 border-b border-slate-200 no-print">
+          <button
+            onClick={() => setViewMode("active")}
+            className={`pb-3 font-bold text-lg transition-colors border-b-2 ${viewMode === "active" ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-800"}`}
+          >
+            Active Audit
+          </button>
+          <button
+            onClick={() => setViewMode("history")}
+            className={`pb-3 font-bold text-lg transition-colors border-b-2 ${viewMode === "history" ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-800"}`}
+          >
+            History
+          </button>
+        </div>
+
+        {viewMode === "history" ? (
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-8 no-print">
+            <h2 className="text-xl font-bold mb-4">Past Audits</h2>
+            {allBatches.filter(b => b.status === "FINALIZED").length === 0 ? (
+              <p className="text-slate-500">No finalized audits found.</p>
+            ) : (
+              <div className="space-y-4">
+                {allBatches.filter(b => b.status === "FINALIZED").map(batch => (
+                  <div key={batch.id} className="p-4 border border-slate-200 rounded-xl flex items-center justify-between hover:bg-slate-50 transition-colors">
+                    <div>
+                      <h3 className="font-bold text-slate-900 uppercase tracking-tight">BATCH: {batch.id}</h3>
+                      <p className="text-sm font-bold text-slate-500 mt-1">{new Date(batch.finalizedAt || batch.openedAt).toLocaleString()}</p>
+                    </div>
+                    <button
+                      onClick={() => setSelectedHistoryBatch(batch)}
+                      className="px-6 py-2 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-800 transition-colors"
+                    >
+                      View Report
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {/* Modal for selected history batch */}
+            {selectedHistoryBatch && (
+              <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+                <div className="bg-white rounded-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto p-6 relative">
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-black uppercase tracking-tight">Audit Report: {selectedHistoryBatch.id}</h2>
+                    <button onClick={() => setSelectedHistoryBatch(null)} className="px-4 py-2 bg-red-100 text-red-600 rounded-xl font-black hover:bg-red-200 transition-colors">
+                      CLOSE
+                    </button>
+                  </div>
+                  
+                  <table className="w-full text-left border-collapse border border-slate-200 text-sm">
+                    <thead>
+                      <tr className="bg-slate-100">
+                        <th className="p-3 border border-slate-200 font-bold uppercase tracking-widest text-slate-500 text-[10px]">Item</th>
+                        <th className="p-3 border border-slate-200 font-bold uppercase tracking-widest text-slate-500 text-[10px] text-center">Actual (Scanned)</th>
+                        <th className="p-3 border border-slate-200 font-bold uppercase tracking-widest text-slate-500 text-[10px] text-center">System Qty</th>
+                        <th className="p-3 border border-slate-200 font-bold uppercase tracking-widest text-slate-500 text-[10px] text-center">Variance</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(selectedHistoryBatch.reconciliationData || []).map((item: any) => {
+                        const variance = (Number(item.actualQuantity) || 0) - (Number(item.systemQuantity) || 0);
+                        return (
+                          <tr key={item.barcode} className="hover:bg-slate-50">
+                            <td className="p-3 border border-slate-200">
+                              <div className="bg-white p-2 rounded-lg border border-slate-200 inline-block mb-1">
+                                <Barcode value={item.barcode} width={1.5} height={40} fontSize={12} margin={0} />
+                              </div>
+                              {item.productName && <div className="text-xs font-bold text-slate-600 truncate max-w-[200px]" title={item.productName}>{item.productName}</div>}
+                            </td>
+                            <td className="p-3 border border-slate-200 text-center font-black text-xl text-blue-700 bg-blue-50/50">{item.actualQuantity}</td>
+                            <td className="p-3 border border-slate-200 text-center font-black text-xl text-slate-700 bg-slate-50/50">{item.systemQuantity}</td>
+                            <td className={`p-3 border border-slate-200 text-center font-black text-xl ${variance === 0 ? "text-emerald-600 bg-emerald-50/50" : "text-red-600 bg-red-50/50"}`}>
+                              {variance > 0 ? `+${variance}` : variance}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
         {/* CONTROLS */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-8 no-print">
           {!activeBatch ? (
@@ -363,9 +459,14 @@ export default function ManagerInventoryAudit() {
                       return (
                         <tr key={item.barcode} className="hover:bg-slate-50 transition-colors">
                           <td className="p-4">
-                            <div className="bg-white p-2 rounded-lg border border-slate-200 inline-block">
+                            <div className="bg-white p-2 rounded-lg border border-slate-200 inline-block mb-1">
                               <Barcode value={item.barcode} width={1.5} height={40} fontSize={12} margin={0} />
                             </div>
+                            {item.productName && (
+                              <div className="text-xs font-bold text-slate-600 max-w-[160px] truncate" title={item.productName}>
+                                {item.productName}
+                              </div>
+                            )}
                           </td>
                           <td className="p-4 text-center bg-blue-50/30">
                             <span className="text-xl font-black text-blue-700">{item.actualQuantity}</span>
@@ -532,6 +633,9 @@ export default function ManagerInventoryAudit() {
 
             </div>
           </div>
+        )}
+
+          </>
         )}
 
         <style dangerouslySetInnerHTML={{__html: `

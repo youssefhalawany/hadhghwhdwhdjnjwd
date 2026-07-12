@@ -30,7 +30,12 @@ export function CameraScanner({ onScan, onClose }: CameraScannerProps) {
         
         const config = { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
 
-        const handleScan = (decodedText: string) => {
+        const handleScan = async (decodedText: string) => {
+          // Pause immediately so it doesn't scan again while beep plays
+          if (scannerRef.current) {
+            try { scannerRef.current.pause(true); } catch(e){}
+          }
+
           // Play beep sound
           try {
             const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
@@ -51,8 +56,14 @@ export function CameraScanner({ onScan, onClose }: CameraScannerProps) {
           }
 
           if (scannerRef.current) {
-            scannerRef.current.stop().catch(console.error);
+            try {
+              await scannerRef.current.stop();
+            } catch (e) {
+              console.error("Error stopping scanner", e);
+            }
+            scannerRef.current = null;
           }
+          
           onScan(decodedText);
           if (onClose) onClose();
         };
