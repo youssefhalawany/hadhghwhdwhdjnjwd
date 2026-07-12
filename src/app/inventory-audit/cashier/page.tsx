@@ -139,16 +139,35 @@ export default function CashierInventoryAudit() {
         console.error("Failed to fetch product name", err);
       }
 
-      await dbService.addDoc("audit_scans", {
-        batchId: activeBatch.id,
-        barcode: bcode,
-        productName,
-        quantity: Number(quantity),
-        cashierEmail: user?.email || "Unknown",
-        cashierName: user?.name || "Unknown",
-        cashierId: user?.id || user?.employeeId || "Unknown",
-        timestamp: new Date().toISOString()
-      });
+      // Attempt to find an existing scan for this barcode in this batch
+      const existingScanQuery = query(
+        collection(db, "audit_scans"),
+        where("batchId", "==", activeBatch.id),
+        where("barcode", "==", bcode)
+      );
+      const existingScanSnap = await getDocs(existingScanQuery);
+
+      if (!existingScanSnap.empty) {
+        // Update the existing scan instead of creating a new row
+        const existingDoc = existingScanSnap.docs[0];
+        const existingData = existingDoc.data();
+        await dbService.updateDoc("audit_scans", existingDoc.id, {
+          quantity: Number(existingData.quantity) + Number(quantity),
+          updatedAt: new Date().toISOString()
+        });
+      } else {
+        // Create new scan record
+        await dbService.addDoc("audit_scans", {
+          batchId: activeBatch.id,
+          barcode: bcode,
+          productName,
+          quantity: Number(quantity),
+          cashierEmail: user?.email || "Unknown",
+          cashierName: user?.name || "Unknown",
+          cashierId: user?.id || user?.employeeId || "Unknown",
+          timestamp: new Date().toISOString()
+        });
+      }
       
       setSuccessMsg(lang === "ar" ? "تم تسجيل الصنف بنجاح!" : "Item scanned successfully!");
       setBarcode("");
