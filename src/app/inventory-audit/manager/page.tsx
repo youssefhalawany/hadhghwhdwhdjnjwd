@@ -395,12 +395,21 @@ export default function ManagerInventoryAudit() {
 
               <div className="flex items-center gap-3">
                 {activeBatch.status === "OPEN" ? (
-                  <button 
-                    onClick={handleCloseBatch}
-                    className="px-6 py-3 bg-amber-500 text-white rounded-xl font-bold hover:bg-amber-600 transition-colors shadow-lg"
-                  >
-                    CLOSE BATCH (Lock Cashiers)
-                  </button>
+                  <>
+                    <button 
+                      onClick={() => window.print()}
+                      className="px-6 py-3 bg-blue-50 text-blue-700 rounded-xl font-bold hover:bg-blue-100 transition-colors shadow flex items-center gap-2 border border-blue-200"
+                    >
+                      <FileText className="w-5 h-5" />
+                      PRINT DRAFT WORKSHEET
+                    </button>
+                    <button 
+                      onClick={handleCloseBatch}
+                      className="px-6 py-3 bg-amber-500 text-white rounded-xl font-bold hover:bg-amber-600 transition-colors shadow-lg"
+                    >
+                      CLOSE BATCH (Lock Cashiers)
+                    </button>
+                  </>
                 ) : activeBatch.status === "CLOSED" ? (
                   <button 
                     onClick={handleFinalizeAndPrint}
@@ -541,7 +550,7 @@ export default function ManagerInventoryAudit() {
         {(() => {
           const printBatch = selectedHistoryBatch || activeBatch;
           const printReconList = selectedHistoryBatch ? (selectedHistoryBatch.reconciliationData || []) : reconList;
-          if (!printBatch || printBatch.status === "OPEN") return null;
+          if (!printBatch) return null;
           return (
           <div id="print-area" className="text-black bg-white" dir="ltr" style={{ position: 'relative', overflow: 'hidden', padding: '15mm', minHeight: '100vh', display: 'none' }}>
             {/* Micro-Typography Security Borders */}
@@ -571,7 +580,9 @@ export default function ManagerInventoryAudit() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <h2 className="text-2xl font-black text-gray-900 tracking-tighter">CYCLE COUNT RECONCILIATION</h2>
+                  <h2 className="text-2xl font-black text-gray-900 tracking-tighter">
+                    {printBatch.status === "OPEN" ? "CYCLE COUNT DRAFT WORKSHEET" : "CYCLE COUNT RECONCILIATION"}
+                  </h2>
                   <p className="text-sm font-mono font-bold text-gray-600 mt-1">{printBatch.id}</p>
                 </div>
               </div>
@@ -600,11 +611,12 @@ export default function ManagerInventoryAudit() {
                             <div style={{ transform: 'scale(0.8)', transformOrigin: 'left center', width: '120px' }}>
                               <Barcode value={it.barcode} width={1.5} height={30} fontSize={10} margin={0} />
                             </div>
+                            {it.productName && <div className="text-[9px] font-bold text-slate-700 leading-tight mt-1 max-w-[120px] whitespace-normal">{it.productName}</div>}
                           </td>
                           <td className="py-1 px-3 font-black text-gray-900 text-center border-r-2 border-black text-sm">{activeActual}</td>
-                          <td className="py-1 px-3 font-black text-gray-900 text-center border-r-2 border-black text-sm">{it.systemQuantity || "-"}</td>
+                          <td className="py-1 px-3 font-black text-gray-300 text-center border-r-2 border-black text-sm">{it.systemQuantity || (printBatch.status === "OPEN" ? "___________" : "-")}</td>
                           <td className={`py-1 px-3 font-black text-center border-r-2 border-black text-sm ${variance < 0 ? 'text-red-600' : variance > 0 ? 'text-amber-600' : 'text-gray-900'}`}>
-                            {variance > 0 ? "+" : ""}{variance}
+                            {it.systemQuantity === "" ? "-" : (variance > 0 ? "+" : "") + variance}
                           </td>
                           <td className="py-1 px-3 font-mono font-bold text-[10px] text-gray-800 border-r-2 border-black text-center tracking-wider">{it.transferIn || "-"}</td>
                           <td className="py-1 px-3 font-mono font-bold text-[10px] text-gray-800 text-center tracking-wider">{it.transferOut || "-"}</td>
