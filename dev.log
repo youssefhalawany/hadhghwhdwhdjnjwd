@@ -1,8 +1,12 @@
+
+> anhreports@0.1.0 dev
+> next dev -p 3005 --turbo
+
 ▲ Next.js 16.2.9 (Turbopack)
-- Local:         http://localhost:3006
-- Network:       http://192.168.1.112:3006
+- Local:         http://localhost:3005
+- Network:       http://192.168.1.102:3005
 - Environments: .env.local
-✓ Ready in 952ms
+✓ Ready in 588ms
 ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
  We detected multiple lockfiles and selected the directory of /Users/youssefhalawanyy/package-lock.json as the root directory.
  To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
@@ -11,52 +15,3 @@
    * /Users/youssefhalawanyy/Documents/anhreports/package-lock.json
 
 
-○ Compiling /admin/payroll ...
- GET /admin/payroll 200 in 20.0s (next.js: 15.9s, application-code: 4.0s)
- GET /admin/payroll 200 in 700ms (next.js: 267ms, application-code: 433ms)
-○ Compiling /financial-reports/vendor-statements ...
- GET /financial-reports/vendor-statements 200 in 6.8s (next.js: 4.8s, application-code: 1994ms)
-[browser] Error fetching receipts from unified collections: FirebaseError: Missing or insufficient permissions.
-FirebaseError: Missing or insufficient permissions. (src/app/financial-reports/vendor-statements/page.tsx:92:15)
-[browser] Error fetching receipts from unified collections: FirebaseError: Missing or insufficient permissions.
-FirebaseError: Missing or insufficient permissions. (src/app/financial-reports/vendor-statements/page.tsx:92:15)
- GET /admin/payroll 200 in 2.0s (next.js: 397ms, application-code: 1608ms)
-[browser] [2026-07-01T16:20:07.874Z]  @firebase/firestore: Firestore (12.15.0): Uncaught Error in snapshot listener: FirebaseError: [code=permission-denied]: Missing or insufficient permissions. 
-[browser] [2026-07-01T16:20:07.879Z]  @firebase/firestore: Firestore (12.15.0): Uncaught Error in snapshot listener: FirebaseError: [code=permission-denied]: Missing or insufficient permissions. 
-[browser] Error fetching employees FirebaseError: Missing or insufficient permissions.
-FirebaseError: Missing or insufficient permissions. (src/app/admin/payroll/page.tsx:80:17)
-[browser] Error fetching deductions/loans FirebaseError: Missing or insufficient permissions.
-FirebaseError: Missing or insufficient permissions. (src/app/admin/payroll/page.tsx:125:15)
-[browser] A component is changing an uncontrolled input to be controlled. This is likely caused by the value changing from undefined to a defined value, which should not happen. Decide between using a controlled or uncontrolled input element for the lifetime of the component. More info: https://react.dev/link/controlled-components 
-✓ Compiled in 556ms
-✓ Compiled in 237ms
-✓ Compiled in 318ms
-○ Compiling /financial-reports ...
- GET /financial-reports 200 in 8.0s (next.js: 7.7s, application-code: 305ms)
- GET /financial-reports 200 in 216ms (next.js: 61ms, application-code: 155ms)
- GET /financial-reports/vendor-statements 200 in 105ms (next.js: 35ms, application-code: 70ms)
- GET /admin/schedule 200 in 2.4s (next.js: 2.3s, application-code: 92ms)
-[browser] [2026-07-01T16:30:47.325Z]  @firebase/firestore: Firestore (12.15.0): Uncaught Error in snapshot listener: FirebaseError: [code=permission-denied]: Missing or insufficient permissions. 
- GET /admin/payroll 200 in 105ms (next.js: 28ms, application-code: 77ms)
-[browser] [2026-07-01T16:30:51.206Z]  @firebase/firestore: Firestore (12.15.0): Uncaught Error in snapshot listener: FirebaseError: [code=permission-denied]: Missing or insufficient permissions. 
- GET /api/schedule?storeId=eL-alamein-4&month=2026-08 200 in 4.2s (next.js: 3.3s, application-code: 871ms)
-[browser] Uncaught Error: Objects are not valid as a React child (found: object with keys {seconds, nanoseconds}). If you meant to render a collection of children, use an array instead.
- GET /api/schedule/leave-requests?storeId=eL-alamein-4 200 in 747ms (next.js: 526ms, application-code: 221ms)
- GET /admin/payroll? 200 in 60ms (next.js: 10ms, application-code: 50ms)
-[browser] [2026-07-01T16:30:55.983Z]  @firebase/firestore: Firestore (12.15.0): Uncaught Error in snapshot listener: FirebaseError: [code=permission-denied]: Missing or insufficient permissions. 
-[browser] Uncaught Error: Objects are not valid as a React child (found: object with keys {seconds, nanoseconds}). If you meant to render a collection of children, use an array instead.
- GET /admin/payroll? 200 in 320ms (next.js: 137ms, application-code: 183ms)
-[browser] Uncaught Error: Objects are not valid as a React child (found: object with keys {seconds, nanoseconds}). If you meant to render a collection of children, use an array instead.
-✓ Compiled in 924ms
-⚠ Fast Refresh had to perform a full reload due to a runtime error.
- GET /admin/payroll 200 in 178ms (next.js: 37ms, application-code: 142ms)
-✓ Compiled in 797ms
-[browser] A component is changing an uncontrolled input to be controlled. This is likely caused by the value changing from undefined to a defined value, which should not happen. Decide between using a controlled or uncontrolled input element for the lifetime of the component. More info: https://react.dev/link/controlled-components 
- GET /admin/payroll 200 in 545ms (next.js: 407ms, application-code: 138ms)
- GET /financial-reports 200 in 219ms (next.js: 38ms, application-code: 181ms)
-○ Compiling /shift-reports/manager ...
- GET /shift-reports/manager 200 in 6.8s (next.js: 6.6s, application-code: 186ms)
- GET /admin/payroll 200 in 121ms (next.js: 49ms, application-code: 73ms)
-✓ Compiled in 813ms
-✓ Compiled in 842ms
- HEAD / 200 in 4.1s (next.js: 3.4s, application-code: 754ms)

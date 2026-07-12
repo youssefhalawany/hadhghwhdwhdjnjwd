@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { db, dbService } from "@/lib/firebase";
-import { collection, query, where, onSnapshot, orderBy, limit } from "firebase/firestore";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { PageTransition } from "@/components/PageTransition";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -29,18 +29,21 @@ export default function ManagerInventoryAudit() {
     // Ideally we would query by branch and status, but for simplicity we just get all non-finalized
     const q = query(
       collection(db, "audit_batches"),
-      orderBy("openedAt", "desc"),
-      limit(1)
+      where("status", "in", ["OPEN", "CLOSED", "FINALIZED"])
     );
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       if (!snapshot.empty) {
         // Sort by openedAt client-side since we have an 'in' query
         const batches = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        batches.sort((a: any, b: any) => new Date(b.openedAt).getTime() - new Date(a.openedAt).getTime());
         setActiveBatch(batches[0]);
       } else {
         setActiveBatch(null);
       }
+      setLoading(false);
+    }, (error) => {
+      console.error("Error listening to audit batches:", error);
       setLoading(false);
     });
     return () => unsubscribe();
