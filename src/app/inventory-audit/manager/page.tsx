@@ -37,17 +37,29 @@ export default function ManagerInventoryAudit() {
         // Sort by openedAt client-side since we have an 'in' query
         const batches = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
         batches.sort((a: any, b: any) => {
-          const timeA = a.openedAt ? new Date(a.openedAt).getTime() : 0;
-          const timeB = b.openedAt ? new Date(b.openedAt).getTime() : 0;
-          return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+          const parseDate = (d: any) => {
+            if (!d) return 0;
+            if (d.seconds) return d.seconds * 1000;
+            const time = new Date(d).getTime();
+            return isNaN(time) ? 0 : time;
+          };
+          const timeA = parseDate(a.openedAt);
+          const timeB = parseDate(b.openedAt);
+          return timeB - timeA;
         });
-        setActiveBatch(batches[0]);
+        
+        // Prioritize active sessions: OPEN -> CLOSED -> FINALIZED
+        const openBatch = batches.find(b => b.status === "OPEN");
+        const closedBatch = batches.find(b => b.status === "CLOSED");
+        
+        setActiveBatch(openBatch || closedBatch || batches[0]);
       } else {
         setActiveBatch(null);
       }
       setLoading(false);
-    }, (error) => {
+    }, (error: any) => {
       console.error("Error listening to audit batches:", error);
+      alert("Error listening to audit batches: " + error.message);
       setLoading(false);
     });
     return () => unsubscribe();
@@ -115,13 +127,16 @@ export default function ManagerInventoryAudit() {
   const handleStartBatch = async () => {
     const batchId = `AUDIT-${new Date().toISOString().replace(/[-:T.]/g, "").slice(0, 14)}`;
     try {
+      console.log("Attempting to create batch:", batchId);
       await dbService.setDoc("audit_batches", batchId, {
         status: "OPEN",
         openedAt: new Date().toISOString(),
         managerEmail: user?.email || "Unknown Manager"
       });
-    } catch (e) {
+      console.log("Successfully created batch");
+    } catch (e: any) {
       console.error("Error starting batch", e);
+      alert("Error starting batch: " + (e?.message || "Unknown error"));
     }
   };
 
