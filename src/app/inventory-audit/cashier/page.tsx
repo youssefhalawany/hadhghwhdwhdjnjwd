@@ -102,8 +102,14 @@ export default function CashierInventoryAudit() {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const allScans = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      // Filter to only show the logged-in cashier's scans (comparing name since email might not exist)
-      const filtered = allScans.filter((s: any) => s.cashierName === user.name || s.cashierEmail === user.email);
+      // Filter to only show the logged-in cashier's scans
+      const filtered = allScans.filter((s: any) => {
+        return (
+          (user?.name && s.cashierName === user.name) ||
+          (user?.id && s.cashierId === user.id) ||
+          (user?.email && s.cashierEmail === user.email && s.cashierEmail !== "Unknown")
+        );
+      });
       // Sort by timestamp descending
       filtered.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       setMyScans(filtered);
@@ -139,6 +145,8 @@ export default function CashierInventoryAudit() {
         productName,
         quantity: Number(quantity),
         cashierEmail: user?.email || "Unknown",
+        cashierName: user?.name || "Unknown",
+        cashierId: user?.id || user?.employeeId || "Unknown",
         timestamp: new Date().toISOString()
       });
       
