@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { db, dbService } from "@/lib/firebase";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { collection, query, where, onSnapshot, getDocs, limit } from "firebase/firestore";
 import { PageTransition } from "@/components/PageTransition";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -91,9 +91,25 @@ export default function CashierInventoryAudit() {
 
     setSubmitting(true);
     try {
+      const bcode = barcode.trim();
+      let productName = "";
+      
+      // Attempt to look up product name
+      try {
+        const pQuery = query(collection(db, "products"), where("barcode", "==", bcode), limit(1));
+        const pSnap = await getDocs(pQuery);
+        if (!pSnap.empty) {
+          const pData = pSnap.docs[0].data();
+          productName = pData.itemName || pData.description || "";
+        }
+      } catch (err) {
+        console.error("Failed to fetch product name", err);
+      }
+
       await dbService.addDoc("audit_scans", {
         batchId: activeBatch.id,
-        barcode: barcode.trim(),
+        barcode: bcode,
+        productName,
         quantity: Number(quantity),
         cashierEmail: user?.email || "Unknown",
         timestamp: new Date().toISOString()
@@ -266,7 +282,12 @@ export default function CashierInventoryAudit() {
                   {myScans.map(scan => (
                     <div key={scan.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50 flex flex-col gap-2">
                       <div className="flex items-center justify-between">
-                        <span className="font-mono font-bold text-slate-700">{scan.barcode}</span>
+                        <div className="flex flex-col">
+                          <span className="font-mono font-bold text-slate-700">{scan.barcode}</span>
+                          {scan.productName && (
+                            <span className="text-xs font-semibold text-slate-500">{scan.productName}</span>
+                          )}
+                        </div>
                         {editingScanId === scan.id ? (
                           <div className="flex items-center gap-2">
                             <input 

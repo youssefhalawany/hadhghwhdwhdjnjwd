@@ -297,7 +297,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   const totalNotifications = pendingShiftCount + pendingVoidCount + pendingExpiriesCount + pendingReturnsCount;
 
   // Completely isolate Cashier pages (No Enterprise Auth, No Sidebar)
-  if (pathname?.startsWith('/shift-reports/cashier') || pathname?.startsWith('/voids/cashier') || pathname?.startsWith('/cashier') || pathname?.startsWith('/expiries') || pathname?.startsWith('/checklists/cashier')) {
+  if (pathname?.startsWith('/shift-reports/cashier') || pathname?.startsWith('/voids/cashier') || pathname?.startsWith('/cashier') || pathname?.startsWith('/expiries') || pathname?.startsWith('/checklists/cashier') || pathname?.startsWith('/inventory-audit/cashier')) {
     return (
       <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
         <GlobalReminders />
