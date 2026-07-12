@@ -25,6 +25,7 @@ export default function ManagerInventoryAudit() {
   const [viewMode, setViewMode] = useState<"active" | "history">("active");
   const [selectedHistoryBatch, setSelectedHistoryBatch] = useState<any | null>(null);
   const [isSavingHistory, setIsSavingHistory] = useState(false);
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
 
   // Grouped and reconciled data
   const [reconciliationData, setReconciliationData] = useState<Record<string, any>>({});
@@ -230,6 +231,33 @@ export default function ManagerInventoryAudit() {
     }
   };
 
+  const generateAISummary = async () => {
+    if (!selectedHistoryBatch) return;
+    setIsGeneratingAI(true);
+    try {
+      const res = await fetch("/api/audit-summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reconData: selectedHistoryBatch.reconciliationData || [] })
+      });
+      const data = await res.json();
+      if (data.success) {
+        await dbService.updateDoc("audit_batches", selectedHistoryBatch.id, {
+          aiSummary: data.summary
+        });
+        setSelectedHistoryBatch({ ...selectedHistoryBatch, aiSummary: data.summary });
+        alert(lang === "ar" ? "تم إنشاء الملخص الذكي بنجاح!" : "AI Summary generated successfully!");
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (e: any) {
+      console.error(e);
+      alert("Error generating AI summary: " + e.message);
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
+
   // Auto-save drafts when reconciliation changes
   // We use a simple ref to avoid saving on the first render/load
   const isFirstLoad = useRef(true);
@@ -348,6 +376,9 @@ export default function ManagerInventoryAudit() {
                   <div className="flex justify-between items-center mb-6">
                     <h2 className="text-2xl font-black uppercase tracking-tight">Audit Report: {selectedHistoryBatch.id}</h2>
                     <div className="flex gap-3 no-print">
+                      <button onClick={generateAISummary} disabled={isGeneratingAI} className="px-4 py-2 bg-purple-600 text-white rounded-xl font-black hover:bg-purple-700 transition-colors shadow-lg disabled:opacity-50">
+                        {isGeneratingAI ? "Generating..." : "✨ AI SUMMARY"}
+                      </button>
                       <button onClick={handleSaveHistory} disabled={isSavingHistory} className="px-6 py-2 bg-emerald-600 text-white rounded-xl font-black hover:bg-emerald-700 transition-colors shadow-lg disabled:opacity-50">
                         {isSavingHistory ? "SAVING..." : "SAVE CHANGES"}
                       </button>
@@ -790,6 +821,16 @@ export default function ManagerInventoryAudit() {
                   </div>
                 );
               })()}
+
+              {/* AI Executive Summary */}
+              {printBatch.aiSummary && (
+                <div className="mb-6 break-inside-avoid border-2 border-black p-3 bg-gray-50">
+                  <h3 className="font-black text-sm uppercase mb-2 border-b-2 border-black inline-block text-black">🤖 AI Executive Summary</h3>
+                  <div className="text-[10px] whitespace-pre-wrap font-mono text-black leading-relaxed">
+                    {printBatch.aiSummary}
+                  </div>
+                </div>
+              )}
 
               {/* Signatures & Approvals */}
               <div className="mt-auto pt-4 border-t-2 border-gray-100 break-inside-avoid">
