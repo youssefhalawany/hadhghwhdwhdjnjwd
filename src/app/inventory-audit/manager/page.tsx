@@ -534,6 +534,9 @@ export default function ManagerInventoryAudit() {
           </div>
         )}
 
+          </>
+        )}
+
         {/* THE OFFICIAL PRINT REPORT (HIDDEN ON SCREEN, VISIBLE ON PRINT) */}
         {(() => {
           const printBatch = selectedHistoryBatch || activeBatch;
@@ -656,9 +659,6 @@ export default function ManagerInventoryAudit() {
           </div>
           );
         })()}
-
-          </>
-        )}
 
         <style dangerouslySetInnerHTML={{__html: `
           @media print {
