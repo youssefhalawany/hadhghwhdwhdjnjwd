@@ -73,8 +73,10 @@ export default function CashierInventoryAudit() {
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       if (!snapshot.empty) {
-        // Just take the first open batch for simplicity
-        setActiveBatch({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() });
+        // Sort by openedAt descending to ensure we always pick the NEWEST open batch
+        const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        docs.sort((a: any, b: any) => new Date(b.openedAt).getTime() - new Date(a.openedAt).getTime());
+        setActiveBatch(docs[0]);
       } else {
         setActiveBatch(null);
       }
