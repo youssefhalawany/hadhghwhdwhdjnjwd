@@ -304,75 +304,117 @@ export default function ManagerVoidsPage() {
               </div>
 
               <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar bg-background">
-                <div id="void-print-capture" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                <div id="void-print-capture" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
+
+                  {/* Micro-Typography Security Borders */}
+                  <div style={{ position: 'absolute', top: '-15mm', left: '-15mm', right: '-15mm', bottom: '-15mm', zIndex: 1, pointerEvents: 'none', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '4px', overflow: 'hidden' }}>
+                    <div style={{ fontSize: '6px', color: '#cbd5e1', fontFamily: 'monospace', letterSpacing: '3px', whiteSpace: 'nowrap', opacity: 0.8 }}>
+                      {Array(25).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
+                    </div>
+                    <div style={{ fontSize: '6px', color: '#cbd5e1', fontFamily: 'monospace', letterSpacing: '3px', whiteSpace: 'nowrap', opacity: 0.8 }}>
+                      {Array(25).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
+                    </div>
+                  </div>
+                  <div style={{ position: 'absolute', top: '-15mm', left: '-15mm', bottom: '-15mm', zIndex: 1, pointerEvents: 'none', display: 'flex', flexDirection: 'column', padding: '4px', overflow: 'hidden', writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
+                    <div style={{ fontSize: '6px', color: '#cbd5e1', fontFamily: 'monospace', letterSpacing: '3px', whiteSpace: 'nowrap', opacity: 0.8 }}>
+                      {Array(35).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
+                    </div>
+                  </div>
+                  <div style={{ position: 'absolute', top: '-15mm', right: '-15mm', bottom: '-15mm', zIndex: 1, pointerEvents: 'none', display: 'flex', flexDirection: 'column', padding: '4px', overflow: 'hidden', writingMode: 'vertical-rl' }}>
+                    <div style={{ fontSize: '6px', color: '#cbd5e1', fontFamily: 'monospace', letterSpacing: '3px', whiteSpace: 'nowrap', opacity: 0.8 }}>
+                      {Array(35).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
+                    </div>
+                  </div>
+
+                  {/* Automated Digital Audit Stamp (Giant Watermark) */}
+                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-35deg)', fontSize: '70px', fontWeight: '900', color: Number(selectedVoid.amount) > 500 ? 'rgba(220, 38, 38, 0.08)' : 'rgba(22, 163, 74, 0.06)', zIndex: 5, whiteSpace: 'nowrap', pointerEvents: 'none', textTransform: 'uppercase', letterSpacing: '5px' }}>
+                    {Number(selectedVoid.amount) > 500 ? "SUSPICIOUS VOID" : "VOID AUTHORIZED"}
+                  </div>
 
                   {/* Header Section */}
-                  <div style={{ paddingBottom: '15px', borderBottom: '4px solid #dc2626', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                      <h1 style={{ fontSize: '32px', fontWeight: '900', margin: '0 0 5px 0', textTransform: 'uppercase', letterSpacing: '-0.5px', color: '#0f172a' }}>OFFICIAL VOID</h1>
-                      <p style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#475569', fontWeight: '700', textTransform: 'uppercase' }}>Circle K ANH Portal Void</p>
-                      <div style={{ display: 'inline-block', padding: '6px 12px', backgroundColor: '#f1f5f9', borderRadius: '6px', fontSize: '13px', fontWeight: '800', color: '#334155', border: '1px solid #e2e8f0' }}>
-                        Cashier: <span style={{ color: '#0f172a', fontWeight: '900' }}>{selectedVoid.cashierName || 'N/A'}</span>
+                  <div style={{ paddingBottom: '10px', borderBottom: '4px solid #1e293b', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                      <div style={{ width: '60px', height: '60px', backgroundColor: '#dc2626', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span style={{ fontSize: '36px', fontWeight: '900', color: '#ffffff', lineHeight: 1 }}>K</span>
+                      </div>
+                      <div>
+                        <h1 style={{ fontSize: '24px', fontWeight: '900', color: '#1e293b', margin: 0, textTransform: 'uppercase', letterSpacing: '-0.5px' }}>OFFICIAL VOID RECORD</h1>
+                        <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0', fontWeight: '600' }}>CIRCLE K ANH PORTAL</p>
                       </div>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <p style={{ margin: '0 0 5px', fontSize: '12px', color: '#64748b', textTransform: 'uppercase', fontWeight: '700' }}>Transaction Time</p>
-                      <p style={{ margin: '0 0 15px', fontSize: '16px', fontWeight: '800', color: '#0f172a' }}>{selectedVoid.preciseTimestamp ? selectedVoid.preciseTimestamp : new Date(selectedVoid.createdAt).toLocaleString('en-GB')}</p>
-                      <div style={{ border: '3px solid #dc2626', padding: '10px 16px', borderRadius: '8px', backgroundColor: '#fef2f2' }}>
-                        <p style={{ margin: 0, fontSize: '11px', color: '#dc2626', textTransform: 'uppercase', fontWeight: '800', textAlign: 'center', marginBottom: '4px' }}>Total Void Amount</p>
-                        <p style={{ margin: 0, fontSize: '24px', fontWeight: '900', color: '#dc2626', fontFamily: '"JetBrains Mono", monospace' }}>EGP {Number(selectedVoid.amount).toFixed(2)}</p>
+                    <div style={{ textAlign: 'right', display: 'flex', gap: '15px', alignItems: 'center' }}>
+                      <div style={{ border: `3px solid ${Number(selectedVoid.amount) > 500 ? '#ef4444' : '#1e293b'}`, padding: '8px 12px', borderRadius: '8px', backgroundColor: Number(selectedVoid.amount) > 500 ? '#fef2f2' : '#f8fafc' }}>
+                        <p style={{ margin: 0, fontSize: '10px', color: Number(selectedVoid.amount) > 500 ? '#dc2626' : '#475569', textTransform: 'uppercase', fontWeight: '800', textAlign: 'center', marginBottom: '2px' }}>Total Void Amount</p>
+                        <p style={{ margin: 0, fontSize: '20px', fontWeight: '900', color: Number(selectedVoid.amount) > 500 ? '#dc2626' : '#0f172a', fontFamily: '"JetBrains Mono", monospace' }}>EGP {Number(selectedVoid.amount).toFixed(2)}</p>
                       </div>
                     </div>
                   </div>
 
+                  {/* AI Summary Sentence (Egyptian Arabic) */}
+                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRight: '4px solid #3b82f6', borderRadius: '8px', padding: '6px 10px', direction: 'rtl', textAlign: 'right', marginBottom: '10px', position: 'relative', zIndex: 10 }}>
+                    <p style={{ margin: 0, fontSize: '10px', color: '#1e293b', lineHeight: 1.5, fontWeight: 'bold' }}>
+                      <span style={{ color: '#3b82f6', marginLeft: '6px' }}>✦</span>
+                      {(() => {
+                        const amount = Number(selectedVoid.amount) || 0;
+                        if (amount > 500) {
+                          return "تحليل المرتجعات: الكاشير عمل مرتجع بقيمة كبيرة (أكتر من ٥٠٠ جنيه). لازم تتأكد إن البضاعة رجعت فعلاً للمخزن، وتراجع الكاميرات وقت العملية.";
+                        } else if (amount > 100) {
+                          return "تحليل المرتجعات: قيمة المرتجع متوسطة. برجاء مراجعة سبب المرتجع والتأكد من استلام البضاعة المرتجعة.";
+                        } else {
+                          return "تحليل المرتجعات: قيمة المرتجع صغيرة وطبيعية. تم تسجيل العملية، برجاء الاحتفاظ بالريسيت مع التقرير اليومي.";
+                        }
+                      })()}
+                    </p>
+                  </div>
+
                   {/* Meta Info Row */}
-                  <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
-                    <div style={{ flex: 1, backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                      <span style={{ display: 'block', fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '800', marginBottom: '4px' }}>TXN Number</span>
-                      <span style={{ fontSize: '15px', fontWeight: '900', fontFamily: '"JetBrains Mono", monospace', color: '#0f172a' }}>{selectedVoid.transactionNumber}</span>
+                  <div style={{ display: 'flex', gap: '10px', marginBottom: '15px', position: 'relative', zIndex: 10 }}>
+                    <div style={{ flex: 1, backgroundColor: '#f8fafc', padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                      <span style={{ display: 'block', fontSize: '9px', color: '#64748b', textTransform: 'uppercase', fontWeight: '800', marginBottom: '2px' }}>Cashier</span>
+                      <span style={{ fontSize: '13px', fontWeight: '900', color: '#0f172a' }}>{selectedVoid.cashierName || 'N/A'}</span>
                     </div>
-                    <div style={{ flex: 1, backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                      <span style={{ display: 'block', fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '800', marginBottom: '4px' }}>Register</span>
-                      <span style={{ fontSize: '15px', fontWeight: '800', color: '#0f172a' }}>{selectedVoid.register}</span>
+                    <div style={{ flex: 1, backgroundColor: '#f8fafc', padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                      <span style={{ display: 'block', fontSize: '9px', color: '#64748b', textTransform: 'uppercase', fontWeight: '800', marginBottom: '2px' }}>TXN Number</span>
+                      <span style={{ fontSize: '13px', fontWeight: '900', fontFamily: '"JetBrains Mono", monospace', color: '#0f172a' }}>{selectedVoid.transactionNumber}</span>
                     </div>
-                    <div style={{ flex: 1.5, backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                      <span style={{ display: 'block', fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '800', marginBottom: '4px' }}>Customer</span>
-                      <span style={{ fontSize: '15px', fontWeight: '800', color: '#0f172a' }}>{selectedVoid.customerName}</span>
+                    <div style={{ flex: 1, backgroundColor: '#f8fafc', padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                      <span style={{ display: 'block', fontSize: '9px', color: '#64748b', textTransform: 'uppercase', fontWeight: '800', marginBottom: '2px' }}>Time</span>
+                      <span style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a' }}>{selectedVoid.preciseTimestamp ? selectedVoid.preciseTimestamp : new Date(selectedVoid.createdAt).toLocaleString('en-GB')}</span>
                     </div>
-                    <div style={{ flex: 1.5, backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                      <span style={{ display: 'block', fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '800', marginBottom: '4px' }}>Phone</span>
-                      <span style={{ fontSize: '15px', fontWeight: '800', fontFamily: '"JetBrains Mono", monospace', color: '#0f172a' }}>{selectedVoid.customerPhone}</span>
+                    <div style={{ flex: 1.5, backgroundColor: '#f8fafc', padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                      <span style={{ display: 'block', fontSize: '9px', color: '#64748b', textTransform: 'uppercase', fontWeight: '800', marginBottom: '2px' }}>Customer / Phone</span>
+                      <span style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a' }}>{selectedVoid.customerName} - {selectedVoid.customerPhone}</span>
                     </div>
                   </div>
 
                   {/* Middle Section: 2 Columns */}
-                  <div style={{ display: 'flex', gap: '25px', flex: 1, minHeight: 0 }}>
+                  <div style={{ display: 'flex', gap: '15px', flex: 1, minHeight: 0, position: 'relative', zIndex: 10 }}>
 
                     {/* Left Column: Reason & Items */}
-                    <div style={{ flex: '0 0 45%', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div style={{ flex: '0 0 45%', display: 'flex', flexDirection: 'column', gap: '10px' }}>
 
                       {/* Reason Box */}
-                      <div style={{ padding: '15px', backgroundColor: '#f1f5f9', borderLeft: '4px solid #94a3b8', borderRadius: '0 8px 8px 0' }}>
-                        <span style={{ display: 'block', fontSize: '12px', color: '#475569', textTransform: 'uppercase', fontWeight: '800', marginBottom: '8px' }}>Reason for Void/Return</span>
-                        <div style={{ fontSize: '13px', lineHeight: 1.5, fontWeight: '500', color: '#0f172a' }}>
+                      <div style={{ padding: '10px', backgroundColor: '#f1f5f9', borderLeft: '4px solid #94a3b8', borderRadius: '0 4px 4px 0' }}>
+                        <span style={{ display: 'block', fontSize: '10px', color: '#475569', textTransform: 'uppercase', fontWeight: '800', marginBottom: '4px' }}>Reason for Void/Return</span>
+                        <div style={{ fontSize: '11px', lineHeight: 1.4, fontWeight: '500', color: '#0f172a' }}>
                           {selectedVoid.reason}
                         </div>
                       </div>
 
                       {/* Receipt Data Table */}
                       {selectedVoid.extractedReceipt && selectedVoid.extractedReceipt.items && (
-                        <div style={{ border: '1px solid #cbd5e1', borderRadius: '8px', overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: 'white' }}>
-                          <div style={{ backgroundColor: '#f8fafc', padding: '10px 15px', borderBottom: '2px solid #e2e8f0', fontSize: '12px', fontWeight: '900', textTransform: 'uppercase', color: '#1e293b' }}>
+                        <div style={{ border: '2px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: 'white' }}>
+                          <div style={{ backgroundColor: '#f8fafc', padding: '6px 10px', borderBottom: '2px solid #cbd5e1', fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', color: '#1e293b' }}>
                             Scanned Items List
                           </div>
-                          <div style={{ padding: '10px', flex: 1, overflow: 'hidden' }}>
-                            <table style={{ width: '100%', fontSize: '11px', borderCollapse: 'collapse' }}>
+                          <div style={{ padding: '6px', flex: 1, overflow: 'hidden' }}>
+                            <table style={{ width: '100%', fontSize: '9px', borderCollapse: 'collapse' }}>
                               <thead>
-                                <tr style={{ borderBottom: '2px solid #cbd5e1', color: '#64748b' }}>
-                                  <th style={{ textAlign: 'left', padding: '6px 4px', fontWeight: '800' }}>Item</th>
-                                  <th style={{ textAlign: 'center', padding: '6px 4px', fontWeight: '800' }}>Qty</th>
-                                  <th style={{ textAlign: 'right', padding: '6px 4px', fontWeight: '800' }}>Price</th>
-                                  <th style={{ textAlign: 'right', padding: '6px 4px', fontWeight: '800' }}>Total</th>
+                                <tr style={{ borderBottom: '1px solid #cbd5e1', color: '#64748b' }}>
+                                  <th style={{ textAlign: 'left', padding: '4px 2px', fontWeight: '800' }}>Item</th>
+                                  <th style={{ textAlign: 'center', padding: '4px 2px', fontWeight: '800' }}>Qty</th>
+                                  <th style={{ textAlign: 'right', padding: '4px 2px', fontWeight: '800' }}>Price</th>
+                                  <th style={{ textAlign: 'right', padding: '4px 2px', fontWeight: '800' }}>Total</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -380,30 +422,15 @@ export default function ManagerVoidsPage() {
                                   const isReturned = selectedVoid.selectedReturnedItems?.some((s: any) => s.desc === item.description);
                                   return (
                                     <tr key={i} style={{ backgroundColor: isReturned ? '#fef2f2' : 'transparent', borderBottom: '1px solid #f1f5f9' }}>
-                                      <td style={{ padding: '6px 4px', fontWeight: isReturned ? '800' : '500', color: isReturned ? '#991b1b' : '#0f172a' }}>{item.description} {isReturned ? '(VOID)' : ''}</td>
-                                      <td style={{ padding: '6px 4px', textAlign: 'center', fontWeight: '600' }}>{item.quantity}</td>
-                                      <td style={{ padding: '6px 4px', textAlign: 'right', color: '#475569' }}>{item.price}</td>
-                                      <td style={{ padding: '6px 4px', textAlign: 'right', fontWeight: '800' }}>{item.total}</td>
+                                      <td style={{ padding: '4px 2px', fontWeight: isReturned ? '800' : '500', color: isReturned ? '#991b1b' : '#0f172a' }}>{item.description} {isReturned ? '(VOID)' : ''}</td>
+                                      <td style={{ padding: '4px 2px', textAlign: 'center', fontWeight: '600' }}>{item.quantity}</td>
+                                      <td style={{ padding: '4px 2px', textAlign: 'right', color: '#475569' }}>{item.price}</td>
+                                      <td style={{ padding: '4px 2px', textAlign: 'right', fontWeight: '800' }}>{item.total}</td>
                                     </tr>
                                   );
                                 })}
                               </tbody>
                             </table>
-
-                            <div style={{ marginTop: '15px', padding: '10px 15px', backgroundColor: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '6px' }}>
-                                <span style={{ color: '#64748b', fontWeight: '700' }}>Net Amount:</span>
-                                <span style={{ fontWeight: '800' }}>{selectedVoid.extractedReceipt.net_amount || '0'}</span>
-                              </div>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '8px' }}>
-                                <span style={{ color: '#64748b', fontWeight: '700' }}>Tax:</span>
-                                <span style={{ fontWeight: '800' }}>{selectedVoid.extractedReceipt.tax_amount || '0'}</span>
-                              </div>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #cbd5e1', paddingTop: '8px', fontSize: '13px' }}>
-                                <span style={{ color: '#0f172a', fontWeight: '900' }}>Total Receipt:</span>
-                                <span style={{ fontWeight: '900', color: '#0f172a' }}>{selectedVoid.extractedReceipt.total_amount || '0'} EGP</span>
-                              </div>
-                            </div>
                           </div>
                         </div>
                       )}
@@ -412,15 +439,15 @@ export default function ManagerVoidsPage() {
 
                     {/* Right Column: Large Photo */}
                     <div style={{ flex: '0 0 55%', display: 'flex', flexDirection: 'column' }}>
-                      <div style={{ border: '2px solid #cbd5e1', borderRadius: '8px', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', backgroundColor: '#f8fafc' }}>
-                        <div style={{ backgroundColor: '#e2e8f0', padding: '10px 15px', borderBottom: '2px solid #cbd5e1', fontSize: '12px', fontWeight: '900', textTransform: 'uppercase', textAlign: 'center', color: '#1e293b', letterSpacing: '1px' }}>
+                      <div style={{ border: '2px solid #cbd5e1', borderRadius: '4px', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', backgroundColor: '#f8fafc' }}>
+                        <div style={{ backgroundColor: '#e2e8f0', padding: '6px 10px', borderBottom: '2px solid #cbd5e1', fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', textAlign: 'center', color: '#1e293b', letterSpacing: '1px' }}>
                           Physical Receipt Evidence
                         </div>
-                        <div style={{ flex: 1, padding: '15px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                        <div style={{ flex: 1, padding: '10px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                           {selectedVoid.attachedPhotos && selectedVoid.attachedPhotos.length > 0 ? (
-                            <img src={selectedVoid.attachedPhotos[0]} style={{ width: '100%', height: '100%', objectFit: 'contain', border: '1px solid #e2e8f0', backgroundColor: 'white', padding: '5px' }} alt="Receipt Evidence" />
+                            <img src={selectedVoid.attachedPhotos[0]} style={{ width: '100%', height: '100%', objectFit: 'contain', border: '1px solid #e2e8f0', backgroundColor: 'white', padding: '4px' }} alt="Receipt Evidence" />
                           ) : (
-                            <div style={{ color: '#94a3b8', fontSize: '16px', fontWeight: '800' }}>No Photo Attached</div>
+                            <div style={{ color: '#94a3b8', fontSize: '14px', fontWeight: '800' }}>No Photo Attached</div>
                           )}
                         </div>
                       </div>
@@ -429,24 +456,24 @@ export default function ManagerVoidsPage() {
                   </div>
 
                   {/* Footer Signatures */}
-                  <div style={{ borderTop: '4px solid #e2e8f0', paddingTop: '20px', marginTop: '25px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingBottom: '10px' }}>
-                    <div style={{ width: '30%' }}>
-                      <p style={{ fontSize: '11px', fontWeight: '800', color: '#64748b', margin: '0 0 5px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Cashier Signature</p>
+                  <div style={{ borderTop: '2px solid #1e293b', paddingTop: '10px', marginTop: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingBottom: '10px', position: 'relative', zIndex: 10 }}>
+                    <div style={{ width: '25%' }}>
+                      <p style={{ fontSize: '9px', fontWeight: '800', color: '#64748b', margin: '0 0 2px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Cashier Signature</p>
                       {selectedVoid.cashierSignature ? (
-                        <img src={selectedVoid.cashierSignature} alt="Signature" style={{ display: 'block', maxWidth: '100%', height: '60px', objectFit: 'contain', marginBottom: '5px' }} />
+                        <img src={selectedVoid.cashierSignature} alt="Signature" style={{ display: 'block', maxWidth: '100%', height: '40px', objectFit: 'contain', marginBottom: '2px' }} />
                       ) : (
-                        <div style={{ height: '60px', marginBottom: '5px' }}></div>
+                        <div style={{ height: '40px', marginBottom: '2px' }}></div>
                       )}
-                      <div style={{ borderBottom: '2px solid #0f172a', width: '100%', marginBottom: '6px' }}></div>
-                      <p style={{ fontSize: '14px', fontWeight: '900', margin: 0, textTransform: 'uppercase', color: '#0f172a' }}>{selectedVoid.cashierName}</p>
+                      <div style={{ borderBottom: '2px solid #0f172a', width: '100%', marginBottom: '4px' }}></div>
+                      <p style={{ fontSize: '11px', fontWeight: '900', margin: 0, textTransform: 'uppercase', color: '#0f172a' }}>{selectedVoid.cashierName}</p>
                     </div>
 
-                    <div style={{ width: '30%', textAlign: 'center' }}>
+                    <div style={{ width: '20%', textAlign: 'center' }}>
                       <Barcode
                         value={selectedVoid.transactionNumber}
-                        width={1.6}
-                        height={55}
-                        fontSize={13}
+                        width={1.2}
+                        height={35}
+                        fontSize={10}
                         font="monospace"
                         margin={0}
                         background="#ffffff"
@@ -454,12 +481,26 @@ export default function ManagerVoidsPage() {
                       />
                     </div>
 
-                    <div style={{ width: '30%' }}>
-                      <p style={{ fontSize: '11px', fontWeight: '800', color: '#64748b', margin: '0 0 5px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Manager Authorization</p>
-                      <div style={{ height: '60px', marginBottom: '5px' }}></div>
-                      <div style={{ borderBottom: '2px solid #0f172a', width: '100%', marginBottom: '6px' }}></div>
-                      <p style={{ fontSize: '14px', fontWeight: '900', margin: 0, textTransform: 'uppercase', color: '#0f172a' }}>Signature / Stamp</p>
+                    <div style={{ width: '25%' }}>
+                      <p style={{ fontSize: '9px', fontWeight: '800', color: '#64748b', margin: '0 0 2px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Manager Authorization</p>
+                      <div style={{ height: '40px', marginBottom: '2px' }}></div>
+                      <div style={{ borderBottom: '2px solid #0f172a', width: '100%', marginBottom: '4px' }}></div>
+                      <p style={{ fontSize: '11px', fontWeight: '900', margin: 0, textTransform: 'uppercase', color: '#0f172a' }}>Signature / Stamp</p>
                     </div>
+
+                    {/* Official Stamp Box */}
+                    <div style={{ width: '20%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end' }}>
+                      <div style={{ width: '100%', height: '60px', border: '2px dashed #94a3b8', borderRadius: '4px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc' }}>
+                        <span style={{ fontSize: '8px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', textAlign: 'center', letterSpacing: '0.5px' }}>Official Branch<br />Stamp / Seal</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Advanced Digital Forensics Footer */}
+                  <div style={{ marginTop: 'auto', borderTop: '2px solid #1e293b', paddingTop: '6px', textAlign: 'center', position: 'relative', zIndex: 10 }}>
+                    <p style={{ fontSize: '7px', color: '#475569', fontFamily: 'monospace', margin: 0, letterSpacing: '0.5px', fontWeight: 'bold' }}>
+                      DOCUMENT VOID-{selectedVoid.id.substring(0, 10).toUpperCase()} | TXN: {selectedVoid.transactionNumber} | PRINTED: {new Date().toLocaleString('en-GB')} | SYSTEM: ANH PORTAL V2.0
+                    </p>
                   </div>
 
                 </div>

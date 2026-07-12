@@ -1172,167 +1172,217 @@ export default function SupplierReturnsDashboard() {
               </div>
 
               {/* Historical Context (Not Printed) */}
-              <div className="no-print bg-slate-800 m-6 p-4 rounded-xl text-white border border-slate-700">
-                <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-2">Historical Context</p>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-sm font-medium">Total Lifetime Returns for <span className="font-black text-blue-400">{printData.supplier}</span></p>
-                    <p className="text-xs text-slate-400">{getSupplierTotalReturns(printData.supplier).count} total return events</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-black text-emerald-400">EGP {getSupplierTotalReturns(printData.supplier).total.toLocaleString()}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Printable Area - Corporate Style */}
-              <div id="print-area" className="p-6 md:p-8 text-black bg-white" dir={lang === "ar" ? "rtl" : "ltr"}>
+              <div className="no-print bg-slate-800 m-6 p-4 rounded-xl text-white border border-slate-700">              <div id="print-area" className="text-black bg-white" dir={lang === "ar" ? "rtl" : "ltr"} style={{ position: 'relative', overflow: 'hidden', padding: '15mm' }}>
                 
-                {/* Corporate Header */}
-                <div className="flex justify-between items-start border-b-4 border-black pb-4 mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-red-600 text-white p-2 rounded-xl font-black text-3xl tracking-tighter w-12 h-12 flex items-center justify-center">K</div>
-                    <div>
-                      <h1 className="text-2xl font-black uppercase tracking-tight leading-none">Circle K</h1>
-                      <p className="text-xs font-bold text-gray-500 mt-1 uppercase tracking-widest">{currentBranch === "all" ? "HQ Portal" : (currentBranch === "ola" ? "Ola El Koronfol" : "Alamein 4")}</p>
-                    </div>
+                {/* Micro-Typography Security Borders */}
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: 'none', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '4px', overflow: 'hidden' }}>
+                  <div style={{ fontSize: '6px', color: '#cbd5e1', fontFamily: 'monospace', letterSpacing: '3px', whiteSpace: 'nowrap', opacity: 0.8 }}>
+                    {Array(25).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
                   </div>
-                  <div className="text-right" dir="ltr">
-                    <h2 className="text-2xl font-black text-gray-900 tracking-tighter">إيصال مرتجع | RTV RECEIPT</h2>
-                    <p className="text-lg font-bold text-red-600 mt-1"># {printData.returnNumber}</p>
-                    {printData.transferOutNumber && (
-                      <p className="text-sm font-bold text-gray-600 mt-1">TR/Credit Note: {printData.transferOutNumber}</p>
-                    )}
-                    <p className="text-xs font-semibold text-gray-500 mt-1">{printData.date}</p>
+                  <div style={{ fontSize: '6px', color: '#cbd5e1', fontFamily: 'monospace', letterSpacing: '3px', whiteSpace: 'nowrap', opacity: 0.8 }}>
+                    {Array(25).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
+                  </div>
+                </div>
+                <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, zIndex: 1, pointerEvents: 'none', display: 'flex', flexDirection: 'column', padding: '4px', overflow: 'hidden', writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
+                  <div style={{ fontSize: '6px', color: '#cbd5e1', fontFamily: 'monospace', letterSpacing: '3px', whiteSpace: 'nowrap', opacity: 0.8 }}>
+                    {Array(35).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
+                  </div>
+                </div>
+                <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: 'none', display: 'flex', flexDirection: 'column', padding: '4px', overflow: 'hidden', writingMode: 'vertical-rl' }}>
+                  <div style={{ fontSize: '6px', color: '#cbd5e1', fontFamily: 'monospace', letterSpacing: '3px', whiteSpace: 'nowrap', opacity: 0.8 }}>
+                    {Array(35).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
                   </div>
                 </div>
 
-                {/* Metadata Grid */}
-                <div className="grid grid-cols-2 gap-4 mb-6 border-b-2 border-gray-200 pb-6">
-                  {/* Supplier Box */}
-                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                    <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">بيانات المورد | Supplier Info</h3>
-                    <p className="text-lg font-black text-gray-900 mb-3">{printData.supplier}</p>
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between border-b border-gray-200 pb-1.5">
-                        <span className="text-xs font-semibold text-gray-500">المندوب | Agent</span>
-                        <span className="text-xs font-bold text-gray-900">{printData.agentName}</span>
+                {/* Automated Digital Audit Stamp (Giant Watermark) */}
+                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-35deg)', fontSize: '80px', fontWeight: '900', color: 'rgba(59, 130, 246, 0.05)', zIndex: 5, whiteSpace: 'nowrap', pointerEvents: 'none', textTransform: 'uppercase', letterSpacing: '5px' }}>
+                  RETURN MANIFEST
+                </div>
+
+                <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                  {/* Corporate Header */}
+                  <div className="flex justify-between items-start border-b-4 border-black pb-4 mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-red-600 text-white p-2 rounded-xl font-black text-3xl tracking-tighter w-12 h-12 flex items-center justify-center">K</div>
+                      <div>
+                        <h1 className="text-2xl font-black uppercase tracking-tight leading-none">Circle K</h1>
+                        <p className="text-xs font-bold text-gray-500 mt-1 uppercase tracking-widest">{currentBranch === "all" ? "HQ Portal" : (currentBranch === "ola" ? "Ola El Koronfol" : "Alamein 4")}</p>
                       </div>
-                      <div className="flex justify-between border-b border-gray-200 pb-1.5">
-                        <span className="text-xs font-semibold text-gray-500">الهاتف | Mobile</span>
-                        <span className="text-xs font-bold text-gray-900">{printData.agentMobile}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-xs font-semibold text-gray-500">الرقم القومي | National ID</span>
-                        <span className="text-xs font-black tracking-widest text-gray-900">{printData.agentNationalId}</span>
-                      </div>
+                    </div>
+                    <div className="text-right" dir="ltr">
+                      <h2 className="text-2xl font-black text-gray-900 tracking-tighter">إيصال مرتجع | RTV RECEIPT</h2>
+                      <p className="text-lg font-bold text-red-600 mt-1"># {printData.returnNumber}</p>
+                      {printData.transferOutNumber && (
+                        <p className="text-sm font-bold text-gray-600 mt-1">TR/Credit Note: {printData.transferOutNumber}</p>
+                      )}
+                      <p className="text-xs font-semibold text-gray-500 mt-1">{printData.date}</p>
                     </div>
                   </div>
 
-                  {/* Financials Box */}
-                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex flex-col justify-between">
-                    <div>
-                      <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">التسوية | Settlement</h3>
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs font-semibold text-gray-500">الطريقة | Method</span>
-                          <span className="text-xs font-black uppercase bg-gray-200 px-3 py-1.5 rounded-md text-gray-800">
-                            {printData.settlementMethod === 'money' ? (lang === "ar" ? 'نقدى/تحويل' : 'Money/Transfer') : (lang === "ar" ? 'استبدال بضاعة' : 'Products Exchange')}
-                          </span>
+                  {/* AI Summary Sentence (Egyptian Arabic) */}
+                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRight: '4px solid #3b82f6', borderRadius: '8px', padding: '6px 10px', direction: 'rtl', textAlign: 'right', marginBottom: '15px' }}>
+                    <p style={{ margin: 0, fontSize: '10px', color: '#1e293b', lineHeight: 1.5, fontWeight: 'bold' }}>
+                      <span style={{ color: '#3b82f6', marginLeft: '6px' }}>✦</span>
+                      تحليل المرتجعات للمورد: البضاعة دي هترجع للمورد بقيمة إجمالية {(printData.totalPrice || 0).toLocaleString()} جنيه. لازم مندوب الشركة ({printData.agentName}) يمضي تحت ويستلم البضاعة في إيده عشان نخلي مسؤولية الفرع وتتسجل على حساب المورد.
+                    </p>
+                  </div>
+
+                  {/* Metadata Grid */}
+                  <div className="grid grid-cols-2 gap-4 mb-4 border-b-2 border-gray-200 pb-4">
+                    {/* Supplier Box */}
+                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                      <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">بيانات المورد | Supplier Info</h3>
+                      <p className="text-lg font-black text-gray-900 mb-3">{printData.supplier}</p>
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between border-b border-gray-200 pb-1.5">
+                          <span className="text-xs font-semibold text-gray-500">المندوب | Agent</span>
+                          <span className="text-xs font-bold text-gray-900">{printData.agentName}</span>
                         </div>
-                        {printData.settlementMethod === 'money' && (
-                          <>
-                            <div className="flex justify-between items-center">
-                              <span className="text-xs font-semibold text-gray-500">الوقت | Timing</span>
-                              <span className="text-xs font-bold text-gray-900">{printData.paymentTiming === 'now' ? 'Immediate | فوري' : 'Later | آجل'}</span>
-                            </div>
-                            {printData.paymentTiming === 'later' && printData.expectedPaymentDate && (
+                        <div className="flex justify-between border-b border-gray-200 pb-1.5">
+                          <span className="text-xs font-semibold text-gray-500">الهاتف | Mobile</span>
+                          <span className="text-xs font-bold text-gray-900">{printData.agentMobile}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-xs font-semibold text-gray-500">الرقم القومي | National ID</span>
+                          <span className="text-xs font-black tracking-widest text-gray-900">{printData.agentNationalId}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Financials Box */}
+                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex flex-col justify-between">
+                      <div>
+                        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">التسوية | Settlement</h3>
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs font-semibold text-gray-500">الطريقة | Method</span>
+                            <span className="text-xs font-black uppercase bg-gray-200 px-3 py-1.5 rounded-md text-gray-800">
+                              {printData.settlementMethod === 'money' ? (lang === "ar" ? 'نقدى/تحويل' : 'Money/Transfer') : (lang === "ar" ? 'استبدال بضاعة' : 'Products Exchange')}
+                            </span>
+                          </div>
+                          {printData.settlementMethod === 'money' && (
+                            <>
                               <div className="flex justify-between items-center">
-                                <span className="text-xs font-semibold text-gray-500">تاريخ الاستحقاق | Due Date</span>
-                                <span className="text-xs font-bold text-red-600">{new Date(printData.expectedPaymentDate).toLocaleDateString()}</span>
+                                <span className="text-xs font-semibold text-gray-500">الوقت | Timing</span>
+                                <span className="text-xs font-bold text-gray-900">{printData.paymentTiming === 'now' ? 'Immediate | فوري' : 'Later | آجل'}</span>
                               </div>
-                            )}
-                          </>
-                        )}
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs font-semibold text-gray-500">الحالة | Status</span>
-                          <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-md ${printData.isSettled ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
-                            {printData.isSettled ? "Settled | تمت التسوية" : "Pending | قيد الانتظار"}
-                          </span>
+                              {printData.paymentTiming === 'later' && printData.expectedPaymentDate && (
+                                <div className="flex justify-between items-center">
+                                  <span className="text-xs font-semibold text-gray-500">تاريخ الاستحقاق | Due Date</span>
+                                  <span className="text-xs font-bold text-red-600">{new Date(printData.expectedPaymentDate).toLocaleDateString()}</span>
+                                </div>
+                              )}
+                            </>
+                          )}
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs font-semibold text-gray-500">الحالة | Status</span>
+                            <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-md ${printData.isSettled ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                              {printData.isSettled ? "Settled | تمت التسوية" : "Pending | قيد الانتظار"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-4 text-left" dir="ltr">
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Total Value | إجمالي القيمة</span>
+                        <div className="flex items-end gap-1">
+                          <span className="text-3xl font-black text-gray-900 leading-none">{printData.totalPrice || 0}</span>
+                          <span className="text-sm font-bold text-gray-500 mb-1">EGP</span>
                         </div>
                       </div>
                     </div>
-                    <div className="mt-4 text-left" dir="ltr">
-                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Total Value | إجمالي القيمة</span>
-                      <div className="flex items-end gap-1">
-                        <span className="text-3xl font-black text-gray-900 leading-none">{printData.totalPrice || 0}</span>
-                        <span className="text-sm font-bold text-gray-500 mb-1">EGP</span>
-                      </div>
-                    </div>
                   </div>
-                </div>
 
-                {/* Items Block */}
-                <div className="mb-6">
-                  <h3 className="text-sm font-black mb-3 uppercase tracking-tight text-gray-800">تفاصيل الأصناف المرتجعة | Returned Items</h3>
-                  
-                  {printData.items.length === 1 && printData.items[0].barcode === "N/A" ? (
-                    <div className="border-2 border-gray-200 border-dashed rounded-xl p-6 text-center bg-gray-50 my-4">
-                      <div className="mx-auto bg-green-100 w-12 h-12 rounded-full flex items-center justify-center mb-3">
-                        <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                  {/* Items Block */}
+                  <div className="mb-4">
+                    <h3 className="text-sm font-black mb-2 uppercase tracking-tight text-gray-800">تفاصيل الأصناف المرتجعة | Returned Items</h3>
+                    
+                    {printData.items.length === 1 && printData.items[0].barcode === "N/A" ? (
+                      <div className="border-2 border-gray-200 border-dashed rounded-xl p-4 text-center bg-gray-50 my-2">
+                        <div className="mx-auto bg-green-100 w-10 h-10 rounded-full flex items-center justify-center mb-2">
+                          <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                        </div>
+                        <p className="text-sm font-black text-gray-800 mb-1">مطابق لمستند التحويل من النظام | MATCHES SYSTEM TRANSFER</p>
+                        <p className="text-[10px] font-bold text-gray-500">لا يوجد إدخال يدوي للعناصر - تم استلام البضاعة كما هي في مستند التحويل المرفق</p>
+                        <p className="text-[10px] font-bold text-gray-500 mt-1">No items manually appended - goods received exactly as per system transfer document.</p>
                       </div>
-                      <p className="text-lg font-black text-gray-800 mb-2">مطابق لمستند التحويل من النظام | MATCHES SYSTEM TRANSFER</p>
-                      <p className="text-xs font-bold text-gray-500">لا يوجد إدخال يدوي للعناصر - تم استلام البضاعة كما هي في مستند التحويل المرفق</p>
-                      <p className="text-xs font-bold text-gray-500 mt-1">No items manually appended - goods received exactly as per system transfer document.</p>
-                    </div>
-                  ) : (
-                    <div className="border-2 border-black rounded-xl overflow-hidden">
-                      <table className="w-full text-left border-collapse">
-                        <thead className="bg-gray-100">
-                          <tr className="border-b-2 border-black">
-                            <th className="py-2 px-3 font-black text-[10px] text-gray-500 uppercase tracking-wider w-12 text-center border-r-2 border-black">م</th>
-                            <th className="py-2 px-3 font-black text-[10px] text-gray-500 uppercase tracking-wider w-40 border-r-2 border-black">Barcode | باركود</th>
-                            <th className="py-2 px-3 font-black text-[10px] text-gray-500 uppercase tracking-wider border-r-2 border-black">Item | الصنف</th>
-                            <th className="py-2 px-3 font-black text-[10px] text-gray-500 uppercase tracking-wider w-20 text-center">Qty | كمية</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y border-black">
-                          {printData.items.map((it: any, i: number) => (
-                            <tr key={it.id || i}>
-                              <td className="py-2 px-3 font-bold text-gray-500 text-center border-r-2 border-black text-xs">{i + 1}</td>
-                              <td className="py-2 px-3 font-mono font-bold text-xs text-gray-800 border-r-2 border-black tracking-wider">{it.barcode}</td>
-                              <td className="py-2 px-3 font-black text-gray-900 border-r-2 border-black text-sm">{it.itemName}</td>
-                              <td className="py-2 px-3 font-black text-gray-900 text-center text-lg">{it.quantity}</td>
+                    ) : (
+                      <div className="border-2 border-black rounded-xl overflow-hidden">
+                        <table className="w-full text-left border-collapse">
+                          <thead className="bg-gray-100">
+                            <tr className="border-b-2 border-black">
+                              <th className="py-2 px-3 font-black text-[10px] text-gray-500 uppercase tracking-wider w-12 text-center border-r-2 border-black">م</th>
+                              <th className="py-2 px-3 font-black text-[10px] text-gray-500 uppercase tracking-wider w-40 border-r-2 border-black">Barcode | باركود</th>
+                              <th className="py-2 px-3 font-black text-[10px] text-gray-500 uppercase tracking-wider border-r-2 border-black">Item | الصنف</th>
+                              <th className="py-2 px-3 font-black text-[10px] text-gray-500 uppercase tracking-wider w-20 text-center">Qty | كمية</th>
                             </tr>
-                          ))}
-                        </tbody>
-                        <tfoot className="bg-gray-100 border-t-2 border-black">
-                          <tr>
-                            <td colSpan={3} className="py-3 px-4 text-right font-black text-gray-600 uppercase tracking-wider border-r-2 border-black text-xs">
-                              Total Units | إجمالي الوحدات
-                            </td>
-                            <td className="py-3 px-4 text-center font-black text-xl text-gray-900">
-                              {printData.items.reduce((sum: number, it: any) => sum + Number(it.quantity || 0), 0)}
-                            </td>
-                          </tr>
-                        </tfoot>
-                      </table>
-                    </div>
-                  )}
-                </div>
-
-                {/* Signatures & Approvals */}
-                <div className="mt-8 pt-4 border-t-2 border-gray-100 break-inside-avoid">
-                  <div className="text-center mb-6">
-                    <p className="font-black text-sm text-gray-900 mb-1">* Copy of Agent ID is attached | مرفق صورة البطاقة *</p>
-                    <p className="text-[10px] font-bold text-gray-500">Document valid only with authorized signatures.</p>
+                          </thead>
+                          <tbody className="divide-y border-black">
+                            {printData.items.map((it: any, i: number) => (
+                              <tr key={it.id || i}>
+                                <td className="py-1 px-3 font-bold text-gray-500 text-center border-r-2 border-black text-[10px]">{i + 1}</td>
+                                <td className="py-1 px-3 font-mono font-bold text-[10px] text-gray-800 border-r-2 border-black tracking-wider">{it.barcode}</td>
+                                <td className="py-1 px-3 font-black text-gray-900 border-r-2 border-black text-[10px]">{it.itemName}</td>
+                                <td className="py-1 px-3 font-black text-gray-900 text-center text-sm">{it.quantity}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot className="bg-gray-100 border-t-2 border-black">
+                            <tr>
+                              <td colSpan={3} className="py-2 px-4 text-right font-black text-gray-600 uppercase tracking-wider border-r-2 border-black text-[10px]">
+                                Total Units | إجمالي الوحدات
+                              </td>
+                              <td className="py-2 px-4 text-center font-black text-lg text-gray-900">
+                                {printData.items.reduce((sum: number, it: any) => sum + Number(it.quantity || 0), 0)}
+                              </td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    )}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-12 px-6">
-                    <div className="text-center relative">
-                      <p className="font-black text-gray-400 text-[10px] uppercase tracking-widest mb-10">المندوب | Supplier Agent</p>
-                      <div className="border-t-2 border-black pt-2">
-                        <p className="font-black text-gray-900 text-sm uppercase truncate">{printData.agentName}</p>
+                  {/* Signatures & Approvals */}
+                  <div className="mt-auto pt-4 border-t-2 border-gray-100 break-inside-avoid">
+                    <div className="text-center mb-4">
+                      <p className="font-black text-[11px] text-gray-900 mb-1">* Copy of Agent ID is attached | مرفق صورة البطاقة *</p>
+                      <p className="text-[9px] font-bold text-gray-500">Document valid only with authorized signatures.</p>
+                    </div>
+
+                    <div className="flex justify-between items-end px-4">
+                      <div className="text-center relative w-1/3">
+                        <p className="font-black text-gray-400 text-[10px] uppercase tracking-widest mb-10">المندوب | Supplier Agent</p>
+                        <div className="border-t-2 border-black pt-2">
+                          <p className="font-black text-gray-900 text-[11px] uppercase truncate">{printData.agentName}</p>
+                          <p className="text-[9px] font-bold text-gray-500 mt-0.5 uppercase tracking-widest">Delivered By</p>
+                        </div>
+                      </div>
+
+                      {/* Official Stamp Box */}
+                      <div style={{ width: '25%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', marginBottom: '5px' }}>
+                        <div style={{ width: '100%', height: '50px', border: '2px dashed #94a3b8', borderRadius: '4px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc' }}>
+                          <span style={{ fontSize: '8px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', textAlign: 'center', letterSpacing: '0.5px' }}>Official Branch<br />Stamp / Seal</span>
+                        </div>
+                      </div>
+
+                      <div className="text-center relative w-1/3">
+                        <p className="font-black text-gray-400 text-[10px] uppercase tracking-widest mb-10">المستلم | Store Manager</p>
+                        <div className="border-t-2 border-black pt-2">
+                          <p className="font-black text-gray-900 text-[11px] uppercase truncate">{printData.items[0]?.createdBy || "Store Manager"}</p>
+                          <p className="text-[9px] font-bold text-gray-500 mt-0.5 uppercase tracking-widest">Received By</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Advanced Digital Forensics Footer */}
+                  <div style={{ borderTop: '2px solid #1e293b', paddingTop: '6px', textAlign: 'center', marginTop: '10px' }}>
+                    <p style={{ fontSize: '7px', color: '#475569', fontFamily: 'monospace', margin: 0, letterSpacing: '0.5px', fontWeight: 'bold' }}>
+                      DOCUMENT RET-{printData.returnNumber} | DATE: {printData.date} | PRINTED: {new Date().toLocaleString('en-GB')} | SYSTEM: ANH PORTAL V2.0
+                    </p>
+                  </div>
+
+                </div>
+              </div>-gray-900 text-sm uppercase truncate">{printData.agentName}</p>
                         <p className="text-[10px] font-bold text-gray-500 mt-0.5 uppercase tracking-widest">Delivered By</p>
                       </div>
                     </div>

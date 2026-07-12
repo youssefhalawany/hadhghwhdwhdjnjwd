@@ -273,6 +273,36 @@ export default function FinancialReportsPage() {
     ));
   }
 
+  let aiInsights = "";
+  if (activeTab === "sales") {
+    if (grandTotal > 50000 && Math.abs(totalOverShort) > 500) {
+      aiInsights = `مراجعة المبيعات: حجم مبيعات عالي جداً (EGP ${grandTotal.toLocaleString()}). العجز/الزيادة (EGP ${totalOverShort.toLocaleString()}) مبرر بسبب الضغط بس محتاجين نراجع كاميرات الكاشير.`;
+    } else if (Math.abs(totalOverShort) > 1000) {
+      aiInsights = `تحذير مبيعات: نسبة العجز/الزيادة عالية جداً (EGP ${totalOverShort.toLocaleString()}). لازم يتم إجراء جرد مفاجئ فوراً ومراجعة حركات الفيزا.`;
+    } else {
+      aiInsights = `مراجعة المبيعات: الأرقام متطابقة بشكل كبير (EGP ${grandTotal.toLocaleString()}). الأداء المالي مستقر ولا يوجد فروقات جوهرية.`;
+    }
+  } else if (activeTab === "credits") {
+    grandTotal = activeDataArray.reduce((sum, row) => sum + row.total, 0); // Compute grandTotal for credits
+    const relatedSales = filterData(sales, "date", "storeId");
+    const totalSalesForPeriod = relatedSales.reduce((sum, item) => sum + (Number(item.cash) || 0) + (Number(item.visa) || 0), 0);
+    const creditRatio = totalSalesForPeriod > 0 ? (grandTotal / totalSalesForPeriod) * 100 : 0;
+    
+    if (creditRatio > 25) {
+      aiInsights = `تحذير الآجل: نسبة المبيعات الآجلة (${creditRatio.toFixed(1)}%) من إجمالي المبيعات خطيرة وبتأثر على السيولة النقدية للفرع. برجاء مراجعة سياسة الآجل مع الشركات فوراً.`;
+    } else if (creditRatio > 10) {
+      aiInsights = `مراجعة الآجل: نسبة المبيعات الآجلة (${creditRatio.toFixed(1)}%) مقبولة، لكن يرجى سرعة التحصيل من الشركات المديونة (إجمالي مستحق EGP ${grandTotal.toLocaleString()}).`;
+    } else {
+      aiInsights = `مراجعة الآجل: مؤشر صحي. نسبة المبيعات الآجلة ممتازة وتدل على سيولة نقدية قوية بالفرع. لا توجد مخاطر مالية.`;
+    }
+  } else if (activeTab === "cash_payments") {
+    if (grandTotal > 15000) {
+      aiInsights = `تحليل المصروفات: معدل الإنفاق النقدي (EGP ${grandTotal.toLocaleString()}) مرتفع جداً ويؤثر على إيداعات البنك. برجاء تقنين المصروفات النثرية في الفروع.`;
+    } else {
+      aiInsights = `تحليل المصروفات: معدل الإنفاق النقدي طبيعي ومبرر (EGP ${grandTotal.toLocaleString()}). يرجى الاحتفاظ بالفواتير الأصلية للمراجعة الضريبية.`;
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -463,6 +493,14 @@ export default function FinancialReportsPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><strong>Period:</strong> <span>{startDate || 'All Time'} to {endDate || 'Present'}</span></div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 0 }}><strong>Store Scope:</strong> <span>{storeId === 'all' ? 'Enterprise-Wide' : storeId}</span></div>
               </div>
+            </div>
+
+            {/* AI Summary Block (Egyptian Arabic) */}
+            <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRight: '4px solid #e11937', borderRadius: '8px', padding: '12px 16px', textAlign: 'right', marginBottom: '25px', direction: 'rtl' }}>
+              <p style={{ margin: 0, fontSize: '12px', color: '#0f172a', lineHeight: 1.6, fontWeight: 'bold' }}>
+                <span style={{ color: '#e11937', marginLeft: '8px' }}>✦</span>
+                {aiInsights}
+              </p>
             </div>
 
             {/* Special KPI Header for Sales */}

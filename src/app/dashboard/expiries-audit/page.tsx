@@ -321,94 +321,141 @@ export default function ExpiryAuditPage() {
     <div className="space-y-6 print:m-0 print:p-0 print:space-y-0">
       
       {/* --- PRINT ONLY A4 REPORT VIEW --- */}
-      <div className="hidden print:block bg-white text-slate-900 w-full font-sans" style={{ width: '210mm', minHeight: '297mm', margin: '0 auto', boxSizing: 'border-box' }}>
+      <div className="hidden print:flex bg-white text-slate-900 w-full font-sans flex-col relative overflow-hidden" style={{ width: '210mm', minHeight: '297mm', margin: '0 auto', boxSizing: 'border-box', padding: '15mm' }} dir="rtl">
         
-        {/* Print Header */}
-        <div className="border-b-4 border-slate-900 p-10 flex justify-between items-end bg-slate-50">
-          <div>
-            <h1 className="text-4xl font-black text-slate-900 tracking-tight uppercase">Detailed Expiry Report</h1>
-            <p className="text-2xl font-bold text-red-600 tracking-widest mt-1 uppercase">Official Record</p>
+        {/* Micro-Typography Security Borders */}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: 'none', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '4px', overflow: 'hidden' }} dir="ltr">
+          <div style={{ fontSize: '6px', color: '#cbd5e1', fontFamily: 'monospace', letterSpacing: '3px', whiteSpace: 'nowrap', opacity: 0.8 }}>
+            {Array(25).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
           </div>
-          <div className="text-right">
-            <div className="h-12 w-12 bg-slate-900 text-white rounded-full flex items-center justify-center font-black text-2xl ml-auto mb-2">K</div>
-            <p className="font-bold text-sm text-slate-700">Circle K Enterprise</p>
-            <p suppressHydrationWarning className="text-xs font-semibold text-slate-500">Printed: {new Date().toLocaleDateString()}</p>
+          <div style={{ fontSize: '6px', color: '#cbd5e1', fontFamily: 'monospace', letterSpacing: '3px', whiteSpace: 'nowrap', opacity: 0.8 }}>
+            {Array(25).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
+          </div>
+        </div>
+        <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, zIndex: 1, pointerEvents: 'none', display: 'flex', flexDirection: 'column', padding: '4px', overflow: 'hidden', writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} dir="ltr">
+          <div style={{ fontSize: '6px', color: '#cbd5e1', fontFamily: 'monospace', letterSpacing: '3px', whiteSpace: 'nowrap', opacity: 0.8 }}>
+            {Array(35).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
+          </div>
+        </div>
+        <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: 'none', display: 'flex', flexDirection: 'column', padding: '4px', overflow: 'hidden', writingMode: 'vertical-rl' }} dir="ltr">
+          <div style={{ fontSize: '6px', color: '#cbd5e1', fontFamily: 'monospace', letterSpacing: '3px', whiteSpace: 'nowrap', opacity: 0.8 }}>
+            {Array(35).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
           </div>
         </div>
 
-        {/* Print Summary */}
-        <div className="p-10 border-b border-slate-200 bg-white">
-          <div className="flex justify-between items-start">
-            <div className="flex gap-10">
+        {/* Automated Digital Audit Stamp (Giant Watermark) */}
+        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-35deg)', fontSize: '80px', fontWeight: '900', color: 'rgba(239, 68, 68, 0.05)', zIndex: 5, whiteSpace: 'nowrap', pointerEvents: 'none', textTransform: 'uppercase', letterSpacing: '5px' }} dir="ltr">
+          EXPIRY DESTRUCTION
+        </div>
+
+        <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', height: '100%' }}>
+          {/* Corporate Header */}
+          <div className="flex justify-between items-start border-b-4 border-slate-900 pb-4 mb-4" dir="ltr">
+            <div className="flex items-center gap-3">
+              <div className="bg-red-600 text-white p-2 rounded-xl font-black text-3xl tracking-tighter w-12 h-12 flex items-center justify-center">K</div>
               <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Units Impacted</p>
-                <p className="text-3xl font-black text-slate-900">{totalFilteredQuantity} <span className="text-base text-slate-500 font-bold">Units</span></p>
+                <h1 className="text-2xl font-black uppercase tracking-tight leading-none">Circle K</h1>
+                <p className="text-xs font-bold text-slate-500 mt-1 uppercase tracking-widest">{currentBranch === "all" ? "HQ Portal" : (currentBranch === "ola" ? "Ola El Koronfol" : "Alamein 4")}</p>
               </div>
             </div>
             <div className="text-right">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Filters Applied</p>
+              <h2 className="text-2xl font-black text-slate-900 tracking-tighter">تقرير الهوالك | EXPIRIES AUDIT</h2>
+              <p className="text-sm font-bold text-red-600 mt-1 uppercase tracking-widest">Official Record</p>
+              <p className="text-xs font-semibold text-slate-500 mt-1">Date: {new Date().toLocaleDateString()}</p>
+            </div>
+          </div>
+
+          {/* AI Summary Sentence (Egyptian Arabic) */}
+          <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRight: '4px solid #ef4444', borderRadius: '8px', padding: '6px 10px', textAlign: 'right', marginBottom: '15px' }}>
+            <p style={{ margin: 0, fontSize: '10px', color: '#1e293b', lineHeight: 1.5, fontWeight: 'bold' }}>
+              <span style={{ color: '#ef4444', marginLeft: '6px' }}>✦</span>
+              {totalFilteredQuantity > 50 
+                ? `تحليل الهوالك: إجمالي الوحدات الهالكة (${totalFilteredQuantity} وحدة) رقم عالي ومحتاجين نراجع تواريخ الصلاحية على الرفوف أسرع من كده. لازم يتم إعدام البضاعة قدام مدير الفرع.`
+                : `تحليل الهوالك: إجمالي الوحدات الهالكة (${totalFilteredQuantity} وحدة) في المعدل الطبيعي. برجاء التأكد من إعدام البضاعة بشكل كامل قبل التوقيع.`}
+            </p>
+          </div>
+
+          {/* Print Summary */}
+          <div className="grid grid-cols-2 gap-4 mb-4 border-b-2 border-slate-200 pb-4">
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1" dir="ltr">Total Units Impacted</h3>
+              <p className="text-3xl font-black text-slate-900" dir="ltr">{totalFilteredQuantity} <span className="text-base text-slate-500 font-bold">Units</span></p>
+            </div>
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-right" dir="ltr">
+              <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Filters Applied</h3>
               <p className="text-sm font-semibold text-slate-700">Status: {reportFilters.status.toUpperCase()}</p>
               {reportFilters.supplier && <p className="text-sm font-semibold text-slate-700">Supplier: {reportFilters.supplier}</p>}
               {reportFilters.startDate && <p className="text-sm font-semibold text-slate-700">From: {reportFilters.startDate}</p>}
               {reportFilters.endDate && <p className="text-sm font-semibold text-slate-700">To: {reportFilters.endDate}</p>}
             </div>
           </div>
-        </div>
 
-        {/* Print Table */}
-        <div className="p-10">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b-2 border-slate-900">
-                <th className="py-3 px-2 text-xs font-black text-slate-900 uppercase tracking-widest">Barcode</th>
-                <th className="py-3 px-2 text-xs font-black text-slate-900 uppercase tracking-widest">Item Description</th>
-                <th className="py-3 px-2 text-xs font-black text-slate-900 uppercase tracking-widest">Supplier</th>
-                <th className="py-3 px-2 text-xs font-black text-slate-900 uppercase tracking-widest">Store</th>
-                <th className="py-3 px-2 text-xs font-black text-slate-900 uppercase tracking-widest">Status</th>
-                <th className="py-3 px-2 text-xs font-black text-slate-900 uppercase tracking-widest">Expiry Date</th>
-                <th className="py-3 px-2 text-xs font-black text-slate-900 uppercase tracking-widest text-right">Qty</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredReportItems.map(item => (
-                <tr key={item.id} className="border-b border-slate-200">
-                  <td className="py-2 px-2">
-                    {item.barcode ? <div className="scale-75 origin-left -ml-2"><Barcode value={item.barcode} height={30} width={1.2} fontSize={12} margin={0} /></div> : <span className="text-slate-400 text-xs">-</span>}
-                  </td>
-                  <td className="py-4 px-2 text-sm font-bold text-slate-900">
-                    {item.itemName}
-                  </td>
-                  <td className="py-4 px-2 text-sm text-slate-600">{item.supplier || "-"}</td>
-                  <td className="py-4 px-2 text-sm text-slate-600">{item.storeId || "Unknown Store"}</td>
-                  <td className="py-4 px-2 text-xs font-bold text-slate-600 uppercase">{item.status}</td>
-                  <td className="py-4 px-2 text-sm font-mono text-slate-800">{item.expiryDate}</td>
-                  <td className="py-4 px-2 text-base font-black text-slate-900 text-right">{item.quantity}</td>
+          {/* Print Table */}
+          <div className="mb-4 flex-1">
+            <table className="w-full text-left border-collapse border-2 border-slate-900 rounded-lg overflow-hidden" dir="ltr">
+              <thead className="bg-slate-100">
+                <tr className="border-b-2 border-slate-900">
+                  <th className="py-2 px-2 text-[10px] font-black text-slate-500 uppercase tracking-widest border-r-2 border-slate-900">Barcode</th>
+                  <th className="py-2 px-2 text-[10px] font-black text-slate-500 uppercase tracking-widest border-r-2 border-slate-900">Item</th>
+                  <th className="py-2 px-2 text-[10px] font-black text-slate-500 uppercase tracking-widest border-r-2 border-slate-900">Supplier</th>
+                  <th className="py-2 px-2 text-[10px] font-black text-slate-500 uppercase tracking-widest border-r-2 border-slate-900">Status</th>
+                  <th className="py-2 px-2 text-[10px] font-black text-slate-500 uppercase tracking-widest border-r-2 border-slate-900">Expiry Date</th>
+                  <th className="py-2 px-2 text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">Qty</th>
                 </tr>
-              ))}
-              {filteredReportItems.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="py-10 text-center text-slate-500 font-bold">No records found for the selected filters.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y border-slate-900">
+                {filteredReportItems.map(item => (
+                  <tr key={item.id}>
+                    <td className="py-1 px-2 font-mono font-bold text-[10px] text-slate-800 border-r-2 border-slate-900 tracking-wider">
+                      {item.barcode || "-"}
+                    </td>
+                    <td className="py-1 px-2 text-[10px] font-black text-slate-900 border-r-2 border-slate-900">
+                      {item.itemName}
+                    </td>
+                    <td className="py-1 px-2 text-[10px] font-bold text-slate-600 border-r-2 border-slate-900">{item.supplier || "-"}</td>
+                    <td className="py-1 px-2 text-[10px] font-bold text-slate-600 uppercase border-r-2 border-slate-900">{item.status}</td>
+                    <td className="py-1 px-2 text-[10px] font-mono text-red-600 font-bold border-r-2 border-slate-900">{item.expiryDate}</td>
+                    <td className="py-1 px-2 text-sm font-black text-slate-900 text-center">{item.quantity}</td>
+                  </tr>
+                ))}
+                {filteredReportItems.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="py-10 text-center text-slate-500 font-bold">No records found for the selected filters.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
 
-        {/* Print Footer / Signatures */}
-        <div className="mt-10 pt-10 border-t-2 border-slate-200 mx-10 pb-10 flex justify-between items-end">
-          <div className="w-1/4">
-            <div className="bg-white p-2 border border-slate-200 rounded-lg inline-block shadow-sm">
-              <QRCode value={generateQRData()} size={80} level="L" />
+          {/* Print Footer / Signatures */}
+          <div className="mt-auto pt-4 border-t-2 border-slate-200 flex justify-between items-end break-inside-avoid" dir="ltr">
+            <div className="w-1/4">
+              <div className="bg-white p-1 border border-slate-200 rounded-lg inline-block shadow-sm">
+                <QRCode value={generateQRData()} size={60} level="L" />
+              </div>
+              <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-1 text-center w-16">Scan Data</p>
             </div>
-            <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-2 text-center w-24">Scan for Summary</p>
+
+            <div className="w-1/3 text-center relative px-2">
+              <p className="font-black text-slate-400 text-[10px] uppercase tracking-widest mb-8">Store Manager</p>
+              <div className="border-t-2 border-slate-900 pt-1">
+                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Authorized By</p>
+              </div>
+            </div>
+
+            {/* Official Stamp Box for Destruction Witness */}
+            <div className="w-1/4 flex flex-col items-center justify-end mb-2">
+              <div className="w-full height-12 border-2 border-dashed border-slate-400 rounded-md flex flex-col items-center justify-center bg-slate-50 py-3">
+                <span className="text-[7px] font-black text-slate-400 uppercase text-center tracking-wider">Destruction<br/>Witness Stamp</span>
+              </div>
+            </div>
           </div>
-          <div className="w-1/3 border-t border-slate-400 pt-2 text-center">
-            <p className="text-xs font-bold text-slate-600 uppercase">Inventory Manager</p>
-            <p className="text-[10px] text-slate-400 mt-1">Signature & Date</p>
-          </div>
-          <div className="w-1/3 border-t border-slate-400 pt-2 text-center">
-            <p className="text-xs font-bold text-slate-600 uppercase">Store Supervisor</p>
-            <p className="text-[10px] text-slate-400 mt-1">Signature & Date</p>
+
+          {/* Advanced Digital Forensics Footer */}
+          <div className="border-t-2 border-slate-900 pt-1 text-center mt-4" dir="ltr">
+            <p className="text-[7px] text-slate-500 font-mono m-0 tracking-widest font-bold uppercase">
+              DOCUMENT EXP-{Date.now().toString().substring(5)} | VERIFIED: {new Date().toLocaleString('en-GB')} | SYSTEM: ANH PORTAL V2.0
+            </p>
           </div>
         </div>
       </div>
