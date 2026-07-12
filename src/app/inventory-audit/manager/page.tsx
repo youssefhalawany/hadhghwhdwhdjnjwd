@@ -36,7 +36,11 @@ export default function ManagerInventoryAudit() {
       if (!snapshot.empty) {
         // Sort by openedAt client-side since we have an 'in' query
         const batches = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-        batches.sort((a: any, b: any) => new Date(b.openedAt).getTime() - new Date(a.openedAt).getTime());
+        batches.sort((a: any, b: any) => {
+          const timeA = a.openedAt ? new Date(a.openedAt).getTime() : 0;
+          const timeB = b.openedAt ? new Date(b.openedAt).getTime() : 0;
+          return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+        });
         setActiveBatch(batches[0]);
       } else {
         setActiveBatch(null);
