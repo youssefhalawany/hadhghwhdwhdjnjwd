@@ -774,8 +774,10 @@ export default function ManagerInventoryAudit() {
                                 return (
                                   <tr key={i} className="border-b border-black last:border-b-0">
                                     <td className="p-1 border-r-2 border-black">
-                                      <div className="font-mono font-bold">{it.barcode}</div>
-                                      {it.productName && <div className="text-[8px] text-black font-bold leading-tight">{it.productName}</div>}
+                                      <div style={{ transform: 'scale(0.7)', transformOrigin: 'left center', width: '100px' }}>
+                                        <Barcode value={it.barcode} width={1.5} height={30} fontSize={10} margin={0} />
+                                      </div>
+                                      {it.productName && <div className="text-[8px] text-black font-bold leading-tight mt-1">{it.productName}</div>}
                                     </td>
                                     <td className="p-1 border-r-2 border-black text-center font-black text-lg">+{variance}</td>
                                     <td className="p-1 text-center font-mono font-bold">{it.transferIn || "_______"}</td>
@@ -805,8 +807,10 @@ export default function ManagerInventoryAudit() {
                                 return (
                                   <tr key={i} className="border-b border-black last:border-b-0">
                                     <td className="p-1 border-r-2 border-black">
-                                      <div className="font-mono font-bold">{it.barcode}</div>
-                                      {it.productName && <div className="text-[8px] text-black font-bold leading-tight">{it.productName}</div>}
+                                      <div style={{ transform: 'scale(0.7)', transformOrigin: 'left center', width: '100px' }}>
+                                        <Barcode value={it.barcode} width={1.5} height={30} fontSize={10} margin={0} />
+                                      </div>
+                                      {it.productName && <div className="text-[8px] text-black font-bold leading-tight mt-1">{it.productName}</div>}
                                     </td>
                                     <td className="p-1 border-r-2 border-black text-center font-black text-lg">{Math.abs(variance)}</td>
                                     <td className="p-1 text-center font-mono font-bold">{it.transferOut || "_______"}</td>
