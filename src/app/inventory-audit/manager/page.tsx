@@ -49,8 +49,8 @@ export default function ManagerInventoryAudit() {
         });
         
         // Prioritize active sessions: OPEN -> CLOSED -> FINALIZED
-        const openBatch = batches.find(b => b.status === "OPEN");
-        const closedBatch = batches.find(b => b.status === "CLOSED");
+        const openBatch = batches.find((b: any) => b.status === "OPEN");
+        const closedBatch = batches.find((b: any) => b.status === "CLOSED");
         
         setActiveBatch(openBatch || closedBatch || batches[0]);
       } else {
