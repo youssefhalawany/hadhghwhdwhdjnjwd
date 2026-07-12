@@ -414,21 +414,21 @@ export default function ManagerInventoryAudit() {
                             <td className="p-3">
                               <input 
                                 type="text"
-                                disabled={variance >= 0}
+                                disabled={variance <= 0}
                                 value={item.transferIn || ""}
                                 onChange={(e) => updateHistoryReconField(item.barcode, "transferIn", e.target.value)}
-                                placeholder={isShort ? "Req: Document #" : "-"}
-                                className={`w-full p-2 border-2 rounded-lg font-mono text-xs outline-none focus:border-blue-500 ${isShort && !item.transferIn ? 'border-red-300 bg-red-50 placeholder:text-red-300' : 'border-slate-200 disabled:opacity-50'}`}
+                                placeholder={isOver ? "Req: Document #" : "-"}
+                                className={`w-full p-2 border-2 rounded-lg font-mono text-xs outline-none focus:border-blue-500 ${isOver && !item.transferIn ? 'border-amber-300 bg-amber-50 placeholder:text-amber-300' : 'border-slate-200 disabled:opacity-50'}`}
                               />
                             </td>
                             <td className="p-3">
                               <input 
                                 type="text"
-                                disabled={variance <= 0}
+                                disabled={variance >= 0}
                                 value={item.transferOut || ""}
                                 onChange={(e) => updateHistoryReconField(item.barcode, "transferOut", e.target.value)}
-                                placeholder={isOver ? "Req: Document #" : "-"}
-                                className={`w-full p-2 border-2 rounded-lg font-mono text-xs outline-none focus:border-blue-500 ${isOver && !item.transferOut ? 'border-amber-300 bg-amber-50 placeholder:text-amber-300' : 'border-slate-200 disabled:opacity-50'}`}
+                                placeholder={isShort ? "Req: Document #" : "-"}
+                                className={`w-full p-2 border-2 rounded-lg font-mono text-xs outline-none focus:border-blue-500 ${isShort && !item.transferOut ? 'border-red-300 bg-red-50 placeholder:text-red-300' : 'border-slate-200 disabled:opacity-50'}`}
                               />
                             </td>
                           </tr>
@@ -593,21 +593,21 @@ export default function ManagerInventoryAudit() {
                           <td className="p-4">
                             <input 
                               type="text"
-                              disabled={activeBatch.status === "FINALIZED" || variance >= 0}
-                              value={item.transferIn}
+                              disabled={activeBatch.status === "FINALIZED" || variance <= 0}
+                              value={item.transferIn || ""}
                               onChange={(e) => updateReconField(item.barcode, "transferIn", e.target.value)}
-                              placeholder={isShort ? "Req: Document #" : "-"}
-                              className={`w-full p-2 border-2 rounded-lg font-mono text-xs outline-none focus:border-blue-500 ${isShort && !item.transferIn ? 'border-red-300 bg-red-50 placeholder:text-red-300' : 'border-slate-200 disabled:opacity-50'}`}
+                              placeholder={isOver ? "Req: Document #" : "-"}
+                              className={`w-full p-2 border-2 rounded-lg font-mono text-xs outline-none focus:border-blue-500 ${isOver && !item.transferIn ? 'border-amber-300 bg-amber-50 placeholder:text-amber-300' : 'border-slate-200 disabled:opacity-50'}`}
                             />
                           </td>
                           <td className="p-4">
                             <input 
                               type="text"
-                              disabled={activeBatch.status === "FINALIZED" || variance <= 0}
-                              value={item.transferOut}
+                              disabled={activeBatch.status === "FINALIZED" || variance >= 0}
+                              value={item.transferOut || ""}
                               onChange={(e) => updateReconField(item.barcode, "transferOut", e.target.value)}
-                              placeholder={isOver ? "Req: Document #" : "-"}
-                              className={`w-full p-2 border-2 rounded-lg font-mono text-xs outline-none focus:border-blue-500 ${isOver && !item.transferOut ? 'border-amber-300 bg-amber-50 placeholder:text-amber-300' : 'border-slate-200 disabled:opacity-50'}`}
+                              placeholder={isShort ? "Req: Document #" : "-"}
+                              className={`w-full p-2 border-2 rounded-lg font-mono text-xs outline-none focus:border-blue-500 ${isShort && !item.transferOut ? 'border-red-300 bg-red-50 placeholder:text-red-300' : 'border-slate-200 disabled:opacity-50'}`}
                             />
                           </td>
                         </tr>
@@ -703,6 +703,93 @@ export default function ManagerInventoryAudit() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Summary of Actions */}
+              {(() => {
+                const needsTransferIn = printReconList.filter((it: any) => {
+                  const sysQty = Number(it.systemQuantity) || 0;
+                  const activeActual = it.adjustedActualQuantity !== "" && it.adjustedActualQuantity !== undefined ? Number(it.adjustedActualQuantity) : it.actualQuantity;
+                  return (it.systemQuantity !== "" && (activeActual - sysQty) > 0);
+                });
+                
+                const needsTransferOut = printReconList.filter((it: any) => {
+                  const sysQty = Number(it.systemQuantity) || 0;
+                  const activeActual = it.adjustedActualQuantity !== "" && it.adjustedActualQuantity !== undefined ? Number(it.adjustedActualQuantity) : it.actualQuantity;
+                  return (it.systemQuantity !== "" && (activeActual - sysQty) < 0);
+                });
+
+                if (needsTransferIn.length === 0 && needsTransferOut.length === 0) return null;
+
+                return (
+                  <div className="mb-6 break-inside-avoid">
+                    <h3 className="font-black text-sm uppercase mb-2 border-b-2 border-black inline-block">Action Required Summary</h3>
+                    <div className="flex gap-4">
+                      {needsTransferIn.length > 0 && (
+                        <div className="flex-1">
+                          <h4 className="font-bold text-xs mb-1 text-emerald-700 uppercase bg-emerald-50 px-2 py-1">Items To Transfer IN (Overage)</h4>
+                          <table className="w-full text-left border border-black text-[10px]">
+                            <thead className="bg-gray-100">
+                              <tr>
+                                <th className="p-1 border-r border-black font-bold">Item</th>
+                                <th className="p-1 border-r border-black font-bold text-center">Qty to IN</th>
+                                <th className="p-1 font-bold text-center">TR IN Ref</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {needsTransferIn.map((it: any, i: number) => {
+                                const sysQty = Number(it.systemQuantity) || 0;
+                                const activeActual = it.adjustedActualQuantity !== "" && it.adjustedActualQuantity !== undefined ? Number(it.adjustedActualQuantity) : it.actualQuantity;
+                                const variance = activeActual - sysQty;
+                                return (
+                                  <tr key={i} className="border-t border-black">
+                                    <td className="p-1 border-r border-black">
+                                      <div className="font-mono">{it.barcode}</div>
+                                      {it.productName && <div className="text-[8px] text-gray-600">{it.productName}</div>}
+                                    </td>
+                                    <td className="p-1 border-r border-black text-center font-bold text-emerald-700">+{variance}</td>
+                                    <td className="p-1 text-center font-mono">{it.transferIn || "_______"}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                      {needsTransferOut.length > 0 && (
+                        <div className="flex-1">
+                          <h4 className="font-bold text-xs mb-1 text-red-700 uppercase bg-red-50 px-2 py-1">Items To Transfer OUT (Shortage)</h4>
+                          <table className="w-full text-left border border-black text-[10px]">
+                            <thead className="bg-gray-100">
+                              <tr>
+                                <th className="p-1 border-r border-black font-bold">Item</th>
+                                <th className="p-1 border-r border-black font-bold text-center">Qty to OUT</th>
+                                <th className="p-1 font-bold text-center">TR OUT Ref</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {needsTransferOut.map((it: any, i: number) => {
+                                const sysQty = Number(it.systemQuantity) || 0;
+                                const activeActual = it.adjustedActualQuantity !== "" && it.adjustedActualQuantity !== undefined ? Number(it.adjustedActualQuantity) : it.actualQuantity;
+                                const variance = activeActual - sysQty;
+                                return (
+                                  <tr key={i} className="border-t border-black">
+                                    <td className="p-1 border-r border-black">
+                                      <div className="font-mono">{it.barcode}</div>
+                                      {it.productName && <div className="text-[8px] text-gray-600">{it.productName}</div>}
+                                    </td>
+                                    <td className="p-1 border-r border-black text-center font-bold text-red-700">{Math.abs(variance)}</td>
+                                    <td className="p-1 text-center font-mono">{it.transferOut || "_______"}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Signatures & Approvals */}
               <div className="mt-auto pt-4 border-t-2 border-gray-100 break-inside-avoid">
