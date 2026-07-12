@@ -6,7 +6,8 @@ import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { PageTransition } from "@/components/PageTransition";
 import { useLanguage } from "@/context/LanguageContext";
 
-import { AlertCircle, CheckCircle2, Lock, ScanLine } from "lucide-react";
+import { AlertCircle, CheckCircle2, Lock, ScanLine, Camera, Edit2, Save, X } from "lucide-react";
+import { CameraScanner } from "@/components/ui/CameraScanner";
 
 export default function CashierInventoryAudit() {
   const { language: lang } = useLanguage();
@@ -30,6 +31,12 @@ export default function CashierInventoryAudit() {
   const [quantity, setQuantity] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  
+  // Scans history state
+  const [myScans, setMyScans] = useState<any[]>([]);
+  const [editingScanId, setEditingScanId] = useState<string | null>(null);
+  const [editQuantity, setEditQuantity] = useState("");
 
   // Listen for open audit batches
   useEffect(() => {
@@ -52,6 +59,31 @@ export default function CashierInventoryAudit() {
 
     return () => unsubscribe();
   }, []);
+
+  // Listen for THIS cashier's scans
+  useEffect(() => {
+    if (!activeBatch?.id || !user?.email) {
+      setMyScans([]);
+      return;
+    }
+
+    // Query by batchId only to avoid composite index requirements, filter client-side
+    const q = query(
+      collection(db, "audit_scans"),
+      where("batchId", "==", activeBatch.id)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const allScans = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      // Filter to only show the logged-in cashier's scans
+      const filtered = allScans.filter((s: any) => s.cashierEmail === user.email);
+      // Sort by timestamp descending
+      filtered.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      setMyScans(filtered);
+    });
+
+    return () => unsubscribe();
+  }, [activeBatch?.id, user?.email]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,6 +111,21 @@ export default function CashierInventoryAudit() {
       setSubmitting(false);
       // Auto-focus barcode again if possible
       document.getElementById('barcode-input')?.focus();
+    }
+  };
+
+  const handleUpdateScan = async (scanId: string) => {
+    if (!editQuantity) return;
+    try {
+      await dbService.updateDoc("audit_scans", scanId, {
+        quantity: Number(editQuantity),
+        updatedAt: new Date().toISOString()
+      });
+      setEditingScanId(null);
+      setEditQuantity("");
+    } catch (e) {
+      console.error("Error updating scan", e);
+      alert("Failed to update.");
     }
   };
 
@@ -150,17 +197,26 @@ export default function CashierInventoryAudit() {
                 <label className="block text-sm font-bold text-slate-700 mb-2">
                   {lang === "ar" ? "الباركود" : "Barcode"}
                 </label>
-                <input
-                  id="barcode-input"
-                  type="text"
-                  value={barcode}
-                  onChange={(e) => setBarcode(e.target.value)}
-                  placeholder={lang === "ar" ? "امسح الباركود..." : "Scan barcode..."}
-                  className="w-full p-4 border-2 border-slate-200 rounded-xl bg-slate-50 font-mono text-lg font-bold outline-none focus:border-blue-500 focus:bg-white transition-all shadow-inner"
-                  required
-                  autoFocus
-                  autoComplete="off"
-                />
+                <div className="flex gap-2">
+                  <input
+                    id="barcode-input"
+                    type="text"
+                    value={barcode}
+                    onChange={(e) => setBarcode(e.target.value)}
+                    placeholder={lang === "ar" ? "امسح الباركود..." : "Scan barcode..."}
+                    className="flex-1 p-4 border-2 border-slate-200 rounded-xl bg-slate-50 font-mono text-lg font-bold outline-none focus:border-blue-500 focus:bg-white transition-all shadow-inner"
+                    required
+                    autoFocus
+                    autoComplete="off"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setIsScannerOpen(true)}
+                    className="p-4 bg-slate-800 text-white rounded-xl shadow-lg hover:bg-slate-700 transition-colors flex items-center justify-center shrink-0"
+                  >
+                    <Camera className="w-6 h-6" />
+                  </button>
+                </div>
               </div>
 
               <div>
@@ -192,17 +248,77 @@ export default function CashierInventoryAudit() {
               </div>
             </form>
 
-            <div className="mt-8 p-4 bg-amber-50 border border-amber-200 rounded-xl flex gap-3 text-amber-800">
-              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-              <p className="text-xs font-medium leading-relaxed">
-                {lang === "ar" 
-                  ? "تحذير: لا يمكنك تعديل أو مراجعة الأصناف بعد تسجيلها. تأكد من دقة الكمية قبل الضغط على تسجيل." 
-                  : "Warning: You cannot edit or review items after submitting. Ensure the quantity is accurate before pressing submit."}
-              </p>
+            {/* My Scans Section */}
+            <div className="mt-8 border-t-2 border-slate-100 pt-6">
+              <h2 className="text-lg font-black text-slate-800 mb-4 flex items-center justify-between">
+                <span>{lang === "ar" ? "قائمة الجرد الخاصة بي" : "My Scan History"}</span>
+                <span className="text-sm px-3 py-1 bg-blue-100 text-blue-700 rounded-full">{myScans.length}</span>
+              </h2>
+
+              {myScans.length === 0 ? (
+                <div className="text-center py-6 bg-slate-50 rounded-xl border border-slate-200 border-dashed">
+                  <p className="text-sm font-bold text-slate-400">
+                    {lang === "ar" ? "لم تقم بتسجيل أي أصناف بعد." : "No items scanned yet."}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                  {myScans.map(scan => (
+                    <div key={scan.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50 flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono font-bold text-slate-700">{scan.barcode}</span>
+                        {editingScanId === scan.id ? (
+                          <div className="flex items-center gap-2">
+                            <input 
+                              type="number"
+                              className="w-20 p-2 text-center font-black border-2 border-blue-500 rounded-lg outline-none"
+                              value={editQuantity}
+                              onChange={e => setEditQuantity(e.target.value)}
+                              autoFocus
+                            />
+                            <button onClick={() => handleUpdateScan(scan.id)} className="p-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600">
+                              <Save className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => setEditingScanId(null)} className="p-2 bg-slate-300 text-slate-700 rounded-lg hover:bg-slate-400">
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-3">
+                            <span className="text-xl font-black text-blue-600">{scan.quantity}</span>
+                            <button onClick={() => { setEditingScanId(scan.id); setEditQuantity(scan.quantity.toString()); }} className="p-1.5 text-slate-400 hover:text-blue-600 bg-white rounded shadow-sm border border-slate-200">
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-400">
+                        {new Date(scan.timestamp).toLocaleTimeString()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
+
           </div>
         </div>
       </div>
+
+      {isScannerOpen && (
+        <CameraScanner 
+          onScan={(decodedText) => {
+            setBarcode(decodedText);
+            setQuantity("");
+            // Auto-focus quantity input after short delay to allow re-render
+            setTimeout(() => {
+              const qtyInput = document.querySelector('input[type="number"]') as HTMLInputElement;
+              if (qtyInput) qtyInput.focus();
+            }, 100);
+          }} 
+          onClose={() => setIsScannerOpen(false)} 
+        />
+      )}
     </PageTransition>
   );
 }

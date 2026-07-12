@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { db, dbService } from "@/lib/firebase";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { PageTransition } from "@/components/PageTransition";
 import { useLanguage } from "@/context/LanguageContext";
-
-import { CheckCircle2, Lock, ShieldAlert, FileText } from "lucide-react";
+import { ShieldAlert, FileText, Package, AlertTriangle, ArrowRightLeft, Plus } from "lucide-react";
+import Barcode from 'react-barcode';
 
 export default function ManagerInventoryAudit() {
   const { language: lang } = useLanguage();
@@ -98,7 +98,10 @@ export default function ManagerInventoryAudit() {
     scans.forEach(scan => {
       if (!aggregated[scan.barcode]) {
         // Preserve existing inputs if any exist in reconciliationData
-        const existing = reconciliationData[scan.barcode] || {};
+        // Also check if the activeBatch has a saved draft we should use
+        const draft = activeBatch?.reconciliationDraft?.[scan.barcode];
+        const existing = reconciliationData[scan.barcode] || draft || {};
+        
         aggregated[scan.barcode] = {
           barcode: scan.barcode,
           actualQuantity: 0,
@@ -111,11 +114,22 @@ export default function ManagerInventoryAudit() {
     });
 
     // Merge any existing items that were manually added but not scanned yet
-    Object.keys(reconciliationData).forEach(barcode => {
+    // Include drafts from the server
+    const keysToMerge = new Set([
+      ...Object.keys(reconciliationData),
+      ...Object.keys(activeBatch?.reconciliationDraft || {})
+    ]);
+
+    keysToMerge.forEach(barcode => {
       if (!aggregated[barcode]) {
+         const draft = activeBatch?.reconciliationDraft?.[barcode] || {};
+         const local = reconciliationData[barcode] || {};
          aggregated[barcode] = {
-           ...reconciliationData[barcode],
-           actualQuantity: 0
+           barcode,
+           actualQuantity: 0,
+           systemQuantity: local.systemQuantity || draft.systemQuantity || "",
+           transferIn: local.transferIn || draft.transferIn || "",
+           transferOut: local.transferOut || draft.transferOut || ""
          };
       }
     });
@@ -175,6 +189,30 @@ export default function ManagerInventoryAudit() {
     }
   };
 
+  // Auto-save drafts when reconciliation changes
+  // We use a simple ref to avoid saving on the first render/load
+  const isFirstLoad = useRef(true);
+  useEffect(() => {
+    if (isFirstLoad.current) {
+      isFirstLoad.current = false;
+      return;
+    }
+    
+    // Only save draft if batch is active and not finalized
+    if (activeBatch && activeBatch.status !== "FINALIZED") {
+      const saveDraft = setTimeout(async () => {
+        try {
+          await dbService.updateDoc("audit_batches", activeBatch.id, {
+            reconciliationDraft: reconciliationData
+          });
+        } catch(e) {
+          console.error("Draft save failed", e);
+        }
+      }, 1000); // 1 second debounce
+      return () => clearTimeout(saveDraft);
+    }
+  }, [reconciliationData, activeBatch?.id, activeBatch?.status]);
+
   const updateReconField = (barcode: string, field: string, value: string) => {
     setReconciliationData(prev => {
       const item = prev[barcode] || { barcode, actualQuantity: 0, systemQuantity: "", transferIn: "", transferOut: "" };
@@ -186,7 +224,7 @@ export default function ManagerInventoryAudit() {
   };
 
   const addNewReconRow = () => {
-    const fakeBarcode = prompt(lang === "ar" ? "أدخل باركود الصنف (الكمية الفعلية 0)" : "Enter Barcode (Actual Qty will be 0)");
+    const fakeBarcode = prompt("Enter a barcode for the missing item:");
     if (fakeBarcode && !reconciliationData[fakeBarcode]) {
       setReconciliationData(prev => ({
         ...prev,
@@ -324,7 +362,11 @@ export default function ManagerInventoryAudit() {
                       
                       return (
                         <tr key={item.barcode} className="hover:bg-slate-50 transition-colors">
-                          <td className="p-4 font-mono font-bold text-sm">{item.barcode}</td>
+                          <td className="p-4">
+                            <div className="bg-white p-2 rounded-lg border border-slate-200 inline-block">
+                              <Barcode value={item.barcode} width={1.5} height={40} fontSize={12} margin={0} />
+                            </div>
+                          </td>
                           <td className="p-4 text-center bg-blue-50/30">
                             <span className="text-xl font-black text-blue-700">{item.actualQuantity}</span>
                           </td>
@@ -429,7 +471,11 @@ export default function ManagerInventoryAudit() {
                       const variance = it.systemQuantity === "" ? 0 : it.actualQuantity - sysQty;
                       return (
                         <tr key={it.barcode || i}>
-                          <td className="py-1 px-3 font-mono font-bold text-[10px] text-gray-800 border-r-2 border-black tracking-wider">{it.barcode}</td>
+                          <td className="py-2 px-3 border-r-2 border-black">
+                            <div style={{ transform: 'scale(0.8)', transformOrigin: 'left center', width: '120px' }}>
+                              <Barcode value={it.barcode} width={1.5} height={30} fontSize={10} margin={0} />
+                            </div>
+                          </td>
                           <td className="py-1 px-3 font-black text-gray-900 text-center border-r-2 border-black text-sm">{it.actualQuantity}</td>
                           <td className="py-1 px-3 font-black text-gray-900 text-center border-r-2 border-black text-sm">{it.systemQuantity || "-"}</td>
                           <td className={`py-1 px-3 font-black text-center border-r-2 border-black text-sm ${variance < 0 ? 'text-red-600' : variance > 0 ? 'text-amber-600' : 'text-gray-900'}`}>
