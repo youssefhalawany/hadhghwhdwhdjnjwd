@@ -1166,7 +1166,7 @@ export default function SupplierReturnsDashboard() {
                       {lang === "ar" ? "تأكيد الدفع" : "Mark as Paid"}
                     </button>
                   )}
-                  <button onClick={() => window.print()} className="px-6 py-2 bg-blue-600 text-white rounded-xl font-bold shadow-md hover:bg-blue-700 transition-colors">{lang === "ar" ? "طباعة" : "Print"}</button>
+                  <button onClick={triggerPrint} className="px-6 py-2 bg-blue-600 text-white rounded-xl font-bold shadow-md hover:bg-blue-700 transition-colors">{lang === "ar" ? "طباعة" : "Print"}</button>
                   <button onClick={() => setPrintData(null)} className="px-6 py-2 bg-slate-200 text-slate-800 rounded-xl font-bold hover:bg-slate-300 transition-colors">{lang === "ar" ? "إغلاق" : "Close"}</button>
                 </div>
               </div>

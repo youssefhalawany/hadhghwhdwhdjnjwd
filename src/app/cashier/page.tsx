@@ -5,7 +5,7 @@ import { db, messaging, dbService } from "@/lib/firebase";
 import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { getToken } from "firebase/messaging";
 import { useRouter } from "next/navigation";
-import { Lock, User as UserIcon, ChevronDown, FileText, Shield, Calendar as CalendarIcon, UserCircle, Globe, LogOut, Download, Bell, Fingerprint } from "lucide-react";
+import { Lock, User as UserIcon, ChevronDown, FileText, Shield, Calendar as CalendarIcon, UserCircle, Globe, LogOut, Download, Bell, Fingerprint, ScanLine } from "lucide-react";
 import { PinPad } from "@/components/PinPad";
 import { playSuccessSound, playErrorSound, getAudioCtx } from "@/lib/sounds";
 import { toast } from "sonner";
@@ -474,6 +474,20 @@ export default function CashierHubPage() {
               <h3 className="font-bold text-xl">{lang === "en" ? "My Schedule" : "جدول العمل"}</h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 text-center leading-relaxed max-w-[280px]">
                 {lang === "en" ? "View your shifts and request days off." : "عرض وردياتك وطلب إجازات."}
+              </p>
+            </button>
+            
+            {/* Action 6: Inventory Audit */}
+            <button 
+              onClick={() => navigateTo('/inventory-audit/cashier')}
+              className="group flex flex-col items-center justify-center bg-white/70 dark:bg-slate-800/40 backdrop-blur-md p-8 rounded-3xl border border-slate-200/60 dark:border-slate-700/40 hover:border-amber-500/50 dark:hover:border-amber-500/40 shadow-xl shadow-slate-200/10 dark:shadow-none hover:shadow-amber-500/5 hover:-translate-y-1 transition-all duration-300 active:scale-[0.98] text-slate-900 dark:text-white cursor-pointer"
+            >
+              <div className="h-16 w-16 bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-amber-600 group-hover:text-white transition-all duration-300">
+                <ScanLine className="h-8 w-8" />
+              </div>
+              <h3 className="font-bold text-xl">{lang === "en" ? "Inventory Count" : "جرد المخزون"}</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 text-center leading-relaxed max-w-[280px]">
+                {lang === "en" ? "Scan items for live blind cycle counting." : "مسح الأصناف لعمليات الجرد العشوائية."}
               </p>
             </button>
 

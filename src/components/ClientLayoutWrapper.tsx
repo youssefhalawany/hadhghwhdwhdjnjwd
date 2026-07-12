@@ -268,7 +268,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     { name: "Returns", href: "/dashboard/supplier-returns", icon: Truck },
     { name: "Expired", icon: PackageX, children: [
       { name: t("nav.expiries"), href: "/dashboard/expiries-audit", icon: ClipboardList },
-      { name: "Product Lookup", href: "/admin/product-lookup", icon: Search }
+      { name: "Product Lookup", href: "/admin/product-lookup", icon: Search },
+      { name: "Blind Audit", href: "/inventory-audit/manager", icon: Shield }
     ]},
     { name: "Admin", icon: Shield, children: [
       { name: "Smart Scheduler", href: "/admin/schedule", icon: CalendarDays },
