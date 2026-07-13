@@ -300,7 +300,6 @@ export default function ManagerAuditPage() {
     } else {
       setExpectedCash("");
       setExpectedVisa("");
-      setCigarettesPercent("");
       setCoffeePercent("");
       setComments("");
       setAuditShift(report.cashierDetails?.shift || "Morning");
