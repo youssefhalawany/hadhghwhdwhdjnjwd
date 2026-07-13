@@ -162,7 +162,8 @@ export default function CashierShiftReportPage() {
   const [cashierWriteUp, setCashierWriteUp] = useState<string>("");
   const [originalData, setOriginalData] = useState<any>(null);
 
-  const [cashierSignature, setCashierSignature] = useState<string>("");
+  const [cashierSignature, setCashierSignature] = useState("");
+  const [hasSigned, setHasSigned] = useState(false);
 
   const [earlyDayRequest, setEarlyDayRequest] = useState<any | null>(null);
 
@@ -474,7 +475,7 @@ export default function CashierShiftReportPage() {
     e.preventDefault();
 
     const c = cashiers.find(x => x.id === selectedCashierId);
-    const signature = cashierSignature || (sigPadRef.current && !sigPadRef.current.isEmpty() ? sigPadRef.current.toDataURL() : null);
+    const signature = cashierSignature || (hasSigned && sigPadRef.current ? sigPadRef.current.toDataURL() : null);
 
     if (!signature) {
       vibrateError();
@@ -1061,10 +1062,11 @@ export default function CashierShiftReportPage() {
                   <SignaturePad 
                     // @ts-expect-error: dynamic import ref typing mismatch
                     ref={sigPadRef}
+                    onBegin={() => setHasSigned(true)}
                     canvasProps={{ className: "w-full h-[150px] sm:h-[200px] cursor-crosshair touch-none" }} 
                   />
                 </div>
-                <button type="button" onClick={() => sigPadRef.current?.clear()} className="text-xs text-red-500 font-bold uppercase hover:underline">
+                <button type="button" onClick={() => { sigPadRef.current?.clear(); setHasSigned(false); setCashierSignature(""); }} className="text-xs text-red-500 font-bold uppercase hover:underline">
                   {dict.clearSignature || "Clear Signature"}
                 </button>
                 <input type="text" value={cashierSignature} readOnly className="h-0 w-0 opacity-0 absolute pointer-events-none" tabIndex={-1} />
@@ -1133,7 +1135,7 @@ export default function CashierShiftReportPage() {
               
               {step === 1 && cashierRole === 1 ? (
                 <button type="button" onClick={() => {
-                  if (sigPadRef.current && !sigPadRef.current.isEmpty()) {
+                  if (hasSigned && sigPadRef.current) {
                     setCashierSignature(sigPadRef.current.toDataURL());
                     setStep(2);
                   } else {
