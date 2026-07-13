@@ -1376,93 +1376,98 @@ export default function ManagerAuditPage() {
                 {securityBorders}
                 {renderHeader(selectedReport.cashierRole === 2 ? "SHIFT REPORT" : "SHIFT REPORT (FINANCIALS)")}
 
-                <div style={{ padding: '10px 40px', position: 'relative', zIndex: 10 }}>
-                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRight: '4px solid #3b82f6', borderRadius: '8px', padding: '4px 10px', direction: 'rtl', textAlign: 'right', marginBottom: '8px' }}>
-                    <p style={{ margin: '0 0 2px', fontSize: '10px', color: '#1e293b', lineHeight: 1.5, fontWeight: 'bold' }}><span style={{ color: '#3b82f6', marginLeft: '6px' }}>✦</span>{generateEgyptianSummary()}</p>
-                    <p style={{ margin: 0, fontSize: '10px', color: '#1e293b', lineHeight: 1.5, fontWeight: 'bold' }}><span style={{ color: '#3b82f6', marginLeft: '6px' }}>✦</span>{generateVolumeContext()}</p>
-                  </div>
+                <div style={{ display: 'flex', flex: 1, position: 'relative', zIndex: 10 }}>
+                  {/* Left Column (Details) */}
+                  <div style={{ flex: 1, padding: '10px 20px 10px 40px', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRight: '4px solid #3b82f6', borderRadius: '8px', padding: '4px 10px', direction: 'rtl', textAlign: 'right', marginBottom: '8px' }}>
+                      <p style={{ margin: '0 0 2px', fontSize: '10px', color: '#1e293b', lineHeight: 1.5, fontWeight: 'bold' }}><span style={{ color: '#3b82f6', marginLeft: '6px' }}>✦</span>{generateEgyptianSummary()}</p>
+                      <p style={{ margin: 0, fontSize: '10px', color: '#1e293b', lineHeight: 1.5, fontWeight: 'bold' }}><span style={{ color: '#3b82f6', marginLeft: '6px' }}>✦</span>{generateVolumeContext()}</p>
+                    </div>
 
-                  <div style={{ backgroundColor: '#f8fafc', border: '2px solid #cbd5e1', borderRadius: '8px', padding: '8px 20px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
-                    <div style={{ textAlign: 'center' }}>
-                      <p style={{ margin: '0 0 4px', fontSize: '9px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Expected System Cash</p>
-                      <p style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#0f172a' }}>EGP {Number(expectedCash).toLocaleString()}</p>
+                    <div style={{ backgroundColor: '#f8fafc', border: '2px solid #cbd5e1', borderRadius: '8px', padding: '8px 20px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
+                      <div style={{ textAlign: 'center' }}>
+                        <p style={{ margin: '0 0 4px', fontSize: '9px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Expected System Cash</p>
+                        <p style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#0f172a' }}>EGP {Number(expectedCash).toLocaleString()}</p>
+                      </div>
+                      <div style={{ width: '2px', backgroundColor: '#e2e8f0', alignSelf: 'stretch' }}></div>
+                      <div style={{ textAlign: 'center' }}>
+                        <p style={{ margin: '0 0 4px', fontSize: '9px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Actual Cashier Cash</p>
+                        <p style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#0f172a' }}>EGP {selectedReport?.cashierCounts?.cash?.toLocaleString()}</p>
+                      </div>
+                      <div style={{ width: '2px', backgroundColor: '#e2e8f0', alignSelf: 'stretch' }}></div>
+                      <div style={{ textAlign: 'center' }}>
+                        <p style={{ margin: '0 0 4px', fontSize: '9px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total System Visa</p>
+                        <p style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#0f172a' }}>EGP {Number(expectedVisa).toLocaleString()}</p>
+                      </div>
                     </div>
-                    <div style={{ width: '2px', backgroundColor: '#e2e8f0', alignSelf: 'stretch' }}></div>
-                    <div style={{ textAlign: 'center' }}>
-                      <p style={{ margin: '0 0 4px', fontSize: '9px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Actual Cashier Cash</p>
-                      <p style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#0f172a' }}>EGP {selectedReport?.cashierCounts?.cash?.toLocaleString()}</p>
-                    </div>
-                    <div style={{ width: '2px', backgroundColor: '#e2e8f0', alignSelf: 'stretch' }}></div>
-                    <div style={{ textAlign: 'center' }}>
-                      <p style={{ margin: '0 0 4px', fontSize: '9px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total System Visa</p>
-                      <p style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#0f172a' }}>EGP {Number(expectedVisa).toLocaleString()}</p>
-                    </div>
-                    <div style={{ width: '2px', backgroundColor: '#e2e8f0', alignSelf: 'stretch' }}></div>
-                    <div style={{ textAlign: 'center', backgroundColor: '#0f172a', color: '#ffffff', padding: '8px 20px', borderRadius: '6px', margin: '-5px 0' }}>
+                    <div style={{ textAlign: 'center', backgroundColor: '#0f172a', color: '#ffffff', padding: '8px 20px', borderRadius: '6px', marginBottom: '10px' }}>
                       <p style={{ margin: '0 0 2px', fontSize: '9px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Net Sales (Sys)</p>
                       <p style={{ margin: 0, fontSize: '20px', fontWeight: '900' }}>EGP {(Number(expectedCash) + Number(expectedVisa)).toLocaleString()}</p>
                     </div>
-                  </div>
 
-                  <div style={{ border: '2px solid #e2e8f0', marginBottom: '10px', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ backgroundColor: '#f8fafc', padding: '6px 15px', borderBottom: '2px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                      1. Shift & Branch Information
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginTop: '6px' }}>
-                        <div><p style={{ margin: '0 0 5px', color: '#64748b' }}>Audited By</p><p style={{ margin: 0, fontWeight: 'bold', fontSize: '14px', color: '#0f172a' }}>{managerName || "Pending"}</p></div>
-                        <div><p style={{ margin: '0 0 5px', color: '#64748b' }}>Date Audited</p><p style={{ margin: 0, fontWeight: 'bold', fontSize: '14px', color: '#0f172a' }}>{formatTimeMinus2Hours(selectedReport.managerAudit?.auditedAt || new Date().toISOString())}</p></div>
+                    <div style={{ border: '2px solid #e2e8f0', marginBottom: '10px', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{ backgroundColor: '#f8fafc', padding: '6px 15px', borderBottom: '2px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                        1. Shift & Branch Information
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginTop: '6px' }}>
+                          <div><p style={{ margin: '0 0 5px', color: '#64748b', fontSize: '10px' }}>Audited By</p><p style={{ margin: 0, fontWeight: 'bold', fontSize: '12px', color: '#0f172a' }}>{managerName || "Pending"}</p></div>
+                          <div><p style={{ margin: '0 0 5px', color: '#64748b', fontSize: '10px' }}>Date Audited</p><p style={{ margin: 0, fontWeight: 'bold', fontSize: '12px', color: '#0f172a' }}>{formatTimeMinus2Hours(selectedReport.managerAudit?.auditedAt || new Date().toISOString())}</p></div>
+                        </div>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0' }}>
+                        <div style={{ padding: '10px 15px', borderRight: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}><p style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Store ID</p><p style={{ fontSize: '14px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.storeId}</p></div>
+                        <div style={{ padding: '10px 15px', borderBottom: '1px solid #e2e8f0' }}><p style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Shift Period</p><p style={{ fontSize: '14px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.shift} Shift</p></div>
+                        <div style={{ padding: '10px 15px', borderRight: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}><p style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Cashier Name</p><p style={{ fontSize: '14px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.name}</p></div>
+                        <div style={{ padding: '10px 15px', borderBottom: '1px solid #e2e8f0' }}><p style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Operating Date</p><p style={{ fontSize: '14px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.date}</p></div>
+                        <div style={{ padding: '10px 15px', borderRight: '1px solid #e2e8f0' }}><p style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Cashier Role</p><p style={{ fontSize: '14px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport.cashierRole === 2 ? 'Cashier 2 (Money Only)' : 'Cashier 1 (Full)'}</p></div>
+                        <div style={{ padding: '10px 15px' }}><p style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Timestamp</p><p style={{ fontSize: '14px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{formatTimeMinus2Hours(selectedReport.createdAt)}</p></div>
                       </div>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.5fr', gap: '0' }}>
-                      <div style={{ padding: '10px 15px', borderRight: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}><p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Branch / Store ID</p><p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.storeId}</p></div>
-                      <div style={{ padding: '10px 15px', borderRight: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}><p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Shift Period</p><p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.shift} Shift</p></div>
-                      <div style={{ padding: '10px 15px', borderBottom: '1px solid #e2e8f0' }}><p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Cashier Name</p><p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.name}</p></div>
-                      <div style={{ padding: '10px 15px', borderRight: '1px solid #e2e8f0' }}><p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Operating Date</p><p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.date}</p></div>
-                      <div style={{ padding: '10px 15px', borderRight: '1px solid #e2e8f0' }}><p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Cashier Role</p><p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{selectedReport.cashierRole === 2 ? 'Cashier 2 (Money Only)' : 'Cashier 1 (Full)'}</p></div>
-                      <div style={{ padding: '10px 15px' }}><p style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', margin: '0 0 4px', fontWeight: 'bold' }}>Submission Timestamp</p><p style={{ fontSize: '16px', color: '#0f172a', fontWeight: 'bold', margin: 0 }}>{formatTimeMinus2Hours(selectedReport.createdAt)}</p></div>
-                    </div>
-                  </div>
 
-                  <div style={{ border: '2px solid #e2e8f0', marginBottom: '8px', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ backgroundColor: '#f8fafc', padding: '4px 15px', borderBottom: '2px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>2. Financial Audit & Variance</div>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '11px' }}>
-                      <thead style={{ backgroundColor: '#f1f5f9' }}>
-                        <tr><th style={{ padding: '4px 15px', borderBottom: '1px solid #cbd5e1' }}>Tender Type</th><th style={{ padding: '4px 15px', borderBottom: '1px solid #cbd5e1' }}>Cashier Declared</th><th style={{ padding: '4px 15px', borderBottom: '1px solid #cbd5e1' }}>Manager / POS Expected</th><th style={{ padding: '4px 15px', borderBottom: '1px solid #cbd5e1', textAlign: 'right' }}>Variance</th></tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>Cash</td>
-                          <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '13px' }}>EGP {selectedReport?.cashierCounts?.cash?.toLocaleString()}</td>
-                          <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '13px' }}>EGP {Number(expectedCash).toLocaleString() || "0"}</td>
-                          <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '13px', textAlign: 'right', fontWeight: 'bold', color: calculateCashVariance() < 0 ? '#dc2626' : '#16a34a' }}>{calculateCashVariance() < 0 ? '-' : '+'}EGP {Math.abs(calculateCashVariance()).toLocaleString()}</td>
-                        </tr>
-                        <tr>
-                          <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>Visa</td>
-                          <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '13px' }}>EGP {selectedReport?.cashierCounts?.visa?.toLocaleString()}</td>
-                          <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '13px' }}>EGP {Number(expectedVisa).toLocaleString() || "0"}</td>
-                          <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '13px', textAlign: 'right', fontWeight: 'bold', color: calculateVisaVariance() < 0 ? '#dc2626' : '#16a34a' }}>{calculateVisaVariance() < 0 ? '-' : '+'}EGP {Math.abs(calculateVisaVariance()).toLocaleString()}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* The Z-Report Staple Box */}
-                  <div style={{ marginTop: '30px', marginBottom: '20px', width: '80mm', height: '100px', border: '2px dashed #94a3b8', borderRadius: '6px', margin: '30px auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc' }}>
-                    <div style={{ width: '40px', height: '8px', backgroundColor: '#cbd5e1', borderRadius: '4px', marginBottom: '8px' }}></div>
-                    <span style={{ fontSize: '12px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Staple Z-Report Here</span>
-                    <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#94a3b8', marginTop: '4px' }}>(80mm Receipt Width)</span>
-                  </div>
-
-                  {/* Manager Notes on Page 1 if Cashier 2 */}
-                  {selectedReport.cashierRole === 2 && (
                     <div style={{ border: '2px solid #e2e8f0', marginBottom: '8px', borderRadius: '4px', overflow: 'hidden' }}>
-                      <div style={{ backgroundColor: '#f8fafc', padding: '4px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>Manager Comments</div>
-                      <div style={{ padding: '6px 15px', fontSize: '11px', color: '#334155', fontStyle: selectedReport.managerAudit?.comments ? 'normal' : 'italic' }}>
-                        {selectedReport.managerAudit?.comments || "No additional comments provided."}
-                      </div>
+                      <div style={{ backgroundColor: '#f8fafc', padding: '4px 15px', borderBottom: '2px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>2. Financial Audit & Variance</div>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '11px' }}>
+                        <thead style={{ backgroundColor: '#f1f5f9' }}>
+                          <tr><th style={{ padding: '4px 15px', borderBottom: '1px solid #cbd5e1' }}>Tender Type</th><th style={{ padding: '4px 15px', borderBottom: '1px solid #cbd5e1' }}>Declared</th><th style={{ padding: '4px 15px', borderBottom: '1px solid #cbd5e1' }}>Expected</th><th style={{ padding: '4px 15px', borderBottom: '1px solid #cbd5e1', textAlign: 'right' }}>Variance</th></tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>Cash</td>
+                            <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '13px' }}>EGP {selectedReport?.cashierCounts?.cash?.toLocaleString()}</td>
+                            <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '13px' }}>EGP {Number(expectedCash).toLocaleString() || "0"}</td>
+                            <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '13px', textAlign: 'right', fontWeight: 'bold', color: calculateCashVariance() < 0 ? '#dc2626' : '#16a34a' }}>{calculateCashVariance() < 0 ? '-' : '+'}EGP {Math.abs(calculateCashVariance()).toLocaleString()}</td>
+                          </tr>
+                          <tr>
+                            <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>Visa</td>
+                            <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '13px' }}>EGP {selectedReport?.cashierCounts?.visa?.toLocaleString()}</td>
+                            <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '13px' }}>EGP {Number(expectedVisa).toLocaleString() || "0"}</td>
+                            <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '13px', textAlign: 'right', fontWeight: 'bold', color: calculateVisaVariance() < 0 ? '#dc2626' : '#16a34a' }}>{calculateVisaVariance() < 0 ? '-' : '+'}EGP {Math.abs(calculateVisaVariance()).toLocaleString()}</td>
+                          </tr>
+                        </tbody>
+                      </table>
                     </div>
-                  )}
 
-                  {signatures}
+                    {/* Manager Notes on Page 1 if Cashier 2 */}
+                    {selectedReport.cashierRole === 2 && (
+                      <div style={{ border: '2px solid #e2e8f0', marginBottom: '8px', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div style={{ backgroundColor: '#f8fafc', padding: '4px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>Manager Comments</div>
+                        <div style={{ padding: '6px 15px', fontSize: '11px', color: '#334155', fontStyle: selectedReport.managerAudit?.comments ? 'normal' : 'italic' }}>
+                          {selectedReport.managerAudit?.comments || "No additional comments provided."}
+                        </div>
+                      </div>
+                    )}
+
+                    <div style={{ marginTop: 'auto' }}>
+                      {signatures}
+                    </div>
+                  </div>
+
+                  {/* Right Column (Z-Report Stapler Box - 80mm = ~302px) */}
+                  <div style={{ width: '302px', borderLeft: '2px dashed #94a3b8', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                    <div style={{ transform: 'rotate(-90deg)', display: 'flex', alignItems: 'center', gap: '20px', whiteSpace: 'nowrap' }}>
+                      <span style={{ fontSize: '24px', fontWeight: '900', color: '#64748b', letterSpacing: '2px' }}>STAPLE Z-REPORT HERE</span>
+                      <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#94a3b8' }}>(80mm Receipt Width)</span>
+                    </div>
+                  </div>
                 </div>
                 {footer}
               </div>
