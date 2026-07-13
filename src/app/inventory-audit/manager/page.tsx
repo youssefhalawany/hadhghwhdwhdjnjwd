@@ -329,7 +329,7 @@ export default function ManagerInventoryAudit() {
       if (crossScans.length > 0) {
         englishText += `⚠️ POTENTIAL CROSS-SCANNING ERRORS (Wrong variant/flavor scanned):\n`;
         crossScans.forEach(cs => {
-          englishText += `- Cashier likely scanned [${cs.over.productName || cs.over.barcode}] (+${cs.over.variance}) INSTEAD OF [${cs.short.productName || cs.short.barcode}] (${cs.short.variance}).\n`;
+          englishText += `- Cashier likely scanned [${cs.over.productName || 'Unknown'}] (Barcode: ${cs.over.barcode}) (+${cs.over.variance}) INSTEAD OF [${cs.short.productName || 'Unknown'}] (Barcode: ${cs.short.barcode}) (${cs.short.variance}).\n`;
         });
         englishText += `\n`;
       }
@@ -337,7 +337,7 @@ export default function ManagerInventoryAudit() {
       if (genuineShorts.length > 0) {
         englishText += `🔴 GENUINE SHORTAGES (Requires Transfer OUT):\n`;
         genuineShorts.forEach(s => {
-          englishText += `- ${s.productName || s.barcode} (Variance: ${s.variance})\n`;
+          englishText += `- [Barcode: ${s.barcode}] ${s.productName || 'Unknown Product'} (Variance: ${s.variance})\n`;
         });
         englishText += `\n`;
       }
@@ -345,7 +345,7 @@ export default function ManagerInventoryAudit() {
       if (genuineOvers.length > 0) {
         englishText += `🟢 GENUINE OVERAGES (Requires Transfer IN):\n`;
         genuineOvers.forEach(o => {
-          englishText += `- ${o.productName || o.barcode} (Variance: +${o.variance})\n`;
+          englishText += `- [Barcode: ${o.barcode}] ${o.productName || 'Unknown Product'} (Variance: +${o.variance})\n`;
         });
         englishText += `\n`;
       }
@@ -357,7 +357,7 @@ export default function ManagerInventoryAudit() {
       if (crossScans.length > 0) {
         arabicText += `⚠️ أخطاء محتملة في مسح الباركود (مسح صنف بدلاً من صنف آخر لنفس الشركة):\n`;
         crossScans.forEach(cs => {
-          arabicText += `- الكاشير على الأرجح قام بمسح [${cs.over.productName || cs.over.barcode}] (+${cs.over.variance}) بدلاً من [${cs.short.productName || cs.short.barcode}] (${cs.short.variance}).\n`;
+          arabicText += `- الكاشير على الأرجح قام بمسح [${cs.over.productName || 'صنف غير معروف'}] (باركود: ${cs.over.barcode}) (+${cs.over.variance}) بدلاً من [${cs.short.productName || 'صنف غير معروف'}] (باركود: ${cs.short.barcode}) (${cs.short.variance}).\n`;
         });
         arabicText += `\n`;
       }
@@ -365,7 +365,7 @@ export default function ManagerInventoryAudit() {
       if (genuineShorts.length > 0) {
         arabicText += `🔴 عجز حقيقي (يحتاج نقل للخارج - Transfer OUT):\n`;
         genuineShorts.forEach(s => {
-          arabicText += `- ${s.productName || s.barcode} (العجز: ${s.variance})\n`;
+          arabicText += `- [باركود: ${s.barcode}] ${s.productName || 'صنف غير معروف'} (العجز: ${s.variance})\n`;
         });
         arabicText += `\n`;
       }
@@ -373,7 +373,7 @@ export default function ManagerInventoryAudit() {
       if (genuineOvers.length > 0) {
         arabicText += `🟢 زيادة حقيقية (تحتاج نقل للداخل - Transfer IN):\n`;
         genuineOvers.forEach(o => {
-          arabicText += `- ${o.productName || o.barcode} (الزيادة: +${o.variance})\n`;
+          arabicText += `- [باركود: ${o.barcode}] ${o.productName || 'صنف غير معروف'} (الزيادة: +${o.variance})\n`;
         });
         arabicText += `\n`;
       }
