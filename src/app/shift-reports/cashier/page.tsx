@@ -473,10 +473,17 @@ export default function CashierShiftReportPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    setLoading(true);
-
     const c = cashiers.find(x => x.id === selectedCashierId);
     const signature = cashierSignature || (sigPadRef.current && !sigPadRef.current.isEmpty() ? sigPadRef.current.toDataURL() : null);
+
+    if (!signature) {
+      vibrateError();
+      toast.warning(lang === 'en' ? "Please sign your report before submitting." : "يرجى توقيع التقرير قبل الإرسال.");
+      if (step === 2) setStep(1);
+      return;
+    }
+
+    setLoading(true);
 
     const payload: any = {
       status: "pending_manager",
@@ -1128,8 +1135,11 @@ export default function CashierShiftReportPage() {
                 <button type="button" onClick={() => {
                   if (sigPadRef.current && !sigPadRef.current.isEmpty()) {
                     setCashierSignature(sigPadRef.current.toDataURL());
+                    setStep(2);
+                  } else {
+                    vibrateError();
+                    toast.warning(lang === 'en' ? "Please sign your report before continuing." : "يرجى توقيع التقرير قبل المتابعة.");
                   }
-                  setStep(2);
                 }} className="w-full sm:w-auto px-8 py-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-base shadow-lg transition-all flex items-center justify-center gap-2">
                   Next Step: Cigarettes <ArrowRight className="h-4.5 w-4.5" />
                 </button>
