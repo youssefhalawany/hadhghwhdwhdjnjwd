@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { db, auth } from "@/lib/firebase";
 import { 
   collection, 
@@ -9,20 +9,18 @@ import {
   query, 
   orderBy, 
   serverTimestamp,
+  deleteDoc,
+  doc,
   Timestamp
 } from "firebase/firestore";
 import { 
   Plus, 
-  Printer, 
-  Wallet, 
-  Banknote, 
-  Landmark, 
-  Loader2,
-  FileText,
-  AlertTriangle,
+  Download, 
+  Trash2,
   Search,
-  CheckCircle2,
-  Clock
+  Loader2,
+  X,
+  FileDown
 } from "lucide-react";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
@@ -30,15 +28,43 @@ import Barcode from "react-barcode";
 import QRCode from "react-qr-code";
 import { toast } from "sonner";
 import { onAuthStateChanged } from "firebase/auth";
+import Link from "next/link";
 
-export default function PaymentsPage() {
+const TABS = ["Sales", "Payments", "Credits", "Cheques", "Deposits", "TMT Invoices", "Safe Report", "Printables"];
+
+const CATEGORY_EMOJIS: Record<string, string> = {
+  order: "📦",
+  maintenance: "🔧",
+  utilities: "💡",
+  transportation: "🚚",
+  other: "📝"
+};
+
+const METHOD_EMOJIS: Record<string, string> = {
+  cash: "💵",
+  visa: "💳",
+  bank_transfer: "🏦"
+};
+
+export default function PaymentsRedesignPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
   
   // Data state
   const [payments, setPayments] = useState<any[]>([]);
   const [suppliers, setSuppliers] = useState<{ id: string; name: string }[]>([]);
+  
+  // Filters
+  const [searchQuery, setSearchQuery] = useState("");
+  const [monthFilter, setMonthFilter] = useState(() => {
+    const today = new Date();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    return `${today.getFullYear()}-${mm}`;
+  });
+
+  // Modal State
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   
   // Form State
   const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
@@ -51,9 +77,9 @@ export default function PaymentsPage() {
   const [amount, setAmount] = useState("");
   const [tax, setTax] = useState("");
   const [categoryNote, setCategoryNote] = useState("");
-  
-  // Modals / Overlays
   const [showAddSupplier, setShowAddSupplier] = useState(false);
+  
+  // Print State
   const [selectedPaymentForPrint, setSelectedPaymentForPrint] = useState<any>(null);
   const [generatingPDF, setGeneratingPDF] = useState(false);
 
@@ -72,18 +98,13 @@ export default function PaymentsPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Fetch Suppliers
       const supSnapshot = await getDocs(query(collection(db, "suppliers"), orderBy("name", "asc")));
-      const supData = supSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-      setSuppliers(supData);
+      setSuppliers(supSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
 
-      // Fetch Payments
       const paySnapshot = await getDocs(query(collection(db, "cash_payments"), orderBy("createdAt", "desc")));
-      const payData = paySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setPayments(payData);
-
+      setPayments(paySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     } catch (err) {
-      console.error("Error fetching data", err);
+      console.error(err);
       toast.error("Failed to load data.");
     } finally {
       setLoading(false);
@@ -102,11 +123,10 @@ export default function PaymentsPage() {
       setCompanyName(newSupplierName.trim().toUpperCase());
       setShowAddSupplier(false);
       setNewSupplierName("");
-      // Refresh suppliers
+      
       const supSnapshot = await getDocs(query(collection(db, "suppliers"), orderBy("name", "asc")));
       setSuppliers(supSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
     } catch (err) {
-      console.error(err);
       toast.error("Failed to add supplier");
     } finally {
       setSubmitting(false);
@@ -139,17 +159,17 @@ export default function PaymentsPage() {
         isTaxable: numTax > 0,
         method,
         poNumber,
-        storeId: "eL-alamein-4", // Hardcoded per screenshot context, could be dynamic
+        storeId: "eL-alamein-4", 
         tax: numTax,
         total
       };
 
       const docRef = await addDoc(collection(db, "cash_payments"), newPayment);
-      toast.success("Payment recorded successfully!");
+      toast.success("Payment saved!");
       
-      // Add local ID for immediate printing without refresh
       const savedPayment = { id: docRef.id, ...newPayment, createdAt: Timestamp.now() };
       setPayments([savedPayment, ...payments]);
+      setShowAddModal(false);
       
       // Reset form
       setInvoiceNumber("");
@@ -158,11 +178,9 @@ export default function PaymentsPage() {
       setTax("");
       setCategoryNote("");
       
-      // Auto-trigger print
+      // Auto Print
       setSelectedPaymentForPrint(savedPayment);
-      setTimeout(() => {
-        generatePDF();
-      }, 500);
+      setTimeout(() => generatePDF(), 500);
 
     } catch (err) {
       console.error(err);
@@ -172,15 +190,25 @@ export default function PaymentsPage() {
     }
   };
 
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this payment?")) return;
+    try {
+      await deleteDoc(doc(db, "cash_payments", id));
+      setPayments(payments.filter(p => p.id !== id));
+      toast.success("Payment deleted successfully.");
+    } catch (err) {
+      toast.error("Failed to delete payment.");
+    }
+  };
+
   const generatePDF = async () => {
     setGeneratingPDF(true);
     try {
       const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      
       const page1 = document.getElementById("pdf-receipt");
+      
       if (page1) {
-        // ensure element is visible before capture
         page1.style.left = "0";
         const canvas1 = await html2canvas(page1, { scale: 2, useCORS: true });
         const imgData1 = canvas1.toDataURL("image/png");
@@ -193,315 +221,400 @@ export default function PaymentsPage() {
       window.open(pdf.output("bloburl"), "_blank");
       setSelectedPaymentForPrint(null);
     } catch (error) {
-      console.error("PDF Generate Error:", error);
-      toast.error("Failed to generate PDF Receipt.");
+      toast.error("Failed to generate PDF.");
     } finally {
       setGeneratingPDF(false);
     }
   };
 
-  // Calculations for top metrics
-  const todayDate = new Date().toISOString().split("T")[0];
-  const todayPayments = payments.filter(p => p.date === todayDate);
-  const totalCashToday = todayPayments.filter(p => p.method === "cash").reduce((acc, p) => acc + (p.total || 0), 0);
-  const totalVisaToday = todayPayments.filter(p => p.method === "visa").reduce((acc, p) => acc + (p.total || 0), 0);
-  const totalBankToday = todayPayments.filter(p => p.method === "bank_transfer").reduce((acc, p) => acc + (p.total || 0), 0);
+  // Derived filtered data
+  const filteredPayments = useMemo(() => {
+    return payments.filter(p => {
+      // Month Filter
+      if (monthFilter && p.date && !p.date.startsWith(monthFilter)) return false;
+      
+      // Search Filter
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        return (
+          p.companyName?.toLowerCase().includes(q) ||
+          p.invoiceNumber?.toLowerCase().includes(q) ||
+          p.poNumber?.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [payments, monthFilter, searchQuery]);
 
-  const pettyCashWarning = totalCashToday > 10000;
+  // Aggregate Category Stats for the top cards
+  const categoryStats = useMemo(() => {
+    const stats: Record<string, { count: number; total: number }> = {};
+    filteredPayments.forEach(p => {
+      const cat = p.category || "other";
+      if (!stats[cat]) stats[cat] = { count: 0, total: 0 };
+      stats[cat].count += 1;
+      stats[cat].total += (p.total || 0);
+    });
+    return stats;
+  }, [filteredPayments]);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
+        <Loader2 className="h-12 w-12 animate-spin text-red-500" />
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      <div className="flex justify-between items-end">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Financials: Payments</h1>
-          <p className="text-slate-500 mt-2">Record, manage, and print payment vouchers securely.</p>
+    <div className="min-h-screen bg-[#f8fafc] dark:bg-slate-950 pb-20">
+      
+      {/* TOP TABS NAVIGATION */}
+      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 pt-4 overflow-x-auto whitespace-nowrap hide-scrollbar">
+        <div className="flex gap-6 max-w-7xl mx-auto">
+          {TABS.map(tab => (
+            <button 
+              key={tab}
+              className={`pb-4 text-sm font-bold transition-colors ${
+                tab === "Payments" 
+                ? "text-red-500 border-b-2 border-red-500" 
+                : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* TOP METRICS */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded-lg">
-              <FileText className="h-5 w-5" />
-            </div>
-            <h3 className="font-semibold text-slate-600 dark:text-slate-400">Total Payments Today</h3>
-          </div>
-          <p className="text-2xl font-bold text-slate-900 dark:text-white">{todayPayments.length}</p>
-        </div>
+      <div className="p-6 max-w-7xl mx-auto space-y-6">
         
-        <div className={`bg-white dark:bg-slate-900 border ${pettyCashWarning ? 'border-red-500' : 'border-slate-200 dark:border-slate-800'} rounded-2xl p-5 shadow-sm relative overflow-hidden`}>
-          {pettyCashWarning && <div className="absolute top-0 left-0 w-1 h-full bg-red-500"></div>}
-          <div className="flex items-center gap-3 mb-2">
-            <div className={`p-2 ${pettyCashWarning ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'} rounded-lg`}>
-              <Banknote className="h-5 w-5" />
+        {/* MONTH FILTER */}
+        <div>
+          <input 
+            type="month" 
+            value={monthFilter}
+            onChange={(e) => setMonthFilter(e.target.value)}
+            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-800 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-red-500"
+          />
+        </div>
+
+        {/* ACTIONS ROW */}
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+          <button 
+            onClick={() => setShowAddModal(true)}
+            className="w-full sm:w-auto bg-[#ef4444] hover:bg-[#dc2626] text-white font-bold py-2.5 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
+          >
+            <Plus className="h-5 w-5" />
+            Add Payments
+          </button>
+          
+          <div className="flex gap-3 w-full sm:w-auto">
+            <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-bold py-2.5 px-4 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+              <FileDown className="h-4 w-4" /> Export Payments
+            </button>
+            <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-bold py-2.5 px-4 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+              <FileDown className="h-4 w-4" /> Export All
+            </button>
+          </div>
+        </div>
+
+        {/* SEARCH BAR */}
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
+          <input 
+            type="text" 
+            placeholder="Search company, invoice, PO number..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl pl-12 pr-4 py-3 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-300"
+          />
+        </div>
+
+        {/* METRICS SUMMARY CARDS */}
+        <div className="flex gap-4 overflow-x-auto pb-2 hide-scrollbar">
+          {categoryStats["order"] && (
+            <div className="min-w-[240px] bg-[#eff6ff] dark:bg-blue-900/30 border border-blue-100 dark:border-blue-900/50 rounded-2xl p-5 shrink-0">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-xl">📦</span>
+                <h3 className="font-bold text-slate-900 dark:text-slate-100">Order</h3>
+              </div>
+              <p className="text-xs font-bold text-slate-500 mb-1">{categoryStats["order"].count} payment(s)</p>
+              <p className="text-blue-600 dark:text-blue-400 font-bold text-lg">EGP {categoryStats["order"].total.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
             </div>
-            <h3 className="font-semibold text-slate-600 dark:text-slate-400">Cash Paid Today</h3>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <p className="text-2xl font-bold text-slate-900 dark:text-white">{totalCashToday.toLocaleString()}</p>
-            <span className="text-sm font-medium text-slate-500">EGP</span>
-          </div>
-          {pettyCashWarning && (
-            <p className="text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
-              <AlertTriangle className="h-3 w-3" /> Exceeds 10K Safe Limit
-            </p>
+          )}
+          {categoryStats["utilities"] && (
+            <div className="min-w-[240px] bg-[#fefce8] dark:bg-amber-900/30 border border-amber-100 dark:border-amber-900/50 rounded-2xl p-5 shrink-0">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-xl">💡</span>
+                <h3 className="font-bold text-slate-900 dark:text-slate-100">Utilities</h3>
+              </div>
+              <p className="text-xs font-bold text-slate-500 mb-1">{categoryStats["utilities"].count} payment(s)</p>
+              <p className="text-amber-600 dark:text-amber-500 font-bold text-lg">EGP {categoryStats["utilities"].total.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+            </div>
+          )}
+          {categoryStats["maintenance"] && (
+            <div className="min-w-[240px] bg-[#f5f3ff] dark:bg-purple-900/30 border border-purple-100 dark:border-purple-900/50 rounded-2xl p-5 shrink-0">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-xl">🔧</span>
+                <h3 className="font-bold text-slate-900 dark:text-slate-100">Maintenance</h3>
+              </div>
+              <p className="text-xs font-bold text-slate-500 mb-1">{categoryStats["maintenance"].count} payment(s)</p>
+              <p className="text-purple-600 dark:text-purple-400 font-bold text-lg">EGP {categoryStats["maintenance"].total.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+            </div>
+          )}
+          {categoryStats["transportation"] && (
+            <div className="min-w-[240px] bg-[#ecfdf5] dark:bg-emerald-900/30 border border-emerald-100 dark:border-emerald-900/50 rounded-2xl p-5 shrink-0">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-xl">🚚</span>
+                <h3 className="font-bold text-slate-900 dark:text-slate-100">Transportation</h3>
+              </div>
+              <p className="text-xs font-bold text-slate-500 mb-1">{categoryStats["transportation"].count} payment(s)</p>
+              <p className="text-emerald-600 dark:text-emerald-400 font-bold text-lg">EGP {categoryStats["transportation"].total.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+            </div>
+          )}
+          {categoryStats["other"] && (
+            <div className="min-w-[240px] bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shrink-0">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-xl">📝</span>
+                <h3 className="font-bold text-slate-900 dark:text-slate-100">Other</h3>
+              </div>
+              <p className="text-xs font-bold text-slate-500 mb-1">{categoryStats["other"].count} payment(s)</p>
+              <p className="text-slate-600 dark:text-slate-400 font-bold text-lg">EGP {categoryStats["other"].total.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+            </div>
           )}
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-purple-100 text-purple-600 rounded-lg">
-              <Wallet className="h-5 w-5" />
-            </div>
-            <h3 className="font-semibold text-slate-600 dark:text-slate-400">Visa Paid Today</h3>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <p className="text-2xl font-bold text-slate-900 dark:text-white">{totalVisaToday.toLocaleString()}</p>
-            <span className="text-sm font-medium text-slate-500">EGP</span>
-          </div>
-        </div>
+        {/* LIST HEADER */}
+        <h2 className="text-sm font-black text-slate-500 uppercase tracking-wider pt-4">
+          All Records ({filteredPayments.length})
+        </h2>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-amber-100 text-amber-600 rounded-lg">
-              <Landmark className="h-5 w-5" />
+        {/* FEED / LIST VIEW */}
+        <div className="space-y-4">
+          {filteredPayments.map(pay => (
+            <div key={pay.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+              <div className="flex justify-between items-start mb-5">
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl mt-1">{CATEGORY_EMOJIS[pay.category] || "📝"}</span>
+                  <div>
+                    <h3 className="font-black text-slate-900 dark:text-white text-lg leading-tight">{pay.companyName}</h3>
+                    <p className="text-xs text-slate-500 font-bold mt-1">
+                      {pay.date} • {METHOD_EMOJIS[pay.method] || ""} {pay.method}
+                    </p>
+                    {(pay.invoiceNumber || pay.poNumber) && (
+                      <p className="text-xs text-slate-400 font-medium mt-1">
+                        {pay.invoiceNumber && `Invoice: ${pay.invoiceNumber}`} 
+                        {pay.invoiceNumber && pay.poNumber && " • "}
+                        {pay.poNumber && `PO: ${pay.poNumber}`}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => {
+                      setSelectedPaymentForPrint(pay);
+                      setTimeout(() => generatePDF(), 100);
+                    }}
+                    className="p-2 text-blue-600 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                  >
+                    <Download size={18} />
+                  </button>
+                  <button 
+                    onClick={() => handleDelete(pay.id)}
+                    className="p-2 text-red-500 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 border border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-slate-50 dark:bg-slate-800/30">
+                <div>
+                  <p className="text-[10px] text-slate-500 font-black uppercase tracking-wider mb-1">Category</p>
+                  <p className="font-bold text-slate-900 dark:text-white capitalize">{pay.category}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-500 font-black uppercase tracking-wider mb-1">Amount</p>
+                  <p className="font-bold text-[#dc2626] text-lg">EGP {Number(pay.amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-500 font-black uppercase tracking-wider mb-1">Tax</p>
+                  <p className="font-bold text-slate-900 dark:text-white">EGP {Number(pay.tax || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-500 font-black uppercase tracking-wider mb-1">Total</p>
+                  <p className="font-bold text-[#dc2626] text-lg">EGP {Number(pay.total).toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+                </div>
+              </div>
             </div>
-            <h3 className="font-semibold text-slate-600 dark:text-slate-400">Bank Transfer Today</h3>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <p className="text-2xl font-bold text-slate-900 dark:text-white">{totalBankToday.toLocaleString()}</p>
-            <span className="text-sm font-medium text-slate-500">EGP</span>
-          </div>
+          ))}
+
+          {filteredPayments.length === 0 && (
+            <div className="text-center py-12 text-slate-500 font-medium">
+              No payments found matching your criteria.
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* LEFT PANEL: FORM */}
-        <div className="lg:col-span-1">
-          <form onSubmit={handleSavePayment} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-6 space-y-5">
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-3">New Payment Voucher</h2>
+      {/* ADD PAYMENT MODAL */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-2xl shadow-2xl relative my-auto">
+            <button 
+              onClick={() => setShowAddModal(false)}
+              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 bg-slate-100 rounded-full"
+            >
+              <X size={20} />
+            </button>
             
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Date</label>
-                <input 
-                  type="date" 
-                  value={date} 
-                  onChange={(e) => setDate(e.target.value)}
-                  className="w-full border border-slate-300 dark:border-slate-700 bg-transparent rounded-lg p-2.5 text-slate-800 dark:text-white"
-                  required
-                />
+            <form onSubmit={handleSavePayment} className="p-6 space-y-5">
+              <h2 className="text-2xl font-black text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-4">Create Payment</h2>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Date</label>
+                  <input 
+                    type="date" 
+                    value={date} 
+                    onChange={(e) => setDate(e.target.value)}
+                    className="w-full border border-slate-300 dark:border-slate-700 bg-transparent rounded-lg p-3 text-slate-800 dark:text-white"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Method</label>
+                  <select 
+                    value={method} 
+                    onChange={(e) => setMethod(e.target.value)}
+                    className="w-full border border-slate-300 dark:border-slate-700 bg-transparent rounded-lg p-3 text-slate-800 dark:text-white"
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="visa">Visa</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                  </select>
+                </div>
               </div>
+
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Method</label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-xs font-bold text-slate-500 uppercase">Supplier / Company</label>
+                  <button type="button" onClick={() => setShowAddSupplier(true)} className="text-xs text-blue-600 font-bold hover:underline flex items-center gap-1">
+                    <Plus className="h-3 w-3" /> New Supplier
+                  </button>
+                </div>
                 <select 
-                  value={method} 
-                  onChange={(e) => setMethod(e.target.value)}
-                  className="w-full border border-slate-300 dark:border-slate-700 bg-transparent rounded-lg p-2.5 text-slate-800 dark:text-white"
+                  value={companyName} 
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  className="w-full border border-slate-300 dark:border-slate-700 bg-transparent rounded-lg p-3 text-slate-800 dark:text-white font-bold"
+                  required
                 >
-                  <option value="cash">Cash</option>
-                  <option value="visa">Visa</option>
-                  <option value="bank_transfer">Bank Transfer</option>
+                  <option value="">Select a supplier...</option>
+                  {suppliers.map(s => (
+                    <option key={s.id} value={s.name}>{s.name}</option>
+                  ))}
                 </select>
               </div>
-            </div>
 
-            <div>
-              <div className="flex justify-between items-center mb-1">
-                <label className="block text-xs font-bold text-slate-500 uppercase">Supplier / Company</label>
-                <button type="button" onClick={() => setShowAddSupplier(true)} className="text-xs text-blue-600 font-bold hover:underline flex items-center gap-1">
-                  <Plus className="h-3 w-3" /> New
-                </button>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Invoice Number</label>
+                  <input 
+                    type="text" 
+                    value={invoiceNumber} 
+                    onChange={(e) => setInvoiceNumber(e.target.value)}
+                    placeholder="e.g. INV-1234"
+                    className="w-full border border-slate-300 dark:border-slate-700 bg-transparent rounded-lg p-3 text-slate-800 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">System PO #</label>
+                  <input 
+                    type="text" 
+                    value={poNumber} 
+                    onChange={(e) => setPoNumber(e.target.value)}
+                    placeholder="e.g. PO-9876"
+                    className="w-full border border-slate-300 dark:border-slate-700 bg-transparent rounded-lg p-3 text-slate-800 dark:text-white"
+                  />
+                </div>
               </div>
-              <select 
-                value={companyName} 
-                onChange={(e) => setCompanyName(e.target.value)}
-                className="w-full border border-slate-300 dark:border-slate-700 bg-transparent rounded-lg p-2.5 text-slate-800 dark:text-white"
-                required
+
+              <div className="grid grid-cols-2 gap-4 p-5 bg-red-50 dark:bg-red-900/10 rounded-xl border border-red-100 dark:border-red-900/30">
+                <div>
+                  <label className="block text-xs font-black text-red-700 dark:text-red-400 uppercase mb-1">Amount (EGP)</label>
+                  <input 
+                    type="number" 
+                    value={amount} 
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="0.00"
+                    step="0.01"
+                    className="w-full border border-red-200 dark:border-red-800 bg-white dark:bg-slate-900 rounded-lg p-3 text-slate-900 dark:text-white font-mono text-xl font-bold"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-black text-red-700 dark:text-red-400 uppercase mb-1">Tax / VAT (EGP)</label>
+                  <input 
+                    type="number" 
+                    value={tax} 
+                    onChange={(e) => setTax(e.target.value)}
+                    placeholder="0.00"
+                    step="0.01"
+                    className="w-full border border-red-200 dark:border-red-800 bg-white dark:bg-slate-900 rounded-lg p-3 text-slate-900 dark:text-white font-mono text-xl"
+                  />
+                </div>
+                <div className="col-span-2 flex justify-between items-center border-t border-red-200 dark:border-red-800 pt-4 mt-2">
+                  <span className="font-black text-red-800 dark:text-red-300 uppercase">Total Payment:</span>
+                  <span className="text-3xl font-black text-red-600 font-mono">
+                    {((parseFloat(amount)||0) + (parseFloat(tax)||0)).toLocaleString('en-US', {minimumFractionDigits: 2})} <span className="text-base">EGP</span>
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Category</label>
+                  <select 
+                    value={category} 
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="w-full border border-slate-300 dark:border-slate-700 bg-transparent rounded-lg p-3 text-slate-800 dark:text-white"
+                  >
+                    <option value="order">Supplier Order</option>
+                    <option value="maintenance">Maintenance</option>
+                    <option value="utilities">Utilities</option>
+                    <option value="transportation">Transportation</option>
+                    <option value="other">Other / Misc</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Notes / Description</label>
+                  <input 
+                    type="text"
+                    value={categoryNote} 
+                    onChange={(e) => setCategoryNote(e.target.value)}
+                    placeholder="Any additional details..."
+                    className="w-full border border-slate-300 dark:border-slate-700 bg-transparent rounded-lg p-3 text-slate-800 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <button 
+                type="submit" 
+                disabled={submitting}
+                className="w-full mt-4 bg-[#ef4444] hover:bg-[#dc2626] text-white rounded-xl p-4 font-black transition-all shadow-lg flex items-center justify-center gap-2 text-lg"
               >
-                <option value="">Select a supplier...</option>
-                {suppliers.map(s => (
-                  <option key={s.id} value={s.name}>{s.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Invoice Number</label>
-                <input 
-                  type="text" 
-                  value={invoiceNumber} 
-                  onChange={(e) => setInvoiceNumber(e.target.value)}
-                  placeholder="e.g. INV-1234"
-                  className="w-full border border-slate-300 dark:border-slate-700 bg-transparent rounded-lg p-2.5 text-slate-800 dark:text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">System PO #</label>
-                <input 
-                  type="text" 
-                  value={poNumber} 
-                  onChange={(e) => setPoNumber(e.target.value)}
-                  placeholder="e.g. PO-9876"
-                  className="w-full border border-slate-300 dark:border-slate-700 bg-transparent rounded-lg p-2.5 text-slate-800 dark:text-white"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Amount (EGP)</label>
-                <input 
-                  type="number" 
-                  value={amount} 
-                  onChange={(e) => setAmount(e.target.value)}
-                  placeholder="0.00"
-                  step="0.01"
-                  className="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 rounded-lg p-2.5 text-slate-800 dark:text-white font-mono text-lg font-bold"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Tax / VAT (EGP)</label>
-                <input 
-                  type="number" 
-                  value={tax} 
-                  onChange={(e) => setTax(e.target.value)}
-                  placeholder="0.00"
-                  step="0.01"
-                  className="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 rounded-lg p-2.5 text-slate-800 dark:text-white font-mono text-lg"
-                />
-              </div>
-              <div className="col-span-2 flex justify-between items-center border-t border-slate-200 dark:border-slate-700 pt-3 mt-1">
-                <span className="font-bold text-slate-600 dark:text-slate-400">Total Payment:</span>
-                <span className="text-2xl font-black text-blue-600 dark:text-blue-400 font-mono">
-                  {((parseFloat(amount)||0) + (parseFloat(tax)||0)).toLocaleString('en-US', {minimumFractionDigits: 2})} <span className="text-sm">EGP</span>
-                </span>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Category</label>
-              <select 
-                value={category} 
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full border border-slate-300 dark:border-slate-700 bg-transparent rounded-lg p-2.5 text-slate-800 dark:text-white"
-              >
-                <option value="order">Supplier Order</option>
-                <option value="maintenance">Maintenance</option>
-                <option value="utilities">Utilities</option>
-                <option value="transportation">Transportation</option>
-                <option value="other">Other / Misc</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Notes / Description</label>
-              <textarea 
-                value={categoryNote} 
-                onChange={(e) => setCategoryNote(e.target.value)}
-                placeholder="Any additional details..."
-                rows={2}
-                className="w-full border border-slate-300 dark:border-slate-700 bg-transparent rounded-lg p-2.5 text-slate-800 dark:text-white resize-none"
-              />
-            </div>
-
-            <button 
-              type="submit" 
-              disabled={submitting}
-              className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200 rounded-xl p-4 font-bold transition-all shadow-lg shadow-slate-900/10 flex items-center justify-center gap-2"
-            >
-              {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Printer className="h-5 w-5" />}
-              {submitting ? "Saving..." : "Save & Print Receipt"}
-            </button>
-          </form>
-        </div>
-
-        {/* RIGHT PANEL: DATA TABLE */}
-        <div className="lg:col-span-2">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden h-full flex flex-col">
-            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Recent Payments Log</h2>
-            </div>
-            
-            <div className="overflow-x-auto flex-1 max-h-[700px]">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-slate-50 dark:bg-slate-800/50 sticky top-0 z-10">
-                  <tr>
-                    <th className="p-4 font-bold text-slate-600 dark:text-slate-400">Date</th>
-                    <th className="p-4 font-bold text-slate-600 dark:text-slate-400">Supplier</th>
-                    <th className="p-4 font-bold text-slate-600 dark:text-slate-400">Method</th>
-                    <th className="p-4 font-bold text-slate-600 dark:text-slate-400">INV / PO</th>
-                    <th className="p-4 font-bold text-slate-600 dark:text-slate-400 text-right">Total (EGP)</th>
-                    <th className="p-4 font-bold text-slate-600 dark:text-slate-400 text-center">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {payments.map(pay => (
-                    <tr key={pay.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                      <td className="p-4 text-slate-800 dark:text-slate-200 font-medium">
-                        {pay.date}
-                      </td>
-                      <td className="p-4">
-                        <div className="font-bold text-slate-900 dark:text-white">{pay.companyName}</div>
-                        <div className="text-xs text-slate-500 uppercase">{pay.category}</div>
-                      </td>
-                      <td className="p-4">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold uppercase tracking-wider
-                          ${pay.method === 'cash' ? 'bg-emerald-100 text-emerald-700' : 
-                            pay.method === 'visa' ? 'bg-purple-100 text-purple-700' : 
-                            'bg-amber-100 text-amber-700'}`}>
-                          {pay.method.replace('_', ' ')}
-                        </span>
-                      </td>
-                      <td className="p-4 text-slate-600 dark:text-slate-400 font-mono text-xs">
-                        {pay.invoiceNumber && <div>INV: {pay.invoiceNumber}</div>}
-                        {pay.poNumber && <div>PO: {pay.poNumber}</div>}
-                      </td>
-                      <td className="p-4 text-right font-bold text-slate-900 dark:text-white font-mono">
-                        {pay.total?.toLocaleString()}
-                      </td>
-                      <td className="p-4 text-center">
-                        <button 
-                          onClick={() => {
-                            setSelectedPaymentForPrint(pay);
-                            setTimeout(() => generatePDF(), 100);
-                          }}
-                          className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
-                        >
-                          <Printer className="h-4 w-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {payments.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="p-8 text-center text-slate-500">
-                        No payment records found.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                {submitting ? <Loader2 className="h-6 w-6 animate-spin" /> : "Save & Print Receipt"}
+              </button>
+            </form>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* ADD SUPPLIER MODAL */}
+      {/* ADD SUPPLIER SUB-MODAL */}
       {showAddSupplier && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl p-6 shadow-2xl">
             <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Add New Supplier</h3>
             <input 
@@ -535,7 +648,6 @@ export default function PaymentsPage() {
       {selectedPaymentForPrint && (
         <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
           <div id="pdf-receipt" style={{ width: '794px', minHeight: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', padding: '40px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
-            
             {/* Background Watermark Logo */}
             <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 0, opacity: 0.04, pointerEvents: 'none' }}>
               <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Circle_K_logo.svg/2048px-Circle_K_logo.svg.png" alt="Watermark" style={{ width: '500px', filter: 'grayscale(100%)' }} />
@@ -636,7 +748,6 @@ export default function PaymentsPage() {
               <h3 style={{ margin: '0 0 20px', fontSize: '16px', fontWeight: '900', color: '#000', textTransform: 'uppercase', textAlign: 'center', borderBottom: '2px dashed #000', paddingBottom: '10px' }}>Official Sign-Off & Receipt Acknowledgement</h3>
               
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '40px' }}>
-                {/* Supplier Sign-off */}
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: '11px', color: '#333', fontStyle: 'italic', marginBottom: '15px', fontWeight: 'bold' }}>
                     I, the undersigned representative of <span style={{ textDecoration: 'underline' }}>{selectedPaymentForPrint.companyName}</span>, acknowledge receipt of the total payment amount specified above in full satisfaction of the referenced invoice(s).
@@ -658,10 +769,8 @@ export default function PaymentsPage() {
                   </div>
                 </div>
 
-                {/* Vertical Divider */}
                 <div style={{ width: '2px', backgroundColor: '#000', margin: '0 10px' }}></div>
 
-                {/* Manager Sign-off */}
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: '11px', color: '#333', fontStyle: 'italic', marginBottom: '15px', fontWeight: 'bold' }}>
                     I, the undersigned authorized manager, confirm that this payment was executed in accordance with company policy and funds were correctly disbursed from the branch safe/account.
@@ -679,7 +788,6 @@ export default function PaymentsPage() {
                     <div style={{ display: 'flex', alignItems: 'flex-end', gap: '10px', marginTop: '40px' }}>
                       <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#000', width: '120px' }}>Signature & Stamp:</span>
                       <div style={{ flex: 1, borderBottom: '1px solid #000', height: '40px', position: 'relative' }}>
-                        {/* Fake Stamp purely for visual aesthetics of the form */}
                         <div style={{ 
                           position: 'absolute', right: '10px', bottom: '10px',
                           border: '2px solid rgba(0,0,128,0.2)', padding: '4px', borderRadius: '4px', transform: 'rotate(-5deg)', opacity: 0.5, pointerEvents: 'none'
