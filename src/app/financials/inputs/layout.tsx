@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Wallet, DollarSign, FileText, CreditCard, FileCheck } from "lucide-react";
+import { Wallet, DollarSign, FileText, CreditCard, FileCheck, Receipt } from "lucide-react";
 import { PageTransition } from "@/components/PageTransition";
 
 export default function FinancialInputsLayout({ children }: { children: React.ReactNode }) {
@@ -15,7 +15,8 @@ export default function FinancialInputsLayout({ children }: { children: React.Re
     { name: "Payments", href: "/financials/inputs/payments", icon: CreditCard },
     { name: "Credits", href: "/financials/inputs/credits", icon: FileText },
     { name: "Cheques", href: "/financials/inputs/cheques", icon: FileCheck },
-    { name: "Deposits", href: "/financials/inputs/deposits", icon: Wallet }
+    { name: "Deposits", href: "/financials/inputs/deposits", icon: Wallet },
+    { name: "TMT Invoices", href: "/financials/inputs/tmt-invoices", icon: Receipt }
   ];
 
   return (

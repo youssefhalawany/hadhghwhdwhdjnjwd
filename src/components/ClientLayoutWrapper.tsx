@@ -282,6 +282,9 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       { name: "Import Products", href: "/admin/import-csv", icon: Database }
     ]},
     { name: "Checklists", href: "/checklists/manager", icon: ClipboardList },
+    { name: "HR", icon: Users, children: [
+      { name: "Employees", href: "/hr/employees", icon: Users }
+    ]},
     { name: "", href: "/cashier", icon: User, isIconOnly: true }
   ];
 

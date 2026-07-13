@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { db } from "@/lib/firebase";
-import { collection, query, getDocs, orderBy, limit } from "firebase/firestore";
+import { collection, query, getDocs, where } from "firebase/firestore";
 import { ArrowLeft, Download, Filter, Building2, CheckCircle, Clock } from "lucide-react";
 import Link from "next/link";
 import html2canvas from "html2canvas";
@@ -29,11 +29,24 @@ export default function VendorStatementsPage() {
     filterData();
   }, [allReceipts, selectedMonth, selectedCompany]);
 
+  // Re-fetch when month changes so we only read that month's docs
+  useEffect(() => {
+    fetchReceipts();
+  }, [selectedMonth]);
+
   const fetchReceipts = async () => {
     setLoading(true);
     try {
-      // 1. Fetch Cash Payments
-      const cashQ = query(collection(db, "cash_payments"), limit(10000));
+      // Build date range for selected month (reads only that month's docs)
+      const start = selectedMonth + "-01";
+      const end = selectedMonth + "-31";
+
+      // 1. Fetch Cash Payments for the selected month only
+      const cashQ = query(
+        collection(db, "cash_payments"),
+        where("date", ">=", start),
+        where("date", "<=", end)
+      );
       const cashSnap = await getDocs(cashQ);
       const cashData = cashSnap.docs.map(doc => {
         const d = doc.data();
@@ -49,8 +62,12 @@ export default function VendorStatementsPage() {
         };
       }).filter(Boolean);
 
-      // 2. Fetch Credits (User requested: "and credit if paid only")
-      const creditQ = query(collection(db, "credits"), limit(10000));
+      // 2. Fetch Credits for the selected month only
+      const creditQ = query(
+        collection(db, "credits"),
+        where("collectionDate", ">=", start),
+        where("collectionDate", "<=", end)
+      );
       const creditSnap = await getDocs(creditQ);
       const creditData = creditSnap.docs.map(doc => {
         const d = doc.data();

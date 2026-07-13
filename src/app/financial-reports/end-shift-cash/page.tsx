@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
-import { collection, query, orderBy, onSnapshot, deleteDoc, doc, setDoc } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, deleteDoc, doc, setDoc, limit } from "firebase/firestore";
 import { ArrowLeft, Wallet, Trash2, Edit2, Check, X, Plus, Calendar, Printer, FilterX } from "lucide-react";
 import Link from "next/link";
 import { vibrateSuccess, vibrateError } from "@/lib/haptics";
@@ -47,7 +47,7 @@ export default function EndShiftCashPage() {
   const [isAddingNew, setIsAddingNew] = useState(false);
 
   useEffect(() => {
-    const q = query(collection(db, "end_shift_cash"), orderBy("date", "asc"));
+    const q = query(collection(db, "end_shift_cash"), orderBy("date", "desc"), limit(200));
     const unsub = onSnapshot(q, (snap) => {
       let fetched = snap.docs.map(d => ({ id: d.id, ...d.data() } as EndShiftRecord));
       if (currentBranch !== "all") {

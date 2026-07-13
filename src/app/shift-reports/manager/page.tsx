@@ -269,8 +269,8 @@ export default function ManagerAuditPage() {
       setLoading(false);
     });
 
-    // 2. Fetch History (Approved) - limit to 100 to prevent runaway reads
-    const qHistory = query(collection(db, "shift_reports"), orderBy("createdAt", "desc"), limit(1000));
+    // 2. Fetch History (Approved) - limit to 100 to prevent excess reads (~3 months of data)
+    const qHistory = query(collection(db, "shift_reports"), orderBy("createdAt", "desc"), limit(100));
     const unsubHistory = onSnapshot(qHistory, (snapshot) => {
       const reports = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
       // Filter locally to avoid composite index requirement

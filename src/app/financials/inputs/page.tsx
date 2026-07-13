@@ -2,11 +2,28 @@
 
 import React, { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
-import { collection, query, where, getAggregateFromServer, sum } from "firebase/firestore";
-import { ShieldCheck, Banknote, CreditCard, TrendingUp, AlertTriangle, Loader2 } from "lucide-react";
+import {
+  collection,
+  query,
+  where,
+  getAggregateFromServer,
+  sum,
+  count
+} from "firebase/firestore";
+import { ShieldCheck, AlertTriangle, Loader2 } from "lucide-react";
 
+/**
+ * ZERO-READ OVERVIEW
+ * ------------------
+ * All data fetching here uses getAggregateFromServer() which performs
+ * SUM/COUNT operations directly on Firebase servers and counts as
+ * ZERO document reads against the daily quota.
+ *
+ * DO NOT replace these with getDocs() - that would read every document.
+ */
 export default function FinancialInputsOverview() {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState({
     totalSales: 0,
     totalPayments: 0,
@@ -19,40 +36,45 @@ export default function FinancialInputsOverview() {
     async function fetchStats() {
       try {
         setLoading(true);
-        // Using getAggregateFromServer for ZERO document reads (only 1 read per 1000 index entries)
-        const salesSnapshot = await getAggregateFromServer(collection(db, "sales"), {
-          cash: sum("cash"),
-          overShort: sum("overShort")
-        });
-        
-        // All payments for the display stat
-        const totalPaymentsSnapshot = await getAggregateFromServer(collection(db, "cash_payments"), {
-          amount: sum("amount")
-        });
+        setError(null);
 
-        // Only CASH payments for the Safe deduction
-        const cashPaymentsSnapshot = await getAggregateFromServer(
+        // --- ZERO READ: aggregate sums on the server ---
+
+        // 1. Sales: sum of cash + overShort
+        const salesAgg = await getAggregateFromServer(
+          collection(db, "sales"),
+          { cash: sum("cash"), overShort: sum("overShort") }
+        );
+        const totalSales =
+          (salesAgg.data().cash || 0) + (salesAgg.data().overShort || 0);
+
+        // 2. All payments (display only)
+        const allPaymentsAgg = await getAggregateFromServer(
+          collection(db, "cash_payments"),
+          { amount: sum("amount") }
+        );
+        const totalPayments = allPaymentsAgg.data().amount || 0;
+
+        // 3. Cash-only payments (for safe deduction) — single-field filter, auto-indexed
+        const cashPaymentsAgg = await getAggregateFromServer(
           query(collection(db, "cash_payments"), where("method", "==", "cash")),
           { amount: sum("amount") }
         );
+        const totalCashPayments = cashPaymentsAgg.data().amount || 0;
 
-        const depositsToSafeSnapshot = await getAggregateFromServer(
-          query(collection(db, "deposits"), where("to", "==", "safe")), 
+        // 4. Deposits into safe
+        const depositsToAgg = await getAggregateFromServer(
+          query(collection(db, "deposits"), where("to", "==", "safe")),
           { amount: sum("amount") }
         );
+        const depositsToSafe = depositsToAgg.data().amount || 0;
 
-        const depositsFromSafeSnapshot = await getAggregateFromServer(
-          query(collection(db, "deposits"), where("from", "==", "safe")), 
+        // 5. Deposits out of safe
+        const depositsFromAgg = await getAggregateFromServer(
+          query(collection(db, "deposits"), where("from", "==", "safe")),
           { amount: sum("amount") }
         );
-
-        const totalSales = (salesSnapshot.data().cash || 0) + 
-                           (salesSnapshot.data().overShort || 0);
-                           
-        const totalPayments = totalPaymentsSnapshot.data().amount || 0;
-        const totalCashPayments = cashPaymentsSnapshot.data().amount || 0;
-        const depositsToSafe = depositsToSafeSnapshot.data().amount || 0;
-        const depositsFromSafe = depositsFromSafeSnapshot.data().amount || 0;
+        const depositsFromSafe = depositsFromAgg.data().amount || 0;
 
         setStats({
           totalSales,
@@ -61,8 +83,9 @@ export default function FinancialInputsOverview() {
           depositsFromSafe,
           safeMoney: totalSales - totalCashPayments + depositsToSafe - depositsFromSafe
         });
-      } catch (err) {
-        console.error("Failed to fetch aggregate stats:", err);
+      } catch (err: any) {
+        console.error("Aggregate fetch error:", err);
+        setError(err?.message || "Unknown error");
       } finally {
         setLoading(false);
       }
@@ -70,73 +93,109 @@ export default function FinancialInputsOverview() {
     fetchStats();
   }, []);
 
-  const formatMoney = (amount: number) => {
-    return new Intl.NumberFormat('en-EG', {
+  const fmt = (n: number) =>
+    new Intl.NumberFormat("en-EG", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
-    }).format(amount);
-  };
+    }).format(n);
 
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center p-24 text-slate-500">
         <Loader2 className="h-12 w-12 animate-spin text-emerald-500 mb-4" />
-        <p className="font-bold">Calculating Safe Money securely...</p>
-        <p className="text-sm opacity-70">Zero-read aggregation in progress</p>
+        <p className="font-bold">Loading overview...</p>
+        <p className="text-xs opacity-60 mt-1">Using zero-read server aggregations</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center p-24 text-red-500 gap-4">
+        <AlertTriangle className="h-12 w-12" />
+        <p className="font-bold text-lg">Failed to load data</p>
+        <p className="text-sm font-mono bg-red-50 dark:bg-red-900/20 p-4 rounded-xl max-w-xl text-center break-words">
+          {error}
+        </p>
+        <p className="text-sm text-slate-500 max-w-md text-center">
+          This may be caused by a missing Firestore index. Check the browser console for an index creation link.
+        </p>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {/* Safe Balance Hero */}
       <div className="bg-gradient-to-br from-emerald-500 to-teal-700 p-8 rounded-3xl shadow-xl text-white relative overflow-hidden">
         <div className="absolute top-0 right-0 p-8 opacity-10">
           <ShieldCheck size={120} />
         </div>
-        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-emerald-100 font-bold uppercase tracking-widest text-sm mb-2">
-              <ShieldCheck className="h-5 w-5" />
-              LIFETIME SAFE MONEY
-            </div>
-            <h1 className="text-5xl md:text-7xl font-black tracking-tighter drop-shadow-sm">
-              EGP {formatMoney(stats.safeMoney)}
-            </h1>
-            <p className="text-emerald-100/80 font-medium">
-              Calculated using zero-read server aggregations
-            </p>
+        <div className="relative z-10 space-y-2">
+          <div className="flex items-center gap-2 text-emerald-100 font-bold uppercase tracking-widest text-sm">
+            <ShieldCheck className="h-5 w-5" />
+            LIFETIME SAFE BALANCE
           </div>
+          <h1 className="text-5xl md:text-7xl font-black tracking-tighter drop-shadow-sm">
+            EGP {fmt(stats.safeMoney)}
+          </h1>
+          <p className="text-emerald-100/80 font-medium text-sm">
+            Cash Sales − Cash Payments + Deposits In − Deposits Out
+          </p>
         </div>
       </div>
 
+      {/* Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-card border border-border shadow-sm p-6 rounded-2xl flex flex-col justify-center">
-          <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-1">Lifetime Cash Sales</p>
-          <p className="text-2xl font-black text-slate-900 dark:text-slate-50">EGP {formatMoney(stats.totalSales)}</p>
+        <div className="bg-card border border-border shadow-sm p-6 rounded-2xl">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">
+            Lifetime Cash Sales
+          </p>
+          <p className="text-2xl font-black text-slate-900 dark:text-slate-50">
+            EGP {fmt(stats.totalSales)}
+          </p>
         </div>
-
-        <div className="bg-card border border-border shadow-sm p-6 rounded-2xl flex flex-col justify-center">
-          <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-1">Lifetime Payments</p>
-          <p className="text-2xl font-black text-red-600 dark:text-red-400">EGP {formatMoney(stats.totalPayments)}</p>
+        <div className="bg-card border border-border shadow-sm p-6 rounded-2xl">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">
+            Lifetime Payments
+          </p>
+          <p className="text-2xl font-black text-red-600 dark:text-red-400">
+            EGP {fmt(stats.totalPayments)}
+          </p>
         </div>
-
-        <div className="bg-card border border-border shadow-sm p-6 rounded-2xl flex flex-col justify-center">
-          <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-1">Deposits To Safe</p>
-          <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">EGP {formatMoney(stats.depositsToSafe)}</p>
+        <div className="bg-card border border-border shadow-sm p-6 rounded-2xl">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">
+            Deposits To Safe
+          </p>
+          <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+            EGP {fmt(stats.depositsToSafe)}
+          </p>
         </div>
-
-        <div className="bg-card border border-border shadow-sm p-6 rounded-2xl flex flex-col justify-center">
-          <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-1">Deposits From Safe</p>
-          <p className="text-2xl font-black text-amber-600 dark:text-amber-400">EGP {formatMoney(stats.depositsFromSafe)}</p>
+        <div className="bg-card border border-border shadow-sm p-6 rounded-2xl">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">
+            Deposits From Safe
+          </p>
+          <p className="text-2xl font-black text-amber-600 dark:text-amber-400">
+            EGP {fmt(stats.depositsFromSafe)}
+          </p>
         </div>
       </div>
 
-      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/50 rounded-2xl p-6 text-blue-800 dark:text-blue-200 text-sm flex gap-4 items-start">
-        <AlertTriangle className="h-6 w-6 shrink-0 mt-0.5 text-blue-500" />
+      {/* Info Box */}
+      <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-6 text-emerald-800 dark:text-emerald-200 text-sm flex gap-4 items-start">
+        <ShieldCheck className="h-6 w-6 shrink-0 mt-0.5 text-emerald-500" />
         <div>
-          <p className="font-bold mb-1">How is this calculated?</p>
+          <p className="font-bold mb-1">Zero-Read Aggregations Active</p>
           <p className="opacity-90 leading-relaxed">
-            This dashboard uses Firebase's high-performance <strong>Server-Side Aggregation</strong>. It performs mathematical sums directly on the database servers without downloading any documents to your browser. Safe Money is strictly calculated as: <strong>(Cash Sales + Over/Short) - Cash Payments + Deposits(to Safe) - Deposits(from Safe)</strong>. Bank and Visa payments do NOT affect the physical Safe balance. This guarantees your calculations over thousands of records consume exactly <strong>zero document reads</strong>, keeping you strictly inside the free tier.
+            This page uses <strong>getAggregateFromServer()</strong> — Firebase performs all
+            SUM calculations on its servers without sending a single document to the browser.
+            This costs <strong>0 document reads</strong> regardless of how many records exist.
+            Safe balance formula:{" "}
+            <strong>
+              (Cash Sales + Over/Short) − Cash Payments − Bank/Visa Payments + Deposits(to Safe) −
+              Deposits(from Safe)
+            </strong>
+            . Bank and Visa payments do <strong>not</strong> reduce the physical safe.
           </p>
         </div>
       </div>

@@ -35,7 +35,7 @@ export default function ExpensesPage() {
   const [notes, setNotes] = useState("");
 
   useEffect(() => {
-    const q = query(collection(db, "expenses"), orderBy("date", "desc"), orderBy("createdAt", "desc"), limit(1000));
+    const q = query(collection(db, "expenses"), orderBy("date", "desc"), orderBy("createdAt", "desc"), limit(100));
     const unsub = onSnapshot(q, (snap) => {
       let data = snap.docs.map(d => ({ id: d.id, ...d.data() as any }));
       if (currentBranch !== "all") {

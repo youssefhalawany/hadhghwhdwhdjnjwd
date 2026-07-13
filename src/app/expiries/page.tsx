@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, getDocs, query, orderBy, deleteDoc, doc, updateDoc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, orderBy, deleteDoc, doc, updateDoc, getDoc, setDoc, onSnapshot, limit } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { 
   ArrowLeft, Calendar as CalendarIcon, PlusCircle, AlertTriangle, 
@@ -63,7 +63,7 @@ export default function ExpiryTrackerPage() {
     const sessionData = JSON.parse(savedUserStr);
     setAuthenticatedUser(sessionData);
 
-    const q = query(collection(db, "expiries"), orderBy("expiryDate", "asc"));
+    const q = query(collection(db, "expiries"), orderBy("expiryDate", "asc"), limit(500));
     const unsubscribe = onSnapshot(q, (snap) => {
       setExpiries(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       setLoading(false);

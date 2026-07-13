@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { dbService, db } from "@/lib/firebase";
-import { collection, query, orderBy, limit } from "firebase/firestore";
+import { collection, query, orderBy, limit, getDocs, where } from "firebase/firestore";
 import { Download, Printer, Filter, Search, FileText, ChevronDown, RefreshCw } from "lucide-react";
 import * as ExcelJS from "exceljs";
 import { generatePDF, downloadPDFBlob } from "@/lib/pdf-generator";
@@ -21,36 +21,43 @@ export default function FinancialReportsPage() {
   const [loading, setLoading] = useState(true);
   const [generatingPDF, setGeneratingPDF] = useState(false);
 
-  // Filters
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  // Default filter to current month
+  const [startDate, setStartDate] = useState(new Date().toISOString().substring(0, 7) + "-01");
+  const [endDate, setEndDate] = useState(new Date().toISOString().substring(0, 7) + "-31");
   const [storeId, setStoreId] = useState("all");
   const [reportId, setReportId] = useState("");
 
   useEffect(() => {
     setReportId(`CK-REP-${Math.floor(Math.random() * 1000000)}`);
-    let unsubSales = () => { };
-    let unsubCredits = () => { };
-    let unsubCreditPayments = () => { };
-    let unsubCashPayments = () => { };
+  }, []);
 
-    const loadData = async () => {
-      setLoading(true);
-      unsubSales = dbService.onSnapshot(query(collection(db, "sales"), orderBy("timestamp", "desc"), limit(200)), setSales);
-      unsubCredits = dbService.onSnapshot(query(collection(db, "credits"), orderBy("timestamp", "desc"), limit(100)), setCredits);
-      unsubCreditPayments = dbService.onSnapshot(query(collection(db, "credit_payments"), orderBy("timestamp", "desc"), limit(100)), setCreditPayments);
-      unsubCashPayments = dbService.onSnapshot(query(collection(db, "cash_payments"), orderBy("timestamp", "desc"), limit(100)), setCashPayments);
+  // Load data only when user triggers a search or on first mount (current month)
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const start = startDate || (new Date().toISOString().substring(0, 7) + "-01");
+      const end = endDate || (new Date().toISOString().substring(0, 7) + "-31");
+
+      const [salesSnap, creditsSnap, creditPaySnap, cashPaySnap] = await Promise.all([
+        getDocs(query(collection(db, "sales"), where("date", ">=", start), where("date", "<=", end))),
+        getDocs(query(collection(db, "credits"), where("collectionDate", ">=", start), where("collectionDate", "<=", end))),
+        getDocs(query(collection(db, "credit_payments"), where("date", ">=", start), where("date", "<=", end))),
+        getDocs(query(collection(db, "cash_payments"), where("date", ">=", start), where("date", "<=", end))),
+      ]);
+
+      setSales(salesSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setCredits(creditsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setCreditPayments(creditPaySnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setCashPayments(cashPaySnap.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch (err) {
+      console.error("Failed to load financial data:", err);
+    } finally {
       setLoading(false);
-    };
+    }
+  };
 
+  useEffect(() => {
     loadData();
-
-    return () => {
-      unsubSales();
-      unsubCredits();
-      unsubCreditPayments();
-      unsubCashPayments();
-    };
   }, []);
 
   const filterData = (data: any[], dateField = "date", storeField = "storeId") => {
@@ -359,6 +366,17 @@ export default function FinancialReportsPage() {
               onChange={(e) => setStoreId(e.target.value || "all")}
               className="w-full bg-background border border-border rounded-lg p-2.5 text-sm outline-none focus:border-red-500 transition-colors"
             />
+          </div>
+          <div className="flex-shrink-0">
+            <label className="text-xs font-bold text-muted-foreground uppercase block mb-2">Apply</label>
+            <button
+              onClick={loadData}
+              disabled={loading}
+              className="flex items-center gap-2 bg-red-600 text-white px-5 py-2.5 rounded-lg font-bold hover:bg-red-700 disabled:opacity-50 transition"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              Search
+            </button>
           </div>
         </div>
 
