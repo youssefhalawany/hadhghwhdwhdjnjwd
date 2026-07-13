@@ -1295,7 +1295,7 @@ export default function ManagerAuditPage() {
           );
 
           const renderHeader = (title: string) => (
-            <div style={{ padding: '10px 30px 5px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #000', position: 'relative', zIndex: 10 }}>
+            <div style={{ padding: '20px 30px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #000', position: 'relative', zIndex: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                 <div style={{ width: '50px', height: '50px', border: '2px solid #000', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <span style={{ fontSize: '30px', fontWeight: 'bold', color: '#000', lineHeight: 1 }}>K</span>
@@ -1382,7 +1382,7 @@ export default function ManagerAuditPage() {
           );
 
           const renderFooter = (pageNumber: string) => (
-            <div style={{ marginTop: 'auto', marginBottom: '10px', marginLeft: '30px', marginRight: '30px', borderTop: '2px solid #000', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 10 }}>
+            <div style={{ marginTop: 'auto', marginBottom: '20px', marginLeft: '30px', marginRight: '30px', borderTop: '2px solid #000', paddingTop: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 10 }}>
               <p style={{ fontSize: '8px', color: '#333', fontFamily: 'monospace', margin: 0, letterSpacing: '0.5px', fontWeight: 'bold' }}>
                 DOCUMENT SHIFT-{selectedReport.id.substring(0, 10).toUpperCase()} | PRINTED: {formatTimeMinus2Hours(new Date().toISOString())} | AUTHORIZED: MGR_{managerName.replace(/\s+/g, '_').toUpperCase() || "PENDING"}
               </p>
@@ -1391,9 +1391,9 @@ export default function ManagerAuditPage() {
           );
 
           const renderVarianceBadge = (variance: number) => {
-            if (variance === 0) return <div style={{ border: '2px solid #000', display: 'inline-block', padding: '4px 12px', borderRadius: '4px', fontWeight: '900', fontSize: '13px', letterSpacing: '0.5px' }}>✓ BALANCED</div>;
-            if (variance < 0) return <div style={{ border: '2px solid #000', display: 'inline-block', padding: '4px 12px', borderRadius: '4px', fontWeight: '900', fontSize: '13px', letterSpacing: '0.5px' }}>▼ SHORT: {variance}</div>;
-            return <div style={{ border: '2px solid #000', display: 'inline-block', padding: '4px 12px', borderRadius: '4px', fontWeight: '900', fontSize: '13px', letterSpacing: '0.5px' }}>▲ OVER: +{variance}</div>;
+            if (variance === 0) return <div style={{ fontWeight: '900', fontSize: '13px', letterSpacing: '0.5px' }}>✓ BALANCED</div>;
+            if (variance < 0) return <div style={{ fontWeight: '900', fontSize: '13px', letterSpacing: '0.5px' }}>▼ SHORT: {variance}</div>;
+            return <div style={{ fontWeight: '900', fontSize: '13px', letterSpacing: '0.5px' }}>▲ OVER: +{variance}</div>;
           };
 
           return (
@@ -1406,12 +1406,12 @@ export default function ManagerAuditPage() {
                 <div style={{ display: 'flex', flex: 1, position: 'relative', zIndex: 10 }}>
                   {/* Left Column (Details) */}
                   <div style={{ flex: 1, padding: '10px 15px 10px 30px', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ backgroundColor: '#fff', border: '1px solid #000', borderRight: '4px solid #000', borderRadius: '6px', padding: '6px 10px', direction: 'rtl', textAlign: 'right', marginBottom: '8px' }}>
+                    <div style={{ backgroundColor: '#fff', border: '1px solid #000', borderRight: '4px solid #000', borderRadius: '6px', padding: '6px 10px', direction: 'rtl', textAlign: 'right', marginBottom: '15px' }}>
                       <p style={{ margin: '0 0 2px', fontSize: '10px', color: '#000', lineHeight: 1.4, fontWeight: 'bold' }}><span style={{ color: '#000', marginLeft: '6px' }}>■</span>{generateEgyptianSummary()}</p>
                       <p style={{ margin: 0, fontSize: '10px', color: '#000', lineHeight: 1.4, fontWeight: 'bold' }}><span style={{ color: '#000', marginLeft: '6px' }}>■</span>{generateVolumeContext()}</p>
                     </div>
 
-                    <div style={{ border: '2px solid #000', borderRadius: '6px', padding: '8px 15px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ border: '2px solid #000', borderRadius: '6px', padding: '8px 15px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div style={{ textAlign: 'center' }}>
                         <p style={{ margin: '0 0 2px', fontSize: '9px', fontWeight: 'bold', color: '#666', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Expected System Cash</p>
                         <p style={{ margin: 0, fontSize: '16px', fontWeight: 'bold', color: '#000' }}>EGP {Number(expectedCash).toLocaleString()}</p>
@@ -1427,12 +1427,12 @@ export default function ManagerAuditPage() {
                         <p style={{ margin: 0, fontSize: '16px', fontWeight: 'bold', color: '#000' }}>EGP {Number(expectedVisa).toLocaleString()}</p>
                       </div>
                     </div>
-                    <div style={{ textAlign: 'center', border: '2px solid #000', color: '#000', padding: '6px 20px', borderRadius: '6px', marginBottom: '8px' }}>
+                    <div style={{ textAlign: 'center', border: '2px solid #000', color: '#000', padding: '6px 20px', borderRadius: '6px', marginBottom: '15px' }}>
                       <p style={{ margin: '0 0 2px', fontSize: '9px', fontWeight: 'bold', color: '#333', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Net Sales (Sys)</p>
                       <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>EGP {(Number(expectedCash) + Number(expectedVisa)).toLocaleString()}</p>
                     </div>
 
-                    <div style={{ border: '2px solid #000', marginBottom: '8px', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ border: '2px solid #000', marginBottom: '15px', borderRadius: '4px', overflow: 'hidden' }}>
                       <div style={{ backgroundColor: '#f9f9f9', padding: '4px 15px', borderBottom: '1px solid #000', fontWeight: 'bold', color: '#000', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px' }}>
                         1. Shift & Branch Information
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginTop: '4px' }}>
@@ -1450,7 +1450,7 @@ export default function ManagerAuditPage() {
                       </div>
                     </div>
 
-                    <div style={{ border: '2px solid #000', marginBottom: '8px', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ border: '2px solid #000', marginBottom: '15px', borderRadius: '4px', overflow: 'hidden' }}>
                       <div style={{ backgroundColor: '#f9f9f9', padding: '4px 15px', borderBottom: '1px solid #000', fontWeight: 'bold', color: '#000', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px' }}>2. Financial Audit & Variance</div>
                       <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '11px' }}>
                         <thead style={{ backgroundColor: '#fff', borderBottom: '1px solid #000' }}>
@@ -1475,7 +1475,7 @@ export default function ManagerAuditPage() {
 
                     {/* Manager Notes on Page 1 if Cashier 2 */}
                     {selectedReport.cashierRole === 2 && (
-                      <div style={{ border: '2px solid #000', marginBottom: '8px', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{ border: '2px solid #000', marginBottom: '15px', borderRadius: '4px', overflow: 'hidden' }}>
                         <div style={{ backgroundColor: '#f9f9f9', padding: '4px 15px', borderBottom: '1px solid #000', fontWeight: 'bold', color: '#000', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px' }}>Manager Comments</div>
                         <div style={{ padding: '6px 15px', fontSize: '11px', color: '#000', fontStyle: selectedReport.managerAudit?.comments ? 'normal' : 'italic' }}>
                           {selectedReport.managerAudit?.comments || "No additional comments provided."}
@@ -1524,7 +1524,7 @@ export default function ManagerAuditPage() {
                       const totalUnits = totalCigarettesSold + totalLightersSold;
                       
                       return (
-                        <div style={{ display: 'flex', gap: '10px', marginBottom: '8px' }}>
+                        <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
                           <div style={{ flex: 1, backgroundColor: '#fff', border: '2px solid #000', borderRadius: '6px', padding: '8px 12px' }}>
                             <p style={{ margin: '0 0 2px', fontSize: '10px', fontWeight: 'bold', color: '#333', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Cigarettes Sold</p>
                             <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold', color: '#000' }}>{totalCigarettesSold} <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#666' }}>Packs</span></p>
@@ -1541,7 +1541,7 @@ export default function ManagerAuditPage() {
                       );
                     })()}
 
-                    <div style={{ border: '2px solid #000', marginBottom: '8px', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ border: '2px solid #000', marginBottom: '15px', borderRadius: '4px', overflow: 'hidden' }}>
                       <div style={{ backgroundColor: '#f9f9f9', padding: '4px 15px', borderBottom: '1px solid #000', fontWeight: 'bold', color: '#000', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px' }}>
                         3. Detailed Inventory Breakdown
                       </div>
@@ -1598,7 +1598,7 @@ export default function ManagerAuditPage() {
                       </div>
                     </div>
 
-                    <div style={{ border: '2px solid #000', marginBottom: '8px', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ border: '2px solid #000', marginBottom: '15px', borderRadius: '4px', overflow: 'hidden' }}>
                       <div style={{ backgroundColor: '#f9f9f9', padding: '4px 15px', borderBottom: '1px solid #000', fontWeight: 'bold', color: '#000', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px' }}>4. Manager Comments & Review</div>
                       <div style={{ padding: '6px 15px', fontSize: '10px', color: '#000' }}>
                         {selectedReport.managerAudit?.rejectReason && (
