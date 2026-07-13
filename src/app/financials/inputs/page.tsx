@@ -25,9 +25,16 @@ export default function FinancialInputsOverview() {
           overShort: sum("overShort")
         });
         
-        const paymentsSnapshot = await getAggregateFromServer(collection(db, "cash_payments"), {
+        // All payments for the display stat
+        const totalPaymentsSnapshot = await getAggregateFromServer(collection(db, "cash_payments"), {
           amount: sum("amount")
         });
+
+        // Only CASH payments for the Safe deduction
+        const cashPaymentsSnapshot = await getAggregateFromServer(
+          query(collection(db, "cash_payments"), where("method", "==", "cash")),
+          { amount: sum("amount") }
+        );
 
         const depositsToSafeSnapshot = await getAggregateFromServer(
           query(collection(db, "deposits"), where("to", "==", "safe")), 
@@ -42,7 +49,8 @@ export default function FinancialInputsOverview() {
         const totalSales = (salesSnapshot.data().cash || 0) + 
                            (salesSnapshot.data().overShort || 0);
                            
-        const totalPayments = paymentsSnapshot.data().amount || 0;
+        const totalPayments = totalPaymentsSnapshot.data().amount || 0;
+        const totalCashPayments = cashPaymentsSnapshot.data().amount || 0;
         const depositsToSafe = depositsToSafeSnapshot.data().amount || 0;
         const depositsFromSafe = depositsFromSafeSnapshot.data().amount || 0;
 
@@ -51,7 +59,7 @@ export default function FinancialInputsOverview() {
           totalPayments,
           depositsToSafe,
           depositsFromSafe,
-          safeMoney: totalSales - totalPayments + depositsToSafe - depositsFromSafe
+          safeMoney: totalSales - totalCashPayments + depositsToSafe - depositsFromSafe
         });
       } catch (err) {
         console.error("Failed to fetch aggregate stats:", err);
@@ -128,7 +136,7 @@ export default function FinancialInputsOverview() {
         <div>
           <p className="font-bold mb-1">How is this calculated?</p>
           <p className="opacity-90 leading-relaxed">
-            This dashboard uses Firebase's high-performance <strong>Server-Side Aggregation</strong>. It performs mathematical sums directly on the database servers without downloading any documents to your browser. Safe Money is strictly calculated as: <strong>(Cash Sales + Over/Short) - Cash Payments + Deposits(to Safe) - Deposits(from Safe)</strong>. This guarantees your calculations over thousands of records consume exactly <strong>zero document reads</strong>, keeping you strictly inside the free tier.
+            This dashboard uses Firebase's high-performance <strong>Server-Side Aggregation</strong>. It performs mathematical sums directly on the database servers without downloading any documents to your browser. Safe Money is strictly calculated as: <strong>(Cash Sales + Over/Short) - Cash Payments + Deposits(to Safe) - Deposits(from Safe)</strong>. Bank and Visa payments do NOT affect the physical Safe balance. This guarantees your calculations over thousands of records consume exactly <strong>zero document reads</strong>, keeping you strictly inside the free tier.
           </p>
         </div>
       </div>
