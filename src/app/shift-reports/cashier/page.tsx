@@ -1030,15 +1030,15 @@ export default function CashierShiftReportPage() {
                     <div className="grid grid-cols-4 gap-2">
                       <div>
                         <label className="block text-[8px] sm:text-[9px] font-bold text-slate-455 dark:text-slate-500 uppercase mb-1">{dict.start}</label>
-                        <input required type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={lighters.start} onChange={(e) => setLighters({ ...lighters, start: e.target.value })} className="w-full p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-orange-500 text-center font-mono text-xs sm:text-sm font-bold" />
+                        <input type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={lighters.start} onChange={(e) => setLighters({ ...lighters, start: e.target.value })} className="w-full p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-orange-500 text-center font-mono text-xs sm:text-sm font-bold" />
                       </div>
                       <div>
                         <label className="block text-[8px] sm:text-[9px] font-bold text-slate-455 dark:text-slate-500 uppercase mb-1 text-emerald-500">{dict.delivery}</label>
-                        <input required type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={lighters.delivery} onChange={(e) => setLighters({ ...lighters, delivery: e.target.value })} className="w-full p-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 outline-none focus:ring-2 focus:ring-emerald-500 text-center font-mono text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-455" />
+                        <input type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={lighters.delivery} onChange={(e) => setLighters({ ...lighters, delivery: e.target.value })} className="w-full p-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 outline-none focus:ring-2 focus:ring-emerald-500 text-center font-mono text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-455" />
                       </div>
                       <div>
                         <label className="block text-[8px] sm:text-[9px] font-bold text-slate-455 dark:text-slate-500 uppercase mb-1 text-red-500">{dict.end}</label>
-                        <input required type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={lighters.end} onChange={(e) => setLighters({ ...lighters, end: e.target.value })} className="w-full p-2 rounded-lg border border-red-500/20 bg-red-500/5 outline-none focus:ring-2 focus:ring-red-500 text-center font-mono text-xs sm:text-sm font-bold text-red-600 dark:text-red-455" />
+                        <input type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={lighters.end} onChange={(e) => setLighters({ ...lighters, end: e.target.value })} className="w-full p-2 rounded-lg border border-red-500/20 bg-red-500/5 outline-none focus:ring-2 focus:ring-red-500 text-center font-mono text-xs sm:text-sm font-bold text-red-600 dark:text-red-455" />
                       </div>
                       <div className="bg-slate-900 rounded-lg p-1.5 text-center border border-slate-800 flex flex-col justify-center">
                         <label className="block text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase mb-0.5">{dict.soldUnits}</label>
@@ -1096,15 +1096,15 @@ export default function CashierShiftReportPage() {
                           <div className="grid grid-cols-4 gap-2">
                             <div>
                               <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">{dict.start}</label>
-                              <input required type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={counts.start} onChange={(e) => setCigaretteCounts({ ...cigaretteCounts, [type.id]: { ...counts, start: e.target.value } })} className="w-full p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none focus:ring-2 focus:ring-orange-500 text-center font-mono text-sm font-bold" />
+                              <input type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={counts.start} onChange={(e) => setCigaretteCounts({ ...cigaretteCounts, [type.id]: { ...counts, start: e.target.value } })} className="w-full p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none focus:ring-2 focus:ring-orange-500 text-center font-mono text-sm font-bold" />
                             </div>
                             <div>
                               <label className="block text-[9px] font-bold text-emerald-500 uppercase mb-1">{dict.delivery}</label>
-                              <input required type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={counts.delivery} onChange={(e) => setCigaretteCounts({ ...cigaretteCounts, [type.id]: { ...counts, delivery: e.target.value } })} className="w-full p-2.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 outline-none focus:ring-2 focus:ring-emerald-500 text-center font-mono text-sm font-bold text-emerald-600" />
+                              <input type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={counts.delivery} onChange={(e) => setCigaretteCounts({ ...cigaretteCounts, [type.id]: { ...counts, delivery: e.target.value } })} className="w-full p-2.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 outline-none focus:ring-2 focus:ring-emerald-500 text-center font-mono text-sm font-bold text-emerald-600" />
                             </div>
                             <div>
                               <label className="block text-[9px] font-bold text-red-500 uppercase mb-1">{dict.end}</label>
-                              <input required type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={counts.end} onChange={(e) => setCigaretteCounts({ ...cigaretteCounts, [type.id]: { ...counts, end: e.target.value } })} className="w-full p-2.5 rounded-lg border border-red-500/20 bg-red-500/5 outline-none focus:ring-2 focus:ring-red-500 text-center font-mono text-sm font-bold text-red-600" />
+                              <input type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={counts.end} onChange={(e) => setCigaretteCounts({ ...cigaretteCounts, [type.id]: { ...counts, end: e.target.value } })} className="w-full p-2.5 rounded-lg border border-red-500/20 bg-red-500/5 outline-none focus:ring-2 focus:ring-red-500 text-center font-mono text-sm font-bold text-red-600" />
                             </div>
                             <div className="bg-slate-900 dark:bg-black rounded-lg p-2 text-center border border-slate-800 flex flex-col justify-center">
                               <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">{dict.soldUnits}</label>
