@@ -260,6 +260,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
   const navItems = [
     { name: "Financials", icon: FileText, children: [
+      { name: "Payments / Vouchers", href: "/financials/payments", icon: DollarSign },
       { name: t("nav.reports"), href: "/financial-reports", icon: FileText },
       { name: "Voids & Returns", href: "/voids/manager", icon: Shield },
       { name: "Shift Audit", href: "/shift-reports/manager", icon: Shield },
