@@ -473,12 +473,6 @@ export default function CashierShiftReportPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (sigPadRef.current?.isEmpty()) {
-      vibrateError();
-      toast.warning(lang === 'en' ? "Please sign your report before submitting." : "يرجى توقيع التقرير قبل الإرسال.");
-      return;
-    }
-
     setLoading(true);
 
     const c = cashiers.find(x => x.id === selectedCashierId);
