@@ -476,7 +476,7 @@ export default function CashierShiftReportPage() {
     setLoading(true);
 
     const c = cashiers.find(x => x.id === selectedCashierId);
-    const signature = sigPadRef.current?.toDataURL() || null;
+    const signature = cashierSignature || (sigPadRef.current && !sigPadRef.current.isEmpty() ? sigPadRef.current.toDataURL() : null);
 
     const payload: any = {
       status: "pending_manager",
@@ -1125,7 +1125,12 @@ export default function CashierShiftReportPage() {
               </div>
               
               {step === 1 && cashierRole === 1 ? (
-                <button type="button" onClick={() => setStep(2)} className="w-full sm:w-auto px-8 py-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-base shadow-lg transition-all flex items-center justify-center gap-2">
+                <button type="button" onClick={() => {
+                  if (sigPadRef.current && !sigPadRef.current.isEmpty()) {
+                    setCashierSignature(sigPadRef.current.toDataURL());
+                  }
+                  setStep(2);
+                }} className="w-full sm:w-auto px-8 py-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-base shadow-lg transition-all flex items-center justify-center gap-2">
                   Next Step: Cigarettes <ArrowRight className="h-4.5 w-4.5" />
                 </button>
               ) : (

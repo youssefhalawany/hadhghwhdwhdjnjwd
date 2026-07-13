@@ -1323,39 +1323,44 @@ export default function ManagerAuditPage() {
           );
 
           const signatures = (
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
-              <div style={{ width: '33%' }}>
-                <p style={{ fontSize: '9px', color: '#64748b', fontStyle: 'italic', marginBottom: '8px', lineHeight: 1.4 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px', padding: '15px 20px', backgroundColor: '#f8fafc', border: '2px solid #e2e8f0', borderRadius: '8px' }}>
+              <div style={{ width: '30%', display: 'flex', flexDirection: 'column' }}>
+                <p style={{ fontSize: '9px', color: '#64748b', fontStyle: 'italic', marginBottom: '12px', lineHeight: 1.4, flexGrow: 1 }}>
                   I, the undersigned cashier, declare that the physical counts provided above are accurate, and I have surrendered the declared funds to the manager.
                 </p>
-                {selectedReport.cashierSignature ? (
-                  <img src={selectedReport.cashierSignature} alt="Signature" style={{ display: 'block', maxWidth: '100%', height: '50px', objectFit: 'contain', marginBottom: '5px' }} />
-                ) : (
-                  <div style={{ height: '50px', marginBottom: '5px' }}></div>
-                )}
-                <div style={{ borderBottom: '2px solid #1e293b', width: '100%', marginBottom: '8px' }}></div>
+                <div style={{ position: 'relative', height: '60px', display: 'flex', alignItems: 'flex-end', borderBottom: '2px solid #1e293b', marginBottom: '8px' }}>
+                  {selectedReport.cashierSignature ? (
+                    <img src={selectedReport.cashierSignature} alt="Signature" style={{ position: 'absolute', bottom: '2px', left: '50%', transform: 'translateX(-50%)', maxHeight: '65px', maxWidth: '100%', objectFit: 'contain' }} />
+                  ) : (
+                    <div style={{ position: 'absolute', bottom: '10px', left: '0', width: '100%', textAlign: 'center', fontSize: '12px', fontWeight: 'bold', color: '#ef4444', letterSpacing: '2px', textTransform: 'uppercase', opacity: 0.7 }}>
+                      NO SIGNATURE
+                    </div>
+                  )}
+                </div>
                 <p style={{ fontSize: '11px', fontWeight: '900', color: '#1e293b', margin: 0, textTransform: 'uppercase' }}>{selectedReport.cashierDetails.name}</p>
                 <p style={{ fontSize: '9px', fontWeight: 'bold', color: '#64748b', margin: '2px 0 0', textTransform: 'uppercase' }}>Declaring Cashier</p>
               </div>
 
-              <div style={{ width: '33%' }}>
-                <p style={{ fontSize: '9px', color: '#64748b', fontStyle: 'italic', marginBottom: '8px', lineHeight: 1.4 }}>
+              <div style={{ width: '30%', display: 'flex', flexDirection: 'column' }}>
+                <p style={{ fontSize: '9px', color: '#64748b', fontStyle: 'italic', marginBottom: '12px', lineHeight: 1.4, flexGrow: 1 }}>
                   I, the undersigned manager, declare that I have physically counted the funds and verified the variances against the system expectations.
                 </p>
-                {selectedReport.managerAudit?.signature ? (
-                  <img src={selectedReport.managerAudit.signature} alt="Signature" style={{ display: 'block', maxWidth: '100%', height: '50px', objectFit: 'contain', marginBottom: '5px' }} />
-                ) : (
-                  <div style={{ height: '50px', marginBottom: '5px' }}></div>
-                )}
-                <div style={{ borderBottom: '2px solid #1e293b', width: '100%', marginBottom: '8px' }}></div>
-                <p style={{ fontSize: '11px', fontWeight: '900', color: '#1e293b', margin: 0, textTransform: 'uppercase' }}>{managerName}</p>
+                <div style={{ position: 'relative', height: '60px', display: 'flex', alignItems: 'flex-end', borderBottom: '2px solid #1e293b', marginBottom: '8px' }}>
+                  {selectedReport.managerAudit?.signature ? (
+                    <img src={selectedReport.managerAudit.signature} alt="Signature" style={{ position: 'absolute', bottom: '2px', left: '50%', transform: 'translateX(-50%)', maxHeight: '65px', maxWidth: '100%', objectFit: 'contain' }} />
+                  ) : (
+                    <div style={{ position: 'absolute', bottom: '10px', left: '0', width: '100%', textAlign: 'center', fontSize: '12px', fontWeight: 'bold', color: '#ef4444', letterSpacing: '2px', textTransform: 'uppercase', opacity: 0.7 }}>
+                      PENDING REVIEW
+                    </div>
+                  )}
+                </div>
+                <p style={{ fontSize: '11px', fontWeight: '900', color: '#1e293b', margin: 0, textTransform: 'uppercase' }}>{managerName || "Pending"}</p>
                 <p style={{ fontSize: '9px', fontWeight: 'bold', color: '#64748b', margin: '2px 0 0', textTransform: 'uppercase' }}>Auditing Manager</p>
               </div>
 
               <div style={{ width: '25%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end' }}>
-                <div style={{ width: '100%', height: '90px', border: '2px dashed #94a3b8', borderRadius: '4px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc' }}>
-                  <span style={{ fontSize: '20px', color: '#cbd5e1', marginBottom: '4px' }}></span>
-                  <span style={{ fontSize: '9px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', textAlign: 'center', letterSpacing: '0.5px' }}>Official Branch<br />Stamp / Seal</span>
+                <div style={{ width: '100%', height: '110px', border: '2px dashed #94a3b8', borderRadius: '4px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff' }}>
+                  <span style={{ fontSize: '10px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', textAlign: 'center', letterSpacing: '0.5px' }}>Official Branch<br />Stamp / Seal</span>
                 </div>
               </div>
             </div>
