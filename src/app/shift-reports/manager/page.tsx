@@ -1391,9 +1391,9 @@ export default function ManagerAuditPage() {
           );
 
           const renderVarianceBadge = (variance: number) => {
-            if (variance === 0) return <span style={{ border: '2px solid #000', color: '#000', padding: '4px 8px', borderRadius: '6px', fontWeight: 'bold', fontSize: '13px' }}>[ ✓ ] BALANCED</span>;
-            if (variance < 0) return <span style={{ border: '2px solid #000', color: '#000', padding: '4px 8px', borderRadius: '6px', fontWeight: 'bold', fontSize: '13px' }}>[ ! ] SHORT: {variance}</span>;
-            return <span style={{ border: '2px solid #000', color: '#000', padding: '4px 8px', borderRadius: '6px', fontWeight: 'bold', fontSize: '13px' }}>[ + ] OVER: +{variance}</span>;
+            if (variance === 0) return <div style={{ border: '2px solid #000', display: 'inline-block', padding: '4px 12px', borderRadius: '4px', fontWeight: '900', fontSize: '13px', letterSpacing: '0.5px' }}>✓ BALANCED</div>;
+            if (variance < 0) return <div style={{ border: '2px solid #000', display: 'inline-block', padding: '4px 12px', borderRadius: '4px', fontWeight: '900', fontSize: '13px', letterSpacing: '0.5px' }}>▼ SHORT: {variance}</div>;
+            return <div style={{ border: '2px solid #000', display: 'inline-block', padding: '4px 12px', borderRadius: '4px', fontWeight: '900', fontSize: '13px', letterSpacing: '0.5px' }}>▲ OVER: +{variance}</div>;
           };
 
           return (
@@ -1483,7 +1483,7 @@ export default function ManagerAuditPage() {
                       </div>
                     )}
 
-                    <div style={{ marginTop: 'auto' }}>
+                    <div style={{ marginTop: '30px' }}>
                       {signatures}
                     </div>
                   </div>
@@ -1613,7 +1613,7 @@ export default function ManagerAuditPage() {
                       </div>
                     </div>
 
-                    <div style={{ marginTop: 'auto' }}>
+                    <div style={{ marginTop: '30px' }}>
                       {signatures}
                     </div>
                   </div>
