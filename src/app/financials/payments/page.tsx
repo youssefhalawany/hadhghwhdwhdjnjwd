@@ -30,8 +30,6 @@ import { toast } from "sonner";
 import { onAuthStateChanged } from "firebase/auth";
 import Link from "next/link";
 
-const TABS = ["Sales", "Payments", "Credits", "Cheques", "Deposits", "TMT Invoices", "Safe Report", "Printables"];
-
 const CATEGORY_EMOJIS: Record<string, string> = {
   order: "📦",
   maintenance: "🔧",
@@ -98,39 +96,50 @@ export default function PaymentsRedesignPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const supSnapshot = await getDocs(query(collection(db, "suppliers"), orderBy("name", "asc")));
-      setSuppliers(supSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
-
+      // 1. Fetch Payments
       const paySnapshot = await getDocs(query(collection(db, "cash_payments"), orderBy("createdAt", "desc")));
-      setPayments(paySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    } catch (err) {
+      const loadedPayments = paySnapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
+      setPayments(loadedPayments);
+
+      // 2. Fetch Suppliers from both supplier_returns and cash_payments
+      const uniqueSuppliers = new Set<string>();
+      
+      // Add from payments
+      loadedPayments.forEach(p => {
+        if (p.companyName) uniqueSuppliers.add(p.companyName.toUpperCase());
+      });
+
+      // Add from returns
+      try {
+        const returnsSnap = await getDocs(query(collection(db, "supplier_returns"), orderBy("createdAt", "desc")));
+        returnsSnap.docs.forEach(doc => {
+          const data = doc.data();
+          if (data.supplier) uniqueSuppliers.add(data.supplier.toUpperCase());
+        });
+      } catch (returnsErr) {
+        console.log("Could not load supplier returns for autocomplete list:", returnsErr);
+      }
+
+      setSuppliers(Array.from(uniqueSuppliers).sort().map((name, index) => ({ id: `sup_${index}`, name })));
+    } catch (err: any) {
       console.error(err);
-      toast.error("Failed to load data.");
+      toast.error("Failed to load data: " + err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAddSupplier = async () => {
+  const handleAddSupplier = () => {
     if (!newSupplierName.trim()) return;
-    try {
-      setSubmitting(true);
-      await addDoc(collection(db, "suppliers"), {
-        name: newSupplierName.trim().toUpperCase(),
-        createdAt: serverTimestamp()
-      });
-      toast.success("Supplier added!");
-      setCompanyName(newSupplierName.trim().toUpperCase());
-      setShowAddSupplier(false);
-      setNewSupplierName("");
-      
-      const supSnapshot = await getDocs(query(collection(db, "suppliers"), orderBy("name", "asc")));
-      setSuppliers(supSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
-    } catch (err) {
-      toast.error("Failed to add supplier");
-    } finally {
-      setSubmitting(false);
-    }
+    const name = newSupplierName.trim().toUpperCase();
+    
+    // Just add to local state, it will be persisted to cash_payments when a payment is saved
+    const newSupp = { id: `sup_new_${Date.now()}`, name };
+    setSuppliers(prev => [...prev, newSupp].sort((a, b) => a.name.localeCompare(b.name)));
+    setCompanyName(name);
+    setShowAddSupplier(false);
+    setNewSupplierName("");
+    toast.success("Supplier ready to be used!");
   };
 
   const handleSavePayment = async (e: React.FormEvent) => {
@@ -269,24 +278,6 @@ export default function PaymentsRedesignPage() {
   return (
     <div className="min-h-screen bg-[#f8fafc] dark:bg-slate-950 pb-20">
       
-      {/* TOP TABS NAVIGATION */}
-      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 pt-4 overflow-x-auto whitespace-nowrap hide-scrollbar">
-        <div className="flex gap-6 max-w-7xl mx-auto">
-          {TABS.map(tab => (
-            <button 
-              key={tab}
-              className={`pb-4 text-sm font-bold transition-colors ${
-                tab === "Payments" 
-                ? "text-red-500 border-b-2 border-red-500" 
-                : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-      </div>
-
       <div className="p-6 max-w-7xl mx-auto space-y-6">
         
         {/* MONTH FILTER */}
@@ -634,10 +625,10 @@ export default function PaymentsRedesignPage() {
               </button>
               <button 
                 onClick={handleAddSupplier}
-                disabled={!newSupplierName.trim() || submitting}
+                disabled={!newSupplierName.trim()}
                 className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50"
               >
-                {submitting ? "Saving..." : "Save Supplier"}
+                Use Supplier
               </button>
             </div>
           </div>
