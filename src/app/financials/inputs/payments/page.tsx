@@ -11,7 +11,8 @@ import {
   serverTimestamp,
   deleteDoc,
   doc,
-  Timestamp
+  Timestamp,
+  limit
 } from "firebase/firestore";
 import { 
   Plus, 
@@ -97,7 +98,7 @@ export default function PaymentsRedesignPage() {
     setLoading(true);
     try {
       // 1. Fetch Payments
-      const paySnapshot = await getDocs(query(collection(db, "cash_payments"), orderBy("createdAt", "desc")));
+      const paySnapshot = await getDocs(query(collection(db, "cash_payments"), orderBy("createdAt", "desc"), limit(200)));
       const loadedPayments = paySnapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
       setPayments(loadedPayments);
 
@@ -111,7 +112,7 @@ export default function PaymentsRedesignPage() {
 
       // Add from returns
       try {
-        const returnsSnap = await getDocs(query(collection(db, "supplier_returns"), orderBy("createdAt", "desc")));
+        const returnsSnap = await getDocs(query(collection(db, "supplier_returns"), orderBy("createdAt", "desc"), limit(200)));
         returnsSnap.docs.forEach(doc => {
           const data = doc.data();
           if (data.supplier) uniqueSuppliers.add(data.supplier.toUpperCase());

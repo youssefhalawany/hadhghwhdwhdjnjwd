@@ -15,3 +15,2588 @@
    * /Users/youssefhalawanyy/Documents/anhreports/package-lock.json
 
 
+ GET / 200 in 2.8s (next.js: 1373ms, application-code: 1410ms)
+ GET /financial-reports 200 in 215ms (next.js: 136ms, application-code: 79ms)
+ GET /financial-reports 200 in 31ms (next.js: 3ms, application-code: 27ms)
+○ Compiling /financials/payments ...
+ GET /financials/payments 200 in 6.8s (next.js: 6.7s, application-code: 138ms)
+ GET /financials/payments 200 in 38ms (next.js: 6ms, application-code: 32ms)
+ GET /financial-reports 200 in 162ms (next.js: 55ms, application-code: 106ms)
+ GET /shift-reports/manager 200 in 193ms (next.js: 125ms, application-code: 69ms)
+[browser] #2 1952ms Error loading image https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Circle_K_logo.svg/2048px-Circle_K_logo.svg.png 
+[browser] #3 1588ms Error loading image https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Circle_K_logo.svg/2048px-Circle_K_logo.svg.png 
+✓ Compiled in 1082ms
+✓ Compiled in 975ms
+[browser] #4 1718ms Error loading image https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Circle_K_logo.svg/2048px-Circle_K_logo.svg.png 
+[browser] #5 964ms Error loading image https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Circle_K_logo.svg/2048px-Circle_K_logo.svg.png 
+ GET /financials/payments 200 in 180ms (next.js: 91ms, application-code: 89ms)
+✓ Compiled in 649ms
+✓ Compiled in 2.1s
+✓ Compiled in 669ms
+✓ Compiled in 606ms
+✓ Compiled in 672ms
+ GET /financials/payments 200 in 529ms (next.js: 100ms, application-code: 429ms)
+ GET /financial-reports 200 in 138ms (next.js: 61ms, application-code: 77ms)
+ GET /financials/payments 200 in 28ms (next.js: 6ms, application-code: 21ms)
+✓ Compiled in 1ms
+ GET /financials/payments 200 in 1668ms (next.js: 1075ms, application-code: 594ms)
+ GET /financials/payments 200 in 322ms (next.js: 10ms, application-code: 313ms)
+ GET /financials/payments 200 in 305ms (next.js: 8ms, application-code: 297ms)
+ GET /financials/payments 200 in 287ms (next.js: 5ms, application-code: 282ms)
+ GET /financials/payments 200 in 297ms (next.js: 17ms, application-code: 280ms)
+ GET /financials/payments 200 in 240ms (next.js: 6ms, application-code: 234ms)
+ GET /financials/payments 200 in 303ms (next.js: 5ms, application-code: 297ms)
+ GET /financials/payments 200 in 431ms (next.js: 3ms, application-code: 428ms)
+ GET /financials/payments 200 in 524ms (next.js: 4ms, application-code: 520ms)
+ GET /financials/payments 200 in 680ms (next.js: 8ms, application-code: 672ms)
+ GET /financials/payments 200 in 793ms (next.js: 5ms, application-code: 788ms)
+ GET /financials/payments 200 in 691ms (next.js: 10ms, application-code: 681ms)
+ GET /financials/payments 200 in 880ms (next.js: 13ms, application-code: 867ms)
+ GET /financials/payments 200 in 760ms (next.js: 29ms, application-code: 731ms)
+ GET /financials/payments 200 in 651ms (next.js: 14ms, application-code: 636ms)
+ GET /financials/payments 200 in 606ms (next.js: 5ms, application-code: 602ms)
+ GET /financials/payments 200 in 701ms (next.js: 8ms, application-code: 694ms)
+ GET /financials/payments 200 in 554ms (next.js: 23ms, application-code: 531ms)
+ GET /financials/payments 200 in 468ms (next.js: 9ms, application-code: 459ms)
+ GET /financials/payments 200 in 386ms (next.js: 4ms, application-code: 383ms)
+ GET /financials/payments 200 in 359ms (next.js: 10ms, application-code: 350ms)
+ GET /financials/payments 200 in 356ms (next.js: 5ms, application-code: 351ms)
+ GET /financials/payments 200 in 261ms (next.js: 8ms, application-code: 253ms)
+ GET /financials/payments 200 in 215ms (next.js: 8ms, application-code: 206ms)
+ GET /financials/payments 200 in 221ms (next.js: 6ms, application-code: 215ms)
+ GET /financials/payments 200 in 206ms (next.js: 5ms, application-code: 201ms)
+ GET /financials/payments 200 in 173ms (next.js: 3ms, application-code: 170ms)
+ GET /financials/payments 200 in 206ms (next.js: 3ms, application-code: 204ms)
+ GET /financials/payments 200 in 206ms (next.js: 7ms, application-code: 200ms)
+ GET /financials/payments 200 in 166ms (next.js: 2ms, application-code: 164ms)
+ GET /financials/payments 200 in 185ms (next.js: 3ms, application-code: 183ms)
+ GET /financials/payments 200 in 201ms (next.js: 5ms, application-code: 196ms)
+ GET /financials/payments 200 in 205ms (next.js: 4ms, application-code: 201ms)
+ GET /financials/payments 200 in 300ms (next.js: 4ms, application-code: 296ms)
+ GET /financials/payments 200 in 318ms (next.js: 5ms, application-code: 313ms)
+ GET /financials/payments 200 in 332ms (next.js: 6ms, application-code: 325ms)
+ GET /financials/payments 200 in 294ms (next.js: 4ms, application-code: 290ms)
+ GET /financials/payments 200 in 313ms (next.js: 3ms, application-code: 310ms)
+ GET /financials/payments 200 in 305ms (next.js: 7ms, application-code: 298ms)
+ GET /financials/payments 200 in 294ms (next.js: 3ms, application-code: 291ms)
+ GET /financials/payments 200 in 336ms (next.js: 5ms, application-code: 331ms)
+ GET /financials/payments 200 in 280ms (next.js: 8ms, application-code: 272ms)
+ GET /financials/payments 200 in 281ms (next.js: 8ms, application-code: 273ms)
+ GET /financials/payments 200 in 289ms (next.js: 6ms, application-code: 283ms)
+ GET /financials/payments 200 in 282ms (next.js: 8ms, application-code: 274ms)
+ GET /financials/payments 200 in 281ms (next.js: 16ms, application-code: 265ms)
+ GET /financials/payments 200 in 373ms (next.js: 13ms, application-code: 360ms)
+ GET /financials/payments 200 in 376ms (next.js: 6ms, application-code: 370ms)
+ GET /financials/payments 200 in 372ms (next.js: 6ms, application-code: 366ms)
+ GET /financials/payments 200 in 321ms (next.js: 3ms, application-code: 318ms)
+ GET /financials/payments 200 in 343ms (next.js: 5ms, application-code: 338ms)
+ GET /financials/payments 200 in 338ms (next.js: 3ms, application-code: 335ms)
+ GET /financials/payments 200 in 326ms (next.js: 8ms, application-code: 318ms)
+ GET /financials/payments 200 in 321ms (next.js: 7ms, application-code: 314ms)
+ GET /financials/payments 200 in 270ms (next.js: 4ms, application-code: 265ms)
+ GET /financials/payments 200 in 249ms (next.js: 6ms, application-code: 244ms)
+ GET /financials/payments 200 in 356ms (next.js: 4ms, application-code: 352ms)
+ GET /financials/payments 200 in 324ms (next.js: 5ms, application-code: 318ms)
+ GET /financials/payments 200 in 354ms (next.js: 10ms, application-code: 343ms)
+ GET /financials/payments 200 in 394ms (next.js: 5ms, application-code: 389ms)
+ GET /financials/payments 200 in 356ms (next.js: 8ms, application-code: 348ms)
+ GET /financials/payments 200 in 527ms (next.js: 8ms, application-code: 519ms)
+ GET /financials/payments 200 in 687ms (next.js: 18ms, application-code: 668ms)
+ GET /financials/payments 200 in 628ms (next.js: 10ms, application-code: 618ms)
+ GET /financials/payments 200 in 700ms (next.js: 5ms, application-code: 695ms)
+ GET /financials/payments 200 in 659ms (next.js: 11ms, application-code: 648ms)
+ GET /financials/payments 200 in 528ms (next.js: 59ms, application-code: 469ms)
+ GET /financials/payments 200 in 384ms (next.js: 17ms, application-code: 367ms)
+ GET /financials/payments 200 in 433ms (next.js: 17ms, application-code: 416ms)
+ GET /financials/payments 200 in 344ms (next.js: 5ms, application-code: 339ms)
+ GET /financials/payments 200 in 404ms (next.js: 4ms, application-code: 400ms)
+ GET /financials/payments 200 in 360ms (next.js: 3ms, application-code: 356ms)
+ GET /financials/payments 200 in 372ms (next.js: 15ms, application-code: 357ms)
+ GET /financials/payments 200 in 445ms (next.js: 5ms, application-code: 440ms)
+ GET /financials/payments 200 in 458ms (next.js: 5ms, application-code: 453ms)
+ GET /financials/payments 200 in 394ms (next.js: 4ms, application-code: 391ms)
+ GET /financials/payments 200 in 401ms (next.js: 3ms, application-code: 398ms)
+ GET /financials/payments 200 in 326ms (next.js: 20ms, application-code: 305ms)
+ GET /financials/payments 200 in 304ms (next.js: 5ms, application-code: 300ms)
+ GET /financials/payments 200 in 266ms (next.js: 8ms, application-code: 258ms)
+ GET /financials/payments 200 in 409ms (next.js: 5ms, application-code: 404ms)
+ GET /financials/payments 200 in 1279ms (next.js: 5ms, application-code: 1274ms)
+ GET /financials/payments 200 in 1312ms (next.js: 6ms, application-code: 1306ms)
+ GET /financials/payments 200 in 1285ms (next.js: 3ms, application-code: 1282ms)
+ GET /financials/payments 200 in 1449ms (next.js: 5ms, application-code: 1445ms)
+ GET /financials/payments 200 in 1321ms (next.js: 10ms, application-code: 1312ms)
+ GET /financials/payments 200 in 1382ms (next.js: 4ms, application-code: 1378ms)
+ GET /financials/payments 200 in 917ms (next.js: 101ms, application-code: 816ms)
+ GET /financials/payments 200 in 1067ms (next.js: 6ms, application-code: 1061ms)
+ GET /financials/payments 200 in 1762ms (next.js: 7ms, application-code: 1755ms)
+ GET /financials/payments 200 in 1789ms (next.js: 6ms, application-code: 1783ms)
+ GET /financials/payments 200 in 1819ms (next.js: 5ms, application-code: 1814ms)
+ GET /financials/payments 200 in 1582ms (next.js: 49ms, application-code: 1533ms)
+ GET /financials/payments 200 in 1389ms (next.js: 229ms, application-code: 1160ms)
+ GET /financials/payments 200 in 503ms (next.js: 25ms, application-code: 478ms)
+ GET /financials/payments 200 in 436ms (next.js: 14ms, application-code: 422ms)
+ GET /financials/payments 200 in 377ms (next.js: 11ms, application-code: 366ms)
+ GET /financials/payments 200 in 328ms (next.js: 11ms, application-code: 317ms)
+ GET /financials/payments 200 in 284ms (next.js: 7ms, application-code: 278ms)
+ GET /financials/payments 200 in 241ms (next.js: 11ms, application-code: 230ms)
+ GET /financials/payments 200 in 465ms (next.js: 5ms, application-code: 461ms)
+ GET /financials/payments 200 in 425ms (next.js: 4ms, application-code: 420ms)
+ GET /financials/payments 200 in 446ms (next.js: 4ms, application-code: 442ms)
+ GET /financials/payments 200 in 459ms (next.js: 3ms, application-code: 456ms)
+ GET /financials/payments 200 in 519ms (next.js: 7ms, application-code: 512ms)
+ GET /financials/payments 200 in 457ms (next.js: 33ms, application-code: 424ms)
+ GET /financials/payments 200 in 515ms (next.js: 9ms, application-code: 506ms)
+ GET /financials/payments 200 in 513ms (next.js: 5ms, application-code: 507ms)
+ GET /financials/payments 200 in 461ms (next.js: 19ms, application-code: 442ms)
+ GET /financials/payments 200 in 389ms (next.js: 9ms, application-code: 380ms)
+ GET /financials/payments 200 in 307ms (next.js: 18ms, application-code: 289ms)
+ GET /financials/payments 200 in 193ms (next.js: 6ms, application-code: 188ms)
+ GET /financials/payments 200 in 112ms (next.js: 3ms, application-code: 109ms)
+ GET /financials/payments 200 in 57ms (next.js: 4ms, application-code: 53ms)
+✓ Compiled in 1184ms
+○ Compiling /financials/credits ...
+ GET /financials/credits 200 in 7.3s (next.js: 7.2s, application-code: 170ms)
+✓ Compiled in 443ms
+⨯ ./Documents/anhreports/src/app/financials/credits/page.tsx:886:4
+Expected '</', got ';'
+  [90m884 |[0m       )}
+  [90m885 |[0m     </div>
+[31m[1m>[0m [90m886 |[0m   );
+  [90m    |[0m    [31m[1m^[0m
+  [90m887 |[0m }[33mCreditForPrint[0m.id} | [33mPRINTED[0m: {[36mnew[0m [33mDate[0m().toLocaleString()} | [33mAUTHORIZED[0m: [33mSYS[0m
+  [90m888 |[0m               </p>
+  [90m889 |[0m               <p style={{ fontSize: [32m'10px'[0m, fontWeight: [32m'bold'[0m, color: [32m'#000'[0m }}>[33mPAGE[0m [35m1[0m [33mO.[0m.[35m.[0m
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+
+✓ Compiled in 49ms
+○ Compiling /_error ...
+ GET /financials/credits 500 in 12.8s (next.js: 11.8s, application-code: 979ms)
+⨯ ./Documents/anhreports/src/app/financials/credits/page.tsx:886:4
+Expected '</', got ';'
+  [90m884 |[0m       )}
+  [90m885 |[0m     </div>
+[31m[1m>[0m [90m886 |[0m   );
+  [90m    |[0m    [31m[1m^[0m
+  [90m887 |[0m }[33mCreditForPrint[0m.id} | [33mPRINTED[0m: {[36mnew[0m [33mDate[0m().toLocaleString()} | [33mAUTHORIZED[0m: [33mSYS[0m
+  [90m888 |[0m               </p>
+  [90m889 |[0m               <p style={{ fontSize: [32m'10px'[0m, fontWeight: [32m'bold'[0m, color: [32m'#000'[0m }}>[33mPAGE[0m [35m1[0m [33mO.[0m.[35m.[0m
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+
+ GET /financials/credits 500 in 577ms (next.js: 522ms, application-code: 55ms)
+⨯ ./Documents/anhreports/src/app/financials/credits/page.tsx:886:4
+Expected '</', got ';'
+  [90m884 |[0m       )}
+  [90m885 |[0m     </div>
+[31m[1m>[0m [90m886 |[0m   );
+  [90m    |[0m    [31m[1m^[0m
+  [90m887 |[0m }[33mCreditForPrint[0m.id} | [33mPRINTED[0m: {[36mnew[0m [33mDate[0m().toLocaleString()} | [33mAUTHORIZED[0m: [33mSYS[0m
+  [90m888 |[0m               </p>
+  [90m889 |[0m               <p style={{ fontSize: [32m'10px'[0m, fontWeight: [32m'bold'[0m, color: [32m'#000'[0m }}>[33mPAGE[0m [35m1[0m [33mO.[0m.[35m.[0m
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+
+ GET /financials/credits 500 in 62ms (next.js: 24ms, application-code: 38ms)
+[browser] ./Documents/anhreports/src/app/financials/credits/page.tsx:886:4
+Expected '</', got ';'
+  884 |       )}
+  885 |     </div>
+> 886 |   );
+      |    ^
+  887 | }CreditForPrint.id} | PRINTED: {new Date().toLocaleString()} | AUTHORIZED: SYS
+  888 |               </p>
+  889 |               <p style={{ fontSize: '10px', fontWeight: 'bold', color: '#000' }}>PAGE 1 O...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/financials/credits/page.tsx:886:4
+Expected '</', got ';'
+  884 |       )}
+  885 |     </div>
+> 886 |   );
+      |    ^
+  887 | }CreditForPrint.id} | PRINTED: {new Date().toLocaleString()} | AUTHORIZED: SYS
+  888 |               </p>
+  889 |               <p style={{ fontSize: '10px', fontWeight: 'bold', color: '#000' }}>PAGE 1 O...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/financials/credits/page.tsx:886:4
+Expected '</', got ';'
+  884 |       )}
+  885 |     </div>
+> 886 |   );
+      |    ^
+  887 | }CreditForPrint.id} | PRINTED: {new Date().toLocaleString()} | AUTHORIZED: SYS
+  888 |               </p>
+  889 |               <p style={{ fontSize: '10px', fontWeight: 'bold', color: '#000' }}>PAGE 1 O...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/financials/credits/page.tsx:886:4
+Expected '</', got ';'
+  884 |       )}
+  885 |     </div>
+> 886 |   );
+      |    ^
+  887 | }CreditForPrint.id} | PRINTED: {new Date().toLocaleString()} | AUTHORIZED: SYS
+  888 |               </p>
+  889 |               <p style={{ fontSize: '10px', fontWeight: 'bold', color: '#000' }}>PAGE 1 O...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/financials/credits/page.tsx:886:4
+Expected '</', got ';'
+  884 |       )}
+  885 |     </div>
+> 886 |   );
+      |    ^
+  887 | }CreditForPrint.id} | PRINTED: {new Date().toLocaleString()} | AUTHORIZED: SYS
+  888 |               </p>
+  889 |               <p style={{ fontSize: '10px', fontWeight: 'bold', color: '#000' }}>PAGE 1 O...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component] 
+[browser] Uncaught Error: ./Documents/anhreports/src/app/financials/credits/page.tsx:886:4
+Expected '</', got ';'
+  884 |       )}
+  885 |     </div>
+> 886 |   );
+      |    ^
+  887 | }CreditForPrint.id} | PRINTED: {new Date().toLocaleString()} | AUTHORIZED: SYS
+  888 |               </p>
+  889 |               <p style={{ fontSize: '10px', fontWeight: 'bold', color: '#000' }}>PAGE 1 O...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./Documents/anhreports/src/app/financials/credits/page.tsx:886:4)
+    at <unknown> (Error: (./Documents/anhreports/src/app/financials/credits/page.tsx:886:4)
+[browser] ./Documents/anhreports/src/app/financials/credits/page.tsx:886:4
+Expected '</', got ';'
+  884 |       )}
+  885 |     </div>
+> 886 |   );
+      |    ^
+  887 | }CreditForPrint.id} | PRINTED: {new Date().toLocaleString()} | AUTHORIZED: SYS
+  888 |               </p>
+  889 |               <p style={{ fontSize: '10px', fontWeight: 'bold', color: '#000' }}>PAGE 1 O...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/financials/credits/page.tsx:886:4
+Expected '</', got ';'
+  884 |       )}
+  885 |     </div>
+> 886 |   );
+      |    ^
+  887 | }CreditForPrint.id} | PRINTED: {new Date().toLocaleString()} | AUTHORIZED: SYS
+  888 |               </p>
+  889 |               <p style={{ fontSize: '10px', fontWeight: 'bold', color: '#000' }}>PAGE 1 O...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/financials/credits/page.tsx:886:4
+Expected '</', got ';'
+  884 |       )}
+  885 |     </div>
+> 886 |   );
+      |    ^
+  887 | }CreditForPrint.id} | PRINTED: {new Date().toLocaleString()} | AUTHORIZED: SYS
+  888 |               </p>
+  889 |               <p style={{ fontSize: '10px', fontWeight: 'bold', color: '#000' }}>PAGE 1 O...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/financials/credits/page.tsx:886:4
+Expected '</', got ';'
+  884 |       )}
+  885 |     </div>
+> 886 |   );
+      |    ^
+  887 | }CreditForPrint.id} | PRINTED: {new Date().toLocaleString()} | AUTHORIZED: SYS
+  888 |               </p>
+  889 |               <p style={{ fontSize: '10px', fontWeight: 'bold', color: '#000' }}>PAGE 1 O...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/financials/credits/page.tsx:886:4
+Expected '</', got ';'
+  884 |       )}
+  885 |     </div>
+> 886 |   );
+      |    ^
+  887 | }
+  888 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component] 
+⨯ ./Documents/anhreports/src/app/financials/credits/page.tsx:886:4
+Expected '</', got ';'
+  [90m884 |[0m       )}
+  [90m885 |[0m     </div>
+[31m[1m>[0m [90m886 |[0m   );
+  [90m    |[0m    [31m[1m^[0m
+  [90m887 |[0m }
+  [90m888 |[0m
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+
+[browser] ./Documents/anhreports/src/app/financials/credits/page.tsx:886:4
+Expected '</', got ';'
+  884 |       )}
+  885 |     </div>
+> 886 |   );
+      |    ^
+  887 | }
+  888 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/financials/credits/page.tsx:886:4
+Expected '</', got ';'
+  884 |       )}
+  885 |     </div>
+> 886 |   );
+      |    ^
+  887 | }
+  888 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component] 
+ GET /financials/credits 500 in 182ms (next.js: 135ms, application-code: 47ms)
+[browser] Uncaught Error: ./Documents/anhreports/src/app/financials/credits/page.tsx:886:4
+Expected '</', got ';'
+  884 |       )}
+  885 |     </div>
+> 886 |   );
+      |    ^
+  887 | }
+  888 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./Documents/anhreports/src/app/financials/credits/page.tsx:886:4)
+    at <unknown> (Error: (./Documents/anhreports/src/app/financials/credits/page.tsx:886:4)
+[browser] ./Documents/anhreports/src/app/financials/credits/page.tsx:886:4
+Expected '</', got ';'
+  884 |       )}
+  885 |     </div>
+> 886 |   );
+      |    ^
+  887 | }
+  888 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/financials/credits/page.tsx:886:4
+Expected '</', got ';'
+  884 |       )}
+  885 |     </div>
+> 886 |   );
+      |    ^
+  887 | }
+  888 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component] 
+⨯ ./Documents/anhreports/src/app/financials/credits/page.tsx:888:1
+Expected '</', got '<eof>'
+  [90m886 |[0m       )
+  [90m887 |[0m       }
+[31m[1m>[0m [90m888 |[0m
+  [90m    |[0m [31m[1m^[0m
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+
+ GET /financials/credits 500 in 224ms (next.js: 128ms, application-code: 97ms)
+[browser] Uncaught Error: ./Documents/anhreports/src/app/financials/credits/page.tsx:888:1
+Expected '</', got '<eof>'
+  886 |       )
+  887 |       }
+> 888 |
+      | ^
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./Documents/anhreports/src/app/financials/credits/page.tsx:888:1)
+    at <unknown> (Error: (./Documents/anhreports/src/app/financials/credits/page.tsx:888:1)
+[browser] ./Documents/anhreports/src/app/financials/credits/page.tsx:888:1
+Expected '</', got '<eof>'
+  886 |       )
+  887 |       }
+> 888 |
+      | ^
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/financials/credits/page.tsx:888:1
+Expected '</', got '<eof>'
+  886 |       )
+  887 |       }
+> 888 |
+      | ^
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/financials/credits/page.tsx:888:1
+Expected '</', got '<eof>'
+  886 |       )
+  887 |       }
+> 888 |
+      | ^
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component] 
+⨯ ./Documents/anhreports/src/app/financials/credits/page.tsx:888:1
+Expected '</', got '<eof>'
+  [90m886 |[0m       )
+  [90m887 |[0m       }
+[31m[1m>[0m [90m888 |[0m
+  [90m    |[0m [31m[1m^[0m
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+
+ GET /financials/credits 500 in 40ms (next.js: 17ms, application-code: 23ms)
+[browser] Uncaught Error: ./Documents/anhreports/src/app/financials/credits/page.tsx:888:1
+Expected '</', got '<eof>'
+  886 |       )
+  887 |       }
+> 888 |
+      | ^
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./Documents/anhreports/src/app/financials/credits/page.tsx:888:1)
+    at <unknown> (Error: (./Documents/anhreports/src/app/financials/credits/page.tsx:888:1)
+[browser] ./Documents/anhreports/src/app/financials/credits/page.tsx:888:1
+Expected '</', got '<eof>'
+  886 |       )
+  887 |       }
+> 888 |
+      | ^
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/financials/credits/page.tsx:888:1
+Expected '</', got '<eof>'
+  886 |       )
+  887 |       }
+> 888 |
+      | ^
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component] 
+✓ Compiled in 392ms
+ GET /financials/credits 200 in 1376ms (next.js: 276ms, application-code: 1100ms)
+ GET /financials/payments 200 in 128ms (next.js: 87ms, application-code: 41ms)
+ GET /financials/credits 200 in 213ms (next.js: 141ms, application-code: 72ms)
+ GET /financials/credits 200 in 824ms (next.js: 230ms, application-code: 594ms)
+ GET /financials/credits 200 in 360ms (next.js: 14ms, application-code: 346ms)
+ GET /financials/credits 200 in 116ms (next.js: 11ms, application-code: 105ms)
+✓ Compiled in 2.2s
+✓ Compiled in 1344ms
+✓ Compiled in 547ms
+✓ Compiled in 325ms
+✓ Compiled in 466ms
+ GET /financials/credits 200 in 335ms (next.js: 132ms, application-code: 203ms)
+ GET /financials/credits 200 in 90ms (next.js: 7ms, application-code: 83ms)
+[browser] Uncaught ReferenceError: Printer is not defined
+    at eval (src/app/financials/credits/page.tsx:516:22)
+    at Array.map (<anonymous>)
+    at CreditsPage (src/app/financials/credits/page.tsx:475:28)
+  514 |                 <div className="px-5 pb-5 flex flex-wrap gap-2">
+  515 |                   <button onClick={() => handlePrintPdf(credit)} disabled={isPrinting} cl...
+> 516 |                     <Printer size={16} /> Print
+      |                      ^
+  517 |                   </button>
+  518 |                   {credit.status !== "paid" && (
+  519 |                     <button className="flex items-center gap-1.5 bg-blue-600 text-white p...
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+✓ Compiled in 258ms
+[browser] Encountered a script tag while rendering React component. Scripts inside React components are never executed when rendering on the client. Consider using template tag instead (https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template). 
+    at Set.forEach (<anonymous>) (<anonymous>)
+ GET /financials/credits 200 in 1370ms (next.js: 522ms, application-code: 848ms)
+✓ Compiled in 1699ms
+ GET /financials/payments 200 in 226ms (next.js: 78ms, application-code: 148ms)
+✓ Compiled in 632ms
+✓ Compiled in 492ms
+ GET /financials/credits 200 in 187ms (next.js: 92ms, application-code: 95ms)
+✓ Compiled in 1411ms
+ GET /financials/payments 500 in 206ms (next.js: 44ms, application-code: 162ms)
+ GET /financials/payments 500 in 277ms (next.js: 239ms, application-code: 38ms)
+ GET /financials/payments 500 in 31ms (next.js: 17ms, application-code: 14ms)
+[browser] ./Documents/anhreports/src/app/financials/credits/page.tsx:901:7
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  899 |         </div>
+  900 |       )
+> 901 |       }
+      |       ^
+  902 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/financials/credits/page.tsx:901:7
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  899 |         </div>
+  900 |       )
+> 901 |       }
+      |       ^
+  902 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component] 
+ GET /financials/payments 500 in 84ms (next.js: 12ms, application-code: 72ms)
+[browser] ./Documents/anhreports/src/app/financials/credits/page.tsx:901:7
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  899 |         </div>
+  900 |       )
+> 901 |       }
+      |       ^
+  902 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/financials/credits/page.tsx:901:7
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  899 |         </div>
+  900 |       )
+> 901 |       }
+      |       ^
+  902 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component] 
+ GET /financials/payments 500 in 96ms (next.js: 29ms, application-code: 67ms)
+[browser] Uncaught Error: ./Documents/anhreports/src/app/financials/credits/page.tsx:901:7
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  899 |         </div>
+  900 |       )
+> 901 |       }
+      |       ^
+  902 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./Documents/anhreports/src/app/financials/credits/page.tsx:901:7)
+    at <unknown> (Error: (./Documents/anhreports/src/app/financials/credits/page.tsx:901:7)
+[browser] ./Documents/anhreports/src/app/financials/credits/page.tsx:901:7
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  899 |         </div>
+  900 |       )
+> 901 |       }
+      |       ^
+  902 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/financials/credits/page.tsx:901:7
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  899 |         </div>
+  900 |       )
+> 901 |       }
+      |       ^
+  902 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/financials/credits/page.tsx:901:7
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  899 |         </div>
+  900 |       )
+> 901 |       }
+      |       ^
+  902 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/financials/credits/page.tsx:742:7
+Expected '>', got 'ident'
+  740 |       )}
+  741 |       </div>
+> 742 |     </div>
+      |       ^^^
+  743 |
+  744 |     {/* HIDDEN PRINT LAYOUT (A4 PDF for Credit) */}
+  745 |       {selectedCreditForPrint && (
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component] 
+ GET /financials/payments 500 in 91ms (next.js: 35ms, application-code: 56ms)
+[browser] ./Documents/anhreports/src/app/financials/credits/page.tsx:742:7
+Expected '>', got 'ident'
+  740 |       )}
+  741 |       </div>
+> 742 |     </div>
+      |       ^^^
+  743 |
+  744 |     {/* HIDDEN PRINT LAYOUT (A4 PDF for Credit) */}
+  745 |       {selectedCreditForPrint && (
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component] 
+[browser] Uncaught Error: ./Documents/anhreports/src/app/financials/credits/page.tsx:742:7
+Expected '>', got 'ident'
+  740 |       )}
+  741 |       </div>
+> 742 |     </div>
+      |       ^^^
+  743 |
+  744 |     {/* HIDDEN PRINT LAYOUT (A4 PDF for Credit) */}
+  745 |       {selectedCreditForPrint && (
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./Documents/anhreports/src/app/financials/credits/page.tsx:742:7)
+    at <unknown> (Error: (./Documents/anhreports/src/app/financials/credits/page.tsx:742:7)
+[browser] ./Documents/anhreports/src/app/financials/credits/page.tsx:742:7
+Expected '>', got 'ident'
+  740 |       )}
+  741 |       </div>
+> 742 |     </div>
+      |       ^^^
+  743 |
+  744 |     {/* HIDDEN PRINT LAYOUT (A4 PDF for Credit) */}
+  745 |       {selectedCreditForPrint && (
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/financials/credits/page.tsx:742:7
+Expected '>', got 'ident'
+  740 |       )}
+  741 |       </div>
+> 742 |     </div>
+      |       ^^^
+  743 |
+  744 |     {/* HIDDEN PRINT LAYOUT (A4 PDF for Credit) */}
+  745 |       {selectedCreditForPrint && (
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component] 
+ GET /financials/payments 500 in 152ms (next.js: 78ms, application-code: 73ms)
+[browser] Uncaught Error: ./Documents/anhreports/src/app/financials/credits/page.tsx:598:18
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  596 |                     )}
+  597 |                   </div>
+> 598 |                 )}
+      |                  ^
+  599 |               </div>
+  600 |             );
+  601 |           })}
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./Documents/anhreports/src/app/financials/credits/page.tsx:598:18)
+    at <unknown> (Error: (./Documents/anhreports/src/app/financials/credits/page.tsx:598:18)
+ GET /financials/payments 500 in 166ms (next.js: 100ms, application-code: 66ms)
+[browser] Uncaught Error: ./Documents/anhreports/src/app/financials/credits/page.tsx:735:7
+Expected '>', got 'ident'
+  733 |       )}
+  734 |       </div>
+> 735 |     </div>
+      |       ^^^
+  736 |
+  737 |     {/* HIDDEN PRINT LAYOUT (A4 PDF for Credit) */}
+  738 |     <style type="text/css" media="print">
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./Documents/anhreports/src/app/financials/credits/page.tsx:735:7)
+    at <unknown> (Error: (./Documents/anhreports/src/app/financials/credits/page.tsx:735:7)
+[browser] ./Documents/anhreports/src/app/financials/credits/page.tsx:735:7
+Expected '>', got 'ident'
+  733 |       )}
+  734 |       </div>
+> 735 |     </div>
+      |       ^^^
+  736 |
+  737 |     {/* HIDDEN PRINT LAYOUT (A4 PDF for Credit) */}
+  738 |     <style type="text/css" media="print">
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/financials/credits/page.tsx:735:7
+Expected '>', got 'ident'
+  733 |       )}
+  734 |       </div>
+> 735 |     </div>
+      |       ^^^
+  736 |
+  737 |     {/* HIDDEN PRINT LAYOUT (A4 PDF for Credit) */}
+  738 |     <style type="text/css" media="print">
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/financials/credits/page.tsx:747:7
+Expected '>', got 'ident'
+  745 |       )}
+  746 |       </div>
+> 747 |     </div>
+      |       ^^^
+  748 |
+  749 |     {/* HIDDEN PRINT LAYOUT (A4 PDF for Credit) */}
+  750 |     <style type="text/css" media="print">
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/credits/page.tsx [Server Component] 
+✓ Compiled in 1257ms
+ GET /financials/payments 200 in 4.5s (next.js: 729ms, application-code: 3.8s)
+ GET /financials/payments 200 in 223ms (next.js: 103ms, application-code: 120ms)
+ GET /financials/credits 200 in 182ms (next.js: 76ms, application-code: 105ms)
+ GET /financials/credits 200 in 144ms (next.js: 51ms, application-code: 93ms)
+✓ Compiled in 806ms
+ GET /financials/payments 200 in 124ms (next.js: 56ms, application-code: 69ms)
+✓ Compiled in 717ms
+○ Compiling /_not-found/page ...
+ GET /financials/sales 404 in 8.4s (next.js: 7.7s, application-code: 743ms)
+ GET /financials/sales 404 in 167ms (next.js: 13ms, application-code: 154ms)
+ GET /financials/payments 200 in 192ms (next.js: 104ms, application-code: 89ms)
+✓ Compiled in 8ms
+ GET /financials/payments 200 in 2.8s (next.js: 1920ms, application-code: 916ms)
+ GET /financials/payments 200 in 523ms (next.js: 18ms, application-code: 505ms)
+ GET /financials/payments 200 in 449ms (next.js: 25ms, application-code: 423ms)
+ GET /financials/payments 200 in 489ms (next.js: 9ms, application-code: 480ms)
+ GET /financials/payments 200 in 376ms (next.js: 5ms, application-code: 371ms)
+ GET /financials/payments 200 in 420ms (next.js: 5ms, application-code: 416ms)
+ GET /financials/payments 200 in 362ms (next.js: 12ms, application-code: 351ms)
+ GET /financials/payments 200 in 500ms (next.js: 7ms, application-code: 494ms)
+ GET /financials/payments 200 in 449ms (next.js: 11ms, application-code: 438ms)
+ GET /financials/payments 200 in 533ms (next.js: 9ms, application-code: 524ms)
+ GET /financials/payments 200 in 700ms (next.js: 6ms, application-code: 694ms)
+ GET /financials/payments 200 in 645ms (next.js: 13ms, application-code: 632ms)
+ GET /financials/payments 200 in 648ms (next.js: 23ms, application-code: 625ms)
+ GET /financials/payments 200 in 629ms (next.js: 10ms, application-code: 619ms)
+ GET /financials/payments 200 in 522ms (next.js: 8ms, application-code: 514ms)
+ GET /financials/payments 200 in 492ms (next.js: 9ms, application-code: 483ms)
+ GET /financials/payments 200 in 502ms (next.js: 16ms, application-code: 485ms)
+ GET /financials/payments 200 in 444ms (next.js: 4ms, application-code: 440ms)
+ GET /financials/payments 200 in 436ms (next.js: 4ms, application-code: 432ms)
+ GET /financials/payments 200 in 464ms (next.js: 13ms, application-code: 452ms)
+ GET /financials/payments 200 in 405ms (next.js: 6ms, application-code: 399ms)
+ GET /financials/payments 200 in 439ms (next.js: 15ms, application-code: 424ms)
+ GET /financials/payments 200 in 339ms (next.js: 7ms, application-code: 332ms)
+ GET /financials/payments 200 in 282ms (next.js: 11ms, application-code: 271ms)
+ GET /financials/payments 200 in 854ms (next.js: 5ms, application-code: 849ms)
+ GET /financials/payments 200 in 841ms (next.js: 6ms, application-code: 835ms)
+ GET /financials/payments 200 in 925ms (next.js: 4ms, application-code: 921ms)
+ GET /financials/payments 200 in 954ms (next.js: 4ms, application-code: 950ms)
+ GET /financials/payments 200 in 1004ms (next.js: 6ms, application-code: 999ms)
+ GET /financials/payments 200 in 524ms (next.js: 98ms, application-code: 427ms)
+ GET /financials/payments 200 in 353ms (next.js: 5ms, application-code: 349ms)
+ GET /financials/payments 200 in 370ms (next.js: 3ms, application-code: 366ms)
+ GET /financials/payments 200 in 472ms (next.js: 3ms, application-code: 470ms)
+ GET /financials/payments 200 in 416ms (next.js: 4ms, application-code: 412ms)
+ GET /financials/payments 200 in 574ms (next.js: 7ms, application-code: 566ms)
+ GET /financials/payments 200 in 886ms (next.js: 5ms, application-code: 881ms)
+ GET /financials/payments 200 in 965ms (next.js: 17ms, application-code: 947ms)
+ GET /financials/payments 200 in 1493ms (next.js: 14ms, application-code: 1479ms)
+ GET /financials/payments 200 in 1465ms (next.js: 11ms, application-code: 1454ms)
+ GET /financials/payments 200 in 1389ms (next.js: 7ms, application-code: 1381ms)
+ GET /financials/payments 200 in 1217ms (next.js: 23ms, application-code: 1194ms)
+ GET /financials/payments 200 in 955ms (next.js: 74ms, application-code: 880ms)
+ GET /financials/payments 200 in 384ms (next.js: 12ms, application-code: 372ms)
+ GET /financials/payments 200 in 351ms (next.js: 5ms, application-code: 346ms)
+ GET /financials/payments 200 in 264ms (next.js: 24ms, application-code: 240ms)
+ GET /financials/payments 200 in 255ms (next.js: 8ms, application-code: 248ms)
+ GET /financials/payments 200 in 263ms (next.js: 4ms, application-code: 259ms)
+ GET /financials/payments 200 in 256ms (next.js: 4ms, application-code: 253ms)
+ GET /financials/payments 200 in 309ms (next.js: 8ms, application-code: 302ms)
+ GET /financials/payments 200 in 314ms (next.js: 3ms, application-code: 311ms)
+ GET /financials/payments 200 in 331ms (next.js: 8ms, application-code: 323ms)
+ GET /financials/payments 200 in 295ms (next.js: 9ms, application-code: 286ms)
+ GET /financials/payments 200 in 353ms (next.js: 4ms, application-code: 349ms)
+ GET /financials/payments 200 in 412ms (next.js: 7ms, application-code: 405ms)
+ GET /financials/payments 200 in 445ms (next.js: 5ms, application-code: 440ms)
+ GET /financials/payments 200 in 442ms (next.js: 4ms, application-code: 438ms)
+ GET /financials/payments 200 in 458ms (next.js: 5ms, application-code: 453ms)
+ GET /financials/payments 200 in 352ms (next.js: 10ms, application-code: 342ms)
+ GET /financials/payments 200 in 356ms (next.js: 7ms, application-code: 349ms)
+ GET /financials/payments 200 in 380ms (next.js: 6ms, application-code: 374ms)
+ GET /financials/payments 200 in 403ms (next.js: 6ms, application-code: 397ms)
+ GET /financials/payments 200 in 454ms (next.js: 4ms, application-code: 450ms)
+ GET /financials/payments 200 in 614ms (next.js: 5ms, application-code: 609ms)
+ GET /financials/payments 200 in 529ms (next.js: 17ms, application-code: 512ms)
+ GET /financials/payments 200 in 632ms (next.js: 32ms, application-code: 600ms)
+ GET /financials/payments 200 in 589ms (next.js: 5ms, application-code: 584ms)
+ GET /financials/payments 200 in 532ms (next.js: 18ms, application-code: 514ms)
+ GET /financials/payments 200 in 525ms (next.js: 13ms, application-code: 512ms)
+ GET /financials/payments 200 in 401ms (next.js: 18ms, application-code: 383ms)
+ GET /financials/payments 200 in 238ms (next.js: 6ms, application-code: 233ms)
+ GET /financials/payments 200 in 484ms (next.js: 4ms, application-code: 480ms)
+ GET /financials/payments 200 in 751ms (next.js: 6ms, application-code: 745ms)
+ GET /financials/payments 200 in 995ms (next.js: 3ms, application-code: 991ms)
+ GET /financials/payments 200 in 2.7s (next.js: 8ms, application-code: 2.7s)
+ GET /financials/payments 200 in 3.1s (next.js: 10ms, application-code: 3.1s)
+ GET /financials/payments 200 in 3.0s (next.js: 104ms, application-code: 2.9s)
+ GET /financials/payments 200 in 2.8s (next.js: 10ms, application-code: 2.8s)
+ GET /financials/payments 200 in 3.5s (next.js: 18ms, application-code: 3.4s)
+ GET /financials/payments 200 in 1735ms (next.js: 93ms, application-code: 1642ms)
+ GET /financials/payments 200 in 1414ms (next.js: 7ms, application-code: 1407ms)
+ GET /financials/payments 200 in 1300ms (next.js: 13ms, application-code: 1286ms)
+ GET /financials/payments 200 in 1365ms (next.js: 33ms, application-code: 1332ms)
+ GET /financials/payments 200 in 1142ms (next.js: 15ms, application-code: 1126ms)
+ GET /financials/payments 200 in 589ms (next.js: 9ms, application-code: 580ms)
+ GET /financials/payments 200 in 548ms (next.js: 4ms, application-code: 544ms)
+ GET /financials/payments 200 in 790ms (next.js: 16ms, application-code: 774ms)
+ GET /financials/payments 200 in 657ms (next.js: 25ms, application-code: 632ms)
+ GET /financials/payments 200 in 643ms (next.js: 13ms, application-code: 631ms)
+ GET /financials/payments 200 in 674ms (next.js: 6ms, application-code: 668ms)
+ GET /financials/payments 200 in 396ms (next.js: 10ms, application-code: 386ms)
+ GET /financials/payments 200 in 321ms (next.js: 10ms, application-code: 311ms)
+ GET /financials/payments 200 in 279ms (next.js: 13ms, application-code: 266ms)
+ GET /financials/payments 200 in 257ms (next.js: 13ms, application-code: 243ms)
+ GET /financials/payments 200 in 185ms (next.js: 4ms, application-code: 181ms)
+ GET /financials/payments 200 in 137ms (next.js: 5ms, application-code: 133ms)
+ GET /financials/payments 200 in 66ms (next.js: 14ms, application-code: 52ms)
+ GET /financials/payments 200 in 300ms (next.js: 5ms, application-code: 296ms)
+ GET /financials/payments 200 in 244ms (next.js: 4ms, application-code: 240ms)
+ GET /financials/payments 200 in 249ms (next.js: 8ms, application-code: 241ms)
+ GET /financials/payments 200 in 229ms (next.js: 21ms, application-code: 207ms)
+ GET /financials/payments 200 in 213ms (next.js: 4ms, application-code: 208ms)
+ GET /financials/payments 200 in 242ms (next.js: 4ms, application-code: 238ms)
+ GET /financials/payments 200 in 205ms (next.js: 6ms, application-code: 199ms)
+ GET /financials/payments 200 in 220ms (next.js: 8ms, application-code: 212ms)
+ GET /financials/payments 200 in 292ms (next.js: 5ms, application-code: 287ms)
+ GET /financials/payments 200 in 443ms (next.js: 4ms, application-code: 438ms)
+ GET /financials/payments 200 in 498ms (next.js: 5ms, application-code: 493ms)
+ GET /financials/payments 200 in 482ms (next.js: 8ms, application-code: 474ms)
+ GET /financials/payments 200 in 359ms (next.js: 17ms, application-code: 343ms)
+ GET /financials/payments 200 in 219ms (next.js: 6ms, application-code: 213ms)
+ GET /financials/payments 200 in 229ms (next.js: 6ms, application-code: 222ms)
+ GET /financials/payments 200 in 273ms (next.js: 4ms, application-code: 269ms)
+ GET /financials/payments 200 in 235ms (next.js: 6ms, application-code: 229ms)
+ GET /financials/payments 200 in 194ms (next.js: 5ms, application-code: 189ms)
+ GET /financials/payments 200 in 131ms (next.js: 4ms, application-code: 127ms)
+ GET /financials/payments 200 in 93ms (next.js: 4ms, application-code: 89ms)
+○ Compiling /financials/sales ...
+ GET /financials/sales 200 in 7.8s (next.js: 7.1s, application-code: 626ms)
+✓ Compiled in 432ms
+ GET /financials/sales 200 in 966ms (next.js: 134ms, application-code: 832ms)
+✓ Compiled in 454ms
+✓ Compiled in 431ms
+⨯ ./Documents/anhreports/src/app/financials/sales/page.tsx:355:16
+Expected '</', got ')'
+  [90m353 |[0m                   </div>
+  [90m354 |[0m                 </motion.div>
+[31m[1m>[0m [90m355 |[0m               ))}
+  [90m    |[0m                [31m[1m^[0m
+  [90m356 |[0m             </div>
+  [90m357 |[0m           )}
+  [90m358 |[0m         </div>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component]
+
+
+[browser] ./Documents/anhreports/src/app/financials/sales/page.tsx:355:16
+Expected '</', got ')'
+  353 |                   </div>
+  354 |                 </motion.div>
+> 355 |               ))}
+      |                ^
+  356 |             </div>
+  357 |           )}
+  358 |         </div>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component] 
+ GET /financials/sales 500 in 122ms (next.js: 45ms, application-code: 78ms)
+[browser] ./Documents/anhreports/src/app/financials/sales/page.tsx:355:16
+Expected '</', got ')'
+  353 |                   </div>
+  354 |                 </motion.div>
+> 355 |               ))}
+      |                ^
+  356 |             </div>
+  357 |           )}
+  358 |         </div>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component] 
+⨯ ./Documents/anhreports/src/app/financials/sales/page.tsx:355:16
+Expected '</', got ')'
+  [90m353 |[0m                   </div>
+  [90m354 |[0m                 </motion.div>
+[31m[1m>[0m [90m355 |[0m               ))}
+  [90m    |[0m                [31m[1m^[0m
+  [90m356 |[0m             </div>
+  [90m357 |[0m           )}
+  [90m358 |[0m         </div>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component]
+
+
+ GET /financials/sales 500 in 25ms (next.js: 12ms, application-code: 13ms)
+⨯ ./Documents/anhreports/src/app/financials/sales/page.tsx:355:16
+Expected '</', got ')'
+  [90m353 |[0m                   </div>
+  [90m354 |[0m                 </motion.div>
+[31m[1m>[0m [90m355 |[0m               ))}
+  [90m    |[0m                [31m[1m^[0m
+  [90m356 |[0m             </div>
+  [90m357 |[0m           )}
+  [90m358 |[0m         </div>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component]
+
+
+ GET /financials/sales 500 in 17ms (next.js: 6ms, application-code: 11ms)
+⨯ ./Documents/anhreports/src/app/financials/sales/page.tsx:355:16
+Expected '</', got ')'
+  [90m353 |[0m                   </div>
+  [90m354 |[0m                 </motion.div>
+[31m[1m>[0m [90m355 |[0m               ))}
+  [90m    |[0m                [31m[1m^[0m
+  [90m356 |[0m             </div>
+  [90m357 |[0m           )}
+  [90m358 |[0m         </div>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component]
+
+
+ GET /financials/sales 500 in 21ms (next.js: 12ms, application-code: 8ms)
+⨯ ./Documents/anhreports/src/app/financials/sales/page.tsx:355:16
+Expected '</', got ')'
+  [90m353 |[0m                   </div>
+  [90m354 |[0m                 </motion.div>
+[31m[1m>[0m [90m355 |[0m               ))}
+  [90m    |[0m                [31m[1m^[0m
+  [90m356 |[0m             </div>
+  [90m357 |[0m           )}
+  [90m358 |[0m         </div>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component]
+
+
+[browser] ./Documents/anhreports/src/app/financials/sales/page.tsx:355:16
+Expected '</', got ')'
+  353 |                   </div>
+  354 |                 </motion.div>
+> 355 |               ))}
+      |                ^
+  356 |             </div>
+  357 |           )}
+  358 |         </div>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component] 
+ GET /financials/sales 500 in 21ms (next.js: 6ms, application-code: 15ms)
+[browser] Uncaught Error: ./Documents/anhreports/src/app/financials/sales/page.tsx:355:16
+Expected '</', got ')'
+  353 |                   </div>
+  354 |                 </motion.div>
+> 355 |               ))}
+      |                ^
+  356 |             </div>
+  357 |           )}
+  358 |         </div>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./Documents/anhreports/src/app/financials/sales/page.tsx:355:16)
+    at <unknown> (Error: (./Documents/anhreports/src/app/financials/sales/page.tsx:355:16)
+[browser] ./Documents/anhreports/src/app/financials/sales/page.tsx:355:16
+Expected '</', got ')'
+  353 |                   </div>
+  354 |                 </motion.div>
+> 355 |               ))}
+      |                ^
+  356 |             </div>
+  357 |           )}
+  358 |         </div>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/financials/sales/page.tsx:355:16
+Expected '</', got ')'
+  353 |                   </div>
+  354 |                 </motion.div>
+> 355 |               ))}
+      |                ^
+  356 |             </div>
+  357 |           )}
+  358 |         </div>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/financials/sales/page.tsx:355:16
+Expected '</', got ')'
+  353 |                   </div>
+  354 |                 </motion.div>
+> 355 |               ))}
+      |                ^
+  356 |             </div>
+  357 |           )}
+  358 |         </div>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component] 
+✓ Compiled in 1686ms
+ GET /financials/sales 200 in 2.3s (next.js: 823ms, application-code: 1492ms)
+Compaction failed: Failed to compact database
+
+Caused by:
+    0: Failed to merge database files for family 2
+    1: Failed to write compressed value block
+    2: Failed to write block data
+    3: No space left on device (os error 28)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 398ms
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 540ms
+⨯ ./Documents/anhreports/src/app/financials/sales/page.tsx:478:1
+Expected ',', got '<eof>'
+  [90m476 |[0m   );
+  [90m477 |[0m }
+[31m[1m>[0m [90m478 |[0m
+  [90m    |[0m [31m[1m^[0m
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component]
+
+
+ GET /financials/sales 500 in 139ms (next.js: 67ms, application-code: 72ms)
+⨯ ./Documents/anhreports/src/app/financials/sales/page.tsx:478:1
+Expected ',', got '<eof>'
+  [90m476 |[0m   );
+  [90m477 |[0m }
+[31m[1m>[0m [90m478 |[0m
+  [90m    |[0m [31m[1m^[0m
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component]
+
+
+ GET /financials/sales 500 in 21ms (next.js: 10ms, application-code: 11ms)
+⨯ ./Documents/anhreports/src/app/financials/sales/page.tsx:478:1
+Expected ',', got '<eof>'
+  [90m476 |[0m   );
+  [90m477 |[0m }
+[31m[1m>[0m [90m478 |[0m
+  [90m    |[0m [31m[1m^[0m
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component]
+
+
+ GET /financials/sales 500 in 22ms (next.js: 11ms, application-code: 11ms)
+⨯ ./Documents/anhreports/src/app/financials/sales/page.tsx:478:1
+Expected ',', got '<eof>'
+  [90m476 |[0m   );
+  [90m477 |[0m }
+[31m[1m>[0m [90m478 |[0m
+  [90m    |[0m [31m[1m^[0m
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component]
+
+
+ GET /financials/sales 500 in 15ms (next.js: 4ms, application-code: 11ms)
+⨯ ./Documents/anhreports/src/app/financials/sales/page.tsx:478:1
+Expected ',', got '<eof>'
+  [90m476 |[0m   );
+  [90m477 |[0m }
+[31m[1m>[0m [90m478 |[0m
+  [90m    |[0m [31m[1m^[0m
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component]
+
+
+ GET /financials/sales 500 in 280ms (next.js: 16ms, application-code: 265ms)
+[browser] Uncaught Error: ./Documents/anhreports/src/app/financials/sales/page.tsx:478:1
+Expected ',', got '<eof>'
+  476 |   );
+  477 | }
+> 478 |
+      | ^
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./Documents/anhreports/src/app/financials/sales/page.tsx:478:1)
+    at <unknown> (Error: (./Documents/anhreports/src/app/financials/sales/page.tsx:478:1)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+[browser] ./Documents/anhreports/src/app/financials/sales/page.tsx:478:1
+Expected ',', got '<eof>'
+  476 |   );
+  477 | }
+> 478 |
+      | ^
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/financials/sales/page.tsx:478:1
+Expected ',', got '<eof>'
+  476 |   );
+  477 | }
+> 478 |
+      | ^
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/financials/sales/page.tsx:478:1
+Expected ',', got '<eof>'
+  476 |   );
+  477 | }
+> 478 |
+      | ^
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/sales/page.tsx [Server Component] 
+✓ Compiled in 258ms
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/sales 200 in 3.7s (next.js: 374ms, application-code: 3.4s)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 382ms
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET /financials/sales 200 in 513ms (next.js: 74ms, application-code: 440ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 225ms
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 4.2s
+ GET /financials/sales 200 in 1408ms (next.js: 623ms, application-code: 785ms)
+ GET /financials/sales 200 in 172ms (next.js: 28ms, application-code: 143ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 1795ms
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+[browser] [2026-07-13T13:09:00.954Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x143166d0 failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"cash"}}},{"alias":"aggregate_1","sum":{"field":{"fieldPath":"visa"}}},{"alias":"aggregate_2","sum":{"field":{"fieldPath":"overShort"}}}],"structuredQuery":{"from":[{"collectionId":"sales"}]}}} (src/app/financials/sales/page.tsx:25:26)
+[browser] Failed to fetch aggregate: FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Ckhwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9zYWxlcy9pbmRleGVzL18QARoICgRjYXNoEAEaDQoJb3ZlclNob3J0EAEaCAoEdmlzYRABGgwKCF9fbmFtZV9fEAE
+FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Ckhwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9zYWxlcy9pbmRleGVzL18QARoICgRjYXNoEAEaDQoJb3ZlclNob3J0EAEaCAoEdmlzYRABGgwKCF9fbmFtZV9fEAE (src/app/financials/sales/page.tsx:36:17)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/sales 200 in 1550ms (next.js: 125ms, application-code: 1425ms)
+[browser] [2026-07-13T13:10:57.297Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x2e5de452 failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"cash"}}},{"alias":"aggregate_1","sum":{"field":{"fieldPath":"visa"}}},{"alias":"aggregate_2","sum":{"field":{"fieldPath":"overShort"}}}],"structuredQuery":{"from":[{"collectionId":"sales"}]}}} (src/app/financials/sales/page.tsx:25:26)
+[browser] [2026-07-13T13:10:57.339Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x2e5de454 failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"cash"}}},{"alias":"aggregate_1","sum":{"field":{"fieldPath":"visa"}}},{"alias":"aggregate_2","sum":{"field":{"fieldPath":"overShort"}}}],"structuredQuery":{"from":[{"collectionId":"sales"}]}}} (src/app/financials/sales/page.tsx:25:26)
+[browser] Failed to fetch aggregate: FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClNwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9zYWxlcy9pbmRleGVzL0NJQ0FnTmlydEpBSxABGggKBGNhc2gQARoNCglvdmVyU2hvcnQQARoICgR2aXNhEAEaDAoIX19uYW1lX18QAQ
+FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClNwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9zYWxlcy9pbmRleGVzL0NJQ0FnTmlydEpBSxABGggKBGNhc2gQARoNCglvdmVyU2hvcnQQARoICgR2aXNhEAEaDAoIX19uYW1lX18QAQ (src/app/financials/sales/page.tsx:36:17)
+[browser] Failed to fetch aggregate: FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClNwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9zYWxlcy9pbmRleGVzL0NJQ0FnTmlydEpBSxABGggKBGNhc2gQARoNCglvdmVyU2hvcnQQARoICgR2aXNhEAEaDAoIX19uYW1lX18QAQ
+FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClNwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9zYWxlcy9pbmRleGVzL0NJQ0FnTmlydEpBSxABGggKBGNhc2gQARoNCglvdmVyU2hvcnQQARoICgR2aXNhEAEaDAoIX19uYW1lX18QAQ (src/app/financials/sales/page.tsx:36:17)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 6.8s
+ GET /financials/sales 200 in 2.0s (next.js: 450ms, application-code: 1562ms)
+ GET /financials/sales 200 in 167ms (next.js: 57ms, application-code: 111ms)
+ GET /financials/sales 200 in 2.1s (next.js: 758ms, application-code: 1387ms)
+ GET /financials/sales 404 in 3.0s (next.js: 1580ms, application-code: 1398ms)
+ GET /financials/sales 404 in 916ms (next.js: 93ms, application-code: 823ms)
+ GET /financial-reports 200 in 128ms (next.js: 87ms, application-code: 42ms)
+ GET /financials/sales 404 in 982ms (next.js: 281ms, application-code: 701ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financial-reports 200 in 48ms (next.js: 14ms, application-code: 34ms)
+ GET /financials/inputs 404 in 157ms (next.js: 7ms, application-code: 150ms)
+ GET /financials/inputs 404 in 87ms (next.js: 5ms, application-code: 82ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financial-reports 200 in 102ms (next.js: 22ms, application-code: 80ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 594ms
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs 404 in 122ms (next.js: 34ms, application-code: 88ms)
+ GET /financials/inputs 404 in 47ms (next.js: 3ms, application-code: 44ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+○ Compiling /financials/inputs ...
+ GET /financials/inputs 200 in 12.7s (next.js: 11.5s, application-code: 1222ms)
+ GET /financials/inputs 200 in 1203ms (next.js: 21ms, application-code: 1182ms)
+ GET /financials/inputs 200 in 2.5s (next.js: 10ms, application-code: 2.5s)
+ GET /financials/inputs 200 in 2.4s (next.js: 17ms, application-code: 2.4s)
+ GET /financials/inputs 200 in 1461ms (next.js: 17ms, application-code: 1443ms)
+ GET /financials/inputs 200 in 2.2s (next.js: 37ms, application-code: 2.1s)
+ GET /financials/inputs 200 in 381ms (next.js: 33ms, application-code: 349ms)
+ GET /financials/inputs 200 in 1618ms (next.js: 115ms, application-code: 1503ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+[browser] [2026-07-13T13:16:40.374Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x559eb2aa failed with error:  {"code":"permission-denied","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"amount"}}}],"structuredQuery":{"from":[{"collectionId":"payments"}]}}} (src/app/financials/inputs/page.tsx:27:34)
+[browser] Failed to fetch aggregate stats: FirebaseError: Missing or insufficient permissions.
+FirebaseError: Missing or insufficient permissions. (src/app/financials/inputs/page.tsx:43:17)
+[browser] [2026-07-13T13:16:40.397Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x559eb2ac failed with error:  {"code":"permission-denied","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"amount"}}}],"structuredQuery":{"from":[{"collectionId":"payments"}]}}} (src/app/financials/inputs/page.tsx:27:34)
+[browser] Failed to fetch aggregate stats: FirebaseError: Missing or insufficient permissions.
+FirebaseError: Missing or insufficient permissions. (src/app/financials/inputs/page.tsx:43:17)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/sales 200 in 2.1s (next.js: 2.0s, application-code: 104ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/payments 200 in 3.5s (next.js: 2.7s, application-code: 716ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+○ Compiling /financials/inputs/credits ...
+ GET /financials/inputs/sales 200 in 259ms (next.js: 48ms, application-code: 211ms)
+ GET /financials/inputs/credits 200 in 4.1s (next.js: 4.0s, application-code: 129ms)
+ GET /financials/inputs 200 in 124ms (next.js: 11ms, application-code: 114ms)
+[browser] [2026-07-13T13:17:24.821Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x559eb2bc failed with error:  {"code":"permission-denied","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"amount"}}}],"structuredQuery":{"from":[{"collectionId":"payments"}]}}} (src/app/financials/inputs/page.tsx:27:34)
+[browser] Failed to fetch aggregate stats: FirebaseError: Missing or insufficient permissions.
+FirebaseError: Missing or insufficient permissions. (src/app/financials/inputs/page.tsx:43:17)
+[browser] [2026-07-13T13:17:24.847Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x559eb2ba failed with error:  {"code":"permission-denied","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"amount"}}}],"structuredQuery":{"from":[{"collectionId":"payments"}]}}} (src/app/financials/inputs/page.tsx:27:34)
+[browser] Failed to fetch aggregate stats: FirebaseError: Missing or insufficient permissions.
+FirebaseError: Missing or insufficient permissions. (src/app/financials/inputs/page.tsx:43:17)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 698ms
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs 200 in 212ms (next.js: 81ms, application-code: 131ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/credits 200 in 49ms (next.js: 8ms, application-code: 41ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs 200 in 22ms (next.js: 5ms, application-code: 18ms)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/sales 200 in 31ms (next.js: 6ms, application-code: 24ms)
+ GET /financials/inputs/payments 200 in 28ms (next.js: 7ms, application-code: 21ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/sales 200 in 53ms (next.js: 12ms, application-code: 41ms)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs 200 in 28ms (next.js: 5ms, application-code: 23ms)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 504ms
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 1499ms
+ GET /financials/inputs 200 in 3.0s (next.js: 1315ms, application-code: 1673ms)
+ GET /financials/inputs 200 in 1134ms (next.js: 38ms, application-code: 1096ms)
+ GET /financials/inputs 200 in 1016ms (next.js: 71ms, application-code: 945ms)
+ GET /financials/inputs 200 in 281ms (next.js: 34ms, application-code: 247ms)
+ GET /financials/inputs 200 in 265ms (next.js: 7ms, application-code: 258ms)
+ GET /financials/inputs 200 in 286ms (next.js: 11ms, application-code: 275ms)
+ GET /financials/inputs 200 in 289ms (next.js: 4ms, application-code: 285ms)
+ GET /financials/inputs 200 in 334ms (next.js: 8ms, application-code: 326ms)
+ GET /financials/inputs 200 in 277ms (next.js: 3ms, application-code: 274ms)
+ GET /financials/inputs 200 in 267ms (next.js: 5ms, application-code: 262ms)
+ GET /financials/inputs 200 in 252ms (next.js: 6ms, application-code: 245ms)
+ GET /financials/inputs 200 in 243ms (next.js: 6ms, application-code: 237ms)
+ GET /financials/inputs 200 in 223ms (next.js: 4ms, application-code: 219ms)
+ GET /financials/inputs 200 in 192ms (next.js: 4ms, application-code: 188ms)
+ GET /financials/inputs 200 in 182ms (next.js: 3ms, application-code: 180ms)
+ GET /financials/inputs 200 in 179ms (next.js: 5ms, application-code: 174ms)
+ GET /financials/inputs 200 in 153ms (next.js: 3ms, application-code: 150ms)
+ GET /financials/inputs 200 in 155ms (next.js: 3ms, application-code: 152ms)
+ GET /financials/inputs 200 in 194ms (next.js: 6ms, application-code: 189ms)
+ GET /financials/inputs 200 in 197ms (next.js: 5ms, application-code: 192ms)
+ GET /financials/inputs 200 in 172ms (next.js: 4ms, application-code: 168ms)
+ GET /financials/inputs 200 in 175ms (next.js: 4ms, application-code: 171ms)
+ GET /financials/inputs 200 in 177ms (next.js: 5ms, application-code: 172ms)
+ GET /financials/inputs 200 in 166ms (next.js: 2ms, application-code: 163ms)
+ GET /financials/inputs 200 in 170ms (next.js: 3ms, application-code: 167ms)
+ GET /financials/inputs 200 in 189ms (next.js: 6ms, application-code: 183ms)
+ GET /financials/inputs 200 in 158ms (next.js: 6ms, application-code: 152ms)
+ GET /financials/inputs 200 in 149ms (next.js: 6ms, application-code: 143ms)
+ GET /financials/inputs 200 in 145ms (next.js: 4ms, application-code: 140ms)
+ GET /financials/inputs 200 in 136ms (next.js: 1778µs, application-code: 134ms)
+ GET /financials/inputs 200 in 144ms (next.js: 2ms, application-code: 142ms)
+ GET /financials/inputs 200 in 172ms (next.js: 3ms, application-code: 169ms)
+ GET /financials/inputs 200 in 148ms (next.js: 3ms, application-code: 145ms)
+ GET /financials/inputs 200 in 120ms (next.js: 3ms, application-code: 117ms)
+ GET /financials/inputs 200 in 97ms (next.js: 4ms, application-code: 93ms)
+ GET /financials/inputs 200 in 91ms (next.js: 3ms, application-code: 87ms)
+ GET /financials/inputs 200 in 92ms (next.js: 3ms, application-code: 89ms)
+ GET /financials/inputs 200 in 190ms (next.js: 3ms, application-code: 187ms)
+ GET /financials/inputs 200 in 165ms (next.js: 3ms, application-code: 162ms)
+ GET /financials/inputs 200 in 160ms (next.js: 3ms, application-code: 157ms)
+ GET /financials/inputs 200 in 147ms (next.js: 4ms, application-code: 143ms)
+ GET /financials/inputs 200 in 133ms (next.js: 2ms, application-code: 131ms)
+ GET /financials/inputs 200 in 136ms (next.js: 3ms, application-code: 133ms)
+ GET /financials/inputs 200 in 167ms (next.js: 2ms, application-code: 165ms)
+ GET /financials/inputs 200 in 145ms (next.js: 4ms, application-code: 141ms)
+ GET /financials/inputs 200 in 153ms (next.js: 3ms, application-code: 150ms)
+ GET /financials/inputs 200 in 153ms (next.js: 4ms, application-code: 150ms)
+ GET /financials/inputs 200 in 152ms (next.js: 4ms, application-code: 148ms)
+ GET /financials/inputs 200 in 147ms (next.js: 3ms, application-code: 144ms)
+ GET /financials/inputs 200 in 145ms (next.js: 4ms, application-code: 140ms)
+ GET /financials/inputs 200 in 173ms (next.js: 5ms, application-code: 168ms)
+ GET /financials/inputs 200 in 144ms (next.js: 3ms, application-code: 141ms)
+ GET /financials/inputs 200 in 119ms (next.js: 3ms, application-code: 117ms)
+ GET /financials/inputs 200 in 121ms (next.js: 4ms, application-code: 117ms)
+ GET /financials/inputs 200 in 140ms (next.js: 4ms, application-code: 137ms)
+ GET /financials/inputs 200 in 125ms (next.js: 2ms, application-code: 123ms)
+ GET /financials/inputs 200 in 144ms (next.js: 3ms, application-code: 141ms)
+ GET /financials/inputs 200 in 117ms (next.js: 1844µs, application-code: 115ms)
+ GET /financials/inputs 200 in 95ms (next.js: 2ms, application-code: 93ms)
+ GET /financials/inputs 200 in 72ms (next.js: 3ms, application-code: 70ms)
+ GET /financials/inputs 200 in 81ms (next.js: 2ms, application-code: 78ms)
+ GET /financials/inputs 200 in 60ms (next.js: 2ms, application-code: 57ms)
+ GET /financials/inputs 200 in 243ms (next.js: 3ms, application-code: 241ms)
+ GET /financials/inputs 200 in 285ms (next.js: 3ms, application-code: 281ms)
+ GET /financials/inputs 200 in 329ms (next.js: 2ms, application-code: 326ms)
+ GET /financials/inputs 200 in 393ms (next.js: 2ms, application-code: 391ms)
+ GET /financials/inputs 200 in 415ms (next.js: 1822µs, application-code: 413ms)
+ GET /financials/inputs 200 in 395ms (next.js: 14ms, application-code: 381ms)
+ GET /financials/inputs 200 in 388ms (next.js: 6ms, application-code: 383ms)
+ GET /financials/inputs 200 in 321ms (next.js: 5ms, application-code: 316ms)
+ GET /financials/inputs 200 in 188ms (next.js: 5ms, application-code: 184ms)
+ GET /financials/inputs 200 in 166ms (next.js: 4ms, application-code: 162ms)
+ GET /financials/inputs 200 in 150ms (next.js: 4ms, application-code: 146ms)
+ GET /financials/inputs 200 in 137ms (next.js: 3ms, application-code: 134ms)
+ GET /financials/inputs 200 in 134ms (next.js: 5ms, application-code: 129ms)
+ GET /financials/inputs 200 in 131ms (next.js: 7ms, application-code: 124ms)
+ GET /financials/inputs 200 in 151ms (next.js: 2ms, application-code: 148ms)
+ GET /financials/inputs 200 in 154ms (next.js: 3ms, application-code: 151ms)
+ GET /financials/inputs 200 in 130ms (next.js: 3ms, application-code: 127ms)
+ GET /financials/inputs 200 in 141ms (next.js: 4ms, application-code: 137ms)
+ GET /financials/inputs 200 in 162ms (next.js: 2ms, application-code: 160ms)
+ GET /financials/inputs 200 in 167ms (next.js: 2ms, application-code: 165ms)
+ GET /financials/inputs 200 in 145ms (next.js: 1842µs, application-code: 143ms)
+ GET /financials/inputs 200 in 168ms (next.js: 5ms, application-code: 163ms)
+ GET /financials/inputs 200 in 182ms (next.js: 6ms, application-code: 176ms)
+ GET /financials/inputs 200 in 132ms (next.js: 3ms, application-code: 129ms)
+ GET /financials/inputs 200 in 127ms (next.js: 3ms, application-code: 124ms)
+ GET /financials/inputs 200 in 130ms (next.js: 1985µs, application-code: 128ms)
+ GET /financials/inputs 200 in 130ms (next.js: 3ms, application-code: 127ms)
+ GET /financials/inputs 200 in 131ms (next.js: 1771µs, application-code: 129ms)
+ GET /financials/inputs 200 in 152ms (next.js: 3ms, application-code: 149ms)
+ GET /financials/inputs 200 in 129ms (next.js: 2ms, application-code: 127ms)
+ GET /financials/inputs 200 in 145ms (next.js: 5ms, application-code: 140ms)
+ GET /financials/inputs 200 in 152ms (next.js: 2ms, application-code: 150ms)
+ GET /financials/inputs 200 in 159ms (next.js: 3ms, application-code: 156ms)
+ GET /financials/inputs 200 in 177ms (next.js: 2ms, application-code: 174ms)
+ GET /financials/inputs 200 in 176ms (next.js: 2ms, application-code: 174ms)
+ GET /financials/inputs 200 in 188ms (next.js: 6ms, application-code: 182ms)
+ GET /financials/inputs 200 in 178ms (next.js: 3ms, application-code: 175ms)
+ GET /financials/inputs 200 in 146ms (next.js: 4ms, application-code: 142ms)
+ GET /financials/inputs 200 in 136ms (next.js: 3ms, application-code: 133ms)
+ GET /financials/inputs 200 in 135ms (next.js: 4ms, application-code: 131ms)
+ GET /financials/inputs 200 in 135ms (next.js: 3ms, application-code: 132ms)
+ GET /financials/inputs 200 in 132ms (next.js: 2ms, application-code: 130ms)
+ GET /financials/inputs 200 in 181ms (next.js: 4ms, application-code: 178ms)
+ GET /financials/inputs 200 in 156ms (next.js: 3ms, application-code: 153ms)
+ GET /financials/inputs 200 in 158ms (next.js: 3ms, application-code: 155ms)
+ GET /financials/inputs 200 in 156ms (next.js: 3ms, application-code: 153ms)
+ GET /financials/inputs 200 in 152ms (next.js: 2ms, application-code: 150ms)
+ GET /financials/inputs 200 in 146ms (next.js: 3ms, application-code: 143ms)
+ GET /financials/inputs 200 in 121ms (next.js: 4ms, application-code: 117ms)
+ GET /financials/inputs 200 in 116ms (next.js: 3ms, application-code: 112ms)
+ GET /financials/inputs 200 in 113ms (next.js: 2ms, application-code: 111ms)
+ GET /financials/inputs 200 in 135ms (next.js: 1882µs, application-code: 133ms)
+ GET /financials/inputs 200 in 114ms (next.js: 1791µs, application-code: 113ms)
+ GET /financials/inputs 200 in 115ms (next.js: 3ms, application-code: 113ms)
+ GET /financials/inputs 200 in 94ms (next.js: 2ms, application-code: 92ms)
+ GET /financials/inputs 200 in 72ms (next.js: 3ms, application-code: 68ms)
+ GET /financials/inputs 200 in 48ms (next.js: 1829µs, application-code: 46ms)
+ GET /financials/inputs 200 in 26ms (next.js: 1769µs, application-code: 24ms)
+ GET /financials/inputs/deposits 200 in 3.5s (next.js: 3.3s, application-code: 183ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 323ms
+ GET /financials/inputs/deposits 200 in 663ms (next.js: 356ms, application-code: 307ms)
+ GET /financials/inputs/deposits 200 in 151ms (next.js: 3ms, application-code: 148ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs 200 in 200ms (next.js: 118ms, application-code: 83ms)
+[browser] [2026-07-13T13:25:55.764Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x3678c8d1 failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"cash"}}},{"alias":"aggregate_1","sum":{"field":{"fieldPath":"overShort"}}}],"structuredQuery":{"from":[{"collectionId":"sales"}]}}} (src/app/financials/inputs/page.tsx:23:31)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Ckhwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9zYWxlcy9pbmRleGVzL18QARoICgRjYXNoEAEaDQoJb3ZlclNob3J0EAEaDAoIX19uYW1lX18QAQ
+FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Ckhwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9zYWxlcy9pbmRleGVzL18QARoICgRjYXNoEAEaDQoJb3ZlclNob3J0EAEaDAoIX19uYW1lX18QAQ (src/app/financials/inputs/page.tsx:57:17)
+[browser] [2026-07-13T13:25:55.920Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x3678c8d3 failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"cash"}}},{"alias":"aggregate_1","sum":{"field":{"fieldPath":"overShort"}}}],"structuredQuery":{"from":[{"collectionId":"sales"}]}}} (src/app/financials/inputs/page.tsx:23:31)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Ckhwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9zYWxlcy9pbmRleGVzL18QARoICgRjYXNoEAEaDQoJb3ZlclNob3J0EAEaDAoIX19uYW1lX18QAQ
+FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Ckhwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9zYWxlcy9pbmRleGVzL18QARoICgRjYXNoEAEaDQoJb3ZlclNob3J0EAEaDAoIX19uYW1lX18QAQ (src/app/financials/inputs/page.tsx:57:17)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/sales 200 in 166ms (next.js: 108ms, application-code: 58ms)
+ GET /financials/inputs 200 in 28ms (next.js: 5ms, application-code: 23ms)
+[browser] [2026-07-13T13:26:20.612Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x3678c8d9 failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"cash"}}},{"alias":"aggregate_1","sum":{"field":{"fieldPath":"overShort"}}}],"structuredQuery":{"from":[{"collectionId":"sales"}]}}} (src/app/financials/inputs/page.tsx:23:31)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Ckhwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9zYWxlcy9pbmRleGVzL18QARoICgRjYXNoEAEaDQoJb3ZlclNob3J0EAEaDAoIX19uYW1lX18QAQ
+FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Ckhwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9zYWxlcy9pbmRleGVzL18QARoICgRjYXNoEAEaDQoJb3ZlclNob3J0EAEaDAoIX19uYW1lX18QAQ (src/app/financials/inputs/page.tsx:57:17)
+[browser] [2026-07-13T13:26:20.664Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x3678c8db failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"cash"}}},{"alias":"aggregate_1","sum":{"field":{"fieldPath":"overShort"}}}],"structuredQuery":{"from":[{"collectionId":"sales"}]}}} (src/app/financials/inputs/page.tsx:23:31)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Ckhwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9zYWxlcy9pbmRleGVzL18QARoICgRjYXNoEAEaDQoJb3ZlclNob3J0EAEaDAoIX19uYW1lX18QAQ
+FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Ckhwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9zYWxlcy9pbmRleGVzL18QARoICgRjYXNoEAEaDQoJb3ZlclNob3J0EAEaDAoIX19uYW1lX18QAQ (src/app/financials/inputs/page.tsx:57:17)
+ GET /financials/inputs/sales 200 in 37ms (next.js: 4ms, application-code: 34ms)
+ GET /financials/inputs/payments 200 in 66ms (next.js: 33ms, application-code: 34ms)
+ GET /financials/inputs/credits 200 in 65ms (next.js: 36ms, application-code: 29ms)
+ GET /financials/inputs/payments 200 in 24ms (next.js: 3ms, application-code: 21ms)
+ GET /financials/inputs/credits 200 in 25ms (next.js: 3ms, application-code: 22ms)
+ GET /financials/inputs/deposits 200 in 28ms (next.js: 5ms, application-code: 23ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 1485ms
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs 200 in 123ms (next.js: 21ms, application-code: 101ms)
+[browser] [2026-07-13T13:27:50.455Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x3678c8e3 failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"cash"}}},{"alias":"aggregate_1","sum":{"field":{"fieldPath":"overShort"}}}],"structuredQuery":{"from":[{"collectionId":"sales"}]}}} (src/app/financials/inputs/page.tsx:23:31)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClNwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9zYWxlcy9pbmRleGVzL0NJQ0FnTGlUcG9rSxABGggKBGNhc2gQARoNCglvdmVyU2hvcnQQARoMCghfX25hbWVfXxAB
+FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClNwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9zYWxlcy9pbmRleGVzL0NJQ0FnTGlUcG9rSxABGggKBGNhc2gQARoNCglvdmVyU2hvcnQQARoMCghfX25hbWVfXxAB (src/app/financials/inputs/page.tsx:57:17)
+[browser] [2026-07-13T13:27:50.457Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x3678c8e1 failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"cash"}}},{"alias":"aggregate_1","sum":{"field":{"fieldPath":"overShort"}}}],"structuredQuery":{"from":[{"collectionId":"sales"}]}}} (src/app/financials/inputs/page.tsx:23:31)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClNwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9zYWxlcy9pbmRleGVzL0NJQ0FnTGlUcG9rSxABGggKBGNhc2gQARoNCglvdmVyU2hvcnQQARoMCghfX25hbWVfXxAB
+FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClNwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9zYWxlcy9pbmRleGVzL0NJQ0FnTGlUcG9rSxABGggKBGNhc2gQARoNCglvdmVyU2hvcnQQARoMCghfX25hbWVfXxAB (src/app/financials/inputs/page.tsx:57:17)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/deposits 200 in 62ms (next.js: 20ms, application-code: 42ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/credits 200 in 80ms (next.js: 18ms, application-code: 62ms)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/credits 200 in 817ms (next.js: 9ms, application-code: 807ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs 200 in 39ms (next.js: 12ms, application-code: 27ms)
+[browser] [2026-07-13T13:28:58.052Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x449dbe0f failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"cash"}}},{"alias":"aggregate_1","sum":{"field":{"fieldPath":"overShort"}}}],"structuredQuery":{"from":[{"collectionId":"sales"}]}}} (src/app/financials/inputs/page.tsx:23:31)
+[browser] [2026-07-13T13:28:58.091Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x449dbe11 failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"cash"}}},{"alias":"aggregate_1","sum":{"field":{"fieldPath":"overShort"}}}],"structuredQuery":{"from":[{"collectionId":"sales"}]}}} (src/app/financials/inputs/page.tsx:23:31)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClNwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9zYWxlcy9pbmRleGVzL0NJQ0FnTGlUcG9rSxABGggKBGNhc2gQARoNCglvdmVyU2hvcnQQARoMCghfX25hbWVfXxAB
+FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClNwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9zYWxlcy9pbmRleGVzL0NJQ0FnTGlUcG9rSxABGggKBGNhc2gQARoNCglvdmVyU2hvcnQQARoMCghfX25hbWVfXxAB (src/app/financials/inputs/page.tsx:57:17)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClNwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9zYWxlcy9pbmRleGVzL0NJQ0FnTGlUcG9rSxABGggKBGNhc2gQARoNCglvdmVyU2hvcnQQARoMCghfX25hbWVfXxAB
+FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClNwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9zYWxlcy9pbmRleGVzL0NJQ0FnTGlUcG9rSxABGggKBGNhc2gQARoNCglvdmVyU2hvcnQQARoMCghfX25hbWVfXxAB (src/app/financials/inputs/page.tsx:57:17)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs 200 in 166ms (next.js: 45ms, application-code: 121ms)
+[browser] [2026-07-13T13:30:16.583Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x7a647da1 failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"cash"}}},{"alias":"aggregate_1","sum":{"field":{"fieldPath":"overShort"}}}],"structuredQuery":{"from":[{"collectionId":"sales"}]}}} (src/app/financials/inputs/page.tsx:23:31)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClNwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9zYWxlcy9pbmRleGVzL0NJQ0FnTGlUcG9rSxABGggKBGNhc2gQARoNCglvdmVyU2hvcnQQARoMCghfX25hbWVfXxAB
+FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClNwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9zYWxlcy9pbmRleGVzL0NJQ0FnTGlUcG9rSxABGggKBGNhc2gQARoNCglvdmVyU2hvcnQQARoMCghfX25hbWVfXxAB (src/app/financials/inputs/page.tsx:57:17)
+[browser] [2026-07-13T13:30:16.617Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x7a647da3 failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"cash"}}},{"alias":"aggregate_1","sum":{"field":{"fieldPath":"overShort"}}}],"structuredQuery":{"from":[{"collectionId":"sales"}]}}} (src/app/financials/inputs/page.tsx:23:31)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClNwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9zYWxlcy9pbmRleGVzL0NJQ0FnTGlUcG9rSxABGggKBGNhc2gQARoNCglvdmVyU2hvcnQQARoMCghfX25hbWVfXxAB
+FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClNwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9zYWxlcy9pbmRleGVzL0NJQ0FnTGlUcG9rSxABGggKBGNhc2gQARoNCglvdmVyU2hvcnQQARoMCghfX25hbWVfXxAB (src/app/financials/inputs/page.tsx:57:17)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/deposits 200 in 156ms (next.js: 67ms, application-code: 88ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs 200 in 31ms (next.js: 5ms, application-code: 25ms)
+[browser] [2026-07-13T13:31:14.083Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x7a647da6 failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"cash"}}},{"alias":"aggregate_1","sum":{"field":{"fieldPath":"overShort"}}}],"structuredQuery":{"from":[{"collectionId":"sales"}]}}} (src/app/financials/inputs/page.tsx:23:31)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClNwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9zYWxlcy9pbmRleGVzL0NJQ0FnTGlUcG9rSxABGggKBGNhc2gQARoNCglvdmVyU2hvcnQQARoMCghfX25hbWVfXxAB
+FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClNwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9zYWxlcy9pbmRleGVzL0NJQ0FnTGlUcG9rSxABGggKBGNhc2gQARoNCglvdmVyU2hvcnQQARoMCghfX25hbWVfXxAB (src/app/financials/inputs/page.tsx:57:17)
+[browser] [2026-07-13T13:31:14.084Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x7a647da8 failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"cash"}}},{"alias":"aggregate_1","sum":{"field":{"fieldPath":"overShort"}}}],"structuredQuery":{"from":[{"collectionId":"sales"}]}}} (src/app/financials/inputs/page.tsx:23:31)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClNwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9zYWxlcy9pbmRleGVzL0NJQ0FnTGlUcG9rSxABGggKBGNhc2gQARoNCglvdmVyU2hvcnQQARoMCghfX25hbWVfXxAB
+FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClNwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9zYWxlcy9pbmRleGVzL0NJQ0FnTGlUcG9rSxABGggKBGNhc2gQARoNCglvdmVyU2hvcnQQARoMCghfX25hbWVfXxAB (src/app/financials/inputs/page.tsx:57:17)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/deposits 200 in 26ms (next.js: 4ms, application-code: 22ms)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 1702ms
+ GET /financials/inputs/deposits 200 in 1242ms (next.js: 807ms, application-code: 435ms)
+ GET /financials/inputs/deposits 200 in 167ms (next.js: 16ms, application-code: 151ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/deposits 200 in 1367ms (next.js: 39ms, application-code: 1328ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs 200 in 215ms (next.js: 142ms, application-code: 72ms)
+[browser] [2026-07-13T13:34:03.395Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x7b89c8bb failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"amount"}}}],"structuredQuery":{"from":[{"collectionId":"deposits"}],"where":{"fieldFilter":{"field":{"fieldPath":"to"},"op":"EQUAL","value":{"stringValue":"safe"}}}}}} (src/app/financials/inputs/page.tsx:32:40)
+[browser] [2026-07-13T13:34:03.461Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x7b89c8bd failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"amount"}}}],"structuredQuery":{"from":[{"collectionId":"deposits"}],"where":{"fieldFilter":{"field":{"fieldPath":"to"},"op":"EQUAL","value":{"stringValue":"safe"}}}}}} (src/app/financials/inputs/page.tsx:32:40)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Cktwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL18QARoGCgJ0bxABGgoKBmFtb3VudBABGgwKCF9fbmFtZV9fEAE
+FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Cktwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL18QARoGCgJ0bxABGgoKBmFtb3VudBABGgwKCF9fbmFtZV9fEAE (src/app/financials/inputs/page.tsx:57:17)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Cktwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL18QARoGCgJ0bxABGgoKBmFtb3VudBABGgwKCF9fbmFtZV9fEAE
+FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Cktwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL18QARoGCgJ0bxABGgoKBmFtb3VudBABGgwKCF9fbmFtZV9fEAE (src/app/financials/inputs/page.tsx:57:17)
+ GET /financials/inputs/sales 200 in 69ms (next.js: 31ms, application-code: 38ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/payments 200 in 61ms (next.js: 34ms, application-code: 27ms)
+ GET /financials/inputs/sales 200 in 23ms (next.js: 4ms, application-code: 19ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/payments 200 in 22ms (next.js: 3ms, application-code: 19ms)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/credits 200 in 100ms (next.js: 54ms, application-code: 46ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/deposits 200 in 29ms (next.js: 6ms, application-code: 24ms)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs 200 in 26ms (next.js: 5ms, application-code: 21ms)
+[browser] [2026-07-13T13:35:19.053Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x7b89c8cf failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"amount"}}}],"structuredQuery":{"from":[{"collectionId":"deposits"}],"where":{"fieldFilter":{"field":{"fieldPath":"to"},"op":"EQUAL","value":{"stringValue":"safe"}}}}}} (src/app/financials/inputs/page.tsx:32:40)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Cktwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL18QARoGCgJ0bxABGgoKBmFtb3VudBABGgwKCF9fbmFtZV9fEAE
+FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Cktwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL18QARoGCgJ0bxABGgoKBmFtb3VudBABGgwKCF9fbmFtZV9fEAE (src/app/financials/inputs/page.tsx:57:17)
+[browser] [2026-07-13T13:35:19.142Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x7b89c8d1 failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"amount"}}}],"structuredQuery":{"from":[{"collectionId":"deposits"}],"where":{"fieldFilter":{"field":{"fieldPath":"to"},"op":"EQUAL","value":{"stringValue":"safe"}}}}}} (src/app/financials/inputs/page.tsx:32:40)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Cktwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL18QARoGCgJ0bxABGgoKBmFtb3VudBABGgwKCF9fbmFtZV9fEAE
+FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Cktwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL18QARoGCgJ0bxABGgoKBmFtb3VudBABGgwKCF9fbmFtZV9fEAE (src/app/financials/inputs/page.tsx:57:17)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financial-reports 200 in 88ms (next.js: 56ms, application-code: 32ms)
+○ Compiling /financial-reports/end-shift-cash ...
+ GET /financial-reports/end-shift-cash 200 in 9.5s (next.js: 9.3s, application-code: 131ms)
+ GET /financial-reports/end-shift-cash 200 in 74ms (next.js: 2ms, application-code: 71ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs 200 in 89ms (next.js: 22ms, application-code: 67ms)
+[browser] [2026-07-13T13:36:14.002Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x7b89c8db failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"amount"}}}],"structuredQuery":{"from":[{"collectionId":"deposits"}],"where":{"fieldFilter":{"field":{"fieldPath":"to"},"op":"EQUAL","value":{"stringValue":"safe"}}}}}} (src/app/financials/inputs/page.tsx:32:40)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Cktwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL18QARoGCgJ0bxABGgoKBmFtb3VudBABGgwKCF9fbmFtZV9fEAE
+FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Cktwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL18QARoGCgJ0bxABGgoKBmFtb3VudBABGgwKCF9fbmFtZV9fEAE (src/app/financials/inputs/page.tsx:57:17)
+[browser] [2026-07-13T13:36:14.201Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x7b89c8dd failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"amount"}}}],"structuredQuery":{"from":[{"collectionId":"deposits"}],"where":{"fieldFilter":{"field":{"fieldPath":"to"},"op":"EQUAL","value":{"stringValue":"safe"}}}}}} (src/app/financials/inputs/page.tsx:32:40)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Cktwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL18QARoGCgJ0bxABGgoKBmFtb3VudBABGgwKCF9fbmFtZV9fEAE
+FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Cktwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL18QARoGCgJ0bxABGgoKBmFtb3VudBABGgwKCF9fbmFtZV9fEAE (src/app/financials/inputs/page.tsx:57:17)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs 200 in 165ms (next.js: 41ms, application-code: 124ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+[browser] [2026-07-13T13:37:08.312Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x484a30b1 failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"amount"}}}],"structuredQuery":{"from":[{"collectionId":"deposits"}],"where":{"fieldFilter":{"field":{"fieldPath":"to"},"op":"EQUAL","value":{"stringValue":"safe"}}}}}} (src/app/financials/inputs/page.tsx:32:40)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Cktwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL18QARoGCgJ0bxABGgoKBmFtb3VudBABGgwKCF9fbmFtZV9fEAE
+FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Cktwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL18QARoGCgJ0bxABGgoKBmFtb3VudBABGgwKCF9fbmFtZV9fEAE (src/app/financials/inputs/page.tsx:57:17)
+[browser] [2026-07-13T13:37:08.319Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x484a30af failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"amount"}}}],"structuredQuery":{"from":[{"collectionId":"deposits"}],"where":{"fieldFilter":{"field":{"fieldPath":"to"},"op":"EQUAL","value":{"stringValue":"safe"}}}}}} (src/app/financials/inputs/page.tsx:32:40)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Cktwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL18QARoGCgJ0bxABGgoKBmFtb3VudBABGgwKCF9fbmFtZV9fEAE
+FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Cktwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL18QARoGCgJ0bxABGgoKBmFtb3VudBABGgwKCF9fbmFtZV9fEAE (src/app/financials/inputs/page.tsx:57:17)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/sales 200 in 56ms (next.js: 23ms, application-code: 33ms)
+ GET /financials/inputs/payments 200 in 46ms (next.js: 23ms, application-code: 23ms)
+ GET /financials/inputs/credits 200 in 37ms (next.js: 14ms, application-code: 22ms)
+ GET /financials/inputs/deposits 200 in 39ms (next.js: 15ms, application-code: 24ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 386ms
+[browser] Uncaught ReferenceError: FileCheck is not defined
+    at FinancialInputsLayout (src/app/financials/inputs/layout.tsx:17:66)
+    at Set.forEach (<anonymous>)
+  15 |     { name: "Payments", href: "/financials/inputs/payments", icon: CreditCard },
+  16 |     { name: "Credits", href: "/financials/inputs/credits", icon: FileText },
+> 17 |     { name: "Cheques", href: "/financials/inputs/cheques", icon: FileCheck },
+     |                                                                  ^
+  18 |     { name: "Deposits", href: "/financials/inputs/deposits", icon: Wallet }
+  19 |   ];
+  20 |
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 2.2s
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/deposits 200 in 4.2s (next.js: 1277ms, application-code: 3.0s)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/cheques 404 in 147ms (next.js: 90ms, application-code: 56ms)
+ GET /financials/inputs/cheques 404 in 44ms (next.js: 4ms, application-code: 40ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs 200 in 70ms (next.js: 42ms, application-code: 28ms)
+[browser] [2026-07-13T13:38:34.463Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x13ebb4af failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"amount"}}}],"structuredQuery":{"from":[{"collectionId":"deposits"}],"where":{"fieldFilter":{"field":{"fieldPath":"to"},"op":"EQUAL","value":{"stringValue":"safe"}}}}}} (src/app/financials/inputs/page.tsx:32:40)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Cktwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL18QARoGCgJ0bxABGgoKBmFtb3VudBABGgwKCF9fbmFtZV9fEAE
+FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Cktwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL18QARoGCgJ0bxABGgoKBmFtb3VudBABGgwKCF9fbmFtZV9fEAE (src/app/financials/inputs/page.tsx:57:17)
+[browser] [2026-07-13T13:38:34.601Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x13ebb4b1 failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"amount"}}}],"structuredQuery":{"from":[{"collectionId":"deposits"}],"where":{"fieldFilter":{"field":{"fieldPath":"to"},"op":"EQUAL","value":{"stringValue":"safe"}}}}}} (src/app/financials/inputs/page.tsx:32:40)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Cktwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL18QARoGCgJ0bxABGgoKBmFtb3VudBABGgwKCF9fbmFtZV9fEAE
+FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Cktwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL18QARoGCgJ0bxABGgoKBmFtb3VudBABGgwKCF9fbmFtZV9fEAE (src/app/financials/inputs/page.tsx:57:17)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs 200 in 145ms (next.js: 47ms, application-code: 99ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+[browser] [2026-07-13T13:39:52.341Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x70e047a0 failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"amount"}}}],"structuredQuery":{"from":[{"collectionId":"deposits"}],"where":{"fieldFilter":{"field":{"fieldPath":"to"},"op":"EQUAL","value":{"stringValue":"safe"}}}}}} (src/app/financials/inputs/page.tsx:32:40)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Cktwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL18QARoGCgJ0bxABGgoKBmFtb3VudBABGgwKCF9fbmFtZV9fEAE
+FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Cktwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL18QARoGCgJ0bxABGgoKBmFtb3VudBABGgwKCF9fbmFtZV9fEAE (src/app/financials/inputs/page.tsx:57:17)
+[browser] [2026-07-13T13:39:52.408Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x70e047a2 failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"amount"}}}],"structuredQuery":{"from":[{"collectionId":"deposits"}],"where":{"fieldFilter":{"field":{"fieldPath":"to"},"op":"EQUAL","value":{"stringValue":"safe"}}}}}} (src/app/financials/inputs/page.tsx:32:40)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Cktwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL18QARoGCgJ0bxABGgoKBmFtb3VudBABGgwKCF9fbmFtZV9fEAE
+FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Cktwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL18QARoGCgJ0bxABGgoKBmFtb3VudBABGgwKCF9fbmFtZV9fEAE (src/app/financials/inputs/page.tsx:57:17)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs 200 in 147ms (next.js: 33ms, application-code: 114ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+[browser] [2026-07-13T13:40:11.431Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x443e4e88 failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"amount"}}}],"structuredQuery":{"from":[{"collectionId":"deposits"}],"where":{"fieldFilter":{"field":{"fieldPath":"to"},"op":"EQUAL","value":{"stringValue":"safe"}}}}}} (src/app/financials/inputs/page.tsx:32:40)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Cktwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL18QARoGCgJ0bxABGgoKBmFtb3VudBABGgwKCF9fbmFtZV9fEAE
+FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Cktwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL18QARoGCgJ0bxABGgoKBmFtb3VudBABGgwKCF9fbmFtZV9fEAE (src/app/financials/inputs/page.tsx:57:17)
+[browser] [2026-07-13T13:40:11.551Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x443e4e8a failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"amount"}}}],"structuredQuery":{"from":[{"collectionId":"deposits"}],"where":{"fieldFilter":{"field":{"fieldPath":"to"},"op":"EQUAL","value":{"stringValue":"safe"}}}}}} (src/app/financials/inputs/page.tsx:32:40)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Cktwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL18QARoGCgJ0bxABGgoKBmFtb3VudBABGgwKCF9fbmFtZV9fEAE
+FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Cktwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL18QARoGCgJ0bxABGgoKBmFtb3VudBABGgwKCF9fbmFtZV9fEAE (src/app/financials/inputs/page.tsx:57:17)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 5ms
+ GET /financials/inputs 200 in 3.6s (next.js: 1910ms, application-code: 1664ms)
+ GET /financials/inputs 200 in 1240ms (next.js: 22ms, application-code: 1218ms)
+ GET /financials/inputs 200 in 1102ms (next.js: 45ms, application-code: 1057ms)
+ GET /financials/inputs 200 in 1008ms (next.js: 15ms, application-code: 993ms)
+ GET /financials/inputs 200 in 1082ms (next.js: 12ms, application-code: 1070ms)
+ GET /financials/inputs 200 in 1099ms (next.js: 16ms, application-code: 1083ms)
+ GET /financials/inputs 200 in 936ms (next.js: 101ms, application-code: 836ms)
+ GET /financials/inputs 200 in 510ms (next.js: 28ms, application-code: 482ms)
+ GET /financials/inputs 200 in 544ms (next.js: 11ms, application-code: 533ms)
+ GET /financials/inputs 200 in 555ms (next.js: 8ms, application-code: 547ms)
+ GET /financials/inputs 200 in 925ms (next.js: 5ms, application-code: 920ms)
+ GET /financials/inputs 200 in 925ms (next.js: 18ms, application-code: 907ms)
+ GET /financials/inputs 200 in 979ms (next.js: 4ms, application-code: 975ms)
+ GET /financials/inputs 200 in 1027ms (next.js: 15ms, application-code: 1012ms)
+ GET /financials/inputs 200 in 929ms (next.js: 311ms, application-code: 617ms)
+ GET /financials/inputs 200 in 489ms (next.js: 5ms, application-code: 485ms)
+ GET /financials/inputs 200 in 687ms (next.js: 7ms, application-code: 680ms)
+ GET /financials/inputs 200 in 578ms (next.js: 7ms, application-code: 572ms)
+ GET /financials/inputs 200 in 664ms (next.js: 11ms, application-code: 653ms)
+ GET /financials/inputs/deposits 200 in 548ms (next.js: 197ms, application-code: 351ms)
+ GET /financials/inputs 200 in 706ms (next.js: 30ms, application-code: 675ms)
+ GET /financials/inputs 200 in 490ms (next.js: 18ms, application-code: 472ms)
+ GET /financials/inputs 200 in 389ms (next.js: 9ms, application-code: 381ms)
+ GET /financials/inputs 200 in 390ms (next.js: 11ms, application-code: 379ms)
+ GET /financials/inputs 200 in 342ms (next.js: 8ms, application-code: 334ms)
+ GET /financials/inputs 200 in 303ms (next.js: 5ms, application-code: 297ms)
+ GET /financials/inputs 200 in 364ms (next.js: 5ms, application-code: 359ms)
+ GET /financials/inputs 200 in 354ms (next.js: 8ms, application-code: 346ms)
+ GET /financials/inputs 200 in 345ms (next.js: 7ms, application-code: 338ms)
+ GET /financials/inputs 200 in 332ms (next.js: 8ms, application-code: 324ms)
+ GET /financials/inputs 200 in 286ms (next.js: 4ms, application-code: 282ms)
+ GET /financials/inputs 200 in 296ms (next.js: 5ms, application-code: 291ms)
+ GET /financials/inputs 200 in 289ms (next.js: 4ms, application-code: 286ms)
+ GET /financials/inputs 200 in 286ms (next.js: 6ms, application-code: 280ms)
+ GET /financials/inputs 200 in 317ms (next.js: 5ms, application-code: 312ms)
+ GET /financials/inputs 200 in 266ms (next.js: 13ms, application-code: 253ms)
+ GET /financials/inputs 200 in 286ms (next.js: 5ms, application-code: 281ms)
+ GET /financials/inputs 200 in 318ms (next.js: 9ms, application-code: 310ms)
+ GET /financials/inputs 200 in 278ms (next.js: 7ms, application-code: 271ms)
+ GET /financials/inputs 200 in 297ms (next.js: 4ms, application-code: 293ms)
+ GET /financials/inputs 200 in 256ms (next.js: 5ms, application-code: 251ms)
+ GET /financials/inputs 200 in 192ms (next.js: 6ms, application-code: 186ms)
+ GET /financials/inputs 200 in 184ms (next.js: 4ms, application-code: 179ms)
+ GET /financials/inputs 200 in 233ms (next.js: 3ms, application-code: 230ms)
+ GET /financials/inputs 200 in 203ms (next.js: 4ms, application-code: 199ms)
+ GET /financials/inputs 200 in 242ms (next.js: 3ms, application-code: 239ms)
+ GET /financials/inputs 200 in 248ms (next.js: 3ms, application-code: 245ms)
+ GET /financials/inputs 200 in 216ms (next.js: 4ms, application-code: 213ms)
+ GET /financials/inputs 200 in 257ms (next.js: 4ms, application-code: 252ms)
+ GET /financials/inputs 200 in 241ms (next.js: 2ms, application-code: 239ms)
+ GET /financials/inputs 200 in 209ms (next.js: 3ms, application-code: 206ms)
+ GET /financials/inputs 200 in 240ms (next.js: 5ms, application-code: 235ms)
+ GET /financials/inputs 200 in 247ms (next.js: 4ms, application-code: 242ms)
+ GET /financials/inputs 200 in 221ms (next.js: 4ms, application-code: 217ms)
+ GET /financials/inputs 200 in 248ms (next.js: 3ms, application-code: 245ms)
+ GET /financials/inputs 200 in 241ms (next.js: 5ms, application-code: 236ms)
+ GET /financials/inputs 200 in 211ms (next.js: 3ms, application-code: 208ms)
+ GET /financials/inputs 200 in 203ms (next.js: 3ms, application-code: 199ms)
+ GET /financials/inputs 200 in 191ms (next.js: 8ms, application-code: 183ms)
+ GET /financials/inputs 200 in 185ms (next.js: 3ms, application-code: 182ms)
+ GET /financials/inputs 200 in 179ms (next.js: 5ms, application-code: 173ms)
+ GET /financials/inputs 200 in 143ms (next.js: 5ms, application-code: 138ms)
+ GET /financials/inputs 200 in 111ms (next.js: 5ms, application-code: 107ms)
+ GET /financials/inputs 200 in 79ms (next.js: 3ms, application-code: 76ms)
+ GET /financials/inputs 200 in 46ms (next.js: 4ms, application-code: 42ms)
+ GET /financials/inputs 200 in 225ms (next.js: 14ms, application-code: 211ms)
+ GET /financials/inputs 200 in 187ms (next.js: 2ms, application-code: 185ms)
+ GET /financials/inputs 200 in 228ms (next.js: 3ms, application-code: 226ms)
+ GET /financials/inputs 200 in 212ms (next.js: 3ms, application-code: 209ms)
+ GET /financials/inputs 200 in 254ms (next.js: 5ms, application-code: 249ms)
+ GET /financials/inputs 200 in 305ms (next.js: 6ms, application-code: 299ms)
+ GET /financials/inputs 200 in 526ms (next.js: 5ms, application-code: 521ms)
+ GET /financials/inputs 200 in 498ms (next.js: 6ms, application-code: 492ms)
+ GET /financials/inputs 200 in 527ms (next.js: 8ms, application-code: 520ms)
+ GET /financials/inputs 200 in 461ms (next.js: 11ms, application-code: 450ms)
+ GET /financials/inputs 200 in 405ms (next.js: 11ms, application-code: 394ms)
+ GET /financials/inputs 200 in 217ms (next.js: 4ms, application-code: 213ms)
+ GET /financials/inputs 200 in 218ms (next.js: 5ms, application-code: 213ms)
+ GET /financials/inputs 200 in 156ms (next.js: 3ms, application-code: 153ms)
+ GET /financials/inputs 200 in 178ms (next.js: 3ms, application-code: 176ms)
+ GET /financials/inputs 200 in 152ms (next.js: 3ms, application-code: 149ms)
+ GET /financials/inputs 200 in 148ms (next.js: 2ms, application-code: 146ms)
+ GET /financials/inputs 200 in 149ms (next.js: 4ms, application-code: 146ms)
+ GET /financials/inputs 200 in 190ms (next.js: 5ms, application-code: 185ms)
+ GET /financials/inputs 200 in 164ms (next.js: 2ms, application-code: 161ms)
+ GET /financials/inputs 200 in 170ms (next.js: 3ms, application-code: 167ms)
+ GET /financials/inputs 200 in 181ms (next.js: 3ms, application-code: 178ms)
+ GET /financials/inputs 200 in 214ms (next.js: 13ms, application-code: 201ms)
+ GET /financials/inputs 200 in 174ms (next.js: 3ms, application-code: 171ms)
+ GET /financials/inputs 200 in 199ms (next.js: 5ms, application-code: 194ms)
+ GET /financials/inputs 200 in 168ms (next.js: 4ms, application-code: 164ms)
+ GET /financials/inputs 200 in 159ms (next.js: 5ms, application-code: 154ms)
+ GET /financials/inputs 200 in 157ms (next.js: 4ms, application-code: 153ms)
+ GET /financials/inputs 200 in 153ms (next.js: 5ms, application-code: 149ms)
+ GET /financials/inputs 200 in 152ms (next.js: 3ms, application-code: 149ms)
+ GET /financials/inputs 200 in 151ms (next.js: 4ms, application-code: 148ms)
+ GET /financials/inputs 200 in 172ms (next.js: 3ms, application-code: 169ms)
+ GET /financials/inputs 200 in 184ms (next.js: 2ms, application-code: 181ms)
+ GET /financials/inputs 200 in 160ms (next.js: 3ms, application-code: 157ms)
+ GET /financials/inputs 200 in 161ms (next.js: 5ms, application-code: 157ms)
+ GET /financials/inputs 200 in 167ms (next.js: 4ms, application-code: 163ms)
+ GET /financials/inputs 200 in 206ms (next.js: 3ms, application-code: 203ms)
+ GET /financials/inputs 200 in 212ms (next.js: 3ms, application-code: 210ms)
+ GET /financials/inputs 200 in 175ms (next.js: 4ms, application-code: 171ms)
+ GET /financials/inputs 200 in 175ms (next.js: 3ms, application-code: 172ms)
+ GET /financials/inputs 200 in 179ms (next.js: 6ms, application-code: 173ms)
+ GET /financials/inputs 200 in 173ms (next.js: 4ms, application-code: 169ms)
+ GET /financials/inputs 200 in 168ms (next.js: 4ms, application-code: 164ms)
+ GET /financials/inputs 200 in 159ms (next.js: 5ms, application-code: 154ms)
+ GET /financials/inputs 200 in 150ms (next.js: 4ms, application-code: 145ms)
+ GET /financials/inputs 200 in 138ms (next.js: 4ms, application-code: 134ms)
+ GET /financials/inputs 200 in 132ms (next.js: 3ms, application-code: 130ms)
+ GET /financials/inputs 200 in 143ms (next.js: 3ms, application-code: 139ms)
+ GET /financials/inputs 200 in 120ms (next.js: 3ms, application-code: 117ms)
+ GET /financials/inputs 200 in 117ms (next.js: 1965µs, application-code: 115ms)
+ GET /financials/inputs 200 in 116ms (next.js: 3ms, application-code: 113ms)
+ GET /financials/inputs 200 in 108ms (next.js: 2ms, application-code: 105ms)
+ GET /financials/inputs 200 in 108ms (next.js: 1920µs, application-code: 106ms)
+ GET /financials/inputs 200 in 107ms (next.js: 1749µs, application-code: 105ms)
+ GET /financials/inputs 200 in 89ms (next.js: 1923µs, application-code: 87ms)
+ GET /financials/inputs 200 in 83ms (next.js: 1943µs, application-code: 81ms)
+ GET /financials/inputs 200 in 67ms (next.js: 3ms, application-code: 64ms)
+ GET /financials/inputs 200 in 46ms (next.js: 2ms, application-code: 44ms)
+○ Compiling /financials/inputs/cheques ...
+ GET /financials/inputs/cheques 200 in 7.9s (next.js: 7.6s, application-code: 333ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/cheques 200 in 1471ms (next.js: 44ms, application-code: 1427ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/deposits 200 in 99ms (next.js: 63ms, application-code: 36ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/cheques 200 in 57ms (next.js: 18ms, application-code: 39ms)
+ GET /financials/inputs/deposits 200 in 38ms (next.js: 9ms, application-code: 28ms)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs 200 in 127ms (next.js: 55ms, application-code: 72ms)
+[browser] [2026-07-13T13:42:39.362Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x7347e865 failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"amount"}}}],"structuredQuery":{"from":[{"collectionId":"deposits"}],"where":{"fieldFilter":{"field":{"fieldPath":"to"},"op":"EQUAL","value":{"stringValue":"safe"}}}}}} (src/app/financials/inputs/page.tsx:32:40)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Cktwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL18QARoGCgJ0bxABGgoKBmFtb3VudBABGgwKCF9fbmFtZV9fEAE
+FirebaseError: The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=Cktwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL18QARoGCgJ0bxABGgoKBmFtb3VudBABGgwKCF9fbmFtZV9fEAE (src/app/financials/inputs/page.tsx:57:17)
+[browser] [2026-07-13T13:42:39.392Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x7347e867 failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"amount"}}}],"structuredQuery":{"from":[{"collectionId":"deposits"}],"where":{"fieldFilter":{"field":{"fieldPath":"to"},"op":"EQUAL","value":{"stringValue":"safe"}}}}}} (src/app/financials/inputs/page.tsx:32:40)
+Failed to flush logs to file: Error: ENOSPC: no space left on device, write
+    at ignore-listed frames {
+  errno: -28,
+  code: 'ENOSPC',
+  syscall: 'write'
+}
+Failed to flush logs to file: Error: ENOSPC: no space left on device, write
+    at ignore-listed frames {
+  errno: -28,
+  code: 'ENOSPC',
+  syscall: 'write'
+}
+Error: ENOSPC: no space left on device, write
+    at ignore-listed frames {
+  errno: -28,
+  syscall: 'write',
+  code: 'ENOSPC'
+}
+⨯ uncaughtException: Error: ENOSPC: no space left on device, write
+    at ignore-listed frames {
+  errno: -28,
+  syscall: 'write',
+  code: 'ENOSPC'
+}
+⨯ uncaughtException:  Error: ENOSPC: no space left on device, write
+    at ignore-listed frames {
+  errno: -28,
+  syscall: 'write',
+  code: 'ENOSPC'
+}
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 2.4s
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/credits 200 in 485ms (next.js: 291ms, application-code: 194ms)
+ GET /financials/inputs/cheques 200 in 37ms (next.js: 8ms, application-code: 29ms)
+ GET /financials/inputs/deposits 200 in 95ms (next.js: 48ms, application-code: 47ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/payments 200 in 335ms (next.js: 233ms, application-code: 102ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 987ms
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 3ms
+ GET /financials/inputs/payments 500 in 215ms (next.js: 101ms, application-code: 114ms)
+ GET /financials/inputs/payments 500 in 76ms (next.js: 38ms, application-code: 38ms)
+ GET /financials/inputs/payments 500 in 281ms (next.js: 18ms, application-code: 263ms)
+ GET /financials/inputs/payments 500 in 140ms (next.js: 89ms, application-code: 51ms)
+[browser] Uncaught Error: ./Documents/anhreports/src/app/financials/inputs/cheques/page.tsx:579:8
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  577 |           </div>
+  578 |         </div>
+> 579 |       )}
+      |        ^
+  580 |     </div>
+  581 |   );
+  582 | }
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/inputs/cheques/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/inputs/cheques/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/inputs/cheques/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/inputs/cheques/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./Documents/anhreports/src/app/financials/inputs/cheques/page.tsx:579:8)
+    at <unknown> (Error: (./Documents/anhreports/src/app/financials/inputs/cheques/page.tsx:579:8)
+[browser] ./Documents/anhreports/src/app/financials/inputs/cheques/page.tsx:579:8
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  577 |           </div>
+  578 |         </div>
+> 579 |       )}
+      |        ^
+  580 |     </div>
+  581 |   );
+  582 | }
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/inputs/cheques/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/inputs/cheques/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/inputs/cheques/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/inputs/cheques/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/financials/inputs/cheques/page.tsx:579:8
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  577 |           </div>
+  578 |         </div>
+> 579 |       )}
+      |        ^
+  580 |     </div>
+  581 |   );
+  582 | }
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/inputs/cheques/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/inputs/cheques/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/inputs/cheques/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/inputs/cheques/page.tsx [Server Component] 
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/payments 500 in 156ms (next.js: 61ms, application-code: 94ms)
+[browser] Uncaught Error: ./Documents/anhreports/src/app/financials/inputs/deposits/page.tsx:613:8
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  611 |           </div>
+  612 |         </div>
+> 613 |       )}
+      |        ^
+  614 |     </div>
+  615 |   );
+  616 | }
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/inputs/deposits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/inputs/deposits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/inputs/deposits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/inputs/deposits/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./Documents/anhreports/src/app/financials/inputs/deposits/page.tsx:613:8)
+    at <unknown> (Error: (./Documents/anhreports/src/app/financials/inputs/deposits/page.tsx:613:8)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 695ms
+ GET /financials/inputs/payments 500 in 89ms (next.js: 25ms, application-code: 65ms)
+[browser] Uncaught Error: ./Documents/anhreports/src/app/financials/inputs/deposits/page.tsx:613:8
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  611 |           </div>
+  612 |         </div>
+> 613 |       )}
+      |        ^
+  614 |     </div>
+  615 |   );
+  616 | }
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/inputs/deposits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/inputs/deposits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/inputs/deposits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/inputs/deposits/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./Documents/anhreports/src/app/financials/inputs/deposits/page.tsx:613:8)
+    at <unknown> (Error: (./Documents/anhreports/src/app/financials/inputs/deposits/page.tsx:613:8)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 583ms
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/payments 200 in 2.4s (next.js: 420ms, application-code: 1985ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs 200 in 476ms (next.js: 200ms, application-code: 276ms)
+[browser] [2026-07-13T13:49:31.029Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x6e72adf5 failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"amount"}}}],"structuredQuery":{"from":[{"collectionId":"deposits"}],"where":{"fieldFilter":{"field":{"fieldPath":"to"},"op":"EQUAL","value":{"stringValue":"safe"}}}}}} (src/app/financials/inputs/page.tsx:32:40)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClZwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL0NJQ0FnTmlydEpBShABGgYKAnRvEAEaCgoGYW1vdW50EAEaDAoIX19uYW1lX18QAQ
+FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClZwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL0NJQ0FnTmlydEpBShABGgYKAnRvEAEaCgoGYW1vdW50EAEaDAoIX19uYW1lX18QAQ (src/app/financials/inputs/page.tsx:57:17)
+[browser] [2026-07-13T13:49:31.075Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x6e72adf7 failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"amount"}}}],"structuredQuery":{"from":[{"collectionId":"deposits"}],"where":{"fieldFilter":{"field":{"fieldPath":"to"},"op":"EQUAL","value":{"stringValue":"safe"}}}}}} (src/app/financials/inputs/page.tsx:32:40)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClZwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL0NJQ0FnTmlydEpBShABGgYKAnRvEAEaCgoGYW1vdW50EAEaDAoIX19uYW1lX18QAQ
+FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClZwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL0NJQ0FnTmlydEpBShABGgYKAnRvEAEaCgoGYW1vdW50EAEaDAoIX19uYW1lX18QAQ (src/app/financials/inputs/page.tsx:57:17)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/deposits 200 in 98ms (next.js: 61ms, application-code: 36ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/cheques 200 in 122ms (next.js: 68ms, application-code: 54ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+[browser] PDF ERROR: Error: Attempting to parse an unsupported color function "lab" (src/app/financials/inputs/cheques/page.tsx:174:15)
+ GET /financials/inputs/payments 200 in 93ms (next.js: 5ms, application-code: 88ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/deposits 200 in 49ms (next.js: 18ms, application-code: 32ms)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/deposits 200 in 170ms (next.js: 34ms, application-code: 136ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs 200 in 40ms (next.js: 11ms, application-code: 30ms)
+[browser] [2026-07-13T13:51:01.288Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x152fde32 failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"amount"}}}],"structuredQuery":{"from":[{"collectionId":"deposits"}],"where":{"fieldFilter":{"field":{"fieldPath":"from"},"op":"EQUAL","value":{"stringValue":"safe"}}}}}} (src/app/financials/inputs/page.tsx:37:42)
+[browser] [2026-07-13T13:51:01.307Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x152fde30 failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"amount"}}}],"structuredQuery":{"from":[{"collectionId":"deposits"}],"where":{"fieldFilter":{"field":{"fieldPath":"from"},"op":"EQUAL","value":{"stringValue":"safe"}}}}}} (src/app/financials/inputs/page.tsx:37:42)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClZwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL0NJQ0FnTmlyeW9rSxABGggKBGZyb20QARoKCgZhbW91bnQQARoMCghfX25hbWVfXxAB
+FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClZwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL0NJQ0FnTmlyeW9rSxABGggKBGZyb20QARoKCgZhbW91bnQQARoMCghfX25hbWVfXxAB (src/app/financials/inputs/page.tsx:57:17)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClZwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL0NJQ0FnTmlyeW9rSxABGggKBGZyb20QARoKCgZhbW91bnQQARoMCghfX25hbWVfXxAB
+FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClZwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL0NJQ0FnTmlyeW9rSxABGggKBGZyb20QARoKCgZhbW91bnQQARoMCghfX25hbWVfXxAB (src/app/financials/inputs/page.tsx:57:17)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/deposits 200 in 27ms (next.js: 7ms, application-code: 20ms)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/credits 200 in 74ms (next.js: 27ms, application-code: 47ms)
+ GET /financials/inputs/payments 200 in 28ms (next.js: 6ms, application-code: 23ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 446ms
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 375ms
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs 200 in 126ms (next.js: 73ms, application-code: 54ms)
+[browser] [2026-07-13T13:52:18.198Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x152fde42 failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"amount"}}}],"structuredQuery":{"from":[{"collectionId":"deposits"}],"where":{"fieldFilter":{"field":{"fieldPath":"from"},"op":"EQUAL","value":{"stringValue":"safe"}}}}}} (src/app/financials/inputs/page.tsx:37:42)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClZwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL0NJQ0FnTmlyeW9rSxABGggKBGZyb20QARoKCgZhbW91bnQQARoMCghfX25hbWVfXxAB
+FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClZwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL0NJQ0FnTmlyeW9rSxABGggKBGZyb20QARoKCgZhbW91bnQQARoMCghfX25hbWVfXxAB (src/app/financials/inputs/page.tsx:57:17)
+[browser] [2026-07-13T13:52:18.200Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x152fde40 failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"amount"}}}],"structuredQuery":{"from":[{"collectionId":"deposits"}],"where":{"fieldFilter":{"field":{"fieldPath":"from"},"op":"EQUAL","value":{"stringValue":"safe"}}}}}} (src/app/financials/inputs/page.tsx:37:42)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClZwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL0NJQ0FnTmlyeW9rSxABGggKBGZyb20QARoKCgZhbW91bnQQARoMCghfX25hbWVfXxAB
+FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClZwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL0NJQ0FnTmlyeW9rSxABGggKBGZyb20QARoKCgZhbW91bnQQARoMCghfX25hbWVfXxAB (src/app/financials/inputs/page.tsx:57:17)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/sales 200 in 142ms (next.js: 110ms, application-code: 32ms)
+ GET /financials/inputs/payments 200 in 40ms (next.js: 13ms, application-code: 27ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/credits 200 in 45ms (next.js: 20ms, application-code: 26ms)
+ GET /financials/inputs/cheques 200 in 45ms (next.js: 7ms, application-code: 38ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs 200 in 99ms (next.js: 19ms, application-code: 81ms)
+[browser] [2026-07-13T13:53:00.796Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x152fde53 failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"amount"}}}],"structuredQuery":{"from":[{"collectionId":"deposits"}],"where":{"fieldFilter":{"field":{"fieldPath":"from"},"op":"EQUAL","value":{"stringValue":"safe"}}}}}} (src/app/financials/inputs/page.tsx:37:42)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClZwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL0NJQ0FnTmlyeW9rSxABGggKBGZyb20QARoKCgZhbW91bnQQARoMCghfX25hbWVfXxAB
+FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClZwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL0NJQ0FnTmlyeW9rSxABGggKBGZyb20QARoKCgZhbW91bnQQARoMCghfX25hbWVfXxAB (src/app/financials/inputs/page.tsx:57:17)
+[browser] [2026-07-13T13:53:00.967Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x152fde57 failed with error:  {"code":"failed-precondition","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"amount"}}}],"structuredQuery":{"from":[{"collectionId":"deposits"}],"where":{"fieldFilter":{"field":{"fieldPath":"from"},"op":"EQUAL","value":{"stringValue":"safe"}}}}}} (src/app/financials/inputs/page.tsx:37:42)
+[browser] Failed to fetch aggregate stats: FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClZwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL0NJQ0FnTmlyeW9rSxABGggKBGZyb20QARoKCgZhbW91bnQQARoMCghfX25hbWVfXxAB
+FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClZwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9kZXBvc2l0cy9pbmRleGVzL0NJQ0FnTmlyeW9rSxABGggKBGZyb20QARoKCgZhbW91bnQQARoMCghfX25hbWVfXxAB (src/app/financials/inputs/page.tsx:57:17)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/cheques 200 in 47ms (next.js: 13ms, application-code: 34ms)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/deposits 200 in 31ms (next.js: 7ms, application-code: 24ms)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 344ms
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/sales 200 in 58ms (next.js: 17ms, application-code: 41ms)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/payments 200 in 28ms (next.js: 8ms, application-code: 21ms)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 457ms
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/deposits 200 in 146ms (next.js: 71ms, application-code: 76ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/cheques 200 in 149ms (next.js: 72ms, application-code: 77ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs 200 in 43ms (next.js: 11ms, application-code: 32ms)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/payments 200 in 33ms (next.js: 6ms, application-code: 27ms)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 223ms
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs 200 in 70ms (next.js: 29ms, application-code: 41ms)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/deposits 200 in 38ms (next.js: 7ms, application-code: 31ms)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 174ms
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs 200 in 44ms (next.js: 11ms, application-code: 34ms)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
