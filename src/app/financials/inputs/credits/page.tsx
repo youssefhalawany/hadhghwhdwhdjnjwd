@@ -31,6 +31,8 @@ import {
 import { toast } from "sonner";
 import { onAuthStateChanged } from "firebase/auth";
 import Link from "next/link";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 interface Credit {
   id: string;
@@ -329,10 +331,29 @@ export default function CreditsPage() {
     setSelectedCreditForPrint(credit);
     setIsPrinting(true);
 
-    setTimeout(() => {
-      window.print();
-      setIsPrinting(false);
-      setSelectedCreditForPrint(null);
+    setTimeout(async () => {
+      try {
+        const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const page1 = document.getElementById("print-credit-container");
+        
+        if (page1) {
+          page1.style.left = "0";
+          const canvas1 = await html2canvas(page1, { scale: 2, useCORS: true });
+          const imgData1 = canvas1.toDataURL("image/png");
+          const pdfHeight1 = (canvas1.height * pdfWidth) / canvas1.width;
+          pdf.addImage(imgData1, "PNG", 0, 0, pdfWidth, pdfHeight1);
+          page1.style.left = "-9999px";
+        }
+
+        pdf.autoPrint();
+        window.open(pdf.output("bloburl"), "_blank");
+      } catch (error) {
+        toast.error("Failed to generate PDF.");
+      } finally {
+        setIsPrinting(false);
+        setSelectedCreditForPrint(null);
+      }
     }, 500);
   };
 
@@ -746,19 +767,10 @@ export default function CreditsPage() {
       )}
     </div>
 
-    {/* HIDDEN PRINT LAYOUT (A4 PDF for Credit) */}
-    <style dangerouslySetInnerHTML={{ __html: `
-      @media print {
-        @page { size: A4 portrait; margin: 0; }
-        html, body { background-color: #fff !important; margin: 0 !important; padding: 0 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-        #print-credit-container { display: block !important; }
-        .no-print { display: none !important; }
-      }
-    `}} />
-    
     {selectedCreditForPrint && (
-      <div id="print-credit-container" className="hidden print:block" style={{ width: '210mm', height: '297mm', backgroundColor: '#ffffff', color: '#000000', fontFamily: 'Arial, sans-serif' }}>
-        <div style={{ padding: '60px', height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+      <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+        <div id="print-credit-container" style={{ width: '794px', minHeight: '1123px', backgroundColor: '#ffffff', color: '#000000', fontFamily: 'Arial, sans-serif' }}>
+          <div style={{ padding: '60px', height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
           
           {/* Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #1e293b', paddingBottom: '24px', marginBottom: '40px' }}>
@@ -849,6 +861,7 @@ export default function CreditsPage() {
           </div>
 
         </div>
+      </div>
       </div>
     )}
     </>

@@ -2619,3 +2619,43 @@ Compaction failed: Another write batch or compaction is already active (Only a s
 ✓ Compiled in 584ms
 Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
 Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 831ms
+ GET /financials/inputs 500 in 201ms (next.js: 72ms, application-code: 129ms)
+ GET /financials/inputs 500 in 38ms (next.js: 11ms, application-code: 27ms)
+ GET /financials/inputs 500 in 103ms (next.js: 52ms, application-code: 50ms)
+ GET /financials/inputs 500 in 146ms (next.js: 53ms, application-code: 93ms)
+ GET /financials/inputs 500 in 139ms (next.js: 74ms, application-code: 66ms)
+[browser] Uncaught Error: ./Documents/anhreports/src/app/financials/inputs/credits/page.tsx:866:7
+Expression expected
+  864 |       </div>
+  865 |     )}
+> 866 |     </>
+      |       ^
+  867 |   );
+  868 | }
+  869 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/inputs/credits/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/inputs/credits/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/inputs/credits/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/inputs/credits/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./Documents/anhreports/src/app/financials/inputs/credits/page.tsx:866:7)
+    at <unknown> (Error: (./Documents/anhreports/src/app/financials/inputs/credits/page.tsx:866:7)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 3s
+ GET /financials/inputs 200 in 2.8s (next.js: 1108ms, application-code: 1724ms)
+ GET /financials/inputs 200 in 692ms (next.js: 107ms, application-code: 586ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
