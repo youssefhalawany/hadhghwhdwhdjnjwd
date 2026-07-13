@@ -156,13 +156,29 @@ function PublicShiftReportContent() {
             {report.inventoryCounts.cigaretteCounts && (
               <div>
                 <p className="font-bold mb-2">Detailed Cigarette Counts</p>
-                <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-                  {Object.entries(report.inventoryCounts.cigaretteCounts).map(([type, count]) => (
-                    <div key={type} className="flex justify-between items-center bg-muted/50 p-2 rounded">
-                      <span className="truncate pr-2 font-medium" title={type}>{type}</span>
-                      <span className="font-black bg-white dark:bg-slate-900 px-2 py-0.5 rounded shadow-sm">{String(count)}</span>
-                    </div>
-                  ))}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono">
+                  {Object.entries(report.inventoryCounts.cigaretteCounts).map(([type, count]) => {
+                    const isObj = typeof count === 'object' && count !== null;
+                    const start = isObj ? (count as any).start || "0" : "-";
+                    const delivery = isObj ? (count as any).delivery || "0" : "-";
+                    const end = isObj ? (count as any).end || "0" : String(count || "0");
+                    const s = Number(start) || 0;
+                    const d = Number(delivery) || 0;
+                    const e = Number(end) || 0;
+                    const sold = isObj ? String(s + d - e) : "-";
+
+                    return (
+                      <div key={type} className="flex flex-col bg-muted/50 p-2 rounded">
+                        <span className="truncate font-medium mb-1" title={type}>{type}</span>
+                        <div className="grid grid-cols-4 gap-1 text-[10px] text-center">
+                          <div className="bg-slate-200/50 dark:bg-slate-800 rounded p-1">St: {start}</div>
+                          <div className="bg-emerald-500/10 text-emerald-600 rounded p-1">In: {delivery}</div>
+                          <div className="bg-red-500/10 text-red-600 rounded p-1">End: {end}</div>
+                          <div className="bg-slate-900 text-white rounded p-1 font-bold">={sold}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

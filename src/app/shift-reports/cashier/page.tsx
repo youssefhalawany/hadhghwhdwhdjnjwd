@@ -143,6 +143,7 @@ export default function CashierShiftReportPage() {
   const [shift, setShift] = useState("Morning");
   const [assignedShiftType, setAssignedShiftType] = useState("All");
   const [cashierRole, setCashierRole] = useState<number>(1);
+  const [step, setStep] = useState<number>(1);
   
   // Cashier Money Counts
   const [denominations, setDenominations] = useState({
@@ -151,7 +152,7 @@ export default function CashierShiftReportPage() {
   const [visa, setVisa] = useState<string>("");
 
   // Inventory
-  const [cigaretteCounts, setCigaretteCounts] = useState<Record<string, string>>({});
+  const [cigaretteCounts, setCigaretteCounts] = useState<Record<string, { start: string; delivery: string; end: string }>>({});
   const [lighters, setLighters] = useState({ start: "", delivery: "", end: "" });
 
   const [existingReportId, setExistingReportId] = useState<string | null>(null);
@@ -375,7 +376,20 @@ export default function CashierShiftReportPage() {
         }
         setVisa(String(data.cashierCounts.visa));
         setVisa(String(data.cashierCounts.visa));
-        setCigaretteCounts(data.inventoryCounts?.cigaretteCounts || {});
+        const prevCigCounts = data.inventoryCounts?.cigaretteCounts || {};
+        const formattedCigCounts: Record<string, { start: string; delivery: string; end: string }> = {};
+        for (const [key, val] of Object.entries(prevCigCounts)) {
+          if (typeof val === 'object' && val !== null) {
+            formattedCigCounts[key] = {
+              start: String((val as any).start || ""),
+              delivery: String((val as any).delivery || ""),
+              end: String((val as any).end || "")
+            };
+          } else {
+            formattedCigCounts[key] = { start: "", delivery: "", end: String(val || "") };
+          }
+        }
+        setCigaretteCounts(formattedCigCounts);
         setLighters({
           start: String(data.inventoryCounts?.lighters?.start || ""),
           delivery: String(data.inventoryCounts?.lighters?.delivery || ""),
@@ -397,6 +411,14 @@ export default function CashierShiftReportPage() {
         const lastReport = sortedDocs[0].data();
         const lightEnd = lastReport.inventoryCounts?.lighters?.end || 0;
         setLighters(prev => ({ ...prev, start: String(lightEnd) }));
+
+        const prevCigCounts = lastReport.inventoryCounts?.cigaretteCounts || {};
+        const newCigStarts: Record<string, { start: string; delivery: string; end: string }> = {};
+        for (const [key, val] of Object.entries(prevCigCounts)) {
+          const endVal = typeof val === 'object' && val !== null ? (val as any).end : val;
+          newCigStarts[key] = { start: String(endVal || ""), delivery: "", end: "" };
+        }
+        setCigaretteCounts(prev => ({ ...prev, ...newCigStarts }));
       }
     } catch (e) {
       console.error("Could not fetch data on unlock", e);
@@ -534,16 +556,15 @@ export default function CashierShiftReportPage() {
         }
       }
       
-      try {
-        await fetch("/api/notifications/notify-master", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: "New Shift Report",
-            body: `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' })}\nCashier: ${c?.name || 'Unknown'}\nStore: ${c?.storeId || 'Unknown'}\nShift: ${c?.shift || 'Unknown'}\nTotal Cash: ${calculateTotalCash()} EGP\nVisa: ${visa} EGP\nTotal Submitted: ${calculateTotalMoney()} EGP\nSignature: ${signature ? 'Captured' : 'None'}\n\nView Full Report & Signature:\n${window.location.origin}/shift-reports/view?id=${submittedId}`
-          })
-        });
-      } catch (err) { console.error("Notify error", err); }
+      // Fire and forget notification
+      fetch("/api/notifications/notify-master", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "New Shift Report",
+          body: `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' })}\nCashier: ${c?.name || 'Unknown'}\nStore: ${c?.storeId || 'Unknown'}\nShift: ${c?.shift || 'Unknown'}\nTotal Cash: ${calculateTotalCash()} EGP\nVisa: ${visa} EGP\nTotal Submitted: ${calculateTotalMoney()} EGP\nSignature: ${signature ? 'Captured' : 'None'}\n\nView Full Report & Signature:\n${window.location.origin}/shift-reports/view?id=${submittedId}`
+        })
+      }).catch(err => console.error("Notify error", err));
 
       vibrateSuccess();
       router.push(`/shift-reports/cashier/success?id=${submittedId}`);
@@ -843,7 +864,8 @@ export default function CashierShiftReportPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {step === 1 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
             {/* Left Column: Shift Info & Cash breakdown */}
             <div className="space-y-6">
@@ -998,30 +1020,9 @@ export default function CashierShiftReportPage() {
                     <h2 className="text-base sm:text-lg font-black text-slate-800 dark:text-white uppercase tracking-wider">{dict.inventory}</h2>
                   </div>
                   
-                  {/* Detailed Cigarettes */}
-                  <div className="space-y-2.5 bg-slate-50/50 dark:bg-slate-900/40 p-4 rounded-xl border border-slate-200/60 dark:border-slate-800 animate-in fade-in">
-                    <h3 className="font-bold text-slate-700 dark:text-slate-350 border-b border-slate-200 dark:border-slate-800 pb-2 uppercase tracking-widest text-[10px]">{dict.cigarettes}</h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                      {CIGARETTE_TYPES.map((type) => (
-                        <div key={type.id} className="flex flex-col gap-1">
-                          <label className="text-[10px] sm:text-xs font-bold text-slate-600 dark:text-slate-400 truncate" title={type[lang]}>
-                            {type[lang]}
-                          </label>
-                          <input 
-                            required 
-                            type="number" 
-                            inputMode="numeric" 
-                            pattern="[0-9]*" 
-                            min="0" 
-                            placeholder="Count"
-                            value={cigaretteCounts[type.id] || ""} 
-                            onChange={(e) => setCigaretteCounts({ ...cigaretteCounts, [type.id]: e.target.value })} 
-                            className="w-full p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-orange-500 text-center font-mono text-sm font-bold shadow-sm" 
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  {/* Detailed Cigarettes moved to Step 2 */}
+
+
 
                   {/* Lighters */}
                   <div className="space-y-2.5 bg-slate-50/50 dark:bg-slate-900/40 p-4 rounded-xl border border-slate-200/60 dark:border-slate-800 animate-in fade-in">
@@ -1069,6 +1070,55 @@ export default function CashierShiftReportPage() {
               </section>
             </div>
           </div>
+          )}
+
+          {step === 2 && cashierRole === 1 && (
+            <div className="max-w-3xl mx-auto space-y-6">
+              <section className="glass-panel p-5 rounded-2xl space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-150 dark:border-slate-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Package className="h-5 w-5 text-orange-500" />
+                    <h2 className="text-base sm:text-lg font-black text-slate-800 dark:text-white uppercase tracking-wider">{dict.cigarettes}</h2>
+                  </div>
+                  <span className="text-xs font-bold px-2 py-1 bg-orange-500/10 text-orange-600 rounded">Step 2 of 2</span>
+                </div>
+                
+                <div className="space-y-4">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Please enter the start, delivery, and end quantities for all cigarettes accurately.</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {CIGARETTE_TYPES.map((type) => {
+                      const counts = cigaretteCounts[type.id] || { start: "", delivery: "", end: "" };
+                      return (
+                        <div key={type.id} className="bg-white dark:bg-slate-900/40 p-4 rounded-xl border border-slate-200/60 dark:border-slate-800 transition-all hover:border-orange-500/30">
+                          <label className="text-sm font-black text-slate-800 dark:text-slate-200 block mb-3 border-b border-slate-100 dark:border-slate-800 pb-2" title={type[lang]}>
+                            {type[lang]}
+                          </label>
+                          <div className="grid grid-cols-4 gap-2">
+                            <div>
+                              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">{dict.start}</label>
+                              <input required type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={counts.start} onChange={(e) => setCigaretteCounts({ ...cigaretteCounts, [type.id]: { ...counts, start: e.target.value } })} className="w-full p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none focus:ring-2 focus:ring-orange-500 text-center font-mono text-sm font-bold" />
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-bold text-emerald-500 uppercase mb-1">{dict.delivery}</label>
+                              <input required type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={counts.delivery} onChange={(e) => setCigaretteCounts({ ...cigaretteCounts, [type.id]: { ...counts, delivery: e.target.value } })} className="w-full p-2.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 outline-none focus:ring-2 focus:ring-emerald-500 text-center font-mono text-sm font-bold text-emerald-600" />
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-bold text-red-500 uppercase mb-1">{dict.end}</label>
+                              <input required type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={counts.end} onChange={(e) => setCigaretteCounts({ ...cigaretteCounts, [type.id]: { ...counts, end: e.target.value } })} className="w-full p-2.5 rounded-lg border border-red-500/20 bg-red-500/5 outline-none focus:ring-2 focus:ring-red-500 text-center font-mono text-sm font-bold text-red-600" />
+                            </div>
+                            <div className="bg-slate-900 dark:bg-black rounded-lg p-2 text-center border border-slate-800 flex flex-col justify-center">
+                              <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">{dict.soldUnits}</label>
+                              <span className="font-black text-white text-base font-mono leading-none">{calculateSold(counts.start, counts.delivery, counts.end)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </section>
+            </div>
+          )}
 
           {/* Footer inside the form to allow submit trigger */}
           <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 z-10 shadow-[0_-10px_40px_rgba(0,0,0,0.04)]">
@@ -1080,19 +1130,32 @@ export default function CashierShiftReportPage() {
                 </p>
               </div>
               
-              <button type="submit" disabled={loading} className={`w-full sm:w-auto px-8 py-3.5 ${loading ? 'bg-slate-500 opacity-50 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700 active:scale-[0.98] cursor-pointer'} text-white rounded-xl font-bold text-base shadow-lg shadow-red-500/15 transition-all flex items-center justify-center gap-2`}>
-                {loading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                    {dict.submitting}
-                  </>
-                ) : (
-                  <>
-                    {existingReportId ? dict.resubmit : dict.submit}
-                    <ArrowRight className={`h-4.5 w-4.5 ${lang === "ar" ? "rotate-180" : ""}`} />
-                  </>
-                )}
-              </button>
+              {step === 1 && cashierRole === 1 ? (
+                <button type="button" onClick={() => setStep(2)} className="w-full sm:w-auto px-8 py-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-base shadow-lg transition-all flex items-center justify-center gap-2">
+                  Next Step: Cigarettes <ArrowRight className="h-4.5 w-4.5" />
+                </button>
+              ) : (
+                <div className="flex gap-3 w-full sm:w-auto">
+                  {step === 2 && (
+                    <button type="button" onClick={() => setStep(1)} className="px-6 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold text-sm transition-all">
+                      Back
+                    </button>
+                  )}
+                  <button type="submit" disabled={loading} className={`w-full sm:w-auto px-8 py-3.5 ${loading ? 'bg-slate-500 opacity-50 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700 active:scale-[0.98] cursor-pointer'} text-white rounded-xl font-bold text-base shadow-lg shadow-red-500/15 transition-all flex items-center justify-center gap-2`}>
+                    {loading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                        {dict.submitting}
+                      </>
+                    ) : (
+                      <>
+                        {existingReportId ? dict.resubmit : dict.submit}
+                        <ArrowRight className={`h-4.5 w-4.5 ${lang === "ar" ? "rotate-180" : ""}`} />
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </form>

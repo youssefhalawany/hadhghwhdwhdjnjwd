@@ -359,31 +359,67 @@ export default function ManagerAuditPage() {
         finalNotes += `\n[System Note: Previously sent back for editing. Reason: ${selectedReport.managerAudit.rejectReason}]`;
       }
 
-      // Add to sales collection
-      await addDoc(collection(db, "sales"), {
+      // Find existing sales document or create new
+      const salesRef = collection(db, "sales");
+      let existingSalesDocId = null;
+
+      if (activeTab === "history") {
+        // First try finding by shiftReportId
+        const qById = query(salesRef, where("shiftReportId", "==", selectedReport.id), limit(1));
+        const idSnap = await getDocs(qById);
+        
+        if (!idSnap.empty) {
+          existingSalesDocId = idSnap.docs[0].id;
+        } else {
+          // Fallback to finding by exact match of older records
+          const qFallback = query(salesRef, 
+            where("date", "==", selectedReport?.cashierDetails?.date),
+            where("shift", "==", auditShift.toLowerCase()),
+            where("storeId", "==", selectedReport?.cashierDetails?.storeId),
+            limit(1)
+          );
+          const fallbackSnap = await getDocs(qFallback);
+          if (!fallbackSnap.empty) {
+            existingSalesDocId = fallbackSnap.docs[0].id;
+          }
+        }
+      }
+
+      const salesData = {
         cash: Number(expectedCash) || 0,
         cashierName: selectedReport?.cashierDetails?.name,
-        createdAt: new Date().toISOString(),
-        createdBy: managerName,
         date: selectedReport?.cashierDetails?.date,
         notes: finalNotes.trim(),
         overShort: calculateCashVariance(),
         shift: auditShift.toLowerCase(),
         storeId: selectedReport?.cashierDetails?.storeId,
         branchId: selectedReport.branchId || currentBranch,
-        visa: Number(expectedVisa) || 0
-      });
+        visa: Number(expectedVisa) || 0,
+        shiftReportId: selectedReport.id
+      };
 
-      try {
-        await fetch("/api/notifications/notify-master", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: "New Sales Record (Shift Approved)",
-            body: `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' })}\nApproved By: ${managerName}\nCashier: ${selectedReport?.cashierDetails?.name}\nShift: ${auditShift}\nSystem Cash: ${expectedCash} EGP\nSystem Visa: ${expectedVisa} EGP\nOver/Short: ${calculateCashVariance()} EGP\nCoffee Variance: ${Number(coffeePercent) || 0}%\nNotes: ${finalNotes || 'None'}\n\nView Approved Report:\n${window.location.origin}/shift-reports/view?id=${selectedReport.id}`
-          })
+      if (existingSalesDocId) {
+        await updateDoc(doc(db, "sales", existingSalesDocId), {
+           ...salesData,
+           updatedAt: new Date().toISOString()
         });
-      } catch (err) { console.error("Notify error", err); }
+      } else {
+        await addDoc(salesRef, {
+           ...salesData,
+           createdBy: managerName,
+           createdAt: new Date().toISOString()
+        });
+      }
+
+      // Fire and forget notification
+      fetch("/api/notifications/notify-master", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "New Sales Record (Shift Approved)",
+          body: `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' })}\nApproved By: ${managerName}\nCashier: ${selectedReport?.cashierDetails?.name}\nShift: ${auditShift}\nSystem Cash: ${expectedCash} EGP\nSystem Visa: ${expectedVisa} EGP\nOver/Short: ${calculateCashVariance()} EGP\nCoffee Variance: ${Number(coffeePercent) || 0}%\nNotes: ${finalNotes || 'None'}\n\nView Approved Report:\n${window.location.origin}/shift-reports/view?id=${selectedReport.id}`
+        })
+      }).catch(err => console.error("Notify error", err));
 
       toast.success("Report Approved & Saved! Sales record created.");
       setActiveTab("history");
@@ -979,15 +1015,26 @@ export default function ManagerAuditPage() {
                               )}
 
                               {/* New format: Detailed cigarette counts */}
-                              {selectedReport.inventoryCounts?.cigaretteCounts && Object.entries(selectedReport.inventoryCounts.cigaretteCounts).map(([type, count]) => (
-                                <tr key={type} className="bg-orange-50/20">
-                                  <td className="p-3 font-medium text-xs sm:text-sm pl-6 border-l-4 border-orange-400">{type}</td>
-                                  <td className="p-3 text-slate-400">-</td>
-                                  <td className="p-3 text-slate-400">-</td>
-                                  <td className="p-3 text-right font-bold">{String(count) || "0"}</td>
-                                  <td className="p-3 text-right text-slate-400">-</td>
-                                </tr>
-                              ))}
+                              {selectedReport.inventoryCounts?.cigaretteCounts && Object.entries(selectedReport.inventoryCounts.cigaretteCounts).map(([type, count]) => {
+                                const isObj = typeof count === 'object' && count !== null;
+                                const start = isObj ? (count as any).start || "0" : "-";
+                                const delivery = isObj ? (count as any).delivery || "0" : "-";
+                                const end = isObj ? (count as any).end || "0" : String(count || "0");
+                                const s = Number(start) || 0;
+                                const d = Number(delivery) || 0;
+                                const e = Number(end) || 0;
+                                const sold = isObj ? String(s + d - e) : "-";
+
+                                return (
+                                  <tr key={type} className="bg-orange-50/20">
+                                    <td className="p-3 font-medium text-xs sm:text-sm pl-6 border-l-4 border-orange-400">{type}</td>
+                                    <td className="p-3">{start}</td>
+                                    <td className="p-3">{delivery}</td>
+                                    <td className="p-3 text-right font-bold">{end}</td>
+                                    <td className="p-3 text-right font-bold bg-amber-50 text-amber-900">{sold}</td>
+                                  </tr>
+                                );
+                              })}
 
                               <tr>
                                 <td className="p-3 font-bold">Lighters (ولاعات)</td>
@@ -1420,16 +1467,26 @@ export default function ManagerAuditPage() {
                             </tr>
                           )}
 
-                          {/* New detailed format */}
-                          {selectedReport.inventoryCounts?.cigaretteCounts && Object.entries(selectedReport.inventoryCounts.cigaretteCounts).map(([type, count]) => (
-                            <tr key={type}>
-                              <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold', fontSize: '10px' }}>{type}</td>
-                              <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', color: '#94a3b8' }}>-</td>
-                              <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', color: '#94a3b8' }}>-</td>
-                              <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>{String(count)}</td>
-                              <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', textAlign: 'right', color: '#94a3b8' }}>-</td>
-                            </tr>
-                          ))}
+                          {selectedReport.inventoryCounts?.cigaretteCounts && Object.entries(selectedReport.inventoryCounts.cigaretteCounts).map(([type, count]) => {
+                            const isObj = typeof count === 'object' && count !== null;
+                            const start = isObj ? (count as any).start || "0" : "-";
+                            const delivery = isObj ? (count as any).delivery || "0" : "-";
+                            const end = isObj ? (count as any).end || "0" : String(count || "0");
+                            const s = Number(start) || 0;
+                            const d = Number(delivery) || 0;
+                            const e = Number(end) || 0;
+                            const sold = isObj ? String(s + d - e) : "-";
+
+                            return (
+                              <tr key={type}>
+                                <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold', fontSize: '10px' }}>{type}</td>
+                                <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0' }}>{start}</td>
+                                <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0' }}>{delivery}</td>
+                                <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>{end}</td>
+                                <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 'bold' }}>{sold}</td>
+                              </tr>
+                            );
+                          })}
                           <tr>
                             <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>Lighters</td>
                             <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0' }}>{selectedReport.inventoryCounts?.lighters?.start || 0}</td>
