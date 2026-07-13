@@ -749,139 +749,108 @@ export default function CreditsPage() {
     {/* HIDDEN PRINT LAYOUT (A4 PDF for Credit) */}
     <style dangerouslySetInnerHTML={{ __html: `
       @media print {
-        @page { size: A4 portrait; margin: 10mm; }
+        @page { size: A4 portrait; margin: 0; }
         html, body { background-color: #fff !important; margin: 0 !important; padding: 0 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        #print-credit-container { display: block !important; }
+        .no-print { display: none !important; }
       }
     `}} />
+    
     {selectedCreditForPrint && (
-        <div className="hidden print:flex flex-col w-full bg-white text-black font-sans box-border" style={{ height: '95vh' }}>
+      <div id="print-credit-container" className="hidden print:block" style={{ width: '210mm', height: '297mm', backgroundColor: '#ffffff', color: '#000000', fontFamily: 'Arial, sans-serif' }}>
+        <div style={{ padding: '60px', height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
           
-          {/* Header Section */}
-          <div className="flex justify-between items-start border-b-2 border-gray-200 pb-6 mb-6">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-red-600 rounded-xl flex items-center justify-center text-white font-bold text-4xl shadow-sm">
-                K
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #1e293b', paddingBottom: '24px', marginBottom: '40px' }}>
+            <div>
+              <h1 style={{ fontSize: '36px', fontWeight: '900', margin: '0 0 8px 0', color: '#1e293b', textTransform: 'uppercase', letterSpacing: '1px' }}>Credit Voucher</h1>
+              <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '3px', margin: 0 }}>Official Financial Record</h2>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <p style={{ margin: '0 0 4px 0', fontSize: '14px', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase' }}>Voucher ID</p>
+              <p style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: '#1e293b', fontFamily: 'monospace' }}>{selectedCreditForPrint.id?.substring(0, 8).toUpperCase()}</p>
+            </div>
+          </div>
+
+          {/* Company Info */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '48px' }}>
+            <div>
+              <p style={{ fontSize: '12px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '8px', fontWeight: 'bold' }}>Company</p>
+              <p style={{ fontSize: '18px', fontWeight: '800', color: '#1e293b', margin: '0 0 4px 0' }}>El Masreya for Trade</p>
+              <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>Branch: <span style={{ fontWeight: 'bold', color: '#1e293b' }}>El Alamein 4</span></p>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <p style={{ fontSize: '12px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '8px', fontWeight: 'bold' }}>Creation Date & Time</p>
+              <p style={{ fontSize: '16px', fontWeight: 'bold', color: '#1e293b', margin: '0 0 4px 0' }}>{new Date(selectedCreditForPrint.createdAt?.toDate ? selectedCreditForPrint.createdAt.toDate() : selectedCreditForPrint.createdAt || Date.now()).toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+              <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>{new Date(selectedCreditForPrint.createdAt?.toDate ? selectedCreditForPrint.createdAt.toDate() : selectedCreditForPrint.createdAt || Date.now()).toLocaleTimeString('en-US')}</p>
+            </div>
+          </div>
+
+          {/* Transaction Details */}
+          <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '32px', marginBottom: '40px' }}>
+            <h3 style={{ fontSize: '14px', color: '#1e293b', textTransform: 'uppercase', letterSpacing: '2px', fontWeight: '800', margin: '0 0 24px 0', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>Credit Details</h3>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
+              <div>
+                <p style={{ fontSize: '12px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px', fontWeight: 'bold' }}>Supplier / Customer Name</p>
+                <p style={{ fontSize: '20px', fontWeight: 'bold', color: '#1e293b', margin: 0, textTransform: 'capitalize' }}>{selectedCreditForPrint.companyName}</p>
               </div>
               <div>
-                <h1 className="text-2xl font-black text-gray-900 tracking-tight m-0">CIRCLE K EL-ALAMEIN 4</h1>
-                <p className="text-sm font-bold text-gray-500 uppercase tracking-widest m-0 mt-1">Financial Department</p>
+                <p style={{ fontSize: '12px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px', fontWeight: 'bold' }}>Agreed Payment Date</p>
+                <p style={{ fontSize: '20px', fontWeight: 'bold', color: '#dc2626', margin: 0 }}>{selectedCreditForPrint.collectionDate || 'N/A'}</p>
               </div>
             </div>
-            <div className="text-right">
-              <h2 className="text-3xl font-black text-gray-900 m-0 mb-2" dir="rtl">اعتماد فاتورة آجلة</h2>
-              <div className="inline-block bg-gray-100 px-4 py-2 rounded-lg border border-gray-200">
-                <span className="text-xs text-gray-600 font-bold uppercase mr-2">Credit Voucher</span>
-                <span className="text-lg text-gray-900 font-black font-mono">#{selectedCreditForPrint.id.substring(0, 8).toUpperCase()}</span>
-              </div>
-            </div>
-          </div>
 
-          {/* Intro Text */}
-          <div className="text-right dir-rtl mb-6">
-            <p className="text-lg leading-relaxed text-gray-800 font-medium">
-              تُقر نحن إدارة الفرع بأن الطلب الموضح أدناه قد تم تنفيذه وفق نظام الآجل، وذلك بناءً على الاتفاق المسبق مع المورد. وتفاصيل الطلب كالتالي:
-            </p>
-          </div>
-
-          {/* Detailed Grid Data */}
-          <div className="border-2 border-gray-200 rounded-xl overflow-hidden mb-8">
-            <div className="flex border-b border-gray-200 bg-gray-50">
-              <div className="flex-1 p-4 border-r border-gray-200">
-                <p className="text-xs text-gray-500 uppercase font-bold mb-1">Our Company / شركتنا</p>
-                <p className="text-lg font-bold text-gray-900">El Masreya for Trade</p>
-              </div>
-              <div className="flex-1 p-4">
-                <p className="text-xs text-gray-500 uppercase font-bold mb-1">Supplier / المورد</p>
-                <p className="text-lg font-bold text-gray-900">{selectedCreditForPrint.companyName}</p>
-              </div>
-            </div>
-            <div className="flex border-b border-gray-200 bg-white">
-              <div className="flex-1 p-4 border-r border-gray-200">
-                <p className="text-xs text-gray-500 uppercase font-bold mb-1">Invoice No. / رقم الفاتورة</p>
-                <p className="text-lg font-bold text-gray-900 font-mono">{selectedCreditForPrint.invoiceNumber || 'N/A'}</p>
-              </div>
-              <div className="flex-1 p-4">
-                <p className="text-xs text-gray-500 uppercase font-bold mb-1">PO No. / رقم الأمر</p>
-                <p className="text-lg font-bold text-gray-900 font-mono">{selectedCreditForPrint.poNumber || 'N/A'}</p>
-              </div>
-            </div>
-            <div className="flex bg-gray-50">
-              <div className="flex-1 p-4 border-r border-gray-200">
-                <p className="text-xs text-gray-500 uppercase font-bold mb-1">Branch / الفرع</p>
-                <p className="text-lg font-bold text-gray-900">El Alamein 4</p>
-              </div>
-              <div className="flex-1 p-4">
-                <p className="text-xs text-gray-500 uppercase font-bold mb-1">Collection Date / تاريخ التحصيل</p>
-                <p className="text-lg font-bold text-gray-900">{selectedCreditForPrint.collectionDate}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Financial Summary Section */}
-          <div className="mb-8">
-            <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-3">Financial Details / التفاصيل المالية</h3>
-            <div className="border-2 border-gray-200 rounded-xl overflow-hidden">
-              <table className="w-full text-left border-collapse">
-                <thead className="bg-gray-100 border-b-2 border-gray-200">
-                  <tr>
-                    <th className="p-4 font-bold text-gray-700 border-r border-gray-200">Invoice Value <br/><span className="text-xs">قيمة الفاتورة</span></th>
-                    <th className="p-4 font-bold text-gray-700 border-r border-gray-200">Tax <br/><span className="text-xs">الضريبة</span></th>
-                    <th className="p-4 font-black text-gray-900 border-r border-gray-200 text-lg">Total Amount <br/><span className="text-xs">الإجمالي</span></th>
-                    <th className="p-4 font-bold text-gray-700 text-center">Taxable <br/><span className="text-xs">خاضع</span></th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white">
-                  <tr>
-                    <td className="p-4 font-mono text-lg font-bold text-gray-800 border-r border-gray-200">EGP {Number(selectedCreditForPrint.amountDue).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                    <td className="p-4 font-mono text-lg font-bold text-gray-800 border-r border-gray-200">EGP {Number(selectedCreditForPrint.tax || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                    <td className="p-4 font-mono text-xl font-black text-gray-900 border-r border-gray-200 bg-gray-50">EGP {Number(selectedCreditForPrint.amountDue + selectedCreditForPrint.tax).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                    <td className="p-4 text-center font-bold text-lg">{selectedCreditForPrint.isTaxable ? '(Yes) نعم' : '(No) لا'}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Approvals and Signatures */}
-          <div className="flex justify-between p-8 bg-white border-2 border-gray-200 rounded-2xl shadow-sm mb-auto">
-            <div className="w-1/2 flex flex-col justify-between">
-              <p className="text-sm text-gray-600 italic font-medium leading-relaxed mb-10">
-                "I officially approve this credit invoice for future payment as per the agreed terms and conditions."
-              </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', marginTop: '32px', paddingTop: '24px', borderTop: '1px dashed #cbd5e1' }}>
               <div>
-                <div className="border-b-2 border-gray-400 h-10 mb-3"></div>
-                <p className="text-base font-black text-gray-900 uppercase text-center m-0">Store Manager / توقيع المدير</p>
-                <p className="text-xs font-bold text-gray-500 text-center mt-1 font-mono">Auth: {selectedCreditForPrint.createdBy?.split('@')[0] || "SYS"}</p>
+                <p style={{ fontSize: '12px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px', fontWeight: 'bold' }}>Invoice Number</p>
+                <p style={{ fontSize: '18px', fontWeight: 'bold', color: '#1e293b', margin: 0, fontFamily: 'monospace' }}>{selectedCreditForPrint.invoiceNumber || 'N/A'}</p>
               </div>
-            </div>
-
-            <div className="w-1/3 flex items-center justify-center">
-              <div className="border-4 border-blue-900 rounded-full w-32 h-32 flex flex-col items-center justify-center font-black -rotate-6 bg-blue-50/50">
-                <span className="text-2xl text-blue-900 tracking-wider">CIRCLE K</span>
-                <span className="text-sm text-blue-900 text-center leading-tight mt-1">EL ALAMEIN<br/>BR. 4</span>
+              <div>
+                <p style={{ fontSize: '12px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px', fontWeight: 'bold' }}>PO Number</p>
+                <p style={{ fontSize: '18px', fontWeight: 'bold', color: '#1e293b', margin: 0, fontFamily: 'monospace' }}>{selectedCreditForPrint.poNumber || 'N/A'}</p>
               </div>
             </div>
           </div>
 
-          {/* Approved Stamp */}
-          <div className="flex items-center justify-center py-6">
-            <div className="border-8 border-double border-red-600 rounded-2xl px-10 py-6 flex flex-col items-center justify-center text-red-600 bg-white -rotate-3 shadow-lg">
-              <span className="text-4xl font-black tracking-[0.3em] uppercase m-0 leading-none mb-2">APPROVED</span>
-              <span className="text-3xl font-black mb-3 leading-none">معتمد للآجل</span>
-              <div className="h-1 bg-red-600 w-full mb-3"></div>
-              <span className="text-sm font-bold tracking-widest font-mono text-red-600">DATE: {selectedCreditForPrint.collectionDate}</span>
+          {/* Amount Box */}
+          <div style={{ backgroundColor: '#1e293b', borderRadius: '12px', padding: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
+            <span style={{ fontSize: '16px', fontWeight: '600', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '2px' }}>Total Amount Due</span>
+            <span style={{ fontSize: '36px', fontWeight: '900', color: '#ffffff' }}>EGP {Number(selectedCreditForPrint.amountDue + (selectedCreditForPrint.tax || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '40px' }}>
+            <div style={{ backgroundColor: '#f1f5f9', padding: '20px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+              <p style={{ fontSize: '12px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px', fontWeight: 'bold' }}>Subtotal</p>
+              <p style={{ fontSize: '18px', fontWeight: 'bold', color: '#1e293b', margin: 0 }}>EGP {Number(selectedCreditForPrint.amountDue).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+            </div>
+            <div style={{ backgroundColor: '#f1f5f9', padding: '20px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+              <p style={{ fontSize: '12px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px', fontWeight: 'bold' }}>Tax</p>
+              <p style={{ fontSize: '18px', fontWeight: 'bold', color: '#1e293b', margin: 0 }}>EGP {Number(selectedCreditForPrint.tax || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+            </div>
+            <div style={{ backgroundColor: '#f1f5f9', padding: '20px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+              <p style={{ fontSize: '12px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px', fontWeight: 'bold' }}>Type</p>
+              <p style={{ fontSize: '18px', fontWeight: 'bold', color: '#1e293b', margin: 0 }}>{selectedCreditForPrint.onSalesOnly ? 'Sales Only' : 'Standard Credit'}</p>
+            </div>
+          </div>
+
+          {/* System Verification Stamp */}
+          <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'center', alignItems: 'center', paddingTop: '40px' }}>
+            <div style={{ border: '4px solid #16a34a', borderRadius: '8px', padding: '16px 32px', textAlign: 'center', transform: 'rotate(-2deg)' }}>
+              <p style={{ margin: '0 0 4px 0', fontSize: '24px', fontWeight: '900', color: '#16a34a', textTransform: 'uppercase', letterSpacing: '2px' }}>Approved & Saved</p>
+              <p style={{ margin: 0, fontSize: '12px', fontWeight: 'bold', color: '#15803d', textTransform: 'uppercase', letterSpacing: '1px' }}>Recorded in Financial Database</p>
             </div>
           </div>
 
           {/* Footer */}
-          <div className="mt-auto border-t-2 border-gray-300 pt-4 flex justify-between">
-            <p className="text-xs text-gray-500 font-mono font-bold m-0">
-              REF: CRD-{selectedCreditForPrint.id.substring(0, 10).toUpperCase()} • PRINTED: {new Date().toLocaleString()}
-            </p>
-            <p className="text-xs font-black text-gray-900 m-0 tracking-widest uppercase">PAGE 1 OF 1</p>
+          <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '24px', marginTop: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8' }}>Generated by: <span style={{ fontWeight: 'bold', color: '#64748b' }}>{selectedCreditForPrint.createdBy}</span></p>
+            <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8' }}>Secure Automated Receipt</p>
           </div>
+
         </div>
-      )}
+      </div>
+    )}
     </>
   );
 }
