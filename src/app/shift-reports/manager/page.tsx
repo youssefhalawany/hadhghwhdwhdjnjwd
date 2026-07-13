@@ -1484,9 +1484,42 @@ export default function ManagerAuditPage() {
                   {renderHeader("SHIFT REPORT (INVENTORY)")}
                   
                   <div style={{ padding: '10px 40px', position: 'relative', zIndex: 10 }}>
+                    {(() => {
+                      let totalCigarettesSold = 0;
+                      if (selectedReport.inventoryCounts?.cigaretteCounts) {
+                        Object.values(selectedReport.inventoryCounts.cigaretteCounts).forEach((count: any) => {
+                          if (typeof count === 'object' && count !== null) {
+                            const s = Number(count.start) || 0;
+                            const d = Number(count.delivery) || 0;
+                            const e = Number(count.end) || 0;
+                            totalCigarettesSold += (s + d - e);
+                          }
+                        });
+                      }
+                      const totalLightersSold = Number(selectedReport.inventoryCounts?.lighters?.sold) || 0;
+                      const totalUnits = totalCigarettesSold + totalLightersSold;
+                      
+                      return (
+                        <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
+                          <div style={{ flex: 1, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderTop: '4px solid #f97316', borderRadius: '8px', padding: '12px 15px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                            <p style={{ margin: '0 0 5px', fontSize: '10px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Cigarettes Sold</p>
+                            <p style={{ margin: 0, fontSize: '24px', fontWeight: '900', color: '#0f172a' }}>{totalCigarettesSold} <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8' }}>Packs</span></p>
+                          </div>
+                          <div style={{ flex: 1, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderTop: '4px solid #eab308', borderRadius: '8px', padding: '12px 15px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                            <p style={{ margin: '0 0 5px', fontSize: '10px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Lighters Sold</p>
+                            <p style={{ margin: 0, fontSize: '24px', fontWeight: '900', color: '#0f172a' }}>{totalLightersSold} <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8' }}>Units</span></p>
+                          </div>
+                          <div style={{ flex: 1, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderTop: '4px solid #3b82f6', borderRadius: '8px', padding: '12px 15px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                            <p style={{ margin: '0 0 5px', fontSize: '10px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Units Moved</p>
+                            <p style={{ margin: 0, fontSize: '24px', fontWeight: '900', color: '#0f172a' }}>{totalUnits} <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8' }}>Total</span></p>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
                     <div style={{ border: '2px solid #e2e8f0', marginBottom: '8px', borderRadius: '4px', overflow: 'hidden' }}>
                       <div style={{ backgroundColor: '#f8fafc', padding: '4px 15px', borderBottom: '2px solid #e2e8f0', fontWeight: 'bold', color: '#1e293b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                        3. Inventory Counts & Shrinkage
+                        3. Detailed Inventory Breakdown
                       </div>
                       <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '11px' }}>
                         <thead style={{ backgroundColor: '#f1f5f9' }}>
