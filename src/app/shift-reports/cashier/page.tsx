@@ -100,13 +100,29 @@ const t = {
 };
 
 export const CIGARETTE_TYPES = [
-  "Marlboro Purple Mix", "Marlboro Crafted Gold", "Marlboro Crafted Red",
-  "Marlboro White Local", "Marlboro Red Local",
-  "L&M Forward", "L&M Ultra Lights", "L&M Red", "L&M Blue",
-  "Merit Blue Local", "Merit Yellow Local",
-  "Terea Amber", "Terea Silver", "Terea Sun Pearl", "Terea Purple Wave",
-  "Terea Oasis Pearl", "Terea Turquoise Mint", "Terea Sienna", "Terea Russet",
-  "Terea Summer Wave", "Terea Arbor Pearl", "Terea Rigan", "Terea Khaki"
+  { id: "Marlboro Purple Mix", en: "Marlboro Purple Mix", ar: "مارلبورو بيربل ميكس" },
+  { id: "Marlboro Crafted Gold", en: "Marlboro Crafted Gold", ar: "مارلبورو كرافتد جولد" },
+  { id: "Marlboro Crafted Red", en: "Marlboro Crafted Red", ar: "مارلبورو كرافتد أحمر" },
+  { id: "Marlboro White Local", en: "Marlboro White Local", ar: "مارلبورو أبيض محلي" },
+  { id: "Marlboro Red Local", en: "Marlboro Red Local", ar: "مارلبورو أحمر محلي" },
+  { id: "L&M Forward", en: "L&M Forward", ar: "إل آند إم فوروارد" },
+  { id: "L&M Ultra Lights", en: "L&M Ultra Lights", ar: "إل آند إم ألترا لايتس" },
+  { id: "L&M Red", en: "L&M Red", ar: "إل آند إم أحمر" },
+  { id: "L&M Blue", en: "L&M Blue", ar: "إل آند إم أزرق" },
+  { id: "Merit Blue Local", en: "Merit Blue Local", ar: "ميريت أزرق محلي" },
+  { id: "Merit Yellow Local", en: "Merit Yellow Local", ar: "ميريت أصفر محلي" },
+  { id: "Terea Amber", en: "Terea Amber", ar: "تيريا عنبر" },
+  { id: "Terea Silver", en: "Terea Silver", ar: "تيريا فضي" },
+  { id: "Terea Sun Pearl", en: "Terea Sun Pearl", ar: "تيريا صن بيرل" },
+  { id: "Terea Purple Wave", en: "Terea Purple Wave", ar: "تيريا بيربل ويف" },
+  { id: "Terea Oasis Pearl", en: "Terea Oasis Pearl", ar: "تيريا أواسيس بيرل" },
+  { id: "Terea Turquoise Mint", en: "Terea Turquoise Mint", ar: "تيريا تركواز منت" },
+  { id: "Terea Sienna", en: "Terea Sienna", ar: "تيريا سيينا" },
+  { id: "Terea Russet", en: "Terea Russet", ar: "تيريا روسيت" },
+  { id: "Terea Summer Wave", en: "Terea Summer Wave", ar: "تيريا سمر ويف" },
+  { id: "Terea Arbor Pearl", en: "Terea Arbor Pearl", ar: "تيريا أربور بيرل" },
+  { id: "Terea Rigan", en: "Terea Rigan", ar: "تيريا ريجان" },
+  { id: "Terea Khaki", en: "Terea Khaki", ar: "تيريا كاكي" }
 ];
 
 export default function CashierShiftReportPage() {
@@ -965,14 +981,31 @@ export default function CashierShiftReportPage() {
 
                   <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50 p-4 rounded-xl border-dashed">
                     <span className="text-xs sm:text-sm font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">{dict.totalDrops}</span>
-                    <span className="text-lg sm:text-xl font-black text-slate-900 dark:text-white font-mono">EGP {calcula                  {/* Detailed Cigarettes */}
+                    <span className="text-lg sm:text-xl font-black text-slate-900 dark:text-white font-mono">EGP {calculateTotalMoney().toFixed(2)}</span>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            {/* Right Column: Inventory & Signature */}
+            <div className="space-y-6">
+              
+              {/* 3. Inventory Checks */}
+              {cashierRole === 1 && (
+                <section className="glass-panel p-5 rounded-2xl space-y-4">
+                  <div className="flex items-center gap-2 border-b border-slate-150 dark:border-slate-800 pb-3">
+                    <Package className="h-5 w-5 text-orange-500" />
+                    <h2 className="text-base sm:text-lg font-black text-slate-800 dark:text-white uppercase tracking-wider">{dict.inventory}</h2>
+                  </div>
+                  
+                  {/* Detailed Cigarettes */}
                   <div className="space-y-2.5 bg-slate-50/50 dark:bg-slate-900/40 p-4 rounded-xl border border-slate-200/60 dark:border-slate-800 animate-in fade-in">
                     <h3 className="font-bold text-slate-700 dark:text-slate-350 border-b border-slate-200 dark:border-slate-800 pb-2 uppercase tracking-widest text-[10px]">{dict.cigarettes}</h3>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                       {CIGARETTE_TYPES.map((type) => (
-                        <div key={type} className="flex flex-col gap-1">
-                          <label className="text-[10px] sm:text-xs font-bold text-slate-600 dark:text-slate-400 truncate" title={type}>
-                            {type}
+                        <div key={type.id} className="flex flex-col gap-1">
+                          <label className="text-[10px] sm:text-xs font-bold text-slate-600 dark:text-slate-400 truncate" title={type[lang]}>
+                            {type[lang]}
                           </label>
                           <input 
                             required 
@@ -981,8 +1014,8 @@ export default function CashierShiftReportPage() {
                             pattern="[0-9]*" 
                             min="0" 
                             placeholder="Count"
-                            value={cigaretteCounts[type] || ""} 
-                            onChange={(e) => setCigaretteCounts({ ...cigaretteCounts, [type]: e.target.value })} 
+                            value={cigaretteCounts[type.id] || ""} 
+                            onChange={(e) => setCigaretteCounts({ ...cigaretteCounts, [type.id]: e.target.value })} 
                             className="w-full p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-orange-500 text-center font-mono text-sm font-bold shadow-sm" 
                           />
                         </div>
