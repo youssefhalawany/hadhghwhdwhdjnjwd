@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { db, auth } from "@/lib/firebase";
-import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, getDocs, getDoc, updateDoc, where } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, getDocs, getDoc, updateDoc, where, limit } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { Plus, Check, X, ShieldAlert, DollarSign, Calendar, Save, Trash2, CheckCircle2, Printer, Filter } from "lucide-react";
 import { toast } from "sonner";
@@ -98,7 +98,7 @@ export default function AdminPayrollPage() {
     };
     fetchEmps();
 
-    const unsubDrafts = onSnapshot(collection(db, "payroll_drafts"), (snap) => {
+    const unsubDrafts = onSnapshot(query(collection(db, "payroll_drafts"), limit(100)), (snap) => {
       setDrafts(snap.docs.map(d => ({ id: d.id, ...d.data() } as PayrollRecord)).sort((a, b) => {
         const aTime = typeof a.createdAt === 'object' && a.createdAt?.seconds ? a.createdAt.seconds : (a.createdAt || "");
         const bTime = typeof b.createdAt === 'object' && b.createdAt?.seconds ? b.createdAt.seconds : (b.createdAt || "");
@@ -106,7 +106,7 @@ export default function AdminPayrollPage() {
       }));
     });
 
-    const unsubLines = onSnapshot(query(collection(db, "payroll_lines"), orderBy("createdAt", "desc")), (snap) => {
+    const unsubLines = onSnapshot(query(collection(db, "payroll_lines"), orderBy("createdAt", "desc"), limit(100)), (snap) => {
       setPaidLines(snap.docs.map(d => ({ id: d.id, ...d.data() } as PayrollRecord)));
     });
 

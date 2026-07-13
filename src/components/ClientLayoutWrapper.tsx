@@ -60,7 +60,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     // Firebase Auth Listener
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
-      
+
       if (currentUser) {
         // Fetch user document
         try {
@@ -68,18 +68,18 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
           if (docSnap.exists()) {
             const data = docSnap.data();
             setUserDoc(data);
-            
+
             // Map storeIds to local BranchIds
             const allowedIds = data.storeIds || [];
             const mappedBranches: { id: BranchId; name: string }[] = [];
-            
+
             if (allowedIds.includes("eL-alamein-4")) {
               mappedBranches.push({ id: "alamein4", name: "El Alamein 4" });
             }
             if (allowedIds.includes("ola-el-koronfol")) {
               mappedBranches.push({ id: "ola", name: "Ola El Koronfol" });
             }
-            
+
             if (mappedBranches.length > 0) {
               setAvailableBranches(mappedBranches);
               // Auto select if only 1 branch
@@ -105,23 +105,23 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
           if (permission === "granted" && messaging) {
             const messagingInstance = await messaging;
             if (messagingInstance) {
-              const token = await getToken(messagingInstance, { 
-                vapidKey: "BHiDvLTbQ2DTED8p7X1BQ8Vu811fuu3dmpVfclmA5P7n-DuRltU7kkai9E2_2VkbLpS7Ns5ekNQClP5CsTeWf7M" 
+              const token = await getToken(messagingInstance, {
+                vapidKey: "BHiDvLTbQ2DTED8p7X1BQ8Vu811fuu3dmpVfclmA5P7n-DuRltU7kkai9E2_2VkbLpS7Ns5ekNQClP5CsTeWf7M"
               });
-            if (token) {
-              console.log("FCM Token:", token);
-              await dbService.setDoc("user_tokens", currentUser.uid, {
-                fcmToken: token,
-                email: currentUser.email,
-                updatedAt: new Date().toISOString()
-              });
+              if (token) {
+                console.log("FCM Token:", token);
+                await dbService.setDoc("user_tokens", currentUser.uid, {
+                  fcmToken: token,
+                  email: currentUser.email,
+                  updatedAt: new Date().toISOString()
+                });
+              }
             }
           }
+        } catch (err) {
+          console.error("FCM Token generation failed:", err);
         }
-      } catch (err) {
-        console.error("FCM Token generation failed:", err);
       }
-    }
 
       // Show welcome toast if just logged in (using sessionStorage to prevent repeats on refresh)
       if (currentUser && typeof window !== "undefined") {
@@ -142,10 +142,10 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       // Assuming managers query specific branch or all
       // We will just do a basic query for 'pending' status for the current branch
       // If "all", we query without branch filter if they are an admin.
-      const shiftQ = currentBranch === "all" 
+      const shiftQ = currentBranch === "all"
         ? query(collection(db, "shift_reports"), where("status", "==", "pending"))
         : query(collection(db, "shift_reports"), where("status", "==", "pending"), where("branchId", "==", currentBranch));
-      
+
       unsubscribeShifts = onSnapshot(shiftQ, (snap) => {
         setPendingShiftCount(snap.docs.length);
       }, (err) => console.log("Shift badge err", err));
@@ -153,7 +153,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       const voidQ = currentBranch === "all"
         ? query(collection(db, "void_requests"), where("status", "==", "pending"))
         : query(collection(db, "void_requests"), where("status", "==", "pending"), where("branchId", "==", currentBranch));
-      
+
       unsubscribeVoids = onSnapshot(voidQ, (snap) => {
         setPendingVoidCount(snap.docs.length);
       }, (err) => console.log("Void badge err", err));
@@ -211,7 +211,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
         gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
         osc.start();
         osc.stop(ctx.currentTime + 0.1);
-      } catch (e) {}
+      } catch (e) { }
     };
 
     const handleClick = (e: MouseEvent) => {
@@ -259,32 +259,42 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   };
 
   const navItems = [
-    { name: "Financials", icon: FileText, children: [
-      { name: "Financial Inputs", href: "/financials/inputs", icon: Wallet },
-      { name: t("nav.reports"), href: "/financial-reports", icon: FileText },
-      { name: "Voids & Returns", href: "/voids/manager", icon: Shield },
-      { name: "Shift Audit", href: "/shift-reports/manager", icon: Shield },
-      { name: "Margin Strategy", href: "/dashboard/margin-calculator", icon: Activity }
-    ]},
+    {
+      name: "Financials", icon: FileText, children: [
+        { name: "Financial Inputs", href: "/financials/inputs", icon: Wallet },
+        { name: t("nav.reports"), href: "/financial-reports", icon: FileText },
+        { name: "Voids & Returns", href: "/voids/manager", icon: Shield },
+        { name: "Shift Audit", href: "/shift-reports/manager", icon: Shield },
+        { name: "Margin Strategy", href: "/dashboard/margin-calculator", icon: Activity }
+      ]
+    },
     { name: "Returns", href: "/dashboard/supplier-returns", icon: Truck },
-    { name: "Expired", icon: PackageX, children: [
-      { name: t("nav.expiries"), href: "/dashboard/expiries-audit", icon: ClipboardList },
-      { name: "Product Lookup", href: "/admin/product-lookup", icon: Search },
-      { name: "Blind Audit", href: "/inventory-audit/manager", icon: Shield }
-    ]},
-    { name: "Admin", icon: Shield, children: [
-      { name: "Smart Scheduler", href: "/admin/schedule", icon: CalendarDays },
-      { name: "Payroll System", href: "/admin/payroll", icon: DollarSign },
-      { name: "Inventory Predict", href: "/admin/inventory-predict", icon: Database },
-      { name: "Cashier Accounts", href: "/settings/cashiers", icon: Users },
-      { name: "Send Notifications", href: "/settings/notifications", icon: Bell },
-      { name: "Security Audit Log", href: "/settings/audit-log", icon: Shield },
-      { name: "Import Products", href: "/admin/import-csv", icon: Database }
-    ]},
+    {
+      name: "Expired", icon: PackageX, children: [
+        { name: t("nav.expiries"), href: "/dashboard/expiries-audit", icon: ClipboardList },
+        { name: "Product Lookup", href: "/admin/product-lookup", icon: Search },
+        { name: "Blind Audit", href: "/inventory-audit/manager", icon: Shield }
+      ]
+    },
+    {
+      name: "HR", icon: Users, children: [
+        { name: "Employees", href: "/hr/employees", icon: Users },
+        { name: "Cashier Accounts", href: "/settings/cashiers", icon: Users },
+        { name: "Payroll System", href: "/admin/payroll", icon: DollarSign },
+        { name: "Smart Scheduler", href: "/admin/schedule", icon: CalendarDays }
+      ]
+    },
     { name: "Checklists", href: "/checklists/manager", icon: ClipboardList },
-    { name: "HR", icon: Users, children: [
-      { name: "Employees", href: "/hr/employees", icon: Users }
-    ]},
+    {
+      name: "Admin", icon: Shield, children: [
+        { name: "Inventory Predict", href: "/admin/inventory-predict", icon: Database },
+        { name: "Send Notifications", href: "/settings/notifications", icon: Bell },
+        { name: "Security Audit Log", href: "/settings/audit-log", icon: Shield },
+        { name: "Import Products", href: "/admin/import-csv", icon: Database }
+      ]
+    },
+
+
     { name: "", href: "/cashier", icon: User, isIconOnly: true }
   ];
 
@@ -316,7 +326,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       <div className="min-h-screen flex flex-col items-center justify-center bg-background relative overflow-hidden">
         {/* Decorative background blur */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-red-500/20 rounded-full blur-[100px] pointer-events-none"></div>
-        
+
         <div className="z-10 flex flex-col items-center animate-in fade-in zoom-in duration-1000">
           <div className="relative">
             <div className="absolute inset-0 bg-red-600 rounded-full animate-ping opacity-20"></div>
@@ -326,7 +336,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
           </div>
           <h1 className="mt-8 text-3xl sm:text-4xl font-extrabold tracking-widest text-red-600 dark:text-red-500">CIRCLE K</h1>
           <p className="mt-3 text-sm text-muted-foreground uppercase tracking-[0.2em] font-semibold">Franchise Portal</p>
-          
+
           <div className="mt-12 flex gap-2">
             <div className="w-2 h-2 rounded-full bg-red-600 animate-bounce" style={{ animationDelay: '0ms' }}></div>
             <div className="w-2 h-2 rounded-full bg-red-600 animate-bounce" style={{ animationDelay: '150ms' }}></div>
@@ -346,9 +356,9 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
               K
             </div>
             <h1 className="text-2xl font-bold tracking-wider text-red-600 dark:text-red-500">CIRCLE K</h1>
-            <p className="text-sm text-muted-foreground uppercase tracking-widest font-semibold text-center mt-2">Franchise Enterprise<br/>Authorized Access Only</p>
+            <p className="text-sm text-muted-foreground uppercase tracking-widest font-semibold text-center mt-2">Franchise Enterprise<br />Authorized Access Only</p>
           </div>
-          
+
           <form onSubmit={handleLogin} className="space-y-4">
             {authError && (
               <div className="bg-red-500/10 text-red-500 p-3 rounded-lg text-sm text-center border border-red-500/20 font-medium">
@@ -357,8 +367,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
             )}
             <div>
               <label className="text-xs font-bold text-muted-foreground uppercase">Email Address</label>
-              <input 
-                type="email" 
+              <input
+                type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full mt-1 bg-muted/50 border border-border rounded-lg p-3 text-sm outline-none focus:border-red-500 transition-colors"
@@ -367,16 +377,16 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
             </div>
             <div>
               <label className="text-xs font-bold text-muted-foreground uppercase">Password</label>
-              <input 
-                type="password" 
+              <input
+                type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full mt-1 bg-muted/50 border border-border rounded-lg p-3 text-sm outline-none focus:border-red-500 transition-colors"
                 required
               />
             </div>
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               className="w-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white font-bold py-3 rounded-lg mt-4 transition-all hover:scale-[1.02] shadow-lg shadow-red-500/20"
             >
               Sign In to Enterprise System
@@ -393,7 +403,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
       {/* Desktop Sidebar */}
       {!pathname.startsWith('/cashier') && (
-        <aside className="hidden lg:flex flex-col w-64 border-r border-border bg-card z-50 flex-shrink-0">
+        <aside className="hidden lg:flex flex-col w-64 border-r border-border bg-card z-50 flex-shrink-0 print:hidden">
           <div className="p-4 border-b border-border flex flex-col gap-4">
             <Link href="/" className="flex items-center gap-3">
               {logoUrl ? (
@@ -416,7 +426,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
             {navItems.map((item) => {
               const isActive = item.href ? pathname === item.href : item.children?.some(child => pathname === child.href);
               const Icon = item.icon;
-              
+
               if (item.children) {
                 return (
                   <div key={item.name} className="flex flex-col gap-1">
@@ -474,25 +484,25 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
           </div>
 
           <div className="p-4 border-t border-border mt-auto">
-             <button
-                onClick={() => signOut(auth)}
-                className="w-full flex items-center justify-center gap-2 p-2.5 rounded-lg border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors text-sm font-bold"
-              >
-                <LogOut className="h-4 w-4" /> {language === "ar" ? "تسجيل الخروج" : "Sign Out"}
-              </button>
+            <button
+              onClick={() => signOut(auth)}
+              className="w-full flex items-center justify-center gap-2 p-2.5 rounded-lg border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors text-sm font-bold"
+            >
+              <LogOut className="h-4 w-4" /> {language === "ar" ? "تسجيل الخروج" : "Sign Out"}
+            </button>
           </div>
         </aside>
       )}
 
       {/* Main Content Area */}
-      <div className="flex-grow flex flex-col min-w-0 max-h-screen overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 max-h-screen overflow-hidden print:max-h-none print:overflow-visible">
         {/* Top Header */}
         {!pathname.startsWith('/cashier') && (
-          <header className="h-16 flex-shrink-0 glass-header border-b border-border flex items-center justify-between px-4 sm:px-6 z-40">
-            
+          <header className="h-16 flex-shrink-0 glass-header border-b border-border flex items-center justify-between px-4 sm:px-6 z-40 print:hidden">
+
             {/* Mobile Left: Logo & Hamburger */}
             <div className="flex lg:hidden items-center gap-3">
-              <button 
+              <button
                 className="p-2 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground transition-colors"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               >
@@ -541,7 +551,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                     </span>
                   )}
                 </button>
-                
+
                 {/* Dropdown omitted for brevity but keeps original logic */}
                 {notificationsOpen && (
                   <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-900 border border-border rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col">
@@ -625,11 +635,10 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                           key={child.href}
                           href={child.href}
                           onClick={() => setMobileMenuOpen(false)}
-                          className={`flex justify-between items-center px-6 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                            isActive
-                              ? "bg-red-500/10 text-red-600 dark:text-red-500"
-                              : "text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-foreground"
-                          }`}
+                          className={`flex justify-between items-center px-6 py-2.5 rounded-lg text-sm font-semibold transition-all ${isActive
+                            ? "bg-red-500/10 text-red-600 dark:text-red-500"
+                            : "text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-foreground"
+                            }`}
                         >
                           <div className="flex items-center gap-3">
                             <child.icon className="h-4 w-4" />
@@ -649,11 +658,10 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                   key={item.href || item.name}
                   href={item.href!}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
-                    isActive
-                      ? "bg-red-500/10 text-red-600 dark:text-red-500"
-                      : "text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-foreground"
-                  }`}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${isActive
+                    ? "bg-red-500/10 text-red-600 dark:text-red-500"
+                    : "text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-foreground"
+                    }`}
                 >
                   <Icon className="h-5 w-5" />
                   {item.name || "Cashier Portal"}

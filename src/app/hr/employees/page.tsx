@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { db, auth } from "@/lib/firebase";
+import { db, auth, storage } from "@/lib/firebase";
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import {
   collection,
   query,
@@ -28,7 +29,11 @@ import {
   Download,
   Printer,
   RefreshCw,
-  UserCheck
+  UserCheck,
+  BarChart3,
+  CheckCircle,
+  Camera,
+  Upload
 } from "lucide-react";
 import { toast } from "sonner";
 import { onAuthStateChanged } from "firebase/auth";
@@ -53,6 +58,7 @@ interface Employee {
   phone?: string;
   chequeSignedNum?: string;
   photoUrl?: string;
+  nationalIdPhotoUrl?: string;
   startDate: string;
   createdAt?: any;
   createdBy?: string;
@@ -68,10 +74,11 @@ export default function EmployeesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("All Status");
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [activeEmployeeId, setActiveEmployeeId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [isUploadingID, setIsUploadingID] = useState(false);
 
   const contractRef = useRef<HTMLDivElement>(null);
 
@@ -90,6 +97,7 @@ export default function EmployeesPage() {
     phone: "",
     chequeSignedNum: "",
     photoUrl: "",
+    nationalIdPhotoUrl: "",
     startDate: new Date().toISOString().split("T")[0]
   });
 
@@ -162,10 +170,7 @@ export default function EmployeesPage() {
     setShowAddModal(true);
   };
 
-  const handleOpenDetails = (emp: Employee) => {
-    setSelectedEmployee(emp);
-    setShowDetailsModal(true);
-  };
+
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -204,6 +209,26 @@ export default function EmployeesPage() {
       toast.error("Failed to save employee");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleIDUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingID(true);
+    const fileRef = ref(storage, `employee_ids/${Date.now()}_${file.name}`);
+    
+    try {
+      const uploadTask = await uploadBytesResumable(fileRef, file);
+      const downloadURL = await getDownloadURL(uploadTask.ref);
+      setFormData(prev => ({ ...prev, nationalIdPhotoUrl: downloadURL }));
+      toast.success("ID photo uploaded!");
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.error("Failed to upload ID photo");
+    } finally {
+      setIsUploadingID(false);
     }
   };
 
@@ -247,170 +272,294 @@ export default function EmployeesPage() {
   const fmtCurrency = (n: number) => 
     new Intl.NumberFormat("en-EG", { style: "currency", currency: "EGP" }).format(n || 0);
 
+  useEffect(() => {
+    if (filtered.length > 0 && !activeEmployeeId) {
+      setActiveEmployeeId(filtered[0].id);
+    } else if (filtered.length === 0) {
+      setActiveEmployeeId(null);
+    }
+  }, [filtered, activeEmployeeId]);
+
+  const activeEmp = employees.find(e => e.id === activeEmployeeId) || null;
+
+  const colorGradients = [
+    "from-blue-500 to-cyan-400",
+    "from-purple-500 to-pink-500",
+    "from-emerald-400 to-teal-500",
+    "from-orange-400 to-rose-400",
+    "from-indigo-500 to-violet-500"
+  ];
+  const getColorGradient = (name: string) => {
+    if (!name) return colorGradients[0];
+    const colorIdx = (name.charCodeAt(0) + name.length) % colorGradients.length;
+    return colorGradients[colorIdx];
+  };
+
   return (
-    <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-6 pb-32">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Users className="h-8 w-8 text-indigo-500" />
-            <h1 className="text-3xl font-black text-slate-900 dark:text-slate-50">Employees</h1>
+    <>
+      <div className="min-h-screen bg-slate-50 dark:bg-[#0A0A0A] pb-32 print:hidden relative overflow-hidden">
+        {/* Subtle animated background mesh */}
+        <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-500/10 dark:bg-indigo-500/5 blur-[120px]"></div>
+          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-purple-500/10 dark:bg-purple-500/5 blur-[120px]"></div>
+        </div>
+
+        <div className="p-4 sm:p-8 max-w-[1600px] mx-auto space-y-8 relative z-10">
+          
+          {/* Dashboard Header */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 mb-8">
+            <div>
+              <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight mb-2 drop-shadow-sm">Command Center</h1>
+              <p className="text-slate-500 dark:text-slate-400 text-lg font-medium">Manage workforce, analyze payroll, and handle contracts.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={loadData}
+                disabled={loading}
+                className="flex items-center justify-center p-3.5 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 rounded-2xl shadow-sm hover:shadow-md hover:bg-slate-50 dark:hover:bg-white/10 backdrop-blur-md transition-all"
+                title="Refresh Data"
+              >
+                <RefreshCw size={20} className={loading ? "animate-spin text-indigo-500" : ""} />
+              </button>
+              <button
+                onClick={handleOpenAdd}
+                className="flex items-center gap-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-6 py-3.5 rounded-2xl font-bold shadow-lg shadow-slate-900/20 dark:shadow-white/10 hover:-translate-y-1 transition-all duration-300"
+              >
+                <Plus size={20} /> Add Employee
+              </button>
+            </div>
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Manage your workforce, salaries, and contracts</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={loadData}
-            disabled={loading}
-            className="flex items-center justify-center p-3 bg-card border border-border text-slate-600 dark:text-slate-300 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition"
-            title="Refresh Data"
-          >
-            <RefreshCw size={20} className={loading ? "animate-spin text-indigo-500" : ""} />
-          </button>
-          <button
-            onClick={handleOpenAdd}
-            className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-3 rounded-xl font-bold shadow hover:bg-indigo-700 transition"
-          >
-            <Plus size={20} /> Add Employee
-          </button>
-        </div>
-      </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
-          <p className="text-sm font-bold text-slate-500 mb-1">Total Employees</p>
-          <p className="text-4xl font-black text-indigo-600">{employees.length}</p>
-        </div>
-        <div className="bg-card border border-emerald-200 dark:border-emerald-900/50 rounded-2xl p-6 shadow-sm">
-          <p className="text-sm font-bold text-slate-500 mb-1">Active</p>
-          <p className="text-4xl font-black text-emerald-500">{activeCount}</p>
-        </div>
-        <div className="bg-card border border-purple-200 dark:border-purple-900/50 rounded-2xl p-6 shadow-sm">
-          <p className="text-sm font-bold text-slate-500 mb-1">Full-Time</p>
-          <p className="text-4xl font-black text-purple-500">{fullTimeCount}</p>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center bg-card border border-border rounded-2xl p-2 shadow-sm">
-        <div className="flex items-center gap-2 px-3 flex-1 w-full">
-          <Search size={18} className="text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search by name or ID..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="bg-transparent text-sm font-medium w-full p-2 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none"
-          />
-        </div>
-        <div className="h-8 w-px bg-border hidden sm:block"></div>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="bg-transparent text-sm font-bold p-3 outline-none text-slate-700 dark:text-slate-200 w-full sm:w-auto"
-        >
-          <option>All Status</option>
-          <option value="active">Active</option>
-          <option value="suspended">Suspended</option>
-        </select>
-        <button className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-xl font-bold text-sm mx-2 flex items-center gap-2">
-          <Download size={16} /> Export
-        </button>
-      </div>
-
-      {/* Employee Cards Grid */}
-      {loading ? (
-        <div className="flex justify-center items-center py-24">
-          <Loader2 className="animate-spin text-indigo-500" size={40} />
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-24 bg-card border border-dashed border-border rounded-3xl">
-          <Users size={64} className="mx-auto mb-4 text-slate-300 dark:text-slate-700" />
-          <h3 className="text-xl font-bold text-slate-700 dark:text-slate-300">No employees found</h3>
-          <p className="text-slate-500 mt-2">Adjust your search or add a new employee.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filtered.map(emp => (
-            <div key={emp.id} className="bg-card border border-border rounded-3xl p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
-              {/* Status Badge */}
-              <div className="absolute top-6 right-6">
-                <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                  emp.status === "active" 
-                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" 
-                    : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                }`}>
-                  {emp.status}
-                </span>
+          {/* Metrics Top Bar */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-white/40 dark:border-white/10 rounded-3xl p-6 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
+              <div>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Active</p>
+                <p className="text-4xl font-black text-slate-800 dark:text-white">{activeCount}</p>
               </div>
-
-              {/* Header Profile */}
-              <div className="flex items-center gap-4 mb-6">
-                <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl shadow-inner shrink-0">
-                  {emp.name.charAt(0)}
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg text-slate-900 dark:text-slate-50 line-clamp-2 leading-tight">
-                    {emp.name}
-                  </h3>
-                  <p className="text-sm text-slate-500 font-medium">{emp.position}</p>
-                </div>
-              </div>
-
-              {/* Info Grid */}
-              <div className="grid grid-cols-2 gap-y-4 mb-6 text-sm">
-                <div>
-                  <p className="text-slate-400 text-xs mb-1">Salary</p>
-                  <p className="font-bold text-slate-800 dark:text-slate-200">{fmtCurrency(emp.baseSalary)}</p>
-                </div>
-                <div>
-                  <p className="text-slate-400 text-xs mb-1">Start Date</p>
-                  <p className="font-bold text-slate-800 dark:text-slate-200">{emp.startDate || "-"}</p>
-                </div>
-                <div>
-                  <p className="text-slate-400 text-xs mb-1">Type</p>
-                  <p className="font-bold text-slate-800 dark:text-slate-200">{emp.fulltime ? "Full-Time" : "Part-Time"}</p>
-                </div>
-                <div>
-                  <p className="text-slate-400 text-xs mb-1">Shift</p>
-                  <p className="font-bold text-slate-800 dark:text-slate-200">{emp.shiftTime || "-"}</p>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-2 pt-4 border-t border-border/50">
-                <button 
-                  onClick={() => handleOpenDetails(emp)}
-                  className="flex-1 flex items-center justify-center gap-2 py-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/40 dark:text-indigo-400 rounded-xl font-bold text-sm transition"
-                >
-                  <Eye size={16} /> Details
-                </button>
-                <button 
-                  onClick={() => handlePrintContract(emp)}
-                  disabled={isPrinting}
-                  className="flex-1 flex items-center justify-center gap-2 py-2 text-purple-600 bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20 dark:hover:bg-purple-900/40 dark:text-purple-400 rounded-xl font-bold text-sm transition"
-                >
-                  {isPrinting && selectedEmployee?.id === emp.id ? <Loader2 size={16} className="animate-spin" /> : <Printer size={16} />} 
-                  Contract
-                </button>
-                <button 
-                  onClick={() => handleOpenEdit(emp)}
-                  className="p-2 text-slate-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-xl transition"
-                >
-                  <Edit size={18} />
-                </button>
-                <button 
-                  onClick={() => handleDelete(emp.id)}
-                  className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition"
-                >
-                  <Trash2 size={18} />
-                </button>
+              <div className="w-14 h-14 rounded-2xl bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform">
+                <Users size={28} />
               </div>
             </div>
-          ))}
+            <div className="bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-white/40 dark:border-white/10 rounded-3xl p-6 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
+              <div>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Employees</p>
+                <p className="text-4xl font-black text-slate-800 dark:text-white">{employees.length}</p>
+              </div>
+              <div className="w-14 h-14 rounded-2xl bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">
+                <BarChart3 size={28} />
+              </div>
+            </div>
+            <div className="bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-white/40 dark:border-white/10 rounded-3xl p-6 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
+              <div>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Full-Time</p>
+                <p className="text-4xl font-black text-slate-800 dark:text-white">{fullTimeCount}</p>
+              </div>
+              <div className="w-14 h-14 rounded-2xl bg-purple-100 dark:bg-purple-500/20 flex items-center justify-center text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform">
+                <CheckCircle size={28} />
+              </div>
+            </div>
+          </div>
+
+          {/* Split Pane Main Area */}
+          <div className="flex flex-col lg:flex-row gap-8 lg:h-[800px]">
+            
+            {/* LEFT PANE - List View */}
+            <div className="w-full lg:w-[400px] flex flex-col gap-4 bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-white/40 dark:border-white/10 rounded-[2rem] p-4 shadow-xl shadow-slate-200/50 dark:shadow-black/50 shrink-0 h-[600px] lg:h-full">
+              
+              {/* Filter / Search inside Left Pane */}
+              <div className="flex flex-col gap-3 p-2 border-b border-slate-200 dark:border-white/10 pb-6 shrink-0">
+                <div className="relative">
+                  <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search employees..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-slate-100 dark:bg-black/20 text-slate-900 dark:text-white font-medium p-3 pl-11 rounded-2xl outline-none border border-transparent focus:border-indigo-500/50 transition-all placeholder:text-slate-400"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="flex-1 bg-slate-100 dark:bg-black/20 text-sm font-bold p-3 rounded-2xl outline-none text-slate-700 dark:text-slate-200 border border-transparent focus:border-indigo-500/50 cursor-pointer"
+                  >
+                    <option>All Status</option>
+                    <option value="active">Active</option>
+                    <option value="suspended">Suspended</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Scrollable List */}
+              <div className="flex-1 overflow-y-auto px-2 space-y-2 custom-scrollbar pb-4">
+                {loading ? (
+                  <div className="flex justify-center py-20"><Loader2 className="animate-spin text-indigo-500" size={30} /></div>
+                ) : filtered.length === 0 ? (
+                  <div className="text-center py-20 text-slate-400 text-sm font-medium">No employees found.</div>
+                ) : (
+                  filtered.map(emp => {
+                    const isActive = activeEmployeeId === emp.id;
+                    const grad = getColorGradient(emp.name);
+                    
+                    return (
+                      <div 
+                        key={emp.id}
+                        onClick={() => setActiveEmployeeId(emp.id)}
+                        className={`group cursor-pointer p-3 rounded-2xl flex items-center justify-between transition-all duration-300 ${
+                          isActive 
+                            ? "bg-indigo-50 dark:bg-indigo-500/10 shadow-sm border border-indigo-100 dark:border-indigo-500/20" 
+                            : "hover:bg-slate-100 dark:hover:bg-white/5 border border-transparent"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${grad} flex items-center justify-center text-white font-black text-lg shadow-md shrink-0`}>
+                            {emp.name.charAt(0)}
+                          </div>
+                          <div className="overflow-hidden">
+                            <p className={`font-bold text-[15px] truncate leading-tight ${isActive ? "text-indigo-900 dark:text-indigo-200" : "text-slate-800 dark:text-slate-100"}`}>
+                              {emp.name}
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{emp.position}</p>
+                          </div>
+                        </div>
+                        {/* Status Dot */}
+                        <div className="shrink-0 pl-2">
+                          <div className={`w-3 h-3 rounded-full ${emp.status === 'active' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]'}`}></div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* RIGHT PANE - Focus View */}
+            <div className="flex-1 bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-white/40 dark:border-white/10 rounded-[2rem] shadow-xl shadow-slate-200/50 dark:shadow-black/50 overflow-hidden flex flex-col relative min-h-[600px] lg:h-full">
+              {activeEmp ? (
+                <>
+                  {/* Focus Header (Massive Cover Image effect) */}
+                  <div className={`h-48 shrink-0 w-full bg-gradient-to-br ${getColorGradient(activeEmp.name)} relative`}>
+                    <div className="absolute inset-0 bg-black/10 backdrop-blur-[2px]"></div>
+                    
+                    {/* Action Buttons floating top right */}
+                    <div className="absolute top-6 right-6 flex items-center gap-3">
+                      <button 
+                        onClick={() => handleOpenEdit(activeEmp)}
+                        className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white p-3 rounded-2xl transition-all shadow-sm"
+                        title="Edit Details"
+                      >
+                        <Edit size={18} />
+                      </button>
+                      <button 
+                        onClick={() => handlePrintContract(activeEmp)}
+                        disabled={isPrinting}
+                        className="flex items-center gap-2 bg-slate-900 dark:bg-black/50 hover:bg-slate-800 dark:hover:bg-black/80 backdrop-blur-md text-white px-5 py-3 rounded-2xl font-bold text-sm transition-all shadow-lg"
+                      >
+                        {isPrinting ? <Loader2 size={16} className="animate-spin" /> : <Printer size={16} />}
+                        Print Contract
+                      </button>
+                    </div>
+
+                    {/* Massive Avatar overlapping the edge */}
+                    <div className="absolute -bottom-12 left-10 w-28 h-28 rounded-[2rem] bg-slate-50 dark:bg-[#0A0A0A] shadow-2xl p-2 z-10">
+                      <div className={`w-full h-full rounded-2xl bg-gradient-to-br ${getColorGradient(activeEmp.name)} flex items-center justify-center text-white font-black text-5xl`}>
+                        {activeEmp.name.charAt(0)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Profile Body */}
+                  <div className="pt-16 px-6 sm:px-10 pb-10 flex-1 overflow-y-auto custom-scrollbar">
+                    <div className="flex justify-between items-start mb-8">
+                      <div>
+                        <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-2 tracking-tight drop-shadow-sm">{activeEmp.name}</h2>
+                        <div className="flex items-center gap-4 flex-wrap">
+                          <span className="text-slate-500 dark:text-slate-400 font-bold text-lg">{activeEmp.position}</span>
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600 hidden sm:block"></span>
+                          <span className={`px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wider ${
+                            activeEmp.status === "active" 
+                              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400" 
+                              : "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400"
+                          }`}>
+                            {activeEmp.status}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <button 
+                        onClick={() => handleDelete(activeEmp.id)}
+                        className="p-3 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-2xl transition border border-transparent hover:border-rose-100 dark:hover:border-rose-900/30"
+                        title="Delete Employee"
+                      >
+                        <Trash2 size={20} />
+                      </button>
+                    </div>
+
+                    {/* Data Grid */}
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Financial & Employment Details</h3>
+                    <div className="grid grid-cols-2 xl:grid-cols-3 gap-4 mb-8">
+                      <div className="bg-white/50 dark:bg-black/20 rounded-2xl p-5 border border-slate-100 dark:border-white/5 shadow-sm">
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Base Salary</p>
+                        <p className="text-2xl font-black text-slate-800 dark:text-white">{fmtCurrency(activeEmp.baseSalary)}</p>
+                      </div>
+                      <div className="bg-white/50 dark:bg-black/20 rounded-2xl p-5 border border-slate-100 dark:border-white/5 shadow-sm">
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Insurance Deduct</p>
+                        <p className="text-2xl font-black text-slate-800 dark:text-white">{fmtCurrency(activeEmp.insurance)}</p>
+                      </div>
+                      <div className="bg-white/50 dark:bg-black/20 rounded-2xl p-5 border border-slate-100 dark:border-white/5 shadow-sm">
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Start Date</p>
+                        <p className="text-2xl font-black text-slate-800 dark:text-white">{activeEmp.startDate || "-"}</p>
+                      </div>
+                      <div className="bg-white/50 dark:bg-black/20 rounded-2xl p-5 border border-slate-100 dark:border-white/5 shadow-sm">
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Shift Time</p>
+                        <p className="text-2xl font-black text-slate-800 dark:text-white">{activeEmp.shiftTime || "-"}</p>
+                      </div>
+                      <div className="bg-white/50 dark:bg-black/20 rounded-2xl p-5 border border-slate-100 dark:border-white/5 shadow-sm">
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Employment Type</p>
+                        <p className="text-2xl font-black text-slate-800 dark:text-white">{activeEmp.fulltime ? "Full-Time" : "Part-Time"}</p>
+                      </div>
+                      <div className="bg-white/50 dark:bg-black/20 rounded-2xl p-5 border border-slate-100 dark:border-white/5 shadow-sm">
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Age & Gender</p>
+                        <p className="text-2xl font-black text-slate-800 dark:text-white">{activeEmp.age}y / {activeEmp.gender}</p>
+                      </div>
+                    </div>
+
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Personal Info</h3>
+                    <div className="bg-white/50 dark:bg-black/20 rounded-3xl p-6 border border-slate-100 dark:border-white/5 shadow-sm space-y-4 mb-8">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-2 border-b border-slate-200 dark:border-white/10 gap-1">
+                        <span className="text-slate-500 dark:text-slate-400 font-bold">National ID</span>
+                        <span className="font-mono font-black text-slate-800 dark:text-white text-lg">{activeEmp.nationalId || "-"}</span>
+                      </div>
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-2 border-b border-slate-200 dark:border-white/10 gap-1">
+                        <span className="text-slate-500 dark:text-slate-400 font-bold">Phone Number</span>
+                        <span className="font-mono font-black text-slate-800 dark:text-white text-lg">{activeEmp.phone || "-"}</span>
+                      </div>
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-2 border-b border-slate-200 dark:border-white/10 gap-1">
+                        <span className="text-slate-500 dark:text-slate-400 font-bold">Address</span>
+                        <span className="font-black text-slate-800 dark:text-white text-lg">{activeEmp.address || "-"}</span>
+                      </div>
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-2 gap-1">
+                        <span className="text-slate-500 dark:text-slate-400 font-bold">Cheque Signed #</span>
+                        <span className="font-mono font-black text-slate-800 dark:text-white text-lg">{activeEmp.chequeSignedNum || "-"}</span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-slate-400 p-10 text-center">
+                  <div className="w-24 h-24 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center mb-6">
+                    <Users size={40} className="text-slate-300 dark:text-slate-600" />
+                  </div>
+                  <h3 className="text-2xl font-black text-slate-700 dark:text-slate-300 mb-2">No Employee Selected</h3>
+                  <p className="text-slate-500 max-w-md">Select an employee from the list to view their complete profile, financials, and contract details.</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-      )}
+      </div>
 
       {/* Add / Edit Modal */}
       {showAddModal && (
@@ -587,6 +736,25 @@ export default function EmployeesPage() {
                     className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:border-indigo-500"
                   />
                 </div>
+
+                {/* ID Photo Upload */}
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">National ID Photo (Optional)</label>
+                  <div className="flex items-center gap-4">
+                    <label className="flex-1 cursor-pointer flex items-center justify-center gap-2 p-4 border-2 border-dashed border-border rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition">
+                      {isUploadingID ? <Loader2 className="animate-spin text-indigo-500" size={20} /> : <Camera size={20} className="text-indigo-500" />}
+                      <span className="font-bold text-slate-600 dark:text-slate-300">
+                        {isUploadingID ? "Uploading..." : formData.nationalIdPhotoUrl ? "Change Scanned ID" : "Capture / Upload Scanned ID"}
+                      </span>
+                      <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleIDUpload} disabled={isUploadingID} />
+                    </label>
+                    {formData.nationalIdPhotoUrl && (
+                      <div className="h-14 w-14 rounded-xl border border-border overflow-hidden shrink-0">
+                        <img src={formData.nationalIdPhotoUrl} alt="ID" className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Actions */}
@@ -612,232 +780,281 @@ export default function EmployeesPage() {
         </div>
       )}
 
-      {/* Details Modal */}
-      {showDetailsModal && selectedEmployee && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-card border border-border rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            
-            {/* Header Area */}
-            <div className="bg-gradient-to-r from-indigo-500 to-purple-600 p-8 flex justify-between items-start text-white relative">
-              <button 
-                onClick={() => setShowDetailsModal(false)} 
-                className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-xl backdrop-blur-md transition"
-              >
-                <X size={20} />
-              </button>
-              <div className="flex items-center gap-5">
-                <div className="h-20 w-20 rounded-3xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner border border-white/30 text-3xl font-black shrink-0">
-                  {selectedEmployee.name.charAt(0)}
-                </div>
-                <div>
-                  <h2 className="text-2xl font-black leading-tight mb-1">{selectedEmployee.name}</h2>
-                  <p className="text-indigo-100 font-medium">{selectedEmployee.position}</p>
-                </div>
-              </div>
-            </div>
 
-            {/* Content Area */}
-            <div className="p-8 overflow-y-auto space-y-8 bg-slate-50 dark:bg-background">
-              
-              {/* Personal Info */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest">Personal Information</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-white dark:bg-card p-4 rounded-2xl border border-border/50 shadow-sm">
-                    <p className="text-xs font-bold text-slate-400 mb-1 flex items-center gap-1.5"><UserCheck size={14}/> National ID</p>
-                    <p className="font-bold text-slate-800 dark:text-slate-100 font-mono tracking-wide">{selectedEmployee.nationalId || "-"}</p>
-                  </div>
-                  <div className="bg-white dark:bg-card p-4 rounded-2xl border border-border/50 shadow-sm">
-                    <p className="text-xs font-bold text-slate-400 mb-1">Gender / Age</p>
-                    <p className="font-bold text-slate-800 dark:text-slate-100">{selectedEmployee.gender || "-"} • {selectedEmployee.age || "-"} yrs</p>
-                  </div>
-                  <div className="bg-white dark:bg-card p-4 rounded-2xl border border-border/50 shadow-sm col-span-2">
-                    <p className="text-xs font-bold text-slate-400 mb-1">Address</p>
-                    <p className="font-bold text-slate-800 dark:text-slate-100 leading-relaxed">{selectedEmployee.address || "-"}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Employment Details */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest">Employment Details</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-white dark:bg-card p-4 rounded-2xl border border-border/50 shadow-sm">
-                    <p className="text-xs font-bold text-slate-400 mb-1 flex items-center gap-1.5"><Briefcase size={14}/> Position</p>
-                    <p className="font-bold text-slate-800 dark:text-slate-100">{selectedEmployee.position || "-"}</p>
-                  </div>
-                  <div className="bg-white dark:bg-card p-4 rounded-2xl border border-border/50 shadow-sm">
-                    <p className="text-xs font-bold text-slate-400 mb-1">Start Date</p>
-                    <p className="font-bold text-slate-800 dark:text-slate-100">{selectedEmployee.startDate || "-"}</p>
-                  </div>
-                  <div className="bg-white dark:bg-card p-4 rounded-2xl border border-border/50 shadow-sm">
-                    <p className="text-xs font-bold text-slate-400 mb-1">Type & Shift</p>
-                    <p className="font-bold text-slate-800 dark:text-slate-100">{selectedEmployee.fulltime ? "Full-Time" : "Part-Time"} • {selectedEmployee.shiftTime || "-"}</p>
-                  </div>
-                  <div className="bg-white dark:bg-card p-4 rounded-2xl border border-border/50 shadow-sm">
-                    <p className="text-xs font-bold text-slate-400 mb-1">Status</p>
-                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                      selectedEmployee.status === "active" 
-                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" 
-                        : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                    }`}>
-                      {selectedEmployee.status}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Compensation */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest">Compensation</h3>
-                <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50 p-5 rounded-2xl flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400 mb-1">Base Salary</p>
-                    <p className="text-2xl font-black text-emerald-600 dark:text-emerald-500">{fmtCurrency(selectedEmployee.baseSalary)}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs font-bold text-emerald-700/70 dark:text-emerald-400/70 mb-1">Insurance Deduct</p>
-                    <p className="font-bold text-emerald-700 dark:text-emerald-400">{fmtCurrency(selectedEmployee.insurance)}/mo</p>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-
-            <div className="p-6 border-t border-border bg-white dark:bg-card flex gap-4">
-              <button 
-                onClick={() => handlePrintContract(selectedEmployee)}
-                disabled={isPrinting}
-                className="flex-1 py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 disabled:opacity-50 transition flex justify-center items-center gap-2 shadow-sm"
-              >
-                {isPrinting ? <Loader2 className="animate-spin" size={20} /> : <Printer size={20} />} Print Contract
-              </button>
-              <button 
-                onClick={() => { setShowDetailsModal(false); handleOpenEdit(selectedEmployee); }}
-                className="flex-1 py-3 border border-border text-slate-700 dark:text-slate-200 rounded-xl font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition shadow-sm"
-              >
-                Edit Details
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* HIDDEN CONTRACT PRINT CONTAINER */}
       <div 
         ref={contractRef}
-        className="hidden bg-white text-black print-contract"
-        style={{ width: "210mm", minHeight: "297mm", padding: "20mm", boxSizing: "border-box", direction: "rtl", fontFamily: "Arial, sans-serif" }}
+        className="hidden print:block bg-white text-black print-contract"
+        style={{ width: "100%", padding: 0, boxSizing: "border-box", direction: "rtl", fontFamily: "Arial, 'Segoe UI', Tahoma, sans-serif", fontSize: "16px", lineHeight: "2" }}
       >
+        <style type="text/css" media="print">
+          {`
+            @page { size: A4 portrait; margin: 15mm; }
+            .content-wrapper { padding-bottom: 20px; }
+          `}
+        </style>
+
         {selectedEmployee && (
-          <div>
-            <div style={{ textAlign: "center", marginBottom: "20px", borderBottom: "2px solid #000", paddingBottom: "10px" }}>
-              <h1 style={{ fontSize: "24px", fontWeight: "bold", margin: 0 }}>ﻋﻘﺪ ﻋﻤﻞ</h1>
-              <h2 style={{ fontSize: "16px", margin: "5px 0 0 0", color: "#555" }}>Employment Contract</h2>
-            </div>
-
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "20px" }}>
-              <div style={{ width: "48%" }}>
-                <p style={{ margin: "0 0 5px 0", fontSize: "12px", color: "#666" }}>Company Name / ﺍﺳﻢ ﺍﻟﺸﺮﻛﺔ</p>
-                <p style={{ margin: 0, fontSize: "14px", fontWeight: "bold" }}>El Masreya for Trade</p>
+          <div className="content-wrapper" style={{ maxWidth: "800px", margin: "0 auto", color: "#000", fontFamily: "'Cairo', 'Tajawal', system-ui, sans-serif" }}>
+            
+            {/* Header / Letterhead */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "3px solid #000", paddingBottom: "10px", marginBottom: "20px" }}>
+              <div style={{ textAlign: "right" }}>
+                <h1 style={{ fontSize: "22px", fontWeight: "900", margin: 0, color: "#000" }}>الشركة المصرية للتجارة</h1>
+                <h2 style={{ fontSize: "14px", margin: "3px 0 0 0", color: "#333", fontWeight: "600", textTransform: "uppercase", letterSpacing: "1px" }}>Circle K Franchise - Egypt</h2>
+              </div>
+              <div style={{ textAlign: "left", fontSize: "13px", lineHeight: "1.4" }}>
+                <div><span style={{ fontWeight: "bold" }}>التاريخ:</span> {new Date(selectedEmployee.startDate || Date.now()).toLocaleDateString('ar-EG')}</div>
+                <div><span style={{ fontWeight: "bold" }}>الموافق:</span> {new Date(selectedEmployee.startDate || Date.now()).toLocaleDateString('ar-EG', { weekday: 'long' })}</div>
               </div>
             </div>
 
-            <h3 style={{ fontSize: "16px", fontWeight: "bold", borderBottom: "1px solid #ddd", paddingBottom: "5px", marginBottom: "15px" }}>
-              ﺑﻴﺎﻧﺎﺕ ﺍﻟﻤﻮﻇﻒ / Employee Information
-            </h3>
+            <div style={{ textAlign: "center", marginBottom: "20px" }}>
+              <h2 style={{ fontSize: "24px", fontWeight: "900", margin: 0, textDecoration: "underline", textUnderlineOffset: "6px" }}>عقد عمل محدد المدة</h2>
+              <p style={{ fontSize: "14px", margin: "8px 0 0 0", color: "#222", fontWeight: "bold" }}>يخضع لأحكام قانون العمل المصري رقم 12 لسنة 2003</p>
+            </div>
 
-            <div style={{ display: "flex", flexWrap: "wrap", marginBottom: "20px" }}>
-              <div style={{ width: "50%", marginBottom: "15px" }}>
-                <p style={{ margin: "0 0 5px 0", fontSize: "12px", color: "#666" }}>Employee Name / ﺍﺳﻢ ﺍﻟﻤﻮﻇﻒ</p>
-                <p style={{ margin: 0, fontSize: "14px", fontWeight: "bold" }}>{selectedEmployee.name}</p>
+            <p style={{ textAlign: "justify", marginBottom: "20px", fontSize: "15px", lineHeight: "1.6" }}>
+              إنه في يوم <span style={{ fontWeight: "bold", borderBottom: "1px dotted #000" }}>{new Date(selectedEmployee.startDate || Date.now()).toLocaleDateString('ar-EG', { weekday: 'long' })}</span> الموافق <span style={{ fontWeight: "bold", borderBottom: "1px dotted #000" }}>{new Date(selectedEmployee.startDate || Date.now()).toLocaleDateString('ar-EG')}</span>، تم الاتفاق والتراضي بين كل من:
+            </p>
+
+            {/* Parties */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "15px", marginBottom: "25px" }}>
+              
+              <div style={{ padding: "12px", border: "1px solid #000", borderRadius: "4px", backgroundColor: "#fff", pageBreakInside: "avoid" }}>
+                <h3 style={{ fontSize: "16px", fontWeight: "bold", margin: "0 0 10px 0", color: "#000", borderBottom: "1px solid #000", paddingBottom: "5px", display: "inline-block" }}>الطرف الأول (صاحب العمل):</h3>
+                <table style={{ width: "100%", fontSize: "14px", borderCollapse: "collapse" }}>
+                  <tbody>
+                    <tr>
+                      <td style={{ fontWeight: "bold", padding: "4px 0", width: "120px", verticalAlign: "top" }}>اسم الشركة:</td>
+                      <td style={{ padding: "4px 0" }}>الشركة المصرية للتجارة (El Masreya for Trade - Circle K)</td>
+                    </tr>
+                    <tr>
+                      <td style={{ fontWeight: "bold", padding: "4px 0", verticalAlign: "top" }}>المقر الرئيسي:</td>
+                      <td style={{ padding: "4px 0" }}>[عنوان الشركة الرئيسي]</td>
+                    </tr>
+                    <tr>
+                      <td style={{ fontWeight: "bold", padding: "4px 0", verticalAlign: "top" }}>يمثلها قانوناً:</td>
+                      <td style={{ padding: "4px 0" }}>السيد/ مدير الموارد البشرية (بصفته)</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p style={{ margin: "10px 0 0 0", fontSize: "14px" }}>ويشار إليه فيما بعد في هذا العقد بـ <strong>"الطرف الأول"</strong> أو <strong>"الشركة"</strong>.</p>
               </div>
-              <div style={{ width: "50%", marginBottom: "15px" }}>
-                <p style={{ margin: "0 0 5px 0", fontSize: "12px", color: "#666" }}>Position / ﺍﻟﻤﺴﻤﻰ ﺍﻟﻮﻇﻴﻔﻲ</p>
-                <p style={{ margin: 0, fontSize: "14px", fontWeight: "bold" }}>{selectedEmployee.position}</p>
+
+              <div style={{ padding: "12px", border: "1px solid #000", borderRadius: "4px", backgroundColor: "#fff", pageBreakInside: "avoid" }}>
+                <h3 style={{ fontSize: "16px", fontWeight: "bold", margin: "0 0 10px 0", color: "#000", borderBottom: "1px solid #000", paddingBottom: "5px", display: "inline-block" }}>الطرف الثاني (العامل):</h3>
+                <table style={{ width: "100%", fontSize: "14px", borderCollapse: "collapse" }}>
+                  <tbody>
+                    <tr>
+                      <td style={{ fontWeight: "bold", padding: "4px 0", width: "110px" }}>الاسم رباعياً:</td>
+                      <td style={{ padding: "4px 0" }}>{selectedEmployee.name}</td>
+                      <td style={{ fontWeight: "bold", padding: "4px 0", width: "90px" }}>الرقم القومي:</td>
+                      <td style={{ padding: "4px 0" }}>{selectedEmployee.nationalId || "------------------"}</td>
+                    </tr>
+                    <tr>
+                      <td style={{ fontWeight: "bold", padding: "4px 0" }}>الوظيفة/المسمى:</td>
+                      <td style={{ padding: "4px 0" }}>{selectedEmployee.position}</td>
+                      <td style={{ fontWeight: "bold", padding: "4px 0" }}>تاريخ الاستلام:</td>
+                      <td style={{ padding: "4px 0" }}>{selectedEmployee.startDate}</td>
+                    </tr>
+                    <tr>
+                      <td style={{ fontWeight: "bold", padding: "4px 0" }}>رقم الهاتف:</td>
+                      <td style={{ padding: "4px 0" }}><span dir="ltr">{selectedEmployee.phone || "------------------"}</span></td>
+                      <td style={{ fontWeight: "bold", padding: "4px 0" }}>النوع:</td>
+                      <td style={{ padding: "4px 0" }}>{selectedEmployee.gender === 'Male' ? 'ذكر' : selectedEmployee.gender === 'Female' ? 'أنثى' : (selectedEmployee.gender || "------------------")}</td>
+                    </tr>
+                    <tr>
+                      <td style={{ fontWeight: "bold", padding: "4px 0", verticalAlign: "top" }}>العنوان التفصيلي:</td>
+                      <td colSpan={3} style={{ padding: "4px 0" }}>{selectedEmployee.address || "--------------------------------------------------------"}</td>
+                    </tr>
+                    {selectedEmployee.chequeSignedNum && (
+                      <tr>
+                        <td style={{ fontWeight: "bold", padding: "4px 0", verticalAlign: "top" }}>رقم إيصال أمانة:</td>
+                        <td colSpan={3} style={{ padding: "4px 0" }}>{selectedEmployee.chequeSignedNum}</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+                <p style={{ margin: "10px 0 0 0", fontSize: "14px" }}>ويشار إليه فيما بعد في هذا العقد بـ <strong>"الطرف الثاني"</strong> أو <strong>"العامل"</strong>.</p>
               </div>
-              <div style={{ width: "50%", marginBottom: "15px" }}>
-                <p style={{ margin: "0 0 5px 0", fontSize: "12px", color: "#666" }}>Base Salary / ﺍﻟﺮﺍﺗﺐ ﺍﻷﺳﺎﺳﻲ</p>
-                <p style={{ margin: 0, fontSize: "14px", fontWeight: "bold" }}>{fmtCurrency(selectedEmployee.baseSalary)}</p>
+
+            </div>
+
+            <p style={{ textAlign: "justify", marginBottom: "20px", fontSize: "15px", fontWeight: "bold", lineHeight: "1.6" }}>
+              بعد أن أقر الطرفان بأهليتهما القانونية والفعلية للتعاقد والتصرف، اتفقا على إبرام هذا العقد وفقاً للشروط والبنود التالية:
+            </p>
+
+            {/* Clauses */}
+            <div style={{ textAlign: "justify", fontSize: "14px", lineHeight: "1.6" }}>
+              
+              <div style={{ marginBottom: "15px", paddingRight: "10px", borderRight: "3px solid #000", pageBreakInside: "avoid" }}>
+                <h4 style={{ fontSize: "15px", fontWeight: "bold", margin: "0 0 5px 0", color: "#000" }}>البند الأول: طبيعة العمل ومقره</h4>
+                <p style={{ margin: 0 }}>
+                  يعمل الطرف الثاني لدى الطرف الأول وتحت إدارته وإشرافه بوظيفة <span style={{ fontWeight: "bold" }}>({selectedEmployee.position})</span>. ويكون مقر عمله الأساسي في أي من فروع الشركة أو المواقع التي تحددها الشركة داخل جمهورية مصر العربية، ولا يعتبر نقل العامل من مكان لآخر تعديلاً في شروط العقد طالما لم يمس الحقوق المالية للعامل وفقاً لقانون العمل.
+                </p>
               </div>
-              <div style={{ width: "50%", marginBottom: "15px" }}>
-                <p style={{ margin: "0 0 5px 0", fontSize: "12px", color: "#666" }}>National ID / ﺍﻟﺮﻗﻢ ﺍﻟﻘﻮﻣﻲ</p>
-                <p style={{ margin: 0, fontSize: "14px", fontWeight: "bold" }}>{selectedEmployee.nationalId || "-"}</p>
+
+              <div style={{ marginBottom: "15px", paddingRight: "10px", borderRight: "3px solid #000", pageBreakInside: "avoid" }}>
+                <h4 style={{ fontSize: "15px", fontWeight: "bold", margin: "0 0 5px 0", color: "#000" }}>البند الثاني: مدة العقد وفترة الاختبار</h4>
+                <p style={{ margin: 0 }}>
+                  أ) مدة هذا العقد <span style={{ fontWeight: "bold" }}>سنة ميلادية واحدة</span> تبدأ من تاريخ استلام العمل الفعلي في {selectedEmployee.startDate}، وتتجدد تلقائياً لمدد مماثلة ما لم يخطر أحد الطرفين الآخر برغبته في عدم التجديد كتابياً قبل انتهاء المدة بشهر على الأقل.<br/>
+                  ب) يخضع الطرف الثاني لفترة اختبار مدتها <span style={{ fontWeight: "bold" }}>ثلاثة أشهر</span> متصلة تبدأ من تاريخ استلام العمل. يحق للطرف الأول خلالها أو بنهايتها إنهاء هذا العقد فوراً دون الحاجة إلى إنذار مسبق أو تعويض إذا ثبت عدم صلاحية الطرف الثاني للعمل.
+                </p>
               </div>
-              <div style={{ width: "50%", marginBottom: "15px" }}>
-                <p style={{ margin: "0 0 5px 0", fontSize: "12px", color: "#666" }}>Start Date / ﺗﺎﺭﻳﺦ ﺍﻟﺒﺪﺀ</p>
-                <p style={{ margin: 0, fontSize: "14px", fontWeight: "bold" }}>{selectedEmployee.startDate}</p>
+
+              <div style={{ marginBottom: "15px", paddingRight: "10px", borderRight: "3px solid #000", pageBreakInside: "avoid" }}>
+                <h4 style={{ fontSize: "15px", fontWeight: "bold", margin: "0 0 5px 0", color: "#000" }}>البند الثالث: الأجر والبدلات</h4>
+                <p style={{ margin: 0 }}>
+                  يستحق الطرف الثاني نظير قيامه بالعمل أجراً أساسياً وشاملاً قدره <span style={{ fontWeight: "bold" }}>{fmtCurrency(selectedEmployee.baseSalary)}</span> (فقط {selectedEmployee.baseSalary} جنيه مصري لا غير) شهرياً. يشمل هذا الأجر كافة البدلات (غلاء معيشة، انتقال، وجبة، إلخ). ويصرف الأجر في نهاية كل شهر ميلادي أو خلال الأيام الخمسة الأولى من الشهر التالي، وذلك بعد استقطاع الضرائب المستحقة وحصة العامل في التأمينات الاجتماعية وأية استقطاعات قانونية أخرى.
+                </p>
               </div>
-              <div style={{ width: "50%", marginBottom: "15px" }}>
-                <p style={{ margin: "0 0 5px 0", fontSize: "12px", color: "#666" }}>Phone / ﺭﻗﻢ ﺍﻟﻬﺎﺗﻒ</p>
-                <p style={{ margin: 0, fontSize: "14px", fontWeight: "bold", direction: "ltr", textAlign: "right" }}>{selectedEmployee.phone || "-"}</p>
+
+              <div style={{ marginBottom: "15px", paddingRight: "10px", borderRight: "3px solid #000", pageBreakInside: "avoid" }}>
+                <h4 style={{ fontSize: "15px", fontWeight: "bold", margin: "0 0 5px 0", color: "#000" }}>البند الرابع: ساعات العمل والإجازات</h4>
+                <p style={{ margin: 0 }}>
+                  أ) <span style={{ fontWeight: "bold" }}>ساعات العمل:</span> يلتزم الطرف الثاني بالعمل لمدة 8 ساعات يومياً (أو 48 ساعة أسبوعياً كحد أقصى) تتخللها فترة راحة، وفقاً لجداول التشغيل التي تقررها إدارة الشركة.<br/>
+                  ب) <span style={{ fontWeight: "bold" }}>الإجازات:</span> يستحق الطرف الثاني إجازة سنوية مدفوعة الأجر مدتها 21 يوماً بعد إمضاء ستة أشهر متصلة في الخدمة، وتزاد إلى 30 يوماً لمن أمضى عشر سنوات فأكثر، بالإضافة إلى الإجازات الرسمية والمرضية المقررة بقانون العمل المصري.
+                </p>
+              </div>
+
+              <div style={{ marginBottom: "15px", paddingRight: "10px", borderRight: "3px solid #000", pageBreakInside: "avoid" }}>
+                <h4 style={{ fontSize: "15px", fontWeight: "bold", margin: "0 0 5px 0", color: "#000" }}>البند الخامس: الالتزامات والسرية والمنافسة</h4>
+                <p style={{ margin: 0 }}>
+                  يلتزم الطرف الثاني بأداء عمله بأمانة وشرف، وتنفيذ تعليمات الرؤساء، والمحافظة على ممتلكات الشركة وأموالها. كما يلتزم التزاماً تاماً بالمحافظة على أسرار العمل وعدم إفشاء أية معلومات تجارية أو فنية أو مالية تخص الشركة أو عملائها سواء أثناء سريان العقد أو بعد انتهائه. ويحظر عليه العمل لدى الغير (بأجر أو بدون أجر) طوال مدة سريان هذا العقد.
+                </p>
+              </div>
+
+              <div style={{ marginBottom: "15px", paddingRight: "10px", borderRight: "3px solid #000", pageBreakInside: "avoid" }}>
+                <h4 style={{ fontSize: "15px", fontWeight: "bold", margin: "0 0 5px 0", color: "#000" }}>البند السادس: الجزاءات وفسخ العقد</h4>
+                <p style={{ margin: 0 }}>
+                  يحق للطرف الأول توقيع الجزاءات التأديبية المنصوص عليها بلائحة الشركة وقانون العمل في حال مخالفة الطرف الثاني لواجباته. كما يحق للطرف الأول فسخ العقد فوراً ودون إنذار أو تعويض في الحالات المنصوص عليها في المادة (69) من قانون العمل رقم 12 لسنة 2003 (مثل: انتحال شخصية مزورة، إفشاء أسرار الشركة، ارتكاب خطأ جسيم نشأ عنه ضرر مادي بالغ، الغياب بدون إذن لأكثر من 20 يوماً متقطعة أو 10 أيام متصلة، إلخ).
+                </p>
+              </div>
+
+              <div style={{ marginBottom: "15px", paddingRight: "10px", borderRight: "3px solid #000", pageBreakInside: "avoid" }}>
+                <h4 style={{ fontSize: "15px", fontWeight: "bold", margin: "0 0 5px 0", color: "#000" }}>البند السابع: أحكام عامة ونسخ العقد</h4>
+                <p style={{ margin: 0 }}>
+                  أ) يعتبر العنوان المذكور بصدر هذا العقد هو الموطن القانوني المختار للطرف الثاني، وتعتبر كافة المراسلات والإعلانات المرسلة إليه على هذا العنوان صحيحة ومنتجة لآثارها القانونية.<br/>
+                  ب) كل ما لم يرد بشأنه نص خاص في هذا العقد يخضع لأحكام قانون العمل المصري رقم 12 لسنة 2003 وقانون التأمينات الاجتماعية رقم 148 لسنة 2019.<br/>
+                  ج) حرر هذا العقد من ثلاث نسخ أصلية، تسلم الطرف الثاني نسخة منها للعمل بموجبها، وتحتفظ الشركة بنسخة بملف خدمة العامل، وتودع النسخة الثالثة بمكتب التأمينات الاجتماعية المختص.
+                </p>
               </div>
             </div>
 
-            <h3 style={{ fontSize: "16px", fontWeight: "bold", borderBottom: "1px solid #ddd", paddingBottom: "5px", marginBottom: "15px" }}>
-              ﺑﻨﻮﺩ ﺍﻟﻌﻘﺪ / Contract Terms
-            </h3>
+            {/* Advanced Signature Page */}
+            <div style={{ pageBreakBefore: "always", paddingTop: "10px" }}>
+              <div style={{ padding: "10px", backgroundColor: "#fff", display: "block" }}>
+                <div style={{ textAlign: "center", borderBottom: "3px double #000", paddingBottom: "15px", marginBottom: "20px" }}>
+                   <h2 style={{ fontSize: "22px", fontWeight: "900", margin: "0 0 5px 0" }}>ملحق التصديق والمصادقة النهائية</h2>
+                   <p style={{ fontSize: "14px", margin: 0, color: "#444", fontWeight: "bold" }}>تعتبر هذه الوثيقة جزءاً لا يتجزأ من عقد العمل المحرر بتاريخ {new Date(selectedEmployee.startDate || Date.now()).toLocaleDateString('ar-EG')}</p>
+                </div>
 
-            <div style={{ fontSize: "12px", lineHeight: "1.8", color: "#333", textAlign: "justify" }}>
-              <p><strong>ﺍﻟﻤﺎﺩﺓ ﺍﻷﻭﻟﻰ: ﻃﺒﻴﻌﺔ ﺍﻟﻌﻘﺪ ﻭﺍﻷﺳﺎﺱ ﺍﻟﻘﺎﻧﻮﻧﻲ</strong><br/>
-              ﻳﻌﺘﺒﺮ ﻫﺬﺍ ﺍﻟﻌﻘﺪ ﻋﻘﺪ ﻋﻤﻞ ﻓﺮﺩﻱ ﻳﻨﻈﻢ ﺍﻟﻌﻼﻗﺔ ﺑﻴﻦ ﺍﻟﻄﺮﻓﻴﻦ ﻃﺒﻗًﺎ ﻷﺣﻜﺎﻡ ﻗﺎﻧﻮﻥ ﺍﻟﻌﻤﻞ ﺍﻟﻤﺼﺮﻱ ﻭﻻﺋﺤﺘﻪ ﺍﻟﺘﻨﻔﻴﺬﻳﺔ ﻭﻣﺎ ﻳﺴﺘﺠﺪ ﻣﻦ ﺗﻌﺪﻳﻼﺗ، ﻭﻗﺎﻧﻮﻥ ﺍﻟﺘﺄﻣﻴﻨﺎﺕ ﺍﻻﺟﺘﻤﺎﻋﻴﺔ ﻭﺍﻟﻤﻌﺎﺷﺎﺕ ﻭﺗﻌﺪﻳﻼﺗﻪ.</p>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "25px" }}>
+                  {/* Party A */}
+                  <div style={{ width: "46%", padding: "20px", border: "1px solid #ddd", borderRadius: "8px", backgroundColor: "#fafafa" }}>
+                    <h4 style={{ fontWeight: "bold", fontSize: "16px", margin: "0 0 20px 0", color: "#000", borderBottom: "2px solid #000", display: "inline-block", paddingBottom: "5px" }}>الطرف الأول (صاحب العمل)</h4>
+                    <div style={{ display: "flex", marginBottom: "15px", fontSize: "15px" }}>
+                      <span style={{ fontWeight: "bold", width: "70px" }}>الاسم:</span> 
+                      <div style={{ flex: 1, borderBottom: "1px dotted #000", fontWeight: "bold" }}>الشركة المصرية للتجارة</div>
+                    </div>
+                    <div style={{ display: "flex", marginBottom: "15px", fontSize: "15px" }}>
+                      <span style={{ fontWeight: "bold", width: "70px" }}>الصفة:</span> 
+                      <div style={{ flex: 1, borderBottom: "1px dotted #000" }}>مدير الموارد البشرية</div>
+                    </div>
+                    <div style={{ display: "flex", marginBottom: "20px", fontSize: "15px", alignItems: "flex-end" }}>
+                      <span style={{ fontWeight: "bold", width: "70px" }}>التوقيع:</span> 
+                      <div style={{ flex: 1, borderBottom: "1px dotted #000", height: "30px" }}></div>
+                    </div>
+                    <div style={{ textAlign: "center", marginTop: "30px" }}>
+                      <span style={{ fontWeight: "bold", fontSize: "13px", color: "#555" }}>خاتم الشركة (الختم الرسمي)</span>
+                      <div style={{ height: "90px", width: "90px", border: "2px dashed #999", borderRadius: "50%", margin: "10px auto 0 auto", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: "12px" }}>
+                        مكان الختم
+                      </div>
+                    </div>
+                  </div>
 
-              <p><strong>ﺍﻟﻤﺎﺩﺓ ﺍﻟﺜﺎﻧﻴﺔ: ﻣﻮﺿﻮﻉ ﺍﻟﻌﻘﺪ ﻭﻣﻜﺎﻥ ﺍﻟﻌﻤﻞ</strong><br/>
-              ﻳﻮﺍﻓﻖ ﺍﻟﻌﺎﻣﻞ ﻋﻠﻰ ﺍﻟﻌﻤﻞ ﻟﺪﻯ ﺻﺎﺣﺐ ﺍﻟﻌﻤﻞ ﻓﻲ ﻭﻇﻴﻔﺔ: {selectedEmployee.position}.<br/>
-              ﻳﻠﺘﺰﻡ ﺍﻟﻌﺎﻣﻞ ﺑﺄﺩﺍﺀ ﺟﻤﻴﻊ ﺍﻟﻤﻬﺎﻡ ﻭﺍﻟﻮﺍﺟﺒﺎﺕ ﺍﻟﻤﺮﺗﺒﻄﺔ ﺑﻮﻇﻴﻔﺘﻫ، ﻭﻛﻞ ﻣﺎ ﻳﺴﻨﺪ ﺇﻟﻴﻪ ﻣﻦ ﺃﻋﻤﺎﻝ ﺗﺪﺧﻞ ﻓﻲ ﻧﻄﺎﻕ ﻃﺒﻴﻌﺔ ﻧﺸﺎﻁ ﺍﻟﺸﺮﻛﺔ ﺩﻭﻥ ﺇﺧﻼﻝ ﺑﺎﻟﻘﺎﻧﻮﻥ.<br/>
-              ﻣﻜﺎﻥ ﺍﻟﻌﻤﻞ ﺍﻷﺳﺎﺳﻲ ﻫﻮ ﻓﺮﻉ ﺍﻟﺸﺮﻛﺔ ﺍﻟﻜﺎﺋﻦ ﻓﻲ: ﺍﻟﻤﺤﺪﺩ ﺣﺴﺐ ﺍﻟﻔﺮﻉ. ﻭﻳﺠﻮﺯ ﻟﺼﺎﺣﺐ ﺍﻟﻌﻤﻟ، ﻭﻓﻗًﺎ ﻟﻤﻘﺘﻀﻴﺎﺕ ﺍﻟﻌﻤﻟ، ﻧﻘﻞ ﺍﻟﻌﺎﻣﻞ ﺇﻟﻰ ﺃﻱ ﻓﺮﻉ ﺃﻭ ﻣﻘﺮ ﺁﺧﺮ ﺗﺎﺑﻊ ﻟﻠﺸﺮﻛﺔ ﺩﺍﺧﻞ ﺟﻤﻬﻮﺭﻳﺔ ﻣﺼﺮ ﺍﻟﻌﺮﺑﻴﺔ ﺑﺸﺮﻁ ﺃﻻ ﻳﺘﺮﺗﺐ ﻋﻠﻰ ﺍﻟﻨﻘﻞ ﺿﺮﺭ ﺟﺴﻴﻢ ﻟﻠﻌﺎﻣﻞ ﻭﻭﻓﻗًﺎ ﻟﻠﻘﺎﻧﻮﻥ.</p>
+                  {/* Party B */}
+                  <div style={{ width: "46%", padding: "20px", border: "1px solid #ddd", borderRadius: "8px", backgroundColor: "#fafafa" }}>
+                    <h4 style={{ fontWeight: "bold", fontSize: "16px", margin: "0 0 20px 0", color: "#000", borderBottom: "2px solid #000", display: "inline-block", paddingBottom: "5px" }}>الطرف الثاني (العامل)</h4>
+                    <div style={{ display: "flex", marginBottom: "15px", fontSize: "15px" }}>
+                      <span style={{ fontWeight: "bold", width: "100px" }}>الاسم:</span> 
+                      <div style={{ flex: 1, borderBottom: "1px dotted #000", fontWeight: "bold" }}>{selectedEmployee.name}</div>
+                    </div>
+                    <div style={{ display: "flex", marginBottom: "15px", fontSize: "15px" }}>
+                      <span style={{ fontWeight: "bold", width: "100px" }}>الرقم القومي:</span> 
+                      <div style={{ flex: 1, borderBottom: "1px dotted #000", letterSpacing: "2px" }}>{selectedEmployee.nationalId || ""}</div>
+                    </div>
+                    <div style={{ display: "flex", marginBottom: "20px", fontSize: "15px", alignItems: "flex-end" }}>
+                      <span style={{ fontWeight: "bold", width: "100px" }}>التوقيع:</span> 
+                      <div style={{ flex: 1, borderBottom: "1px dotted #000", height: "30px" }}></div>
+                    </div>
+                    <div style={{ textAlign: "center", marginTop: "30px" }}>
+                      <span style={{ fontWeight: "bold", fontSize: "13px", color: "#555" }}>بصمة الإبهام (اليسرى)</span>
+                      <div style={{ height: "90px", width: "70px", border: "2px solid #000", margin: "10px auto 0 auto", display: "flex", alignItems: "center", justifyContent: "center", color: "#aaa", fontSize: "12px", borderRadius: "8px" }}>
+                        البصمة
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-              <p><strong>ﺍﻟﻤﺎﺩﺓ ﺍﻟﺜﺎﻟﺜﺔ: ﺳﺎﻋﺎﺕ ﻭﻣﻮﺍﻋﻴﺪ ﺍﻟﻌﻤﻞ</strong><br/>
-              ﻳﻠﺘﺰﻡ ﺍﻟﻌﺎﻣﻞ ﺑﺎﻟﻌﻤﻞ ﻟﻤﺪﺓ ﻻ ﺗﺰﻳﺪ ﻋﻦ ﺛﻤﺎﻧﻲ ﺳﺎﻋﺎﺕ ﻋﻤﻞ ﻓﻌﻠﻴﺔ ﻳﻮﻣﻳًﺎ ﻭﺑﺤﺪ ﺃﻗﺼﻰ ﺛﻤﺎﻥ ﻭﺃﺭﺑﻌﻴﻦ ﺳﺎﻋﺔ ﺃﺳﺒﻮﻋﻳًﺎ، ﻻ ﺗﺪﺧﻞ ﻓﻴﻬﺎ ﻓﺘﺮﺍﺕ ﺍﻟﺮﺍﺣﺔ ﻭﺍﻟﻄﻌﺎﻣ، ﻭﺫﻟﻚ ﻭﻓﻗًﺎ ﻟﻘﺎﻧﻮﻥ ﺍﻟﻌﻤﻞ.<br/>
-              ﻳﺤﺪﺩ ﺻﺎﺣﺐ ﺍﻟﻌﻤﻞ ﻣﻮﺍﻋﻴﺪ ﺍﻟﺤﻀﻮﺭ ﻭﺍﻻﻧﺼﺮﺍﻑ.<br/>
-              ﻳﻠﺘﺰﻡ ﺍﻟﻌﺎﻣﻞ ﺑﺎﻻﻧﺼﺮﺍﻑ ﺑﻌﺪ ﺇﺗﻤﺎﻡ ﻋﻤﻠﻪ ﻭﺍﻟﺘﻮﻗﻴﻊ ﻓﻲ ﺳﺠﻼﺕ ﺍﻟﺤﻀﻮﺭ ﻭﺍﻻﻧﺼﺮﺍﻑ ﺃﻭ ﺍﻟﻨﻈﺎﻡ ﺍﻹﻟﻜﺘﺮﻭﻧﻲ ﺍﻟﻤﻌﺘﻤﺪ ﻟﺪﻯ ﺍﻟﺸﺮﻛﺔ.</p>
+                {/* Declaration */}
+                <div style={{ padding: "15px", border: "1px solid #000", borderRadius: "8px", backgroundColor: "#f9f9f9", marginBottom: "25px" }}>
+                  <h4 style={{ margin: "0 0 10px 0", fontSize: "16px", fontWeight: "bold", color: "#000" }}>إقرار استلام وموافقة</h4>
+                  <p style={{ margin: 0, fontSize: "14px", lineHeight: "1.8", textAlign: "justify" }}>
+                    أقر أنا الموقع أعلاه (الطرف الثاني) بأنني قد اطلعت على كافة بنود هذا العقد وفهمتها فهماً نافياً للجهالة، وبأنني تسلمت نسخة أصلية من هذا العقد موقعة ومختومة من الطرف الأول للعمل بموجبها والاحتفاظ بها، وأتعهد بالالتزام التام بكل ما ورد فيها من أحكام وشروط ولوائح الشركة الداخلية.
+                  </p>
+                  <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "20px", alignItems: "flex-end" }}>
+                    <span style={{ fontWeight: "bold", fontSize: "14px", marginLeft: "15px" }}>توقيع الاستلام:</span>
+                    <div style={{ width: "200px", borderBottom: "2px dotted #000" }}></div>
+                  </div>
+                </div>
 
-              <p><strong>ﺍﻟﻤﺎﺩﺓ ﺍﻟﺮﺍﺑﻌﺔ: ﺍﻷﺟﺮ ﻭﻣﻮﻋﺪ ﺍﻟﺼﺮﻑ</strong><br/>
-              ﻳﺘﻘﺎﺿﻰ ﺍﻟﻌﺎﻣﻞ ﺃﺟﺮًﺎ ﺷﻬﺮﻳًﺎ ﺇﺟﻤﺎﻟﻳًﺎ ﻗﺪﺭﻩ: {fmtCurrency(selectedEmployee.baseSalary)}.<br/>
-              ﻳﺼﺮﻑ ﺃﺟﺮ ﺍﻟﻌﺎﻣﻞ ﺷﻬﺮﻳًﺎ ﻓﻲ ﺍﻟﻴﻮﻡ ﺍﻟﺨﺎﻣﺲ ﻣﻦ ﻛﻞ ﺷﻬﺮ ﻣﻴﻼﺩﻱ ﻛﺤﺪ ﺃﻗﺼﯨ، ﻧﻘﺪًﺎ ﺃﻭ ﻋﻦ ﻃﺮﻳﻖ ﺍﻟﺘﺤﻮﻳﻞ ﺍﻟﺒﻨﻜﻲ ﺃﻭ ﺃﻱ ﻭﺳﻴﻠﺔ ﺩﻓﻊ ﻣﺸﺮﻭﻋﺔ ﻳﺘﻔﻖ ﻋﻠﻴﻬﺎ ﺍﻟﻄﺮﻓﺎﻧ، ﻭﺫﻟﻚ ﻭﻓﻗًﺎ ﻟﻤﺎ ﻳﺘﻴﺤﻪ ﺍﻟﻘﺎﻧﻮﻥ.<br/>
-              ﻳﺮﺍﻋﻰ ﻓﻲ ﺧﺼﻢ ﺍﻻﺳﺘﻘﻄﺎﻋﺎﺕ ﺍﻟﻘﺎﻧﻮﻧﻴﺔ ﻣﺎ ﻳﻠﻲ: ﺣﺼﺔ ﺍﻟﻌﺎﻣﻞ ﻓﻲ ﺍﻟﺘﺄﻣﻴﻨﺎﺕ ﺍﻻﺟﺘﻤﺎﻋﻴﺔ، ﺍﻟﻀﺮﺍﺋﺐ ﺍﻟﻤﺴﺘﺤﻘﺔ ﻋﻠﻰ ﺍﻟﺪﺧﻟ، ﻭﺃﻱ ﺍﺳﺘﻘﻄﺎﻋﺎﺕ ﺃﺧﺮﻯ ﻣﻘﺮﺭﺓ ﻭﻓﻖ ﺍﻟﻘﺎﻧﻮﻥ ﺃﻭ ﺍﻟﻼﺋﺤﺔ ﺍﻟﺪﺍﺧﻠﻴﺔ ﺍﻟﻤﻌﺘﻤﺪﺓ ﻟﻠﺸﺮﻛﺔ.</p>
+                {/* HR Only Box */}
+                <div style={{ border: "2px dashed #777", padding: "15px", borderRadius: "8px", backgroundColor: "#fff", marginTop: "10px" }}>
+                  <h4 style={{ margin: "0 0 15px 0", fontSize: "15px", fontWeight: "bold", color: "#555" }}>خاص بإدارة الموارد البشرية (HR Use Only)</h4>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
+                    <div style={{ display: "flex", flex: 1, alignItems: "flex-end" }}>
+                      <span style={{ fontWeight: "bold", marginLeft: "10px" }}>تمت المراجعة بواسطة:</span>
+                      <div style={{ flex: 1, borderBottom: "1px dotted #000", marginRight: "10px" }}></div>
+                    </div>
+                    <div style={{ display: "flex", flex: 1, alignItems: "flex-end", margin: "0 20px" }}>
+                      <span style={{ fontWeight: "bold", marginLeft: "10px" }}>تاريخ الإدراج في النظام:</span>
+                      <div style={{ flex: 1, borderBottom: "1px dotted #000", marginRight: "10px" }}></div>
+                    </div>
+                    <div style={{ display: "flex", flex: 1, alignItems: "flex-end" }}>
+                      <span style={{ fontWeight: "bold", marginLeft: "10px" }}>رقم ملف العامل:</span>
+                      <div style={{ flex: 1, borderBottom: "1px dotted #000", marginRight: "10px" }}></div>
+                    </div>
+                  </div>
+                </div>
 
-              <p><strong>ﺍﻟﻤﺎﺩﺓ ﺍﻟﺨﺎﻣﺴﺔ: ﺍﻟﺘﺰﺍﻣﺎﺕ ﺍﻟﻌﺎﻣﻞ</strong><br/>
-              ﻳﻠﺘﺰﻡ ﺍﻟﻌﺎﻣﻞ ﺑﺎﻟﺤﻔﺎﻅ ﻋﻠﻰ ﻣﻈﻬﺮ ﻻﺋﻖ ﻭﻧﻈﻴﻒ ﻳﺘﻨﺎﺳﺐ ﻣﻊ ﻃﺒﻴﻌﺔ ﺍﻟﻌﻤﻞ ﻭﻣﻌﺎﻣﻠﺔ ﺍﻟﻌﻤﻼﺀ، ﻭﺍﻻﻟﺘﺰﺍﻡ ﺑﺎﻟﻤﻼﺑﺲ ﺍﻟﺮﺳﻤﻴﺔ ﺃﻭ ﺍﻟﺰﻱ ﺍﻟﻤﻮﺣﺪ ﺣﺴﺐ ﺗﻌﻠﻴﻤﺎﺕ ﺍﻹﺩﺍﺭﺓ.<br/>
-              ﻣﻌﺎﻣﻠﺔ ﺍﻟﻌﻤﻼﺀ ﺑﺎﺣﺘﺮﺍﻡ ﻭﻟﺒﺎﻗﺔ، ﻭﺑﺬﻝ ﺍﻟﻌﻨﺎﻳﺔ ﺍﻟﻼﺯﻣﺔ ﻹﻧﻬﺎﺀ ﻣﺼﺎﻟﺤﻬﻢ ﺑﺄﻓﻀﻞ ﺻﻮﺭﺓ، ﻭﺍﻟﺤﻔﺎﻅ ﻋﻠﻰ ﺭﻭﺡ ﺍﻟﺘﻌﺎﻭﻥ ﻣﻊ ﺍﻟﺰﻣﻼﺀ ﻭﺍﻟﺮﺅﺳﺎﺀ.<br/>
-              ﺍﻻﻟﺘﺰﺍﻡ ﺑﺠﻤﻴﻊ ﺍﻟﺘﻌﻠﻴﻤﺎﺕ ﺍﻟﺸﻔﻮﻳﺔ ﻭﺍﻟﻜﺘﺎﺑﻴﺔ ﺍﻟﺼﺎﺩﺭﺓ ﻣﻦ ﺍﻹﺩﺍﺭﺓ ﺍﻟﻤﺨﺘﺼﺔ، ﻭﺍﻻﻟﺘﺰﺍﻡ ﺑﻼﺋﺤﺔ ﺍﻟﻨﻈﺎﻡ ﺍﻟﺪﺍﺧﻠﻲ ﻭﻟﻮﺍﺋﺢ ﺍﻟﺠﺰﺍﺀﺍﺕ ﺍﻟﻤﻌﺘﻤﺪﺓ ﻟﺪﻯ ﺍﻟﺠﻬﺔ ﺍﻹﺩﺍﺭﻳﺔ ﺍﻟﻤﺨﺘﺼﺔ، ﺑﺎﻋﺘﺒﺎﺭﻫﺎ ﺟﺰﺀًﺎ ﻻ ﻳﺘﺠﺰﺃ ﻣﻦ ﻫﺬﺍ ﺍﻟﻌﻘﺪ.<br/>
-              ﺍﻟﻤﺤﺎﻓﻈﺔ ﻋﻠﻰ ﺃﺩﻭﺍﺕ ﻭﻣﻌﺪﺍﺕ ﺍﻟﻌﻤﻞ ﻭﺃﻱ ﻋﻬﺪﺓ ﺗﺴﻠﻢ ﺇﻟﻴﻫ، ﻭﺇﺭﺟﺎﻋﻬﺎ ﺑﺤﺎﻟﺘﻬﺎ ﻋﻨﺪ ﺍﻧﺘﻬﺎﺀ ﺍﻟﻌﻤﻞ ﺃﻭ ﻋﻨﺪ ﻃﻠﺐ ﺍﻟﺸﺮﻛﺔ.<br/>
-              ﻋﺪﻡ ﺇﻓﺸﺎﺀ ﺃﻱ ﻣﻌﻠﻮﻣﺎﺕ ﺃﻭ ﺑﻴﺎﻧﺎﺕ ﺃﻭ ﺃﺳﺮﺍﺭ ﺗﺘﻌﻠﻖ ﺑﺎﻟﺸﺮﻛﺔ ﺃﻭ ﻋﻤﻼﺋﻬﺎ ﺃﻭ ﻣﻮﺭﺩﻳﻬﺎ، ﺳﻮﺍﺀ ﺃﺛﻨﺎﺀ ﺳﺮﻳﺎﻥ ﻫﺬﺍ ﺍﻟﻌﻘﺪ ﺃﻭ ﺑﻌﺪ ﺍﻧﺘﻬﺎﺋﻫ، ﺇﻻ ﻓﻲ ﺍﻟﺤﺪﻭﺩ ﺍﻟﺘﻲ ﻳﺒﻴﺤﻬﺎ ﺍﻟﻘﺎﻧﻮﻥ.<br/>
-              ﺍﻻﻣﺘﻨﺎﻉ ﻋﻦ ﺍﺳﺘﻐﻼﻝ ﺍﻟﻤﻌﻠﻮﻣﺎﺕ ﺃﻭ ﺍﻟﻌﻤﻼﺀ ﻟﻤﺼﻠﺤﺔ ﺷﺨﺼﻴﺔ ﺃﻭ ﻟﺤﺴﺎﺏ ﺟﻬﺔ ﻣﻨﺎﻓﺴﺔ ﺃﺛﻨﺎﺀ ﺍﻟﺨﺪﻣﺔ، ﻭﺃﻱ ﺷﺮﻁ ﻣﻨﺎﻓﺴﺔ ﺑﻌﺪ ﺍﻧﺘﻬﺎﺀ ﺍﻟﺨﺪﻣﺔ – ﺇﻥ ﺗﻢ ﺍﻻﺗﻔﺎﻕ ﻋﻠﻴﻪ – ﻳﺠﺐ ﺃﻥ ﻳﻜﻮﻥ ﻣﻜﺘﻮﺑًﺎ ﻭﻣﺤﺪﺩًﺎ ﻣﻦ ﺣﻴﺚ ﺍﻟﺰﻣﺎﻥ ﻭﺍﻟﻤﻜﺎﻥ ﻭﻧﻮﻉ ﺍﻟﻨﺸﺎﻁ ﻭﺑﻤﺎ ﻻ ﻳﺠﺎﻭﺯ ﻣﺎ ﻳﻘﺒﻠﻪ ﺍﻟﻘﺎﻧﻮﻥ.</p>
-
-              <p><strong>ﺍﻟﻤﺎﺩﺓ ﺍﻟﺴﺎﺩﺳﺔ: ﺍﻟﺘﺰﺍﻣﺎﺕ ﺻﺎﺣﺐ ﺍﻟﻌﻤﻞ</strong><br/>
-              ﺗﻤﻜﻴﻦ ﺍﻟﻌﺎﻣﻞ ﻣﻦ ﺃﺩﺍﺀ ﻋﻤﻠﻪ ﻭﺗﻮﻓﻴﺮ ﺍﻷﺩﻭﺍﺕ ﻭﺍﻟﻮﺳﺎﺋﻞ ﺍﻟﻼﺯﻣﺔ ﻟﺬﻟﻚ.<br/>
-              ﺳﺪﺍﺩ ﺍﻷﺟﺮ ﻓﻲ ﻣﻮﺍﻋﻴﺪﻩ ﺍﻟﻤﺤﺪﺩﺓ ﺑﻬﺬﺍ ﺍﻟﻌﻘﺪ ﻭﻃﺒﻗًﺎ ﻟﻠﻘﺎﻧﻮﻥ.<br/>
-              ﻗﻴﺪ ﺍﻟﻌﺎﻣﻞ ﻓﻲ ﺍﻟﺘﺄﻣﻴﻨﺎﺕ ﺍﻻﺟﺘﻤﺎﻋﻴﺔ ﻭﺳﺪﺍﺩ ﺍﻟﺤﺼﺔ ﺍﻟﻤﻘﺮﺭﺓ ﻋﻠﻰ ﺻﺎﺣﺐ ﺍﻟﻌﻤﻞ.<br/>
-              ﺗﻮﻓﻴﺮ ﺑﻴﺌﺔ ﻋﻤﻞ ﺁﻣﻨﺔ ﻭﻓﻗًﺎ ﻻﺷﺘﺮﺍﻃﺎﺕ ﺍﻟﺴﻼﻣﺔ ﻭﺍﻟﺼﺤﺔ ﺍﻟﻤﻬﻨﻴﺔ.<br/>
-              ﻣﻨﺢ ﺍﻟﻌﺎﻣﻞ ﺍﻹﺟﺎﺯﺍﺕ ﺍﻟﻤﺴﺘﺤﻘﺔ ﻟﻪ ﻭﻓﻗًﺎ ﻷﺣﻜﺎﻡ ﻗﺎﻧﻮﻥ ﺍﻟﻌﻤﻞ ﻭﻫﺬﺍ ﺍﻟﻌﻘﺪ.</p>
-
-              <p><strong>ﺍﻟﻤﺎﺩﺓ ﺍﻟﺴﺎﺑﻌﺔ: ﺍﻟﺤﻀﻮﺭ ﻭﺍﻻﻧﺼﺮﺍﻑ ﻭﺍﻟﺠﺰﺍﺀﺍﺕ</strong><br/>
-              ﻳﻠﺘﺰﻡ ﺍﻟﻌﺎﻣﻞ ﺑﺎﻟﺤﻀﻮﺭ ﻭﺍﻻﻧﺼﺮﺍﻑ ﻓﻲ ﺍﻟﻤﻮﺍﻋﻴﺪ ﺍﻟﻤﺤﺪﺩﺓ، ﻭﺍﻟﺘﻮﻗﻴﻊ ﻓﻲ ﺳﺠﻼﺕ ﺃﻭ ﻧﻈﺎﻡ ﺍﻟﺤﻀﻮﺭ ﻭﺍﻻﻧﺼﺮﺍﻑ.<br/>
-              ﻓﻲ ﺣﺎﻝ ﺍﻟﺘﺄﺧﺮ ﺍﻟﻤﺘﻜﺮﺭ ﺃﻭ ﺍﻟﻐﻴﺎﺏ ﺩﻭﻥ ﺇﺫﻥ ﺃﻭ ﻋﺬﺭ ﻣﻘﺒﻮﻟ، ﻳﻄﺒﻖ ﺻﺎﺣﺐ ﺍﻟﻌﻤﻞ ﺍﻟﺠﺰﺍﺀﺍﺕ ﺍﻟﺘﺄﺩﻳﺒﻴﺔ ﺍﻟﻮﺍﺭﺩﺓ ﻓﻲ ﻗﺎﻧﻮﻥ ﺍﻟﻌﻤﻞ ﺍﻟﻤﺼﺮﻱ ﻭﻻﺋﺤﺔ ﺍﻟﺠﺰﺍﺀﺍﺕ ﺍﻟﻤﻌﺘﻤﺪﺓ ﺑﺎﻟﺸﺮﻛﺔ.<br/>
-              ﺃﻱ ﺧﺼﻮﻣﺎﺕ ﻣﻦ ﺃﺟﺮ ﺍﻟﻌﺎﻣﻞ ﻳﺠﺐ ﺃﻥ ﺗﻜﻮﻥ ﻓﻲ ﺍﻟﺤﺪﻭﺩ ﺍﻟﺘﻲ ﻳﻘﺮﺭﻫﺎ ﻗﺎﻧﻮﻥ ﺍﻟﻌﻤﻞ ﻭﺃﻻ ﺗﺆﺩﻱ ﺇﻟﻰ ﺣﺮﻣﺎﻥ ﺍﻟﻌﺎﻣﻞ ﻣﻦ ﻛﺎﻣﻞ ﺃﺟﺮﻩ ﻋﻦ ﻣﺪﺓ ﻋﻤﻞ ﻓﻌﻠﻴﺔ.</p>
-
-              <p><strong>ﺍﻟﻤﺎﺩﺓ ﺍﻟﺜﺎﻣﻨﺔ: ﺇﻧﻬﺎﺀ ﺍﻟﻌﻘﺪ ﻭﺍﻹﺧﻄﺎﺭ</strong><br/>
-              ﻳﺠﻮﺯ ﻷﻱ ﻣﻦ ﺍﻟﻄﺮﻓﻴﻦ ﺇﻧﻬﺎﺀ ﺍﻟﻌﻘﺪ ﺑﺸﺮﻁ ﺇﺧﻄﺎﺭ ﺍﻟﻄﺮﻑ ﺍﻵﺧﺮ ﺇﺧﻄﺎﺭًﺎ ﻛﺘﺎﺑﻳًﺎ ﻗﺒﻞ ﺍﻹﻧﻬﺎﺀ ﺑﻤﺪﺓ ﻻ ﺗﻘﻞ ﻋﻦ ﺃﺳﺒﻮﻋﻴﻦ ﻭﺫﻟﻚ ﻟﻠﻌﻘﻮﺩ ﻏﻴﺮ ﻣﺤﺪﺩﺓ ﺍﻟﻤﺪﺓ ﻃﺒﻗًﺎ ﻟﻘﺎﻧﻮﻥ ﺍﻟﻌﻤﻞ ﺍﻟﺠﺪﻳﺪ.<br/>
-              ﺇﺫﺍ ﺃﻧﻬﻰ ﺃﻱ ﻣﻦ ﺍﻟﻄﺮﻓﻴﻦ ﺍﻟﻌﻘﺪ ﺍﻟﻤﺤﺪﺩ ﺍﻟﻤﺪﺓ ﺩﻭﻥ ﺳﺒﺐ ﻣﺸﺮﻭﻋ، ﻳﻠﺘﺰﻡ ﺑﺘﻌﻮﻳﺾ ﺍﻟﻄﺮﻑ ﺍﻵﺧﺮ ﻋﻦ ﺍﻟﻀﺮﺭ ﻭﻓﻗًﺎ ﻷﺣﻜﺎﻡ ﺍﻟﻘﺎﻧﻮﻥ.<br/>
-              ﻳﺠﻮﺯ ﻟﺼﺎﺣﺐ ﺍﻟﻌﻤﻞ ﻓﺼﻞ ﺍﻟﻌﺎﻣﻞ ﻓﻲ ﺣﺎﻻﺕ ﻣﺤﺪﺩﺓ ﻳﻘﺮﻫﺎ ﺍﻟﻘﺎﻧﻮﻧ، ﻣﻊ ﻣﺮﺍﻋﺎﺓ ﺍﻹﺟﺮﺍﺀﺍﺕ ﺍﻟﻤﻨﺼﻮﺹ ﻋﻠﻴﻬﺎ ﻓﻲ ﻗﺎﻧﻮﻥ ﺍﻟﻌﻤﻞ ﻭﺍﻟﻘﻀﺎﺀ ﺍﻟﻌﻤﺎﻟﻲ ﺍﻟﻤﺨﺘﺺ.<br/>
-              ﻳﻘﺪﻡ ﺍﻟﻌﺎﻣﻞ ﺍﺳﺘﻘﺎﻟﺘﻪ ﻛﺘﺎﺑﻳًﺎ ﺇﻟﻰ ﺻﺎﺣﺐ ﺍﻟﻌﻤﻞ ﻭﻓﻗًﺎ ﻟﻠﻨﻤﺎﺫﺝ ﻭﺍﻹﺟﺮﺍﺀﺍﺕ ﺍﻟﻤﻌﻤﻮﻝ ﺑﻬﺎ، ﻭﻳﺤﻖ ﻟﻠﻌﺎﻣﻞ ﺍﻟﻌﺪﻭﻝ ﻋﻦ ﺍﺳﺘﻘﺎﻟﺘﻪ ﺧﻼﻝ ﺍﻟﻤﺪﺓ ﺍﻟﺘﻲ ﻳﺤﺪﺩﻫﺎ ﺍﻟﻘﺎﻧﻮﻧ، ﻭﺇﻻ ﺍﻋﺘﺒﺮﺕ ﺍﻻﺳﺘﻘﺎﻟﺔ ﻧﻬﺎﺋﻴﺔ.</p>
+                <div style={{ textAlign: "center", marginTop: "30px", fontSize: "14px", fontWeight: "bold", color: "#666" }}>
+                  --- نهاية وثيقة العقد ---
+                </div>
+              </div>
             </div>
 
-            <div style={{ display: "flex", justifyContent: "space-between", marginTop: "40px", paddingTop: "20px" }}>
-              <div style={{ width: "40%", textAlign: "center" }}>
-                <p style={{ fontWeight: "bold", marginBottom: "30px" }}>ﺻﺎﺣﺐ ﺍﻟﻌﻤﻞ<br/><span style={{ fontSize: "12px", color: "#666" }}>Employer Signature</span></p>
-                <div style={{ borderBottom: "1px solid #000", width: "80%", margin: "0 auto" }}></div>
+            {/* National ID Attachment */}
+            {selectedEmployee.nationalIdPhotoUrl && (
+              <div style={{ pageBreakBefore: "always", paddingTop: "20px", textAlign: "center" }}>
+                <h3 style={{ fontWeight: "bold", fontSize: "18px", marginBottom: "15px", borderBottom: "2px solid #000", paddingBottom: "5px", display: "inline-block" }}>
+                  مرفق: صورة بطاقة الرقم القومي
+                </h3>
+                <div style={{ border: "1px solid #ccc", padding: "10px", borderRadius: "5px", display: "inline-block", backgroundColor: "#fff", width: "100%" }}>
+                  <img 
+                    src={selectedEmployee.nationalIdPhotoUrl} 
+                    alt="National ID" 
+                    style={{ maxWidth: "100%", maxHeight: "600px", objectFit: "contain", display: "block", margin: "0 auto" }} 
+                  />
+                </div>
               </div>
-              <div style={{ width: "40%", textAlign: "center" }}>
-                <p style={{ fontWeight: "bold", marginBottom: "30px" }}>ﺗﻮﻗﻴﻊ ﺍﻟﻤﻮﻇﻒ<br/><span style={{ fontSize: "12px", color: "#666" }}>Employee Signature</span></p>
-                <div style={{ borderBottom: "1px solid #000", width: "80%", margin: "0 auto" }}></div>
-              </div>
-            </div>
+            )}
+            
           </div>
         )}
       </div>
-
-    </div>
+    </>
   );
 }

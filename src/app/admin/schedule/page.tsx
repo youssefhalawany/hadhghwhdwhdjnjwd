@@ -8,7 +8,7 @@ import {
 import ClientLayoutWrapper from "@/components/ClientLayoutWrapper";
 import { useBranch } from "@/context/BranchContext";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, addDoc, updateDoc, doc, onSnapshot, query, where, orderBy } from "firebase/firestore";
+import { collection, getDocs, addDoc, updateDoc, doc, onSnapshot, query, where, orderBy, limit } from "firebase/firestore";
 
 export default function AdminSchedulePage() {
   const { currentBranch } = useBranch();
@@ -62,7 +62,7 @@ export default function AdminSchedulePage() {
 
   useEffect(() => {
     if (!storeId) return;
-    const unsub = onSnapshot(collection(db, "borrow_requests"), (snap) => {
+    const unsub = onSnapshot(query(collection(db, "borrow_requests"), limit(100)), (snap) => {
       const reqs = snap.docs.map(d => ({id: d.id, ...d.data()}))
         .filter((r: any) => isStoreMatch(r.sourceStoreId) || isStoreMatch(r.targetStoreId))
         .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
