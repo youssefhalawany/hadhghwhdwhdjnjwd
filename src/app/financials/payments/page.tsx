@@ -638,168 +638,150 @@ export default function PaymentsRedesignPage() {
       {/* HIDDEN PRINT LAYOUT (A4) */}
       {selectedPaymentForPrint && (
         <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
-          <div id="pdf-receipt" style={{ width: '794px', minHeight: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', padding: '40px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
-            {/* Background Watermark Logo */}
-            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 0, opacity: 0.04, pointerEvents: 'none' }}>
-              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Circle_K_logo.svg/2048px-Circle_K_logo.svg.png" alt="Watermark" style={{ width: '500px', filter: 'grayscale(100%)' }} />
-            </div>
-
+          <div id="pdf-receipt" style={{ width: '794px', minHeight: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
+            
             {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '3px solid #000', paddingBottom: '20px', marginBottom: '30px', position: 'relative', zIndex: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                <div style={{ width: '70px', height: '70px', border: '3px solid #000', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ fontSize: '42px', fontWeight: '900', color: '#000', lineHeight: 1 }}>K</span>
+            <div style={{ backgroundColor: '#22c55e', padding: '20px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: '#fff', fontSize: '18px', fontWeight: 'bold' }}>Cash Receipt</span>
+              <span style={{ color: '#fff', fontSize: '26px', fontWeight: 'bold' }} dir="rtl">ايصال استلام نقدية</span>
+            </div>
+
+            {/* Intro Text */}
+            <div style={{ padding: '40px 40px 20px', textAlign: 'right', direction: 'rtl' }}>
+              <p style={{ margin: 0, fontSize: '15px', lineHeight: '1.6', color: '#333', fontWeight: 'bold' }}>
+                في حال تم سداد قيمة الفاتورة نقدًا، يُرجى من المورد تعبئة البيانات التالية<br/>لتوثيق عملية الاستلام
+              </p>
+            </div>
+
+            {/* 2x3 Grid Data */}
+            <div style={{ padding: '0 40px', marginBottom: '20px' }}>
+              <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
+                {/* Row 1 */}
+                <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb' }}>
+                  <div style={{ flex: 1, padding: '15px', borderRight: '1px solid #e5e7eb' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '12px', color: '#6b7280' }}>Our Company</span>
+                      <span style={{ fontSize: '13px', fontWeight: 'bold' }}>اسم شركتنا</span>
+                    </div>
+                    <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '16px', color: '#000' }}>El Masreya for Trade</div>
+                  </div>
+                  <div style={{ flex: 1, padding: '15px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '12px', color: '#6b7280' }}>Invoice Company</span>
+                      <span style={{ fontSize: '13px', fontWeight: 'bold' }}>اسم الشركة للفاتورة</span>
+                    </div>
+                    <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '16px', color: '#000' }}>{selectedPaymentForPrint.companyName}</div>
+                  </div>
                 </div>
-                <div>
-                  <h1 style={{ fontSize: '28px', fontWeight: '900', color: '#000', margin: 0, textTransform: 'uppercase', letterSpacing: '1px' }}>Payment Voucher</h1>
-                  <p style={{ fontSize: '14px', color: '#000', margin: '4px 0 0', fontWeight: 'bold', textTransform: 'uppercase' }}>Circle K - El Alamein 4</p>
+                {/* Row 2 */}
+                <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb' }}>
+                  <div style={{ flex: 1, padding: '15px', borderRight: '1px solid #e5e7eb' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '12px', color: '#6b7280' }}>Invoice #</span>
+                      <span style={{ fontSize: '13px', fontWeight: 'bold' }}>رقم الفاتورة</span>
+                    </div>
+                    <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '16px', color: '#000' }}>{selectedPaymentForPrint.invoiceNumber || '-'}</div>
+                  </div>
+                  <div style={{ flex: 1, padding: '15px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '12px', color: '#6b7280' }}>PO #</span>
+                      <span style={{ fontSize: '13px', fontWeight: 'bold' }}>رقم الأمر</span>
+                    </div>
+                    <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '16px', color: '#000' }}>{selectedPaymentForPrint.poNumber || '-'}</div>
+                  </div>
                 </div>
-              </div>
-              <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
-                <Barcode value={selectedPaymentForPrint.id.substring(0, 10).toUpperCase()} width={1.5} height={40} fontSize={12} displayValue={true} margin={0} />
-                <div style={{ backgroundColor: '#000', color: '#fff', padding: '4px 12px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>
-                  {selectedPaymentForPrint.method.replace('_', ' ').toUpperCase()} PAYMENT
+                {/* Row 3 */}
+                <div style={{ display: 'flex' }}>
+                  <div style={{ flex: 1, padding: '15px', borderRight: '1px solid #e5e7eb' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '12px', color: '#6b7280' }}>Branch</span>
+                      <span style={{ fontSize: '13px', fontWeight: 'bold' }}>اسم الفرع</span>
+                    </div>
+                    <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '16px', color: '#000' }}>El Alamein 4</div>
+                  </div>
+                  <div style={{ flex: 1, padding: '15px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '12px', color: '#6b7280' }}>Date</span>
+                      <span style={{ fontSize: '13px', fontWeight: 'bold' }}>التاريخ</span>
+                    </div>
+                    <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '16px', color: '#000' }}>{selectedPaymentForPrint.date}</div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Content Body */}
-            <div style={{ position: 'relative', zIndex: 10, flex: 1 }}>
-              
-              {/* Top Meta Data Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '30px' }}>
-                <div style={{ border: '2px solid #000', borderRadius: '8px', padding: '15px' }}>
-                  <p style={{ margin: '0 0 5px', fontSize: '10px', fontWeight: 'bold', color: '#666', textTransform: 'uppercase', letterSpacing: '1px' }}>Paid To (Supplier / Vendor)</p>
-                  <p style={{ margin: 0, fontSize: '20px', fontWeight: '900', color: '#000' }}>{selectedPaymentForPrint.companyName}</p>
-                </div>
-                <div style={{ border: '2px solid #000', borderRadius: '8px', padding: '15px', display: 'flex', justifyContent: 'space-between' }}>
-                  <div>
-                    <p style={{ margin: '0 0 5px', fontSize: '10px', fontWeight: 'bold', color: '#666', textTransform: 'uppercase', letterSpacing: '1px' }}>Date of Payment</p>
-                    <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: '#000' }}>{selectedPaymentForPrint.date}</p>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <p style={{ margin: '0 0 5px', fontSize: '10px', fontWeight: 'bold', color: '#666', textTransform: 'uppercase', letterSpacing: '1px' }}>Category</p>
-                    <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: '#000', textTransform: 'uppercase' }}>{selectedPaymentForPrint.category}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* References Table */}
-              <div style={{ border: '2px solid #000', borderRadius: '8px', marginBottom: '30px', overflow: 'hidden' }}>
-                <div style={{ backgroundColor: '#f9f9f9', padding: '10px 15px', borderBottom: '2px solid #000', fontWeight: '900', color: '#000', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                  Document References
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', backgroundColor: '#fff' }}>
-                  <div style={{ padding: '15px', borderRight: '1px solid #000' }}>
-                    <p style={{ margin: '0 0 5px', fontSize: '10px', fontWeight: 'bold', color: '#666', textTransform: 'uppercase' }}>Supplier Invoice Number</p>
-                    <p style={{ margin: 0, fontSize: '16px', fontWeight: 'bold', color: '#000', fontFamily: 'monospace' }}>{selectedPaymentForPrint.invoiceNumber || 'N/A'}</p>
-                  </div>
-                  <div style={{ padding: '15px' }}>
-                    <p style={{ margin: '0 0 5px', fontSize: '10px', fontWeight: 'bold', color: '#666', textTransform: 'uppercase' }}>System PO Number</p>
-                    <p style={{ margin: 0, fontSize: '16px', fontWeight: 'bold', color: '#000', fontFamily: 'monospace' }}>{selectedPaymentForPrint.poNumber || 'N/A'}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Financial Breakdown */}
-              <div style={{ border: '2px solid #000', borderRadius: '8px', marginBottom: '30px', overflow: 'hidden' }}>
-                <div style={{ backgroundColor: '#f9f9f9', padding: '10px 15px', borderBottom: '2px solid #000', fontWeight: '900', color: '#000', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                  Financial Details
-                </div>
-                <div style={{ padding: '15px 30px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
-                    <span>Payment Amount (Base)</span>
-                    <span style={{ fontFamily: 'monospace' }}>EGP {Number(selectedPaymentForPrint.amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', paddingBottom: '15px', borderBottom: '1px solid #ccc', fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
-                    <span>Tax / VAT Applied</span>
-                    <span style={{ fontFamily: 'monospace' }}>EGP {Number(selectedPaymentForPrint.tax || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '20px', fontWeight: '900', color: '#000', textTransform: 'uppercase' }}>Total Paid</span>
-                    <span style={{ fontSize: '32px', fontWeight: '900', color: '#000', fontFamily: 'monospace' }}>
-                      EGP {Number(selectedPaymentForPrint.total).toLocaleString(undefined, {minimumFractionDigits: 2})}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Notes */}
-              {selectedPaymentForPrint.categoryNote && (
-                <div style={{ border: '2px solid #000', borderRadius: '8px', padding: '15px', marginBottom: '30px' }}>
-                  <p style={{ margin: '0 0 5px', fontSize: '10px', fontWeight: 'bold', color: '#666', textTransform: 'uppercase', letterSpacing: '1px' }}>Payment Notes & Description</p>
-                  <p style={{ margin: 0, fontSize: '14px', color: '#000', fontStyle: 'italic', fontWeight: 'bold' }}>{selectedPaymentForPrint.categoryNote}</p>
-                </div>
-              )}
-
+            {/* Legal Paragraph */}
+            <div style={{ padding: '20px 40px 40px', textAlign: 'center', direction: 'rtl' }}>
+              <p style={{ margin: '0 auto', fontSize: '14px', lineHeight: '1.8', color: '#333', fontWeight: 'bold', maxWidth: '650px' }}>
+                يُقر المورد باستلامه كامل قيمة الفاتورة المذكورة استلامًا نهائيًا وناجزًا، وبأنه لا يحق له بأي حال من الأحوال المطالبة بأي مبالغ إضافية تتعلق بهذه الفاتورة أو بهذا السداد، ويُعد هذا الإقرار مخالصة نهائية وشاملة وملزمة قانونًا.
+              </p>
             </div>
 
-            {/* Signatures Block at Bottom */}
-            <div style={{ marginTop: 'auto', border: '3px solid #000', borderRadius: '12px', padding: '20px', backgroundColor: '#fdfdfd', position: 'relative', zIndex: 10 }}>
-              <h3 style={{ margin: '0 0 20px', fontSize: '16px', fontWeight: '900', color: '#000', textTransform: 'uppercase', textAlign: 'center', borderBottom: '2px dashed #000', paddingBottom: '10px' }}>Official Sign-Off & Receipt Acknowledgement</h3>
-              
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '40px' }}>
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: '11px', color: '#333', fontStyle: 'italic', marginBottom: '15px', fontWeight: 'bold' }}>
-                    I, the undersigned representative of <span style={{ textDecoration: 'underline' }}>{selectedPaymentForPrint.companyName}</span>, acknowledge receipt of the total payment amount specified above in full satisfaction of the referenced invoice(s).
-                  </p>
-                  
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: '10px' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#000', width: '120px' }}>Recipient Name:</span>
-                      <div style={{ flex: 1, borderBottom: '1px solid #000', height: '20px' }}></div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: '10px' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#000', width: '120px' }}>National ID:</span>
-                      <div style={{ flex: 1, borderBottom: '1px solid #000', height: '20px' }}></div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: '10px', marginTop: '10px' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#000', width: '120px' }}>Signature:</span>
-                      <div style={{ flex: 1, borderBottom: '1px solid #000', height: '40px' }}></div>
-                    </div>
+            {/* Signature Section */}
+            <div style={{ padding: '0 40px', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
+                <div style={{ flex: 1, padding: '15px', borderRight: '1px solid #e5e7eb' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '40px' }}>
+                    <span style={{ fontSize: '12px', color: '#6b7280' }}>Supplier Name</span>
+                    <span style={{ fontSize: '13px', fontWeight: 'bold' }}>اسم المورد</span>
                   </div>
+                  <div style={{ borderBottom: '1px solid #d1d5db', margin: '0 10px' }}></div>
                 </div>
-
-                <div style={{ width: '2px', backgroundColor: '#000', margin: '0 10px' }}></div>
-
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: '11px', color: '#333', fontStyle: 'italic', marginBottom: '15px', fontWeight: 'bold' }}>
-                    I, the undersigned authorized manager, confirm that this payment was executed in accordance with company policy and funds were correctly disbursed from the branch safe/account.
-                  </p>
-                  
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: '10px' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#000', width: '120px' }}>Authorized By:</span>
-                      <div style={{ flex: 1, borderBottom: '1px solid #000', height: '20px' }}>
-                        <span style={{ display: 'block', paddingBottom: '2px', fontSize: '14px', fontWeight: 'bold', textTransform: 'uppercase' }}>
-                          {selectedPaymentForPrint.createdBy?.split('@')[0].replace('.', ' ')}
-                        </span>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: '10px', marginTop: '40px' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#000', width: '120px' }}>Signature & Stamp:</span>
-                      <div style={{ flex: 1, borderBottom: '1px solid #000', height: '40px', position: 'relative' }}>
-                        <div style={{ 
-                          position: 'absolute', right: '10px', bottom: '10px',
-                          border: '2px solid rgba(0,0,128,0.2)', padding: '4px', borderRadius: '4px', transform: 'rotate(-5deg)', opacity: 0.5, pointerEvents: 'none'
-                        }}>
-                          <div style={{ fontSize: '10px', fontWeight: '900', color: 'rgba(0,0,128,0.2)', textTransform: 'uppercase' }}>Approved Payment</div>
-                        </div>
-                      </div>
-                    </div>
+                <div style={{ flex: 1, padding: '15px', borderRight: '1px solid #e5e7eb' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '40px' }}>
+                    <span style={{ fontSize: '12px', color: '#6b7280' }}>National ID</span>
+                    <span style={{ fontSize: '13px', fontWeight: 'bold' }}>الرقم القومي</span>
                   </div>
+                  <div style={{ borderBottom: '1px solid #d1d5db', margin: '0 10px' }}></div>
+                </div>
+                <div style={{ flex: 1, padding: '15px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '40px' }}>
+                    <span style={{ fontSize: '12px', color: '#6b7280' }}>Signature</span>
+                    <span style={{ fontSize: '13px', fontWeight: 'bold' }}>التوقيع</span>
+                  </div>
+                  <div style={{ borderBottom: '1px solid #d1d5db', margin: '0 10px' }}></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Financial Section */}
+            <div style={{ padding: '0 40px' }}>
+              <div style={{ display: 'flex', border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
+                <div style={{ flex: 1, padding: '15px', borderRight: '1px solid #e5e7eb' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '11px', color: '#6b7280' }}>Invoice Value</span>
+                    <span style={{ fontSize: '12px', fontWeight: 'bold' }}>قيمة الفاتورة</span>
+                  </div>
+                  <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '16px', color: '#000' }}>EGP {Number(selectedPaymentForPrint.amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+                </div>
+                <div style={{ flex: 1, padding: '15px', borderRight: '1px solid #e5e7eb' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '11px', color: '#6b7280' }}>Tax</span>
+                    <span style={{ fontSize: '12px', fontWeight: 'bold' }}>الضريبة</span>
+                  </div>
+                  <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '16px', color: '#000' }}>EGP {Number(selectedPaymentForPrint.tax || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+                </div>
+                <div style={{ flex: 1, padding: '15px', borderRight: '1px solid #e5e7eb' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '11px', color: '#6b7280' }}>Total</span>
+                    <span style={{ fontSize: '12px', fontWeight: 'bold' }}>الإجمالي</span>
+                  </div>
+                  <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '16px', color: '#000' }}>EGP {Number(selectedPaymentForPrint.total).toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+                </div>
+                <div style={{ flex: 1, padding: '15px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '11px', color: '#6b7280' }}>Taxable</span>
+                    <span style={{ fontSize: '12px', fontWeight: 'bold' }}>خاضع للضريبة</span>
+                  </div>
+                  <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '16px', color: '#000' }}>{Number(selectedPaymentForPrint.tax) > 0 ? '(Yes) نعم' : '(No) لا'}</div>
                 </div>
               </div>
             </div>
 
             {/* Footer */}
-            <div style={{ marginTop: '20px', borderTop: '2px solid #000', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 10 }}>
-              <p style={{ fontSize: '9px', color: '#666', fontFamily: 'monospace', margin: 0, fontWeight: 'bold' }}>
-                PAYMENT_ID: {selectedPaymentForPrint.id} | TIMESTAMP: {new Date().toLocaleString()}
-              </p>
-              <div style={{ display: 'flex', alignItems: 'center' }}>
-                <QRCode value={window.location.origin + '/financials/payments/' + selectedPaymentForPrint.id} size={30} level="L" />
-              </div>
+            <div style={{ marginTop: 'auto', padding: '40px', textAlign: 'center', color: '#9ca3af', fontSize: '11px', fontWeight: 'bold' }}>
+              <p style={{ margin: '0 0 6px' }}>{selectedPaymentForPrint.date} تم إنشاء المستند في</p>
+              <p style={{ margin: 0 }}>يُرفق صورة من بطاقة الرقم القومي الخاصة بالمورد El Alamein 4</p>
             </div>
 
           </div>
