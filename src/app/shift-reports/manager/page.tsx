@@ -1359,8 +1359,23 @@ export default function ManagerAuditPage() {
               </div>
 
               <div style={{ width: '25%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end' }}>
-                <div style={{ width: '100%', height: '80px', border: '2px dashed #000', borderRadius: '4px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' }}>
-                  <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#333', textTransform: 'uppercase', textAlign: 'center', letterSpacing: '0.5px' }}>Official Branch<br />Stamp / Seal</span>
+                <div style={{ width: '100%', height: '80px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' }}>
+                  <div style={{ 
+                    border: '3px solid #000080', 
+                    borderRadius: '4px', 
+                    padding: '8px 12px', 
+                    transform: 'rotate(-2deg)', 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    fontFamily: '"Arial Black", Impact, "Arial Rounded MT Bold", sans-serif',
+                    opacity: 0.85,
+                    boxShadow: 'inset 0 0 0 1px rgba(0,0,128,0.2), 0 0 0 1px rgba(0,0,128,0.2)'
+                  }}>
+                    <span style={{ fontSize: '18px', fontWeight: '900', color: '#000080', letterSpacing: '1px', lineHeight: 1.2 }}>Circle k</span>
+                    <span style={{ fontSize: '15px', fontWeight: '900', color: '#000080', letterSpacing: '0.5px', lineHeight: 1.2 }}>El Alamein 4</span>
+                  </div>
                 </div>
               </div>
             </div>
