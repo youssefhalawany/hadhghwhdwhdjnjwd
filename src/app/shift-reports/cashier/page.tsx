@@ -99,6 +99,16 @@ const t = {
   }
 };
 
+export const CIGARETTE_TYPES = [
+  "Marlboro Purple Mix", "Marlboro Crafted Gold", "Marlboro Crafted Red",
+  "Marlboro White Local", "Marlboro Red Local",
+  "L&M Forward", "L&M Ultra Lights", "L&M Red", "L&M Blue",
+  "Merit Blue Local", "Merit Yellow Local",
+  "Terea Amber", "Terea Silver", "Terea Sun Pearl", "Terea Purple Wave",
+  "Terea Oasis Pearl", "Terea Turquoise Mint", "Terea Sienna", "Terea Russet",
+  "Terea Summer Wave", "Terea Arbor Pearl", "Terea Rigan", "Terea Khaki"
+];
+
 export default function CashierShiftReportPage() {
   const router = useRouter();
   const sigPadRef = useRef<SignaturePad>(null);
@@ -125,7 +135,7 @@ export default function CashierShiftReportPage() {
   const [visa, setVisa] = useState<string>("");
 
   // Inventory
-  const [cigarettes, setCigarettes] = useState({ start: "", delivery: "", end: "" });
+  const [cigaretteCounts, setCigaretteCounts] = useState<Record<string, string>>({});
   const [lighters, setLighters] = useState({ start: "", delivery: "", end: "" });
 
   const [existingReportId, setExistingReportId] = useState<string | null>(null);
@@ -348,11 +358,8 @@ export default function CashierShiftReportPage() {
           setDenominations({ '200': "", '100': "", '50': "", '20': "", '10': "", '5': "", 'coins': String(data.cashierCounts.cash) });
         }
         setVisa(String(data.cashierCounts.visa));
-        setCigarettes({
-          start: String(data.inventoryCounts?.cigarettes?.start || ""),
-          delivery: String(data.inventoryCounts?.cigarettes?.delivery || ""),
-          end: String(data.inventoryCounts?.cigarettes?.end || "")
-        });
+        setVisa(String(data.cashierCounts.visa));
+        setCigaretteCounts(data.inventoryCounts?.cigaretteCounts || {});
         setLighters({
           start: String(data.inventoryCounts?.lighters?.start || ""),
           delivery: String(data.inventoryCounts?.lighters?.delivery || ""),
@@ -372,9 +379,7 @@ export default function CashierShiftReportPage() {
       if (!prevSnap.empty) {
         const sortedDocs = prevSnap.docs.sort((a,b) => b.data().createdAt.localeCompare(a.data().createdAt));
         const lastReport = sortedDocs[0].data();
-        const cigEnd = lastReport.inventoryCounts?.cigarettes?.end || 0;
         const lightEnd = lastReport.inventoryCounts?.lighters?.end || 0;
-        setCigarettes(prev => ({ ...prev, start: String(cigEnd) }));
         setLighters(prev => ({ ...prev, start: String(lightEnd) }));
       }
     } catch (e) {
@@ -470,12 +475,7 @@ export default function CashierShiftReportPage() {
       cashierSignature: signature,
       cashierWriteUp: reportStatus === "disputed" ? cashierWriteUp : null,
       inventoryCounts: {
-        cigarettes: {
-          start: Number(cigarettes.start) || 0,
-          delivery: Number(cigarettes.delivery) || 0,
-          end: Number(cigarettes.end) || 0,
-          sold: calculateSold(cigarettes.start, cigarettes.delivery, cigarettes.end)
-        },
+        cigaretteCounts: cigaretteCounts,
         lighters: {
           start: Number(lighters.start) || 0,
           delivery: Number(lighters.delivery) || 0,
@@ -965,43 +965,28 @@ export default function CashierShiftReportPage() {
 
                   <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50 p-4 rounded-xl border-dashed">
                     <span className="text-xs sm:text-sm font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">{dict.totalDrops}</span>
-                    <span className="text-lg sm:text-xl font-black text-slate-900 dark:text-white font-mono">EGP {calculateTotalMoney().toFixed(2)}</span>
-                  </div>
-                </div>
-              </section>
-            </div>
-
-            {/* Right Column: Inventory & Signature */}
-            <div className="space-y-6">
-              
-              {/* 3. Inventory Checks */}
-              {cashierRole === 1 && (
-                <section className="glass-panel p-5 rounded-2xl space-y-4">
-                  <div className="flex items-center gap-2 border-b border-slate-150 dark:border-slate-800 pb-3">
-                    <Package className="h-5 w-5 text-orange-500" />
-                    <h2 className="text-base sm:text-lg font-black text-slate-800 dark:text-white uppercase tracking-wider">{dict.inventory}</h2>
-                  </div>
-                  
-                  {/* Cigarettes */}
+                    <span className="text-lg sm:text-xl font-black text-slate-900 dark:text-white font-mono">EGP {calcula                  {/* Detailed Cigarettes */}
                   <div className="space-y-2.5 bg-slate-50/50 dark:bg-slate-900/40 p-4 rounded-xl border border-slate-200/60 dark:border-slate-800 animate-in fade-in">
                     <h3 className="font-bold text-slate-700 dark:text-slate-350 border-b border-slate-200 dark:border-slate-800 pb-2 uppercase tracking-widest text-[10px]">{dict.cigarettes}</h3>
-                    <div className="grid grid-cols-4 gap-2">
-                      <div>
-                        <label className="block text-[8px] sm:text-[9px] font-bold text-slate-450 dark:text-slate-500 uppercase mb-1">{dict.start}</label>
-                        <input required type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={cigarettes.start} onChange={(e) => setCigarettes({ ...cigarettes, start: e.target.value })} className="w-full p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-orange-500 text-center font-mono text-xs sm:text-sm font-bold" />
-                      </div>
-                      <div>
-                        <label className="block text-[8px] sm:text-[9px] font-bold text-slate-455 dark:text-slate-500 uppercase mb-1 text-emerald-500">{dict.delivery}</label>
-                        <input required type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={cigarettes.delivery} onChange={(e) => setCigarettes({ ...cigarettes, delivery: e.target.value })} className="w-full p-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 outline-none focus:ring-2 focus:ring-emerald-500 text-center font-mono text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-450" />
-                      </div>
-                      <div>
-                        <label className="block text-[8px] sm:text-[9px] font-bold text-slate-455 dark:text-slate-500 uppercase mb-1 text-red-500">{dict.end}</label>
-                        <input required type="number" inputMode="numeric" pattern="[0-9]*" min="0" value={cigarettes.end} onChange={(e) => setCigarettes({ ...cigarettes, end: e.target.value })} className="w-full p-2 rounded-lg border border-red-500/20 bg-red-500/5 outline-none focus:ring-2 focus:ring-red-500 text-center font-mono text-xs sm:text-sm font-bold text-red-600 dark:text-red-450" />
-                      </div>
-                      <div className="bg-slate-900 rounded-lg p-1.5 text-center border border-slate-800 flex flex-col justify-center">
-                        <label className="block text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase mb-0.5">{dict.soldPacks}</label>
-                        <span className="font-black text-white text-xs sm:text-sm font-mono leading-none">{calculateSold(cigarettes.start, cigarettes.delivery, cigarettes.end)}</span>
-                      </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {CIGARETTE_TYPES.map((type) => (
+                        <div key={type} className="flex flex-col gap-1">
+                          <label className="text-[10px] sm:text-xs font-bold text-slate-600 dark:text-slate-400 truncate" title={type}>
+                            {type}
+                          </label>
+                          <input 
+                            required 
+                            type="number" 
+                            inputMode="numeric" 
+                            pattern="[0-9]*" 
+                            min="0" 
+                            placeholder="Count"
+                            value={cigaretteCounts[type] || ""} 
+                            onChange={(e) => setCigaretteCounts({ ...cigaretteCounts, [type]: e.target.value })} 
+                            className="w-full p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-orange-500 text-center font-mono text-sm font-bold shadow-sm" 
+                          />
+                        </div>
+                      ))}
                     </div>
                   </div>
 

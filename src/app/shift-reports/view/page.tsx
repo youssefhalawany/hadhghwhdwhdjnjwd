@@ -141,15 +141,31 @@ function PublicShiftReportContent() {
             <Package className="h-5 w-5 text-orange-500" /> Inventory
           </h2>
           <div className="space-y-4">
-            <div>
-              <p className="font-bold mb-2">Cigarettes (Packs)</p>
-              <div className="grid grid-cols-4 gap-2 text-center text-xs font-mono">
-                <div className="bg-muted p-2 rounded">St: {report.inventoryCounts.cigarettes?.start || 0}</div>
-                <div className="bg-emerald-500/10 text-emerald-600 p-2 rounded">In: {report.inventoryCounts.cigarettes?.delivery || 0}</div>
-                <div className="bg-red-500/10 text-red-600 p-2 rounded">End: {report.inventoryCounts.cigarettes?.end || 0}</div>
-                <div className="bg-slate-900 text-white p-2 rounded font-bold">={report.inventoryCounts.cigarettes?.sold || 0}</div>
+            {report.inventoryCounts.cigarettes && (
+              <div>
+                <p className="font-bold mb-2">Cigarettes (Old Format)</p>
+                <div className="grid grid-cols-4 gap-2 text-center text-xs font-mono">
+                  <div className="bg-muted p-2 rounded">St: {report.inventoryCounts.cigarettes?.start || 0}</div>
+                  <div className="bg-emerald-500/10 text-emerald-600 p-2 rounded">In: {report.inventoryCounts.cigarettes?.delivery || 0}</div>
+                  <div className="bg-red-500/10 text-red-600 p-2 rounded">End: {report.inventoryCounts.cigarettes?.end || 0}</div>
+                  <div className="bg-slate-900 text-white p-2 rounded font-bold">={report.inventoryCounts.cigarettes?.sold || 0}</div>
+                </div>
               </div>
-            </div>
+            )}
+            
+            {report.inventoryCounts.cigaretteCounts && (
+              <div>
+                <p className="font-bold mb-2">Detailed Cigarette Counts</p>
+                <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                  {Object.entries(report.inventoryCounts.cigaretteCounts).map(([type, count]) => (
+                    <div key={type} className="flex justify-between items-center bg-muted/50 p-2 rounded">
+                      <span className="truncate pr-2 font-medium" title={type}>{type}</span>
+                      <span className="font-black bg-white dark:bg-slate-900 px-2 py-0.5 rounded shadow-sm">{String(count)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <div>
               <p className="font-bold mb-2">Lighters (Units)</p>
               <div className="grid grid-cols-4 gap-2 text-center text-xs font-mono">

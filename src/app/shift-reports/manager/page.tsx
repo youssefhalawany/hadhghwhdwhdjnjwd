@@ -139,17 +139,8 @@ export default function ManagerAuditPage() {
         }
       });
 
-      // 2. High Shrink Alerts (Cigarettes > 10% OR Coffee < 30%)
-      const highCigaretteShrink = reports.filter(r => (r.managerAudit?.cigarettesPercent > 10));
+      // 2. High Shrink Alerts (Coffee < 30%)
       const lowCoffeeShrink = reports.filter(r => (r.managerAudit?.coffeePercent < 30 && r.managerAudit?.coffeePercent !== undefined && r.managerAudit?.coffeePercent !== null && r.managerAudit?.coffeePercent !== ""));
-
-      if (highCigaretteShrink.length >= 3) {
-        anomalies.push({
-          type: "high_cigarette_shrink",
-          severity: "high",
-          message: `Notice: Cashier ${name} has reported cigarette shrink exceeding 10% on ${highCigaretteShrink.length} recent shifts. Cigarette variances should remain strictly minimal. Please review these inventory logs.`
-        });
-      }
 
       if (lowCoffeeShrink.length >= 3) {
         anomalies.push({
@@ -187,7 +178,6 @@ export default function ManagerAuditPage() {
   const [expectedCash, setExpectedCash] = useState<string>("");
   const [expectedVisa, setExpectedVisa] = useState<string>("");
   const [auditShift, setAuditShift] = useState<string>("Morning");
-  const [cigarettesPercent, setCigarettesPercent] = useState<string>("");
   const [coffeePercent, setCoffeePercent] = useState<string>("");
   const [comments, setComments] = useState<string>("");
   const [managerName, setManagerName] = useState<string>("");
@@ -303,7 +293,6 @@ export default function ManagerAuditPage() {
     if (report.managerAudit) {
       setExpectedCash(String(report.managerAudit.expectedCash || ""));
       setExpectedVisa(String(report.managerAudit.expectedVisa || ""));
-      setCigarettesPercent(String(report.managerAudit.cigarettesPercent || ""));
       setCoffeePercent(String(report.managerAudit.coffeePercent || ""));
       setComments(report.managerAudit.comments || "");
       setManagerName(report.managerAudit.managerName || "");
@@ -358,7 +347,6 @@ export default function ManagerAuditPage() {
           cashVariance: calculateCashVariance(),
           visaVariance: calculateVisaVariance(),
           overShort: calculateTotalVariance(),
-          cigarettesPercent: Number(cigarettesPercent) || 0,
           coffeePercent: Number(coffeePercent) || 0,
           comments,
           managerName,
@@ -393,7 +381,7 @@ export default function ManagerAuditPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             title: "New Sales Record (Shift Approved)",
-            body: `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' })}\nApproved By: ${managerName}\nCashier: ${selectedReport?.cashierDetails?.name}\nShift: ${auditShift}\nSystem Cash: ${expectedCash} EGP\nSystem Visa: ${expectedVisa} EGP\nOver/Short: ${calculateCashVariance()} EGP\nCig. Variance: ${Number(cigarettesPercent) || 0}%\nCoffee Variance: ${Number(coffeePercent) || 0}%\nNotes: ${finalNotes || 'None'}\n\nView Approved Report:\n${window.location.origin}/shift-reports/view?id=${selectedReport.id}`
+            body: `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' })}\nApproved By: ${managerName}\nCashier: ${selectedReport?.cashierDetails?.name}\nShift: ${auditShift}\nSystem Cash: ${expectedCash} EGP\nSystem Visa: ${expectedVisa} EGP\nOver/Short: ${calculateCashVariance()} EGP\nCoffee Variance: ${Number(coffeePercent) || 0}%\nNotes: ${finalNotes || 'None'}\n\nView Approved Report:\n${window.location.origin}/shift-reports/view?id=${selectedReport.id}`
           })
         });
       } catch (err) { console.error("Notify error", err); }
@@ -975,34 +963,45 @@ export default function ManagerAuditPage() {
                                 <th className="p-3 font-bold">Item</th>
                                 <th className="p-3">Start</th>
                                 <th className="p-3">Delivery</th>
-                                <th className="p-3">End</th>
+                                <th className="p-3 text-right">End Count</th>
                                 <th className="p-3 font-bold text-right">Calculated Sold</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-border bg-card">
-                              <tr>
-                                <td className="p-3 font-bold">Cigarettes (سجائر)</td>
-                                <td className="p-3">{selectedReport.inventoryCounts?.cigarettes?.start || 0}</td>
-                                <td className="p-3">{selectedReport.inventoryCounts?.cigarettes?.delivery || 0}</td>
-                                <td className="p-3">{selectedReport.inventoryCounts?.cigarettes?.end || 0}</td>
-                                <td className="p-3 font-bold text-right bg-amber-50 text-amber-900">{selectedReport.inventoryCounts?.cigarettes?.sold || 0}</td>
-                              </tr>
+                              {/* Backward compatibility for old reports */}
+                              {selectedReport.inventoryCounts?.cigarettes && (
+                                <tr>
+                                  <td className="p-3 font-bold">Cigarettes (Old Format)</td>
+                                  <td className="p-3">{selectedReport.inventoryCounts?.cigarettes?.start || 0}</td>
+                                  <td className="p-3">{selectedReport.inventoryCounts?.cigarettes?.delivery || 0}</td>
+                                  <td className="p-3 text-right">{selectedReport.inventoryCounts?.cigarettes?.end || 0}</td>
+                                  <td className="p-3 font-bold text-right bg-amber-50 text-amber-900">{selectedReport.inventoryCounts?.cigarettes?.sold || 0}</td>
+                                </tr>
+                              )}
+
+                              {/* New format: Detailed cigarette counts */}
+                              {selectedReport.inventoryCounts?.cigaretteCounts && Object.entries(selectedReport.inventoryCounts.cigaretteCounts).map(([type, count]) => (
+                                <tr key={type} className="bg-orange-50/20">
+                                  <td className="p-3 font-medium text-xs sm:text-sm pl-6 border-l-4 border-orange-400">{type}</td>
+                                  <td className="p-3 text-slate-400">-</td>
+                                  <td className="p-3 text-slate-400">-</td>
+                                  <td className="p-3 text-right font-bold">{String(count) || "0"}</td>
+                                  <td className="p-3 text-right text-slate-400">-</td>
+                                </tr>
+                              ))}
+
                               <tr>
                                 <td className="p-3 font-bold">Lighters (ولاعات)</td>
                                 <td className="p-3">{selectedReport.inventoryCounts?.lighters?.start || 0}</td>
                                 <td className="p-3">{selectedReport.inventoryCounts?.lighters?.delivery || 0}</td>
-                                <td className="p-3">{selectedReport.inventoryCounts?.lighters?.end || 0}</td>
+                                <td className="p-3 text-right">{selectedReport.inventoryCounts?.lighters?.end || 0}</td>
                                 <td className="p-3 font-bold text-right bg-amber-50 text-amber-900">{selectedReport.inventoryCounts?.lighters?.sold || 0}</td>
                               </tr>
                             </tbody>
                           </table>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4 mt-4">
-                          <div>
-                            <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Cigarettes Shrink %</label>
-                            <input type="number" step="0.01" value={cigarettesPercent} onChange={e => setCigarettesPercent(e.target.value)} className="w-full p-2.5 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-amber-500" placeholder="e.g. 1.2" />
-                          </div>
+                        <div className="grid grid-cols-1 gap-4 mt-4">
                           <div>
                             <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Coffee Shrink %</label>
                             <input type="number" step="0.01" value={coffeePercent} onChange={e => setCoffeePercent(e.target.value)} className="w-full p-2.5 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-amber-500" placeholder="e.g. 2.5" />
@@ -1411,13 +1410,27 @@ export default function ManagerAuditPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          <tr>
-                            <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>Cigarettes</td>
-                            <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0' }}>{selectedReport.inventoryCounts?.cigarettes?.start || 0}</td>
-                            <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0' }}>{selectedReport.inventoryCounts?.cigarettes?.delivery || 0}</td>
-                            <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0' }}>{selectedReport.inventoryCounts?.cigarettes?.end || 0}</td>
-                            <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 'bold' }}>{selectedReport.inventoryCounts?.cigarettes?.sold || 0}</td>
-                          </tr>
+                          {/* Backward compatibility for old reports */}
+                          {selectedReport.inventoryCounts?.cigarettes && (
+                            <tr>
+                              <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>Cigarettes</td>
+                              <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0' }}>{selectedReport.inventoryCounts?.cigarettes?.start || 0}</td>
+                              <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0' }}>{selectedReport.inventoryCounts?.cigarettes?.delivery || 0}</td>
+                              <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0' }}>{selectedReport.inventoryCounts?.cigarettes?.end || 0}</td>
+                              <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 'bold' }}>{selectedReport.inventoryCounts?.cigarettes?.sold || 0}</td>
+                            </tr>
+                          )}
+
+                          {/* New detailed format */}
+                          {selectedReport.inventoryCounts?.cigaretteCounts && Object.entries(selectedReport.inventoryCounts.cigaretteCounts).map(([type, count]) => (
+                            <tr key={type}>
+                              <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold', fontSize: '10px' }}>{type}</td>
+                              <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', color: '#94a3b8' }}>-</td>
+                              <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', color: '#94a3b8' }}>-</td>
+                              <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>{String(count)}</td>
+                              <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', textAlign: 'right', color: '#94a3b8' }}>-</td>
+                            </tr>
+                          ))}
                           <tr>
                             <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold' }}>Lighters</td>
                             <td style={{ padding: '6px 15px', borderBottom: '1px solid #e2e8f0' }}>{selectedReport.inventoryCounts?.lighters?.start || 0}</td>
@@ -1427,11 +1440,7 @@ export default function ManagerAuditPage() {
                           </tr>
                         </tbody>
                       </table>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', backgroundColor: '#f8fafc', borderTop: '2px solid #cbd5e1' }}>
-                        <div style={{ padding: '6px 15px', borderRight: '1px solid #e2e8f0' }}>
-                          <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', marginRight: '10px' }}>Cigarettes Shrink</span>
-                          <span style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a' }}>{Number(cigarettesPercent) || 0}%</span>
-                        </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr', backgroundColor: '#f8fafc', borderTop: '2px solid #cbd5e1' }}>
                         <div style={{ padding: '6px 15px' }}>
                           <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', marginRight: '10px' }}>Coffee Shrink</span>
                           <span style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a' }}>{Number(coffeePercent) || 0}%</span>
