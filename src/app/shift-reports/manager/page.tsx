@@ -387,15 +387,15 @@ export default function ManagerAuditPage() {
 
       const salesData = {
         cash: Number(expectedCash) || 0,
-        cashierName: selectedReport?.cashierDetails?.name,
-        date: selectedReport?.cashierDetails?.date,
-        notes: finalNotes.trim(),
-        overShort: calculateCashVariance(),
-        shift: auditShift.toLowerCase(),
-        storeId: selectedReport?.cashierDetails?.storeId,
-        branchId: selectedReport.branchId || currentBranch,
+        cashierName: selectedReport?.cashierDetails?.name || "Unknown",
+        date: selectedReport?.cashierDetails?.date || new Date().toISOString().split('T')[0],
+        notes: finalNotes ? finalNotes.trim() : "",
+        overShort: calculateCashVariance() || 0,
+        shift: auditShift ? auditShift.toLowerCase() : (selectedReport?.cashierDetails?.shift?.toLowerCase() || "morning"),
+        storeId: selectedReport?.cashierDetails?.storeId || "Unknown",
+        branchId: selectedReport?.branchId || currentBranch || "alamein4",
         visa: Number(expectedVisa) || 0,
-        shiftReportId: selectedReport.id
+        shiftReportId: selectedReport?.id || "Unknown"
       };
 
       if (existingSalesDocId) {
@@ -406,7 +406,7 @@ export default function ManagerAuditPage() {
       } else {
         await addDoc(salesRef, {
            ...salesData,
-           createdBy: managerName,
+           createdBy: managerName || "Manager",
            createdAt: new Date().toISOString()
         });
       }
