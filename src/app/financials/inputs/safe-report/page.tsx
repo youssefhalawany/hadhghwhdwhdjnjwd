@@ -157,20 +157,20 @@ export default function SafeReportPage() {
           newLoansData, oldLoansData, oldCreditsCashData, visaPaymentsData,
           bankTransferPaymentsData, visaCreditsData, bankTransferCreditsData, depositsToBankData, depositsFromBankData, cashPaymentsBankData, creditPaymentsBankData] = await Promise.all([
           safeSumAgg(salesQ, { cash: sum("cash"), overShort: sum("overShort"), visa: sum("visa") }),
-          safeSumAgg(cashPaymentsQ, { val: sum("amount") }),
+          safeSumAgg(cashPaymentsQ, { val: sum("amount"), tax: sum("tax") }),
           safeSumAgg(depositsToQ, { val: sum("amount") }),
           safeSumAgg(depositsFromQ, { val: sum("amount") }),
           safeSumAgg(payrollsQ, { val: sum("netPay") }),
           safeSumAgg(newLoansQ, { val: sum("amount") }),
           safeSumAgg(oldLoansQ, { val: sum("approved") }),
           safeSumAgg(oldCreditsCashQ, { val: sum("amount") }),
-          safeSumAgg(cashPaymentsVisaQ, { val: sum("amount") }),
-          safeSumAgg(cashPaymentsBankTransferQ, { val: sum("amount") }),
+          safeSumAgg(cashPaymentsVisaQ, { val: sum("amount"), tax: sum("tax") }),
+          safeSumAgg(cashPaymentsBankTransferQ, { val: sum("amount"), tax: sum("tax") }),
           safeSumAgg(creditPaymentsVisaQ, { val: sum("amount") }),
           safeSumAgg(creditPaymentsBankTransferQ, { val: sum("amount") }),
           safeSumAgg(depositsToBankQ, { val: sum("amount") }),
           safeSumAgg(depositsFromBankQ, { val: sum("amount") }),
-          safeSumAgg(cashPaymentsBankQ, { val: sum("amount") }),
+          safeSumAgg(cashPaymentsBankQ, { val: sum("amount"), tax: sum("tax") }),
           safeSumAgg(creditPaymentsBankQ, { val: sum("amount") })
         ]);
 
@@ -182,6 +182,7 @@ export default function SafeReportPage() {
         const shortAmount = overShort < 0 ? Math.abs(overShort) : 0;
 
         const totalCashPayments = cashPaymentsData?.val || 0;
+        const totalCashTaxes = cashPaymentsData?.tax || 0;
         const depositsToSafe = depositsToData?.val || 0;
         const depositsFromSafe = depositsFromData?.val || 0;
         const totalPayrolls = payrollsData?.val || 0;
@@ -195,6 +196,7 @@ export default function SafeReportPage() {
         const totalBankTransferPayments = bankTransferPaymentsData?.val || 0;
         const totalBankOnlyPayments = cashPaymentsBankData?.val || 0;
         const bankPayments = totalVisaPayments + totalBankTransferPayments + totalBankOnlyPayments;
+        const bankTaxes = (visaPaymentsData?.tax || 0) + (bankTransferPaymentsData?.tax || 0) + (cashPaymentsBankData?.tax || 0);
 
         const totalVisaCredits = visaCreditsData?.val || 0;
         const totalBankTransferCredits = bankTransferCreditsData?.val || 0;
@@ -206,9 +208,9 @@ export default function SafeReportPage() {
 
         return {
           salesCash, overAmount, shortAmount, visaSales,
-          totalCashPayments, depositsToSafe, depositsFromSafe, totalPayrolls,
+          totalCashPayments, totalCashTaxes, depositsToSafe, depositsFromSafe, totalPayrolls,
           totalLoans, totalOldCreditsCash,
-          bankPayments, bankCredits, depositsToBank, depositsFromBank
+          bankPayments, bankTaxes, bankCredits, depositsToBank, depositsFromBank
         };
       };
 
@@ -225,11 +227,11 @@ export default function SafeReportPage() {
       }
 
       const histSafeInflows = history.salesCash + history.overAmount + history.depositsToSafe;
-      const histSafeOutflows = history.shortAmount + history.totalCashPayments + history.totalLoans + history.depositsFromSafe + history.totalOldCreditsCash + history.totalPayrolls;
+      const histSafeOutflows = history.shortAmount + history.totalCashPayments + history.totalCashTaxes + history.totalLoans + history.depositsFromSafe + history.totalOldCreditsCash + history.totalPayrolls;
       const openingSafeBalance = histSafeInflows - histSafeOutflows;
 
       const histBankInflows = history.visaSales + history.depositsToBank;
-      const histBankOutflows = history.bankPayments + history.bankCredits + history.depositsFromBank;
+      const histBankOutflows = history.bankPayments + history.bankTaxes + history.bankCredits + history.depositsFromBank;
       const openingBankBalance = histBankInflows - histBankOutflows;
 
       setReportData({
@@ -387,11 +389,11 @@ export default function SafeReportPage() {
                 </div>
                 <div className="p-4 bg-gray-50">
                   <span className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1">Total Cash Outflows</span>
-                  <span className="text-xl font-black">{(reportData.period.shortAmount + reportData.period.totalCashPayments + reportData.period.totalLoans + reportData.period.depositsFromSafe + reportData.period.totalOldCreditsCash + reportData.period.totalPayrolls).toLocaleString('en-US', {minimumFractionDigits:2})}</span>
+                  <span className="text-xl font-black">{(reportData.period.shortAmount + reportData.period.totalCashPayments + reportData.period.totalCashTaxes + reportData.period.totalLoans + reportData.period.depositsFromSafe + reportData.period.totalOldCreditsCash + reportData.period.totalPayrolls).toLocaleString('en-US', {minimumFractionDigits:2})}</span>
                 </div>
                 <div className="p-4 bg-black text-white">
                   <span className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Closing Safe Balance</span>
-                  <span className="text-xl font-black">{(reportData.openingSafeBalance + (reportData.period.salesCash + reportData.period.overAmount + reportData.period.depositsToSafe) - (reportData.period.shortAmount + reportData.period.totalCashPayments + reportData.period.totalLoans + reportData.period.depositsFromSafe + reportData.period.totalOldCreditsCash + reportData.period.totalPayrolls)).toLocaleString('en-US', {minimumFractionDigits:2})}</span>
+                  <span className="text-xl font-black">{(reportData.openingSafeBalance + (reportData.period.salesCash + reportData.period.overAmount + reportData.period.depositsToSafe) - (reportData.period.shortAmount + reportData.period.totalCashPayments + reportData.period.totalCashTaxes + reportData.period.totalLoans + reportData.period.depositsFromSafe + reportData.period.totalOldCreditsCash + reportData.period.totalPayrolls)).toLocaleString('en-US', {minimumFractionDigits:2})}</span>
                 </div>
               </div>
 
@@ -462,6 +464,11 @@ export default function SafeReportPage() {
                         <td className="py-1.5 px-3 text-right font-mono">{reportData.period.totalCashPayments.toLocaleString('en-US', {minimumFractionDigits:2})}</td>
                       </tr>
                       <tr>
+                        <td className="py-1.5 px-3">Taxes Paid (Cash)</td>
+                        <td className="py-1.5 px-3 text-xs text-gray-500 italic">Taxes on invoices/expenses</td>
+                        <td className="py-1.5 px-3 text-right font-mono">{reportData.period.totalCashTaxes.toLocaleString('en-US', {minimumFractionDigits:2})}</td>
+                      </tr>
+                      <tr>
                         <td className="py-1.5 px-3">Loans Disbursed</td>
                         <td className="py-1.5 px-3 text-xs text-gray-500 italic">Employee loans paid from safe</td>
                         <td className="py-1.5 px-3 text-right font-mono">{reportData.period.totalLoans.toLocaleString('en-US', {minimumFractionDigits:2})}</td>
@@ -483,7 +490,7 @@ export default function SafeReportPage() {
                       </tr>
                       <tr className="bg-gray-50 border-t-2 border-gray-300">
                         <td colSpan={2} className="py-2 px-3 text-right font-bold uppercase tracking-widest text-[10px]">Subtotal Outflows</td>
-                        <td className="py-2 px-3 text-right font-mono font-bold">{(reportData.period.shortAmount + reportData.period.totalCashPayments + reportData.period.totalLoans + reportData.period.depositsFromSafe + reportData.period.totalOldCreditsCash + reportData.period.totalPayrolls).toLocaleString('en-US', {minimumFractionDigits:2})}</td>
+                        <td className="py-2 px-3 text-right font-mono font-bold">{(reportData.period.shortAmount + reportData.period.totalCashPayments + reportData.period.totalCashTaxes + reportData.period.totalLoans + reportData.period.depositsFromSafe + reportData.period.totalOldCreditsCash + reportData.period.totalPayrolls).toLocaleString('en-US', {minimumFractionDigits:2})}</td>
                       </tr>
                     </tbody>
                   </table>
@@ -491,7 +498,7 @@ export default function SafeReportPage() {
 
                 {/* Safe Reconciliation Formula */}
                 <div className="bg-gray-50 p-3 border border-gray-300 text-center text-xs font-mono text-gray-600 rounded">
-                  {reportData.openingSafeBalance.toLocaleString('en-US', {minimumFractionDigits:2})} (Open) + {(reportData.period.salesCash + reportData.period.overAmount + reportData.period.depositsToSafe).toLocaleString('en-US', {minimumFractionDigits:2})} (In) - {(reportData.period.shortAmount + reportData.period.totalCashPayments + reportData.period.totalLoans + reportData.period.depositsFromSafe + reportData.period.totalOldCreditsCash + reportData.period.totalPayrolls).toLocaleString('en-US', {minimumFractionDigits:2})} (Out) = {(reportData.openingSafeBalance + (reportData.period.salesCash + reportData.period.overAmount + reportData.period.depositsToSafe) - (reportData.period.shortAmount + reportData.period.totalCashPayments + reportData.period.totalLoans + reportData.period.depositsFromSafe + reportData.period.totalOldCreditsCash + reportData.period.totalPayrolls)).toLocaleString('en-US', {minimumFractionDigits:2})}
+                  {reportData.openingSafeBalance.toLocaleString('en-US', {minimumFractionDigits:2})} (Open) + {(reportData.period.salesCash + reportData.period.overAmount + reportData.period.depositsToSafe).toLocaleString('en-US', {minimumFractionDigits:2})} (In) - {(reportData.period.shortAmount + reportData.period.totalCashPayments + reportData.period.totalCashTaxes + reportData.period.totalLoans + reportData.period.depositsFromSafe + reportData.period.totalOldCreditsCash + reportData.period.totalPayrolls).toLocaleString('en-US', {minimumFractionDigits:2})} (Out) = {(reportData.openingSafeBalance + (reportData.period.salesCash + reportData.period.overAmount + reportData.period.depositsToSafe) - (reportData.period.shortAmount + reportData.period.totalCashPayments + reportData.period.totalCashTaxes + reportData.period.totalLoans + reportData.period.depositsFromSafe + reportData.period.totalOldCreditsCash + reportData.period.totalPayrolls)).toLocaleString('en-US', {minimumFractionDigits:2})}
                 </div>
               </div>
 
@@ -536,6 +543,11 @@ export default function SafeReportPage() {
                       <td className="py-1.5 px-3 text-right font-mono">{reportData.period.bankPayments.toLocaleString('en-US', {minimumFractionDigits:2})}</td>
                     </tr>
                     <tr>
+                      <td className="py-1.5 px-3 pl-6">Taxes Paid (Bank)</td>
+                      <td className="py-1.5 px-3 text-xs text-gray-500 italic">Taxes on bank payments</td>
+                      <td className="py-1.5 px-3 text-right font-mono">{reportData.period.bankTaxes.toLocaleString('en-US', {minimumFractionDigits:2})}</td>
+                    </tr>
+                    <tr>
                       <td className="py-1.5 px-3 pl-6">Credit Payments (Bank)</td>
                       <td className="py-1.5 px-3 text-xs text-gray-500 italic">Debts settled via bank transfer</td>
                       <td className="py-1.5 px-3 text-right font-mono">{reportData.period.bankCredits.toLocaleString('en-US', {minimumFractionDigits:2})}</td>
@@ -547,7 +559,7 @@ export default function SafeReportPage() {
                     </tr>
                     <tr className="bg-gray-100 border-t-2 border-black">
                       <td colSpan={2} className="py-2 px-3 text-right font-bold uppercase tracking-widest text-[10px]">Closing Bank Balance</td>
-                      <td className="py-2 px-3 text-right font-mono font-bold">{(reportData.openingBankBalance + (reportData.period.visaSales + reportData.period.depositsFromSafe) - (reportData.period.bankPayments + reportData.period.bankCredits + reportData.period.depositsToSafe)).toLocaleString('en-US', {minimumFractionDigits:2})}</td>
+                      <td className="py-2 px-3 text-right font-mono font-bold">{(reportData.openingBankBalance + (reportData.period.visaSales + reportData.period.depositsFromSafe) - (reportData.period.bankPayments + reportData.period.bankTaxes + reportData.period.bankCredits + reportData.period.depositsToSafe)).toLocaleString('en-US', {minimumFractionDigits:2})}</td>
                     </tr>
                   </tbody>
                 </table>

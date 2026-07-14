@@ -7,7 +7,7 @@ import { getToken } from "firebase/messaging";
 import { useRouter } from "next/navigation";
 import { Lock, User as UserIcon, ChevronDown, FileText, Shield, Calendar as CalendarIcon, UserCircle, Globe, LogOut, Download, Bell, Fingerprint, ScanLine } from "lucide-react";
 import { PinPad } from "@/components/PinPad";
-import { playSuccessSound, playErrorSound, getAudioCtx } from "@/lib/sounds";
+import { playSuccessSound, playErrorSound, playPopSound, getAudioCtx } from "@/lib/sounds";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -308,6 +308,7 @@ export default function CashierHubPage() {
   };
 
   const handleLogout = () => {
+    playPopSound();
     localStorage.removeItem("active_cashier_session");
     setAuthenticatedUser(null);
     setSelectedEmployeeId("");
@@ -315,6 +316,7 @@ export default function CashierHubPage() {
   };
 
   const navigateTo = (path: string) => {
+    playPopSound();
     router.push(path);
   };
 
@@ -328,52 +330,52 @@ export default function CashierHubPage() {
 
   if (authenticatedUser) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-red-50/10 dark:from-slate-950 dark:via-slate-900 dark:to-red-950/5 text-slate-900 dark:text-slate-100 transition-colors duration-300" dir={lang === "ar" ? "rtl" : "ltr"}>
-        <header className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md shadow-sm border-b border-slate-200 dark:border-slate-700 p-4 sticky top-0 z-10">
+      <div className="min-h-[100dvh] bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-800 via-slate-950 to-black text-slate-100 transition-colors duration-500 overflow-y-auto w-full flex flex-col" dir={lang === "ar" ? "rtl" : "ltr"}>
+        <header className="bg-slate-900/60 backdrop-blur-xl shadow-lg border-b border-white/10 p-4 sticky top-0 z-50">
           <div className="max-w-4xl mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 bg-red-600 rounded-full flex items-center justify-center border-2 border-red-500/30 text-white font-black text-xl shadow-lg shadow-red-600/20 animate-pulse">K</div>
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 bg-gradient-to-tr from-red-600 to-rose-400 rounded-2xl flex items-center justify-center border border-white/20 text-white font-black text-2xl shadow-[0_0_20px_rgba(225,29,72,0.4)] animate-pulse">K</div>
               <div>
-                <h1 className="font-black text-lg leading-tight text-slate-800 dark:text-white">{lang === "en" ? "Staff Portal" : "بوابة الموظفين"}</h1>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                  {lang === "en" ? "Welcome," : "مرحباً،"} <span className="text-red-600 dark:text-red-400 font-bold">{authenticatedUser.name}</span>
+                <h1 className="font-black text-xl tracking-tight text-white drop-shadow-md">{lang === "en" ? "Staff Portal" : "بوابة الموظفين"}</h1>
+                <p className="text-xs text-slate-400 font-medium">
+                  {lang === "en" ? "Welcome," : "مرحباً،"} <span className="text-red-400 font-bold">{authenticatedUser.name}</span>
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <button 
-                onClick={handleEnableNotifications} 
-                className={`relative flex items-center gap-2 justify-center px-4 py-1.5 rounded-full border transition-all duration-300 font-bold shadow-sm ${
+                onClick={() => { playPopSound(); handleEnableNotifications(); }} 
+                className={`relative flex items-center gap-2 justify-center px-4 py-2 rounded-full border transition-all duration-300 font-bold shadow-sm active:scale-95 ${
                   isNotificationEnabled 
-                    ? "bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-800/50 dark:text-emerald-400 shadow-emerald-500/10 hover:bg-emerald-100" 
-                    : "bg-gradient-to-r from-red-600 to-red-500 border-red-500 text-white shadow-red-500/20 hover:scale-105 hover:shadow-lg hover:shadow-red-500/30"
+                    ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.2)]" 
+                    : "bg-gradient-to-r from-red-600 to-rose-500 border-red-500/50 text-white shadow-[0_0_15px_rgba(225,29,72,0.3)] hover:scale-105"
                 }`}
                 title={isNotificationEnabled ? (lang === "en" ? "Notifications On" : "الإشعارات مفعلة") : (lang === "en" ? "Enable Notifications" : "تفعيل الإشعارات")}
               >
                 <Bell className={`h-4 w-4 ${!isNotificationEnabled && "animate-pulse"}`} />
-                <span className="hidden sm:inline text-[11px] uppercase tracking-wider">{isNotificationEnabled ? (lang === "en" ? "Alerts On" : "إشعارات") : (lang === "en" ? "Get Alerts" : "تفعيل")}</span>
-                {isNotificationEnabled && <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-800 shadow-sm"></span>}
+                <span className="hidden sm:inline text-xs uppercase tracking-wider">{isNotificationEnabled ? (lang === "en" ? "Alerts On" : "إشعارات") : (lang === "en" ? "Get Alerts" : "تفعيل")}</span>
+                {isNotificationEnabled && <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-slate-900 shadow-[0_0_10px_rgba(16,185,129,0.8)]"></span>}
               </button>
               {!isInstalled && (
-                <button onClick={handleInstallClick} className="flex items-center gap-1 bg-red-100 dark:bg-red-900/30 px-3 py-1.5 rounded-full text-xs font-bold text-red-700 dark:text-red-400"><Download className="h-4 w-4" /> {lang === "en" ? "Install App" : "تثبيت التطبيق"}</button>
+                <button onClick={() => { playPopSound(); handleInstallClick(); }} className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 backdrop-blur-md px-4 py-2 rounded-full text-xs font-bold text-white transition-all active:scale-95 border border-white/5"><Download className="h-4 w-4" /> {lang === "en" ? "Install" : "تثبيت"}</button>
               )}
-              <button onClick={() => setLang(lang === "en" ? "ar" : "en")} className="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 px-3 py-1.5 rounded-full text-xs font-bold text-slate-700 dark:text-slate-200"><Globe className="h-4 w-4" /> {lang === "en" ? "عربي" : "EN"}</button>
-              <button onClick={handleLogout} className="flex items-center gap-1 text-slate-500 hover:text-red-600 dark:hover:text-red-400 bg-slate-100 dark:bg-slate-700 px-3 py-1.5 rounded-full text-xs font-bold"><LogOut className="h-4 w-4" /> {lang === "en" ? "Logout" : "خروج"}</button>
+              <button onClick={() => { playPopSound(); setLang(lang === "en" ? "ar" : "en"); }} className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 backdrop-blur-md px-4 py-2 rounded-full text-xs font-bold text-white transition-all active:scale-95 border border-white/5"><Globe className="h-4 w-4" /> {lang === "en" ? "عربي" : "EN"}</button>
+              <button onClick={handleLogout} className="flex items-center gap-1.5 text-white/70 hover:text-red-400 bg-white/5 hover:bg-white/10 backdrop-blur-md px-4 py-2 rounded-full text-xs font-bold transition-all active:scale-95 border border-white/5"><LogOut className="h-4 w-4" /> {lang === "en" ? "Logout" : "خروج"}</button>
             </div>
           </div>
         </header>
 
-        <main className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 mt-4 space-y-6">
-          <h2 className="text-sm font-black mb-6 uppercase tracking-widest text-slate-400 dark:text-slate-500 text-center">
+        <main className="flex-1 max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 mt-2 space-y-8 w-full pb-32">
+          <h2 className="text-xs font-black tracking-[0.2em] text-white/40 text-center uppercase">
             {lang === "en" ? "Select Action" : "اختر الإجراء"}
           </h2>
 
           {!hasFaceIdRegistered && typeof window !== "undefined" && window.PublicKeyCredential && (
             <button 
-              onClick={registerFaceId}
-              className="w-full mb-8 py-3 bg-slate-900 dark:bg-slate-800 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/10"
+              onClick={() => { playPopSound(); registerFaceId(); }}
+              className="w-full mb-8 py-4 bg-white/5 backdrop-blur-xl border border-emerald-500/30 text-white rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-white/10 transition-all shadow-[0_0_30px_rgba(16,185,129,0.15)] active:scale-95"
             >
-              <Fingerprint className="h-5 w-5 text-emerald-400" />
+              <Fingerprint className="h-6 w-6 text-emerald-400 animate-pulse" />
               {lang === "en" ? "Enable FaceID / TouchID" : "تفعيل بصمة الوجه / الإصبع"}
             </button>
           )}
@@ -382,13 +384,14 @@ export default function CashierHubPage() {
             {authenticatedUser.role === "master" && (
               <button 
                 onClick={() => navigateTo('/cashier/master')}
-                className="group flex flex-col items-center justify-center bg-red-50 dark:bg-red-950/20 backdrop-blur-md p-8 rounded-3xl border border-red-200 dark:border-red-800/40 hover:border-red-500/80 shadow-xl shadow-red-500/10 hover:shadow-red-500/20 hover:-translate-y-1 transition-all duration-300 active:scale-[0.98] text-slate-900 dark:text-white cursor-pointer col-span-1 sm:col-span-2"
+                className="group flex flex-col items-center justify-center bg-white/5 backdrop-blur-2xl p-8 rounded-[2rem] border border-white/10 hover:border-red-500/50 shadow-[0_8px_32px_rgba(0,0,0,0.3)] hover:shadow-[0_0_40px_rgba(225,29,72,0.2)] transition-all duration-300 active:scale-[0.96] text-white cursor-pointer col-span-1 sm:col-span-2 relative overflow-hidden"
               >
-                <div className="h-16 w-16 bg-red-600 text-white rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-all duration-300 shadow-lg shadow-red-500/30">
-                  <Bell className="h-8 w-8 animate-pulse" />
+                <div className="absolute inset-0 bg-gradient-to-br from-red-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="h-20 w-20 bg-gradient-to-br from-red-500 to-rose-600 text-white rounded-[1.5rem] flex items-center justify-center mb-5 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500 shadow-[0_0_25px_rgba(225,29,72,0.5)] z-10">
+                  <Bell className="h-10 w-10 animate-pulse" />
                 </div>
-                <h3 className="font-black text-2xl text-red-600 dark:text-red-400 uppercase tracking-wider">{lang === "en" ? "Master Feed" : "اللوحة الرئيسية"}</h3>
-                <p className="text-sm font-semibold text-slate-600 dark:text-slate-300 mt-2 text-center leading-relaxed max-w-[280px]">
+                <h3 className="font-black text-3xl tracking-tight z-10 mb-2">{lang === "en" ? "Master Feed" : "اللوحة الرئيسية"}</h3>
+                <p className="text-sm font-medium text-white/60 text-center leading-relaxed max-w-[280px] z-10">
                   {lang === "en" ? "View global activity and live notifications." : "عرض النشاط العام والإشعارات المباشرة."}
                 </p>
               </button>
@@ -397,13 +400,14 @@ export default function CashierHubPage() {
             {/* Action 1: Shift Report */}
             <button 
               onClick={() => navigateTo('/shift-reports/cashier')}
-              className="group flex flex-col items-center justify-center bg-white/70 dark:bg-slate-800/40 backdrop-blur-md p-8 rounded-3xl border border-slate-200/60 dark:border-slate-700/40 hover:border-red-500/50 dark:hover:border-red-500/40 shadow-xl shadow-slate-200/10 dark:shadow-none hover:shadow-red-500/5 hover:-translate-y-1 transition-all duration-300 active:scale-[0.98] text-slate-900 dark:text-white cursor-pointer"
+              className="group flex flex-col items-center justify-center bg-white/5 backdrop-blur-2xl p-8 rounded-[2rem] border border-white/10 hover:border-red-500/50 shadow-[0_8px_32px_rgba(0,0,0,0.3)] hover:shadow-[0_0_40px_rgba(225,29,72,0.15)] transition-all duration-300 active:scale-[0.96] text-white cursor-pointer relative overflow-hidden"
             >
-              <div className="h-16 w-16 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-red-600 group-hover:text-white transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              <div className="h-16 w-16 bg-white/10 text-red-400 rounded-[1.25rem] flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-500 group-hover:bg-red-500 group-hover:text-white shadow-inner border border-white/5 z-10">
                 <FileText className="h-8 w-8" />
               </div>
-              <h3 className="font-bold text-xl">{lang === "en" ? "Daily Shift Report" : "تقرير الوردية اليومي"}</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 text-center leading-relaxed max-w-[280px]">
+              <h3 className="font-bold text-xl z-10">{lang === "en" ? "Daily Shift Report" : "تقرير الوردية اليومي"}</h3>
+              <p className="text-sm text-white/50 mt-2 text-center leading-relaxed max-w-[280px] z-10">
                 {lang === "en" ? "Submit your end-of-shift cash and inventory counts." : "إرسال جرد النقدية والمخزون في نهاية الوردية."}
               </p>
             </button>
@@ -411,13 +415,14 @@ export default function CashierHubPage() {
             {/* Action 2: Voids */}
             <button 
               onClick={() => navigateTo('/voids/cashier')}
-              className="group flex flex-col items-center justify-center bg-white/70 dark:bg-slate-800/40 backdrop-blur-md p-8 rounded-3xl border border-slate-200/60 dark:border-slate-700/40 hover:border-orange-500/50 dark:hover:border-orange-500/40 shadow-xl shadow-slate-200/10 dark:shadow-none hover:shadow-orange-500/5 hover:-translate-y-1 transition-all duration-300 active:scale-[0.98] text-slate-900 dark:text-white cursor-pointer"
+              className="group flex flex-col items-center justify-center bg-white/5 backdrop-blur-2xl p-8 rounded-[2rem] border border-white/10 hover:border-orange-500/50 shadow-[0_8px_32px_rgba(0,0,0,0.3)] hover:shadow-[0_0_40px_rgba(249,115,22,0.15)] transition-all duration-300 active:scale-[0.96] text-white cursor-pointer relative overflow-hidden"
             >
-              <div className="h-16 w-16 bg-orange-50 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-orange-600 group-hover:text-white transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              <div className="h-16 w-16 bg-white/10 text-orange-400 rounded-[1.25rem] flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-500 group-hover:bg-orange-500 group-hover:text-white shadow-inner border border-white/5 z-10">
                 <Shield className="h-8 w-8" />
               </div>
-              <h3 className="font-bold text-xl">{lang === "en" ? "Log a Void" : "تسجيل مرتجع"}</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 text-center leading-relaxed max-w-[280px]">
+              <h3 className="font-bold text-xl z-10">{lang === "en" ? "Log a Void" : "تسجيل مرتجع"}</h3>
+              <p className="text-sm text-white/50 mt-2 text-center leading-relaxed max-w-[280px] z-10">
                 {lang === "en" ? "Record any cancelled items, voids, or customer returns." : "تسجيل المرتجعات أو العناصر الملغاة."}
               </p>
             </button>
@@ -425,13 +430,14 @@ export default function CashierHubPage() {
             {/* Action 3: Expiry Tracker */}
             <button 
               onClick={() => navigateTo('/expiries')}
-              className="group flex flex-col items-center justify-center bg-white/70 dark:bg-slate-800/40 backdrop-blur-md p-8 rounded-3xl border border-slate-200/60 dark:border-slate-700/40 hover:border-blue-500/50 dark:hover:border-blue-500/40 shadow-xl shadow-slate-200/10 dark:shadow-none hover:shadow-blue-500/5 hover:-translate-y-1 transition-all duration-300 active:scale-[0.98] text-slate-900 dark:text-white cursor-pointer"
+              className="group flex flex-col items-center justify-center bg-white/5 backdrop-blur-2xl p-8 rounded-[2rem] border border-white/10 hover:border-blue-500/50 shadow-[0_8px_32px_rgba(0,0,0,0.3)] hover:shadow-[0_0_40px_rgba(59,130,246,0.15)] transition-all duration-300 active:scale-[0.96] text-white cursor-pointer relative overflow-hidden"
             >
-              <div className="h-16 w-16 bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:blue-400 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              <div className="h-16 w-16 bg-white/10 text-blue-400 rounded-[1.25rem] flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-500 group-hover:bg-blue-500 group-hover:text-white shadow-inner border border-white/5 z-10">
                 <CalendarIcon className="h-8 w-8" />
               </div>
-              <h3 className="font-bold text-xl">{lang === "en" ? "Expiry Tracker" : "متابعة تواريخ الصلاحية"}</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 text-center leading-relaxed max-w-[280px]">
+              <h3 className="font-bold text-xl z-10">{lang === "en" ? "Expiry Tracker" : "متابعة تواريخ الصلاحية"}</h3>
+              <p className="text-sm text-white/50 mt-2 text-center leading-relaxed max-w-[280px] z-10">
                 {lang === "en" ? "Log fresh food deliveries and check for expiring items." : "تسجيل المنتجات الطازجة ومعرفة المنتجات منتهية الصلاحية."}
               </p>
             </button>
@@ -439,13 +445,14 @@ export default function CashierHubPage() {
             {/* Action: Checklists */}
             <button 
               onClick={() => navigateTo('/checklists/cashier')}
-              className="group flex flex-col items-center justify-center bg-white/70 dark:bg-slate-800/40 backdrop-blur-md p-8 rounded-3xl border border-slate-200/60 dark:border-slate-700/40 hover:border-emerald-500/50 dark:hover:border-emerald-500/40 shadow-xl shadow-slate-200/10 dark:shadow-none hover:shadow-emerald-500/5 hover:-translate-y-1 transition-all duration-300 active:scale-[0.98] text-slate-900 dark:text-white cursor-pointer"
+              className="group flex flex-col items-center justify-center bg-white/5 backdrop-blur-2xl p-8 rounded-[2rem] border border-white/10 hover:border-emerald-500/50 shadow-[0_8px_32px_rgba(0,0,0,0.3)] hover:shadow-[0_0_40px_rgba(16,185,129,0.15)] transition-all duration-300 active:scale-[0.96] text-white cursor-pointer relative overflow-hidden"
             >
-              <div className="h-16 w-16 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              <div className="h-16 w-16 bg-white/10 text-emerald-400 rounded-[1.25rem] flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-500 group-hover:bg-emerald-500 group-hover:text-white shadow-inner border border-white/5 z-10">
                 <FileText className="h-8 w-8" />
               </div>
-              <h3 className="font-bold text-xl">{lang === "en" ? "Checklists" : "قوائم المراجعة"}</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 text-center leading-relaxed max-w-[280px]">
+              <h3 className="font-bold text-xl z-10">{lang === "en" ? "Checklists" : "قوائم المراجعة"}</h3>
+              <p className="text-sm text-white/50 mt-2 text-center leading-relaxed max-w-[280px] z-10">
                 {lang === "en" ? "Submit daily inspection and branch checklists." : "إرسال قوائم الفحص والمراجعة اليومية للفرع."}
               </p>
             </button>
@@ -453,26 +460,29 @@ export default function CashierHubPage() {
             {/* Action 4: My Account */}
             <button 
               onClick={() => navigateTo('/cashier/account')}
-              className="group flex flex-col items-center justify-center bg-white/70 dark:bg-slate-800/40 backdrop-blur-md p-8 rounded-3xl border border-slate-200/60 dark:border-slate-700/40 hover:border-emerald-500/50 dark:hover:border-emerald-500/40 shadow-xl shadow-slate-200/10 dark:shadow-none hover:shadow-emerald-500/5 hover:-translate-y-1 transition-all duration-300 active:scale-[0.98] text-slate-900 dark:text-white cursor-pointer"
+              className="group flex flex-col items-center justify-center bg-white/5 backdrop-blur-2xl p-8 rounded-[2rem] border border-white/10 hover:border-emerald-500/50 shadow-[0_8px_32px_rgba(0,0,0,0.3)] hover:shadow-[0_0_40px_rgba(16,185,129,0.15)] transition-all duration-300 active:scale-[0.96] text-white cursor-pointer relative overflow-hidden"
             >
-              <div className="h-16 w-16 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              <div className="h-16 w-16 bg-white/10 text-emerald-400 rounded-[1.25rem] flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-500 group-hover:bg-emerald-500 group-hover:text-white shadow-inner border border-white/5 z-10">
                 <UserCircle className="h-8 w-8" />
               </div>
-              <h3 className="font-bold text-xl">{lang === "en" ? "My Account" : "حسابي"}</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 text-center leading-relaxed max-w-[280px]">
+              <h3 className="font-bold text-xl z-10">{lang === "en" ? "My Account" : "حسابي"}</h3>
+              <p className="text-sm text-white/50 mt-2 text-center leading-relaxed max-w-[280px] z-10">
                 {lang === "en" ? "View your payroll, deductions, bonuses, and details." : "عرض الراتب والخصومات والمكافآت."}
               </p>
             </button>
+
             {/* Action 5: Schedule & Leaves */}
             <button 
               onClick={() => navigateTo('/cashier/schedule')}
-              className="group flex flex-col items-center justify-center bg-white/70 dark:bg-slate-800/40 backdrop-blur-md p-8 rounded-3xl border border-slate-200/60 dark:border-slate-700/40 hover:border-purple-500/50 dark:hover:border-purple-500/40 shadow-xl shadow-slate-200/10 dark:shadow-none hover:shadow-purple-500/5 hover:-translate-y-1 transition-all duration-300 active:scale-[0.98] text-slate-900 dark:text-white cursor-pointer"
+              className="group flex flex-col items-center justify-center bg-white/5 backdrop-blur-2xl p-8 rounded-[2rem] border border-white/10 hover:border-purple-500/50 shadow-[0_8px_32px_rgba(0,0,0,0.3)] hover:shadow-[0_0_40px_rgba(168,85,247,0.15)] transition-all duration-300 active:scale-[0.96] text-white cursor-pointer relative overflow-hidden"
             >
-              <div className="h-16 w-16 bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-purple-600 group-hover:text-white transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              <div className="h-16 w-16 bg-white/10 text-purple-400 rounded-[1.25rem] flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-500 group-hover:bg-purple-500 group-hover:text-white shadow-inner border border-white/5 z-10">
                 <CalendarIcon className="h-8 w-8" />
               </div>
-              <h3 className="font-bold text-xl">{lang === "en" ? "My Schedule" : "جدول العمل"}</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 text-center leading-relaxed max-w-[280px]">
+              <h3 className="font-bold text-xl z-10">{lang === "en" ? "My Schedule" : "جدول العمل"}</h3>
+              <p className="text-sm text-white/50 mt-2 text-center leading-relaxed max-w-[280px] z-10">
                 {lang === "en" ? "View your shifts and request days off." : "عرض وردياتك وطلب إجازات."}
               </p>
             </button>
@@ -480,13 +490,14 @@ export default function CashierHubPage() {
             {/* Action 6: Inventory Audit */}
             <button 
               onClick={() => navigateTo('/inventory-audit/cashier')}
-              className="group flex flex-col items-center justify-center bg-white/70 dark:bg-slate-800/40 backdrop-blur-md p-8 rounded-3xl border border-slate-200/60 dark:border-slate-700/40 hover:border-amber-500/50 dark:hover:border-amber-500/40 shadow-xl shadow-slate-200/10 dark:shadow-none hover:shadow-amber-500/5 hover:-translate-y-1 transition-all duration-300 active:scale-[0.98] text-slate-900 dark:text-white cursor-pointer"
+              className="group flex flex-col items-center justify-center bg-white/5 backdrop-blur-2xl p-8 rounded-[2rem] border border-white/10 hover:border-amber-500/50 shadow-[0_8px_32px_rgba(0,0,0,0.3)] hover:shadow-[0_0_40px_rgba(245,158,11,0.15)] transition-all duration-300 active:scale-[0.96] text-white cursor-pointer relative overflow-hidden"
             >
-              <div className="h-16 w-16 bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-amber-600 group-hover:text-white transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              <div className="h-16 w-16 bg-white/10 text-amber-400 rounded-[1.25rem] flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-500 group-hover:bg-amber-500 group-hover:text-white shadow-inner border border-white/5 z-10">
                 <ScanLine className="h-8 w-8" />
               </div>
-              <h3 className="font-bold text-xl">{lang === "en" ? "Inventory Count" : "جرد المخزون"}</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 text-center leading-relaxed max-w-[280px]">
+              <h3 className="font-bold text-xl z-10">{lang === "en" ? "Inventory Count" : "جرد المخزون"}</h3>
+              <p className="text-sm text-white/50 mt-2 text-center leading-relaxed max-w-[280px] z-10">
                 {lang === "en" ? "Scan items for live blind cycle counting." : "مسح الأصناف لعمليات الجرد العشوائية."}
               </p>
             </button>
@@ -500,89 +511,92 @@ export default function CashierHubPage() {
   // --- LOGIN VIEW (UNAUTHENTICATED) ---
   return (
     <div 
-      className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200/50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900/40 flex flex-col items-center justify-center pt-8 pb-12 px-4 transition-colors duration-300" 
+      className="min-h-[100dvh] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-black flex flex-col items-center justify-center pt-8 pb-12 px-4 transition-colors duration-500 text-slate-100 w-full overflow-y-auto" 
       dir={lang === "ar" ? "rtl" : "ltr"}
       onClick={() => getAudioCtx()}
     >
-      <div className="w-full max-w-md space-y-6">
+      <div className="w-full max-w-md space-y-6 relative z-10">
         
+        {/* Ambient Glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-3/4 bg-red-600/20 blur-[100px] rounded-full pointer-events-none -z-10"></div>
+
         {/* Header Actions */}
         <div className="flex justify-between items-center w-full">
           <div className="flex items-center gap-2">
             <button 
-              onClick={handleEnableNotifications} 
-              className={`relative flex flex-col items-center justify-center p-2 transition-colors rounded-xl ${
+              onClick={() => { playPopSound(); handleEnableNotifications(); }} 
+              className={`relative flex items-center gap-1.5 px-3 py-1.5 transition-all rounded-full active:scale-95 border ${
                 isNotificationEnabled 
-                  ? "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20" 
-                  : "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 animate-pulse"
+                  ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.1)]" 
+                  : "text-white bg-white/10 border-white/10 hover:bg-white/20 animate-pulse shadow-sm"
               }`}
               title={isNotificationEnabled ? (lang === "en" ? "Notifications On" : "الإشعارات مفعلة") : (lang === "en" ? "Enable Notifications" : "تفعيل الإشعارات")}
             >
               <div className="relative">
-                <Bell className="h-5 w-5 mb-1" />
-                {isNotificationEnabled && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-800"></span>}
+                <Bell className="h-4 w-4" />
+                {isNotificationEnabled && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-emerald-500 rounded-full border border-slate-900 shadow-[0_0_5px_rgba(16,185,129,0.8)]"></span>}
               </div>
-              <span className="text-[10px] font-bold">{isNotificationEnabled ? (lang === "en" ? "Alerts On" : "تنبيهات") : (lang === "en" ? "Get Alerts" : "تفعيل")}</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider">{isNotificationEnabled ? (lang === "en" ? "Alerts On" : "تنبيهات") : (lang === "en" ? "Get Alerts" : "تفعيل")}</span>
             </button>
             {!isInstalled && (
               <button 
                 type="button"
-                onClick={handleInstallClick}
-                className="flex items-center gap-2 bg-red-100 dark:bg-red-900/30 border border-red-200/60 dark:border-red-800/50 px-4 py-2 rounded-full text-sm font-bold shadow-md hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors text-red-700 dark:text-red-400 cursor-pointer"
+                onClick={() => { playPopSound(); handleInstallClick(); }}
+                className="flex items-center gap-1.5 bg-red-500/20 border border-red-500/40 px-3 py-1.5 rounded-full text-[10px] font-bold shadow-[0_0_15px_rgba(239,68,68,0.2)] hover:bg-red-500/30 transition-all active:scale-95 text-red-400 uppercase tracking-wider cursor-pointer"
               >
-                <Download className="h-4 w-4" /> {lang === "en" ? "Install App" : "تثبيت التطبيق"}
+                <Download className="h-3.5 w-3.5" /> {lang === "en" ? "Install" : "تثبيت"}
               </button>
             )}
           </div>
           <button 
             type="button"
-            onClick={() => setLang(lang === "en" ? "ar" : "en")}
-            className="flex items-center gap-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border border-slate-200/60 dark:border-slate-700/50 px-4 py-2 rounded-full text-sm font-bold shadow-md hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-slate-700 dark:text-slate-200 cursor-pointer"
+            onClick={() => { playPopSound(); setLang(lang === "en" ? "ar" : "en"); }}
+            className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-full text-[10px] font-bold shadow-sm hover:bg-white/20 transition-all active:scale-95 text-white uppercase tracking-wider cursor-pointer"
           >
-            <Globe className="h-4 w-4" /> {lang === "en" ? "عربي" : "English"}
+            <Globe className="h-3.5 w-3.5" /> {lang === "en" ? "عربي" : "English"}
           </button>
         </div>
 
         {/* Title */}
-        <div className="text-center py-2 mb-2">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-red-600 rounded-full mb-4 shadow-xl shadow-red-500/30">
-            <UserCircle className="h-8 w-8 text-white animate-pulse" />
+        <div className="text-center py-4 mb-4">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-tr from-red-600 to-rose-500 rounded-[2rem] mb-6 shadow-[0_0_30px_rgba(225,29,72,0.4)] rotate-3">
+            <UserCircle className="h-10 w-10 text-white animate-pulse" />
           </div>
-          <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
-            {lang === "en" ? "Staff Login" : "تسجيل دخول الموظفين"}
+          <h1 className="text-4xl font-black tracking-tight text-white drop-shadow-md">
+            {lang === "en" ? "Staff Login" : "تسجيل الدخول"}
           </h1>
-          <p className="text-xs text-red-600 dark:text-red-400 font-bold tracking-widest mt-2 uppercase">
-            {lang === "en" ? "Circle K Franchise Portal" : "بوابة سيركل كي"}
+          <p className="text-xs text-red-400 font-bold tracking-[0.2em] mt-3 uppercase">
+            {lang === "en" ? "Circle K Franchise" : "بوابة سيركل كي"}
           </p>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleLogin} className="bg-white/90 dark:bg-slate-900/70 backdrop-blur-md p-6 sm:p-8 rounded-3xl space-y-6 border border-slate-200/70 dark:border-slate-800/60 shadow-2xl">
+        <form onSubmit={handleLogin} className="bg-white/5 backdrop-blur-3xl p-6 sm:p-8 rounded-[2.5rem] space-y-6 border border-white/10 shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
           
           <div>
-            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 flex items-center gap-1">
-              <UserIcon className="h-4 w-4 text-slate-400" /> {lang === "en" ? "Employee Name" : "اسم الموظف"}
+            <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <UserIcon className="h-4 w-4 text-white/40" /> {lang === "en" ? "Employee Name" : "اسم الموظف"}
             </label>
             <div className="relative">
               <div 
-                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="w-full p-4 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-slate-900 dark:text-white outline-none focus:border-red-500 text-base cursor-pointer flex justify-between items-center transition-all"
+                onClick={() => { playPopSound(); setIsDropdownOpen(!isDropdownOpen); }}
+                className="w-full p-4.5 py-4 rounded-2xl border border-white/10 bg-white/5 text-white outline-none focus:border-red-500/50 text-base cursor-pointer flex justify-between items-center transition-all hover:bg-white/10 active:scale-[0.98]"
               >
-                <span className={!selectedEmployeeId ? "text-slate-400 dark:text-slate-500" : "font-bold"}>
+                <span className={!selectedEmployeeId ? "text-white/40 font-medium" : "font-bold text-white"}>
                   {selectedEmployeeId 
                     ? (() => {
                         const c = employees.find(x => x.id === selectedEmployeeId);
-                        return c ? c.name : (lang === "en" ? "-- Select your name --" : "-- اختر اسمك --");
+                        return c ? c.name : (lang === "en" ? "Select your name" : "اختر اسمك");
                       })()
-                    : (lang === "en" ? "-- Select your name --" : "-- اختر اسمك --")}
+                    : (lang === "en" ? "Select your name" : "اختر اسمك")}
                 </span>
-                <ChevronDown className={`h-5 w-5 text-slate-400 transition-transform ${isDropdownOpen ? "rotate-180" : ""}`} />
+                <ChevronDown className={`h-5 w-5 text-white/40 transition-transform duration-300 ${isDropdownOpen ? "rotate-180" : ""}`} />
               </div>
 
               {isDropdownOpen && (
-                <div className="absolute z-[100] top-full left-0 right-0 mt-2 max-h-64 overflow-y-auto bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl shadow-2xl overflow-hidden ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute z-[100] top-full left-0 right-0 mt-3 max-h-64 overflow-y-auto bg-slate-900/90 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                   {employees.length === 0 ? (
-                    <div className="p-4 text-center text-slate-500 text-sm">
+                    <div className="p-5 text-center text-white/50 text-sm font-medium">
                       {lang === "en" ? "No employees found." : "لم يتم العثور على موظفين."}
                     </div>
                   ) : (
@@ -590,23 +604,24 @@ export default function CashierHubPage() {
                       <div 
                         key={c.id} 
                         onClick={() => { 
+                          playPopSound();
                           setSelectedEmployeeId(c.id); 
                           setIsDropdownOpen(false); 
                           if (localStorage.getItem(`faceid_enabled_${c.id}`) === "true") {
                             loginWithFaceId(c.id);
                           }
                         }}
-                        className="p-4 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer border-b border-slate-100 dark:border-slate-700/60 last:border-0 flex flex-col gap-1 transition-colors"
+                        className="p-4.5 py-4 hover:bg-white/10 cursor-pointer border-b border-white/5 last:border-0 flex flex-col gap-1 transition-colors active:bg-white/20"
                       >
-                        <span className="font-bold text-slate-900 dark:text-white text-base">{c.name}</span>
-                        <div className="flex items-center gap-2">
+                        <span className="font-bold text-white text-base">{c.name}</span>
+                        <div className="flex items-center gap-2 mt-1">
                           {c.position && (
-                            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-md uppercase tracking-wider">
+                            <span className="text-[9px] font-black text-blue-300 bg-blue-500/20 border border-blue-500/30 px-2 py-0.5 rounded-full uppercase tracking-wider">
                               {c.position}
                             </span>
                           )}
                           {(c.storeId || c.branchId) && (
-                            <span className="text-[10px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-900/50 px-2 py-0.5 rounded-md">
+                            <span className="text-[9px] font-black text-white/60 bg-white/10 border border-white/5 px-2 py-0.5 rounded-full uppercase tracking-wider">
                               Store: {c.storeId || c.branchId}
                             </span>
                           )}
@@ -619,23 +634,25 @@ export default function CashierHubPage() {
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-4 flex items-center justify-center gap-1">
-              <Lock className="h-4 w-4 text-slate-400" /> {lang === "en" ? "Enter 4-Digit PIN" : "أدخل الرمز السري"}
+          <div className="pt-2">
+            <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-4 flex items-center justify-center gap-1.5">
+              <Lock className="h-4 w-4 text-white/40" /> {lang === "en" ? "Enter 4-Digit PIN" : "أدخل الرمز السري"}
             </label>
-            <PinPad 
-              onPinChange={(val) => setPinInput(val)}
-              onSubmit={(val) => handleLogin(val as any)}
-              maxLength={4}
-            />
+            <div className="transform transition-transform scale-100 sm:scale-105 origin-top">
+              <PinPad 
+                onPinChange={(val) => setPinInput(val)}
+                onSubmit={(val) => handleLogin(val as any)}
+                maxLength={4}
+              />
+            </div>
             
             {hasFaceIdRegistered && (
               <button
                 type="button"
-                onClick={() => loginWithFaceId(selectedEmployeeId)}
-                className="mt-6 w-full py-4 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl font-bold text-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-2 shadow-inner"
+                onClick={() => { playPopSound(); loginWithFaceId(selectedEmployeeId); }}
+                className="mt-6 w-full py-4 bg-white/10 text-white rounded-2xl font-bold text-lg hover:bg-white/20 transition-all active:scale-95 flex items-center justify-center gap-3 border border-white/10 shadow-lg"
               >
-                <Fingerprint className="h-6 w-6 text-emerald-500" />
+                <Fingerprint className="h-6 w-6 text-emerald-400" />
                 {lang === "en" ? "Use FaceID / TouchID" : "استخدام البصمة"}
               </button>
             )}
