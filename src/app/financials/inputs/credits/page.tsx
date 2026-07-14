@@ -106,12 +106,9 @@ export default function CreditsPage() {
   const [onSalesOnly, setOnSalesOnly] = useState(false);
   const [isTaxable, setIsTaxable] = useState(false);
 
-  const STANDARD_COMPANIES = [
-    "Pepsi", "Coca-Cola", "Al Ahram Beverages", "Juhayna", "Edita", 
-    "Red Bull", "Nestle", "Pringles", "Chipsy", "Cadbury", "Galaxy", 
-    "Mars", "Domty", "Beyti", "Lamar", "Philip Morris", "Eastern Company", 
-    "Mansour", "Wadi Food", "Rich Bake"
-  ];
+  const [suppliers, setSuppliers] = useState<{ id: string; name: string }[]>([]);
+  const [showAddSupplier, setShowAddSupplier] = useState(false);
+  const [newSupplierName, setNewSupplierName] = useState("");
 
   const sigPadRef = React.useRef<any>(null);
   const [managerSignature, setManagerSignature] = useState("");
@@ -192,6 +189,13 @@ export default function CreditsPage() {
         };
       }) as Credit[];
       setCredits(data);
+
+      const uniqueSuppliers = new Set<string>();
+      data.forEach(c => {
+        if (c.companyName) uniqueSuppliers.add(c.companyName.toUpperCase());
+      });
+      setSuppliers(Array.from(uniqueSuppliers).sort().map((name, index) => ({ id: `sup_${index}`, name })));
+
     } catch (err: any) {
       console.error("Error fetching credits:", err);
       if (err.message?.includes("https://console.firebase.google.com")) {
@@ -251,6 +255,17 @@ export default function CreditsPage() {
         console.error("Failed to load history for credit", id, err);
       }
     }
+  };
+
+  const handleAddSupplier = () => {
+    if (!newSupplierName.trim()) return;
+    const name = newSupplierName.trim().toUpperCase();
+    const newSupp = { id: `sup_new_${Date.now()}`, name };
+    setSuppliers(prev => [...prev, newSupp].sort((a, b) => a.name.localeCompare(b.name)));
+    setCompanyName(name);
+    setShowAddSupplier(false);
+    setNewSupplierName("");
+    toast.success("Supplier ready to be used!");
   };
 
   const handleAddCredit = async (e: React.FormEvent) => {
@@ -855,11 +870,16 @@ export default function CreditsPage() {
                     <input type="text" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={poNumber} onChange={(e) => setPoNumber(e.target.value)} />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Company *</label>
-                    <input required list="companies-list" type="text" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
-                    <datalist id="companies-list">
-                      {STANDARD_COMPANIES.map(c => <option key={c} value={c} />)}
-                    </datalist>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Company *</label>
+                      <button type="button" onClick={() => setShowAddSupplier(true)} className="text-[10px] text-indigo-600 font-bold hover:underline flex items-center gap-1">
+                        + New Supplier
+                      </button>
+                    </div>
+                    <select required className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={companyName} onChange={(e) => setCompanyName(e.target.value)}>
+                      <option value="">Select a supplier...</option>
+                      {suppliers.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                    </select>
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Amount Due *</label>
@@ -1028,6 +1048,49 @@ export default function CreditsPage() {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showAddSupplier && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl border border-slate-100"
+            >
+              <h3 className="text-xl font-black text-slate-900 mb-4 tracking-tight">Add New Supplier</h3>
+              <input 
+                type="text" 
+                value={newSupplierName}
+                onChange={(e) => setNewSupplierName(e.target.value)}
+                placeholder="e.g. COCA COLA EG"
+                className="w-full border-none bg-slate-50 focus:ring-2 focus:ring-indigo-500/20 rounded-xl p-3 text-slate-900 font-medium mb-6 outline-none"
+                autoFocus
+              />
+              <div className="flex gap-3 justify-end">
+                <button 
+                  onClick={() => setShowAddSupplier(false)}
+                  className="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleAddSupplier}
+                  disabled={!newSupplierName.trim()}
+                  className="px-5 py-2 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-sm"
+                >
+                  Save Supplier
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}
