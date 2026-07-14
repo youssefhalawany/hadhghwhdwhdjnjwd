@@ -7,7 +7,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "next-themes";
 
-import { AlertCircle, CheckCircle2, Lock, ScanLine, Camera, Edit2, Save, X, Package } from "lucide-react";
+import {  AlertCircle, CheckCircle2, Lock, ScanLine, Camera, Edit2, Save, X, Package , Radar, Shield, User as UserIcon, ArrowLeft } from "lucide-react";
 import { CameraScanner } from "@/components/ui/CameraScanner";
 
 export default function CashierInventoryAudit() {
@@ -235,7 +235,24 @@ export default function CashierInventoryAudit() {
   // ACTIVE STATE: Batch is open
   return (
     <PageTransition>
-      <div className="max-w-md mx-auto p-4 md:p-6" dir={lang === "ar" ? "rtl" : "ltr"}>
+      <div className="ck-inventory-audit min-h-screen max-w-md mx-auto p-4 md:p-6" dir={lang === "ar" ? "rtl" : "ltr"}>
+      <style>{`
+        .ck-inventory-audit { background-color: #0B1121 !important; color: #f8fafc !important; color-scheme: dark !important; min-height: 100dvh; }
+        .ck-inventory-audit .bg-white, .ck-inventory-audit .dark\\:bg-slate-800, .ck-inventory-audit .bg-slate-50 { background-color: #151E32 !important; border-color: rgba(34, 211, 238, 0.15) !important; }
+        .ck-inventory-audit .bg-slate-900 { background-color: #0B1121 !important; border-bottom: 1px solid rgba(34, 211, 238, 0.15) !important; }
+        .ck-inventory-audit .text-slate-900, .ck-inventory-audit .text-slate-800 { color: #f8fafc !important; }
+        .ck-inventory-audit .text-slate-500, .ck-inventory-audit .text-slate-600 { color: #94a3b8 !important; }
+        .ck-inventory-audit .text-emerald-600, .ck-inventory-audit .text-emerald-700 { color: #22d3ee !important; }
+        .ck-inventory-audit .bg-emerald-500, .ck-inventory-audit .bg-emerald-600 { background-color: #22d3ee !important; }
+        .ck-inventory-audit .border-slate-200, .ck-inventory-audit .border-slate-300 { border-color: rgba(34, 211, 238, 0.15) !important; }
+        
+        .ck-inventory-audit input { background-color: #1C2841 !important; color: #f8fafc !important; border: 1px solid rgba(34, 211, 238, 0.25) !important; border-radius: 12px !important; }
+        .ck-inventory-audit input:focus { border-color: #22d3ee !important; box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.2) !important; outline: none !important; }
+        
+        .ck-inventory-audit .bg-red-600 { background-color: #ef4444 !important; color: white !important; }
+        .ck-inventory-audit button:not(.bg-red-600) { background-color: #1C2841 !important; color: #f8fafc !important; border: 1px solid rgba(34, 211, 238, 0.25) !important; }
+      `}</style>
+
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-black text-slate-900 tracking-tight">
@@ -395,7 +412,28 @@ export default function CashierInventoryAudit() {
 
           </div>
         </div>
+      
+      {/* Bottom Navigation */}
+      <div className="ck-bottom-nav">
+        <div onClick={() => window.location.href = "/cashier"}>
+          <Package size={22} />
+          <span>DASHBOARD</span>
+        </div>
+        <div className="active">
+          <Radar size={22} />
+          <span>REPORT CENTER</span>
+        </div>
+        <div>
+          <Shield size={22} />
+          <span>NOTIFICATIONS</span>
+        </div>
+        <div>
+          <UserIcon size={22} />
+          <span>PROFILE</span>
+        </div>
       </div>
+
+    </div>
 
       {isScannerOpen && (
         <CameraScanner 

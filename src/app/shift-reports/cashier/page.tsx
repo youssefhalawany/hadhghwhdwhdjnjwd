@@ -604,7 +604,26 @@ export default function CashierShiftReportPage() {
 
   if (loadingCashiers) {
     return (
-      <div className="flex justify-center items-center p-20 bg-background min-h-screen">
+    <div className="ck-shift-report flex justify-center items-center p-20 bg-background min-h-screen">
+      <style>{`
+        .ck-shift-report { background-color: #0B1121 !important; color: #f8fafc !important; color-scheme: dark !important; min-height: 100dvh; }
+        .ck-shift-report .bg-white, .ck-shift-report .dark\\:bg-slate-800, .ck-shift-report .dark\\:bg-slate-800\\/80, .ck-shift-report .dark\\:bg-slate-900, .ck-shift-report .bg-slate-100 { background-color: #151E32 !important; border-color: rgba(34, 211, 238, 0.15) !important; }
+        .ck-shift-report .bg-slate-50, .ck-shift-report .dark\\:bg-slate-950\\/20, .ck-shift-report .dark\\:bg-slate-950 { background-color: #0B1121 !important; }
+        .ck-shift-report .text-slate-800, .ck-shift-report .text-slate-900, .ck-shift-report .dark\\:text-white, .ck-shift-report .dark\\:text-slate-100 { color: #f8fafc !important; }
+        .ck-shift-report .text-slate-500, .ck-shift-report .text-slate-600, .ck-shift-report .dark\\:text-slate-400 { color: #94a3b8 !important; }
+        .ck-shift-report .text-red-600, .ck-shift-report .dark\\:text-red-400 { color: #ef4444 !important; }
+        .ck-shift-report .bg-red-600, .ck-shift-report .bg-red-500 { background-color: #ef4444 !important; color: white !important; }
+        .ck-shift-report .bg-green-600, .ck-shift-report .bg-green-500 { background-color: #34d399 !important; color: #0B1121 !important; font-weight: 800 !important; }
+        .ck-shift-report .border-slate-200, .ck-shift-report .dark\\:border-slate-700, .ck-shift-report .border-slate-300 { border-color: rgba(34, 211, 238, 0.15) !important; }
+        
+        .ck-shift-report input, .ck-shift-report select { background-color: #1C2841 !important; color: #f8fafc !important; border: 1px solid rgba(34, 211, 238, 0.25) !important; border-radius: 12px !important; }
+        .ck-shift-report input:focus, .ck-shift-report select:focus { border-color: #22d3ee !important; box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.2) !important; outline: none !important; }
+        .ck-shift-report h2 { color: #22d3ee !important; }
+        
+        .ck-pinpad button { background-color: #1C2841 !important; color: #f8fafc !important; border-color: rgba(34, 211, 238, 0.15) !important; }
+        .ck-pinpad button:active { background-color: rgba(34, 211, 238, 0.1) !important; border-color: rgba(34, 211, 238, 0.25) !important; color: #22d3ee !important; }
+      `}</style>
+
         <Skeleton className="h-16 w-16 rounded-full" />
       </div>
     );
@@ -612,7 +631,26 @@ export default function CashierShiftReportPage() {
 
   if (!unlocked) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200/50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900/40 flex flex-col items-center justify-center pt-8 pb-12 px-4 transition-colors duration-300" dir={lang === "ar" ? "rtl" : "ltr"}>
+    <div className="ck-shift-report min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200/50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900/40 flex flex-col items-center justify-center pt-8 pb-12 px-4 transition-colors duration-300" dir={lang === "ar" ? "rtl" : "ltr"}>
+      <style>{`
+        .ck-shift-report { background-color: #0B1121 !important; color: #f8fafc !important; color-scheme: dark !important; min-height: 100dvh; }
+        .ck-shift-report .bg-white, .ck-shift-report .dark\\:bg-slate-800, .ck-shift-report .dark\\:bg-slate-800\\/80, .ck-shift-report .dark\\:bg-slate-900, .ck-shift-report .bg-slate-100 { background-color: #151E32 !important; border-color: rgba(34, 211, 238, 0.15) !important; }
+        .ck-shift-report .bg-slate-50, .ck-shift-report .dark\\:bg-slate-950\\/20, .ck-shift-report .dark\\:bg-slate-950 { background-color: #0B1121 !important; }
+        .ck-shift-report .text-slate-800, .ck-shift-report .text-slate-900, .ck-shift-report .dark\\:text-white, .ck-shift-report .dark\\:text-slate-100 { color: #f8fafc !important; }
+        .ck-shift-report .text-slate-500, .ck-shift-report .text-slate-600, .ck-shift-report .dark\\:text-slate-400 { color: #94a3b8 !important; }
+        .ck-shift-report .text-red-600, .ck-shift-report .dark\\:text-red-400 { color: #ef4444 !important; }
+        .ck-shift-report .bg-red-600, .ck-shift-report .bg-red-500 { background-color: #ef4444 !important; color: white !important; }
+        .ck-shift-report .bg-green-600, .ck-shift-report .bg-green-500 { background-color: #34d399 !important; color: #0B1121 !important; font-weight: 800 !important; }
+        .ck-shift-report .border-slate-200, .ck-shift-report .dark\\:border-slate-700, .ck-shift-report .border-slate-300 { border-color: rgba(34, 211, 238, 0.15) !important; }
+        
+        .ck-shift-report input, .ck-shift-report select { background-color: #1C2841 !important; color: #f8fafc !important; border: 1px solid rgba(34, 211, 238, 0.25) !important; border-radius: 12px !important; }
+        .ck-shift-report input:focus, .ck-shift-report select:focus { border-color: #22d3ee !important; box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.2) !important; outline: none !important; }
+        .ck-shift-report h2 { color: #22d3ee !important; }
+        
+        .ck-pinpad button { background-color: #1C2841 !important; color: #f8fafc !important; border-color: rgba(34, 211, 238, 0.15) !important; }
+        .ck-pinpad button:active { background-color: rgba(34, 211, 238, 0.1) !important; border-color: rgba(34, 211, 238, 0.25) !important; color: #22d3ee !important; }
+      `}</style>
+
         <div className="w-full max-w-md space-y-6">
           
           {/* Language Toggle */}
@@ -699,7 +737,26 @@ export default function CashierShiftReportPage() {
   const activeCashier = cashiers.find(x => x.id === selectedCashierId);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950/20 text-slate-900 dark:text-slate-100 transition-colors duration-300 pb-28" dir={lang === "ar" ? "rtl" : "ltr"}>
+    <div className="ck-shift-report min-h-screen bg-slate-50 dark:bg-slate-950/20 text-slate-900 dark:text-slate-100 transition-colors duration-300 pb-28" dir={lang === "ar" ? "rtl" : "ltr"}>
+      <style>{`
+        .ck-shift-report { background-color: #0B1121 !important; color: #f8fafc !important; color-scheme: dark !important; min-height: 100dvh; }
+        .ck-shift-report .bg-white, .ck-shift-report .dark\\:bg-slate-800, .ck-shift-report .dark\\:bg-slate-800\\/80, .ck-shift-report .dark\\:bg-slate-900, .ck-shift-report .bg-slate-100 { background-color: #151E32 !important; border-color: rgba(34, 211, 238, 0.15) !important; }
+        .ck-shift-report .bg-slate-50, .ck-shift-report .dark\\:bg-slate-950\\/20, .ck-shift-report .dark\\:bg-slate-950 { background-color: #0B1121 !important; }
+        .ck-shift-report .text-slate-800, .ck-shift-report .text-slate-900, .ck-shift-report .dark\\:text-white, .ck-shift-report .dark\\:text-slate-100 { color: #f8fafc !important; }
+        .ck-shift-report .text-slate-500, .ck-shift-report .text-slate-600, .ck-shift-report .dark\\:text-slate-400 { color: #94a3b8 !important; }
+        .ck-shift-report .text-red-600, .ck-shift-report .dark\\:text-red-400 { color: #ef4444 !important; }
+        .ck-shift-report .bg-red-600, .ck-shift-report .bg-red-500 { background-color: #ef4444 !important; color: white !important; }
+        .ck-shift-report .bg-green-600, .ck-shift-report .bg-green-500 { background-color: #34d399 !important; color: #0B1121 !important; font-weight: 800 !important; }
+        .ck-shift-report .border-slate-200, .ck-shift-report .dark\\:border-slate-700, .ck-shift-report .border-slate-300 { border-color: rgba(34, 211, 238, 0.15) !important; }
+        
+        .ck-shift-report input, .ck-shift-report select { background-color: #1C2841 !important; color: #f8fafc !important; border: 1px solid rgba(34, 211, 238, 0.25) !important; border-radius: 12px !important; }
+        .ck-shift-report input:focus, .ck-shift-report select:focus { border-color: #22d3ee !important; box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.2) !important; outline: none !important; }
+        .ck-shift-report h2 { color: #22d3ee !important; }
+        
+        .ck-pinpad button { background-color: #1C2841 !important; color: #f8fafc !important; border-color: rgba(34, 211, 238, 0.15) !important; }
+        .ck-pinpad button:active { background-color: rgba(34, 211, 238, 0.1) !important; border-color: rgba(34, 211, 238, 0.25) !important; color: #22d3ee !important; }
+      `}</style>
+
       
       {/* Header */}
       <header className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md shadow-sm border-b border-slate-200 dark:border-slate-700 p-4 sticky top-0 z-10">
@@ -1171,6 +1228,27 @@ export default function CashierShiftReportPage() {
           </div>
         </form>
       </main>
+    
+      {/* Bottom Navigation */}
+      <div className="ck-bottom-nav">
+        <div onClick={() => router.push("/cashier")}>
+          <Package size={22} />
+          <span>DASHBOARD</span>
+        </div>
+        <div className="active">
+          <Radar size={22} />
+          <span>REPORT CENTER</span>
+        </div>
+        <div>
+          <Shield size={22} />
+          <span>NOTIFICATIONS</span>
+        </div>
+        <div>
+          <UserIcon size={22} />
+          <span>PROFILE</span>
+        </div>
+      </div>
+
     </div>
   );
 }
