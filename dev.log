@@ -16400,3 +16400,36 @@ Persisting failed: Another write batch or compaction is already active (Only a s
 Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
  GET /shift-reports/manager 200 in 5.2s (next.js: 1024ms, application-code: 4.2s)
  GET /shift-reports/manager 200 in 2.8s (next.js: 56ms, application-code: 2.7s)
+ GET /shift-reports/manager 200 in 317ms (next.js: 51ms, application-code: 266ms)
+ GET /shift-reports/manager 200 in 180ms (next.js: 19ms, application-code: 161ms)
+ GET /shift-reports/manager 200 in 86ms (next.js: 5ms, application-code: 81ms)
+[browser] #4 4368ms Error loading image https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Circle_K_logo.svg/2048px-Circle_K_logo.svg.png 
+[browser] #5 1931ms Error loading image https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Circle_K_logo.svg/2048px-Circle_K_logo.svg.png 
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+[browser] #6 1250ms Error loading image https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Circle_K_logo.svg/2048px-Circle_K_logo.svg.png 
+[browser] #7 1595ms Error loading image https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Circle_K_logo.svg/2048px-Circle_K_logo.svg.png 
+ GET /financial-reports 200 in 251ms (next.js: 177ms, application-code: 74ms)
+ GET /financials/inputs 200 in 84ms (next.js: 54ms, application-code: 31ms)
+[browser] [2026-07-14T00:09:49.939Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x20741735 failed with error:  {"code":"resource-exhausted","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"cash"}}},{"alias":"aggregate_1","sum":{"field":{"fieldPath":"overShort"}}}],"structuredQuery":{"from":[{"collectionId":"sales"}],"where":{"fieldFilter":{"field":{"fieldPath":"storeId"},"op":"IN","value":{"arrayValue":{"values":[{"stringValue":"eL-alamein-4"}]}}}}}}} (src/app/financials/inputs/page.tsx:73:26)
+[browser] Aggregate fetch error: FirebaseError: Quota exceeded.
+FirebaseError: Quota exceeded. (src/app/financials/inputs/page.tsx:100:17)
+[browser] [2026-07-14T00:09:50.016Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x20741733 failed with error:  {"code":"resource-exhausted","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"cash"}}},{"alias":"aggregate_1","sum":{"field":{"fieldPath":"overShort"}}}],"structuredQuery":{"from":[{"collectionId":"sales"}],"where":{"fieldFilter":{"field":{"fieldPath":"storeId"},"op":"IN","value":{"arrayValue":{"values":[{"stringValue":"eL-alamein-4"}]}}}}}}} (src/app/financials/inputs/page.tsx:73:26)
+[browser] Aggregate fetch error: FirebaseError: Quota exceeded.
+FirebaseError: Quota exceeded. (src/app/financials/inputs/page.tsx:100:17)
+ GET /financials/inputs/sales 200 in 69ms (next.js: 38ms, application-code: 31ms)
+[browser] [2026-07-14T00:09:50.892Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x20741737 failed with error:  {"code":"resource-exhausted","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"cash"}}},{"alias":"aggregate_1","sum":{"field":{"fieldPath":"visa"}}},{"alias":"aggregate_2","sum":{"field":{"fieldPath":"overShort"}}}],"structuredQuery":{"from":[{"collectionId":"sales"}]}}} (src/app/financials/inputs/sales/page.tsx:25:26)
+[browser] Failed to fetch aggregate: FirebaseError: Quota exceeded.
+FirebaseError: Quota exceeded. (src/app/financials/inputs/sales/page.tsx:36:17)
+[browser] [2026-07-14T00:09:50.929Z]  @firebase/firestore: Firestore (12.15.0): RestConnection RPC 'RunAggregationQuery' 0x20741739 failed with error:  {"code":"resource-exhausted","name":"FirebaseError"} url:  https://firestore.googleapis.com/v1/projects/ckkk-576e7/databases/(default)/documents:runAggregationQuery?key=AIzaSyC28heBX9KUAK--AvXe1bTy06J9sss_C2Q request: {"structuredAggregationQuery":{"aggregations":[{"alias":"aggregate_0","sum":{"field":{"fieldPath":"cash"}}},{"alias":"aggregate_1","sum":{"field":{"fieldPath":"visa"}}},{"alias":"aggregate_2","sum":{"field":{"fieldPath":"overShort"}}}],"structuredQuery":{"from":[{"collectionId":"sales"}]}}} (src/app/financials/inputs/sales/page.tsx:25:26)
+[browser] Failed to fetch aggregate: FirebaseError: Quota exceeded.
+FirebaseError: Quota exceeded. (src/app/financials/inputs/sales/page.tsx:36:17)
+ GET /financials/inputs/payments 200 in 143ms (next.js: 102ms, application-code: 41ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /voids/manager 200 in 320ms (next.js: 187ms, application-code: 133ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 4.7s
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)

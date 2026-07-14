@@ -1269,7 +1269,7 @@ export default function ManagerAuditPage() {
             <>
               {/* Background Watermark Logo */}
               <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 0, opacity: 0.04, pointerEvents: 'none' }}>
-                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Circle_K_logo.svg/2048px-Circle_K_logo.svg.png" alt="Watermark" style={{ width: '500px', filter: 'grayscale(100%)' }} />
+                <img src="/icons8-circled-k-50.png" alt="Watermark" style={{ width: '500px', filter: 'grayscale(100%)', opacity: 0.1 }} />
               </div>
               
               {/* Micro-Typography Security Borders */}
