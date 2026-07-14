@@ -16387,3 +16387,16 @@ Persisting failed: Another write batch or compaction is already active (Only a s
  GET /financials/inputs/credits 200 in 6.9s (next.js: 918ms, application-code: 6.0s)
 Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
 Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/payments 200 in 261ms (next.js: 168ms, application-code: 93ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /shift-reports/manager 200 in 376ms (next.js: 274ms, application-code: 102ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+[browser] #2 1674ms Error loading image https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Circle_K_logo.svg/2048px-Circle_K_logo.svg.png 
+[browser] #3 1026ms Error loading image https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Circle_K_logo.svg/2048px-Circle_K_logo.svg.png 
+✓ Compiled in 22.4s
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /shift-reports/manager 200 in 5.2s (next.js: 1024ms, application-code: 4.2s)
+ GET /shift-reports/manager 200 in 2.8s (next.js: 56ms, application-code: 2.7s)

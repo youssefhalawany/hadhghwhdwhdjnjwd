@@ -70,6 +70,8 @@ import {
   X,
   FileDown
 } from "lucide-react";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 import Barcode from "react-barcode";
 import QRCode from "react-qr-code";
 import { toast } from "sonner";
@@ -157,29 +159,22 @@ export default function PaymentsRedesignPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // 1. Fetch Payments (Optimized for Firebase Free Tier)
-      // Only fetch payments for the currently selected month!
-      const paySnapshot = await getDocs(
-        query(
-          collection(db, "cash_payments"), 
-          orderBy("date", "desc"),
-          limit(100)
-        )
-      );
-      
+      // 1. Fetch Payments
+      const paySnapshot = await getDocs(query(collection(db, "cash_payments"), orderBy("createdAt", "desc"), limit(200)));
       const loadedPayments = paySnapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
       setPayments(loadedPayments);
 
-      // 2. Fetch Suppliers 
+      // 2. Fetch Suppliers from both supplier_returns and cash_payments
       const uniqueSuppliers = new Set<string>();
       
+      // Add from payments
       loadedPayments.forEach(p => {
         if (p.companyName) uniqueSuppliers.add(p.companyName.toUpperCase());
       });
 
+      // Add from returns
       try {
-        // Drastically reduce this limit to save reads
-        const returnsSnap = await getDocs(query(collection(db, "supplier_returns"), orderBy("createdAt", "desc"), limit(20)));
+        const returnsSnap = await getDocs(query(collection(db, "supplier_returns"), orderBy("createdAt", "desc"), limit(200)));
         returnsSnap.docs.forEach(doc => {
           const data = doc.data();
           if (data.supplier) uniqueSuppliers.add(data.supplier.toUpperCase());
@@ -280,11 +275,28 @@ export default function PaymentsRedesignPage() {
 
   const generatePDF = async () => {
     setGeneratingPDF(true);
-    setTimeout(() => {
-      window.print();
-      setGeneratingPDF(false);
+    try {
+      const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const page1 = document.getElementById("pdf-receipt");
+      
+      if (page1) {
+        page1.style.left = "0";
+        const canvas1 = await html2canvas(page1, { scale: 2, useCORS: true });
+        const imgData1 = canvas1.toDataURL("image/png");
+        const pdfHeight1 = (canvas1.height * pdfWidth) / canvas1.width;
+        pdf.addImage(imgData1, "PNG", 0, 0, pdfWidth, pdfHeight1);
+        page1.style.left = "-9999px";
+      }
+
+      pdf.autoPrint();
+      window.open(pdf.output("bloburl"), "_blank");
       setSelectedPaymentForPrint(null);
-    }, 300);
+    } catch (error) {
+      toast.error("Failed to generate PDF.");
+    } finally {
+      setGeneratingPDF(false);
+    }
   };
 
   // Derived filtered data
@@ -327,7 +339,7 @@ export default function PaymentsRedesignPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] dark:bg-slate-950 pb-20 print:hidden">
+    <div className="min-h-screen bg-[#f8fafc] dark:bg-slate-950 pb-20">
       
       <div className="p-6 max-w-7xl mx-auto space-y-6">
         
@@ -451,7 +463,7 @@ export default function PaymentsRedesignPage() {
                   <button 
                     onClick={() => {
                       setSelectedPaymentForPrint(pay);
-                      setTimeout(() => window.print(), 100);
+                      setTimeout(() => generatePDF(), 100);
                     }}
                     className="p-2 text-blue-600 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
                   >
@@ -678,9 +690,10 @@ export default function PaymentsRedesignPage() {
         </div>
       )}
 
+      {/* HIDDEN PRINT LAYOUT (A4) */}
       {selectedPaymentForPrint && (
-        <div className="hidden print:block absolute top-0 left-0 w-full bg-white z-50">
-          <div id="pdf-receipt" style={{ width: '100%', backgroundColor: '#ffffff', position: 'relative', fontFamily: 'Arial, sans-serif', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+          <div id="pdf-receipt" style={{ width: '794px', minHeight: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
             
             <div style={{ padding: '20px 30px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #000', position: 'relative', zIndex: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
