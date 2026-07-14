@@ -1,5 +1,52 @@
 "use client";
 
+// @ts-ignore
+import QRCodeLib from "qrcode";
+
+function numberToArabicWords(num: number): string {
+  if (num === 0) return "صفر";
+  
+  const ones = ["", "واحد", "اثنان", "ثلاثة", "أربعة", "خمسة", "ستة", "سبعة", "ثمانية", "تسعة", "عشرة", "أحد عشر", "اثنا عشر", "ثلاثة عشر", "أربعة عشر", "خمسة عشر", "ستة عشر", "سبعة عشر", "ثمانية عشر", "تسعة عشر"];
+  const tens = ["", "", "عشرون", "ثلاثون", "أربعون", "خمسون", "ستون", "سبعون", "ثمانون", "تسعون"];
+  const hundreds = ["", "مائة", "مائتان", "ثلاثمائة", "أربعمائة", "خمسمائة", "ستمائة", "سبعمائة", "ثمانمائة", "تسعمائة"];
+  
+  function getBelow100(n: number): string {
+    if (n < 20) return ones[n];
+    const t = Math.floor(n / 10);
+    const o = n % 10;
+    if (o === 0) return tens[t];
+    return ones[o] + " و" + tens[t];
+  }
+  
+  function getBelow1000(n: number): string {
+    const h = Math.floor(n / 100);
+    const rest = n % 100;
+    if (h === 0) return getBelow100(rest);
+    const hText = hundreds[h];
+    if (rest === 0) return hText;
+    return hText + " و" + getBelow100(rest);
+  }
+  
+  const thousands = Math.floor(num / 1000);
+  const remainder = num % 1000;
+  
+  let result = "";
+  
+  if (thousands > 0) {
+    if (thousands === 1) result += "ألف";
+    else if (thousands === 2) result += "ألفان";
+    else if (thousands >= 3 && thousands <= 10) result += getBelow100(thousands) + " آلاف";
+    else result += getBelow1000(thousands) + " ألف";
+  }
+  
+  if (remainder > 0) {
+    if (result !== "") result += " و";
+    result += getBelow1000(remainder);
+  }
+  
+  return result;
+}
+
 import React, { useState, useEffect, useMemo } from "react";
 import { db, auth } from "@/lib/firebase";
 import { 
@@ -23,8 +70,6 @@ import {
   X,
   FileDown
 } from "lucide-react";
-import html2canvas from "html2canvas";
-import { jsPDF } from "jspdf";
 import Barcode from "react-barcode";
 import QRCode from "react-qr-code";
 import { toast } from "sonner";
@@ -77,10 +122,25 @@ export default function PaymentsRedesignPage() {
   const [tax, setTax] = useState("");
   const [categoryNote, setCategoryNote] = useState("");
   const [showAddSupplier, setShowAddSupplier] = useState(false);
+  const [qrCodeData, setQrCodeData] = useState("");
   
   // Print State
   const [selectedPaymentForPrint, setSelectedPaymentForPrint] = useState<any>(null);
   const [generatingPDF, setGeneratingPDF] = useState(false);
+
+  useEffect(() => {
+    if (selectedPaymentForPrint) {
+      const text = `Payment ID: ${selectedPaymentForPrint.id}\nCompany: ${selectedPaymentForPrint.companyName}\nInvoice: ${selectedPaymentForPrint.invoiceNumber}\nAmount: ${selectedPaymentForPrint.total} EGP\nDate: ${selectedPaymentForPrint.date}`;
+      // @ts-ignore
+      QRCodeLib.toDataURL(text)
+        // @ts-ignore
+        .then(url => setQrCodeData(url))
+        // @ts-ignore
+        .catch(err => console.error(err));
+    } else {
+      setQrCodeData("");
+    }
+  }, [selectedPaymentForPrint]);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
@@ -97,22 +157,29 @@ export default function PaymentsRedesignPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // 1. Fetch Payments
-      const paySnapshot = await getDocs(query(collection(db, "cash_payments"), orderBy("createdAt", "desc"), limit(200)));
+      // 1. Fetch Payments (Optimized for Firebase Free Tier)
+      // Only fetch payments for the currently selected month!
+      const paySnapshot = await getDocs(
+        query(
+          collection(db, "cash_payments"), 
+          orderBy("date", "desc"),
+          limit(100)
+        )
+      );
+      
       const loadedPayments = paySnapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
       setPayments(loadedPayments);
 
-      // 2. Fetch Suppliers from both supplier_returns and cash_payments
+      // 2. Fetch Suppliers 
       const uniqueSuppliers = new Set<string>();
       
-      // Add from payments
       loadedPayments.forEach(p => {
         if (p.companyName) uniqueSuppliers.add(p.companyName.toUpperCase());
       });
 
-      // Add from returns
       try {
-        const returnsSnap = await getDocs(query(collection(db, "supplier_returns"), orderBy("createdAt", "desc"), limit(200)));
+        // Drastically reduce this limit to save reads
+        const returnsSnap = await getDocs(query(collection(db, "supplier_returns"), orderBy("createdAt", "desc"), limit(20)));
         returnsSnap.docs.forEach(doc => {
           const data = doc.data();
           if (data.supplier) uniqueSuppliers.add(data.supplier.toUpperCase());
@@ -213,28 +280,11 @@ export default function PaymentsRedesignPage() {
 
   const generatePDF = async () => {
     setGeneratingPDF(true);
-    try {
-      const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const page1 = document.getElementById("pdf-receipt");
-      
-      if (page1) {
-        page1.style.left = "0";
-        const canvas1 = await html2canvas(page1, { scale: 2, useCORS: true });
-        const imgData1 = canvas1.toDataURL("image/png");
-        const pdfHeight1 = (canvas1.height * pdfWidth) / canvas1.width;
-        pdf.addImage(imgData1, "PNG", 0, 0, pdfWidth, pdfHeight1);
-        page1.style.left = "-9999px";
-      }
-
-      pdf.autoPrint();
-      window.open(pdf.output("bloburl"), "_blank");
-      setSelectedPaymentForPrint(null);
-    } catch (error) {
-      toast.error("Failed to generate PDF.");
-    } finally {
+    setTimeout(() => {
+      window.print();
       setGeneratingPDF(false);
-    }
+      setSelectedPaymentForPrint(null);
+    }, 300);
   };
 
   // Derived filtered data
@@ -277,11 +327,10 @@ export default function PaymentsRedesignPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] dark:bg-slate-950 pb-20">
+    <div className="min-h-screen bg-[#f8fafc] dark:bg-slate-950 pb-20 print:hidden">
       
       <div className="p-6 max-w-7xl mx-auto space-y-6">
         
-        {/* MONTH FILTER */}
         <div>
           <input 
             type="month" 
@@ -291,7 +340,6 @@ export default function PaymentsRedesignPage() {
           />
         </div>
 
-        {/* ACTIONS ROW */}
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
           <button 
             onClick={() => setShowAddModal(true)}
@@ -311,7 +359,6 @@ export default function PaymentsRedesignPage() {
           </div>
         </div>
 
-        {/* SEARCH BAR */}
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
           <input 
@@ -323,7 +370,6 @@ export default function PaymentsRedesignPage() {
           />
         </div>
 
-        {/* METRICS SUMMARY CARDS */}
         <div className="flex gap-4 overflow-x-auto pb-2 hide-scrollbar">
           {categoryStats["order"] && (
             <div className="min-w-[240px] bg-[#eff6ff] dark:bg-blue-900/30 border border-blue-100 dark:border-blue-900/50 rounded-2xl p-5 shrink-0">
@@ -377,12 +423,10 @@ export default function PaymentsRedesignPage() {
           )}
         </div>
 
-        {/* LIST HEADER */}
         <h2 className="text-sm font-black text-slate-500 uppercase tracking-wider pt-4">
           All Records ({filteredPayments.length})
         </h2>
 
-        {/* FEED / LIST VIEW */}
         <div className="space-y-4">
           {filteredPayments.map(pay => (
             <div key={pay.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
@@ -407,7 +451,7 @@ export default function PaymentsRedesignPage() {
                   <button 
                     onClick={() => {
                       setSelectedPaymentForPrint(pay);
-                      setTimeout(() => generatePDF(), 100);
+                      setTimeout(() => window.print(), 100);
                     }}
                     className="p-2 text-blue-600 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
                   >
@@ -451,7 +495,6 @@ export default function PaymentsRedesignPage() {
         </div>
       </div>
 
-      {/* ADD PAYMENT MODAL */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-2xl shadow-2xl relative my-auto">
@@ -604,7 +647,6 @@ export default function PaymentsRedesignPage() {
         </div>
       )}
 
-      {/* ADD SUPPLIER SUB-MODAL */}
       {showAddSupplier && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl p-6 shadow-2xl">
@@ -636,12 +678,10 @@ export default function PaymentsRedesignPage() {
         </div>
       )}
 
-      {/* HIDDEN PRINT LAYOUT (A4) */}
       {selectedPaymentForPrint && (
-        <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
-          <div id="pdf-receipt" style={{ width: '794px', minHeight: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
+        <div className="hidden print:block absolute top-0 left-0 w-full bg-white z-50">
+          <div id="pdf-receipt" style={{ width: '100%', backgroundColor: '#ffffff', position: 'relative', fontFamily: 'Arial, sans-serif', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
             
-            {/* Header like Shift Report */}
             <div style={{ padding: '20px 30px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #000', position: 'relative', zIndex: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                 <div style={{ width: '50px', height: '50px', border: '2px solid #000', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -664,10 +704,12 @@ export default function PaymentsRedesignPage() {
             </div>
 
             {/* Intro Text */}
-            <div style={{ padding: '30px 30px 15px', textAlign: 'right', direction: 'rtl' }}>
-              <p style={{ margin: 0, fontSize: '14px', lineHeight: '1.6', color: '#000', fontWeight: 'bold' }}>
-                في حال تم سداد قيمة الفاتورة نقدًا، يُرجى من المورد تعبئة البيانات التالية لتوثيق عملية الاستلام في السجلات الرسمية.
-              </p>
+            <div style={{ padding: '20px 30px 10px', textAlign: 'right' }}>
+              <div style={{ padding: '15px', border: '1px dashed #000', borderRadius: '4px', display: 'inline-block', width: '100%', boxSizing: 'border-box' }}>
+                <p style={{ margin: 0, fontSize: '13px', color: '#000', fontWeight: 'bold', lineHeight: '1.6' }} dir="rtl">
+                  أقر أنا الموقع أدناه باستلامي كامل قيمة الفاتورة/المطالبة المذكورة أعلاه استلاماً نهائياً وناجزاً لا رجعة فيه. وبموجب هذا الإيصال، أبرئ ذمة شركة سيركل كيه العلمين 4 إبراءً ذمة تاماً ونهائياً وشاملاً كافة المستحقات المالية المتعلقة بهذه الفاتورة، ولا يحق لي، لا حاضراً ولا مستقبلاً، المطالبة بأي مبالغ إضافية أو تعويضات تخصها أمام أي جهة قضائية أو إدارية.
+                </p>
+              </div>
             </div>
 
             {/* 2x3 Grid Data */}
@@ -727,20 +769,27 @@ export default function PaymentsRedesignPage() {
               </div>
             </div>
 
-            {/* Legal Paragraph */}
-            <div style={{ padding: '20px 30px', textAlign: 'center', direction: 'rtl', position: 'relative', zIndex: 10 }}>
-              <p style={{ margin: '0 auto', fontSize: '13px', lineHeight: '1.8', color: '#000', fontWeight: 'bold', maxWidth: '650px', backgroundColor: '#f9f9f9', padding: '15px', borderRadius: '4px', border: '1px dashed #000' }}>
-                يُقر المورد باستلامه كامل قيمة الفاتورة المذكورة استلامًا نهائيًا وناجزًا، وبأنه لا يحق له بأي حال من الأحوال المطالبة بأي مبالغ إضافية تتعلق بهذه الفاتورة أو بهذا السداد، ويُعد هذا الإقرار مخالصة نهائية وشاملة وملزمة قانونًا.
-              </p>
-            </div>
 
-            {/* Financial Section */}
-            <div style={{ padding: '10px 30px', position: 'relative', zIndex: 10 }}>
-              <div style={{ border: '2px solid #000', borderRadius: '4px', overflow: 'hidden' }}>
-                <div style={{ backgroundColor: '#f9f9f9', padding: '4px 15px', borderBottom: '1px solid #000', fontWeight: 'bold', color: '#000', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px' }}>Payment Audit & Variance</div>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '11px' }}>
-                  <thead style={{ backgroundColor: '#fff', borderBottom: '1px solid #000' }}>
-                    <tr><th style={{ padding: '6px 15px', fontWeight: 'bold', borderRight: '1px dotted #ccc' }}>Invoice Value / قيمة الفاتورة</th><th style={{ padding: '6px 15px', fontWeight: 'bold', borderRight: '1px dotted #ccc' }}>Tax / الضريبة</th><th style={{ padding: '6px 15px', fontWeight: 'bold', borderRight: '1px dotted #ccc' }}>Total / الإجمالي</th><th style={{ padding: '6px 15px', fontWeight: 'bold' }}>Taxable / خاضع</th></tr>
+
+            {/* Financial Details Table */}
+            <div style={{ padding: '0 30px', position: 'relative' }}>
+              <div style={{ border: '2px solid #000', borderRadius: '4px', overflow: 'hidden', position: 'relative', backgroundColor: '#fff' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', position: 'relative', zIndex: 2 }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#f9f9f9', borderBottom: '1px solid #000' }}>
+                      <th style={{ padding: '8px 15px', textAlign: 'left', fontWeight: 'bold', color: '#000', fontSize: '11px', textTransform: 'uppercase', borderRight: '1px dotted #ccc' }}>
+                        <span style={{ letterSpacing: '1px' }}>Invoice Value</span> <span style={{ letterSpacing: '0' }}>/ قيمة الفاتورة</span>
+                      </th>
+                      <th style={{ padding: '8px 15px', textAlign: 'left', fontWeight: 'bold', color: '#000', fontSize: '11px', textTransform: 'uppercase', borderRight: '1px dotted #ccc' }}>
+                        <span style={{ letterSpacing: '1px' }}>Tax</span> <span style={{ letterSpacing: '0' }}>/ الضريبة</span>
+                      </th>
+                      <th style={{ padding: '8px 15px', textAlign: 'left', fontWeight: 'bold', color: '#000', fontSize: '11px', textTransform: 'uppercase', borderRight: '1px dotted #ccc' }}>
+                        <span style={{ letterSpacing: '1px' }}>Total</span> <span style={{ letterSpacing: '0' }}>/ الإجمالي</span>
+                      </th>
+                      <th style={{ padding: '8px 15px', textAlign: 'center', fontWeight: 'bold', color: '#000', fontSize: '11px', textTransform: 'uppercase' }}>
+                        <span style={{ letterSpacing: '1px' }}>Taxable</span> <span style={{ letterSpacing: '0' }}>/ خاضع</span>
+                      </th>
+                    </tr>
                   </thead>
                   <tbody>
                     <tr style={{ backgroundColor: '#fff' }}>
@@ -751,15 +800,21 @@ export default function PaymentsRedesignPage() {
                     </tr>
                   </tbody>
                 </table>
+                <div dir="rtl" style={{ backgroundColor: '#f9f9f9', padding: '10px 15px', textAlign: 'right', fontWeight: 'bold', color: '#333', fontSize: '12px', borderTop: '1px solid #000' }}>
+                  فقط وقدره: {numberToArabicWords(Number(selectedPaymentForPrint.total))} جنيهاً مصرياً لا غير
+                </div>
               </div>
             </div>
 
             {/* Signatures & Stamp */}
             <div style={{ padding: '0 30px', marginTop: '50px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '20px', backgroundColor: '#fff', border: '2px solid #000', borderRadius: '4px', position: 'relative', zIndex: 10, minHeight: '140px' }}>
+                
                 <div style={{ width: '30%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                   <p style={{ fontSize: '9px', color: '#333', fontStyle: 'italic', marginBottom: '20px', lineHeight: 1.4, fontWeight: 'bold' }}>
-                    I declare the above info is accurate and I received the funds.
+                    {selectedPaymentForPrint.method === 'bank_transfer' ? 
+                      "Bank transfers are executed electronically. Manager signature confirms execution." : 
+                      "I declare the above info is accurate and I received the funds."}
                   </p>
                   <div>
                     <div style={{ position: 'relative', height: '30px', display: 'flex', alignItems: 'flex-end', borderBottom: '1px solid #000', marginBottom: '8px' }}>
@@ -767,25 +822,37 @@ export default function PaymentsRedesignPage() {
                         [ SIGNATURE ]
                       </div>
                     </div>
-                    <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#000', margin: 0, textTransform: 'uppercase', textAlign: 'center' }}>Supplier / المورد</p>
+                    <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#000', margin: 0, textTransform: 'uppercase', textAlign: 'center' }}>
+                      {selectedPaymentForPrint.method === 'bank_transfer' ? "MANAGER / المدير المعتمد" : "SUPPLIER / المورد"}
+                    </p>
                   </div>
                 </div>
 
                 <div style={{ width: '30%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                  <p style={{ fontSize: '9px', color: '#333', fontStyle: 'italic', marginBottom: '20px', lineHeight: 1.4, fontWeight: 'bold', textAlign: 'center' }}>
-                    National ID attached.
-                  </p>
-                  <div>
-                    <div style={{ position: 'relative', height: '30px', display: 'flex', alignItems: 'flex-end', borderBottom: '1px solid #000', marginBottom: '8px' }}>
-                      <div style={{ position: 'absolute', bottom: '4px', left: '0', width: '100%', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', color: '#999', letterSpacing: '2px', textTransform: 'uppercase' }}>
-                        [ ID COPY ]
+                  {selectedPaymentForPrint.method !== 'bank_transfer' && (
+                    <>
+                      <p style={{ fontSize: '9px', color: '#333', fontStyle: 'italic', marginBottom: '20px', lineHeight: 1.4, fontWeight: 'bold', textAlign: 'center' }}>
+                        National ID attached.
+                      </p>
+                      <div>
+                        <div style={{ position: 'relative', height: '30px', display: 'flex', alignItems: 'flex-end', borderBottom: '1px solid #000', marginBottom: '8px' }}>
+                          <div style={{ position: 'absolute', bottom: '4px', left: '0', width: '100%', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', color: '#999', letterSpacing: '2px', textTransform: 'uppercase' }}>
+                            [ ID COPY ]
+                          </div>
+                        </div>
+                        <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#000', margin: 0, textTransform: 'uppercase', textAlign: 'center' }}>National ID / الرقم القومي</p>
                       </div>
-                    </div>
-                    <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#000', margin: 0, textTransform: 'uppercase', textAlign: 'center' }}>National ID / الرقم القومي</p>
-                  </div>
+                    </>
+                  )}
                 </div>
 
-                <div style={{ width: '30%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: '40%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '20px' }}>
+                  {qrCodeData && (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      <img src={qrCodeData} alt="QR Code" style={{ width: "70px", height: "70px" }} />
+                      <span style={{ fontSize: "8px", fontWeight: "bold", color: "#666", marginTop: "4px" }}>VERIFICATION</span>
+                    </div>
+                  )}
                   {/* The specific blue stamp from the Shift Report */}
                   <div style={{ 
                     border: '3px solid #000080', 
@@ -807,16 +874,24 @@ export default function PaymentsRedesignPage() {
               </div>
             </div>
 
-            {/* Payment Approved Stamp (placed in the large empty area at the bottom) */}
+            {/* Payment Dynamic Stamp (placed in the large empty area at the bottom) */}
             <div style={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '180px' }}>
-              <div style={{ transform: 'rotate(-5deg)', opacity: 0.85 }}>
-                <div style={{ border: '5px solid #16a34a', borderRadius: '50%', width: '160px', height: '160px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#16a34a', backgroundColor: 'transparent', boxShadow: 'inset 0 0 0 2px rgba(22, 163, 74, 0.2), 0 0 0 2px rgba(22, 163, 74, 0.2)' }}>
-                  <span style={{ fontSize: '18px', fontWeight: '900', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '4px' }}>APPROVED</span>
-                  <span style={{ fontSize: '18px', fontWeight: '900', borderBottom: '2px solid #16a34a', paddingBottom: '4px', marginBottom: '6px' }}>معتمد</span>
-                  <span style={{ fontSize: '11px', fontWeight: '900', letterSpacing: '1px' }}>PAYMENT</span>
-                  <span style={{ fontSize: '9px', fontWeight: 'bold', marginTop: '4px' }}>{selectedPaymentForPrint.date}</span>
-                </div>
-              </div>
+              {(() => {
+                const payMethod = selectedPaymentForPrint.method || 'cash';
+                let stampColor = payMethod === 'cash' ? '#16a34a' : '#ef4444';
+                let stampText = payMethod === 'cash' ? 'PAID IN CASH' : (payMethod === 'visa' ? 'PAID BY VISA' : 'PAID BY BANK');
+                
+                return (
+                  <div style={{ transform: 'rotate(-5deg)', opacity: 0.85 }}>
+                    <div style={{ border: `5px solid ${stampColor}`, borderRadius: '50%', width: '180px', height: '180px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: stampColor, backgroundColor: 'transparent', boxShadow: `inset 0 0 0 2px ${stampColor}33, 0 0 0 2px ${stampColor}33` }}>
+                      <span style={{ fontSize: '18px', fontWeight: '900', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '4px', textAlign: 'center' }}>{stampText}</span>
+                      <span style={{ fontSize: '16px', fontWeight: '900', borderBottom: `2px solid ${stampColor}`, paddingBottom: '4px', marginBottom: '6px' }}>معتمد</span>
+                      <span style={{ fontSize: '11px', fontWeight: '900', letterSpacing: '1px' }}>PAYMENT</span>
+                      <span style={{ fontSize: '9px', fontWeight: 'bold', marginTop: '4px' }}>{selectedPaymentForPrint.date}</span>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Footer */}

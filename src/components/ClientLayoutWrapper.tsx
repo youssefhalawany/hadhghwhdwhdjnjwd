@@ -175,7 +175,13 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
         setPendingExpiriesCount(count);
       }, (err) => console.log("Expiries badge err", err));
 
-      const returnsQ = query(collection(db, "supplier_returns"));
+      // We filter on the server side to only fetch pending or unsettled returns
+      // This prevents massive document reads (fetching all historical returns)
+      const returnsQ = query(
+        collection(db, "supplier_returns"),
+        where("status", "in", ["pending", "returned"]) // server-side filter
+      );
+      
       const unsubscribeReturns = onSnapshot(returnsQ, (snap) => {
         let count = 0;
         snap.docs.forEach(doc => {
@@ -281,12 +287,14 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
         { name: "Employees", href: "/hr/employees", icon: Users },
         { name: "Cashier Accounts", href: "/settings/cashiers", icon: Users },
         { name: "Payroll System", href: "/admin/payroll", icon: DollarSign },
+        { name: "Adjustments & Loans", href: "/admin/adjustments", icon: FileText },
         { name: "Smart Scheduler", href: "/admin/schedule", icon: CalendarDays }
       ]
     },
     { name: "Checklists", href: "/checklists/manager", icon: ClipboardList },
     {
       name: "Admin", icon: Shield, children: [
+        { name: "User Management", href: "/admin/users", icon: Shield },
         { name: "Inventory Predict", href: "/admin/inventory-predict", icon: Database },
         { name: "Send Notifications", href: "/settings/notifications", icon: Bell },
         { name: "Security Audit Log", href: "/settings/audit-log", icon: Shield },

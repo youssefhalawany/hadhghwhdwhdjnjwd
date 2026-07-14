@@ -11,6 +11,7 @@ import {
   count
 } from "firebase/firestore";
 import { ShieldCheck, AlertTriangle, Loader2 } from "lucide-react";
+import { useBranch } from "@/context/BranchContext";
 
 /**
  * ZERO-READ OVERVIEW
@@ -22,6 +23,7 @@ import { ShieldCheck, AlertTriangle, Loader2 } from "lucide-react";
  * DO NOT replace these with getDocs() - that would read every document.
  */
 export default function FinancialInputsOverview() {
+  const { currentBranch } = useBranch();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState({
@@ -38,42 +40,53 @@ export default function FinancialInputsOverview() {
         setLoading(true);
         setError(null);
 
+        // Helper to get correct branch ID format based on store logic
+        const branchIds = [];
+        if (currentBranch === "all") {
+          // Admins can see everything, no filter needed
+        } else if (currentBranch === "alamein4") {
+          branchIds.push("eL-alamein-4");
+        } else if (currentBranch === "ola") {
+          branchIds.push("ola-el-koronfol");
+        } else {
+          branchIds.push(currentBranch);
+        }
+
         // --- ZERO READ: aggregate sums on the server ---
+        
+        let salesQ: any = collection(db, "sales");
+        let allPaymentsQ: any = collection(db, "cash_payments");
+        let cashPaymentsQ: any = query(collection(db, "cash_payments"), where("method", "==", "cash"));
+        let depositsToQ: any = query(collection(db, "deposits"), where("to", "==", "safe"));
+        let depositsFromQ: any = query(collection(db, "deposits"), where("from", "==", "safe"));
+
+        // If manager, we MUST filter by storeId or Firestore rules will reject with Permission Denied
+        if (branchIds.length > 0) {
+          salesQ = query(salesQ, where("storeId", "in", branchIds));
+          allPaymentsQ = query(allPaymentsQ, where("storeId", "in", branchIds));
+          cashPaymentsQ = query(cashPaymentsQ, where("storeId", "in", branchIds));
+          depositsToQ = query(depositsToQ, where("storeId", "in", branchIds));
+          depositsFromQ = query(depositsFromQ, where("storeId", "in", branchIds));
+        }
 
         // 1. Sales: sum of cash + overShort
-        const salesAgg = await getAggregateFromServer(
-          collection(db, "sales"),
-          { cash: sum("cash"), overShort: sum("overShort") }
-        );
-        const totalSales =
-          (salesAgg.data().cash || 0) + (salesAgg.data().overShort || 0);
+        const salesAgg = await getAggregateFromServer(salesQ, { cash: sum("cash"), overShort: sum("overShort") });
+        const totalSales = (salesAgg.data().cash || 0) + (salesAgg.data().overShort || 0);
 
         // 2. All payments (display only)
-        const allPaymentsAgg = await getAggregateFromServer(
-          collection(db, "cash_payments"),
-          { amount: sum("amount") }
-        );
+        const allPaymentsAgg = await getAggregateFromServer(allPaymentsQ, { amount: sum("amount") });
         const totalPayments = allPaymentsAgg.data().amount || 0;
 
-        // 3. Cash-only payments (for safe deduction) — single-field filter, auto-indexed
-        const cashPaymentsAgg = await getAggregateFromServer(
-          query(collection(db, "cash_payments"), where("method", "==", "cash")),
-          { amount: sum("amount") }
-        );
+        // 3. Cash-only payments (for safe deduction)
+        const cashPaymentsAgg = await getAggregateFromServer(cashPaymentsQ, { amount: sum("amount") });
         const totalCashPayments = cashPaymentsAgg.data().amount || 0;
 
         // 4. Deposits into safe
-        const depositsToAgg = await getAggregateFromServer(
-          query(collection(db, "deposits"), where("to", "==", "safe")),
-          { amount: sum("amount") }
-        );
+        const depositsToAgg = await getAggregateFromServer(depositsToQ, { amount: sum("amount") });
         const depositsToSafe = depositsToAgg.data().amount || 0;
 
         // 5. Deposits out of safe
-        const depositsFromAgg = await getAggregateFromServer(
-          query(collection(db, "deposits"), where("from", "==", "safe")),
-          { amount: sum("amount") }
-        );
+        const depositsFromAgg = await getAggregateFromServer(depositsFromQ, { amount: sum("amount") });
         const depositsFromSafe = depositsFromAgg.data().amount || 0;
 
         setStats({
@@ -91,7 +104,7 @@ export default function FinancialInputsOverview() {
       }
     }
     fetchStats();
-  }, []);
+  }, [currentBranch]);
 
   const fmt = (n: number) =>
     new Intl.NumberFormat("en-EG", {
