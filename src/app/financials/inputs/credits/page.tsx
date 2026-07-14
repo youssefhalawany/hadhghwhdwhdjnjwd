@@ -103,9 +103,15 @@ export default function CreditsPage() {
   const [amountDue, setAmountDue] = useState("");
   const [tax, setTax] = useState("0");
   const [collectionDate, setCollectionDate] = useState("");
-  const [priceAdjustment, setPriceAdjustment] = useState("0");
   const [onSalesOnly, setOnSalesOnly] = useState(false);
   const [isTaxable, setIsTaxable] = useState(false);
+
+  const STANDARD_COMPANIES = [
+    "Pepsi", "Coca-Cola", "Al Ahram Beverages", "Juhayna", "Edita", 
+    "Red Bull", "Nestle", "Pringles", "Chipsy", "Cadbury", "Galaxy", 
+    "Mars", "Domty", "Beyti", "Lamar", "Philip Morris", "Eastern Company", 
+    "Mansour", "Wadi Food", "Rich Bake"
+  ];
 
   const sigPadRef = React.useRef<any>(null);
   const [managerSignature, setManagerSignature] = useState("");
@@ -270,7 +276,7 @@ export default function CreditsPage() {
         storeId: currentBranch === "all" ? "eL-alamein-4" : currentBranch,
         tax: parseFloat(tax) || 0,
         paidAmount: 0,
-        priceAdjustment: parseFloat(priceAdjustment) || 0,
+        priceAdjustment: 0,
         managerSignature: managerSignature || (hasSigned && sigPadRef.current ? sigPadRef.current.toDataURL() : null)
       };
 
@@ -288,7 +294,6 @@ export default function CreditsPage() {
       setAmountDue("");
       setTax("0");
       setCollectionDate("");
-      setPriceAdjustment("0");
       setOnSalesOnly(false);
       setIsTaxable(false);
       
@@ -851,7 +856,10 @@ export default function CreditsPage() {
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Company *</label>
-                    <input required type="text" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
+                    <input required list="companies-list" type="text" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
+                    <datalist id="companies-list">
+                      {STANDARD_COMPANIES.map(c => <option key={c} value={c} />)}
+                    </datalist>
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Amount Due *</label>
@@ -870,12 +878,21 @@ export default function CreditsPage() {
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Collection Date</label>
                     <input required type="date" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={collectionDate} onChange={(e) => setCollectionDate(e.target.value)} />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Price Adjustment <span className="text-[10px] text-slate-400 font-normal lowercase tracking-normal">(Admin only - can be +/-)</span></label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">EGP</span>
-                      <input type="number" step="0.01" className="w-full pl-12 pr-4 p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-bold text-slate-900" value={priceAdjustment} onChange={(e) => setPriceAdjustment(e.target.value)} />
+                    <div className="flex gap-2 mt-2 flex-wrap">
+                      {[14, 15, 30, 45].map(days => (
+                        <button 
+                          key={days} 
+                          type="button" 
+                          onClick={() => {
+                            const d = new Date();
+                            d.setDate(d.getDate() + days);
+                            setCollectionDate(d.toISOString().split('T')[0]);
+                          }}
+                          className="text-[10px] font-bold px-2 py-1 bg-indigo-50 text-indigo-700 rounded hover:bg-indigo-100 transition-colors"
+                        >
+                          +{days} Days
+                        </button>
+                      ))}
                     </div>
                   </div>
                 </div>
