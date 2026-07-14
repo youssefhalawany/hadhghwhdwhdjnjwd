@@ -91,7 +91,14 @@ export default function CreditsPage() {
   const [credits, setCredits] = useState<Credit[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [monthFilter, setMonthFilter] = useState(() => {
+    const today = new Date();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    return `${today.getFullYear()}-${mm}`;
+  });
 
+  // Credit Form
+  const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -137,18 +144,29 @@ export default function CreditsPage() {
   }, []);
 
   useEffect(() => {
-    if (auth.currentUser) {
+    if (currentUser) {
       fetchCredits();
     }
-  }, [auth.currentUser, currentBranch]);
+  }, [currentUser, currentBranch, monthFilter]);
 
   const [creditHistories, setCreditHistories] = useState<Record<string, any[]>>({});
 
   const fetchCredits = async () => {
     try {
-      const q = branchIds.length > 0 
-        ? query(collection(db, "credits"), where("storeId", "in", branchIds), orderBy("createdAt", "desc"), limit(500))
-        : query(collection(db, "credits"), orderBy("createdAt", "desc"), limit(500));
+      let q;
+      if (monthFilter) {
+        const [year, month] = monthFilter.split("-");
+        const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+        const endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59, 999);
+        
+        q = branchIds.length > 0
+          ? query(collection(db, "credits"), where("storeId", "in", branchIds), where("createdAt", ">=", startDate), where("createdAt", "<=", endDate), orderBy("createdAt", "desc"))
+          : query(collection(db, "credits"), where("createdAt", ">=", startDate), where("createdAt", "<=", endDate), orderBy("createdAt", "desc"));
+      } else {
+        q = branchIds.length > 0
+          ? query(collection(db, "credits"), where("storeId", "in", branchIds), orderBy("createdAt", "desc"), limit(500))
+          : query(collection(db, "credits"), orderBy("createdAt", "desc"), limit(500));
+      }
 
       const snapshot = await getDocs(q);
       const data = snapshot.docs.map(doc => {
@@ -639,6 +657,13 @@ export default function CreditsPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
+            <div className="h-px md:h-auto md:w-px bg-slate-200"></div>
+            <input 
+              type="month"
+              value={monthFilter}
+              onChange={(e) => setMonthFilter(e.target.value)}
+              className="w-full md:w-48 px-4 py-3 rounded-xl bg-transparent hover:bg-slate-50 focus:bg-white transition-colors border-none outline-none text-slate-700 font-bold cursor-pointer"
+            />
             <div className="h-px md:h-auto md:w-px bg-slate-200"></div>
             <select
               className="w-full md:w-64 px-4 py-3 rounded-xl bg-transparent hover:bg-slate-50 focus:bg-white transition-colors border-none outline-none text-slate-700 font-bold cursor-pointer appearance-none"

@@ -19870,3 +19870,325 @@ Compaction failed: Another write batch or compaction is already active (Only a s
 ✓ Compiled in 395ms
 Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
 Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/deposits 200 in 203ms (next.js: 93ms, application-code: 110ms)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+[browser] FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClVwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9jaGVxdWVzL2luZGV4ZXMvQ0lDQWdPajNtSU1KEAEaCwoHc3RvcmVJZBABGggKBGRhdGUQARoMCghfX25hbWVfXxAB
+FirebaseError: The query requires an index. That index is currently building and cannot be used yet. See its status here: https://console.firebase.google.com/v1/r/project/ckkk-576e7/firestore/indexes?create_composite=ClVwcm9qZWN0cy9ja2trLTU3NmU3L2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9jaGVxdWVzL2luZGV4ZXMvQ0lDQWdPajNtSU1KEAEaCwoHc3RvcmVJZBABGggKBGRhdGUQARoMCghfX25hbWVfXxAB (src/components/ExportFinancialsModal.tsx:397:15)
+✓ Compiled in 6.7s
+[browser] ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx:586:8
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  584 |               </button>
+  585 |         </div>
+> 586 |       )}
+      |        ^
+  587 |
+  588 |       <AnimatePresence>
+  589 |         {showAddSupplier && (
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Server Component] 
+ GET /financials/inputs/deposits 500 in 282ms (next.js: 177ms, application-code: 105ms)
+ GET /financials/inputs/deposits 500 in 126ms (next.js: 53ms, application-code: 73ms)
+[browser] ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx:586:8
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  584 |               </button>
+  585 |         </div>
+> 586 |       )}
+      |        ^
+  587 |
+  588 |       <AnimatePresence>
+  589 |         {showAddSupplier && (
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx:586:8
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  584 |               </button>
+  585 |         </div>
+> 586 |       )}
+      |        ^
+  587 |
+  588 |       <AnimatePresence>
+  589 |         {showAddSupplier && (
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx:586:8
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  584 |               </button>
+  585 |         </div>
+> 586 |       )}
+      |        ^
+  587 |
+  588 |       <AnimatePresence>
+  589 |         {showAddSupplier && (
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Server Component] 
+ GET /financials/inputs/deposits 500 in 115ms (next.js: 28ms, application-code: 87ms)
+[browser] ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx:586:8
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  584 |               </button>
+  585 |         </div>
+> 586 |       )}
+      |        ^
+  587 |
+  588 |       <AnimatePresence>
+  589 |         {showAddSupplier && (
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Server Component] 
+ GET /financials/inputs/deposits 500 in 128ms (next.js: 39ms, application-code: 89ms)
+[browser] Uncaught Error: ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx:586:8
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  584 |               </button>
+  585 |         </div>
+> 586 |       )}
+      |        ^
+  587 |
+  588 |       <AnimatePresence>
+  589 |         {showAddSupplier && (
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx:586:8)
+    at <unknown> (Error: (./Documents/anhreports/src/app/financials/inputs/payments/page.tsx:586:8)
+[browser] ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx:586:8
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  584 |               </button>
+  585 |         </div>
+> 586 |       )}
+      |        ^
+  587 |
+  588 |       <AnimatePresence>
+  589 |         {showAddSupplier && (
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx:586:8
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  584 |               </button>
+  585 |         </div>
+> 586 |       )}
+      |        ^
+  587 |
+  588 |       <AnimatePresence>
+  589 |         {showAddSupplier && (
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx:586:8
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  584 |               </button>
+  585 |         </div>
+> 586 |       )}
+      |        ^
+  587 |
+  588 |       <AnimatePresence>
+  589 |         {showAddSupplier && (
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Server Component] 
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+[browser] ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx:978:1
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  976 |     </div>
+  977 |   );
+> 978 | }
+      | ^
+  979 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/financials/inputs/payments/page.tsx [Server Component] 
+✓ Compiled in 2.8s
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/deposits 200 in 2.5s (next.js: 84ms, application-code: 2.4s)
+ GET /financials/inputs/deposits 200 in 88ms (next.js: 9ms, application-code: 79ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/payments 200 in 190ms (next.js: 98ms, application-code: 91ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 670ms
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 1120ms
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+[browser] The final argument passed to useEffect changed size between renders. The order and size of this array must remain constant.
+
+Previous: [[object Object], alamein4]
+Incoming: [[object Object], alamein4, 2026-05] 
+    at PaymentsRedesignPage (src/app/financials/inputs/payments/page.tsx:178:12)
+    at Set.forEach (<anonymous>)
+  176 |   }, []);
+  177 |
+> 178 |   useEffect(() => {
+      |            ^
+  179 |     if (currentUser) {
+  180 |       fetchData();
+  181 |     } (src/app/financials/inputs/payments/page.tsx:178:12)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 1196ms
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/credits 200 in 213ms (next.js: 103ms, application-code: 109ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/payments 200 in 132ms (next.js: 56ms, application-code: 77ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/credits 200 in 377ms (next.js: 75ms, application-code: 302ms)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 577ms
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/payments 200 in 192ms (next.js: 28ms, application-code: 164ms)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/credits 200 in 42ms (next.js: 21ms, application-code: 21ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /hr/employees 200 in 316ms (next.js: 187ms, application-code: 129ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs 200 in 420ms (next.js: 193ms, application-code: 227ms)
+ GET /financials/inputs/sales 200 in 162ms (next.js: 61ms, application-code: 101ms)
+ GET /financials/inputs 200 in 29ms (next.js: 5ms, application-code: 25ms)
+ GET /financials/inputs/sales 200 in 27ms (next.js: 5ms, application-code: 22ms)
+ GET /financials/inputs/payments 200 in 47ms (next.js: 14ms, application-code: 34ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 2.7s
+ GET /financials/inputs/payments 200 in 2.1s (next.js: 1172ms, application-code: 926ms)
+ GET /financials/inputs/payments 200 in 437ms (next.js: 11ms, application-code: 427ms)
+ GET /financials/inputs/payments 200 in 313ms (next.js: 8ms, application-code: 305ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/payments 200 in 3.7s (next.js: 5ms, application-code: 3.7s)
+ GET /financials/inputs/payments 200 in 5.3s (next.js: 5ms, application-code: 5.3s)
+ GET /financials/inputs/payments 200 in 5.3s (next.js: 9ms, application-code: 5.3s)
+ GET /financials/inputs/payments 200 in 5.3s (next.js: 3ms, application-code: 5.3s)
+ GET /financials/inputs/payments 200 in 5.7s (next.js: 5ms, application-code: 5.7s)
+ GET /financials/inputs/payments 200 in 5.3s (next.js: 51ms, application-code: 5.2s)
+ GET /financials/inputs/payments 200 in 2.5s (next.js: 68ms, application-code: 2.4s)
+ GET /financials/inputs/payments 200 in 1162ms (next.js: 48ms, application-code: 1114ms)
+ GET /financials/inputs/payments 200 in 688ms (next.js: 7ms, application-code: 681ms)
+ GET /financials/inputs/payments 200 in 722ms (next.js: 9ms, application-code: 713ms)
+ GET /financials/inputs/payments 200 in 491ms (next.js: 17ms, application-code: 474ms)
+ GET /financials/inputs/payments 200 in 437ms (next.js: 11ms, application-code: 426ms)
+ GET /financials/inputs/payments 200 in 323ms (next.js: 9ms, application-code: 314ms)
+ GET /financials/inputs/payments 200 in 298ms (next.js: 9ms, application-code: 289ms)
+ GET /financials/inputs/payments 200 in 324ms (next.js: 5ms, application-code: 319ms)
+ GET /financials/inputs/payments 200 in 321ms (next.js: 7ms, application-code: 314ms)
+ GET /financials/inputs/payments 200 in 300ms (next.js: 6ms, application-code: 295ms)
+ GET /financials/inputs/payments 200 in 317ms (next.js: 9ms, application-code: 308ms)
+ GET /financials/inputs/payments 200 in 301ms (next.js: 3ms, application-code: 297ms)
+ GET /financials/inputs/payments 200 in 206ms (next.js: 3ms, application-code: 203ms)
+ GET /financials/inputs/payments 200 in 210ms (next.js: 7ms, application-code: 203ms)
+ GET /financials/inputs/payments 200 in 205ms (next.js: 4ms, application-code: 201ms)
+ GET /financials/inputs/payments 200 in 198ms (next.js: 4ms, application-code: 194ms)
+ GET /financials/inputs/payments 200 in 162ms (next.js: 5ms, application-code: 157ms)
+ GET /financials/inputs/payments 200 in 126ms (next.js: 4ms, application-code: 122ms)
+ GET /financials/inputs/payments 200 in 78ms (next.js: 5ms, application-code: 73ms)
+ GET /financials/inputs/payments 200 in 44ms (next.js: 4ms, application-code: 39ms)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /hr/employees 200 in 56ms (next.js: 20ms, application-code: 35ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 1349ms
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 266ms
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)

@@ -900,7 +900,7 @@ export default function EmployeesPage() {
                 <h4 style={{ fontSize: "15px", fontWeight: "bold", margin: "0 0 5px 0", color: "#000" }}>البند الثاني: مدة العقد وفترة الاختبار</h4>
                 <p style={{ margin: 0 }}>
                   أ) مدة هذا العقد <span style={{ fontWeight: "bold" }}>سنة ميلادية واحدة</span> تبدأ من تاريخ استلام العمل الفعلي في {selectedEmployee.startDate}، وتتجدد تلقائياً لمدد مماثلة ما لم يخطر أحد الطرفين الآخر برغبته في عدم التجديد كتابياً قبل انتهاء المدة بشهر على الأقل.<br/>
-                  ب) يخضع الطرف الثاني لفترة اختبار مدتها <span style={{ fontWeight: "bold" }}>ثلاثة أشهر</span> متصلة تبدأ من تاريخ استلام العمل. يحق للطرف الأول خلالها أو بنهايتها إنهاء هذا العقد فوراً دون الحاجة إلى إنذار مسبق أو تعويض إذا ثبت عدم صلاحية الطرف الثاني للعمل.
+                  ب) يخضع الطرف الثاني لفترة اختبار مدتها <span style={{ fontWeight: "bold" }}>ثلاثة أشهر</span> متصلة تبدأ من تاريخ استلام العمل. يحق للطرف الأول خلالها أو بنهايتها إنهاء هذا العقد بعد توجيه إنذار كتابي مسبق للطرف الثاني، ودون الحاجة إلى تعويض إذا ثبت عدم صلاحية الطرف الثاني للعمل.
                 </p>
               </div>
 
@@ -934,7 +934,14 @@ export default function EmployeesPage() {
               </div>
 
               <div style={{ marginBottom: "15px", paddingRight: "10px", borderRight: "3px solid #000", pageBreakInside: "avoid" }}>
-                <h4 style={{ fontSize: "15px", fontWeight: "bold", margin: "0 0 5px 0", color: "#000" }}>البند السابع: أحكام عامة ونسخ العقد</h4>
+                <h4 style={{ fontSize: "15px", fontWeight: "bold", margin: "0 0 5px 0", color: "#000" }}>البند السابع: الاستقالة وإخطار ترك العمل</h4>
+                <p style={{ margin: 0 }}>
+                  في حال رغبة الطرف الثاني في إنهاء العقد والاستقالة من العمل قبل انتهاء مدته، يلتزم بتقديم إخطار كتابي (إنذار) للطرف الأول قبل موعد ترك العمل بمدة لا تقل عن <span style={{ fontWeight: "bold" }}>عشرين (20) يوماً</span>. ولا يعتد بترك العمل إلا بعد تسوية كافة العهد والأمور المالية الخاصة بالشركة. وفي حال إخلاله بهذا الشرط، يحق للشركة خصم أو المطالبة بالتعويض المناسب نظير فترة الإخطار وفقاً لأحكام قانون العمل.
+                </p>
+              </div>
+
+              <div style={{ marginBottom: "15px", paddingRight: "10px", borderRight: "3px solid #000", pageBreakInside: "avoid" }}>
+                <h4 style={{ fontSize: "15px", fontWeight: "bold", margin: "0 0 5px 0", color: "#000" }}>البند الثامن: أحكام عامة ونسخ العقد</h4>
                 <p style={{ margin: 0 }}>
                   أ) يعتبر العنوان المذكور بصدر هذا العقد هو الموطن القانوني المختار للطرف الثاني، وتعتبر كافة المراسلات والإعلانات المرسلة إليه على هذا العنوان صحيحة ومنتجة لآثارها القانونية.<br/>
                   ب) كل ما لم يرد بشأنه نص خاص في هذا العقد يخضع لأحكام قانون العمل المصري رقم 12 لسنة 2003 وقانون التأمينات الاجتماعية رقم 148 لسنة 2019.<br/>
@@ -1000,20 +1007,20 @@ export default function EmployeesPage() {
                 </div>
 
                 {/* Declaration */}
-                <div style={{ padding: "15px", border: "1px solid #000", borderRadius: "8px", backgroundColor: "#f9f9f9", marginBottom: "25px" }}>
+                <div style={{ padding: "15px", border: "1px solid #000", borderRadius: "8px", backgroundColor: "#f9f9f9", marginBottom: "15px" }}>
                   <h4 style={{ margin: "0 0 10px 0", fontSize: "16px", fontWeight: "bold", color: "#000" }}>إقرار استلام وموافقة</h4>
                   <p style={{ margin: 0, fontSize: "14px", lineHeight: "1.8", textAlign: "justify" }}>
                     أقر أنا الموقع أعلاه (الطرف الثاني) بأنني قد اطلعت على كافة بنود هذا العقد وفهمتها فهماً نافياً للجهالة، وبأنني تسلمت نسخة أصلية من هذا العقد موقعة ومختومة من الطرف الأول للعمل بموجبها والاحتفاظ بها، وأتعهد بالالتزام التام بكل ما ورد فيها من أحكام وشروط ولوائح الشركة الداخلية.
                   </p>
-                  <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "20px", alignItems: "flex-end" }}>
+                  <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "15px", alignItems: "flex-end" }}>
                     <span style={{ fontWeight: "bold", fontSize: "14px", marginLeft: "15px" }}>توقيع الاستلام:</span>
                     <div style={{ width: "200px", borderBottom: "2px dotted #000" }}></div>
                   </div>
                 </div>
 
                 {/* HR Only Box */}
-                <div style={{ border: "2px dashed #777", padding: "15px", borderRadius: "8px", backgroundColor: "#fff", marginTop: "10px" }}>
-                  <h4 style={{ margin: "0 0 15px 0", fontSize: "15px", fontWeight: "bold", color: "#555" }}>خاص بإدارة الموارد البشرية (HR Use Only)</h4>
+                <div style={{ border: "2px dashed #777", padding: "12px", borderRadius: "8px", backgroundColor: "#fff", marginTop: "5px" }}>
+                  <h4 style={{ margin: "0 0 10px 0", fontSize: "15px", fontWeight: "bold", color: "#555" }}>خاص بإدارة الموارد البشرية (HR Use Only)</h4>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
                     <div style={{ display: "flex", flex: 1, alignItems: "flex-end" }}>
                       <span style={{ fontWeight: "bold", marginLeft: "10px" }}>تمت المراجعة بواسطة:</span>
@@ -1030,7 +1037,7 @@ export default function EmployeesPage() {
                   </div>
                 </div>
 
-                <div style={{ textAlign: "center", marginTop: "30px", fontSize: "14px", fontWeight: "bold", color: "#666" }}>
+                <div style={{ textAlign: "center", marginTop: "15px", fontSize: "14px", fontWeight: "bold", color: "#666" }}>
                   --- نهاية وثيقة العقد ---
                 </div>
               </div>

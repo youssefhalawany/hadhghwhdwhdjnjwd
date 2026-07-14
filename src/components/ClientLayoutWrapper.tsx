@@ -406,7 +406,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   }
 
   return (
-    <div className="h-[100dvh] w-full flex bg-background text-foreground transition-colors duration-300 overflow-hidden">
+    <div className="h-[100dvh] w-full flex bg-background text-foreground transition-colors duration-300 overflow-hidden print:overflow-visible print:h-auto">
       <GlobalReminders />
 
       {/* Desktop Sidebar */}
