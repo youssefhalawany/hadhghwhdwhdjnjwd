@@ -19300,3 +19300,503 @@ Compaction failed: Another write batch or compaction is already active (Only a s
 Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
 Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
 Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 455ms
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 240ms
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 253ms
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 431ms
+⨯ ./Documents/anhreports/src/app/shift-reports/manager/page.tsx:1079:23
+Expression expected
+  [90m1077 |[0m
+  [90m1078 |[0m                         </div>
+[31m[1m>[0m [90m1079 |[0m                       </section>
+  [90m     |[0m                       [31m[1m^[0m
+  [90m1080 |[0m                     )}
+  [90m1081 |[0m
+  [90m1082 |[0m                     {[90m/* 3. Final Sign Off */[0m}
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component]
+
+
+
+./Documents/anhreports/src/app/shift-reports/manager/page.tsx:1079:24
+Unterminated regexp literal
+  [90m1077 |[0m
+  [90m1078 |[0m                         </div>
+[31m[1m>[0m [90m1079 |[0m                       </section>
+  [90m     |[0m                        [31m[1m^^^^^^^^^[0m
+  [90m1080 |[0m                     )}
+  [90m1081 |[0m
+  [90m1082 |[0m                     {[90m/* 3. Final Sign Off */[0m}
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component]
+
+
+[browser] ./Documents/anhreports/src/app/shift-reports/manager/page.tsx:1079:23
+Expression expected
+  1077 |
+  1078 |                         </div>
+> 1079 |                       </section>
+       |                       ^
+  1080 |                     )}
+  1081 |
+  1082 |                     {/* 3. Final Sign Off */}
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/shift-reports/manager/page.tsx:1079:24
+Unterminated regexp literal
+  1077 |
+  1078 |                         </div>
+> 1079 |                       </section>
+       |                        ^^^^^^^^^
+  1080 |                     )}
+  1081 |
+  1082 |                     {/* 3. Final Sign Off */}
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/shift-reports/manager/page.tsx:1079:23
+Expression expected
+  1077 |
+  1078 |                         </div>
+> 1079 |                       </section>
+       |                       ^
+  1080 |                     )}
+  1081 |
+  1082 |                     {/* 3. Final Sign Off */}
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/shift-reports/manager/page.tsx:1079:24
+Unterminated regexp literal
+  1077 |
+  1078 |                         </div>
+> 1079 |                       </section>
+       |                        ^^^^^^^^^
+  1080 |                     )}
+  1081 |
+  1082 |                     {/* 3. Final Sign Off */}
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component] 
+ GET /shift-reports/manager 500 in 200ms (next.js: 113ms, application-code: 87ms)
+[browser] ./Documents/anhreports/src/app/shift-reports/manager/page.tsx:1079:23
+Expression expected
+  1077 |
+  1078 |                         </div>
+> 1079 |                       </section>
+       |                       ^
+  1080 |                     )}
+  1081 |
+  1082 |                     {/* 3. Final Sign Off */}
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/shift-reports/manager/page.tsx:1079:24
+Unterminated regexp literal
+  1077 |
+  1078 |                         </div>
+> 1079 |                       </section>
+       |                        ^^^^^^^^^
+  1080 |                     )}
+  1081 |
+  1082 |                     {/* 3. Final Sign Off */}
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component] 
+⨯ ./Documents/anhreports/src/app/shift-reports/manager/page.tsx:1079:23
+Expression expected
+  [90m1077 |[0m
+  [90m1078 |[0m                         </div>
+[31m[1m>[0m [90m1079 |[0m                       </section>
+  [90m     |[0m                       [31m[1m^[0m
+  [90m1080 |[0m                     )}
+  [90m1081 |[0m
+  [90m1082 |[0m                     {[90m/* 3. Final Sign Off */[0m}
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component]
+
+
+
+./Documents/anhreports/src/app/shift-reports/manager/page.tsx:1079:24
+Unterminated regexp literal
+  [90m1077 |[0m
+  [90m1078 |[0m                         </div>
+[31m[1m>[0m [90m1079 |[0m                       </section>
+  [90m     |[0m                        [31m[1m^^^^^^^^^[0m
+  [90m1080 |[0m                     )}
+  [90m1081 |[0m
+  [90m1082 |[0m                     {[90m/* 3. Final Sign Off */[0m}
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component]
+
+
+ GET /shift-reports/manager 500 in 12ms (next.js: 7ms, application-code: 5ms)
+[browser] Uncaught Error: ./Documents/anhreports/src/app/shift-reports/manager/page.tsx:1079:23
+Expression expected
+  1077 |
+  1078 |                         </div>
+> 1079 |                       </section>
+       |                       ^
+  1080 |                     )}
+  1081 |
+  1082 |                     {/* 3. Final Sign Off */}
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./Documents/anhreports/src/app/shift-reports/manager/page.tsx:1079:23)
+    at <unknown> (Error: (./Documents/anhreports/src/app/shift-reports/manager/page.tsx:1079:23)
+[browser] ./Documents/anhreports/src/app/shift-reports/manager/page.tsx:1079:23
+Expression expected
+  1077 |
+  1078 |                         </div>
+> 1079 |                       </section>
+       |                       ^
+  1080 |                     )}
+  1081 |
+  1082 |                     {/* 3. Final Sign Off */}
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/shift-reports/manager/page.tsx:1079:24
+Unterminated regexp literal
+  1077 |
+  1078 |                         </div>
+> 1079 |                       </section>
+       |                        ^^^^^^^^^
+  1080 |                     )}
+  1081 |
+  1082 |                     {/* 3. Final Sign Off */}
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/shift-reports/manager/page.tsx:1079:23
+Expression expected
+  1077 |
+  1078 |                         </div>
+> 1079 |                       </section>
+       |                       ^
+  1080 |                     )}
+  1081 |
+  1082 |                     {/* 3. Final Sign Off */}
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/shift-reports/manager/page.tsx:1079:24
+Unterminated regexp literal
+  1077 |
+  1078 |                         </div>
+> 1079 |                       </section>
+       |                        ^^^^^^^^^
+  1080 |                     )}
+  1081 |
+  1082 |                     {/* 3. Final Sign Off */}
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/shift-reports/manager/page.tsx:1079:23
+Expression expected
+  1077 |
+  1078 |                         </div>
+> 1079 |                       </section>
+       |                       ^
+  1080 |                     )}
+  1081 |
+  1082 |                     {/* 3. Final Sign Off */}
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component] 
+[browser] ./Documents/anhreports/src/app/shift-reports/manager/page.tsx:1079:24
+Unterminated regexp literal
+  1077 |
+  1078 |                         </div>
+> 1079 |                       </section>
+       |                        ^^^^^^^^^
+  1080 |                     )}
+  1081 |
+  1082 |                     {/* 3. Final Sign Off */}
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component Browser]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Client Component SSR]
+    ./Documents/anhreports/src/app/shift-reports/manager/page.tsx [Server Component] 
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 294ms
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /shift-reports/manager 200 in 2.3s (next.js: 945ms, application-code: 1335ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /shift-reports/manager 200 in 21ms (next.js: 10ms, application-code: 12ms)
+ GET /shift-reports/manager 200 in 40ms (next.js: 4ms, application-code: 36ms)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /voids/manager 200 in 126ms (next.js: 83ms, application-code: 43ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /shift-reports/manager 200 in 45ms (next.js: 10ms, application-code: 35ms)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 511ms
+ GET /shift-reports/manager 200 in 108ms (next.js: 29ms, application-code: 79ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs 200 in 220ms (next.js: 62ms, application-code: 158ms)
+ GET /financials/inputs/sales 200 in 110ms (next.js: 90ms, application-code: 20ms)
+ GET /financials/inputs/payments 200 in 78ms (next.js: 58ms, application-code: 20ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/credits 200 in 84ms (next.js: 56ms, application-code: 28ms)
+✓ Compiled in 210ms
+ GET /financials/inputs/payments 200 in 64ms (next.js: 28ms, application-code: 35ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /shift-reports/manager 200 in 56ms (next.js: 22ms, application-code: 34ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 161ms
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs 200 in 157ms (next.js: 79ms, application-code: 78ms)
+ GET /financials/inputs/payments 200 in 29ms (next.js: 9ms, application-code: 20ms)
+ GET /financials/inputs/sales 200 in 29ms (next.js: 6ms, application-code: 23ms)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs 200 in 150ms (next.js: 36ms, application-code: 114ms)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/sales 200 in 23ms (next.js: 6ms, application-code: 16ms)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs 200 in 129ms (next.js: 15ms, application-code: 114ms)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/payments 200 in 43ms (next.js: 13ms, application-code: 30ms)
+ GET /financials/inputs/safe-report 200 in 77ms (next.js: 55ms, application-code: 22ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 869ms
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs 200 in 55ms (next.js: 25ms, application-code: 30ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/sales 200 in 156ms (next.js: 63ms, application-code: 93ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /shift-reports/manager 200 in 153ms (next.js: 73ms, application-code: 80ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 825ms
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 510ms
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 1394ms
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+[browser] The final argument passed to useEffect changed size between renders. The order and size of this array must remain constant.
+
+Previous: [alamein4]
+Incoming: [alamein4, false] 
+    at ManagerAuditPage (src/app/shift-reports/manager/page.tsx:260:12)
+    at Set.forEach (<anonymous>)
+  258 |
+  259 |
+> 260 |   useEffect(() => {
+      |            ^
+  261 |     const getReportBranch = (r: any) => {
+  262 |       if (r.branchId) return r.branchId;
+  263 |       const storeId = r.cashierDetails?.storeId?.toLowerCase() || ""; (src/app/shift-reports/manager/page.tsx:260:12)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs 200 in 145ms (next.js: 25ms, application-code: 120ms)
+ GET /financials/inputs/sales 200 in 50ms (next.js: 15ms, application-code: 34ms)
+✓ Compiled in 335ms
+ GET /financials/inputs/payments 200 in 57ms (next.js: 28ms, application-code: 28ms)
+ GET /financials/inputs/credits 200 in 68ms (next.js: 23ms, application-code: 45ms)
+ GET /financials/inputs/cheques 200 in 231ms (next.js: 59ms, application-code: 172ms)
+ GET /financials/inputs/cheques 200 in 29ms (next.js: 7ms, application-code: 22ms)
+ GET /financials/inputs/deposits 200 in 86ms (next.js: 61ms, application-code: 26ms)
+ GET /financials/inputs/tmt-invoices 200 in 145ms (next.js: 78ms, application-code: 67ms)
+ GET /financials/inputs/safe-report 200 in 33ms (next.js: 11ms, application-code: 22ms)
+ GET /financials/inputs/credits 200 in 70ms (next.js: 15ms, application-code: 56ms)
+ GET /financials/inputs/payments 200 in 42ms (next.js: 15ms, application-code: 27ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/payments 200 in 236ms (next.js: 37ms, application-code: 200ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/credits 200 in 74ms (next.js: 11ms, application-code: 63ms)
+ GET /financials/inputs/payments 200 in 54ms (next.js: 16ms, application-code: 38ms)
+ GET /financials/inputs/sales 200 in 34ms (next.js: 10ms, application-code: 24ms)
+ GET /financials/inputs/credits 200 in 45ms (next.js: 6ms, application-code: 40ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 443ms
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /financials/inputs/credits 200 in 230ms (next.js: 65ms, application-code: 165ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 5.5s
+ GET /financials/inputs/credits 200 in 1707ms (next.js: 1229ms, application-code: 478ms)
+ GET /financials/inputs/credits 200 in 131ms (next.js: 21ms, application-code: 110ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 4s
+ GET /financials/inputs/credits 200 in 591ms (next.js: 203ms, application-code: 388ms)
+ GET /financials/inputs/credits 200 in 57ms (next.js: 7ms, application-code: 50ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+✓ Compiled in 2.3s
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)

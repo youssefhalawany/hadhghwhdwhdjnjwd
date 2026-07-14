@@ -26,8 +26,20 @@ import {
   ChevronDown,
   ChevronUp,
   Download,
-  Printer
+  Printer,
+  Clock,
+  AlertTriangle,
+  CheckCircle,
+  PieChart,
+  AlertCircle,
+  FileText,
+  Banknote,
+  Calendar,
+  MoreHorizontal,
+  CreditCard,
+  Building
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { onAuthStateChanged } from "firebase/auth";
 import Link from "next/link";
@@ -132,8 +144,8 @@ export default function CreditsPage() {
   const fetchCredits = async () => {
     try {
       const q = branchIds.length > 0 
-        ? query(collection(db, "credits"), where("storeId", "in", branchIds), orderBy("createdAt", "desc"), limit(200))
-        : query(collection(db, "credits"), orderBy("createdAt", "desc"), limit(200));
+        ? query(collection(db, "credits"), where("storeId", "in", branchIds), orderBy("createdAt", "desc"), limit(50))
+        : query(collection(db, "credits"), orderBy("createdAt", "desc"), limit(50));
 
       const snapshot = await getDocs(q);
       const data = snapshot.docs.map(doc => {
@@ -483,214 +495,299 @@ export default function CreditsPage() {
   });
 
   if (loading) {
-    return <div className="flex h-screen items-center justify-center bg-slate-50"><Loader2 className="animate-spin text-blue-600" size={48} /></div>;
+    return <div className="flex h-screen items-center justify-center bg-[#F8FAFC]"><Loader2 className="animate-spin text-indigo-600" size={48} /></div>;
   }
 
   return (
     <>
-      <div className="min-h-screen bg-[#f8f9fa] p-6 font-sans print:hidden">
-      <div className="max-w-7xl mx-auto space-y-6">
-
-        {/* Header Options */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 bg-red-600 text-white px-5 py-2.5 rounded-lg font-semibold shadow hover:bg-red-700 transition"
-          >
-            <Plus size={20} /> Add Credits
-          </button>
-          <div className="flex gap-2">
-            <button className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-50">
-              <Download size={18} /> Export Credits
-            </button>
-            <button className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-50">
-              <Download size={18} /> Export All
-            </button>
+      <div className="min-h-screen bg-[#F8FAFC] p-4 md:p-8 font-sans print:hidden">
+        <div className="max-w-[1400px] mx-auto space-y-8">
+          
+          {/* Header & Actions */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <h1 className="text-3xl font-black text-slate-900 tracking-tight">Credits Management</h1>
+              <p className="text-sm text-slate-500 font-medium mt-1">Track, manage, and collect outstanding corporate credits.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button className="flex items-center gap-2 bg-white/60 backdrop-blur-md border border-slate-200/60 text-slate-700 px-4 py-2.5 rounded-xl font-semibold shadow-sm hover:bg-white hover:border-slate-300 transition-all">
+                <FileDown size={18} /> Export
+              </button>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-semibold shadow-md shadow-indigo-600/20 hover:bg-indigo-700 hover:shadow-indigo-600/40 hover:-translate-y-0.5 transition-all"
+              >
+                <Plus size={20} /> Add Credit
+              </button>
+            </div>
           </div>
-        </div>
 
-        {/* Dashboard Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <div className="bg-orange-50 border border-orange-100 p-4 rounded-xl shadow-sm">
-            <p className="text-sm font-medium text-gray-500 mb-1">Outstanding</p>
-            <p className="text-xl font-bold text-orange-600">EGP {stats.outstanding.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-            <p className="text-xs text-gray-500 mt-1">{stats.outstanding.count} open</p>
-          </div>
-          <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl shadow-sm">
-            <p className="text-sm font-medium text-gray-500 mb-1">Pending</p>
-            <p className="text-xl font-bold text-blue-600">EGP {stats.pending.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-            <p className="text-xs text-gray-500 mt-1">{stats.pending.count} pending</p>
-          </div>
-          <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-xl shadow-sm">
-            <p className="text-sm font-medium text-gray-500 mb-1">Partial</p>
-            <p className="text-xl font-bold text-yellow-600">EGP {stats.partial.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-            <p className="text-xs text-gray-500 mt-1">{stats.partial.count} partial</p>
-          </div>
-          <div className="bg-green-50 border border-green-100 p-4 rounded-xl shadow-sm">
-            <p className="text-sm font-medium text-gray-500 mb-1">Collected</p>
-            <p className="text-xl font-bold text-green-600">EGP {stats.collected.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-            <p className="text-xs text-gray-500 mt-1">{stats.collected.count} done</p>
-          </div>
-          <div className="bg-red-50 border border-red-100 p-4 rounded-xl shadow-sm">
-            <p className="text-sm font-medium text-gray-500 mb-1">Overdue</p>
-            <p className="text-xl font-bold text-red-600">{stats.overdue.count}</p>
-            <p className="text-xs text-gray-500 mt-1">EGP {stats.overdue.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-          </div>
-          <div className="bg-purple-50 border border-purple-100 p-4 rounded-xl shadow-sm">
-            <p className="text-sm font-medium text-gray-500 mb-1">Sales Only</p>
-            <p className="text-xl font-bold text-purple-600">{stats.salesOnly.count}</p>
-            <p className="text-xs text-gray-500 mt-1">EGP {stats.salesOnly.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="space-y-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              type="text"
-              placeholder="Search company or invoice..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <select
-            className="w-full p-2.5 rounded-lg border border-gray-300 bg-white shadow-sm outline-none text-gray-700"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="all">All Status</option>
-            <option value="open">Open</option>
-            <option value="pending">Pending</option>
-            <option value="partial">Partial</option>
-            <option value="paid">Paid</option>
-            <option value="overdue">Overdue</option>
-            <option value="salesOnly">Sales Only</option>
-          </select>
-        </div>
-
-        {/* Credits List */}
-        <div className="space-y-4">
-          {filteredCredits.map(credit => {
-            const isExpanded = expandedCredits[credit.id];
-            const totalDue = credit.amountDue + credit.tax;
-            const remaining = totalDue - credit.paidAmount;
-
-            return (
-              <div key={credit.id} className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden transition-all">
-                {/* Header / Summary */}
-                <div className="p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-1">
-                      <h3 className="text-lg font-bold text-gray-900 capitalize">{credit.companyName}</h3>
-                      <span className="text-sm text-gray-500">{credit.status}</span>
-                      {credit.onSalesOnly && (
-                        <span className="bg-gray-100 text-gray-700 text-xs px-2.5 py-1 rounded-full border border-gray-200">Pays on Sales Only</span>
-                      )}
-                      {!credit.onSalesOnly && (
-                        <span className="bg-gray-100 text-gray-700 text-xs px-2.5 py-1 rounded-full border border-gray-200">Credit</span>
-                      )}
-                    </div>
-                    <p className="text-sm text-gray-500">
-                      Invoice #{credit.invoiceNumber} • PO: {credit.poNumber} • Due: {credit.collectionDate}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
-                    <div className="text-right">
-                      <p className="text-2xl font-black text-gray-900">EGP {totalDue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                      <p className="text-sm text-gray-500">Paid: EGP {credit.paidAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                    </div>
-                    <button
-                      onClick={() => toggleExpand(credit.id)}
-                      className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition"
-                    >
-                      {isExpanded ? <ChevronUp size={20} className="text-gray-600" /> : <ChevronDown size={20} className="text-gray-600" />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Actions (always visible but below) */}
-                <div className="px-5 pb-5 flex flex-wrap gap-2">
-                  <button onClick={() => handlePrintPdf(credit)} disabled={isPrinting} className="flex items-center gap-1.5 bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
-                    <Printer size={16} /> Print
-                  </button>
-                  {credit.status !== "paid" && (
-                    <button className="flex items-center gap-1.5 bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700">
-                      Pending
-                    </button>
-                  )}
-                  {credit.status === "paid" && (
-                    <button className="flex items-center gap-1.5 bg-green-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-green-700">
-                      Paid
-                    </button>
-                  )}
-                  <button onClick={() => handleDeleteCredit(credit.id)} className="flex items-center gap-1.5 bg-white border border-red-200 text-red-600 px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-red-50">
-                    <Trash2 size={16} /> Delete
-                  </button>
-                </div>
-
-                {/* Expanded Details */}
-                {isExpanded && (
-                  <div className="border-t border-gray-100 p-5 bg-gray-50">
-                    <h4 className="font-bold text-gray-900 mb-4">Credit Details</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
-                      <div>
-                        <p className="text-sm text-gray-500 mb-1">Amount</p>
-                        <p className="font-bold text-gray-900">EGP {credit.amountDue.toLocaleString()}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500 mb-1">Tax</p>
-                        <p className="font-bold text-gray-900">EGP {credit.tax.toLocaleString()}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500 mb-1">Remaining</p>
-                        <p className="font-bold text-red-600">EGP {remaining.toLocaleString()}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500 mb-1">Type</p>
-                        <p className="font-bold text-gray-900">{credit.onSalesOnly ? "Pays on Sales Only" : "Normal Credit"}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-between items-center border-t border-gray-200 pt-4 mb-4">
-                      <h4 className="font-bold text-gray-900">Payment History</h4>
-                      {credit.status !== "paid" && (
-                        <button
-                          onClick={() => handleOpenPaymentModal(credit)}
-                          className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-red-600 transition"
-                        >
-                          + Add Payment
-                        </button>
-                      )}
-                    </div>
-                    {creditHistories[credit.id] && creditHistories[credit.id].length > 0 ? (
-                      <div className="space-y-3">
-                        {creditHistories[credit.id].map((payment, idx) => (
-                          <div key={idx} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100">
-                            <div>
-                              <p className="font-bold text-gray-900">EGP {Number(payment.amount).toLocaleString()}</p>
-                              <p className="text-xs text-gray-500">{payment.date} • {payment.method?.toUpperCase()}</p>
-                            </div>
-                            <span className="text-xs font-semibold px-2 py-1 bg-green-100 text-green-700 rounded">Paid</span>
-                          </div>
-                        ))}
-                        <div className="flex justify-between items-center pt-2 mt-2 border-t border-gray-200">
-                          <span className="text-sm font-bold text-gray-600">Total Paid:</span>
-                          <span className="text-sm font-bold text-green-600">EGP {credit.paidAmount.toLocaleString()}</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-500 mt-2">No payments yet</p>
-                    )}
-                  </div>
-                )}
+          {/* Premium Metric Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-rose-50 to-orange-50 border border-orange-100/50 p-5 rounded-2xl shadow-sm relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><AlertCircle size={48} className="text-orange-600" /></div>
+              <div className="flex items-center gap-2 text-orange-600 mb-3">
+                <AlertCircle size={18} className="drop-shadow-sm" />
+                <p className="text-sm font-bold tracking-wide uppercase">Outstanding</p>
               </div>
-            );
-          })}
+              <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {stats.outstanding.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+              <p className="text-xs font-semibold text-orange-600/70 mt-1 relative z-10">{stats.outstanding.count} open invoices</p>
+            </motion.div>
+
+            <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-sky-50 to-blue-50 border border-blue-100/50 p-5 rounded-2xl shadow-sm relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Clock size={48} className="text-blue-600" /></div>
+              <div className="flex items-center gap-2 text-blue-600 mb-3">
+                <Clock size={18} className="drop-shadow-sm" />
+                <p className="text-sm font-bold tracking-wide uppercase">Pending</p>
+              </div>
+              <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {stats.pending.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+              <p className="text-xs font-semibold text-blue-600/70 mt-1 relative z-10">{stats.pending.count} awaiting clear</p>
+            </motion.div>
+
+            <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-amber-50 to-yellow-50 border border-yellow-100/50 p-5 rounded-2xl shadow-sm relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><PieChart size={48} className="text-amber-600" /></div>
+              <div className="flex items-center gap-2 text-amber-600 mb-3">
+                <PieChart size={18} className="drop-shadow-sm" />
+                <p className="text-sm font-bold tracking-wide uppercase">Partial</p>
+              </div>
+              <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {stats.partial.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+              <p className="text-xs font-semibold text-amber-600/70 mt-1 relative z-10">{stats.partial.count} partially paid</p>
+            </motion.div>
+
+            <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-100/50 p-5 rounded-2xl shadow-sm relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><CheckCircle size={48} className="text-emerald-600" /></div>
+              <div className="flex items-center gap-2 text-emerald-600 mb-3">
+                <CheckCircle size={18} className="drop-shadow-sm" />
+                <p className="text-sm font-bold tracking-wide uppercase">Collected</p>
+              </div>
+              <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {stats.collected.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+              <p className="text-xs font-semibold text-emerald-600/70 mt-1 relative z-10">{stats.collected.count} fully paid</p>
+            </motion.div>
+
+            <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-red-50 to-rose-50 border border-red-100/50 p-5 rounded-2xl shadow-sm relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><AlertTriangle size={48} className="text-red-600" /></div>
+              <div className="flex items-center gap-2 text-red-600 mb-3">
+                <AlertTriangle size={18} className="drop-shadow-sm" />
+                <p className="text-sm font-bold tracking-wide uppercase">Overdue</p>
+              </div>
+              <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {stats.overdue.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+              <p className="text-xs font-semibold text-red-600/70 mt-1 relative z-10">{stats.overdue.count} past due date</p>
+            </motion.div>
+
+            <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-100/50 p-5 rounded-2xl shadow-sm relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Building size={48} className="text-violet-600" /></div>
+              <div className="flex items-center gap-2 text-violet-600 mb-3">
+                <Building size={18} className="drop-shadow-sm" />
+                <p className="text-sm font-bold tracking-wide uppercase">Sales Only</p>
+              </div>
+              <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {stats.salesOnly.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+              <p className="text-xs font-semibold text-violet-600/70 mt-1 relative z-10">{stats.salesOnly.count} active accounts</p>
+            </motion.div>
+          </div>
+
+          {/* Unified Command Bar (Filters) */}
+          <div className="bg-white/80 backdrop-blur-md border border-slate-200/80 p-2 rounded-2xl shadow-sm flex flex-col md:flex-row gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+              <input
+                type="text"
+                placeholder="Search company or invoice..."
+                className="w-full pl-12 pr-4 py-3 rounded-xl bg-transparent focus:bg-white hover:bg-slate-50 transition-colors border-none outline-none text-slate-700 placeholder:text-slate-400 font-medium"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="h-px md:h-auto md:w-px bg-slate-200"></div>
+            <select
+              className="w-full md:w-64 px-4 py-3 rounded-xl bg-transparent hover:bg-slate-50 focus:bg-white transition-colors border-none outline-none text-slate-700 font-bold cursor-pointer appearance-none"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="all">⚡ All Statuses</option>
+              <option value="open">Open Credits</option>
+              <option value="pending">Pending Payments</option>
+              <option value="partial">Partially Paid</option>
+              <option value="paid">Fully Paid</option>
+              <option value="overdue">⚠️ Overdue</option>
+              <option value="salesOnly">🏢 Sales Only Accounts</option>
+            </select>
+          </div>
+
+        {/* Credits Data Grid */}
+        <div className="space-y-4">
+          <AnimatePresence>
+            {filteredCredits.map((credit, idx) => {
+              const isExpanded = expandedCredits[credit.id];
+              const totalDue = credit.amountDue + credit.tax;
+              const remaining = totalDue - credit.paidAmount;
+
+              // Generate Company Initials for Avatar
+              const initials = credit.companyName.substring(0, 2).toUpperCase();
+              const colors = [
+                'bg-indigo-100 text-indigo-700 border-indigo-200', 
+                'bg-rose-100 text-rose-700 border-rose-200', 
+                'bg-emerald-100 text-emerald-700 border-emerald-200',
+                'bg-amber-100 text-amber-700 border-amber-200',
+                'bg-blue-100 text-blue-700 border-blue-200'
+              ];
+              const avatarColor = colors[credit.companyName.charCodeAt(0) % colors.length];
+
+              return (
+                <motion.div 
+                  layout
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.2, delay: idx * 0.05 }}
+                  key={credit.id} 
+                  className="bg-white border border-slate-200/60 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden group"
+                >
+                  {/* Row Summary */}
+                  <div className="p-4 md:p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative">
+                    
+                    {/* Left: Avatar + Details */}
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className={`w-12 h-12 rounded-full border flex items-center justify-center font-black text-lg tracking-tight ${avatarColor}`}>
+                        {initials}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-3 mb-1">
+                          <h3 className="text-lg font-bold text-slate-900 capitalize tracking-tight">{credit.companyName}</h3>
+                          
+                          {/* Modern Badges */}
+                          {credit.status === 'paid' && <span className="bg-emerald-50 text-emerald-600 border border-emerald-200 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><CheckCircle size={12}/> Paid</span>}
+                          {credit.status === 'pending' && <span className="bg-blue-50 text-blue-600 border border-blue-200 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><Clock size={12}/> Pending</span>}
+                          {credit.status === 'partial' && <span className="bg-amber-50 text-amber-600 border border-amber-200 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><PieChart size={12}/> Partial</span>}
+                          {credit.status === 'overdue' && <span className="bg-red-50 text-red-600 border border-red-200 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><AlertTriangle size={12}/> Overdue</span>}
+                          {credit.status === 'open' && <span className="bg-slate-100 text-slate-600 border border-slate-200 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><AlertCircle size={12}/> Open</span>}
+
+                          {credit.onSalesOnly && (
+                            <span className="bg-violet-50 text-violet-600 border border-violet-200 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><Building size={12}/> Sales Only</span>
+                          )}
+                        </div>
+                        <p className="text-sm font-medium text-slate-500 flex items-center gap-2">
+                          <FileText size={14} className="text-slate-400" /> Inv: {credit.invoiceNumber} 
+                          {credit.poNumber && <><span className="text-slate-300">•</span> PO: {credit.poNumber}</>} 
+                          <span className="text-slate-300">•</span> Due: {credit.collectionDate}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Right: Financials & Actions */}
+                    <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-slate-100 pt-3 md:pt-0">
+                      <div className="text-right">
+                        <p className="text-2xl font-black text-slate-900 tracking-tight font-mono">
+                          <span className="text-sm font-medium text-slate-400 mr-1">EGP</span>
+                          {totalDue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </p>
+                        <p className="text-sm font-medium text-slate-500 flex items-center justify-end gap-1">
+                          Paid: <span className="text-emerald-600 font-bold">{credit.paidAmount.toLocaleString()}</span>
+                        </p>
+                      </div>
+                      
+                      {/* Action Dropdown / Buttons */}
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => handlePrintPdf(credit)} disabled={isPrinting} className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors disabled:opacity-50">
+                          <Printer size={20} />
+                        </button>
+                        <button onClick={() => handleDeleteCredit(credit.id)} className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors">
+                          <Trash2 size={20} />
+                        </button>
+                        <button
+                          onClick={() => toggleExpand(credit.id)}
+                          className={`p-2.5 rounded-xl transition-colors ${isExpanded ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}
+                        >
+                          {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Expanded Details Area */}
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div 
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="border-t border-slate-100 bg-slate-50/50"
+                      >
+                        <div className="p-5 md:p-6">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                            <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Amount</p>
+                              <p className="font-black text-slate-900">EGP {credit.amountDue.toLocaleString()}</p>
+                            </div>
+                            <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Tax</p>
+                              <p className="font-black text-slate-900">EGP {credit.tax.toLocaleString()}</p>
+                            </div>
+                            <div className="bg-red-50 p-4 rounded-xl border border-red-100 shadow-sm">
+                              <p className="text-xs font-bold text-red-400 uppercase tracking-wider mb-1">Remaining</p>
+                              <p className="font-black text-red-600">EGP {remaining.toLocaleString()}</p>
+                            </div>
+                            <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Type</p>
+                              <p className="font-bold text-slate-900 flex items-center gap-2">
+                                {credit.onSalesOnly ? <><Building size={14} className="text-violet-500"/> Sales Only</> : <><CreditCard size={14} className="text-indigo-500"/> Standard</>}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex justify-between items-center border-t border-slate-200 pt-6 mb-4">
+                            <h4 className="font-bold text-slate-900 flex items-center gap-2">
+                              <Banknote className="text-slate-400"/> Payment History
+                            </h4>
+                            {credit.status !== "paid" && (
+                              <button
+                                onClick={() => handleOpenPaymentModal(credit)}
+                                className="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md hover:bg-slate-800 hover:-translate-y-0.5 transition-all flex items-center gap-2"
+                              >
+                                <Plus size={16} /> Record Payment
+                              </button>
+                            )}
+                          </div>
+                          
+                          {creditHistories[credit.id] && creditHistories[credit.id].length > 0 ? (
+                            <div className="space-y-2">
+                              {creditHistories[credit.id].map((payment, idx) => (
+                                <div key={idx} className="flex justify-between items-center bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+                                      <CheckCircle size={18} />
+                                    </div>
+                                    <div>
+                                      <p className="font-bold text-slate-900 font-mono tracking-tight">EGP {Number(payment.amount).toLocaleString()}</p>
+                                      <p className="text-xs font-medium text-slate-500 flex items-center gap-1"><Calendar size={12}/> {payment.date} <span className="px-1 text-slate-300">•</span> {payment.method?.toUpperCase()}</p>
+                                    </div>
+                                  </div>
+                                  <span className="text-xs font-bold px-3 py-1 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-full">Paid</span>
+                                </div>
+                              ))}
+                              <div className="flex justify-between items-center pt-4 mt-2 border-t border-slate-200">
+                                <span className="text-sm font-bold text-slate-500 uppercase tracking-wider">Total Paid</span>
+                                <span className="text-lg font-black text-emerald-600 tracking-tight">EGP {credit.paidAmount.toLocaleString()}</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-center py-8 bg-white rounded-xl border border-dashed border-slate-300">
+                              <p className="text-sm font-bold text-slate-400">No payments recorded yet</p>
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+
           {filteredCredits.length === 0 && (
-            <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
-              <p className="text-gray-500 font-medium">No credits found.</p>
+            <div className="text-center py-16 bg-white/50 backdrop-blur-sm rounded-3xl border border-slate-200 border-dashed">
+              <AlertCircle className="mx-auto text-slate-300 mb-3" size={48} />
+              <p className="text-slate-500 font-bold text-lg">No credits found.</p>
+              <p className="text-slate-400 text-sm">Try adjusting your search or filters.</p>
             </div>
           )}
         </div>
@@ -698,155 +795,204 @@ export default function CreditsPage() {
       </div>
 
       {/* ADD CREDIT MODAL */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center p-6 border-b border-gray-100">
-              <h2 className="text-2xl font-bold text-gray-900">Add credits</h2>
-              <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-gray-100 rounded-full transition">
-                <X size={24} className="text-gray-500" />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddCredit} className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Invoice # *</label>
-                  <input required type="text" className="w-full p-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">PO #</label>
-                  <input type="text" className="w-full p-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none" value={poNumber} onChange={(e) => setPoNumber(e.target.value)} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Company *</label>
-                  <input required type="text" className="w-full p-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none" value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Amount Due *</label>
-                  <input required type="number" step="0.01" className="w-full p-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none" value={amountDue} onChange={(e) => setAmountDue(e.target.value)} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tax</label>
-                  <input type="number" step="0.01" className="w-full p-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none" value={tax} onChange={(e) => setTax(e.target.value)} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Collection Date</label>
-                  <input required type="date" className="w-full p-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none" value={collectionDate} onChange={(e) => setCollectionDate(e.target.value)} />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Price Adjustment <span className="text-xs text-gray-400">(Admin only - can be +/-)</span></label>
-                  <input type="number" step="0.01" className="w-full p-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none" value={priceAdjustment} onChange={(e) => setPriceAdjustment(e.target.value)} />
-                </div>
-              </div>
-
-              <div className="space-y-3 mb-8">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input type="checkbox" checked={onSalesOnly} onChange={(e) => setOnSalesOnly(e.target.checked)} className="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500" />
-                  <span className="text-gray-700 font-medium">On Sales Only</span>
-                </label>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input type="checkbox" checked={isTaxable} onChange={(e) => setIsTaxable(e.target.checked)} className="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500" />
-                  <span className="text-gray-700 font-medium">Is Taxable?</span>
-                </label>
-              </div>
-
-              <div className="mb-8">
-                <div className="flex justify-between items-center mb-1">
-                  <label className="block text-sm font-medium text-gray-700">Manager Signature *</label>
-                  {(managerSignature || hasSigned) && (
-                    <button type="button" onClick={() => { sigPadRef.current?.clear(); setHasSigned(false); setManagerSignature(""); }} className="text-xs text-red-500 font-bold uppercase hover:underline">
-                      Clear Signature
-                    </button>
-                  )}
-                </div>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg overflow-hidden relative" style={{ height: "150px" }}>
-                  {managerSignature && !hasSigned ? (
-                    <img src={managerSignature} alt="Saved Signature" className="w-full h-full object-contain p-2" />
-                  ) : (
-                    <SignaturePad 
-                      // @ts-expect-error: dynamic import ref typing mismatch
-                      ref={sigPadRef} 
-                      canvasProps={{ className: "w-full h-full" }} 
-                      onBegin={() => setHasSigned(true)}
-                      onEnd={() => {
-                        if (sigPadRef.current) {
-                          setManagerSignature(sigPadRef.current.toDataURL());
-                        }
-                      }}
-                    />
-                  )}
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                <button type="button" onClick={() => setShowAddModal(false)} className="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-bold hover:bg-gray-50">Cancel</button>
-                <button type="submit" disabled={isSubmitting} className="px-5 py-2.5 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 disabled:opacity-50 flex items-center gap-2">
-                  {isSubmitting && <Loader2 size={18} className="animate-spin" />}
-                  Save Credit
+      <AnimatePresence>
+        {showAddModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 z-50"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
+              className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl border border-slate-100"
+            >
+              <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50/50">
+                <h2 className="text-2xl font-black text-slate-900 tracking-tight">Record New Credit</h2>
+                <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-slate-200 text-slate-400 hover:text-slate-600 rounded-full transition-colors">
+                  <X size={20} />
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+
+              <form onSubmit={handleAddCredit} className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4 mb-6">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Invoice # *</label>
+                    <input required type="text" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">PO #</label>
+                    <input type="text" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={poNumber} onChange={(e) => setPoNumber(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Company *</label>
+                    <input required type="text" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Amount Due *</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">EGP</span>
+                      <input required type="number" step="0.01" className="w-full pl-12 pr-4 p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-black text-slate-900" value={amountDue} onChange={(e) => setAmountDue(e.target.value)} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Tax</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">EGP</span>
+                      <input type="number" step="0.01" className="w-full pl-12 pr-4 p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-bold text-slate-900" value={tax} onChange={(e) => setTax(e.target.value)} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Collection Date</label>
+                    <input required type="date" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={collectionDate} onChange={(e) => setCollectionDate(e.target.value)} />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Price Adjustment <span className="text-[10px] text-slate-400 font-normal lowercase tracking-normal">(Admin only - can be +/-)</span></label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">EGP</span>
+                      <input type="number" step="0.01" className="w-full pl-12 pr-4 p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-bold text-slate-900" value={priceAdjustment} onChange={(e) => setPriceAdjustment(e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-6 mb-8 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                  <label className="flex items-center gap-3 cursor-pointer group">
+                    <div className="relative flex items-center justify-center">
+                      <input type="checkbox" checked={onSalesOnly} onChange={(e) => setOnSalesOnly(e.target.checked)} className="peer sr-only" />
+                      <div className="w-6 h-6 rounded-md border-2 border-slate-300 bg-white peer-checked:bg-indigo-500 peer-checked:border-indigo-500 transition-colors"></div>
+                      <CheckCircle size={14} className="absolute text-white opacity-0 peer-checked:opacity-100 transition-opacity" />
+                    </div>
+                    <span className="text-slate-700 font-bold group-hover:text-slate-900 transition-colors">On Sales Only</span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer group">
+                    <div className="relative flex items-center justify-center">
+                      <input type="checkbox" checked={isTaxable} onChange={(e) => setIsTaxable(e.target.checked)} className="peer sr-only" />
+                      <div className="w-6 h-6 rounded-md border-2 border-slate-300 bg-white peer-checked:bg-indigo-500 peer-checked:border-indigo-500 transition-colors"></div>
+                      <CheckCircle size={14} className="absolute text-white opacity-0 peer-checked:opacity-100 transition-opacity" />
+                    </div>
+                    <span className="text-slate-700 font-bold group-hover:text-slate-900 transition-colors">Is Taxable?</span>
+                  </label>
+                </div>
+
+                <div className="mb-8">
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Manager Signature *</label>
+                    {(managerSignature || hasSigned) && (
+                      <button type="button" onClick={() => { sigPadRef.current?.clear(); setHasSigned(false); setManagerSignature(""); }} className="text-[10px] bg-red-50 text-red-600 px-2 py-1 rounded font-bold uppercase hover:bg-red-100 transition-colors">
+                        Clear Signature
+                      </button>
+                    )}
+                  </div>
+                  <div className="border border-slate-200 bg-slate-50 rounded-xl overflow-hidden relative shadow-inner" style={{ height: "150px" }}>
+                    {managerSignature && !hasSigned ? (
+                      <img src={managerSignature} alt="Saved Signature" className="w-full h-full object-contain p-4" />
+                    ) : (
+                      <SignaturePad 
+                        // @ts-expect-error: dynamic import ref typing mismatch
+                        ref={sigPadRef} 
+                        canvasProps={{ className: "w-full h-full cursor-crosshair" }} 
+                        onBegin={() => setHasSigned(true)}
+                        onEnd={() => {
+                          if (sigPadRef.current) {
+                            setManagerSignature(sigPadRef.current.toDataURL());
+                          }
+                        }}
+                      />
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-6 border-t border-slate-100">
+                  <button type="button" onClick={() => setShowAddModal(false)} className="px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 hover:text-slate-900 transition-all shadow-sm">Cancel</button>
+                  <button type="submit" disabled={isSubmitting} className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 shadow-md shadow-indigo-600/20 hover:shadow-indigo-600/40 hover:-translate-y-0.5 transition-all">
+                    {isSubmitting && <Loader2 size={18} className="animate-spin" />}
+                    Save Credit
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* MAKE PAYMENT MODAL */}
-      {showPaymentModal && selectedCreditForPayment && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center p-6 border-b border-gray-100">
-              <h2 className="text-2xl font-bold text-gray-900">Make Payment</h2>
-              <button onClick={() => setShowPaymentModal(false)} className="p-2 hover:bg-gray-100 rounded-full transition">
-                <X size={24} className="text-gray-500" />
-              </button>
-            </div>
-
-            <form onSubmit={handleProcessPayment} className="p-6">
-              <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 mb-6">
-                <p className="text-sm text-blue-800 font-medium mb-1">Paying for: <span className="font-bold">{selectedCreditForPayment.companyName}</span></p>
-                <p className="text-xs text-blue-600">Invoice: {selectedCreditForPayment.invoiceNumber}</p>
-                <div className="mt-2 text-xl font-black text-blue-900">
-                  Remaining: EGP {((selectedCreditForPayment.amountDue + selectedCreditForPayment.tax) - selectedCreditForPayment.paidAmount).toLocaleString()}
-                </div>
-              </div>
-
-              <div className="space-y-4 mb-8">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Date *</label>
-                    <input required type="date" className="w-full p-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Time *</label>
-                    <input required type="time" className="w-full p-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none" value={paymentTime} onChange={(e) => setPaymentTime(e.target.value)} />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method *</label>
-                  <select className="w-full p-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
-                    <option value="cash">Cash / نقدي</option>
-                    <option value="bank_transfer">Bank Transfer / تحويل بنكي</option>
-                    <option value="visa">Visa / فيزا</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Amount to Pay *</label>
-                  <input required type="number" step="0.01" max={(selectedCreditForPayment.amountDue + selectedCreditForPayment.tax) - selectedCreditForPayment.paidAmount} className="w-full p-3 rounded-lg border-2 border-gray-300 focus:border-blue-500 outline-none font-bold text-lg" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                <button type="button" onClick={() => setShowPaymentModal(false)} className="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-bold hover:bg-gray-50">Cancel</button>
-                <button type="submit" disabled={isSubmitting} className="px-5 py-2.5 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 disabled:opacity-50 flex items-center gap-2">
-                  {isSubmitting && <Loader2 size={18} className="animate-spin" />}
-                  Confirm Payment
+      <AnimatePresence>
+        {showPaymentModal && selectedCreditForPayment && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 z-50"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
+              className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-slate-100"
+            >
+              <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50/50">
+                <h2 className="text-2xl font-black text-slate-900 tracking-tight">Make Payment</h2>
+                <button onClick={() => setShowPaymentModal(false)} className="p-2 hover:bg-slate-200 text-slate-400 hover:text-slate-600 rounded-full transition-colors">
+                  <X size={20} />
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+
+              <form onSubmit={handleProcessPayment} className="p-6">
+                <div className="bg-gradient-to-br from-indigo-50 to-blue-50 p-5 rounded-2xl border border-indigo-100/50 mb-6 shadow-inner">
+                  <p className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-1">Paying For</p>
+                  <p className="text-lg text-indigo-900 font-black tracking-tight">{selectedCreditForPayment.companyName}</p>
+                  <p className="text-sm font-medium text-indigo-600/80 mb-4 flex items-center gap-1"><FileText size={14}/> Inv: {selectedCreditForPayment.invoiceNumber}</p>
+                  
+                  <div className="bg-white/60 p-3 rounded-xl border border-indigo-100/50 flex justify-between items-center backdrop-blur-sm">
+                    <span className="text-sm font-bold text-indigo-900/60 uppercase tracking-wide">Remaining Balance</span>
+                    <span className="text-2xl font-black text-indigo-600 font-mono tracking-tight">EGP {((selectedCreditForPayment.amountDue + selectedCreditForPayment.tax) - selectedCreditForPayment.paidAmount).toLocaleString()}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-4 mb-8">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Date *</label>
+                      <input required type="date" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-bold text-slate-900" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Time *</label>
+                      <input required type="time" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-bold text-slate-900" value={paymentTime} onChange={(e) => setPaymentTime(e.target.value)} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Payment Method *</label>
+                    <select className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-bold text-slate-900 appearance-none cursor-pointer" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+                      <option value="cash">💵 Cash / نقدي</option>
+                      <option value="bank_transfer">🏦 Bank Transfer / تحويل بنكي</option>
+                      <option value="visa">💳 Visa / فيزا</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Amount to Pay *</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-black">EGP</span>
+                      <input required type="number" step="0.01" max={(selectedCreditForPayment.amountDue + selectedCreditForPayment.tax) - selectedCreditForPayment.paidAmount} className="w-full pl-14 pr-4 py-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none font-black text-2xl text-slate-900 shadow-sm transition-all bg-white" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-6 border-t border-slate-100">
+                  <button type="button" onClick={() => setShowPaymentModal(false)} className="px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 hover:text-slate-900 transition-all shadow-sm">Cancel</button>
+                  <button type="submit" disabled={isSubmitting} className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 shadow-md shadow-indigo-600/20 hover:shadow-indigo-600/40 hover:-translate-y-0.5 transition-all">
+                    {isSubmitting && <Loader2 size={18} className="animate-spin" />}
+                    Confirm Payment
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
 
     {selectedCreditForPrint && (

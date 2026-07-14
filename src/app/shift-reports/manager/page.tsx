@@ -20,7 +20,14 @@ const SignaturePad = dynamic(() => import("react-signature-canvas"), { ssr: fals
 export default function ManagerAuditPage() {
   const { currentBranch } = useBranch();
   const [activeTab, setActiveTab] = useState<"pending" | "history" | "performance">("pending");
+  const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
   const [dismissedAnomalies, setDismissedAnomalies] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (activeTab === "history" || activeTab === "performance") {
+      setHasLoadedHistory(true);
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     try {
@@ -182,6 +189,7 @@ export default function ManagerAuditPage() {
   const [expectedVisa, setExpectedVisa] = useState<string>("");
   const [auditShift, setAuditShift] = useState<string>("Morning");
   const [coffeePercent, setCoffeePercent] = useState<string>("");
+  const [cigarettePercent, setCigarettePercent] = useState<string>("");
   const [comments, setComments] = useState<string>("");
   const [managerName, setManagerName] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
@@ -276,21 +284,24 @@ export default function ManagerAuditPage() {
       setLoading(false);
     });
 
-    // 2. Fetch History (Approved) - limit to 100 to prevent excess reads (~3 months of data)
-    const qHistory = query(collection(db, "shift_reports"), orderBy("createdAt", "desc"), limit(100));
-    const unsubHistory = onSnapshot(qHistory, (snapshot) => {
-      const reports = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
-      // Filter locally to avoid composite index requirement
-      const approvedReports = reports.filter((r: any) => r.status === "approved");
-      setHistoryReports(approvedReports);
-      setLoading(false);
-    });
+    // 2. Fetch History (Approved) - limit to 50 to prevent excess reads, lazy loaded
+    let unsubHistory = () => {};
+    if (hasLoadedHistory) {
+      const qHistory = query(collection(db, "shift_reports"), orderBy("createdAt", "desc"), limit(50));
+      unsubHistory = onSnapshot(qHistory, (snapshot) => {
+        const reports = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
+        // Filter locally to avoid composite index requirement
+        const approvedReports = reports.filter((r: any) => r.status === "approved");
+        setHistoryReports(approvedReports);
+        setLoading(false);
+      });
+    }
 
     return () => {
       unsubPending();
       unsubHistory();
     };
-  }, [currentBranch]);
+  }, [currentBranch, hasLoadedHistory]);
 
   const handleSelectReport = (report: any) => {
     setSelectedReport(report);
@@ -301,6 +312,7 @@ export default function ManagerAuditPage() {
       setExpectedCash(String(report.managerAudit.expectedCash || ""));
       setExpectedVisa(String(report.managerAudit.expectedVisa || ""));
       setCoffeePercent(String(report.managerAudit.coffeePercent || ""));
+      setCigarettePercent(String(report.managerAudit.cigarettePercent || ""));
       setComments(report.managerAudit.comments || "");
       setManagerName(report.managerAudit.managerName || "");
       setAuditShift(report.cashierDetails?.shift || "Morning");
@@ -308,6 +320,7 @@ export default function ManagerAuditPage() {
       setExpectedCash("");
       setExpectedVisa("");
       setCoffeePercent("");
+      setCigarettePercent("");
       setComments("");
       setAuditShift(report.cashierDetails?.shift || "Morning");
     }
@@ -359,6 +372,7 @@ export default function ManagerAuditPage() {
           visaVariance: calculateVisaVariance(),
           overShort: calculateTotalVariance(),
           coffeePercent: Number(coffeePercent) || 0,
+          cigarettePercent: Number(cigarettePercent) || 0,
           comments,
           managerName,
           signature: managerSignature || (hasSigned && sigPadRef.current ? sigPadRef.current.toDataURL() : null),
@@ -1070,18 +1084,29 @@ export default function ManagerAuditPage() {
                             </tbody>
                           </table>
                         </div>
-
-                        <div className="grid grid-cols-1 gap-4 mt-4">
-                          <div>
-                            <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Coffee Shrink %</label>
-                            <input type="number" step="0.01" value={coffeePercent} onChange={e => setCoffeePercent(e.target.value)} className="w-full p-2.5 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-amber-500" placeholder="e.g. 2.5" />
-                          </div>
-                        </div>
                       </section>
                     )}
 
-                    {/* 3. Final Sign Off */}
+                    {/* Shrink & Variance Tracking (For Both Cashiers) */}
                     <section>
+                      <div className="flex items-center gap-2 mb-4">
+                        <Package className="h-5 w-5 text-amber-500" />
+                        <h3 className="text-lg font-bold">Shrink & Audit Data</h3>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-amber-50 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-900/30">
+                        <div>
+                          <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Coffee Shrink %</label>
+                          <input type="number" step="0.01" value={coffeePercent} onChange={e => setCoffeePercent(e.target.value)} className="w-full p-2.5 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-amber-500" placeholder="e.g. 2.5" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Cigarette Shrink %</label>
+                          <input type="number" step="0.01" value={cigarettePercent} onChange={e => setCigarettePercent(e.target.value)} className="w-full p-2.5 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-amber-500" placeholder="e.g. 1.2" />
+                        </div>
+                      </div>
+                    </section>
+
+                    {/* 3. Final Sign Off */}
+                    <section className="mt-8">
                       <div className="flex items-center gap-2 mb-4">
                         <Lock className="h-5 w-5 text-slate-500" />
                         <h3 className="text-lg font-bold">Manager Audit Notes</h3>
@@ -1515,15 +1540,33 @@ export default function ManagerAuditPage() {
                       </table>
                     </div>
 
-                    {/* Manager Notes on Page 1 if Cashier 2 */}
-                    {selectedReport.cashierRole === 2 && (
-                      <div style={{ border: '2px solid #000', marginBottom: '15px', borderRadius: '4px', overflow: 'hidden' }}>
-                        <div style={{ backgroundColor: '#f9f9f9', padding: '4px 15px', borderBottom: '1px solid #000', fontWeight: 'bold', color: '#000', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px' }}>Manager Comments</div>
-                        <div style={{ padding: '6px 15px', fontSize: '11px', color: '#000', fontStyle: selectedReport.managerAudit?.comments ? 'normal' : 'italic' }}>
-                          {selectedReport.managerAudit?.comments || "No additional comments provided."}
+                    {/* Manager Notes & Shrink on Page 1 */}
+                    <div style={{ border: '2px solid #000', marginBottom: '15px', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{ backgroundColor: '#f9f9f9', padding: '4px 15px', borderBottom: '1px solid #000', fontWeight: 'bold', color: '#000', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', justifyContent: 'space-between' }}>
+                        <span>3. Manager Comments & Shrink</span>
+                      </div>
+                      <div style={{ display: 'flex', borderBottom: '1px solid #000' }}>
+                        <div style={{ flex: 1, padding: '6px 15px', borderRight: '1px solid #000', backgroundColor: '#fff' }}>
+                          <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#666', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Coffee Shrink %</span>
+                          <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#000' }}>{selectedReport.managerAudit?.coffeePercent || coffeePercent || 0}%</span>
+                        </div>
+                        <div style={{ flex: 1, padding: '6px 15px', backgroundColor: '#fff' }}>
+                          <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#666', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Cigarette Shrink %</span>
+                          <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#000' }}>{selectedReport.managerAudit?.cigarettePercent || cigarettePercent || 0}%</span>
                         </div>
                       </div>
-                    )}
+                      <div style={{ padding: '6px 15px', fontSize: '11px', color: '#000', fontStyle: selectedReport.managerAudit?.comments ? 'normal' : 'italic', backgroundColor: '#fff' }}>
+                        {selectedReport.managerAudit?.rejectReason && (
+                          <div style={{ marginBottom: '6px', paddingBottom: '6px', borderBottom: '1px dotted #ccc' }}>
+                            <p style={{ margin: '0 0 2px', fontSize: '9px', fontWeight: 'bold', color: '#000', textTransform: 'uppercase' }}>Previous Rejection Reason (Corrected by Cashier)</p>
+                            <p style={{ margin: 0, fontStyle: 'italic', color: '#000', fontWeight: 'bold' }}>"{selectedReport.managerAudit.rejectReason}"</p>
+                          </div>
+                        )}
+                        <div style={{ fontStyle: selectedReport.managerAudit?.comments || comments ? 'normal' : 'italic' }}>
+                          {selectedReport.managerAudit?.comments || comments || "No additional comments provided."}
+                        </div>
+                      </div>
+                    </div>
 
                     <div style={{ marginTop: '30px' }}>
                       {signatures}
@@ -1635,22 +1678,14 @@ export default function ManagerAuditPage() {
                           </tr>
                         </tbody>
                       </table>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr', backgroundColor: '#f9f9f9', borderTop: '2px solid #000' }}>
-                        <div style={{ padding: '6px 15px' }}><span style={{ fontSize: '9px', fontWeight: 'bold', color: '#666', textTransform: 'uppercase', marginRight: '10px' }}>Coffee Shrink</span><span style={{ fontSize: '12px', fontWeight: 'bold', color: '#000' }}>{Number(coffeePercent) || 0}%</span></div>
-                      </div>
-                    </div>
-
-                    <div style={{ border: '2px solid #000', marginBottom: '15px', borderRadius: '4px', overflow: 'hidden' }}>
-                      <div style={{ backgroundColor: '#f9f9f9', padding: '4px 15px', borderBottom: '1px solid #000', fontWeight: 'bold', color: '#000', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px' }}>4. Manager Comments & Review</div>
-                      <div style={{ padding: '6px 15px', fontSize: '10px', color: '#000' }}>
-                        {selectedReport.managerAudit?.rejectReason && (
-                          <div style={{ marginBottom: '6px', paddingBottom: '6px', borderBottom: '1px dotted #ccc' }}>
-                            <p style={{ margin: '0 0 2px', fontSize: '9px', fontWeight: 'bold', color: '#000', textTransform: 'uppercase' }}>Previous Rejection Reason (Corrected by Cashier)</p>
-                            <p style={{ margin: 0, fontStyle: 'italic', color: '#000', fontWeight: 'bold' }}>"{selectedReport.managerAudit.rejectReason}"</p>
-                          </div>
-                        )}
-                        <div style={{ fontStyle: selectedReport.managerAudit?.comments ? 'normal' : 'italic' }}>
-                          {selectedReport.managerAudit?.comments || "No additional comments provided by the auditing manager."}
+                      <div style={{ display: 'flex', backgroundColor: '#f9f9f9', borderTop: '2px solid #000' }}>
+                        <div style={{ padding: '6px 15px', flex: 1, borderRight: '1px solid #ccc' }}>
+                          <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#666', textTransform: 'uppercase', marginRight: '10px' }}>Coffee Shrink</span>
+                          <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#000' }}>{selectedReport.managerAudit?.coffeePercent || coffeePercent || 0}%</span>
+                        </div>
+                        <div style={{ padding: '6px 15px', flex: 1 }}>
+                          <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#666', textTransform: 'uppercase', marginRight: '10px' }}>Cigarette Shrink</span>
+                          <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#000' }}>{selectedReport.managerAudit?.cigarettePercent || cigarettePercent || 0}%</span>
                         </div>
                       </div>
                     </div>

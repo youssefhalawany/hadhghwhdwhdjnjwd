@@ -185,33 +185,18 @@ export default function PaymentsRedesignPage() {
     try {
       // 1. Fetch Payments
       const q1 = branchIds.length > 0
-        ? query(collection(db, "cash_payments"), where("storeId", "in", branchIds), orderBy("createdAt", "desc"), limit(200))
-        : query(collection(db, "cash_payments"), orderBy("createdAt", "desc"), limit(200));
+        ? query(collection(db, "cash_payments"), where("storeId", "in", branchIds), orderBy("createdAt", "desc"), limit(50))
+        : query(collection(db, "cash_payments"), orderBy("createdAt", "desc"), limit(50));
       const paySnapshot = await getDocs(q1);
       const loadedPayments = paySnapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
       setPayments(loadedPayments);
 
-      // 2. Fetch Suppliers from both supplier_returns and cash_payments
+      // 2. Extract Suppliers from cash_payments
       const uniqueSuppliers = new Set<string>();
       
-      // Add from payments
       loadedPayments.forEach(p => {
         if (p.companyName) uniqueSuppliers.add(p.companyName.toUpperCase());
       });
-
-      // Add from returns
-      try {
-        const q2 = branchIds.length > 0
-          ? query(collection(db, "supplier_returns"), where("storeId", "in", branchIds), orderBy("createdAt", "desc"), limit(200))
-          : query(collection(db, "supplier_returns"), orderBy("createdAt", "desc"), limit(200));
-        const returnsSnap = await getDocs(q2);
-        returnsSnap.docs.forEach(doc => {
-          const data = doc.data();
-          if (data.supplier) uniqueSuppliers.add(data.supplier.toUpperCase());
-        });
-      } catch (returnsErr) {
-        console.log("Could not load supplier returns for autocomplete list:", returnsErr);
-      }
 
       setSuppliers(Array.from(uniqueSuppliers).sort().map((name, index) => ({ id: `sup_${index}`, name })));
     } catch (err: any) {

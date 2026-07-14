@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { db } from "@/lib/firebase";
 import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, getAggregateFromServer, sum } from "firebase/firestore";
-import { Banknote, CreditCard, Trash2, Edit, AlertTriangle, X, Sun, Moon, CalendarDays, Loader2 } from "lucide-react";
+import { Banknote, CreditCard, Trash2, Edit, AlertTriangle, X, Sun, Moon, CalendarDays, Loader2, FileText } from "lucide-react";
 import { useBranch } from "@/context/BranchContext";
 import { toast } from "sonner";
 import { PageTransition } from "@/components/PageTransition";
@@ -455,6 +455,13 @@ export default function SalesManagementPage() {
                       </p>
                     </div>
                   </div>
+
+                  {sale.notes && sale.notes.trim() !== "" && (
+                    <div className="mt-4 p-3 bg-blue-50/50 dark:bg-blue-900/10 rounded-lg border border-blue-100 dark:border-blue-800/30">
+                      <p className="text-[10px] font-bold text-blue-600/70 dark:text-blue-400/70 uppercase tracking-wider mb-1 flex items-center gap-1"><FileText className="w-3 h-3" /> AUDIT NOTES</p>
+                      <p className="text-sm font-medium text-blue-900 dark:text-blue-100 whitespace-pre-wrap">{sale.notes}</p>
+                    </div>
+                  )}
                 </motion.div>
                 );
               })}
