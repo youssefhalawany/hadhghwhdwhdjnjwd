@@ -1,49 +1,48 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { collection, query, where, getAggregateFromServer, sum } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import {
-  collection,
-  query,
-  where,
-  getAggregateFromServer,
-  sum,
-  count
-} from "firebase/firestore";
-import { ShieldCheck, AlertTriangle, Loader2 } from "lucide-react";
+import { Wallet, Landmark, Loader2, AlertTriangle, ShieldCheck, ExternalLink } from "lucide-react";
 import { useBranch } from "@/context/BranchContext";
 
-/**
- * ZERO-READ OVERVIEW
- * ------------------
- * All data fetching here uses getAggregateFromServer() which performs
- * SUM/COUNT operations directly on Firebase servers and counts as
- * ZERO document reads against the daily quota.
- *
- * DO NOT replace these with getDocs() - that would read every document.
- */
 export default function FinancialInputsOverview() {
   const { currentBranch } = useBranch();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  
   const [stats, setStats] = useState({
+    safeMoney: 0,
     totalSales: 0,
-    totalPayments: 0,
+    totalCashPayments: 0,
     depositsToSafe: 0,
     depositsFromSafe: 0,
-    safeMoney: 0
+    totalPayrolls: 0,
+    totalLoans: 0,
+    totalOldCreditsCash: 0,
+    totalTaxPaid: 0,
+
+    bankMoney: 0,
+    totalVisaSales: 0,
+    totalBankPayments: 0,
+    depositsToBank: 0,
+    depositsFromBank: 0,
+    totalBankCredits: 0,
+    totalBankTaxPaid: 0,
   });
+
+  const [loading, setLoading] = useState(true);
+  const [missingIndexes, setMissingIndexes] = useState<string[]>([]);
 
   useEffect(() => {
     async function fetchStats() {
-      try {
-        setLoading(true);
-        setError(null);
+      setLoading(true);
+      setMissingIndexes([]);
+      
+      const collectedUrls = new Set<string>();
 
-        // Helper to get correct branch ID format based on store logic
-        const branchIds = [];
+      try {
+        const branchIds: string[] = [];
         if (currentBranch === "all") {
-          // Admins can see everything, no filter needed
+          // No filter
         } else if (currentBranch === "alamein4") {
           branchIds.push("eL-alamein-4");
         } else if (currentBranch === "ola") {
@@ -55,50 +54,147 @@ export default function FinancialInputsOverview() {
         // --- ZERO READ: aggregate sums on the server ---
         
         let salesQ: any = collection(db, "sales");
-        let allPaymentsQ: any = collection(db, "cash_payments");
         let cashPaymentsQ: any = query(collection(db, "cash_payments"), where("method", "==", "cash"));
         let depositsToQ: any = query(collection(db, "deposits"), where("to", "==", "safe"));
         let depositsFromQ: any = query(collection(db, "deposits"), where("from", "==", "safe"));
+        let payrollsQ: any = collection(db, "payroll_lines");
+        let newLoansQ: any = query(collection(db, "adjustments"), where("type", "==", "loan"));
+        let oldLoansQ: any = collection(db, "loans");
+        let oldCreditsCashQ: any = query(collection(db, "credit_payments"), where("method", "==", "cash"));
+        
+        // Bank Queries
+        let cashPaymentsVisaQ: any = query(collection(db, "cash_payments"), where("method", "==", "visa"));
+        let cashPaymentsBankTransferQ: any = query(collection(db, "cash_payments"), where("method", "==", "bank_transfer"));
+        let cashPaymentsBankQ: any = query(collection(db, "cash_payments"), where("method", "==", "bank"));
+        let creditPaymentsVisaQ: any = query(collection(db, "credit_payments"), where("method", "==", "visa"));
+        let creditPaymentsBankTransferQ: any = query(collection(db, "credit_payments"), where("method", "==", "bank_transfer"));
+        let creditPaymentsBankQ: any = query(collection(db, "credit_payments"), where("method", "==", "bank"));
+        let depositsToBankQ: any = query(collection(db, "deposits"), where("to", "==", "bank"));
+        let depositsFromBankQ: any = query(collection(db, "deposits"), where("from", "==", "bank"));
 
         // If manager, we MUST filter by storeId or Firestore rules will reject with Permission Denied
         if (branchIds.length > 0) {
           salesQ = query(salesQ, where("storeId", "in", branchIds));
-          allPaymentsQ = query(allPaymentsQ, where("storeId", "in", branchIds));
           cashPaymentsQ = query(cashPaymentsQ, where("storeId", "in", branchIds));
           depositsToQ = query(depositsToQ, where("storeId", "in", branchIds));
           depositsFromQ = query(depositsFromQ, where("storeId", "in", branchIds));
+          payrollsQ = query(payrollsQ, where("storeId", "in", branchIds));
+          oldCreditsCashQ = query(oldCreditsCashQ, where("storeId", "in", branchIds));
+          newLoansQ = query(newLoansQ, where("storeId", "in", branchIds));
+          oldLoansQ = query(oldLoansQ, where("storeId", "in", branchIds));
+          
+          cashPaymentsVisaQ = query(cashPaymentsVisaQ, where("storeId", "in", branchIds));
+          cashPaymentsBankTransferQ = query(cashPaymentsBankTransferQ, where("storeId", "in", branchIds));
+          cashPaymentsBankQ = query(cashPaymentsBankQ, where("storeId", "in", branchIds));
+          creditPaymentsVisaQ = query(creditPaymentsVisaQ, where("storeId", "in", branchIds));
+          creditPaymentsBankTransferQ = query(creditPaymentsBankTransferQ, where("storeId", "in", branchIds));
+          creditPaymentsBankQ = query(creditPaymentsBankQ, where("storeId", "in", branchIds));
+          depositsToBankQ = query(depositsToBankQ, where("storeId", "in", branchIds));
+          depositsFromBankQ = query(depositsFromBankQ, where("storeId", "in", branchIds));
         }
 
-        // 1. Sales: sum of cash + overShort
-        const salesAgg = await getAggregateFromServer(salesQ, { cash: sum("cash"), overShort: sum("overShort") });
-        const totalSales = (salesAgg.data().cash || 0) + (salesAgg.data().overShort || 0);
+        // Helper for safe fetching
+        const safeSumAgg = async (q: any, sumFields: Record<string, ReturnType<typeof sum>>): Promise<any> => {
+          try {
+            const agg = await getAggregateFromServer(q, sumFields);
+            return agg.data();
+          } catch (err: any) {
+            if (err.message?.includes("https://console.firebase.google.com")) {
+              const urlMatch = err.message.match(/(https:\/\/console\.firebase\.google\.com[^\s]*)/);
+              if (urlMatch) collectedUrls.add(urlMatch[0]);
+            } else {
+              console.error("Query Error:", err);
+            }
+            return null;
+          }
+        };
 
-        // 2. All payments (display only)
-        const allPaymentsAgg = await getAggregateFromServer(allPaymentsQ, { amount: sum("amount") });
-        const totalPayments = allPaymentsAgg.data().amount || 0;
+        const [
+          salesData, cashPaymentsData, depositsToData, depositsFromData, payrollsData,
+          newLoansData, oldLoansData, oldCreditsCashData, visaPaymentsData,
+          bankTransferPaymentsData, visaCreditsData, bankTransferCreditsData, depositsToBankData, depositsFromBankData, visaTaxData, bankTransferTaxData, cashTaxData, cashPaymentsBankData, creditPaymentsBankData, bankTaxData] = await Promise.all([
+          safeSumAgg(salesQ, { cash: sum("cash"), overShort: sum("overShort"), visa: sum("visa") }),
+          safeSumAgg(cashPaymentsQ, { val: sum("amount") }),
+          safeSumAgg(depositsToQ, { val: sum("amount") }),
+          safeSumAgg(depositsFromQ, { val: sum("amount") }),
+          safeSumAgg(payrollsQ, { val: sum("netPay") }),
+          safeSumAgg(newLoansQ, { val: sum("amount") }),
+          safeSumAgg(oldLoansQ, { val: sum("approved") }),
+          safeSumAgg(oldCreditsCashQ, { val: sum("amount") }),
+          safeSumAgg(cashPaymentsVisaQ, { val: sum("amount") }),
+          safeSumAgg(cashPaymentsBankTransferQ, { val: sum("amount") }),
+          safeSumAgg(creditPaymentsVisaQ, { val: sum("amount") }),
+          safeSumAgg(creditPaymentsBankTransferQ, { val: sum("amount") }),
+          safeSumAgg(depositsToBankQ, { val: sum("amount") }),
+          safeSumAgg(depositsFromBankQ, { val: sum("amount") }),
+          safeSumAgg(cashPaymentsVisaQ, { val: sum("tax") }),
+          safeSumAgg(cashPaymentsBankTransferQ, { val: sum("tax") }),
+          safeSumAgg(cashPaymentsQ, { val: sum("tax") }),
+          safeSumAgg(cashPaymentsBankQ, { val: sum("amount") }),
+          safeSumAgg(creditPaymentsBankQ, { val: sum("amount") }),
+          safeSumAgg(cashPaymentsBankQ, { val: sum("tax") })
+        ]);
 
-        // 3. Cash-only payments (for safe deduction)
-        const cashPaymentsAgg = await getAggregateFromServer(cashPaymentsQ, { amount: sum("amount") });
-        const totalCashPayments = cashPaymentsAgg.data().amount || 0;
+        if (collectedUrls.size > 0) {
+          setMissingIndexes(Array.from(collectedUrls));
+          setLoading(false);
+          return;
+        }
 
-        // 4. Deposits into safe
-        const depositsToAgg = await getAggregateFromServer(depositsToQ, { amount: sum("amount") });
-        const depositsToSafe = depositsToAgg.data().amount || 0;
+        const totalSales = (salesData?.cash || 0) + (salesData?.overShort || 0);
+        const totalVisaSales = salesData?.visa || 0;
 
-        // 5. Deposits out of safe
-        const depositsFromAgg = await getAggregateFromServer(depositsFromQ, { amount: sum("amount") });
-        const depositsFromSafe = depositsFromAgg.data().amount || 0;
+        const totalCashPayments = cashPaymentsData?.val || 0;
+        const depositsToSafe = depositsToData?.val || 0;
+        const depositsFromSafe = depositsFromData?.val || 0;
+        const totalPayrolls = payrollsData?.val || 0;
+        const totalNewLoans = newLoansData?.val || 0;
+        const totalOldLoans = oldLoansData?.val || 0;
+        const totalLoans = totalNewLoans + totalOldLoans;
+        const totalOldCreditsCash = oldCreditsCashData?.val || 0;
+        const totalTaxPaid = cashTaxData?.val || 0;
+
+        const totalVisaPayments = visaPaymentsData?.val || 0;
+        const totalBankTransferPayments = bankTransferPaymentsData?.val || 0;
+        const totalBankOnlyPayments = cashPaymentsBankData?.val || 0;
+        const totalBankPayments = totalVisaPayments + totalBankTransferPayments + totalBankOnlyPayments;
+
+        const totalVisaTax = visaTaxData?.val || 0;
+        const totalBankTransferTax = bankTransferTaxData?.val || 0;
+        const totalBankOnlyTax = bankTaxData?.val || 0;
+        const totalBankTaxPaid = totalVisaTax + totalBankTransferTax + totalBankOnlyTax;
+
+        const totalVisaCredits = visaCreditsData?.val || 0;
+        const totalBankTransferCredits = bankTransferCreditsData?.val || 0;
+        const totalBankOnlyCredits = creditPaymentsBankData?.val || 0;
+        const totalBankCredits = totalVisaCredits + totalBankTransferCredits + totalBankOnlyCredits;
+
+        const depositsToBank = depositsToBankData?.val || 0;
+        const depositsFromBank = depositsFromBankData?.val || 0;
+
+        const safeMoney = totalSales - totalCashPayments + depositsToSafe - depositsFromSafe - totalPayrolls - totalLoans - totalOldCreditsCash - totalTaxPaid;
+        const bankMoney = totalVisaSales - totalBankPayments - totalBankTaxPaid - totalBankCredits + depositsToBank - depositsFromBank;
 
         setStats({
           totalSales,
-          totalPayments,
+          totalCashPayments,
           depositsToSafe,
           depositsFromSafe,
-          safeMoney: totalSales - totalCashPayments + depositsToSafe - depositsFromSafe
+          totalPayrolls,
+          totalLoans,
+          totalOldCreditsCash,
+          totalTaxPaid,
+          safeMoney,
+          totalVisaSales,
+          totalBankPayments,
+          depositsToBank,
+          depositsFromBank,
+          totalBankCredits,
+          totalBankTaxPaid,
+          bankMoney
         });
       } catch (err: any) {
         console.error("Aggregate fetch error:", err);
-        setError(err?.message || "Unknown error");
       } finally {
         setLoading(false);
       }
@@ -122,96 +218,165 @@ export default function FinancialInputsOverview() {
     );
   }
 
-  if (error) {
+  if (missingIndexes.length > 0) {
     return (
       <div className="flex flex-col items-center justify-center p-24 text-red-500 gap-4">
         <AlertTriangle className="h-12 w-12" />
-        <p className="font-bold text-lg">Failed to load data</p>
-        <p className="text-sm font-mono bg-red-50 dark:bg-red-900/20 p-4 rounded-xl max-w-xl text-center break-words">
-          {error}
-        </p>
-        <p className="text-sm text-slate-500 max-w-md text-center">
-          This may be caused by a missing Firestore index. Check the browser console for an index creation link.
-        </p>
+        <p className="font-bold text-xl">Action Required: Missing Database Indexes ({missingIndexes.length})</p>
+        <div className="bg-red-50 border border-red-200 p-6 rounded-xl max-w-2xl text-center shadow-sm">
+          <p className="text-sm text-red-800 mb-4 font-medium">
+            Please click EVERY SINGLE button below to create all required indexes at once. Once they finish building in Firebase, refresh this page.
+          </p>
+          <div className="flex flex-wrap justify-center gap-3">
+            {missingIndexes.map((url, i) => (
+              <a 
+                key={i}
+                href={url} 
+                target="_blank" 
+                rel="noreferrer"
+                className="bg-white border border-red-300 text-red-700 hover:bg-red-100 font-bold py-2 px-4 rounded-lg text-sm shadow-sm transition-colors flex items-center gap-2"
+              >
+                Create Index #{i + 1}
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Safe Balance Hero */}
-      <div className="bg-gradient-to-br from-emerald-500 to-teal-700 p-8 rounded-3xl shadow-xl text-white relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-8 opacity-10">
-          <ShieldCheck size={120} />
-        </div>
-        <div className="relative z-10 space-y-2">
-          <div className="flex items-center gap-2 text-emerald-100 font-bold uppercase tracking-widest text-sm">
-            <ShieldCheck className="h-5 w-5" />
-            LIFETIME SAFE BALANCE
+    <div className="space-y-10 pb-12">
+      
+      {/* ---------------- SAFE SECTION ---------------- */}
+      <div className="space-y-4">
+        {/* Safe Balance Hero */}
+        <div className="bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700 p-8 md:p-10 rounded-[2rem] shadow-2xl shadow-teal-900/20 text-white relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-white opacity-5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 group-hover:opacity-10 transition-opacity duration-700"></div>
+          <div className="absolute bottom-0 left-0 w-72 h-72 bg-emerald-300 opacity-10 rounded-full blur-3xl translate-y-1/3 -translate-x-1/4"></div>
+          
+          <div className="absolute top-1/2 right-8 -translate-y-1/2 opacity-10 group-hover:scale-110 transition-transform duration-500">
+            <ShieldCheck size={160} />
           </div>
-          <h1 className="text-5xl md:text-7xl font-black tracking-tighter drop-shadow-sm">
-            EGP {fmt(stats.safeMoney)}
-          </h1>
-          <p className="text-emerald-100/80 font-medium text-sm">
-            Cash Sales − Cash Payments + Deposits In − Deposits Out
-          </p>
+
+          <div className="relative z-10 space-y-3">
+            <div className="flex items-center gap-2 text-teal-100 font-bold uppercase tracking-[0.2em] text-xs">
+              <ShieldCheck className="h-4 w-4" />
+              Lifetime Safe Balance
+            </div>
+            <h1 className="text-5xl md:text-7xl font-black tracking-tighter drop-shadow-sm flex items-baseline gap-2">
+              <span className="text-3xl md:text-4xl text-teal-100 font-bold tracking-normal">EGP</span>
+              {fmt(stats.safeMoney)}
+            </h1>
+            <p className="text-teal-50/80 font-medium text-sm max-w-2xl leading-relaxed">
+              Cash Sales − Cash Payments (incl. Credits) − Tax Paid + Deposits In − Deposits Out − Payrolls − Loans − Old Credits (Cash)
+            </p>
+          </div>
+        </div>
+
+        {/* Safe Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6">
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md p-6 rounded-[1.5rem] hover:-translate-y-1 transition-all duration-300 group">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 group-hover:text-emerald-500 transition-colors">
+              Cash Sales
+            </p>
+            <p className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">EGP {fmt(stats.totalSales)}</p>
+          </div>
+          
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md p-6 rounded-[1.5rem] hover:-translate-y-1 transition-all duration-300 group">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 group-hover:text-emerald-500 transition-colors">
+              Cash Payments + Tax
+            </p>
+            <p className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">EGP {fmt(stats.totalCashPayments + stats.totalOldCreditsCash)}</p>
+            <p className="text-[10px] text-slate-400 font-bold mt-1.5 bg-slate-50 dark:bg-slate-800 inline-block px-2 py-0.5 rounded-md">
+              + Tax: EGP {fmt(stats.totalTaxPaid)}
+            </p>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md p-6 rounded-[1.5rem] hover:-translate-y-1 transition-all duration-300 group flex flex-col justify-between">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3 group-hover:text-emerald-500 transition-colors">
+              Deposits (Bank/Owner)
+            </p>
+            <div className="flex flex-col gap-3 mt-1">
+              <div>
+                <p className="text-emerald-600 font-black text-xl tracking-tight">+ {fmt(stats.depositsToSafe)}</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">To Safe</p>
+              </div>
+              <div className="h-px w-full bg-slate-100 dark:bg-slate-800"></div>
+              <div>
+                <p className="text-rose-500 font-black text-xl tracking-tight">- {fmt(stats.depositsFromSafe)}</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">From Safe</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md p-6 rounded-[1.5rem] hover:-translate-y-1 transition-all duration-300 group">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 group-hover:text-emerald-500 transition-colors">
+              Payrolls & Loans
+            </p>
+            <p className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">EGP {fmt(stats.totalPayrolls + stats.totalLoans)}</p>
+          </div>
         </div>
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-card border border-border shadow-sm p-6 rounded-2xl">
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">
-            Lifetime Cash Sales
-          </p>
-          <p className="text-2xl font-black text-slate-900 dark:text-slate-50">
-            EGP {fmt(stats.totalSales)}
-          </p>
+      <div className="w-full h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-800 to-transparent my-8"></div>
+
+      {/* ---------------- BANK SECTION ---------------- */}
+      <div className="space-y-4">
+        {/* Bank Balance Hero */}
+        <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700 p-8 md:p-10 rounded-[2rem] shadow-2xl shadow-indigo-900/20 text-white relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-white opacity-5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 group-hover:opacity-10 transition-opacity duration-700"></div>
+          <div className="absolute bottom-0 left-0 w-72 h-72 bg-blue-300 opacity-10 rounded-full blur-3xl translate-y-1/3 -translate-x-1/4"></div>
+          
+          <div className="absolute top-1/2 right-8 -translate-y-1/2 opacity-10 group-hover:scale-110 transition-transform duration-500">
+            <Landmark size={160} />
+          </div>
+
+          <div className="relative z-10 space-y-3">
+            <div className="flex items-center gap-2 text-indigo-200 font-bold uppercase tracking-[0.2em] text-xs">
+              <Landmark className="h-4 w-4" />
+              Lifetime Bank Balance
+            </div>
+            <h1 className="text-5xl md:text-7xl font-black tracking-tighter drop-shadow-sm flex items-baseline gap-2">
+              <span className="text-3xl md:text-4xl text-indigo-200 font-bold tracking-normal">EGP</span>
+              {fmt(stats.bankMoney)}
+            </h1>
+            <p className="text-indigo-100/80 font-medium text-sm max-w-2xl leading-relaxed">
+              Visa Sales − Bank Payments − Bank Tax Paid − Bank Credits + Deposits In − Deposits Out
+            </p>
+          </div>
         </div>
-        <div className="bg-card border border-border shadow-sm p-6 rounded-2xl">
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">
-            Lifetime Payments
-          </p>
-          <p className="text-2xl font-black text-red-600 dark:text-red-400">
-            EGP {fmt(stats.totalPayments)}
-          </p>
-        </div>
-        <div className="bg-card border border-border shadow-sm p-6 rounded-2xl">
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">
-            Deposits To Safe
-          </p>
-          <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
-            EGP {fmt(stats.depositsToSafe)}
-          </p>
-        </div>
-        <div className="bg-card border border-border shadow-sm p-6 rounded-2xl">
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">
-            Deposits From Safe
-          </p>
-          <p className="text-2xl font-black text-amber-600 dark:text-amber-400">
-            EGP {fmt(stats.depositsFromSafe)}
-          </p>
+
+        {/* Bank Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3 md:gap-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md p-5 rounded-[1.25rem] hover:-translate-y-1 transition-all duration-300 group">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 group-hover:text-blue-500 transition-colors">Visa Sales</p>
+            <p className="text-lg font-black text-slate-800 dark:text-slate-100 tracking-tight">EGP {fmt(stats.totalVisaSales)}</p>
+          </div>
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md p-5 rounded-[1.25rem] hover:-translate-y-1 transition-all duration-300 group">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 group-hover:text-blue-500 transition-colors">Bank Payments</p>
+            <p className="text-lg font-black text-slate-800 dark:text-slate-100 tracking-tight">EGP {fmt(stats.totalBankPayments)}</p>
+          </div>
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md p-5 rounded-[1.25rem] hover:-translate-y-1 transition-all duration-300 group">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 group-hover:text-blue-500 transition-colors">Bank Tax Paid</p>
+            <p className="text-lg font-black text-slate-800 dark:text-slate-100 tracking-tight">EGP {fmt(stats.totalBankTaxPaid)}</p>
+          </div>
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md p-5 rounded-[1.25rem] hover:-translate-y-1 transition-all duration-300 group">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 group-hover:text-blue-500 transition-colors">Bank Credits</p>
+            <p className="text-lg font-black text-slate-800 dark:text-slate-100 tracking-tight">EGP {fmt(stats.totalBankCredits)}</p>
+          </div>
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md p-5 rounded-[1.25rem] hover:-translate-y-1 transition-all duration-300 group">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 group-hover:text-emerald-500 transition-colors">Deposits In</p>
+            <p className="text-lg font-black text-emerald-600 tracking-tight">+ EGP {fmt(stats.depositsToBank)}</p>
+          </div>
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md p-5 rounded-[1.25rem] hover:-translate-y-1 transition-all duration-300 group">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 group-hover:text-rose-500 transition-colors">Deposits Out</p>
+            <p className="text-lg font-black text-rose-500 tracking-tight">- EGP {fmt(stats.depositsFromBank)}</p>
+          </div>
         </div>
       </div>
 
-      {/* Info Box */}
-      <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-6 text-emerald-800 dark:text-emerald-200 text-sm flex gap-4 items-start">
-        <ShieldCheck className="h-6 w-6 shrink-0 mt-0.5 text-emerald-500" />
-        <div>
-          <p className="font-bold mb-1">Zero-Read Aggregations Active</p>
-          <p className="opacity-90 leading-relaxed">
-            This page uses <strong>getAggregateFromServer()</strong> — Firebase performs all
-            SUM calculations on its servers without sending a single document to the browser.
-            This costs <strong>0 document reads</strong> regardless of how many records exist.
-            Safe balance formula:{" "}
-            <strong>
-              (Cash Sales + Over/Short) − Cash Payments − Bank/Visa Payments + Deposits(to Safe) −
-              Deposits(from Safe)
-            </strong>
-            . Bank and Visa payments do <strong>not</strong> reduce the physical safe.
-          </p>
-        </div>
-      </div>
     </div>
   );
 }

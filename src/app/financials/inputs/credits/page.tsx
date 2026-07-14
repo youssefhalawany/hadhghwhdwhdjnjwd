@@ -33,6 +33,10 @@ import { onAuthStateChanged } from "firebase/auth";
 import Link from "next/link";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import dynamic from "next/dynamic";
+import { useBranch } from "@/context/BranchContext";
+
+const SignaturePad = dynamic(() => import("react-signature-canvas"), { ssr: false });
 
 interface Credit {
   id: string;
@@ -51,9 +55,25 @@ interface Credit {
   paidAmount: number;
   priceAdjustment: number;
   payments: any[];
+  managerSignature?: string;
 }
 
 export default function CreditsPage() {
+  const { currentBranch } = useBranch();
+  const branchIds = useMemo(() => {
+    const ids = [];
+    if (currentBranch === "all") {
+      // no filter
+    } else if (currentBranch === "alamein4") {
+      ids.push("eL-alamein-4");
+    } else if (currentBranch === "ola") {
+      ids.push("ola-el-koronfol");
+    } else {
+      ids.push(currentBranch);
+    }
+    return ids;
+  }, [currentBranch]);
+  
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [credits, setCredits] = useState<Credit[]>([]);
@@ -75,6 +95,10 @@ export default function CreditsPage() {
   const [onSalesOnly, setOnSalesOnly] = useState(false);
   const [isTaxable, setIsTaxable] = useState(false);
 
+  const sigPadRef = React.useRef<any>(null);
+  const [managerSignature, setManagerSignature] = useState("");
+  const [hasSigned, setHasSigned] = useState(false);
+
   // Payment Form
   const [selectedCreditForPayment, setSelectedCreditForPayment] = useState<Credit | null>(null);
   const [paymentDate, setPaymentDate] = useState("");
@@ -88,9 +112,8 @@ export default function CreditsPage() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
       if (user) {
-        fetchCredits();
+        setCurrentUser(user);
       } else {
         setLoading(false);
       }
@@ -98,11 +121,20 @@ export default function CreditsPage() {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (auth.currentUser) {
+      fetchCredits();
+    }
+  }, [auth.currentUser, currentBranch]);
+
   const [creditHistories, setCreditHistories] = useState<Record<string, any[]>>({});
 
   const fetchCredits = async () => {
     try {
-      const q = query(collection(db, "credits"), orderBy("createdAt", "desc"), limit(200));
+      const q = branchIds.length > 0 
+        ? query(collection(db, "credits"), where("storeId", "in", branchIds), orderBy("createdAt", "desc"), limit(200))
+        : query(collection(db, "credits"), orderBy("createdAt", "desc"), limit(200));
+
       const snapshot = await getDocs(q);
       const data = snapshot.docs.map(doc => {
         const d = doc.data() as any;
@@ -137,9 +169,24 @@ export default function CreditsPage() {
         };
       }) as Credit[];
       setCredits(data);
-    } catch (error) {
-      console.error("Error fetching credits:", error);
-      toast.error("Failed to load credits");
+    } catch (err: any) {
+      console.error("Error fetching credits:", err);
+      if (err.message?.includes("https://console.firebase.google.com")) {
+        const urlMatch = err.message.match(/(https:\/\/console\.firebase\.google\.com[^\s]*)/);
+        if (urlMatch) {
+          toast.error("Firebase Index Missing (Required for filtering)", {
+            description: "Click the button to automatically create the required index.",
+            action: {
+              label: "Create Index",
+              onClick: () => window.open(urlMatch[0], "_blank")
+            },
+            duration: 20000,
+          });
+          setLoading(false);
+          return;
+        }
+      }
+      toast.error("Failed to load credits: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -186,10 +233,11 @@ export default function CreditsPage() {
         onSalesOnly,
         poNumber,
         status: "open",
-        storeId: "eL-alamein-4",
+        storeId: currentBranch === "all" ? "eL-alamein-4" : currentBranch,
         tax: parseFloat(tax) || 0,
         paidAmount: 0,
-        priceAdjustment: parseFloat(priceAdjustment) || 0
+        priceAdjustment: parseFloat(priceAdjustment) || 0,
+        managerSignature: managerSignature || (hasSigned && sigPadRef.current ? sigPadRef.current.toDataURL() : null)
       };
 
       const docRef = await addDoc(collection(db, "credits"), newCredit);
@@ -209,6 +257,12 @@ export default function CreditsPage() {
       setPriceAdjustment("0");
       setOnSalesOnly(false);
       setIsTaxable(false);
+      
+      setManagerSignature("");
+      setHasSigned(false);
+      if (sigPadRef.current) {
+        sigPadRef.current.clear();
+      }
 
     } catch (error) {
       console.error("Error adding credit:", error);
@@ -284,7 +338,7 @@ export default function CreditsPage() {
         isTaxable: false,
         method: paymentMethod,
         poNumber: selectedCreditForPayment.poNumber,
-        storeId: "eL-alamein-4",
+        storeId: branchIds.length > 0 && branchIds[0] !== "all" ? branchIds[0] : "eL-alamein-4",
         tax: 0,
         total: pAmt,
         creditId: selectedCreditForPayment.id
@@ -697,6 +751,34 @@ export default function CreditsPage() {
                 </label>
               </div>
 
+              <div className="mb-8">
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-sm font-medium text-gray-700">Manager Signature *</label>
+                  {(managerSignature || hasSigned) && (
+                    <button type="button" onClick={() => { sigPadRef.current?.clear(); setHasSigned(false); setManagerSignature(""); }} className="text-xs text-red-500 font-bold uppercase hover:underline">
+                      Clear Signature
+                    </button>
+                  )}
+                </div>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg overflow-hidden relative" style={{ height: "150px" }}>
+                  {managerSignature && !hasSigned ? (
+                    <img src={managerSignature} alt="Saved Signature" className="w-full h-full object-contain p-2" />
+                  ) : (
+                    <SignaturePad 
+                      // @ts-expect-error: dynamic import ref typing mismatch
+                      ref={sigPadRef} 
+                      canvasProps={{ className: "w-full h-full" }} 
+                      onBegin={() => setHasSigned(true)}
+                      onEnd={() => {
+                        if (sigPadRef.current) {
+                          setManagerSignature(sigPadRef.current.toDataURL());
+                        }
+                      }}
+                    />
+                  )}
+                </div>
+              </div>
+
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
                 <button type="button" onClick={() => setShowAddModal(false)} className="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-bold hover:bg-gray-50">Cancel</button>
                 <button type="submit" disabled={isSubmitting} className="px-5 py-2.5 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 disabled:opacity-50 flex items-center gap-2">
@@ -901,10 +983,14 @@ export default function CreditsPage() {
                   I officially approve this credit invoice for future payment as per the agreed terms.
                 </p>
                 <div>
-                  <div style={{ position: 'relative', height: '30px', display: 'flex', alignItems: 'flex-end', borderBottom: '1px solid #000', marginBottom: '8px' }}>
-                    <div style={{ position: 'absolute', bottom: '4px', left: '0', width: '100%', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', color: '#999', letterSpacing: '2px', textTransform: 'uppercase' }}>
-                      [ SIGNATURE ]
-                    </div>
+                  <div style={{ position: 'relative', height: '40px', display: 'flex', alignItems: 'flex-end', borderBottom: '1px solid #000', marginBottom: '8px' }}>
+                    {selectedCreditForPrint.managerSignature ? (
+                      <img src={selectedCreditForPrint.managerSignature} alt="Manager Signature" style={{ position: 'absolute', bottom: '2px', left: '50%', transform: 'translateX(-50%)', maxHeight: '45px', maxWidth: '100%', objectFit: 'contain' }} />
+                    ) : (
+                      <div style={{ position: 'absolute', bottom: '4px', left: '0', width: '100%', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', color: '#999', letterSpacing: '2px', textTransform: 'uppercase' }}>
+                        [ SIGNATURE ]
+                      </div>
+                    )}
                   </div>
                   <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#000', margin: 0, textTransform: 'uppercase', textAlign: 'center' }}>Manager Signature / توقيع المدير</p>
                 </div>

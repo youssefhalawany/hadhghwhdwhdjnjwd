@@ -13,6 +13,9 @@ import { useBranch } from "@/context/BranchContext";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageTransition } from "@/components/PageTransition";
+import dynamic from "next/dynamic";
+
+const SignaturePad = dynamic(() => import("react-signature-canvas"), { ssr: false });
 
 export default function ManagerAuditPage() {
   const { currentBranch } = useBranch();
@@ -184,6 +187,10 @@ export default function ManagerAuditPage() {
   const [submitting, setSubmitting] = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState(false);
 
+  const sigPadRef = React.useRef<any>(null);
+  const [managerSignature, setManagerSignature] = useState("");
+  const [hasSigned, setHasSigned] = useState(false);
+
   const [cashierOverrideCash, setCashierOverrideCash] = useState<string>("");
   const [cashierOverrideVisa, setCashierOverrideVisa] = useState<string>("");
 
@@ -304,6 +311,11 @@ export default function ManagerAuditPage() {
       setComments("");
       setAuditShift(report.cashierDetails?.shift || "Morning");
     }
+    setManagerSignature("");
+    setHasSigned(false);
+    if (sigPadRef.current) {
+      sigPadRef.current.clear();
+    }
   };
 
   const calculateCashVariance = () => {
@@ -349,6 +361,7 @@ export default function ManagerAuditPage() {
           coffeePercent: Number(coffeePercent) || 0,
           comments,
           managerName,
+          signature: managerSignature || (hasSigned && sigPadRef.current ? sigPadRef.current.toDataURL() : null),
           auditedAt: selectedReport.managerAudit?.auditedAt || new Date().toISOString()
         }
       });
@@ -1079,6 +1092,35 @@ export default function ManagerAuditPage() {
                           <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Auditing Manager Name</label>
                           <input type="text" value={managerName} onChange={e => setManagerName(e.target.value)} className="w-full p-3 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-slate-500" placeholder="Enter your full name" />
                         </div>
+                        
+                        <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <label className="block text-xs font-bold text-muted-foreground uppercase">Manager Signature *</label>
+                            {(managerSignature || hasSigned) && (
+                              <button type="button" onClick={() => { sigPadRef.current?.clear(); setHasSigned(false); setManagerSignature(""); }} className="text-xs text-red-500 font-bold uppercase hover:underline">
+                                Clear Signature
+                              </button>
+                            )}
+                          </div>
+                          <div className="border-2 border-dashed border-border rounded-lg bg-background overflow-hidden relative" style={{ height: "150px" }}>
+                            {managerSignature && !hasSigned ? (
+                              <img src={managerSignature} alt="Saved Signature" className="w-full h-full object-contain p-2" />
+                            ) : (
+                              <SignaturePad 
+                                // @ts-expect-error: dynamic import ref typing mismatch
+                                ref={sigPadRef} 
+                                canvasProps={{ className: "w-full h-full" }} 
+                                onBegin={() => setHasSigned(true)}
+                                onEnd={() => {
+                                  if (sigPadRef.current) {
+                                    setManagerSignature(sigPadRef.current.toDataURL());
+                                  }
+                                }}
+                              />
+                            )}
+                          </div>
+                        </div>
+                        
                         {selectedReport.managerAudit?.rejectReason && (
                           <div className="bg-red-50 p-3 rounded-lg border border-red-200">
                             <label className="block text-[10px] font-bold text-red-800 uppercase tracking-wider mb-1">Previous Rejection Reason</label>

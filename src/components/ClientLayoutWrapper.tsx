@@ -406,13 +406,13 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   }
 
   return (
-    <div className="min-h-screen flex bg-background text-foreground transition-colors duration-300">
+    <div className="h-[100dvh] w-full flex bg-background text-foreground transition-colors duration-300 overflow-hidden">
       <GlobalReminders />
 
       {/* Desktop Sidebar */}
       {!pathname.startsWith('/cashier') && (
-        <aside className="hidden lg:flex flex-col w-64 border-r border-border bg-card z-50 flex-shrink-0 print:hidden">
-          <div className="p-4 border-b border-border flex flex-col gap-4">
+        <aside className="hidden lg:flex flex-col w-64 h-full border-r border-border bg-card z-50 flex-shrink-0 overflow-hidden print:hidden">
+          <div className="p-4 border-b border-border flex flex-col gap-4 flex-shrink-0">
             <Link href="/" className="flex items-center gap-3">
               {logoUrl ? (
                 <img src={logoUrl} alt="Store Logo" className="h-10 w-10 rounded-full object-cover border-2 shadow-md" style={{ borderColor: brandColor || '#f97316' }} />
@@ -430,7 +430,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
             </Link>
           </div>
 
-          <div className="flex-grow overflow-y-auto custom-scrollbar p-3 flex flex-col gap-2">
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar p-3 flex flex-col gap-2">
             {navItems.map((item) => {
               const isActive = item.href ? pathname === item.href : item.children?.some(child => pathname === child.href);
               const Icon = item.icon;

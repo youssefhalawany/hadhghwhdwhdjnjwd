@@ -32,6 +32,7 @@ import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import { useBranch } from "@/context/BranchContext";
 import { toast } from "sonner";
+import ExportFinancialsModal from "@/components/ExportFinancialsModal";
 
 export default function DepositsPage() {
   const { currentBranch } = useBranch();
@@ -41,6 +42,7 @@ export default function DepositsPage() {
   const [filterValue, setFilterValue] = useState(new Date().toISOString().substring(0, 10));
   
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newDeposit, setNewDeposit] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -279,11 +281,11 @@ export default function DepositsPage() {
           >
             <Plus size={18} /> Add Deposits
           </button>
-          <button className="flex-1 sm:flex-none px-4 py-2 border border-border rounded-lg text-sm font-bold hover:bg-muted text-foreground flex items-center justify-center gap-2">
-            <Download size={18} /> Export Deposits
-          </button>
-          <button className="flex-1 sm:flex-none px-4 py-2 border border-border rounded-lg text-sm font-bold hover:bg-muted text-foreground flex items-center justify-center gap-2">
-            <Download size={18} /> Export All
+          <button 
+            onClick={() => setShowExportModal(true)}
+            className="flex-1 sm:flex-none px-4 py-2 border border-border rounded-lg text-sm font-bold hover:bg-muted text-foreground flex items-center justify-center gap-2"
+          >
+            <Download size={18} /> Export
           </button>
         </div>
       </div>
@@ -594,6 +596,16 @@ export default function DepositsPage() {
           </div>
         </div>
       )}
+      {/* Export Modal */}
+      <ExportFinancialsModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        currentTabName="Deposits"
+        currentFilterType={filterType}
+        currentFilterValue={filterValue}
+        currentTabData={deposits}
+        currentBranch={currentBranch}
+      />
     </div>
   );
 }

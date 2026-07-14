@@ -31,7 +31,7 @@ export default function ChequesPage() {
   const { currentBranch } = useBranch();
   const [cheques, setCheques] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterMonth, setFilterMonth] = useState(new Date().toISOString().substring(0, 7));
+
   
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -53,11 +53,7 @@ export default function ChequesPage() {
     setLoading(true);
     let q = collection(db, "cheques") as any;
 
-    if (filterMonth) {
-      const startOfMonth = filterMonth + "-01";
-      const endOfMonth = filterMonth + "-31";
-      q = query(q, where("chequeDate", ">=", startOfMonth), where("chequeDate", "<=", endOfMonth));
-    }
+
 
     const unsubscribe = onSnapshot(q, (snapshot: any) => {
       let data = snapshot.docs.map((d: any) => ({ id: d.id, ...d.data() }));
@@ -82,7 +78,7 @@ export default function ChequesPage() {
     });
 
     return () => unsubscribe();
-  }, [filterMonth, currentBranch]);
+  }, [currentBranch]);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -219,12 +215,7 @@ export default function ChequesPage() {
     <div className="space-y-6">
       {/* Header & Controls */}
       <div className="bg-card border border-border shadow-sm p-4 rounded-2xl flex flex-col sm:flex-row justify-between items-center gap-4">
-        <input 
-          type="month" 
-          value={filterMonth}
-          onChange={(e) => setFilterMonth(e.target.value)}
-          className="w-full sm:w-auto p-3 bg-muted border border-border rounded-xl font-bold text-lg outline-none"
-        />
+
         <div className="flex gap-2 w-full sm:w-auto">
           <button 
             onClick={() => setShowAddModal(true)}

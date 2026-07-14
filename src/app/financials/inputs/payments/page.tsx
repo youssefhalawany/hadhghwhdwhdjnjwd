@@ -59,7 +59,8 @@ import {
   deleteDoc,
   doc,
   Timestamp,
-  limit
+  limit,
+  where
 } from "firebase/firestore";
 import { 
   Plus, 
@@ -77,6 +78,7 @@ import QRCode from "react-qr-code";
 import { toast } from "sonner";
 import { onAuthStateChanged } from "firebase/auth";
 import Link from "next/link";
+import { useBranch } from "@/context/BranchContext";
 
 const CATEGORY_EMOJIS: Record<string, string> = {
   order: "📦",
@@ -93,6 +95,21 @@ const METHOD_EMOJIS: Record<string, string> = {
 };
 
 export default function PaymentsRedesignPage() {
+  const { currentBranch } = useBranch();
+  const branchIds = useMemo(() => {
+    const ids = [];
+    if (currentBranch === "all") {
+      // no filter
+    } else if (currentBranch === "alamein4") {
+      ids.push("eL-alamein-4");
+    } else if (currentBranch === "ola") {
+      ids.push("ola-el-koronfol");
+    } else {
+      ids.push(currentBranch);
+    }
+    return ids;
+  }, [currentBranch]);
+
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   
@@ -123,6 +140,8 @@ export default function PaymentsRedesignPage() {
   const [amount, setAmount] = useState("");
   const [tax, setTax] = useState("");
   const [categoryNote, setCategoryNote] = useState("");
+  const [supplierRepName, setSupplierRepName] = useState("");
+  const [supplierNationalId, setSupplierNationalId] = useState("");
   const [showAddSupplier, setShowAddSupplier] = useState(false);
   const [qrCodeData, setQrCodeData] = useState("");
   
@@ -148,7 +167,6 @@ export default function PaymentsRedesignPage() {
     const unsub = onAuthStateChanged(auth, (user) => {
       if (user) {
         setCurrentUser(user);
-        fetchData();
       } else {
         setLoading(false);
       }
@@ -156,11 +174,20 @@ export default function PaymentsRedesignPage() {
     return () => unsub();
   }, []);
 
+  useEffect(() => {
+    if (currentUser) {
+      fetchData();
+    }
+  }, [currentUser, currentBranch]);
+
   const fetchData = async () => {
     setLoading(true);
     try {
       // 1. Fetch Payments
-      const paySnapshot = await getDocs(query(collection(db, "cash_payments"), orderBy("createdAt", "desc"), limit(200)));
+      const q1 = branchIds.length > 0
+        ? query(collection(db, "cash_payments"), where("storeId", "in", branchIds), orderBy("createdAt", "desc"), limit(200))
+        : query(collection(db, "cash_payments"), orderBy("createdAt", "desc"), limit(200));
+      const paySnapshot = await getDocs(q1);
       const loadedPayments = paySnapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
       setPayments(loadedPayments);
 
@@ -174,7 +201,10 @@ export default function PaymentsRedesignPage() {
 
       // Add from returns
       try {
-        const returnsSnap = await getDocs(query(collection(db, "supplier_returns"), orderBy("createdAt", "desc"), limit(200)));
+        const q2 = branchIds.length > 0
+          ? query(collection(db, "supplier_returns"), where("storeId", "in", branchIds), orderBy("createdAt", "desc"), limit(200))
+          : query(collection(db, "supplier_returns"), orderBy("createdAt", "desc"), limit(200));
+        const returnsSnap = await getDocs(q2);
         returnsSnap.docs.forEach(doc => {
           const data = doc.data();
           if (data.supplier) uniqueSuppliers.add(data.supplier.toUpperCase());
@@ -186,6 +216,21 @@ export default function PaymentsRedesignPage() {
       setSuppliers(Array.from(uniqueSuppliers).sort().map((name, index) => ({ id: `sup_${index}`, name })));
     } catch (err: any) {
       console.error(err);
+      if (err.message?.includes("https://console.firebase.google.com")) {
+        const urlMatch = err.message.match(/(https:\/\/console\.firebase\.google\.com[^\s]*)/);
+        if (urlMatch) {
+          toast.error("Firebase Index Missing (Required for filtering)", {
+            description: "Click the button to automatically create the required index.",
+            action: {
+              label: "Create Index",
+              onClick: () => window.open(urlMatch[0], "_blank")
+            },
+            duration: 20000,
+          });
+          setLoading(false);
+          return;
+        }
+      }
       toast.error("Failed to load data: " + err.message);
     } finally {
       setLoading(false);
@@ -231,9 +276,11 @@ export default function PaymentsRedesignPage() {
         isTaxable: numTax > 0,
         method,
         poNumber,
-        storeId: "eL-alamein-4", 
+        storeId: branchIds.length > 0 ? branchIds[0] : "eL-alamein-4", 
         tax: numTax,
-        total
+        total,
+        supplierRepName,
+        supplierNationalId
       };
 
       const docRef = await addDoc(collection(db, "cash_payments"), newPayment);
@@ -249,6 +296,8 @@ export default function PaymentsRedesignPage() {
       setAmount("");
       setTax("");
       setCategoryNote("");
+      setSupplierRepName("");
+      setSupplierNationalId("");
       
       // Auto Print
       setSelectedPaymentForPrint(savedPayment);
@@ -567,6 +616,30 @@ export default function PaymentsRedesignPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Rep Name / المستلم</label>
+                  <input 
+                    type="text" 
+                    value={supplierRepName} 
+                    onChange={(e) => setSupplierRepName(e.target.value)}
+                    placeholder="e.g. Ahmed Ali"
+                    className="w-full border border-slate-300 dark:border-slate-700 bg-transparent rounded-lg p-3 text-slate-800 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">National ID / الرقم القومي</label>
+                  <input 
+                    type="text" 
+                    value={supplierNationalId} 
+                    onChange={(e) => setSupplierNationalId(e.target.value)}
+                    placeholder="14-digit ID"
+                    maxLength={14}
+                    className="w-full border border-slate-300 dark:border-slate-700 bg-transparent rounded-lg p-3 text-slate-800 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Invoice Number</label>
                   <input 
                     type="text" 
@@ -720,7 +793,7 @@ export default function PaymentsRedesignPage() {
             <div style={{ padding: '20px 30px 10px', textAlign: 'right' }}>
               <div style={{ padding: '15px', border: '1px dashed #000', borderRadius: '4px', display: 'inline-block', width: '100%', boxSizing: 'border-box' }}>
                 <p style={{ margin: 0, fontSize: '13px', color: '#000', fontWeight: 'bold', lineHeight: '1.6' }} dir="rtl">
-                  أقر أنا الموقع أدناه باستلامي كامل قيمة الفاتورة/المطالبة المذكورة أعلاه استلاماً نهائياً وناجزاً لا رجعة فيه. وبموجب هذا الإيصال، أبرئ ذمة شركة سيركل كيه العلمين 4 إبراءً ذمة تاماً ونهائياً وشاملاً كافة المستحقات المالية المتعلقة بهذه الفاتورة، ولا يحق لي، لا حاضراً ولا مستقبلاً، المطالبة بأي مبالغ إضافية أو تعويضات تخصها أمام أي جهة قضائية أو إدارية.
+                  أقر أنا الموقع أدناه {selectedPaymentForPrint.supplierRepName ? `(الاسم: ${selectedPaymentForPrint.supplierRepName}) ` : ""}{selectedPaymentForPrint.supplierNationalId ? `(رقم قومي: ${selectedPaymentForPrint.supplierNationalId}) ` : ""}باستلامي كامل قيمة الفاتورة/المطالبة المذكورة أعلاه استلاماً نهائياً وناجزاً لا رجعة فيه. وبموجب هذا الإيصال، أبرئ ذمة شركة سيركل كيه العلمين 4 إبراءً ذمة تاماً ونهائياً وشاملاً كافة المستحقات المالية المتعلقة بهذه الفاتورة، ولا يحق لي، لا حاضراً ولا مستقبلاً، المطالبة بأي مبالغ إضافية أو تعويضات تخصها أمام أي جهة قضائية أو إدارية.
                 </p>
               </div>
             </div>
@@ -836,7 +909,7 @@ export default function PaymentsRedesignPage() {
                       </div>
                     </div>
                     <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#000', margin: 0, textTransform: 'uppercase', textAlign: 'center' }}>
-                      {selectedPaymentForPrint.method === 'bank_transfer' ? "MANAGER / المدير المعتمد" : "SUPPLIER / المورد"}
+                      {selectedPaymentForPrint.method === 'bank_transfer' ? "MANAGER / المدير المعتمد" : (selectedPaymentForPrint.supplierRepName || "SUPPLIER / المورد")}
                     </p>
                   </div>
                 </div>
@@ -850,7 +923,7 @@ export default function PaymentsRedesignPage() {
                       <div>
                         <div style={{ position: 'relative', height: '30px', display: 'flex', alignItems: 'flex-end', borderBottom: '1px solid #000', marginBottom: '8px' }}>
                           <div style={{ position: 'absolute', bottom: '4px', left: '0', width: '100%', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', color: '#999', letterSpacing: '2px', textTransform: 'uppercase' }}>
-                            [ ID COPY ]
+                            {selectedPaymentForPrint.supplierNationalId || "[ ID COPY ]"}
                           </div>
                         </div>
                         <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#000', margin: 0, textTransform: 'uppercase', textAlign: 'center' }}>National ID / الرقم القومي</p>

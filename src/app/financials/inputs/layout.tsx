@@ -16,7 +16,8 @@ export default function FinancialInputsLayout({ children }: { children: React.Re
     { name: "Credits", href: "/financials/inputs/credits", icon: FileText },
     { name: "Cheques", href: "/financials/inputs/cheques", icon: FileCheck },
     { name: "Deposits", href: "/financials/inputs/deposits", icon: Wallet },
-    { name: "TMT Invoices", href: "/financials/inputs/tmt-invoices", icon: Receipt }
+    { name: "TMT Invoices", href: "/financials/inputs/tmt-invoices", icon: Receipt },
+    { name: "Safe Report", href: "/financials/inputs/safe-report", icon: FileText }
   ];
 
   return (
