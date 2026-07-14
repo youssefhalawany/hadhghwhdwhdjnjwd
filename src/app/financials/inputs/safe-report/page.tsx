@@ -296,27 +296,58 @@ export default function SafeReportPage() {
 
         <style dangerouslySetInnerHTML={{__html: `
           @media print {
-            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             body * { visibility: hidden; }
             #print-area, #print-area * { visibility: visible; }
-            #print-area { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; }
+            #print-area { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; font-size: 9px !important; }
             .no-print { display: none !important; }
-            @page { size: A4; margin: 8mm; }
+            @page { size: A4; margin: 9mm; }
+
+            /* ── WATERMARK ── */
             #print-area::before {
               content: 'CONFIDENTIAL • سري';
-              position: fixed;
-              top: 50%;
-              left: 50%;
+              position: fixed; top: 50%; left: 50%;
               transform: translate(-50%, -50%) rotate(-45deg);
-              font-size: 64px;
-              font-weight: 900;
-              color: rgba(0,0,0,0.04);
-              z-index: 9999;
-              pointer-events: none;
-              white-space: nowrap;
-              letter-spacing: 0.08em;
-              font-family: Arial, sans-serif;
+              font-size: 56px; font-weight: 900; color: rgba(0,0,0,0.04);
+              z-index: 9999; pointer-events: none; white-space: nowrap;
+              letter-spacing: 0.08em; font-family: Arial, sans-serif;
             }
+
+            /* ── INK SAVER: strip ALL colored backgrounds ── */
+            #print-area, #print-area * {
+              background: white !important;
+              color: black !important;
+              box-shadow: none !important;
+              text-shadow: none !important;
+            }
+
+            /* ── Re-add minimal structure ── */
+            #print-area .pr-hdr-dark  { border-bottom: 3px solid black !important; border-top: 1px solid black !important; }
+            #print-area .pr-sec-hdr   { border-left: 3px solid black !important; background: #f0f0f0 !important; }
+            #print-area .pr-tbl-hdr   { background: #f0f0f0 !important; }
+            #print-area .pr-subtotal  { background: #e8e8e8 !important; }
+            #print-area .pr-inflow-hdr  { background: #e8ffe8 !important; }
+            #print-area .pr-outflow-hdr { background: #ffe8e8 !important; }
+            #print-area .pr-bank-in-hdr { background: #e8eeff !important; }
+            #print-area .pr-bank-out-hdr{ background: #ffe8f4 !important; }
+            #print-area .pr-closing   { border: 2px solid black !important; background: #f5f5f5 !important; }
+            #print-area .pr-alt-row   { background: #f9f9f9 !important; }
+
+            /* ── COMPACT SPACING for 2 pages ── */
+            #print-area td, #print-area th { padding: 2px 5px !important; font-size: 9px !important; }
+            #print-area h3 { font-size: 9.5px !important; padding: 3px 8px !important; margin: 0 !important; }
+            #print-area .px-9 { padding-left: 18px !important; padding-right: 18px !important; }
+            #print-area .py-6 { padding-top: 8px !important; padding-bottom: 8px !important; }
+            #print-area .space-y-7 > * + * { margin-top: 8px !important; }
+            #print-area .space-y-3 > * + * { margin-top: 4px !important; }
+            #print-area .p-4 { padding: 6px !important; }
+            #print-area .p-3 { padding: 5px !important; }
+            #print-area .py-1\\.5 { padding-top: 1.5px !important; padding-bottom: 1.5px !important; }
+            #print-area .pt-6 { padding-top: 8px !important; }
+            #print-area .mb-5 { margin-bottom: 8px !important; }
+            #print-area .grid-cols-4 { grid-template-columns: repeat(4,minmax(0,1fr)) !important; }
+
+            /* ── FORCE PAGE 2 ── */
+            .print-page-2 { break-before: page !important; page-break-before: always !important; }
           }
         `}} />
 
@@ -423,17 +454,17 @@ export default function SafeReportPage() {
           <div id="print-area" className="bg-white text-black max-w-[860px] mx-auto shadow-2xl print:shadow-none border border-slate-300 font-sans text-[12.5px]">
 
             {/* ── BILINGUAL HEADER ── */}
-            <div style={{ background: "#0f172a", padding: "22px 36px 18px" }} className="flex items-center justify-between">
+            <div style={{ background: "#0f172a", padding: "18px 32px 14px" }} className="pr-hdr-dark flex items-center justify-between">
               <div>
                 <div className="text-white font-black text-3xl tracking-tight leading-none">CIRCLE K</div>
-                <div style={{ color: "#64748b" }} className="text-[10px] font-bold uppercase tracking-[0.2em] mt-1.5">
+                <div style={{ color: "#64748b" }} className="text-[10px] font-bold uppercase tracking-[0.2em] mt-1">
                   Financial Statement &nbsp;·&nbsp; البيان المالي
                 </div>
               </div>
               <div className="text-right">
                 <div className="text-white font-bold text-xl leading-tight">Safe Balance Report</div>
                 <div style={{ color: "#34d399" }} className="text-[13px] font-bold leading-tight mt-0.5">تقرير رصيد الخزنة</div>
-                <div style={{ color: "#64748b" }} className="text-[10px] font-mono mt-2">
+                <div style={{ color: "#64748b" }} className="text-[10px] font-mono mt-1">
                   {new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
                   &nbsp;·&nbsp;
                   {new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
@@ -530,18 +561,18 @@ export default function SafeReportPage() {
 
               {/* ── I. SAFE CASH LEDGER ── */}
               <div className="space-y-3">
-                <h3 style={{ background: "#1e3a5f", color: "white" }} className="text-[11px] font-black uppercase tracking-widest px-4 py-2 rounded">
+                <h3 style={{ background: "#1e3a5f", color: "white" }} className="pr-sec-hdr text-[11px] font-black uppercase tracking-widest px-4 py-2 rounded">
                   {sectionNum(0)}. Safe Cash Ledger · دفتر أستاذ الخزنة النقدية
                 </h3>
 
                 {/* A – Inflows */}
                 <div>
-                  <div style={{ background: "#dcfce7", color: "#166534" }} className="text-[9px] font-black uppercase tracking-wider px-3 py-1.5 rounded mb-1.5">
+                  <div style={{ background: "#dcfce7", color: "#166534" }} className="pr-inflow-hdr text-[9px] font-black uppercase tracking-wider px-3 py-1.5 rounded mb-1.5">
                     A. Cash Inflows · التدفقات النقدية الداخلة ↑
                   </div>
                   <table className="w-full text-[11.5px] rounded overflow-hidden" style={{ border: "1px solid #e2e8f0" }}>
                     <thead>
-                      <tr style={{ background: "#f0fdf4" }}>
+                      <tr style={{ background: "#f0fdf4" }} className="pr-tbl-hdr">
                         {["Description · البيان", "Notes · ملاحظات", "Amount (EGP) · المبلغ"].map((h, i) => (
                           <th key={i} className={`py-1.5 px-3 font-black uppercase tracking-wider text-[8.5px] ${i === 2 ? "text-right w-36" : "text-left"}`}>{h}</th>
                         ))}
@@ -564,7 +595,7 @@ export default function SafeReportPage() {
                           <td className="py-1.5 px-3 text-right font-mono">{fmt(Number(v))}</td>
                         </tr>
                       ))}
-                      <tr style={{ background: "#dcfce7" }}>
+                      <tr style={{ background: "#dcfce7" }} className="pr-subtotal">
                         <td colSpan={2} className="py-2 px-3 text-right font-black uppercase tracking-wider text-[9px]" style={{ color: "#166534" }}>Subtotal Inflows · المجموع الفرعي الداخل</td>
                         <td className="py-2 px-3 text-right font-mono font-black" style={{ color: "#166534" }}>{fmt(safeInflows)}</td>
                       </tr>
@@ -574,12 +605,12 @@ export default function SafeReportPage() {
 
                 {/* B – Outflows */}
                 <div>
-                  <div style={{ background: "#fee2e2", color: "#991b1b" }} className="text-[9px] font-black uppercase tracking-wider px-3 py-1.5 rounded mb-1.5">
+                  <div style={{ background: "#fee2e2", color: "#991b1b" }} className="pr-outflow-hdr text-[9px] font-black uppercase tracking-wider px-3 py-1.5 rounded mb-1.5">
                     B. Cash Outflows · التدفقات النقدية الخارجة ↓
                   </div>
                   <table className="w-full text-[11.5px] rounded overflow-hidden" style={{ border: "1px solid #e2e8f0" }}>
                     <thead>
-                      <tr style={{ background: "#fef2f2" }}>
+                      <tr style={{ background: "#fef2f2" }} className="pr-tbl-hdr">
                         {["Description · البيان", "Notes · ملاحظات", "Amount (EGP) · المبلغ"].map((h, i) => (
                           <th key={i} className={`py-1.5 px-3 font-black uppercase tracking-wider text-[8.5px] ${i === 2 ? "text-right w-36" : "text-left"}`}>{h}</th>
                         ))}
@@ -601,7 +632,7 @@ export default function SafeReportPage() {
                           <td className="py-1.5 px-3 text-right font-mono">{fmt(Number(v))}</td>
                         </tr>
                       ))}
-                      <tr style={{ background: "#fee2e2" }}>
+                      <tr style={{ background: "#fee2e2" }} className="pr-subtotal">
                         <td colSpan={2} className="py-2 px-3 text-right font-black uppercase tracking-wider text-[9px]" style={{ color: "#991b1b" }}>Subtotal Outflows · المجموع الفرعي الخارج</td>
                         <td className="py-2 px-3 text-right font-mono font-black" style={{ color: "#991b1b" }}>{fmt(safeOutflows)}</td>
                       </tr>
@@ -610,9 +641,9 @@ export default function SafeReportPage() {
                 </div>
 
                 {/* Closing Safe Balance */}
-                <div style={{ background: closingSafe >= 0 ? "#0f172a" : "#7f1d1d" }} className="rounded-lg p-4 text-center">
-                  <div className="font-mono text-[9.5px] mb-1.5" style={{ color: "#64748b" }}>
-                    {fmt(reportData.openingSafeBalance)} (Opening) + {fmt(safeInflows)} (In) − {fmt(safeOutflows)} (Out) · الرصيد الافتتاحي + الداخل − الخارج
+                <div style={{ background: closingSafe >= 0 ? "#0f172a" : "#7f1d1d" }} className="pr-closing rounded-lg p-4 text-center">
+                  <div className="font-mono text-[9.5px] mb-1" style={{ color: "#64748b" }}>
+                    {fmt(reportData.openingSafeBalance)} (Opening) + {fmt(safeInflows)} (In) − {fmt(safeOutflows)} (Out)
                   </div>
                   <div>
                     <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#94a3b8" }}>Closing Safe Balance · الرصيد الختامي للخزنة = </span>
@@ -621,14 +652,14 @@ export default function SafeReportPage() {
                 </div>
               </div>
 
-              {/* ── II. BANK / VISA LEDGER ── */}
-              <div className="space-y-3">
-                <h3 style={{ background: "#1e3a5f", color: "white" }} className="text-[11px] font-black uppercase tracking-widest px-4 py-2 rounded">
+              {/* ── II. BANK / VISA LEDGER — PAGE 2 ── */}
+              <div className="space-y-3 print-page-2">
+                <h3 style={{ background: "#1e3a5f", color: "white" }} className="pr-sec-hdr text-[11px] font-black uppercase tracking-widest px-4 py-2 rounded">
                   {sectionNum(1)}. Bank / Visa Ledger · دفتر أستاذ البنك والفيزا
                 </h3>
                 <table className="w-full text-[11.5px] rounded overflow-hidden" style={{ border: "1px solid #e2e8f0" }}>
                   <thead>
-                    <tr style={{ background: "#eff6ff" }}>
+                    <tr style={{ background: "#eff6ff" }} className="pr-tbl-hdr">
                       {["Description · البيان", "Notes · ملاحظات", "Amount (EGP) · المبلغ"].map((h, i) => (
                         <th key={i} className={`py-1.5 px-3 font-black uppercase tracking-wider text-[8.5px] ${i === 2 ? "text-right w-36" : "text-left"}`}>{h}</th>
                       ))}
