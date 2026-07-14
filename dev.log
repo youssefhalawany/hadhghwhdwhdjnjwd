@@ -16433,3 +16433,6 @@ Compaction failed: Another write batch or compaction is already active (Only a s
 ✓ Compiled in 4.7s
 Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
 Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+ GET /shift-reports/manager 200 in 261ms (next.js: 87ms, application-code: 174ms)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
