@@ -321,7 +321,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   // Completely isolate Cashier pages (No Enterprise Auth, No Sidebar)
   if (pathname?.startsWith('/shift-reports/cashier') || pathname?.startsWith('/voids/cashier') || pathname?.startsWith('/cashier') || pathname?.startsWith('/expiries') || pathname?.startsWith('/checklists/cashier') || pathname?.startsWith('/inventory-audit/cashier')) {
     return (
-      <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
+      <div className="h-[100dvh] w-full overflow-y-auto custom-scrollbar bg-background text-foreground transition-colors duration-300">
         <GlobalReminders />
         {children}
         <PwaInstallPrompt />
@@ -331,7 +331,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
   if (authLoading || !minSplashDone) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background relative overflow-hidden">
+      <div className="h-[100dvh] w-full flex flex-col items-center justify-center bg-background relative overflow-hidden">
         {/* Decorative background blur */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-red-500/20 rounded-full blur-[100px] pointer-events-none"></div>
 
@@ -357,7 +357,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
+      <div className="h-[100dvh] w-full overflow-y-auto flex items-center justify-center bg-background text-foreground py-8">
         <div className="glass-panel p-8 rounded-2xl w-full max-w-md border border-border shadow-2xl">
           <div className="flex flex-col items-center mb-8">
             <div className="h-16 w-16 rounded-full bg-red-600 flex items-center justify-center font-black text-white text-3xl border-2 border-orange-500 shadow-md mb-4">
