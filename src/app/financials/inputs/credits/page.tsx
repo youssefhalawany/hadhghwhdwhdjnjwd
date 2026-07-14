@@ -147,8 +147,8 @@ export default function CreditsPage() {
   const fetchCredits = async () => {
     try {
       const q = branchIds.length > 0 
-        ? query(collection(db, "credits"), where("storeId", "in", branchIds), orderBy("createdAt", "desc"), limit(50))
-        : query(collection(db, "credits"), orderBy("createdAt", "desc"), limit(50));
+        ? query(collection(db, "credits"), where("storeId", "in", branchIds), orderBy("createdAt", "desc"), limit(500))
+        : query(collection(db, "credits"), orderBy("createdAt", "desc"), limit(500));
 
       const snapshot = await getDocs(q);
       const data = snapshot.docs.map(doc => {
