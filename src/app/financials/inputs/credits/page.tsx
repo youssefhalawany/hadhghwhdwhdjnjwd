@@ -151,12 +151,17 @@ export default function CreditsPage() {
       const data = snapshot.docs.map(doc => {
         const d = doc.data() as any;
 
-        const totalPaid = Number(d.paidAmount || 0);
+        let totalPaid = Number(d.paidAmount || 0);
         const totalDue = Number(d.amountDue || 0) + Number(d.tax || 0);
 
-        // Auto-detect status based on true totalPaid
         let status = d.status || "open";
 
+        // Backwards compatibility for old records that have status='paid' but missing paidAmount
+        if (status === "paid" && totalPaid === 0 && totalDue > 0) {
+          totalPaid = totalDue;
+        }
+
+        // Auto-detect status based on true totalPaid
         if (totalPaid >= totalDue && totalDue > 0) {
           status = "paid";
         } else if (totalPaid > 0 && totalPaid < totalDue) {
@@ -219,6 +224,23 @@ export default function CreditsPage() {
           return 0;
         });
         setCreditHistories(prev => ({ ...prev, [id]: history }));
+        
+        // Recalculate true paid amount from history for accuracy
+        const calculatedPaid = history.reduce((sum, payment: any) => sum + Number(payment.amount || 0), 0);
+        if (calculatedPaid > 0) {
+          setCredits(prev => prev.map(c => {
+            if (c.id === id) {
+              const newPaid = Math.max(c.paidAmount, calculatedPaid);
+              const totalDue = c.amountDue + c.tax;
+              return { 
+                ...c, 
+                paidAmount: newPaid,
+                status: newPaid >= totalDue ? "paid" : c.status
+              };
+            }
+            return c;
+          }));
+        }
       } catch (err) {
         console.error("Failed to load history for credit", id, err);
       }
