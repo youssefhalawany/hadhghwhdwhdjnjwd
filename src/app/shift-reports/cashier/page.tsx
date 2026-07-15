@@ -10,6 +10,7 @@ import { PinPad } from "@/components/PinPad";
 import { RadarOfflineScreen } from "@/components/RadarOfflineScreen";
 import { vibrateSuccess, vibrateError } from "@/lib/haptics";
 import { NumericFormat } from "react-number-format";
+import { CashierBottomNav } from "@/components/CashierBottomNav";
 import dynamic from "next/dynamic";
 const SignaturePad = dynamic(() => import("react-signature-canvas"), { ssr: false });
 import { toast } from "sonner";
@@ -1236,24 +1237,7 @@ export default function CashierShiftReportPage() {
       </main>
     
       {/* Bottom Navigation */}
-      <div className="ck-bottom-nav">
-        <div onClick={() => router.push("/cashier")}>
-          <Package size={22} />
-          <span>DASHBOARD</span>
-        </div>
-        <div className="active">
-          <Radar size={22} />
-          <span>DAILY SHIFT</span>
-        </div>
-        <div onClick={() => router.push("/cashier/account")}>
-          <UserIcon size={22} />
-          <span>MY ACCOUNT</span>
-        </div>
-        <div onClick={() => router.push("/cashier")}>
-          <Shield size={22} />
-          <span>PROFILE</span>
-        </div>
-      </div>
+      <CashierBottomNav lang={lang} />
 
     </div>
   );

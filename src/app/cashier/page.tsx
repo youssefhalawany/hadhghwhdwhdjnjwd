@@ -11,6 +11,7 @@ import {
   Download, Bell, Fingerprint, ScanLine, ChevronRight,
   ClipboardList, Clock, CheckSquare, LayoutGrid, LayoutDashboard, FileBarChart2
 } from "lucide-react";
+import { CashierBottomNav } from "@/components/CashierBottomNav";
 import { PinPad } from "@/components/PinPad";
 import { playSuccessSound, playErrorSound, playPopSound, getAudioCtx } from "@/lib/sounds";
 import { toast } from "sonner";
@@ -323,28 +324,8 @@ export default function CashierHubPage() {
           </div>
         </main>
 
-        {/* ── BOTTOM NAV TAB BAR ── */}
-        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: D.bg, padding: "12px 16px 24px", borderTop: `1px solid ${D.border}`, zIndex: 100 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-around" }}>
-            <button onClick={() => setActiveTab("dashboard")} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, cursor: "pointer", background: "none", border: "none", opacity: activeTab === "dashboard" ? 1 : 0.5 }}>
-               <LayoutDashboard size={20} color={activeTab === "dashboard" ? D.cyan : D.textPrimary} />
-               <span style={{ fontSize: 9, fontWeight: 700, color: activeTab === "dashboard" ? D.cyan : D.textPrimary }}>{lang === "en" ? "DASHBOARD" : "الرئيسية"}</span>
-            </button>
-            <button onClick={() => { playPopSound(); nav("/shift-reports/cashier"); }} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, cursor: "pointer", background: "none", border: "none", opacity: 0.5 }}>
-               <FileBarChart2 size={20} color={D.textPrimary} />
-               <span style={{ fontSize: 9, fontWeight: 700, color: D.textPrimary }}>{lang === "en" ? "REPORT CENTER" : "التقارير"}</span>
-            </button>
-            <button onClick={() => { playPopSound(); handleEnableNotifications(); }} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, cursor: "pointer", background: "none", border: "none", opacity: 0.5, position: "relative" }}>
-               <Bell size={20} color={D.textPrimary} />
-               {isNotificationEnabled && <span style={{ position: "absolute", top: -2, right: 8, width: 6, height: 6, borderRadius: "50%", backgroundColor: D.cyan }} />}
-               <span style={{ fontSize: 9, fontWeight: 700, color: D.textPrimary }}>{lang === "en" ? "NOTIFICATIONS" : "إشعارات"}</span>
-            </button>
-            <button onClick={handleLogout} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, cursor: "pointer", background: "none", border: "none", opacity: 0.5 }}>
-               <UserCircle size={20} color={D.textPrimary} />
-               <span style={{ fontSize: 9, fontWeight: 700, color: D.textPrimary }}>{lang === "en" ? "LOGOUT" : "خروج"}</span>
-            </button>
-          </div>
-        </div>
+        {/* ── BOTTOM NAV ── */}
+        <CashierBottomNav lang={lang} />
       </div>
     );
   }

@@ -6,6 +6,7 @@ import {
   CalendarDays, ArrowLeft, Clock, CalendarX2, CheckCircle, Clock3, XCircle, ChevronLeft, ChevronRight, Moon, Sun, Globe
 } from "lucide-react";
 import ClientLayoutWrapper from "@/components/ClientLayoutWrapper";
+import { CashierBottomNav } from "@/components/CashierBottomNav";
 import { motion, AnimatePresence } from "framer-motion";
 
 const DICT = {
@@ -213,6 +214,7 @@ export default function CashierSchedulePage() {
   };
 
   return (
+    <>
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-12 transition-colors duration-300" dir={isRtl ? "rtl" : "ltr"}>
       {/* Header */}
       <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 p-4 sticky top-0 z-20 shadow-sm">
@@ -489,5 +491,7 @@ export default function CashierSchedulePage() {
         </div>
       </div>
     </div>
+    <CashierBottomNav />
+    </>
   );
 }

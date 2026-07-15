@@ -9,6 +9,7 @@ import { useTheme } from "next-themes";
 
 import {  AlertCircle, CheckCircle2, Lock, ScanLine, Camera, Edit2, Save, X, Package , Radar, Shield, User as UserIcon, ArrowLeft } from "lucide-react";
 import { CameraScanner } from "@/components/ui/CameraScanner";
+import { CashierBottomNav } from "@/components/CashierBottomNav";
 
 export default function CashierInventoryAudit() {
   const { language: lang } = useLanguage();
@@ -414,24 +415,7 @@ export default function CashierInventoryAudit() {
         </div>
       
       {/* Bottom Navigation */}
-      <div className="ck-bottom-nav">
-        <div onClick={() => window.location.href = "/cashier"}>
-          <Package size={22} />
-          <span>DASHBOARD</span>
-        </div>
-        <div className="active">
-          <Radar size={22} />
-          <span>REPORT CENTER</span>
-        </div>
-        <div>
-          <Shield size={22} />
-          <span>NOTIFICATIONS</span>
-        </div>
-        <div>
-          <UserIcon size={22} />
-          <span>PROFILE</span>
-        </div>
-      </div>
+      <CashierBottomNav lang={lang === "en" ? "en" : "ar"} />
 
     </div>
 

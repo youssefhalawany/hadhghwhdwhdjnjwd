@@ -8,6 +8,7 @@ import {
   ArrowLeft, Calendar as CalendarIcon, PlusCircle, AlertTriangle, 
   CheckCircle, Clock, Trash2, Package, Globe, Camera, X, QrCode, Search, ShieldCheck
 } from "lucide-react";
+import { CashierBottomNav } from "@/components/CashierBottomNav";
 import { Html5Qrcode } from "html5-qrcode";
 import Barcode from "react-barcode";
 import { vibrateSuccess } from "@/lib/haptics";
@@ -467,6 +468,7 @@ export default function ExpiryTrackerPage() {
   }
 
   return (
+    <>
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 pb-20 transition-colors duration-300" dir={lang === "ar" ? "rtl" : "ltr"}>
       {/* Header */}
       <header className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md shadow-sm border-b border-slate-200 dark:border-slate-700 p-4 sticky top-0 z-10">
@@ -929,5 +931,7 @@ export default function ExpiryTrackerPage() {
       )}
 
     </div>
+    <CashierBottomNav />
+    </>
   );
 }

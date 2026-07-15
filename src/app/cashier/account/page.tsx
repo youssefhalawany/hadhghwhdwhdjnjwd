@@ -9,6 +9,7 @@ import {
   TrendingUp, TrendingDown, Clock, ShieldCheck, FileText, Globe,
   CheckCircle, XCircle, AlertTriangle, Eye, ChevronDown, ChevronUp, User, Phone, Tag, Award, Star, Medal, Package
 } from "lucide-react";
+import { CashierBottomNav } from "@/components/CashierBottomNav";
 
 // ── Design Tokens ────────────────────────────────────────────
 const D = {
@@ -619,6 +620,7 @@ export default function MyAccountPage() {
           </>
         )}
       </div>
+      <CashierBottomNav lang={lang} />
     </div>
   );
 }
