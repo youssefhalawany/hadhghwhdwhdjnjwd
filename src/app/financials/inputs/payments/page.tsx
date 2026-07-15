@@ -793,6 +793,9 @@ export default function PaymentsRedesignPage() {
                           <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
                             {CATEGORY_EMOJIS[pay.category]} <span className="capitalize">{pay.category}</span>
                           </span>
+                          <span className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                            {METHOD_EMOJIS[pay.method] || "💵"} <span className="capitalize">{pay.method?.replace('_', ' ') || 'cash'}</span>
+                          </span>
                         </div>
                         <p className="text-sm font-medium text-slate-500 flex items-center gap-2">
                           <span className="text-slate-400">{pay.date}</span>
@@ -817,7 +820,7 @@ export default function PaymentsRedesignPage() {
                       </div>
                       
                       <div className="flex items-center gap-2">
-                        {(!pay.items || pay.items.length === 0) && !pay.poImageUrl && (
+                        {pay.category === "order" && (!pay.items || pay.items.length === 0) && !pay.poImageUrl && (
                           <button 
                             onClick={() => setSelectedPaymentForPoUpload(pay)}
                             className="text-xs font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 mr-2"
