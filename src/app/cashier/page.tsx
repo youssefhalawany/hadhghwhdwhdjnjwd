@@ -315,6 +315,7 @@ export default function CashierHubPage() {
         {showWelcome && <WelcomeSplash name={authenticatedUser.name} onComplete={() => setShowWelcome(false)} />}
         
         <style>{`
+          html, body { background-color: ${isMorning ? "#0B1121" : "#020617"} !important; overscroll-behavior-y: none; }
           .ck-cashier * { color-scheme: dark !important; }
         `}</style>
 
@@ -411,6 +412,7 @@ export default function CashierHubPage() {
   return (
     <div style={{ ...rootStyle, direction: isRTL ? "rtl" : "ltr", alignItems: "stretch" }} onClick={() => getAudioCtx()}>
       <style>{`
+        html, body { background-color: ${isMorning ? "#0B1121" : "#020617"} !important; overscroll-behavior-y: none; }
         .ck-cashier * { color-scheme: dark !important; }
         .ck-pinpad button { background-color: ${D.surfaceHigh} !important; color: ${D.textPrimary} !important; border-color: ${D.border} !important; }
         .ck-pinpad button:active { background-color: ${D.cyanDim} !important; border-color: ${D.cyanBorder} !important; color: ${D.cyan} !important; }
