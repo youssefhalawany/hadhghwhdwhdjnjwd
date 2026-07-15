@@ -31,7 +31,20 @@ export const storage = getStorage(app);
 // Initialize Cloud Messaging (only works in browser)
 export const messaging = typeof window !== "undefined" ? isSupported().then(supported => supported ? getMessaging(app) : null) : null;
 
-export { app, db };
+// Secondary App for Products
+const productsFirebaseConfig = {
+  apiKey: "AIzaSyB3-niohjGPupubR2Z66VAMiNqCCUkHf8I",
+  authDomain: "anhproducts.firebaseapp.com",
+  projectId: "anhproducts",
+  storageBucket: "anhproducts.firebasestorage.app",
+  messagingSenderId: "173111398956",
+  appId: "1:173111398956:web:689a08b712369099a0b789",
+  measurementId: "G-TZGGKZ4PNR"
+};
+const productsApp = getApps().find(a => a.name === "productsApp") || initializeApp(productsFirebaseConfig, "productsApp");
+export const productsDb = getFirestore(productsApp);
+
+export { app, db, productsApp };
 
 export const getMockMode = () => false; // Disabled
 export const setMockMode = (mode: boolean) => {}; // Disabled

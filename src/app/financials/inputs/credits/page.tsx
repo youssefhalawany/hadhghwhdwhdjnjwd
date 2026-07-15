@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { db, auth } from "@/lib/firebase";
+import { db, auth, storage } from "@/lib/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { syncProductsToMaster } from "@/lib/products-sync";
 import {
   collection,
   addDoc,
@@ -37,7 +39,9 @@ import {
   Calendar,
   MoreHorizontal,
   CreditCard,
-  Building
+  Building,
+  Image as ImageIcon,
+  ClipboardPaste
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -68,6 +72,8 @@ interface Credit {
   priceAdjustment: number;
   payments: any[];
   managerSignature?: string;
+  items?: any[];
+  poImageUrl?: string;
 }
 
 export default function CreditsPage() {
@@ -112,6 +118,11 @@ export default function CreditsPage() {
   const [collectionDate, setCollectionDate] = useState("");
   const [onSalesOnly, setOnSalesOnly] = useState(false);
   const [isTaxable, setIsTaxable] = useState(false);
+  const [poItems, setPoItems] = useState<any[]>([]);
+  const [poImageUrl, setPoImageUrl] = useState("");
+  const [isProcessingPo, setIsProcessingPo] = useState(false);
+  const [uploadingPoToOldCredit, setUploadingPoToOldCredit] = useState(false);
+  const [selectedCreditForPoUpload, setSelectedCreditForPoUpload] = useState<Credit | null>(null);
 
   const [suppliers, setSuppliers] = useState<{ id: string; name: string }[]>([]);
   const [showAddSupplier, setShowAddSupplier] = useState(false);
@@ -310,8 +321,15 @@ export default function CreditsPage() {
         tax: parseFloat(tax) || 0,
         paidAmount: 0,
         priceAdjustment: 0,
-        managerSignature: managerSignature || (hasSigned && sigPadRef.current ? sigPadRef.current.toDataURL() : null)
+        managerSignature: managerSignature || (hasSigned && sigPadRef.current ? sigPadRef.current.toDataURL() : null),
+        items: poItems,
+        poImageUrl
       };
+
+      // Sync products to master DB if we have items
+      if (poItems && poItems.length > 0) {
+        await syncProductsToMaster(poItems, collectionDate || new Date().toISOString().split('T')[0]);
+      }
 
       const docRef = await addDoc(collection(db, "credits"), newCredit);
       const savedCredit = { id: docRef.id, ...newCredit, createdAt: Timestamp.now() } as Credit;
@@ -329,6 +347,8 @@ export default function CreditsPage() {
       setCollectionDate("");
       setOnSalesOnly(false);
       setIsTaxable(false);
+      setPoItems([]);
+      setPoImageUrl("");
       
       setManagerSignature("");
       setHasSigned(false);
@@ -355,6 +375,199 @@ export default function CreditsPage() {
       toast.error("Failed to delete.");
     }
   };
+
+  const handleImageUpload = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload a valid image file.');
+      return;
+    }
+    
+    setIsProcessingPo(true);
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = async () => {
+      const base64Image = reader.result as string;
+      const base64Data = base64Image.split(',')[1];
+      const mimeType = file.type;
+
+      try {
+        const response = await fetch('/api/process-po', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: base64Data, mimeType })
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to process PO');
+        }
+
+        const data = await response.json();
+        
+        // Upload image to Firebase Storage for record keeping
+        const timestamp = Date.now();
+        const imageRef = ref(storage, `po_images/po_${timestamp}_${file.name}`);
+        await uploadBytes(imageRef, file);
+        const downloadUrl = await getDownloadURL(imageRef);
+        setPoImageUrl(downloadUrl);
+
+        if (data.invoiceNumber && data.invoiceNumber !== "UNKNOWN") setInvoiceNumber(data.invoiceNumber);
+        if (data.poNumber && data.poNumber !== "UNKNOWN") setPoNumber(data.poNumber);
+        if (data.companyName && data.companyName !== "UNKNOWN") {
+          setCompanyName(data.companyName.toUpperCase());
+          // Auto add supplier to dropdown if not exists
+          const name = data.companyName.toUpperCase();
+          setSuppliers(prev => {
+            if (!prev.find(s => s.name === name)) {
+              return [...prev, { id: `sup_auto_${Date.now()}`, name }].sort((a, b) => a.name.localeCompare(b.name));
+            }
+            return prev;
+          });
+        }
+        
+        if (data.totalAmount) setAmountDue(data.totalAmount.toString());
+        if (data.taxAmount) setTax(data.taxAmount.toString());
+        if (data.items) setPoItems(data.items);
+        
+        toast.success('PO processed successfully!');
+      } catch (error) {
+        console.error('Error processing PO:', error);
+        toast.error('Failed to extract PO details. Please enter manually.');
+      } finally {
+        setIsProcessingPo(false);
+      }
+    };
+  };
+
+  const handleUploadPoToOldCredit = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload a valid image file.');
+      return;
+    }
+    
+    setUploadingPoToOldCredit(true);
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = async () => {
+      const base64Image = reader.result as string;
+      const base64Data = base64Image.split(',')[1];
+      const mimeType = file.type;
+
+      try {
+        const response = await fetch('/api/process-po', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: base64Data, mimeType })
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to process PO');
+        }
+
+        const data = await response.json();
+        
+        // Upload image
+        const timestamp = Date.now();
+        const imageRef = ref(storage, `po_images/po_credit_update_${timestamp}_${file.name}`);
+        await uploadBytes(imageRef, file);
+        const downloadUrl = await getDownloadURL(imageRef);
+
+        const updateData: any = {
+          poImageUrl: downloadUrl,
+          items: data.items || []
+        };
+        
+        // Only update these fields if they exist and aren't "UNKNOWN"
+        if (data.poNumber && data.poNumber !== "UNKNOWN") updateData.poNumber = data.poNumber;
+        if (data.invoiceNumber && data.invoiceNumber !== "UNKNOWN") updateData.invoiceNumber = data.invoiceNumber;
+        
+        // Sync products to master DB
+        if (data.items && data.items.length > 0) {
+          const poDateForSync = selectedCreditForPoUpload?.collectionDate || new Date().toISOString().split('T')[0];
+          await syncProductsToMaster(data.items, poDateForSync);
+        }
+
+        // Update the document
+        if (selectedCreditForPoUpload) {
+          await updateDoc(doc(db, "credits", selectedCreditForPoUpload.id), updateData);
+          
+          // Refresh local state
+          setCredits(prev => prev.map(c => 
+            c.id === selectedCreditForPoUpload.id ? { ...c, ...updateData } : c
+          ));
+          toast.success('PO added to credit and products synchronized!');
+        }
+      } catch (error) {
+        console.error('Error adding PO to old credit:', error);
+        toast.error('Failed to add PO to credit.');
+      } finally {
+        setUploadingPoToOldCredit(false);
+        setSelectedCreditForPoUpload(null);
+      }
+    };
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleImageUpload(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handlePastePoImageButtonClick = async () => {
+    try {
+      const clipboardItems = await navigator.clipboard.read();
+      for (const clipboardItem of clipboardItems) {
+        const imageTypes = clipboardItem.types.filter(type => type.startsWith('image/'));
+        for (const imageType of imageTypes) {
+          const blob = await clipboardItem.getType(imageType);
+          const file = new File([blob], "pasted-image.png", { type: imageType });
+          if (selectedCreditForPoUpload) {
+            handleUploadPoToOldCredit(file);
+          } else {
+            handleImageUpload(file);
+          }
+          return;
+        }
+      }
+      toast.error('No image found in clipboard');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to read clipboard. Please use Cmd+V / Ctrl+V on your keyboard.');
+    }
+  };
+
+  useEffect(() => {
+    const handleGlobalPaste = (e: ClipboardEvent) => {
+      if (selectedCreditForPoUpload || showAddModal) {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.indexOf('image') !== -1) {
+            const file = items[i].getAsFile();
+            if (file) {
+              e.preventDefault();
+              if (selectedCreditForPoUpload) {
+                handleUploadPoToOldCredit(file);
+              } else if (showAddModal) {
+                handleImageUpload(file);
+              }
+            }
+            break;
+          }
+        }
+        return;
+      }
+    };
+
+    window.addEventListener('paste', handleGlobalPaste);
+    return () => {
+      window.removeEventListener('paste', handleGlobalPaste);
+    };
+  }, [selectedCreditForPoUpload, showAddModal]);
 
   const handleOpenPaymentModal = (credit: Credit) => {
     setSelectedCreditForPayment(credit);
@@ -841,6 +1054,70 @@ export default function CreditsPage() {
                               <p className="text-sm font-bold text-slate-400">No payments recorded yet</p>
                             </div>
                           )}
+
+                          {/* PO Items & Image Area */}
+                          <div className="border-t border-slate-200 pt-6 mt-6">
+                            <div className="flex justify-between items-center mb-4">
+                              <h4 className="font-bold text-slate-900 flex items-center gap-2">
+                                <ImageIcon className="text-slate-400"/> Purchase Order Details
+                              </h4>
+                              {(!credit.items || credit.items.length === 0) && !credit.poImageUrl && (
+                                <button
+                                  onClick={() => setSelectedCreditForPoUpload(credit)}
+                                  className="text-indigo-600 bg-indigo-50 px-4 py-2 rounded-xl text-sm font-bold hover:bg-indigo-100 transition-colors"
+                                >
+                                  + Add PO
+                                </button>
+                              )}
+                            </div>
+
+                            {credit.items && credit.items.length > 0 && (
+                              <div className="overflow-x-auto border border-slate-100 bg-white rounded-2xl mb-6 shadow-sm">
+                                <table className="w-full text-sm text-left">
+                                  <thead className="text-xs text-slate-500 bg-slate-50 border-b border-slate-100 uppercase font-bold">
+                                    <tr>
+                                      <th className="px-4 py-3">Barcode</th>
+                                      <th className="px-4 py-3">Description</th>
+                                      <th className="px-4 py-3 text-center">Qty</th>
+                                      <th className="px-4 py-3 text-right">Unit Price</th>
+                                      <th className="px-4 py-3 text-right">Total</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {credit.items.map((item: any, idx: number) => (
+                                      <tr key={idx} className="border-b border-slate-50 last:border-0 font-medium">
+                                        <td className="px-4 py-3 text-slate-500">{item.barcode || "N/A"}</td>
+                                        <td className="px-4 py-3 text-slate-900">{item.description || "N/A"}</td>
+                                        <td className="px-4 py-3 text-center text-slate-900">{item.quantity}</td>
+                                        <td className="px-4 py-3 text-right text-slate-900">{Number(item.unitPrice).toFixed(2)}</td>
+                                        <td className="px-4 py-3 text-right font-bold text-slate-900">{(item.quantity * item.unitPrice).toFixed(2)}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+
+                            {credit.poImageUrl && (
+                              <div className="mt-4">
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Scanned PO Image</p>
+                                <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white flex justify-center p-2 shadow-sm">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img 
+                                    src={credit.poImageUrl} 
+                                    alt="PO Document" 
+                                    className="max-w-full h-auto object-contain max-h-[600px] rounded-xl"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                            
+                            {(!credit.items || credit.items.length === 0) && !credit.poImageUrl && (
+                              <div className="text-center py-6 bg-white rounded-xl border border-dashed border-slate-300">
+                                <p className="text-sm font-bold text-slate-400">No PO attached</p>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </motion.div>
                     )}
@@ -885,6 +1162,33 @@ export default function CreditsPage() {
               </div>
 
               <form onSubmit={handleAddCredit} className="p-6">
+                <div 
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  className={`mb-6 border-2 border-dashed rounded-2xl p-6 text-center transition-colors ${isProcessingPo ? 'border-indigo-500 bg-indigo-50/50' : 'border-slate-300 hover:border-indigo-400 bg-slate-50 hover:bg-slate-50/80 dark:bg-slate-800/50 dark:border-slate-700'}`}
+                >
+                  {isProcessingPo ? (
+                    <div className="flex flex-col items-center justify-center gap-2 text-indigo-600">
+                      <Loader2 className="h-8 w-8 animate-spin" />
+                      <span className="font-bold">Reading Purchase Order...</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center gap-2 text-slate-500">
+                      <ImageIcon className="h-8 w-8 text-slate-400" />
+                      <span className="font-bold">Paste or Drop PO Image Here</span>
+                      <span className="text-xs">We'll automatically extract the details using AI</span>
+                      <button
+                        type="button"
+                        onClick={handlePastePoImageButtonClick}
+                        className="mt-2 flex items-center gap-2 px-3 py-1.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-bold rounded-lg transition-colors text-xs"
+                      >
+                        <ClipboardPaste size={14} />
+                        Paste from Clipboard
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4 mb-6">
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Invoice # *</label>
@@ -1115,6 +1419,68 @@ export default function CreditsPage() {
                 >
                   Save Supplier
                 </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {selectedCreditForPoUpload && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-slate-100"
+            >
+              <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50/50">
+                <h2 className="text-xl font-black text-slate-900 tracking-tight">Add PO to Credit</h2>
+                <button 
+                  onClick={() => setSelectedCreditForPoUpload(null)} 
+                  className="p-2 hover:bg-slate-200 text-slate-400 hover:text-slate-600 rounded-full transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="p-6">
+                <p className="text-sm text-slate-500 mb-6 font-medium">
+                  Upload, drag-and-drop, or paste a purchase order image. We'll automatically extract the products and sync them with the catalog. This will not overwrite any existing information except the products list and the PO Number/Invoice Number if they are missing.
+                </p>
+
+                <div 
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  className={`border-2 border-dashed rounded-2xl p-8 text-center transition-colors ${uploadingPoToOldCredit ? 'border-indigo-500 bg-indigo-50/50' : 'border-slate-300 hover:border-indigo-400 bg-slate-50 hover:bg-slate-50/80 dark:bg-slate-800/50 dark:border-slate-700'}`}
+                >
+                  {uploadingPoToOldCredit ? (
+                    <div className="flex flex-col items-center justify-center gap-3 text-indigo-600">
+                      <Loader2 className="h-10 w-10 animate-spin" />
+                      <span className="font-bold text-lg">Processing Document...</span>
+                      <span className="text-sm text-indigo-400">Extracting details and syncing items...</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center gap-3 text-slate-500">
+                      <ImageIcon className="h-12 w-12 text-slate-400" />
+                      <span className="font-bold text-lg">Paste or Drop PO Image Here</span>
+                      <span className="text-sm">Cmd+V / Ctrl+V to paste directly</span>
+                      <button
+                        type="button"
+                        onClick={handlePastePoImageButtonClick}
+                        className="mt-4 flex items-center gap-2 px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-colors text-sm"
+                      >
+                        <ClipboardPaste size={18} />
+                        Paste from Clipboard
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </motion.div>
           </motion.div>

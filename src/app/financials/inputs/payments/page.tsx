@@ -1,6 +1,5 @@
 "use client";
 
-// @ts-expect-error
 import QRCodeLib from "qrcode";
 
 function numberToArabicWords(num: number): string {
@@ -48,7 +47,8 @@ function numberToArabicWords(num: number): string {
 }
 
 import React, { useState, useEffect, useMemo } from "react";
-import { db, auth } from "@/lib/firebase";
+import { db, auth, storage } from "@/lib/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { 
   collection, 
   addDoc, 
@@ -60,7 +60,8 @@ import {
   doc,
   Timestamp,
   limit,
-  where
+  where,
+  updateDoc
 } from "firebase/firestore";
 import { 
   Plus, 
@@ -70,7 +71,9 @@ import {
   Loader2,
   X,
   FileDown,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Eye,
+  ClipboardPaste
 } from "lucide-react";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
@@ -81,6 +84,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import Link from "next/link";
 import { useBranch } from "@/context/BranchContext";
 import { motion, AnimatePresence } from "framer-motion";
+import { syncProductsToMaster } from "@/lib/products-sync";
 
 const CATEGORY_EMOJIS: Record<string, string> = {
   order: "📦",
@@ -150,19 +154,18 @@ export default function PaymentsRedesignPage() {
   // PO Extraction State
   const [poItems, setPoItems] = useState<{barcode: string, quantity: number, description: string, unitPrice: number}[]>([]);
   const [isProcessingPo, setIsProcessingPo] = useState(false);
-  
-  // Print State
+  const [poImageFile, setPoImageFile] = useState<File | null>(null);
+  const [selectedPaymentForPoUpload, setSelectedPaymentForPoUpload] = useState<any>(null);
+  const [uploadingPoToOldInvoice, setUploadingPoToOldInvoice] = useState(false);
   const [selectedPaymentForPrint, setSelectedPaymentForPrint] = useState<any>(null);
+  const [selectedPaymentForView, setSelectedPaymentForView] = useState<any>(null);
   const [generatingPDF, setGeneratingPDF] = useState(false);
 
   useEffect(() => {
     if (selectedPaymentForPrint) {
       const text = `Payment ID: ${selectedPaymentForPrint.id}\nCompany: ${selectedPaymentForPrint.companyName}\nInvoice: ${selectedPaymentForPrint.invoiceNumber}\nAmount: ${selectedPaymentForPrint.total} EGP\nDate: ${selectedPaymentForPrint.date}`;
-      // @ts-expect-error
       QRCodeLib.toDataURL(text)
-        // @ts-expect-error
         .then((url: string) => setQrCodeData(url))
-        // @ts-expect-error
         .catch((err: any) => console.error(err));
     } else {
       setQrCodeData("");
@@ -249,6 +252,86 @@ export default function PaymentsRedesignPage() {
     setNewSupplierName("");
     toast.success("Supplier ready to be used!");
   };
+  const handlePastePoImageButtonClick = async () => {
+    try {
+      const clipboardItems = await navigator.clipboard.read();
+      for (const clipboardItem of clipboardItems) {
+        const imageTypes = clipboardItem.types.filter(type => type.startsWith('image/'));
+        for (const imageType of imageTypes) {
+          const blob = await clipboardItem.getType(imageType);
+          const file = new File([blob], "pasted-image.png", { type: imageType });
+          if (selectedPaymentForPoUpload) {
+            handleUploadPoToOldInvoice(file);
+          } else {
+            handleImageUpload(file);
+          }
+          return;
+        }
+      }
+      toast.error('No image found in clipboard');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to read clipboard. Please use Cmd+V / Ctrl+V on your keyboard.');
+    }
+  };
+  const handleUploadPoToOldInvoice = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload a valid image file.');
+      return;
+    }
+    
+    setUploadingPoToOldInvoice(true);
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = async () => {
+      const base64Image = reader.result as string;
+      try {
+        const response = await fetch('/api/process-po', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: base64Image })
+        });
+        
+        if (!response.ok) throw new Error('Failed to process image');
+        const data = await response.json();
+        
+        let newItems: any[] = [];
+        if (data.items && Array.isArray(data.items)) {
+          newItems = data.items;
+        }
+
+        const storageRef = ref(storage, `payments_pos/${Date.now()}_${file.name}`);
+        const snapshot = await uploadBytes(storageRef, file);
+        const poImageUrl = await getDownloadURL(snapshot.ref);
+
+        const updateData: any = { poImageUrl };
+        if (newItems.length > 0) updateData.items = newItems;
+        if (data.poNumber && !selectedPaymentForPoUpload.poNumber) updateData.poNumber = data.poNumber;
+
+        await updateDoc(doc(db, "cash_payments", selectedPaymentForPoUpload.id), updateData);
+        
+        // Sync products to the secondary Firebase db
+        if (newItems.length > 0) {
+          syncProductsToMaster(newItems, data.date || selectedPaymentForPoUpload.date || new Date().toISOString().split('T')[0]);
+        }
+
+        setPayments(prev => prev.map(p => {
+          if (p.id === selectedPaymentForPoUpload.id) {
+            return { ...p, ...updateData };
+          }
+          return p;
+        }));
+
+        toast.success('PO added successfully to old invoice!');
+        setSelectedPaymentForPoUpload(null);
+      } catch (err) {
+        console.error(err);
+        toast.error('Error adding PO to old invoice.');
+      } finally {
+        setUploadingPoToOldInvoice(false);
+      }
+    };
+  };
 
   const handleImageUpload = async (file: File) => {
     if (!file.type.startsWith('image/')) {
@@ -257,6 +340,7 @@ export default function PaymentsRedesignPage() {
     }
     
     setIsProcessingPo(true);
+    setPoImageFile(file);
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = async () => {
@@ -277,7 +361,14 @@ export default function PaymentsRedesignPage() {
         
         if (data.companyName) {
            const match = suppliers.find(s => s.name.toLowerCase().includes(data.companyName.toLowerCase()) || data.companyName.toLowerCase().includes(s.name.toLowerCase()));
-           if (match) setCompanyName(match.name);
+           if (match) {
+             setCompanyName(match.name);
+           } else {
+             const name = data.companyName.trim().toUpperCase();
+             const newSupp = { id: `sup_new_${Date.now()}`, name };
+             setSuppliers(prev => [...prev, newSupp].sort((a, b) => a.name.localeCompare(b.name)));
+             setCompanyName(name);
+           }
         }
         
         if (data.amount !== undefined) setAmount(data.amount.toString());
@@ -299,6 +390,22 @@ export default function PaymentsRedesignPage() {
 
   useEffect(() => {
     const handleGlobalPaste = (e: ClipboardEvent) => {
+      if (selectedPaymentForPoUpload) {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.indexOf('image') !== -1) {
+            const file = items[i].getAsFile();
+            if (file) {
+              e.preventDefault();
+              handleUploadPoToOldInvoice(file);
+            }
+            break;
+          }
+        }
+        return;
+      }
+
       if (!showAddModal || category !== 'order') return;
       const items = e.clipboardData?.items;
       if (!items) return;
@@ -316,7 +423,7 @@ export default function PaymentsRedesignPage() {
     window.addEventListener('paste', handleGlobalPaste);
     return () => window.removeEventListener('paste', handleGlobalPaste);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showAddModal, category]);
+  }, [showAddModal, category, selectedPaymentForPoUpload]);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -327,6 +434,39 @@ export default function PaymentsRedesignPage() {
   
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+  };
+
+  const handleCloseModal = () => {
+    setShowAddModal(false);
+    setDate(new Date().toISOString().split("T")[0]);
+    setMethod("cash");
+    setCategory("order");
+    setInvoiceNumber("");
+    setPoNumber("");
+    setCompanyName("");
+    setNewSupplierName("");
+    setAmount("");
+    setTax("");
+    setCategoryNote("");
+    setSupplierRepName("");
+    setSupplierNationalId("");
+    setShowAddSupplier(false);
+    setPoItems([]);
+    setIsProcessingPo(false);
+  };
+
+  const handlePoItemChange = (index: number, field: 'barcode' | 'quantity' | 'description' | 'unitPrice', value: any) => {
+    const newItems = [...poItems];
+    newItems[index] = { ...newItems[index], [field]: value };
+    setPoItems(newItems);
+  };
+
+  const handleRemovePoItem = (index: number) => {
+    setPoItems(poItems.filter((_, i) => i !== index));
+  };
+
+  const handleAddPoItem = () => {
+    setPoItems([...poItems, { barcode: "", quantity: 1, description: "", unitPrice: 0 }]);
   };
 
   const handleSavePayment = async (e: React.FormEvent) => {
@@ -342,6 +482,13 @@ export default function PaymentsRedesignPage() {
 
     try {
       setSubmitting(true);
+      let poImageUrl = null;
+      if (poImageFile) {
+        const storageRef = ref(storage, `payments_pos/${Date.now()}_${poImageFile.name}`);
+        const snapshot = await uploadBytes(storageRef, poImageFile);
+        poImageUrl = await getDownloadURL(snapshot.ref);
+      }
+
       const newPayment = {
         amount: numAmount,
         category,
@@ -360,12 +507,20 @@ export default function PaymentsRedesignPage() {
         total,
         supplierRepName,
         supplierNationalId,
-        ...(poItems.length > 0 ? { items: poItems } : {})
+        ...(poItems.length > 0 ? { items: poItems } : {}),
+        ...(poImageUrl ? { poImageUrl } : {})
       };
 
       const docRef = await addDoc(collection(db, "cash_payments"), newPayment);
-      toast.success("Payment saved!");
       
+      // Sync products to secondary Firebase
+      if (poItems.length > 0) {
+        syncProductsToMaster(poItems, date);
+      }
+
+      toast.success("Payment saved!");
+      handleCloseModal();
+      fetchData();
       const savedPayment = { id: docRef.id, ...newPayment, createdAt: Timestamp.now() };
       setPayments([savedPayment, ...payments]);
       setShowAddModal(false);
@@ -379,6 +534,7 @@ export default function PaymentsRedesignPage() {
       setSupplierRepName("");
       setSupplierNationalId("");
       setPoItems([]);
+      setPoImageFile(null);
       
       // Auto Print
       setSelectedPaymentForPrint(savedPayment);
@@ -629,6 +785,23 @@ export default function PaymentsRedesignPage() {
                       </div>
                       
                       <div className="flex items-center gap-2">
+                        {(!pay.items || pay.items.length === 0) && !pay.poImageUrl && (
+                          <button 
+                            onClick={() => setSelectedPaymentForPoUpload(pay)}
+                            className="text-xs font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 mr-2"
+                          >
+                            <Plus size={14} /> Add PO
+                          </button>
+                        )}
+                        {pay.items && pay.items.length > 0 && (
+                          <button 
+                            onClick={() => setSelectedPaymentForView(pay)}
+                            className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl transition-colors"
+                            title="View Items"
+                          >
+                            <Eye size={20} />
+                          </button>
+                        )}
                         <button 
                           onClick={() => {
                             setSelectedPaymentForPrint(pay);
@@ -672,7 +845,7 @@ export default function PaymentsRedesignPage() {
               className="bg-white dark:bg-slate-900 w-full max-w-4xl rounded-3xl shadow-2xl relative my-auto border border-slate-100 dark:border-slate-800"
             >
               <button 
-                onClick={() => setShowAddModal(false)}
+                onClick={handleCloseModal}
                 className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600 bg-slate-100 rounded-full transition-colors"
               >
                 <X size={20} />
@@ -697,6 +870,14 @@ export default function PaymentsRedesignPage() {
                         <ImageIcon className="h-8 w-8 text-slate-400" />
                         <span className="font-bold">Paste or Drop PO Image Here</span>
                         <span className="text-xs">We'll automatically extract the details using AI</span>
+                        <button
+                          type="button"
+                          onClick={handlePastePoImageButtonClick}
+                          className="mt-2 flex items-center gap-2 px-3 py-1.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-bold rounded-lg transition-colors text-xs"
+                        >
+                          <ClipboardPaste size={14} />
+                          Paste from Clipboard
+                        </button>
                       </div>
                     )}
                   </div>
@@ -805,23 +986,40 @@ export default function PaymentsRedesignPage() {
                           <tr>
                             <th className="px-4 py-3 rounded-l-xl">Barcode</th>
                             <th className="px-4 py-3">Description</th>
-                            <th className="px-4 py-3 text-center">Qty</th>
-                            <th className="px-4 py-3 text-right">Price</th>
-                            <th className="px-4 py-3 text-right rounded-r-xl">Total</th>
+                            <th className="px-4 py-3 text-center w-24">Qty</th>
+                            <th className="px-4 py-3 text-right w-32">Price</th>
+                            <th className="px-4 py-3 text-right w-24">Total</th>
+                            <th className="px-4 py-3 text-center rounded-r-xl w-12"></th>
                           </tr>
                         </thead>
                         <tbody>
                           {poItems.map((item, idx) => (
                             <tr key={idx} className="border-b border-slate-50 dark:border-slate-800/50 last:border-0 font-medium">
-                              <td className="px-4 py-3 text-slate-500">{item.barcode}</td>
-                              <td className="px-4 py-3 text-slate-900 dark:text-slate-300">{item.description}</td>
-                              <td className="px-4 py-3 text-center text-slate-900 dark:text-slate-300">{item.quantity}</td>
-                              <td className="px-4 py-3 text-right text-slate-900 dark:text-slate-300">{item.unitPrice}</td>
+                              <td className="px-2 py-2">
+                                <input type="text" className="w-full p-2 rounded bg-slate-50 border-none focus:ring-1 focus:ring-blue-500 text-sm" value={item.barcode} onChange={e => handlePoItemChange(idx, 'barcode', e.target.value)} />
+                              </td>
+                              <td className="px-2 py-2">
+                                <input type="text" className="w-full p-2 rounded bg-slate-50 border-none focus:ring-1 focus:ring-blue-500 text-sm" value={item.description} onChange={e => handlePoItemChange(idx, 'description', e.target.value)} />
+                              </td>
+                              <td className="px-2 py-2">
+                                <input type="number" min="1" className="w-full p-2 rounded bg-slate-50 border-none focus:ring-1 focus:ring-blue-500 text-sm text-center" value={item.quantity} onChange={e => handlePoItemChange(idx, 'quantity', parseInt(e.target.value) || 0)} />
+                              </td>
+                              <td className="px-2 py-2">
+                                <input type="number" min="0" step="0.01" className="w-full p-2 rounded bg-slate-50 border-none focus:ring-1 focus:ring-blue-500 text-sm text-right" value={item.unitPrice} onChange={e => handlePoItemChange(idx, 'unitPrice', parseFloat(e.target.value) || 0)} />
+                              </td>
                               <td className="px-4 py-3 text-right font-bold text-slate-900 dark:text-slate-300">{(item.quantity * item.unitPrice).toFixed(2)}</td>
+                              <td className="px-2 py-2 text-center">
+                                <button type="button" onClick={() => handleRemovePoItem(idx)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"><Trash2 size={16} /></button>
+                              </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
+                      <div className="mt-3 flex justify-start">
+                        <button type="button" onClick={handleAddPoItem} className="text-sm font-bold text-blue-500 hover:text-blue-600 flex items-center gap-1 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors">
+                          + Add Item
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -829,8 +1027,8 @@ export default function PaymentsRedesignPage() {
                 <div className="mt-8 pt-6 border-t border-slate-100 flex justify-end gap-3">
                   <button 
                     type="button"
-                    onClick={() => setShowAddModal(false)}
-                    className="px-6 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-100 transition-colors"
+                    onClick={handleCloseModal}
+                    className="px-6 py-3 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors"
                   >
                     Cancel
                   </button>
@@ -1119,6 +1317,213 @@ export default function PaymentsRedesignPage() {
           </div>
         </div>
       )}
+
+      {/* View Items Modal */}
+      <AnimatePresence>
+        {selectedPaymentForView && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white dark:bg-slate-900 w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+                <div>
+                  <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Invoice Details</h2>
+                  <p className="text-sm font-medium text-slate-500 mt-1">
+                    {selectedPaymentForView.companyName} • {selectedPaymentForView.date} 
+                    {selectedPaymentForView.poNumber && ` • PO: ${selectedPaymentForView.poNumber}`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {selectedPaymentForView.poImageUrl && (
+                    <a 
+                      href={selectedPaymentForView.poImageUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 mr-2"
+                    >
+                      <ImageIcon size={14} /> View PO Image
+                    </a>
+                  )}
+                  <button 
+                    onClick={() => setSelectedPaymentForView(null)}
+                    className="p-2 text-slate-400 hover:text-slate-600 bg-white dark:bg-slate-800 rounded-full transition-colors shadow-sm"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="p-6 overflow-y-auto flex-1">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Company / Supplier</p>
+                    <p className="text-xl font-black text-slate-900 dark:text-white truncate" title={selectedPaymentForView.companyName}>{selectedPaymentForView.companyName}</p>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Date</p>
+                    <p className="text-xl font-black text-slate-900 dark:text-white">{selectedPaymentForView.date}</p>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Payment Method</p>
+                    <p className="text-xl font-black text-slate-900 dark:text-white capitalize flex items-center gap-2">
+                      {METHOD_EMOJIS[selectedPaymentForView.method] || "💵"} {selectedPaymentForView.method}
+                    </p>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Category</p>
+                    <p className="text-xl font-black text-slate-900 dark:text-white capitalize flex items-center gap-2">
+                      {CATEGORY_EMOJIS[selectedPaymentForView.category] || "📦"} {selectedPaymentForView.category}
+                    </p>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Amount</p>
+                    <p className="text-xl font-black text-slate-900 dark:text-white">EGP {Number(selectedPaymentForView.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Tax Amount</p>
+                    <p className="text-xl font-black text-slate-900 dark:text-white">EGP {Number(selectedPaymentForView.tax || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Invoice Number</p>
+                    <p className="text-xl font-black text-slate-900 dark:text-white truncate" title={selectedPaymentForView.invoiceNumber || "N/A"}>{selectedPaymentForView.invoiceNumber || "N/A"}</p>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">PO Number</p>
+                    <p className="text-xl font-black text-slate-900 dark:text-white truncate" title={selectedPaymentForView.poNumber || "N/A"}>{selectedPaymentForView.poNumber || "N/A"}</p>
+                  </div>
+                </div>
+
+                {(selectedPaymentForView.supplierRepName || selectedPaymentForView.categoryNote) && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                    {selectedPaymentForView.supplierRepName && (
+                      <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Supplier Representative</p>
+                        <p className="text-md font-bold text-slate-900 dark:text-white">{selectedPaymentForView.supplierRepName} {selectedPaymentForView.supplierNationalId ? `(${selectedPaymentForView.supplierNationalId})` : ""}</p>
+                      </div>
+                    )}
+                    {selectedPaymentForView.categoryNote && (
+                      <div className={`bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl ${!selectedPaymentForView.supplierRepName ? 'col-span-full' : ''}`}>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Notes</p>
+                        <p className="text-md font-medium text-slate-700 dark:text-slate-300">{selectedPaymentForView.categoryNote}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4">Products / Items ({selectedPaymentForView.items?.length || 0})</h3>
+                <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                  <table className="w-full text-sm text-left">
+                    <thead className="text-xs text-slate-500 bg-slate-50 dark:bg-slate-800/50 uppercase font-bold">
+                      <tr>
+                        <th className="px-4 py-3">Barcode</th>
+                        <th className="px-4 py-3">Description</th>
+                        <th className="px-4 py-3 text-center">Qty</th>
+                        <th className="px-4 py-3 text-right">Unit Price</th>
+                        <th className="px-4 py-3 text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedPaymentForView.items?.map((item: any, idx: number) => (
+                        <tr key={idx} className="border-b border-slate-50 dark:border-slate-800/50 last:border-0 font-medium">
+                          <td className="px-4 py-3 text-slate-500">{item.barcode || "N/A"}</td>
+                          <td className="px-4 py-3 text-slate-900 dark:text-slate-300">{item.description || "N/A"}</td>
+                          <td className="px-4 py-3 text-center text-slate-900 dark:text-slate-300">{item.quantity}</td>
+                          <td className="px-4 py-3 text-right text-slate-900 dark:text-slate-300">{Number(item.unitPrice).toFixed(2)}</td>
+                          <td className="px-4 py-3 text-right font-bold text-slate-900 dark:text-slate-300">{(item.quantity * item.unitPrice).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {selectedPaymentForView.poImageUrl && (
+                  <div className="mt-8">
+                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4">Original Purchase Order</h3>
+                    <div className="border border-slate-100 dark:border-slate-800 rounded-2xl overflow-hidden bg-slate-50 dark:bg-slate-800/50 flex justify-center">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img 
+                        src={selectedPaymentForView.poImageUrl} 
+                        alt="PO Document" 
+                        className="max-w-full h-auto object-contain max-h-[800px] rounded-xl"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Upload PO to Old Invoice Modal */}
+      <AnimatePresence>
+        {selectedPaymentForPoUpload && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+            >
+              <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+                <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Add PO to Invoice</h2>
+                <button 
+                  onClick={() => setSelectedPaymentForPoUpload(null)}
+                  className="p-2 text-slate-400 hover:text-slate-600 bg-white dark:bg-slate-800 rounded-full transition-colors shadow-sm"
+                  disabled={uploadingPoToOldInvoice}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <div className="p-6">
+                <p className="text-sm font-medium text-slate-500 mb-6">
+                  Upload a Purchase Order image to extract the products and attach them to this invoice. This will <strong className="text-slate-700 dark:text-slate-300">not</strong> overwrite the existing supplier or total amount.
+                </p>
+
+                <div className="relative border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-8 text-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group cursor-pointer">
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={(e) => e.target.files && handleUploadPoToOldInvoice(e.target.files[0])}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    disabled={uploadingPoToOldInvoice}
+                  />
+                  {uploadingPoToOldInvoice ? (
+                    <div className="flex flex-col items-center justify-center">
+                      <Loader2 className="animate-spin text-blue-500 mb-3" size={32} />
+                      <p className="font-bold text-slate-900 dark:text-white">Processing PO...</p>
+                      <p className="text-sm text-slate-500 mt-1">Extracting items & saving to database</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/30 text-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                        <ImageIcon size={32} />
+                      </div>
+                      <p className="font-bold text-slate-900 dark:text-white">Click, drag, or paste PO image here</p>
+                      <p className="text-sm text-slate-500 mt-1">JPEG, PNG</p>
+                    </>
+                  )}
+                </div>
+                
+                <div className="mt-4 flex justify-center">
+                  <button
+                    onClick={handlePastePoImageButtonClick}
+                    disabled={uploadingPoToOldInvoice}
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-colors disabled:opacity-50"
+                  >
+                    <ClipboardPaste size={18} />
+                    Paste Image from Clipboard
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );
