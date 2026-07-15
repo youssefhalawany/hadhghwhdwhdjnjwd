@@ -14,6 +14,7 @@ import Barcode from "react-barcode";
 import { vibrateSuccess } from "@/lib/haptics";
 
 import { PatternFormat } from "react-number-format";
+import { CameraScanner } from "@/components/ui/CameraScanner";
 import { ContinuousScannerModal } from "@/components/ContinuousScannerModal";
 
 export default function ExpiryTrackerPage() {
@@ -213,72 +214,9 @@ export default function ExpiryTrackerPage() {
   const startScanning = () => {
     initAudio();
     setShowScanner(true);
-    setScannerError("");
-    
-    // Wait a tick for the DOM element to render
-    setTimeout(async () => {
-      try {
-        const html5QrCode = new Html5Qrcode("scanner-reader");
-        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-
-        const startWithConstraints = async (constraints: any) => {
-          return html5QrCode.start(
-            constraints,
-            config,
-            (decodedText) => {
-              try {
-                const ctx = audioCtxRef.current;
-                if (ctx) {
-                  const osc = ctx.createOscillator();
-                  const gain = ctx.createGain();
-                  osc.connect(gain);
-                  gain.connect(ctx.destination);
-                  osc.type = "sine";
-                  osc.frequency.setValueAtTime(800, ctx.currentTime);
-                  gain.gain.setValueAtTime(0.1, ctx.currentTime);
-                  osc.start();
-                  osc.stop(ctx.currentTime + 0.15);
-                }
-              } catch (e) {
-                console.error("Audio beep failed", e);
-              }
-              handleBarcodeChange(decodedText);
-              lookupBarcode(decodedText);
-              stopScanning();
-            },
-            undefined
-          );
-        };
-
-        try {
-          // Try standard environment camera
-          await startWithConstraints({ facingMode: "environment" });
-          scannerRef.current = html5QrCode;
-        } catch (err) {
-          try {
-            // Fallback to any camera
-            await startWithConstraints({ video: true });
-            scannerRef.current = html5QrCode;
-          } catch (fallbackErr) {
-            setScannerError(lang === "en" ? "Camera error. Please ensure permissions are granted or use a supported browser." : "فشل الكاميرا. يرجى منح الصلاحيات.");
-          }
-        }
-      } catch (err: any) {
-        console.error("Scanner failed to mount:", err);
-        setScannerError(lang === "en" ? "Scanner error." : "خطأ في المسح.");
-      }
-    }, 250);
   };
 
   const stopScanning = () => {
-    if (scannerRef.current) {
-      try {
-        scannerRef.current.stop().catch(e => console.error("Error stopping scanner:", e));
-      } catch (err) {
-        console.error("Error stopping scanner:", err);
-      }
-      scannerRef.current = null;
-    }
     setShowScanner(false);
   };
 
@@ -820,56 +758,14 @@ export default function ExpiryTrackerPage() {
 
       {/* Barcode Camera Scanner Modal */}
       {showScanner && (
-        <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 text-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl relative">
-            
-            {/* Header */}
-            <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950/40">
-              <h3 className="font-black text-base flex items-center gap-2">
-                <Camera className="h-5 w-5 text-blue-500 animate-pulse" />
-                {lang === "en" ? "Scan Item Barcode" : "مسح باركود المنتج"}
-              </h3>
-              <button 
-                type="button" 
-                onClick={stopScanning}
-                className="p-1 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-
-            {/* Camera Viewport */}
-            <div className="p-4 space-y-4">
-              {scannerError ? (
-                <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl text-center space-y-3">
-                  <AlertTriangle className="h-8 w-8 text-red-500 mx-auto animate-bounce" />
-                  <p className="text-sm font-semibold text-red-400">{scannerError}</p>
-                </div>
-              ) : (
-                <div className="relative rounded-2xl overflow-hidden bg-white text-slate-900 border border-slate-800">
-                  <div id="scanner-reader" className="w-full"></div>
-                </div>
-              )}
-
-              <p className="text-xs text-slate-400 text-center font-medium">
-                {lang === "en" 
-                  ? "Align barcode within target frame to capture automatically."
-                  : "ضع الباركود في وسط المربع للمسح التلقائي."}
-              </p>
-              
-              <div className="pt-2">
-                <button 
-                  type="button"
-                  onClick={stopScanning}
-                  className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-xs transition-all active:scale-[0.98] cursor-pointer"
-                >
-                  {lang === "en" ? "Cancel" : "إلغاء"}
-                </button>
-              </div>
-            </div>
-
-          </div>
-        </div>
+        <CameraScanner 
+          onScan={(decodedText) => {
+             handleBarcodeChange(decodedText);
+             lookupBarcode(decodedText);
+             setShowScanner(false);
+          }} 
+          onClose={() => setShowScanner(false)} 
+        />
       )}
 
       {/* Pull Confirmation Modal */}
