@@ -342,7 +342,7 @@ export default function PaymentsRedesignPage() {
         
         // Sync products to the secondary Firebase db
         if (newItems.length > 0) {
-          syncProductsToMaster(newItems, data.date || selectedPaymentForPoUpload.date || new Date().toISOString().split('T')[0]);
+          syncProductsToMaster(newItems, data.date || selectedPaymentForPoUpload.date || new Date().toISOString().split('T')[0], selectedPaymentForPoUpload.companyName);
         }
 
         setPayments(prev => prev.map(p => {
@@ -547,7 +547,7 @@ export default function PaymentsRedesignPage() {
       
       // Sync products to secondary Firebase
       if (poItems.length > 0) {
-        syncProductsToMaster(poItems, date);
+        syncProductsToMaster(poItems, date, companyName);
       }
 
       toast.success("Payment saved!");

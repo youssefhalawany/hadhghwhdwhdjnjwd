@@ -351,23 +351,30 @@ export default function ProductsPricePage() {
                             const d = entry.date ? new Date(entry.date) : new Date(entry.timestamp);
                             
                             return (
-                              <div key={i} className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400">
-                                    <Clock size={16} />
-                                  </div>
-                                  <div>
-                                    <div className="font-black text-slate-800 text-lg">{entry.price.toLocaleString(undefined, {minimumFractionDigits: 2})} <span className="text-xs text-slate-400 font-bold">EGP</span></div>
-                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                      {d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              <div key={i} className="flex flex-col gap-2 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400">
+                                      <Clock size={16} />
+                                    </div>
+                                    <div>
+                                      <div className="font-black text-slate-800 text-lg">{entry.price.toLocaleString(undefined, {minimumFractionDigits: 2})} <span className="text-xs text-slate-400 font-bold">EGP</span></div>
+                                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                        {d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                      </div>
                                     </div>
                                   </div>
+                                  
+                                  {priceDiff !== 0 && (
+                                    <div className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-lg ${priceDiff > 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                                      {priceDiff > 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                                      {Math.abs(priceDiff).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                                    </div>
+                                  )}
                                 </div>
-                                
-                                {priceDiff !== 0 && (
-                                  <div className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-lg ${priceDiff > 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                                    {priceDiff > 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-                                    {Math.abs(priceDiff).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                                {entry.supplier && entry.supplier !== "Unknown Supplier" && (
+                                  <div className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1.5 rounded-lg w-fit mt-1">
+                                    🏢 {entry.supplier}
                                   </div>
                                 )}
                               </div>

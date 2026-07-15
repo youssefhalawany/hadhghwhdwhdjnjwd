@@ -361,7 +361,7 @@ export default function CreditsPage() {
 
       // Sync products to master DB if we have items
       if (poItems && poItems.length > 0) {
-        await syncProductsToMaster(poItems, collectionDate || new Date().toISOString().split('T')[0]);
+        await syncProductsToMaster(poItems, collectionDate || new Date().toISOString().split('T')[0], companyName);
       }
 
       const docRef = await addDoc(collection(db, "credits"), newCredit);
@@ -501,7 +501,7 @@ export default function CreditsPage() {
         // Sync products to master DB
         if (data.items && data.items.length > 0) {
           const poDateForSync = selectedCreditForPoUpload?.collectionDate || new Date().toISOString().split('T')[0];
-          await syncProductsToMaster(data.items, poDateForSync);
+          await syncProductsToMaster(data.items, poDateForSync, companyName);
         }
 
         // Update the document

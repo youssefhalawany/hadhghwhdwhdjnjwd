@@ -1,7 +1,7 @@
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { productsDb } from "./firebase";
 
-export async function syncProductsToMaster(items: any[], poDate: string) {
+export async function syncProductsToMaster(items: any[], poDate: string, supplierName?: string) {
   if (!items || items.length === 0) return;
 
   for (const item of items) {
@@ -28,7 +28,12 @@ export async function syncProductsToMaster(items: any[], poDate: string) {
         
         // If price changed, update and append to history
         if (unitPrice !== currentPrice) {
-          const newHistoryEntry = { price: unitPrice, date: poDate, timestamp: Date.now() };
+          const newHistoryEntry = { 
+            price: unitPrice, 
+            date: poDate, 
+            timestamp: Date.now(),
+            supplier: supplierName || "Unknown Supplier" 
+          };
           await updateDoc(docRef, {
             currentPrice: unitPrice,
             lastUpdated: poDate,
@@ -41,7 +46,12 @@ export async function syncProductsToMaster(items: any[], poDate: string) {
         }
       } else {
         // Create new product
-        const newHistoryEntry = { price: unitPrice, date: poDate, timestamp: Date.now() };
+        const newHistoryEntry = { 
+          price: unitPrice, 
+          date: poDate, 
+          timestamp: Date.now(),
+          supplier: supplierName || "Unknown Supplier" 
+        };
         await setDoc(docRef, {
           barcode,
           description: item.description || "",
