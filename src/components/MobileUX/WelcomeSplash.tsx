@@ -12,7 +12,7 @@ export function WelcomeSplash({ name, onComplete }: { name: string; onComplete: 
     const t = setTimeout(() => {
       setIsVisible(false);
       setTimeout(onComplete, 800); // Wait for fade out
-    }, 2000);
+    }, 1200); // reduced from 2000 so total time is 2s (1.2s + 0.8s)
     return () => clearTimeout(t);
   }, [onComplete]);
 
@@ -40,12 +40,15 @@ export function WelcomeSplash({ name, onComplete }: { name: string; onComplete: 
             <div className="w-20 h-20 mb-6 rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(34,211,238,0.3)]" style={{ background: "linear-gradient(135deg, #083344, #164e63)", border: "1px solid rgba(34,211,238,0.3)" }}>
               <span className="text-4xl font-black text-white">{name.charAt(0).toUpperCase()}</span>
             </div>
-            <h1 className="text-3xl font-black text-white tracking-tight mb-2">
+            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight mb-2">
               {language === "ar" ? "أهلاً بك،" : "Welcome,"}
             </h1>
-            <h2 className="text-4xl font-black bg-clip-text text-transparent" style={{ backgroundImage: "linear-gradient(to right, #22d3ee, #818cf8)" }}>
+            <h2 className="text-3xl sm:text-4xl font-black bg-clip-text text-transparent mb-4" style={{ backgroundImage: "linear-gradient(to right, #22d3ee, #818cf8)" }}>
               {name.split(" ")[0]}
             </h2>
+            <p className="text-sm sm:text-base font-bold text-slate-300">
+              {language === "ar" ? "في بوابة الكاشير ANH" : "to the ANH cashier portal"}
+            </p>
           </motion.div>
         </motion.div>
       )}
