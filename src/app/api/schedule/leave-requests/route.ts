@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase-admin';
 
+export const dynamic = 'force-dynamic';
+
 // GET /api/schedule/leave-requests?storeId=... (or employeeId=...)
 export async function GET(request: Request) {
   try {
