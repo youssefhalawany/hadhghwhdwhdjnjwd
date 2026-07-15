@@ -43,6 +43,59 @@ const D = {
   greenBorder:  "rgba(52,211,153,0.25)",
 };
 
+function DashboardTimeMetrics({ authenticatedUser, lang }: { authenticatedUser: any, lang: string }) {
+  const [currentTime, setCurrentTime] = useState(new Date());
+  useEffect(() => {
+    const t = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const getShiftProgress = () => {
+    const hours = currentTime.getHours();
+    const minutes = currentTime.getMinutes();
+    const seconds = currentTime.getSeconds();
+    const elapsedSeconds = (hours % 12) * 3600 + minutes * 60 + seconds;
+    return elapsedSeconds / (12 * 3600);
+  };
+  const shiftProgress = getShiftProgress();
+  const shiftProgressPercentage = Math.round(shiftProgress * 100);
+
+  return (
+    <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+      <ActivityRing 
+        progress={shiftProgress} 
+        size={64} 
+        strokeWidth={4} 
+        color="#22d3ee" 
+        bgColor="rgba(34, 211, 238, 0.15)"
+        icon={
+          <div style={{ width: 48, height: 48, borderRadius: "50%", background: "linear-gradient(135deg, #083344, #164e63)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 800, color: "#fff", boxShadow: "inset 0 2px 10px rgba(0,0,0,0.5)" }}>
+            {authenticatedUser.name.charAt(0).toUpperCase()}
+          </div>
+        }
+      />
+      <div>
+        <div style={{ fontSize: 13, color: D.textSecondary, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 2 }}>{authenticatedUser.role}</div>
+        <div style={{ fontSize: 20, fontWeight: 800, color: D.textPrimary }}>{authenticatedUser.name.split(" ")[0]}</div>
+        <div className="text-[10px] text-cyan-400 font-bold mt-0.5">Shift Progress: {shiftProgressPercentage}%</div>
+      </div>
+    </div>
+  );
+}
+
+function DashboardClock({ lang }: { lang: string }) {
+  const [currentTime, setCurrentTime] = useState(new Date());
+  useEffect(() => {
+    const t = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: D.textPrimary, fontWeight: 700 }}>
+      <Clock size={14} className="text-cyan-400" />
+      <span style={{ fontVariantNumeric: "tabular-nums" }}>{currentTime.toLocaleTimeString(lang === "en" ? "en-US" : "ar-EG", { hour: "2-digit", minute: "2-digit" })}</span>
+    </div>
+  );
+}
+
 export default function CashierHubPage() {
   const router = useRouter();
   const { language: lang, setLanguage, t: tFunc } = useLanguage();
@@ -57,7 +110,6 @@ export default function CashierHubPage() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled] = useState(true);
   const [isNotificationEnabled, setIsNotificationEnabled] = useState(false);
-  const [currentTime, setCurrentTime] = useState(new Date());
   const [showWelcome, setShowWelcome] = useState(false);
   
   // Fake state for bottom nav aesthetics
@@ -67,27 +119,6 @@ export default function CashierHubPage() {
     // Refresh without artificial delay
     showIsland(lang === "ar" ? "تم التحديث" : "Refreshed", { type: "success" });
   };
-
-  useEffect(() => {
-    const t = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
-
-  const getShiftProgress = () => {
-    const hours = currentTime.getHours();
-    const minutes = currentTime.getMinutes();
-    const seconds = currentTime.getSeconds();
-    
-    // Shifts are 12 hours: 00:00-12:00 or 12:00-00:00
-    // (hours % 12) gives elapsed hours in current shift
-    const elapsedSeconds = (hours % 12) * 3600 + minutes * 60 + seconds;
-    const totalSeconds = 12 * 3600;
-    
-    return elapsedSeconds / totalSeconds;
-  };
-  
-  const shiftProgress = getShiftProgress();
-  const shiftProgressPercentage = Math.round(shiftProgress * 100);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -237,7 +268,9 @@ export default function CashierHubPage() {
   const nav = (path: string) => { playPopSound(); router.push(path); };
   const isRTL = lang === "ar";
 
-  const isMorning = currentTime.getHours() >= 6 && currentTime.getHours() < 18;
+  // Fallback static time for backgrounds (won't re-render entire tree)
+  const currentHour = new Date().getHours();
+  const isMorning = currentHour >= 6 && currentHour < 18;
   const timeBasedBg = isMorning
     ? "linear-gradient(180deg, #083344 0%, #0B1121 100%)" // Morning: Deep Teal to Midnight
     : "linear-gradient(180deg, #050810 0%, #020617 100%)"; // Night: Ultra Dark Indigo/Black
@@ -312,25 +345,7 @@ export default function CashierHubPage() {
               {/* Account Overview Header Card */}
               <div style={{ backgroundColor: D.surface, borderRadius: 24, padding: "24px", marginBottom: 24, backgroundImage: "linear-gradient(135deg, rgba(34, 211, 238, 0.05) 0%, rgba(11, 17, 33, 0) 100%)", border: `1px solid ${D.border}`, boxShadow: "0 10px 30px rgba(0,0,0,0.2)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
-                  <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-                    <ActivityRing 
-                      progress={shiftProgress} 
-                      size={64} 
-                      strokeWidth={4} 
-                      color="#22d3ee" 
-                      bgColor="rgba(34, 211, 238, 0.15)"
-                      icon={
-                        <div style={{ width: 48, height: 48, borderRadius: "50%", background: "linear-gradient(135deg, #083344, #164e63)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 800, color: "#fff", boxShadow: "inset 0 2px 10px rgba(0,0,0,0.5)" }}>
-                          {authenticatedUser.name.charAt(0).toUpperCase()}
-                        </div>
-                      }
-                    />
-                    <div>
-                      <div style={{ fontSize: 13, color: D.textSecondary, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 2 }}>{authenticatedUser.role}</div>
-                      <div style={{ fontSize: 20, fontWeight: 800, color: D.textPrimary }}>{authenticatedUser.name.split(" ")[0]}</div>
-                      <div className="text-[10px] text-cyan-400 font-bold mt-0.5">Shift Progress: {shiftProgressPercentage}%</div>
-                    </div>
-                  </div>
+                  <DashboardTimeMetrics authenticatedUser={authenticatedUser} lang={lang} />
                   <div style={{ display: "flex", gap: 8 }}>
                     <button onClick={() => { playPopSound(); handleEnableNotifications(); }} style={{ width: 36, height: 36, borderRadius: 12, background: isNotificationEnabled ? D.cyanDim : D.surfaceHigh, border: `1px solid ${isNotificationEnabled ? D.cyanBorder : D.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", position: "relative" }}>
                        <Bell size={16} color={isNotificationEnabled ? D.cyan : D.textSecondary} />
@@ -344,10 +359,7 @@ export default function CashierHubPage() {
                     <LayoutDashboard size={14} className="text-cyan-400" />
                     <span>{authenticatedUser.branchId || "El Alamein 4"}</span>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: D.textPrimary, fontWeight: 700 }}>
-                    <Clock size={14} className="text-cyan-400" />
-                    <span style={{ fontVariantNumeric: "tabular-nums" }}>{currentTime.toLocaleTimeString(lang === "en" ? "en-US" : "ar-EG", { hour: "2-digit", minute: "2-digit" })}</span>
-                  </div>
+                  <DashboardClock lang={lang} />
                 </div>
               </div>
 

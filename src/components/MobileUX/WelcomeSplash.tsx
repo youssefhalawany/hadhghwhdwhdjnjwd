@@ -29,13 +29,7 @@ export function WelcomeSplash({ name, onComplete }: { name: string; onComplete: 
             background: "radial-gradient(circle at center, #083344 0%, #000000 100%)",
           }}
         >
-          {/* Subtle animated background elements */}
-          <motion.div 
-            animate={{ rotate: 360 }} 
-            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-            className="absolute w-[600px] h-[600px] rounded-full blur-[100px] opacity-20 pointer-events-none"
-            style={{ background: "conic-gradient(from 0deg, #22d3ee, transparent, #8b5cf6, transparent, #22d3ee)" }}
-          />
+          {/* Removed heavy blur animation for performance */}
           
           <motion.div
             initial={{ y: 20, opacity: 0 }}
