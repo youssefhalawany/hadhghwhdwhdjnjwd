@@ -10,7 +10,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { showIsland } from "@/components/MobileUX/DynamicIsland";
 
 const D = {
-  bg:      "rgba(11, 17, 33, 0.75)", // Translucent for glassmorphism
+  bg:      "#0B1121", // Solid color instead of translucent to remove blur overhead
   border:  "rgba(34, 211, 238, 0.15)",
   text:    "#64748b",
   active:  "#22d3ee",
@@ -86,7 +86,7 @@ export function CashierBottomNav({ lang: propLang = "en" }: Props) {
             initial={{ opacity: 0 }} 
             animate={{ opacity: 1 }} 
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[190] bg-black/40 backdrop-blur-sm"
+            className="fixed inset-0 z-[190] bg-black/70"
             onClick={() => setIsDialOpen(false)}
           />
         )}
@@ -98,7 +98,6 @@ export function CashierBottomNav({ lang: propLang = "en" }: Props) {
         display: "flex", alignItems: "center", justifyContent: "space-around",
         paddingBottom: "env(safe-area-inset-bottom, 12px)",
         paddingTop: 8,
-        backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)",
       }}>
         
         {/* Left Nav Item */}

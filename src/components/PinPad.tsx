@@ -80,7 +80,7 @@ export function PinPad({ onPinChange, onSubmit, maxLength = 4, error = false }: 
               e.preventDefault();
               handlePress(num.toString());
             }}
-            className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-white/10 dark:bg-[#0b1121]/50 backdrop-blur-md border border-white/20 dark:border-cyan-400/20 shadow-[0_8px_32px_rgba(0,0,0,0.1)] text-2xl font-black text-slate-800 dark:text-slate-100 hover:bg-white/20 dark:hover:bg-cyan-500/20 active:scale-90 transition-all flex items-center justify-center cursor-pointer select-none touch-manipulation"
+            className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-white/10 dark:bg-[#151E32] border border-white/20 dark:border-cyan-400/20 shadow-[0_4px_12px_rgba(0,0,0,0.1)] text-2xl font-black text-slate-800 dark:text-slate-100 hover:bg-white/20 dark:hover:bg-cyan-500/20 active:scale-90 transition-all flex items-center justify-center cursor-pointer select-none touch-manipulation"
           >
             {num}
           </button>
@@ -92,7 +92,7 @@ export function PinPad({ onPinChange, onSubmit, maxLength = 4, error = false }: 
               e.preventDefault();
               handlePress('0');
             }}
-            className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-white/10 dark:bg-[#0b1121]/50 backdrop-blur-md border border-white/20 dark:border-cyan-400/20 shadow-[0_8px_32px_rgba(0,0,0,0.1)] text-2xl font-black text-slate-800 dark:text-slate-100 hover:bg-white/20 dark:hover:bg-cyan-500/20 active:scale-90 transition-all flex items-center justify-center cursor-pointer select-none touch-manipulation"
+            className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-white/10 dark:bg-[#151E32] border border-white/20 dark:border-cyan-400/20 shadow-[0_4px_12px_rgba(0,0,0,0.1)] text-2xl font-black text-slate-800 dark:text-slate-100 hover:bg-white/20 dark:hover:bg-cyan-500/20 active:scale-90 transition-all flex items-center justify-center cursor-pointer select-none touch-manipulation"
           >
             0
           </button>
@@ -104,7 +104,7 @@ export function PinPad({ onPinChange, onSubmit, maxLength = 4, error = false }: 
               e.preventDefault();
               handleDelete();
             }}
-            className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-white/5 dark:bg-red-500/10 backdrop-blur-md border border-white/10 dark:border-red-500/20 text-slate-600 dark:text-red-400 hover:bg-white/10 dark:hover:bg-red-500/30 active:scale-90 transition-all flex items-center justify-center cursor-pointer touch-manipulation"
+            className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-white/5 dark:bg-[#1C2841] border border-white/10 dark:border-red-500/20 text-slate-600 dark:text-red-400 hover:bg-white/10 dark:hover:bg-red-500/30 active:scale-90 transition-all flex items-center justify-center cursor-pointer touch-manipulation"
           >
             <Delete className="h-6 w-6 sm:h-8 sm:w-8" />
           </button>

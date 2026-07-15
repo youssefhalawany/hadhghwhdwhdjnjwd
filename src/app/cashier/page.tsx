@@ -343,7 +343,7 @@ export default function CashierHubPage() {
             <div style={{ padding: "0 20px" }}>
               
               {/* Account Overview Header Card */}
-              <div style={{ backgroundColor: D.surface, borderRadius: 24, padding: "24px", marginBottom: 24, backgroundImage: "linear-gradient(135deg, rgba(34, 211, 238, 0.05) 0%, rgba(11, 17, 33, 0) 100%)", border: `1px solid ${D.border}`, boxShadow: "0 10px 30px rgba(0,0,0,0.2)" }}>
+              <div style={{ backgroundColor: D.surface, borderRadius: 24, padding: "24px", marginBottom: 24, backgroundImage: "linear-gradient(135deg, rgba(34, 211, 238, 0.05) 0%, rgba(11, 17, 33, 0) 100%)", border: `1px solid ${D.border}`, boxShadow: "0 4px 16px rgba(0,0,0,0.2)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
                   <DashboardTimeMetrics authenticatedUser={authenticatedUser} lang={lang} />
                   <div style={{ display: "flex", gap: 8 }}>
@@ -437,7 +437,7 @@ export default function CashierHubPage() {
 
       {/* Form card */}
       <div style={{ flex: 1, margin: "0 20px 32px" }}>
-        <form onSubmit={handleLogin} style={{ backgroundColor: D.surface, borderRadius: 24, border: `1px solid ${D.border}`, boxShadow: "0 20px 60px rgba(0,0,0,0.5)", overflow: "hidden" }}>
+        <form onSubmit={handleLogin} style={{ backgroundColor: D.surface, borderRadius: 24, border: `1px solid ${D.border}`, boxShadow: "0 8px 32px rgba(0,0,0,0.3)", overflow: "hidden" }}>
 
           {/* Name section */}
           <div style={{ padding: "24px 24px 16px", borderBottom: `1px solid ${D.border}` }}>
