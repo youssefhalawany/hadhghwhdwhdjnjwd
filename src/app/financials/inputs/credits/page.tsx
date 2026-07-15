@@ -387,14 +387,11 @@ export default function CreditsPage() {
     reader.readAsDataURL(file);
     reader.onload = async () => {
       const base64Image = reader.result as string;
-      const base64Data = base64Image.split(',')[1];
-      const mimeType = file.type;
-
       try {
         const response = await fetch('/api/process-po', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: base64Data, mimeType })
+          body: JSON.stringify({ image: base64Image })
         });
         
         if (!response.ok) {
@@ -449,14 +446,11 @@ export default function CreditsPage() {
     reader.readAsDataURL(file);
     reader.onload = async () => {
       const base64Image = reader.result as string;
-      const base64Data = base64Image.split(',')[1];
-      const mimeType = file.type;
-
       try {
         const response = await fetch('/api/process-po', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: base64Data, mimeType })
+          body: JSON.stringify({ image: base64Image })
         });
         
         if (!response.ok) {
