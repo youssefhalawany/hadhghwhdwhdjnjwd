@@ -8,13 +8,18 @@ export function WelcomeSplash({ name, onComplete }: { name: string; onComplete: 
   const [isVisible, setIsVisible] = useState(true);
   const { language } = useLanguage();
   
+  const handleDismiss = () => {
+    if (!isVisible) return;
+    setIsVisible(false);
+    setTimeout(onComplete, 800); // Wait for fade out
+  };
+
   useEffect(() => {
     const t = setTimeout(() => {
-      setIsVisible(false);
-      setTimeout(onComplete, 800); // Wait for fade out
-    }, 1200); // reduced from 2000 so total time is 2s (1.2s + 0.8s)
+      handleDismiss();
+    }, 10000); // 10 seconds duration
     return () => clearTimeout(t);
-  }, [onComplete]);
+  }, [isVisible, onComplete]);
 
   return (
     <AnimatePresence>
@@ -24,7 +29,8 @@ export function WelcomeSplash({ name, onComplete }: { name: string; onComplete: 
           animate={{ opacity: 1 }}
           exit={{ opacity: 0, scale: 1.05 }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden"
+          onClick={handleDismiss}
+          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden cursor-pointer"
           style={{
             background: "radial-gradient(circle at center, #083344 0%, #000000 100%)",
           }}
