@@ -5,9 +5,15 @@ export async function syncProductsToMaster(items: any[], poDate: string) {
   if (!items || items.length === 0) return;
 
   for (const item of items) {
-    if (!item.barcode) continue;
-
-    const barcode = item.barcode.toString().trim();
+    let barcode = item.barcode?.toString().trim();
+    
+    if (!barcode) {
+      if (item.description) {
+        // Fallback to a sanitized version of the description as the ID
+        barcode = item.description.toString().trim().replace(/[^a-zA-Z0-9-]/g, '_').substring(0, 50);
+      }
+    }
+    
     if (!barcode) continue;
 
     const unitPrice = Number(item.unitPrice) || 0;
