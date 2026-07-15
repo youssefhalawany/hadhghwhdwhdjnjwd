@@ -5,7 +5,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 // Helper function with retry and fallback logic to handle 503 and 429 errors from free tier
 async function generateWithRetryAndFallback(prompt: string, inlineData: any) {
-  const modelsToTry = ["gemini-1.5-pro-latest", "gemini-flash-latest"];
+  const modelsToTry = ["gemini-flash-latest", "gemini-2.5-flash", "gemini-pro-latest"];
   let lastError: any = null;
 
   for (const modelName of modelsToTry) {
