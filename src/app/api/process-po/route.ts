@@ -3,6 +3,42 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
+// Helper function with retry and fallback logic to handle 503 and 429 errors from free tier
+async function generateWithRetryAndFallback(prompt: string, inlineData: any) {
+  const modelsToTry = ["gemini-1.5-pro-latest", "gemini-flash-latest"];
+  let lastError: any = null;
+
+  for (const modelName of modelsToTry) {
+    // Try up to 2 times per model
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent([
+          prompt,
+          { inlineData }
+        ]);
+        return result.response.text();
+      } catch (error: any) {
+        lastError = error;
+        const status = error?.status;
+        console.warn(`[PO Scanner] Model ${modelName} failed on attempt ${attempt} with status ${status || 'unknown'}`);
+        
+        // If it's not a rate limit (429) or server overload (503), break and try next model
+        if (status !== 429 && status !== 503) {
+          break;
+        }
+
+        // Wait before retrying
+        if (attempt < 2) {
+          await new Promise(r => setTimeout(r, 2000 * attempt));
+        }
+      }
+    }
+  }
+
+  throw lastError;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -24,8 +60,6 @@ export async function POST(req: NextRequest) {
 
     const mimeType = matches[1];
     const base64Data = matches[2];
-
-    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
     const prompt = `
 You are a Purchase Order data extraction assistant.
@@ -49,17 +83,7 @@ If any field is missing or unreadable, return an empty string for text fields or
 Return ONLY the JSON. No extra text.
 `;
 
-    const result = await model.generateContent([
-      prompt,
-      {
-        inlineData: {
-          data: base64Data,
-          mimeType
-        }
-      }
-    ]);
-
-    const responseText = result.response.text();
+    const responseText = await generateWithRetryAndFallback(prompt, { data: base64Data, mimeType });
     
     let jsonStr = responseText.trim();
     if (jsonStr.startsWith('```json')) {
