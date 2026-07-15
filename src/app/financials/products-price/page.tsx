@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, PackageSearch, History, TrendingUp, TrendingDown, Clock, Barcode, ArrowRight, X } from "lucide-react";
+import { Search, PackageSearch, History, TrendingUp, TrendingDown, Clock, Barcode, ArrowRight, X, ArrowUpRight, ArrowDownRight, Activity } from "lucide-react";
 import { productsDb } from "@/lib/firebase";
-import { collection, query, where, getDocs, limit, orderBy } from "firebase/firestore";
+import { collection, query, where, getDocs, limit } from "firebase/firestore";
 import Link from "next/link";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function ProductsPricePage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -27,19 +28,12 @@ export default function ProductsPricePage() {
       const term = searchTerm.trim().toUpperCase();
       const productsRef = collection(productsDb, "products");
       
-      // Try exact barcode match first
       let q = query(productsRef, where("barcode", "==", term), limit(50));
       let snapshot = await getDocs(q);
       
       let results = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-      // If no exact match, try a rudimentary search on description
       if (results.length === 0) {
-         // Firestore doesn't do great text search natively without extensions, 
-         // but we can pull a batch and filter in memory if the dataset isn't millions.
-         // Given this is a local client app, we will fetch recent updated or just query all and filter if small,
-         // but best is to rely on exact barcode or prefix if they typed it exactly.
-         // For now, let's just query limit 200 and filter in memory for name.
          const allQ = query(productsRef, limit(300));
          const allSnap = await getDocs(allQ);
          const allDocs = allSnap.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
@@ -57,30 +51,71 @@ export default function ProductsPricePage() {
     }
   };
 
+  const processProductData = (product: any) => {
+    if (!product.priceHistory || product.priceHistory.length === 0) {
+      return { chartData: [], min: 0, max: 0, avg: 0 };
+    }
+
+    // Sort ascending for the chart (oldest to newest)
+    const sortedHistory = [...product.priceHistory].sort((a, b) => a.timestamp - b.timestamp);
+    
+    // Map to chart format
+    const chartData = sortedHistory.map(entry => {
+      const d = entry.date ? new Date(entry.date) : new Date(entry.timestamp);
+      return {
+        date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }),
+        fullDate: d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+        price: entry.price,
+        timestamp: entry.timestamp
+      };
+    });
+
+    const prices = sortedHistory.map(h => h.price);
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
+
+    return { chartData, min, max, avg };
+  };
+
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white/90 backdrop-blur-md border border-slate-200 p-4 rounded-xl shadow-xl">
+          <p className="text-sm font-bold text-slate-500 mb-1 uppercase tracking-wider">{payload[0].payload.fullDate}</p>
+          <p className="text-2xl font-black text-indigo-600">
+            {payload[0].value.toLocaleString(undefined, {minimumFractionDigits: 2})} <span className="text-sm text-indigo-400">EGP</span>
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 p-6 md:p-12">
+    <div className="min-h-screen bg-slate-50 p-6 md:p-12 font-sans selection:bg-indigo-100 selection:text-indigo-900">
       <div className="max-w-6xl mx-auto space-y-8">
         
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
                 <PackageSearch size={24} />
               </div>
-              Product Price Lookup
+              Advanced Price Lookup
             </h1>
-            <p className="text-slate-500 mt-2 font-medium">Search the master product database for current prices and historical pricing trends.</p>
+            <p className="text-slate-500 mt-2 font-medium">Search the master database for historical pricing trends and analytics.</p>
           </div>
-          <Link href="/financials" className="text-sm font-bold text-slate-500 hover:text-slate-900 bg-white border border-slate-200 px-4 py-2 rounded-lg transition-colors flex items-center gap-2">
+          <Link href="/financials" className="text-sm font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-5 py-2.5 rounded-xl transition-all shadow-sm hover:shadow flex items-center gap-2">
             <ArrowRight size={16} className="rotate-180" />
             Back to Dashboard
           </Link>
         </div>
 
         {/* Search Bar */}
-        <form onSubmit={handleSearch} className="relative group">
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-indigo-500 transition-colors">
+        <form onSubmit={handleSearch} className="relative group z-10">
+          <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-indigo-500 transition-colors">
             <Search size={24} />
           </div>
           <input
@@ -88,105 +123,190 @@ export default function ProductsPricePage() {
             placeholder="Scan barcode or type product name..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-12 pr-12 py-5 bg-white border-2 border-slate-200 rounded-2xl text-lg font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
+            className="w-full pl-14 pr-14 py-6 bg-white/80 backdrop-blur-xl border border-white/20 rounded-3xl text-xl font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-indigo-500/20 transition-all shadow-xl shadow-slate-200/50"
           />
           {searchTerm && (
             <button 
               type="button"
               onClick={() => { setSearchTerm(''); setProducts([]); setHasSearched(false); }}
-              className="absolute inset-y-0 right-4 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+              className="absolute inset-y-0 right-5 flex items-center text-slate-400 hover:text-slate-600 transition-colors bg-slate-100 hover:bg-slate-200 rounded-full w-8 h-8 justify-center my-auto"
             >
-              <X size={20} />
+              <X size={16} />
             </button>
           )}
         </form>
 
         {/* Results */}
         {isSearching ? (
-          <div className="flex flex-col items-center justify-center py-20 text-indigo-500">
-            <div className="animate-spin w-10 h-10 border-4 border-current border-t-transparent rounded-full mb-4"></div>
-            <p className="font-bold animate-pulse">Searching Master Database...</p>
+          <div className="flex flex-col items-center justify-center py-32 text-indigo-500">
+            <div className="animate-spin w-12 h-12 border-4 border-current border-t-transparent rounded-full mb-6 shadow-lg"></div>
+            <p className="font-bold animate-pulse text-lg">Analyzing Master Database...</p>
           </div>
         ) : hasSearched && products.length === 0 ? (
-          <div className="bg-white rounded-3xl p-12 text-center shadow-sm border border-slate-200">
-            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
-              <PackageSearch size={40} />
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-[2rem] p-16 text-center shadow-xl shadow-slate-200/40 border border-slate-100"
+          >
+            <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-300">
+              <PackageSearch size={48} />
             </div>
-            <h3 className="text-xl font-black text-slate-800 mb-2">No Products Found</h3>
-            <p className="text-slate-500">We couldn't find any products matching "{searchTerm}". They might not have been synced from POs yet.</p>
-          </div>
+            <h3 className="text-2xl font-black text-slate-800 mb-3 tracking-tight">No Products Found</h3>
+            <p className="text-slate-500 text-lg max-w-md mx-auto">We couldn't find any products matching "{searchTerm}". They might not have been synced from POs yet.</p>
+          </motion.div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-8">
             <AnimatePresence>
-              {products.map((product, idx) => (
-                <motion.div
-                  key={product.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.05 }}
-                  className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 flex flex-col"
-                >
-                  <div className="flex justify-between items-start mb-6">
-                    <div>
-                      <h3 className="text-xl font-black text-slate-900 mb-1 leading-tight">{product.description || "Unknown Product"}</h3>
-                      <div className="flex items-center gap-1.5 text-slate-500 bg-slate-100 w-max px-2.5 py-1 rounded-md font-mono text-xs font-bold">
-                        <Barcode size={14} />
-                        {product.barcode}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-1">Current Price</div>
-                      <div className="text-3xl font-black text-indigo-600 tracking-tight">
-                        {Number(product.currentPrice).toLocaleString(undefined, {minimumFractionDigits: 2})} <span className="text-sm text-indigo-400 font-bold">EGP</span>
-                      </div>
-                    </div>
-                  </div>
+              {products.map((product, idx) => {
+                const { chartData, min, max, avg } = processProductData(product);
+                const currentPrice = Number(product.currentPrice);
+                const isGoodDeal = currentPrice <= avg;
 
-                  <div className="mt-auto bg-slate-50 rounded-2xl p-5 border border-slate-100">
-                    <h4 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
-                      <History size={16} className="text-slate-400" />
-                      Price History
-                    </h4>
-                    
-                    {product.priceHistory && product.priceHistory.length > 0 ? (
-                      <div className="space-y-3 max-h-48 overflow-y-auto custom-scrollbar pr-2">
-                        {/* Sort history newest first */}
-                        {[...product.priceHistory].sort((a, b) => b.timestamp - a.timestamp).map((entry, i, arr) => {
-                          const prevEntry = arr[i + 1];
-                          const priceDiff = prevEntry ? entry.price - prevEntry.price : 0;
-                          
-                          return (
-                            <div key={i} className="flex items-center justify-between group">
-                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 group-hover:text-indigo-500 group-hover:border-indigo-200 transition-colors">
-                                  <Clock size={14} />
-                                </div>
-                                <div>
-                                  <div className="font-bold text-slate-700">{entry.price.toLocaleString(undefined, {minimumFractionDigits: 2})} EGP</div>
-                                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                    {entry.date ? new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown Date'}
-                                  </div>
-                                </div>
-                              </div>
-                              
-                              {priceDiff !== 0 && (
-                                <div className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-md ${priceDiff > 0 ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
-                                  {priceDiff > 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                                  {Math.abs(priceDiff).toLocaleString(undefined, {minimumFractionDigits: 2})} EGP
-                                </div>
-                              )}
+                return (
+                  <motion.div
+                    key={product.id}
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.1, duration: 0.4, ease: "easeOut" }}
+                    className="bg-white rounded-[2rem] p-8 shadow-xl shadow-slate-200/40 border border-slate-100 flex flex-col overflow-hidden relative"
+                  >
+                    {/* Decorative Blur Background */}
+                    <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-indigo-100/40 via-purple-100/20 to-transparent rounded-full blur-3xl -z-10 translate-x-1/3 -translate-y-1/3 pointer-events-none"></div>
+
+                    {/* Header Row */}
+                    <div className="flex flex-col md:flex-row md:justify-between items-start md:items-end gap-6 mb-10">
+                      <div>
+                        <h3 className="text-3xl font-black text-slate-900 mb-3 leading-tight tracking-tight">{product.description || "Unknown Product"}</h3>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <div className="flex items-center gap-1.5 text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg font-mono text-sm font-bold shadow-sm">
+                            <Barcode size={16} />
+                            {product.barcode}
+                          </div>
+                          {chartData.length > 1 && (
+                            <div className={`flex items-center gap-1.5 text-sm font-bold px-3 py-1.5 rounded-lg shadow-sm ${isGoodDeal ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                              {isGoodDeal ? <ArrowDownRight size={16} /> : <ArrowUpRight size={16} />}
+                              {isGoodDeal ? "Below Average" : "Above Average"}
                             </div>
-                          );
-                        })}
+                          )}
+                        </div>
                       </div>
-                    ) : (
-                      <div className="text-center py-4 text-slate-400 text-sm font-medium">
-                        No history available.
+                      
+                      <div className="text-left md:text-right bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100/50 backdrop-blur-sm min-w-[200px]">
+                        <div className="text-sm font-bold text-indigo-500 uppercase tracking-widest mb-1 flex items-center md:justify-end gap-2">
+                          <Activity size={14} /> Current Price
+                        </div>
+                        <div className="text-4xl font-black text-indigo-900 tracking-tight">
+                          {currentPrice.toLocaleString(undefined, {minimumFractionDigits: 2})} <span className="text-lg text-indigo-400 font-bold">EGP</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Analytics Cards */}
+                    {chartData.length > 0 && (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                        <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100/80">
+                          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Lowest Recorded</p>
+                          <p className="text-xl font-black text-slate-700">{min.toLocaleString(undefined, {minimumFractionDigits: 2})} <span className="text-xs text-slate-400">EGP</span></p>
+                        </div>
+                        <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100/80">
+                          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Average Price</p>
+                          <p className="text-xl font-black text-slate-700">{avg.toLocaleString(undefined, {minimumFractionDigits: 2})} <span className="text-xs text-slate-400">EGP</span></p>
+                        </div>
+                        <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100/80">
+                          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Highest Recorded</p>
+                          <p className="text-xl font-black text-slate-700">{max.toLocaleString(undefined, {minimumFractionDigits: 2})} <span className="text-xs text-slate-400">EGP</span></p>
+                        </div>
                       </div>
                     )}
-                  </div>
-                </motion.div>
-              ))}
+
+                    {/* Interactive Chart */}
+                    {chartData.length > 1 && (
+                      <div className="mb-10 h-72 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                            <defs>
+                              <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
+                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                            <XAxis 
+                              dataKey="date" 
+                              axisLine={false} 
+                              tickLine={false} 
+                              tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 600 }}
+                              dy={10}
+                            />
+                            <YAxis 
+                              axisLine={false} 
+                              tickLine={false} 
+                              tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 600 }}
+                              domain={['dataMin - 10', 'dataMax + 10']}
+                              tickFormatter={(value: number) => `${value}`}
+                            />
+                            <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#cbd5e1', strokeWidth: 2, strokeDasharray: '4 4' }} />
+                            <Area 
+                              type="monotone" 
+                              dataKey="price" 
+                              stroke="#6366f1" 
+                              strokeWidth={4}
+                              fillOpacity={1} 
+                              fill="url(#colorPrice)" 
+                              activeDot={{ r: 8, stroke: '#fff', strokeWidth: 3, fill: '#4f46e5' }}
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+
+                    {/* Detailed History Table */}
+                    <div className="bg-slate-50/50 rounded-3xl p-6 border border-slate-100">
+                      <h4 className="text-sm font-bold text-slate-900 mb-6 flex items-center gap-2">
+                        <History size={18} className="text-slate-400" />
+                        Detailed Log
+                      </h4>
+                      
+                      {product.priceHistory && product.priceHistory.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-64 overflow-y-auto custom-scrollbar pr-2">
+                          {[...product.priceHistory].sort((a, b) => b.timestamp - a.timestamp).map((entry, i, arr) => {
+                            const prevEntry = arr[i + 1];
+                            const priceDiff = prevEntry ? entry.price - prevEntry.price : 0;
+                            const d = entry.date ? new Date(entry.date) : new Date(entry.timestamp);
+                            
+                            return (
+                              <div key={i} className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400">
+                                    <Clock size={16} />
+                                  </div>
+                                  <div>
+                                    <div className="font-black text-slate-800 text-lg">{entry.price.toLocaleString(undefined, {minimumFractionDigits: 2})} <span className="text-xs text-slate-400 font-bold">EGP</span></div>
+                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                      {d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                {priceDiff !== 0 && (
+                                  <div className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-lg ${priceDiff > 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                                    {priceDiff > 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                                    {Math.abs(priceDiff).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 text-slate-400 text-sm font-medium">
+                          No history available for this product.
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
             </AnimatePresence>
           </div>
         )}
