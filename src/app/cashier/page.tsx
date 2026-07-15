@@ -281,7 +281,7 @@ export default function CashierHubPage() {
     color: D.textPrimary,
     colorScheme: "dark",
     fontFamily: "'Inter', 'Cairo', -apple-system, system-ui, sans-serif",
-    minHeight: "100dvh",
+    minHeight: "100vh", // Using 100vh instead of 100dvh to fill the bottom safe area
     width: "100%",
     display: "flex",
     flexDirection: "column",
