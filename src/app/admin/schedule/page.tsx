@@ -5,7 +5,6 @@ import {
   CalendarDays, Settings, Users, CheckCircle, 
   XCircle, Printer, Send, RefreshCw, AlertCircle, BarChart3, Plus 
 } from "lucide-react";
-import ClientLayoutWrapper from "@/components/ClientLayoutWrapper";
 import { useBranch } from "@/context/BranchContext";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, addDoc, updateDoc, doc, onSnapshot, query, where, orderBy, limit } from "firebase/firestore";
@@ -164,7 +163,6 @@ export default function AdminSchedulePage() {
   };
 
   return (
-    <ClientLayoutWrapper>
       <div className="p-6 max-w-7xl mx-auto min-h-screen">
         {/* Header - Hidden on Print */}
         <div className="print:hidden mb-8 flex flex-col md:flex-row justify-between items-start md:items-center bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-xl shadow-slate-200/40 dark:shadow-none border border-slate-200/60 dark:border-slate-800 relative overflow-hidden">
@@ -889,6 +887,5 @@ export default function AdminSchedulePage() {
         )}
 
       </div>
-    </ClientLayoutWrapper>
   );
 }
