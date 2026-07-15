@@ -497,7 +497,7 @@ export default function CreditsPage() {
         // Sync products to master DB
         if (data.items && data.items.length > 0) {
           const poDateForSync = selectedCreditForPoUpload?.collectionDate || new Date().toISOString().split('T')[0];
-          await syncProductsToMaster(data.items, poDateForSync, companyName);
+          await syncProductsToMaster(data.items, poDateForSync, selectedCreditForPoUpload?.companyName || "Unknown Supplier");
         }
 
         // Update the document
