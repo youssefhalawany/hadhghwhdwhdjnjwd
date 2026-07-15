@@ -245,7 +245,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       link.rel = 'manifest';
       document.head.appendChild(link);
     }
-    const isCashierPortal = pathname?.startsWith('/cashier') || pathname?.startsWith('/shift-reports/cashier') || pathname?.startsWith('/voids/cashier') || pathname?.startsWith('/checklists/cashier');
+    const isCashierPortal = pathname?.startsWith('/cashier') || pathname?.startsWith('/shift-reports/cashier') || pathname?.startsWith('/voids/cashier') || pathname?.startsWith('/checklists/cashier') || pathname?.startsWith('/owner');
     link.href = isCashierPortal ? '/manifest-cashier.json' : '/manifest-manager.json';
   }, [pathname]);
 
@@ -320,7 +320,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   const totalNotifications = pendingShiftCount + pendingVoidCount + pendingExpiriesCount + pendingReturnsCount;
 
   // Completely isolate Cashier pages (No Enterprise Auth, No Sidebar)
-  if (pathname?.startsWith('/shift-reports/cashier') || pathname?.startsWith('/voids/cashier') || pathname?.startsWith('/cashier') || pathname?.startsWith('/expiries') || pathname?.startsWith('/checklists/cashier') || pathname?.startsWith('/inventory-audit/cashier')) {
+  if (pathname?.startsWith('/shift-reports/cashier') || pathname?.startsWith('/voids/cashier') || pathname?.startsWith('/cashier') || pathname?.startsWith('/expiries') || pathname?.startsWith('/checklists/cashier') || pathname?.startsWith('/inventory-audit/cashier') || pathname?.startsWith('/owner')) {
     return (
       <div className="h-[100dvh] w-full overflow-y-auto custom-scrollbar bg-background text-foreground transition-colors duration-300">
         <GlobalReminders />
@@ -411,7 +411,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       <GlobalReminders />
 
       {/* Desktop Sidebar */}
-      {!pathname.startsWith('/cashier') && (
+      {!pathname.startsWith('/cashier') && !pathname.startsWith('/owner') && (
         <aside className="hidden lg:flex flex-col w-64 h-full border-r border-border bg-card z-50 flex-shrink-0 overflow-hidden print:hidden">
           <div className="p-4 border-b border-border flex flex-col gap-4 flex-shrink-0">
             <Link href="/" className="flex items-center gap-3">
@@ -506,7 +506,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 max-h-screen overflow-hidden print:max-h-none print:overflow-visible">
         {/* Top Header */}
-        {!pathname.startsWith('/cashier') && (
+        {!pathname.startsWith('/cashier') && !pathname.startsWith('/owner') && (
           <header className="h-16 flex-shrink-0 glass-header border-b border-border flex items-center justify-between px-4 sm:px-6 z-40 print:hidden">
 
             {/* Mobile Left: Logo & Hamburger */}
@@ -625,7 +625,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
         )}
 
         {/* Mobile Dropdown Menu (Only shown on small screens) */}
-        {mobileMenuOpen && !pathname.startsWith('/cashier') && (
+        {mobileMenuOpen && !pathname.startsWith('/cashier') && !pathname.startsWith('/owner') && (
           <div className="lg:hidden absolute top-16 left-0 w-full bg-white dark:bg-slate-950 border-b border-border shadow-xl z-50 flex flex-col p-4 gap-2 h-[calc(100vh-4rem)] overflow-y-auto">
             {navItems.map((item) => {
               if (item.children) {
@@ -692,13 +692,13 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
         )}
 
         {/* Scrollable Main Content */}
-        <main className={`flex-grow overflow-y-auto custom-scrollbar flex flex-col ${pathname.startsWith('/cashier') ? '' : 'p-4 sm:p-6 lg:p-8 bg-slate-50/50 dark:bg-slate-950/20'}`}>
-          <div className={`flex-grow w-full max-w-7xl mx-auto ${pathname.startsWith('/cashier') ? 'h-full p-0 m-0 max-w-full' : ''}`}>
+        <main className={`flex-grow overflow-y-auto custom-scrollbar flex flex-col ${(pathname.startsWith('/cashier') || pathname.startsWith('/owner')) ? '' : 'p-4 sm:p-6 lg:p-8 bg-slate-50/50 dark:bg-slate-950/20'}`}>
+          <div className={`flex-grow w-full max-w-7xl mx-auto ${(pathname.startsWith('/cashier') || pathname.startsWith('/owner')) ? 'h-full p-0 m-0 max-w-full' : ''}`}>
             {children}
           </div>
 
           {/* Footer inside scrollable area */}
-          {!pathname.startsWith('/cashier') && (
+          {!pathname.startsWith('/cashier') && !pathname.startsWith('/owner') && (
             <footer className="mt-8 border-t border-border/50 py-4 text-center text-xs text-muted-foreground no-print">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
                 <p>© 2026 Circle K Franchise Group. All rights reserved.</p>
