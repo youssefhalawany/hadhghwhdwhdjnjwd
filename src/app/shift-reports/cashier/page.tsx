@@ -14,7 +14,8 @@ import { CashierBottomNav } from "@/components/CashierBottomNav";
 import dynamic from "next/dynamic";
 const SignaturePad = dynamic(() => import("react-signature-canvas"), { ssr: false });
 import { toast } from "sonner";
-import { Skeleton } from "@/components/ui/skeleton";
+import { triggerSuccessOverlay } from "@/components/MobileUX/SuccessOverlay";
+import { SkeletonList } from "@/components/MobileUX/SkeletonLoader";
 
 // Translation Dictionary
 const t = {
@@ -570,7 +571,8 @@ export default function CashierShiftReportPage() {
       }).catch(err => console.error("Notify error", err));
 
       vibrateSuccess();
-      router.push(`/shift-reports/cashier/success?id=${submittedId}`);
+      triggerSuccessOverlay(lang === "ar" ? "تم الإرسال!" : "Submitted!");
+      router.push("/cashier");
     } catch (error: any) {
       console.error("Error submitting shift report:", error);
       
@@ -627,7 +629,7 @@ export default function CashierShiftReportPage() {
         .ck-bottom-nav > div svg { flex-shrink: 0; }
       `}</style>
 
-        <Skeleton className="h-16 w-16 rounded-full" />
+        <SkeletonList />
       </div>
     );
   }

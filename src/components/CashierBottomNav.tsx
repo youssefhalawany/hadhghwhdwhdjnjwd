@@ -1,25 +1,29 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { LayoutDashboard, FileText, User, ShieldAlert, LogOut, ScanBarcode } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { LayoutDashboard, FileText, User, ShieldAlert, LogOut, ScanBarcode, Plus, X } from "lucide-react";
+import { playClickSound, playSwooshSound } from "@/lib/audioCues";
 import { hapticLight } from "@/lib/haptics";
 
 const D = {
-  bg:      "#0B1121",
+  bg:      "rgba(11, 17, 33, 0.75)", // Translucent for glassmorphism
   border:  "rgba(34, 211, 238, 0.15)",
   text:    "#64748b",
   active:  "#22d3ee",
-  activeBg:"rgba(34, 211, 238, 0.08)",
   red:     "#ef4444",
-  redBg:   "rgba(239, 68, 68, 0.08)",
 };
 
-const NAV_ITEMS = [
-  { label: "Dashboard",   labelAr: "الرئيسية",  icon: LayoutDashboard, href: "/cashier" },
-  { label: "Daily Shift", labelAr: "وردية",      icon: FileText,        href: "/shift-reports/cashier" },
-  { label: "My Account",  labelAr: "حسابي",      icon: User,            href: "/cashier/account" },
-  { label: "Voids",       labelAr: "مرتجعات",   icon: ShieldAlert,     href: "/voids/cashier" },
+const MAIN_NAV = [
+  { label: "Dash", labelAr: "الرئيسية", icon: LayoutDashboard, href: "/cashier" },
+  { label: "Account", labelAr: "حسابي", icon: User, href: "/cashier/account" },
+];
+
+const DIAL_ACTIONS = [
+  { label: "Shift", icon: FileText, href: "/shift-reports/cashier", color: "#34d399" },
+  { label: "Voids", icon: ShieldAlert, href: "/voids/cashier", color: "#ef4444" },
+  { label: "Logout", icon: LogOut, action: "logout", color: "#64748b" },
 ];
 
 interface Props { lang?: "en" | "ar"; }
@@ -27,66 +31,140 @@ interface Props { lang?: "en" | "ar"; }
 export function CashierBottomNav({ lang = "en" }: Props) {
   const router = useRouter();
   const pathname = usePathname();
+  const [isDialOpen, setIsDialOpen] = useState(false);
 
-  const handleLogout = () => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("active_cashier_session");
-      window.location.href = "/cashier";
+  const toggleDial = () => {
+    playSwooshSound();
+    hapticLight();
+    setIsDialOpen(!isDialOpen);
+  };
+
+  const handleAction = (href?: string, action?: string) => {
+    playClickSound();
+    hapticLight();
+    setIsDialOpen(false);
+    
+    if (action === "logout") {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("active_cashier_session");
+        window.location.href = "/cashier";
+      }
+      return;
     }
+    if (href) router.push(href);
+  };
+
+  const handleNav = (href: string) => {
+    playClickSound();
+    hapticLight();
+    setIsDialOpen(false);
+    router.push(href);
   };
 
   return (
     <>
-      <div style={{ height: 68 }} />
+      <div style={{ height: 80 }} /> {/* Spacer */}
+      
+      {/* Dim Overlay when dial is open */}
+      <AnimatePresence>
+        {isDialOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[190] bg-black/40 backdrop-blur-sm"
+            onClick={() => setIsDialOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
       <nav style={{
         position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200,
         backgroundColor: D.bg, borderTop: `1px solid ${D.border}`,
-        display: "flex", alignItems: "stretch",
-        paddingBottom: "env(safe-area-inset-bottom, 0px)",
-        backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+        display: "flex", alignItems: "center", justifyContent: "space-around",
+        paddingBottom: "env(safe-area-inset-bottom, 12px)",
+        paddingTop: 8,
+        backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
       }}>
-        {NAV_ITEMS.map((item) => {
-          const Icon = item.icon;
-          const isActive = item.href === "/cashier" ? pathname === "/cashier" : pathname.startsWith(item.href);
-          return (
-            <button key={item.href} onClick={() => router.push(item.href)} style={{
-              flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
-              justifyContent: "center", gap: 4, padding: "10px 4px",
-              background: isActive ? D.activeBg : "transparent",
-              border: "none", cursor: "pointer", color: isActive ? D.active : D.text,
-              fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em",
-              transition: "color 0.15s, background 0.15s",
-              WebkitTapHighlightColor: "transparent", minHeight: 58, position: "relative",
-            }}>
-              {isActive && <span style={{
-                position: "absolute", top: 0, left: "20%", right: "20%",
-                height: 2, borderRadius: "0 0 4px 4px", background: D.active,
-              }} />}
-              <Icon size={20} strokeWidth={isActive ? 2.5 : 1.8} color={isActive ? D.active : D.text} />
-              <span>{lang === "ar" ? item.labelAr : item.label}</span>
-            </button>
-          );
-        })}
         
-        {/* Logout */}
-        <button onClick={handleLogout} style={{
-          flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
-          justifyContent: "center", gap: 4, padding: "10px 4px",
-          background: "transparent", border: "none", cursor: "pointer",
-          color: D.text, fontSize: 9, fontWeight: 700, textTransform: "uppercase",
-          letterSpacing: "0.07em", WebkitTapHighlightColor: "transparent", minHeight: 58,
-          transition: "color 0.15s",
-        }}
-          onTouchStart={e => { e.currentTarget.style.color = D.red; e.currentTarget.style.background = D.redBg; }}
-          onTouchEnd={e => { e.currentTarget.style.color = D.text; e.currentTarget.style.background = "transparent"; }}
-          onMouseEnter={e => { e.currentTarget.style.color = D.red; }}
-          onMouseLeave={e => { e.currentTarget.style.color = D.text; }}
-        >
-          <LogOut size={20} strokeWidth={1.8} />
-          <span>{lang === "ar" ? "خروج" : "Logout"}</span>
-        </button>
-      </nav>
+        {/* Left Nav Item */}
+        <NavItem item={MAIN_NAV[0]} pathname={pathname} onClick={() => handleNav(MAIN_NAV[0].href)} />
 
+        {/* Central Morphing Action Button */}
+        <div className="relative flex justify-center w-20 h-14 -mt-6">
+          <AnimatePresence>
+            {isDialOpen && (
+              <motion.div 
+                className="absolute bottom-16 flex items-end justify-center gap-4"
+                initial="hidden"
+                animate="visible"
+                exit="hidden"
+                variants={{
+                  visible: { transition: { staggerChildren: 0.05, delayChildren: 0.05 } },
+                  hidden: { transition: { staggerChildren: 0.05, staggerDirection: -1 } }
+                }}
+              >
+                {DIAL_ACTIONS.map((action, i) => (
+                  <motion.button
+                    key={action.label}
+                    onClick={() => handleAction(action.href, action.action)}
+                    variants={{
+                      hidden: { opacity: 0, y: 30, scale: 0.5 },
+                      visible: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", bounce: 0.5 } }
+                    }}
+                    className="flex flex-col items-center gap-2 cursor-pointer outline-none"
+                  >
+                    <div 
+                      className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg border border-white/10"
+                      style={{ backgroundColor: action.color }}
+                    >
+                      <action.icon size={20} color="#fff" />
+                    </div>
+                    <span className="text-[10px] font-bold text-white tracking-wider">{action.label}</span>
+                  </motion.button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <motion.button
+            onClick={toggleDial}
+            whileTap={{ scale: 0.9 }}
+            animate={{ rotate: isDialOpen ? 45 : 0, backgroundColor: isDialOpen ? D.red : D.active }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            className="w-14 h-14 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(34,211,238,0.4)] border-2 border-white/20 z-50 cursor-pointer outline-none"
+          >
+            <Plus size={28} color="#fff" strokeWidth={2.5} />
+          </motion.button>
+        </div>
+
+        {/* Right Nav Item */}
+        <NavItem item={MAIN_NAV[1]} pathname={pathname} onClick={() => handleNav(MAIN_NAV[1].href)} />
+
+      </nav>
     </>
+  );
+}
+
+function NavItem({ item, pathname, onClick }: { item: any, pathname: string, onClick: () => void }) {
+  const isActive = item.href === "/cashier" ? pathname === "/cashier" : pathname.startsWith(item.href);
+  const Icon = item.icon;
+  
+  return (
+    <button 
+      onClick={onClick} 
+      className="flex flex-col items-center justify-center gap-1 min-h-[48px] w-16 cursor-pointer outline-none transition-colors"
+      style={{ color: isActive ? D.active : D.text }}
+    >
+      <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+      <span className="text-[10px] font-bold uppercase tracking-wider">{item.label}</span>
+      {isActive && (
+        <motion.div 
+          layoutId="activeTabIndicator" 
+          className="w-8 h-1 rounded-full mt-1" 
+          style={{ backgroundColor: D.active }} 
+        />
+      )}
+    </button>
   );
 }

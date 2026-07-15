@@ -6,6 +6,8 @@ import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { DynamicIsland } from "@/components/MobileUX/DynamicIsland";
+import { SuccessOverlay } from "@/components/MobileUX/SuccessOverlay";
 import { BranchProvider } from "@/context/BranchContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { BrandProvider } from "@/context/BrandContext";
@@ -53,6 +55,8 @@ export default function RootLayout({
                   <ThemeToggle />
                 </div>
                 <OfflineBanner />
+                <DynamicIsland />
+                <SuccessOverlay />
                 <ClientLayoutWrapper>{children}</ClientLayoutWrapper>
                 <Toaster position="top-center" richColors closeButton theme="system" />
               </LanguageProvider>

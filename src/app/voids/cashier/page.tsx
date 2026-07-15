@@ -4,6 +4,8 @@ import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { collection, addDoc, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { toast } from "sonner";
+import { triggerSuccessOverlay } from "@/components/MobileUX/SuccessOverlay";
 import {  Shield, UploadCloud, ChevronLeft, AlertTriangle, User as UserIcon, Globe, Camera, X, Radar , Package, ArrowLeft } from "lucide-react";
 import { getOfflineQueue, addToOfflineQueue, removeFromOfflineQueue } from '@/lib/offlineDb';
 import { vibrateSuccess, vibrateError } from "@/lib/haptics";
@@ -472,7 +474,8 @@ export default function CashierVoidPage() {
       } catch (err) {}
 
       vibrateSuccess();
-      router.push("/voids/cashier/success");
+      triggerSuccessOverlay(lang === "ar" ? "تم الإرسال!" : "Submitted!");
+      router.push("/cashier");
     } catch (error: any) {
       vibrateSuccess();
       await addToOfflineQueue('void_requests', {

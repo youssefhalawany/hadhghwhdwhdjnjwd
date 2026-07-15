@@ -65,3 +65,24 @@ export function SkeletonSchedule() {
     </div>
   );
 }
+
+export function SkeletonList() {
+  return (
+    <div className="flex flex-col gap-4 p-4 w-full h-full mt-2">
+      {/* Header bar fake */}
+      <SkeletonBlock width="120px" height="28px" />
+      <SkeletonBlock width="100%" height="80px" borderRadius="16px" className="mb-4" />
+      
+      {/* List items fake */}
+      {[1, 2, 3, 4, 5].map((i) => (
+        <div key={i} className="flex gap-4 items-center p-4 rounded-xl bg-white/5 border border-white/5">
+          <SkeletonBlock width="40px" height="40px" borderRadius="8px" />
+          <div className="flex flex-col gap-2 flex-1">
+            <SkeletonBlock width="60%" height="16px" />
+            <SkeletonBlock width="30%" height="12px" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}

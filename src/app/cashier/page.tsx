@@ -14,6 +14,7 @@ import {
 import { CashierBottomNav } from "@/components/CashierBottomNav";
 import { PullToRefresh } from "@/components/MobileUX/PullToRefresh";
 import { SkeletonDashboard } from "@/components/MobileUX/SkeletonLoader";
+import { ActivityRing } from "@/components/MobileUX/ActivityRing";
 import { PinPad } from "@/components/PinPad";
 import { playSuccessSound, playErrorSound, playPopSound, getAudioCtx } from "@/lib/sounds";
 import { toast } from "sonner";
@@ -210,9 +211,14 @@ export default function CashierHubPage() {
   const nav = (path: string) => { playPopSound(); router.push(path); };
   const isRTL = lang === "ar";
 
+  const isMorning = currentTime.getHours() >= 6 && currentTime.getHours() < 18;
+  const timeBasedBg = isMorning
+    ? "linear-gradient(180deg, #083344 0%, #0B1121 100%)" // Morning: Deep Teal to Midnight
+    : "linear-gradient(180deg, #050810 0%, #020617 100%)"; // Night: Ultra Dark Indigo/Black
+
   // Root forced-dark wrapper style
   const rootStyle: React.CSSProperties = {
-    backgroundColor: D.bg,
+    background: timeBasedBg,
     color: D.textPrimary,
     colorScheme: "dark",
     fontFamily: "'Inter', 'Cairo', -apple-system, system-ui, sans-serif",
@@ -270,12 +276,22 @@ export default function CashierHubPage() {
               <div style={{ backgroundColor: D.surface, borderRadius: 24, padding: "24px", marginBottom: 24, backgroundImage: "linear-gradient(135deg, rgba(34, 211, 238, 0.05) 0%, rgba(11, 17, 33, 0) 100%)", border: `1px solid ${D.border}`, boxShadow: "0 10px 30px rgba(0,0,0,0.2)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
                   <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-                    <div style={{ width: 56, height: 56, borderRadius: 20, background: "linear-gradient(135deg, #06b6d4, #3b82f6)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: 800, color: "#fff", boxShadow: "0 4px 15px rgba(6, 182, 212, 0.3)" }}>
-                      {authenticatedUser.name.charAt(0).toUpperCase()}
-                    </div>
+                    <ActivityRing 
+                      progress={0.65} 
+                      size={64} 
+                      strokeWidth={4} 
+                      color="#22d3ee" 
+                      bgColor="rgba(34, 211, 238, 0.15)"
+                      icon={
+                        <div style={{ width: 48, height: 48, borderRadius: "50%", background: "linear-gradient(135deg, #083344, #164e63)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 800, color: "#fff", boxShadow: "inset 0 2px 10px rgba(0,0,0,0.5)" }}>
+                          {authenticatedUser.name.charAt(0).toUpperCase()}
+                        </div>
+                      }
+                    />
                     <div>
                       <div style={{ fontSize: 13, color: D.textSecondary, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 2 }}>{authenticatedUser.role}</div>
                       <div style={{ fontSize: 20, fontWeight: 800, color: D.textPrimary }}>{authenticatedUser.name.split(" ")[0]}</div>
+                      <div className="text-[10px] text-cyan-400 font-bold mt-0.5">Shift Progress: 65%</div>
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>

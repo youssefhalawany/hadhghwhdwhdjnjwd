@@ -10,6 +10,8 @@ import { useTheme } from "next-themes";
 import {  AlertCircle, CheckCircle2, Lock, ScanLine, Camera, Edit2, Save, X, Package , Radar, Shield, User as UserIcon, ArrowLeft } from "lucide-react";
 import { CameraScanner } from "@/components/ui/CameraScanner";
 import { CashierBottomNav } from "@/components/CashierBottomNav";
+import { SkeletonList } from "@/components/MobileUX/SkeletonLoader";
+import { triggerSuccessOverlay } from "@/components/MobileUX/SuccessOverlay";
 
 export default function CashierInventoryAudit() {
   const { language: lang } = useLanguage();
@@ -172,11 +174,9 @@ export default function CashierInventoryAudit() {
         });
       }
       
-      setSuccessMsg(lang === "ar" ? "تم تسجيل الصنف بنجاح!" : "Item scanned successfully!");
+      triggerSuccessOverlay(lang === "ar" ? "تم تسجيل الصنف!" : "Item Scanned!");
       setBarcode("");
       setQuantity("");
-      
-      setTimeout(() => setSuccessMsg(""), 2000);
     } catch (error) {
       console.error("Error submitting scan:", error);
       alert(lang === "ar" ? "حدث خطأ" : "An error occurred");
@@ -205,8 +205,8 @@ export default function CashierInventoryAudit() {
   if (loading) {
     return (
       <PageTransition>
-        <div className="flex items-center justify-center min-h-[80vh]">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="min-h-screen bg-[#0B1121]">
+          <SkeletonList />
         </div>
       </PageTransition>
     );
