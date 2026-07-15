@@ -131,7 +131,7 @@ export default function CashierSchedulePage() {
 
       const allSchedulesData = await Promise.all(
         ALL_BRANCH_IDS.map((bId) =>
-          fetch(`/api/schedule?storeId=${bId}&month=${targetMonth}`).then((r) => r.json())
+          fetch(`/api/schedule?storeId=${bId}&month=${targetMonth}&t=${Date.now()}`, { cache: 'no-store' }).then((r) => r.json())
         )
       );
 
@@ -162,7 +162,7 @@ export default function CashierSchedulePage() {
         setSchedule(null);
       }
 
-      const leaveRes = await fetch(`/api/schedule/leave-requests?storeId=${resolveStoreId(currentUser)}`);
+      const leaveRes = await fetch(`/api/schedule/leave-requests?storeId=${resolveStoreId(currentUser)}&t=${Date.now()}`, { cache: 'no-store' });
       const leaveData = await leaveRes.json();
       if (leaveData.requests) {
         const userReqs = leaveData.requests.filter((r: any) =>
