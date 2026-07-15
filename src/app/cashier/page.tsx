@@ -24,23 +24,23 @@ import { showIsland } from "@/components/MobileUX/DynamicIsland";
 
 // ── Midnight Navy Design Tokens (Matches Screenshot) ────────────────
 const D = {
-  bg:           "#0B1121",        // Deep midnight blue
-  surface:      "#151E32",        // Card background
-  surfaceHigh:  "#1C2841",        // Elevated surface / hovers
-  border:       "rgba(34, 211, 238, 0.15)", // Subtle cyan border
-  borderMid:    "rgba(34, 211, 238, 0.25)",
-  red:          "#ef4444",
-  redDim:       "rgba(239,68,68,0.15)",
-  redBorder:    "rgba(239,68,68,0.30)",
-  textPrimary:  "#f8fafc",        // slate-50
-  textSecondary:"#94a3b8",        // slate-400
-  textDim:      "#64748b",        // slate-500
-  cyan:         "#22d3ee",        // Cyan accent
-  cyanDim:      "rgba(34, 211, 238, 0.1)",
-  cyanBorder:   "rgba(34, 211, 238, 0.25)",
-  green:        "#34d399",
-  greenDim:     "rgba(52,211,153,0.12)",
-  greenBorder:  "rgba(52,211,153,0.25)",
+  bg: "#0B1121",        // Deep midnight blue
+  surface: "#151E32",        // Card background
+  surfaceHigh: "#1C2841",        // Elevated surface / hovers
+  border: "rgba(34, 211, 238, 0.15)", // Subtle cyan border
+  borderMid: "rgba(34, 211, 238, 0.25)",
+  red: "#ef4444",
+  redDim: "rgba(239,68,68,0.15)",
+  redBorder: "rgba(239,68,68,0.30)",
+  textPrimary: "#f8fafc",        // slate-50
+  textSecondary: "#94a3b8",        // slate-400
+  textDim: "#64748b",        // slate-500
+  cyan: "#22d3ee",        // Cyan accent
+  cyanDim: "rgba(34, 211, 238, 0.1)",
+  cyanBorder: "rgba(34, 211, 238, 0.25)",
+  green: "#34d399",
+  greenDim: "rgba(52,211,153,0.12)",
+  greenBorder: "rgba(52,211,153,0.25)",
 };
 
 function DashboardTimeMetrics({ authenticatedUser, lang }: { authenticatedUser: any, lang: string }) {
@@ -61,11 +61,11 @@ function DashboardTimeMetrics({ authenticatedUser, lang }: { authenticatedUser: 
 
   return (
     <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-      <ActivityRing 
-        progress={shiftProgress} 
-        size={64} 
-        strokeWidth={4} 
-        color="#22d3ee" 
+      <ActivityRing
+        progress={shiftProgress}
+        size={64}
+        strokeWidth={4}
+        color="#22d3ee"
         bgColor="rgba(34, 211, 238, 0.15)"
         icon={
           <div style={{ width: 48, height: 48, borderRadius: "50%", background: "linear-gradient(135deg, #083344, #164e63)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 800, color: "#fff", boxShadow: "inset 0 2px 10px rgba(0,0,0,0.5)" }}>
@@ -111,7 +111,7 @@ export default function CashierHubPage() {
   const [isInstalled, setIsInstalled] = useState(true);
   const [isNotificationEnabled, setIsNotificationEnabled] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
-  
+
   // Fake state for bottom nav aesthetics
   const [activeTab, setActiveTab] = useState("dashboard");
 
@@ -188,13 +188,13 @@ export default function CashierHubPage() {
         try {
           const s = await getDocs(collection(db, "employees"));
           activeNames = new Set(s.docs.filter(d => d.data().status === "active").map(d => d.data().name));
-        } catch {}
+        } catch { }
         const snap = await getDocs(collection(db, "cashiers"));
         let list: any[] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         if (activeNames) {
           list = list.filter(c => activeNames!.has(c.name));
           for (const c of snap.docs.map(d => ({ id: d.id, ...d.data() })))
-            if (!activeNames.has((c as any).name)) try { await deleteDoc(doc(db, "cashiers", (c as any).id)); } catch {}
+            if (!activeNames.has((c as any).name)) try { await deleteDoc(doc(db, "cashiers", (c as any).id)); } catch { }
         }
         list.push({ id: "master_youssef", employeeId: "master_youssef", name: "Mr Youssef (Owner)", pin: "4321", role: "master", storeId: "ALL" });
         setEmployees(list);
@@ -213,7 +213,7 @@ export default function CashierHubPage() {
       if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
       playErrorSound();
       toast.error(lang === "en" ? "Incorrect PIN" : "الرمز السري غير صحيح");
-      setPinInput(""); 
+      setPinInput("");
       setPinError(true);
       setTimeout(() => setPinError(false), 500);
       return;
@@ -301,19 +301,19 @@ export default function CashierHubPage() {
 
     const actions = [
       ...(isMaster ? [{ id: "master", label: lang === "en" ? "Master Feed" : "اللوحة الرئيسية", icon: Bell, path: "/cashier/master", badge: "LIVE" }] : []),
-      { id: "shift",     label: lang === "en" ? "Daily Shift Report"  : "تقرير الوردية",          icon: FileText,     path: "/shift-reports/cashier" },
-      { id: "void",      label: lang === "en" ? "Log a Void"          : "تسجيل مرتجع",            icon: Shield,       path: "/voids/cashier" },
-      { id: "expiry",    label: lang === "en" ? "Expiry Tracker"      : "تواريخ الصلاحية",         icon: CalendarIcon, path: "/expiries" },
-      { id: "checklist", label: lang === "en" ? "Checklists"          : "قوائم المراجعة",          icon: CheckSquare,  path: "/checklists/cashier" },
-      { id: "account",   label: lang === "en" ? "My Account"          : "حسابي",                   icon: UserCircle,   path: "/cashier/account" },
-      { id: "schedule",  label: lang === "en" ? "My Schedule"         : "جدول العمل",              icon: ClipboardList,path: "/cashier/schedule" },
-      { id: "inventory", label: lang === "en" ? "Inventory Count"     : "جرد المخزون",             icon: ScanLine,     path: "/inventory-audit/cashier" },
+      { id: "shift", label: lang === "en" ? "Daily Shift Report" : "تقرير الوردية", icon: FileText, path: "/shift-reports/cashier" },
+      { id: "void", label: lang === "en" ? "Log a Void" : "تسجيل مرتجع", icon: Shield, path: "/voids/cashier" },
+      { id: "expiry", label: lang === "en" ? "Expiry Tracker" : "تواريخ الصلاحية", icon: CalendarIcon, path: "/expiries" },
+      { id: "checklist", label: lang === "en" ? "Checklists" : "قوائم المراجعة", icon: CheckSquare, path: "/checklists/cashier" },
+      { id: "account", label: lang === "en" ? "My Account" : "حسابي", icon: UserCircle, path: "/cashier/account" },
+      { id: "schedule", label: lang === "en" ? "My Schedule" : "جدول العمل", icon: ClipboardList, path: "/cashier/schedule" },
+      { id: "inventory", label: lang === "en" ? "Inventory Count" : "جرد المخزون", icon: ScanLine, path: "/inventory-audit/cashier" },
     ] as any[];
 
     return (
       <div style={{ ...rootStyle, direction: isRTL ? "rtl" : "ltr" }}>
         {showWelcome && <WelcomeSplash name={authenticatedUser.name} onComplete={() => setShowWelcome(false)} />}
-        
+
         <style>{`
           html, body { background-color: ${isMorning ? "#0B1121" : "#020617"} !important; overscroll-behavior-y: none; }
           .ck-cashier * { color-scheme: dark !important; }
@@ -322,11 +322,11 @@ export default function CashierHubPage() {
         {/* ── HEADER ── */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "54px 20px 10px" }}>
           <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.15em", color: D.textSecondary, textTransform: "uppercase", flexShrink: 0 }}>
-            CIRCLE K <span style={{ color: D.textDim, fontWeight: 500 }}>FRANCHISE</span>
+            CIRCLE K <span style={{ color: D.textDim, fontWeight: 500 }}>ANH Portal</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-            <button 
-              onClick={() => { playPopSound(); setLanguage(lang === "en" ? "ar" : "en"); }} 
+            <button
+              onClick={() => { playPopSound(); setLanguage(lang === "en" ? "ar" : "en"); }}
               style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 8, background: D.surfaceHigh, border: `1px solid ${D.border}`, color: D.cyan, fontSize: 10, fontWeight: 800, cursor: "pointer", flexShrink: 0 }}
             >
               <Globe size={14} />
@@ -342,19 +342,19 @@ export default function CashierHubPage() {
         <main style={{ flex: 1, paddingBottom: "100px", position: "relative" }}>
           <PullToRefresh onRefresh={handleRefresh}>
             <div style={{ padding: "0 20px" }}>
-              
+
               {/* Account Overview Header Card */}
               <div style={{ backgroundColor: D.surface, borderRadius: 24, padding: "24px", marginBottom: 24, backgroundImage: "linear-gradient(135deg, rgba(34, 211, 238, 0.05) 0%, rgba(11, 17, 33, 0) 100%)", border: `1px solid ${D.border}`, boxShadow: "0 4px 16px rgba(0,0,0,0.2)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
                   <DashboardTimeMetrics authenticatedUser={authenticatedUser} lang={lang} />
                   <div style={{ display: "flex", gap: 8 }}>
                     <button onClick={() => { playPopSound(); handleEnableNotifications(); }} style={{ width: 36, height: 36, borderRadius: 12, background: isNotificationEnabled ? D.cyanDim : D.surfaceHigh, border: `1px solid ${isNotificationEnabled ? D.cyanBorder : D.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", position: "relative" }}>
-                       <Bell size={16} color={isNotificationEnabled ? D.cyan : D.textSecondary} />
-                       {isNotificationEnabled && <span style={{ position: "absolute", top: -2, right: -2, width: 8, height: 8, borderRadius: "50%", backgroundColor: D.cyan, border: `2px solid ${D.surface}` }} />}
+                      <Bell size={16} color={isNotificationEnabled ? D.cyan : D.textSecondary} />
+                      {isNotificationEnabled && <span style={{ position: "absolute", top: -2, right: -2, width: 8, height: 8, borderRadius: "50%", backgroundColor: D.cyan, border: `2px solid ${D.surface}` }} />}
                     </button>
                   </div>
                 </div>
-                
+
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", background: "rgba(0,0,0,0.2)", borderRadius: 16 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: D.textSecondary, fontWeight: 600 }}>
                     <LayoutDashboard size={14} className="text-cyan-400" />
@@ -373,20 +373,20 @@ export default function CashierHubPage() {
                 {actions.map((a: any) => {
                   const Icon = a.icon;
                   return (
-                    <button 
-                      key={a.id} 
-                      onClick={() => nav(a.path)} 
-                      style={{ 
+                    <button
+                      key={a.id}
+                      onClick={() => nav(a.path)}
+                      style={{
                         display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 12,
-                        padding: "16px", borderRadius: 20, background: D.surface, border: `1px solid ${D.border}`, 
-                        cursor: "pointer", textAlign: isRTL ? "right" : "left", transition: "all 0.1s" 
-                      }} 
-                      onTouchStart={e => { e.currentTarget.style.transform = "scale(0.96)"; e.currentTarget.style.backgroundColor = D.surfaceHigh; }} 
+                        padding: "16px", borderRadius: 20, background: D.surface, border: `1px solid ${D.border}`,
+                        cursor: "pointer", textAlign: isRTL ? "right" : "left", transition: "all 0.1s"
+                      }}
+                      onTouchStart={e => { e.currentTarget.style.transform = "scale(0.96)"; e.currentTarget.style.backgroundColor = D.surfaceHigh; }}
                       onTouchEnd={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.backgroundColor = D.surface; }}
                     >
                       <div style={{ display: "flex", justifyContent: "space-between", width: "100%" }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 40, height: 40, borderRadius: 12, background: D.cyanDim, border: `1px solid ${D.cyanBorder}` }}>
-                           <Icon size={20} color={D.cyan} />
+                          <Icon size={20} color={D.cyan} />
                         </div>
                         {a.badge && (
                           <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 6px", borderRadius: 6, background: D.cyanDim, color: D.cyan, border: `1px solid ${D.cyanBorder}`, textTransform: "uppercase", height: 20, display: "flex", alignItems: "center" }}>{a.badge}</span>
@@ -421,13 +421,13 @@ export default function CashierHubPage() {
       {/* Top Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "54px 20px 10px" }}>
         <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.15em", color: D.textSecondary, textTransform: "uppercase", flexShrink: 0 }}>
-          CIRCLE K <span style={{ color: D.textDim, fontWeight: 500 }}>FRANCHISE</span>
+          CIRCLE K <span style={{ color: D.textDim, fontWeight: 500 }}>ANH Portal</span>
         </div>
         <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-           <button onClick={() => { playPopSound(); setLanguage(lang === "en" ? "ar" : "en"); }} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 8, background: D.surface, border: `1px solid ${D.border}`, color: D.textSecondary, fontSize: 10, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
-             <Globe size={14} />
-             {lang === "en" ? "EN" : "AR"}
-           </button>
+          <button onClick={() => { playPopSound(); setLanguage(lang === "en" ? "ar" : "en"); }} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 8, background: D.surface, border: `1px solid ${D.border}`, color: D.textSecondary, fontSize: 10, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
+            <Globe size={14} />
+            {lang === "en" ? "EN" : "AR"}
+          </button>
         </div>
       </div>
 
