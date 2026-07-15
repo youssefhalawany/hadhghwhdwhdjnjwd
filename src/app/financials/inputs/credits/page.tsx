@@ -130,11 +130,7 @@ export default function CreditsPage() {
   const [credits, setCredits] = useState<Credit[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [monthFilter, setMonthFilter] = useState(() => {
-    const today = new Date();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    return `${today.getFullYear()}-${mm}`;
-  });
+  const [monthFilter, setMonthFilter] = useState("");
 
   // Credit Form
   const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
@@ -891,14 +887,7 @@ export default function CreditsPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <div className="h-px md:h-auto md:w-px bg-slate-200"></div>
-            <input 
-              type="month"
-              value={monthFilter}
-              onChange={(e) => setMonthFilter(e.target.value)}
-              className="w-full md:w-48 px-4 py-3 rounded-xl bg-transparent hover:bg-slate-50 focus:bg-white transition-colors border-none outline-none text-slate-700 font-bold cursor-pointer"
-            />
-            <div className="h-px md:h-auto md:w-px bg-slate-200"></div>
+
             <select
               className="w-full md:w-64 px-4 py-3 rounded-xl bg-transparent hover:bg-slate-50 focus:bg-white transition-colors border-none outline-none text-slate-700 font-bold cursor-pointer appearance-none"
               value={statusFilter}
