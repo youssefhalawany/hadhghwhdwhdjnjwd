@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, PackageSearch, History, TrendingUp, TrendingDown, Clock, Barcode, ArrowRight, X, ArrowUpRight, ArrowDownRight, Activity } from "lucide-react";
+import { Search, PackageSearch, History, TrendingUp, TrendingDown, Clock, Barcode, ArrowRight, X, ArrowUpRight, ArrowDownRight, Activity, Camera } from "lucide-react";
 import { productsDb } from "@/lib/firebase";
 import { collection, query, where, getDocs, limit } from "firebase/firestore";
 import Link from "next/link";
@@ -13,6 +13,37 @@ export default function ProductsPricePage() {
   const [isSearching, setIsSearching] = useState(false);
   const [products, setProducts] = useState<any[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+
+  useEffect(() => {
+    if (!isScanning) return;
+    
+    let scanner: any;
+    import("html5-qrcode").then((module) => {
+      const Html5QrcodeScanner = module.Html5QrcodeScanner;
+      scanner = new Html5QrcodeScanner(
+        "reader",
+        { fps: 10, qrbox: { width: 250, height: 150 } },
+        false
+      );
+      scanner.render(
+        (decodedText: string) => {
+          setSearchTerm(decodedText);
+          setIsScanning(false);
+          scanner.clear();
+        },
+        () => {
+          // ignore scan errors
+        }
+      );
+    });
+
+    return () => {
+      if (scanner) {
+        scanner.clear().catch(console.error);
+      }
+    };
+  }, [isScanning]);
 
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -125,6 +156,18 @@ export default function ProductsPricePage() {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-14 pr-14 py-6 bg-white/80 backdrop-blur-xl border border-white/20 rounded-3xl text-xl font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-indigo-500/20 transition-all shadow-xl shadow-slate-200/50"
           />
+          {!searchTerm && (
+            <button 
+              type="button"
+              onClick={() => setIsScanning(true)}
+              className="absolute inset-y-0 right-5 flex items-center text-slate-400 hover:text-indigo-600 transition-colors"
+            >
+              <div className="bg-slate-100 hover:bg-indigo-50 p-2.5 rounded-2xl transition-colors flex items-center gap-2">
+                <Camera size={20} />
+                <span className="hidden md:inline text-sm font-bold">Scan</span>
+              </div>
+            </button>
+          )}
           {searchTerm && (
             <button 
               type="button"
@@ -135,6 +178,39 @@ export default function ProductsPricePage() {
             </button>
           )}
         </form>
+
+        <AnimatePresence>
+          {isScanning && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+            >
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl relative"
+              >
+                <button 
+                  onClick={() => setIsScanning(false)}
+                  className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-100 p-2 rounded-full transition-colors z-10"
+                >
+                  <X size={20} />
+                </button>
+                <h3 className="text-xl font-black text-slate-900 mb-4 tracking-tight flex items-center gap-2">
+                  <Camera size={20} className="text-indigo-600" />
+                  Scan Barcode
+                </h3>
+                <div className="rounded-2xl overflow-hidden border-2 border-slate-100">
+                  <div id="reader" className="w-full"></div>
+                </div>
+                <p className="text-center text-slate-500 text-sm mt-4 font-medium">Point your camera at the barcode</p>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Results */}
         {isSearching ? (
