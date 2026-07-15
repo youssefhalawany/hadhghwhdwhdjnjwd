@@ -6,6 +6,8 @@ import {
   CalendarDays, ArrowLeft, Clock, CalendarX2, CheckCircle, Clock3, XCircle, ChevronLeft, ChevronRight, Moon, Sun, Globe
 } from "lucide-react";
 import { CashierBottomNav } from "@/components/CashierBottomNav";
+import { PullToRefresh } from "@/components/MobileUX/PullToRefresh";
+import { SkeletonSchedule } from "@/components/MobileUX/SkeletonLoader";
 
 // ── Design Tokens ─────────────────────────────────────────────
 const D = {
@@ -211,26 +213,33 @@ export default function CashierSchedulePage() {
   const t = DICT[lang];
   const isRtl = lang === "ar";
 
-  const root: React.CSSProperties = {
+  const rootStyle: React.CSSProperties = {
     backgroundColor: D.bg,
     color: D.textPrimary,
     minHeight: "100dvh",
-    colorScheme: "dark" as any,
-    fontFamily: "'Inter','Cairo',-apple-system,system-ui,sans-serif",
+    display: "flex",
+    flexDirection: "column",
     direction: isRtl ? "rtl" : "ltr",
   };
 
-  if (loading && !user) {
-    return (
-      <div style={{ ...root, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <Clock3 style={{ width: 40, height: 40, color: D.cyan, animation: "spin 1s linear infinite" }} />
+  if (loading) return (
+    <div style={rootStyle} className="ck-cashier">
+      <style>{`
+        .ck-cashier * { color-scheme: dark !important; }
+      `}</style>
+      <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "24px 20px 10px" }}>
+        <button onClick={() => router.push("/cashier")} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 40, height: 40, borderRadius: 12, background: D.surface, border: `1px solid ${D.border}`, color: D.textPrimary }}>
+          <ArrowLeft size={20} />
+        </button>
+        <h1 style={{ fontSize: 20, fontWeight: 800, color: D.textPrimary, margin: 0 }}>{DICT[lang].title}</h1>
       </div>
-    );
-  }
+      <SkeletonSchedule />
+    </div>
+  );
 
   return (
     <>
-    <div style={root}>
+    <div style={rootStyle}>
 
       {/* ── HEADER ── */}
       <header style={{
@@ -271,9 +280,12 @@ export default function CashierSchedulePage() {
         </button>
       </header>
 
-      <div style={{ padding: "20px 16px 24px", maxWidth: 700, margin: "0 auto" }}>
+      {/* ── MAIN CONTENT ── */}
+      <main style={{ flex: 1, paddingBottom: "100px" }}>
+        <PullToRefresh onRefresh={async () => { await fetchData(user, monthOffset); }}>
+          <div style={{ padding: "20px 16px 24px", maxWidth: 700, margin: "0 auto" }}>
 
-        {/* Month Toggle */}
+            {/* Month Toggle */}
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
           marginBottom: 20, gap: 12,
@@ -491,7 +503,9 @@ export default function CashierSchedulePage() {
           </div>
         </div>
 
-      </div>
+          </div>
+        </PullToRefresh>
+      </main>
 
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

@@ -9,9 +9,11 @@ import {
   Lock, User as UserIcon, ChevronDown, FileText, Shield,
   Calendar as CalendarIcon, UserCircle, Globe, LogOut,
   Download, Bell, Fingerprint, ScanLine, ChevronRight,
-  ClipboardList, Clock, CheckSquare, LayoutGrid, LayoutDashboard, FileBarChart2
+  ClipboardList, Clock, CheckSquare, LayoutGrid, LayoutDashboard, FileBarChart2, Pin
 } from "lucide-react";
 import { CashierBottomNav } from "@/components/CashierBottomNav";
+import { PullToRefresh } from "@/components/MobileUX/PullToRefresh";
+import { SkeletonDashboard } from "@/components/MobileUX/SkeletonLoader";
 import { PinPad } from "@/components/PinPad";
 import { playSuccessSound, playErrorSound, playPopSound, getAudioCtx } from "@/lib/sounds";
 import { toast } from "sonner";
@@ -54,6 +56,31 @@ export default function CashierHubPage() {
   
   // Fake state for bottom nav aesthetics
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [pinnedProducts, setPinnedProducts] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Load pinned products from local storage
+    if (authenticatedUser) {
+      try {
+        const stored = localStorage.getItem(`pinned_products_${authenticatedUser.id}`);
+        if (stored) {
+          setPinnedProducts(JSON.parse(stored));
+        } else {
+          // Defaults for demo
+          setPinnedProducts([
+            { id: "1", name: "Red Bull Energy", price: 55, sku: "9002490100070" },
+            { id: "2", name: "Doritos Nacho", price: 25, sku: "6221087053421" },
+            { id: "3", name: "Marlboro Red", price: 85, sku: "4012345678901" }
+          ]);
+        }
+      } catch (e) {}
+    }
+  }, [authenticatedUser]);
+
+  const handleRefresh = async () => {
+    // Simulate refreshing dashboard data
+    await new Promise(r => setTimeout(r, 1000));
+  };
 
   useEffect(() => {
     const t = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -218,13 +245,8 @@ export default function CashierHubPage() {
 
   // ─── LOADING ──────────────────────────────────────────────
   if (loading) return (
-    <div style={{ ...rootStyle, alignItems: "center", justifyContent: "center", gap: 20 }}>
-      <div style={{ width: 64, height: 64, borderRadius: 20, background: "linear-gradient(135deg,#b91c1c,#ef4444)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30, fontWeight: 900, color: "#fff", boxShadow: "0 0 40px rgba(239,68,68,0.45)" }}>K</div>
-      <div style={{ display: "flex", gap: 6 }}>
-        {[0,1,2].map(i => (
-          <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: D.red, opacity: 0.6, animation: `bounce 1s ${i*0.15}s infinite` }} />
-        ))}
-      </div>
+    <div style={{ ...rootStyle, backgroundColor: D.bg }}>
+      <SkeletonDashboard />
     </div>
   );
 
@@ -260,68 +282,103 @@ export default function CashierHubPage() {
         </div>
 
         {/* ── MAIN CONTENT ── */}
-        <main style={{ flex: 1, padding: "16px 20px 100px" }}>
-          
-          {/* Welcome Card */}
-          <div style={{ backgroundColor: D.surface, borderRadius: 20, border: `1px solid ${D.border}`, padding: 20, marginBottom: 24 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-               <div>
-                  <div style={{ fontSize: 13, color: D.textSecondary, fontWeight: 600 }}>{lang === "en" ? "Logged in as:" : "مسجل دخول بحساب:"}</div>
-                  <div style={{ fontSize: 18, fontWeight: 800, color: D.textPrimary, marginTop: 4 }}>{authenticatedUser.name}</div>
-               </div>
-               <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={() => { playPopSound(); setLang(lang === "en" ? "ar" : "en"); }} style={{ width: 32, height: 32, borderRadius: 8, background: D.surfaceHigh, border: `1px solid ${D.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-                     <Globe size={14} color={D.cyan} />
-                  </button>
-                  <button onClick={() => { playPopSound(); handleEnableNotifications(); }} style={{ width: 32, height: 32, borderRadius: 8, background: isNotificationEnabled ? D.cyanDim : D.surfaceHigh, border: `1px solid ${isNotificationEnabled ? D.cyanBorder : D.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", position: "relative" }}>
-                     <Bell size={14} color={isNotificationEnabled ? D.cyan : D.textSecondary} />
-                     {isNotificationEnabled && <span style={{ position: "absolute", top: -2, right: -2, width: 6, height: 6, borderRadius: "50%", backgroundColor: D.cyan }} />}
-                  </button>
-               </div>
-            </div>
-            
-            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: D.textDim, fontWeight: 600 }}>
-              <Clock size={12} />
-              <span style={{ fontVariantNumeric: "tabular-nums" }}>{currentTime.toLocaleTimeString(lang === "en" ? "en-US" : "ar-EG", { hour: "2-digit", minute: "2-digit" })}</span>
-              <span>·</span>
-              <span>{currentTime.toLocaleDateString(lang === "en" ? "en-GB" : "ar-EG", { weekday: "short", day: "numeric", month: "short" })}</span>
-            </div>
-          </div>
-
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.15em", color: D.textSecondary, textTransform: "uppercase", marginBottom: 16 }}>
-            {lang === "en" ? "Operational Feed" : "العمليات"}
-          </div>
-
-          {/* Action List (styled as cards) */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {actions.map((a: any) => {
-              const Icon = a.icon;
-              return (
-                <button 
-                  key={a.id} 
-                  onClick={() => nav(a.path)} 
-                  style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderRadius: 16, background: D.surface, border: `1px solid ${D.border}`, cursor: "pointer", textAlign: isRTL ? "right" : "left", transition: "all 0.1s" }} 
-                  onMouseDown={e => { e.currentTarget.style.opacity = "0.75"; e.currentTarget.style.borderColor = D.cyanBorder; }} 
-                  onMouseUp={e => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.borderColor = D.border; }} 
-                  onTouchStart={e => { e.currentTarget.style.opacity = "0.75"; e.currentTarget.style.borderColor = D.cyanBorder; }} 
-                  onTouchEnd={e => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.borderColor = D.border; }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, borderRadius: 8, background: D.cyanDim, border: `1px solid ${D.cyanBorder}` }}>
-                       <Icon size={16} color={D.cyan} />
+        <main style={{ flex: 1, paddingBottom: "100px", position: "relative" }}>
+          <PullToRefresh onRefresh={handleRefresh}>
+            <div style={{ padding: "0 20px" }}>
+              
+              {/* Account Overview Header Card */}
+              <div style={{ backgroundColor: D.surface, borderRadius: 24, padding: "24px", marginBottom: 24, backgroundImage: "linear-gradient(135deg, rgba(34, 211, 238, 0.05) 0%, rgba(11, 17, 33, 0) 100%)", border: `1px solid ${D.border}`, boxShadow: "0 10px 30px rgba(0,0,0,0.2)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+                  <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+                    <div style={{ width: 56, height: 56, borderRadius: 20, background: "linear-gradient(135deg, #06b6d4, #3b82f6)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: 800, color: "#fff", boxShadow: "0 4px 15px rgba(6, 182, 212, 0.3)" }}>
+                      {authenticatedUser.name.charAt(0).toUpperCase()}
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                       <span style={{ fontSize: 15, fontWeight: 600, color: D.textPrimary }}>{a.label}</span>
-                       {a.badge && (
-                         <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 6px", borderRadius: 4, background: D.cyanDim, color: D.cyan, border: `1px solid ${D.cyanBorder}`, textTransform: "uppercase" }}>{a.badge}</span>
-                       )}
+                    <div>
+                      <div style={{ fontSize: 13, color: D.textSecondary, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 2 }}>{authenticatedUser.role}</div>
+                      <div style={{ fontSize: 20, fontWeight: 800, color: D.textPrimary }}>{authenticatedUser.name.split(" ")[0]}</div>
                     </div>
                   </div>
-                  <ChevronRight size={16} color={D.textDim} />
-                </button>
-              );
-            })}
-          </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => { playPopSound(); handleEnableNotifications(); }} style={{ width: 36, height: 36, borderRadius: 12, background: isNotificationEnabled ? D.cyanDim : D.surfaceHigh, border: `1px solid ${isNotificationEnabled ? D.cyanBorder : D.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", position: "relative" }}>
+                       <Bell size={16} color={isNotificationEnabled ? D.cyan : D.textSecondary} />
+                       {isNotificationEnabled && <span style={{ position: "absolute", top: -2, right: -2, width: 8, height: 8, borderRadius: "50%", backgroundColor: D.cyan, border: `2px solid ${D.surface}` }} />}
+                    </button>
+                  </div>
+                </div>
+                
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", background: "rgba(0,0,0,0.2)", borderRadius: 16 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: D.textSecondary, fontWeight: 600 }}>
+                    <LayoutDashboard size={14} className="text-cyan-400" />
+                    <span>{authenticatedUser.branchId || "El Alamein 4"}</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: D.textPrimary, fontWeight: 700 }}>
+                    <Clock size={14} className="text-cyan-400" />
+                    <span style={{ fontVariantNumeric: "tabular-nums" }}>{currentTime.toLocaleTimeString(lang === "en" ? "en-US" : "ar-EG", { hour: "2-digit", minute: "2-digit" })}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pinned Products Carousel */}
+              <div style={{ marginBottom: 28 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, padding: "0 4px" }}>
+                  <Pin size={14} className="text-cyan-400" />
+                  <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.1em", color: D.textPrimary, textTransform: "uppercase" }}>
+                    {lang === "en" ? "Quick Access" : "الوصول السريع"}
+                  </span>
+                </div>
+                <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8, scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
+                  {pinnedProducts.map((p, i) => (
+                    <div key={i} style={{ minWidth: 140, background: D.surfaceHigh, border: `1px solid ${D.border}`, borderRadius: 16, padding: "12px", flexShrink: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+                      <div style={{ fontSize: 10, color: D.textSecondary, fontWeight: 600 }}>{p.sku}</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: D.textPrimary, lineHeight: 1.2, height: 32, overflow: "hidden" }}>{p.name}</div>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: D.cyan }}>{p.price} EGP</div>
+                    </div>
+                  ))}
+                  <div style={{ minWidth: 140, background: "rgba(34, 211, 238, 0.05)", border: `1px dashed ${D.cyanBorder}`, borderRadius: 16, padding: "12px", flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", color: D.cyan }}>
+                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: D.cyanDim, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <ScanLine size={16} />
+                    </div>
+                    <div style={{ fontSize: 12, fontWeight: 600 }}>Pin Product</div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.1em", color: D.textSecondary, textTransform: "uppercase", marginBottom: 12, padding: "0 4px" }}>
+                {lang === "en" ? "Operations" : "العمليات"}
+              </div>
+
+              {/* Action Grid (Replacing List) */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                {actions.map((a: any) => {
+                  const Icon = a.icon;
+                  return (
+                    <button 
+                      key={a.id} 
+                      onClick={() => nav(a.path)} 
+                      style={{ 
+                        display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 12,
+                        padding: "16px", borderRadius: 20, background: D.surface, border: `1px solid ${D.border}`, 
+                        cursor: "pointer", textAlign: isRTL ? "right" : "left", transition: "all 0.1s" 
+                      }} 
+                      onTouchStart={e => { e.currentTarget.style.transform = "scale(0.96)"; e.currentTarget.style.backgroundColor = D.surfaceHigh; }} 
+                      onTouchEnd={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.backgroundColor = D.surface; }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", width: "100%" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 40, height: 40, borderRadius: 12, background: D.cyanDim, border: `1px solid ${D.cyanBorder}` }}>
+                           <Icon size={20} color={D.cyan} />
+                        </div>
+                        {a.badge && (
+                          <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 6px", borderRadius: 6, background: D.cyanDim, color: D.cyan, border: `1px solid ${D.cyanBorder}`, textTransform: "uppercase", height: 20, display: "flex", alignItems: "center" }}>{a.badge}</span>
+                        )}
+                      </div>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: D.textPrimary, lineHeight: 1.3 }}>{a.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+            </div>
+          </PullToRefresh>
         </main>
 
         {/* ── BOTTOM NAV ── */}
