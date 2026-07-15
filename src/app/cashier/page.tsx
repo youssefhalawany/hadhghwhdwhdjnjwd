@@ -18,6 +18,8 @@ import { ActivityRing } from "@/components/MobileUX/ActivityRing";
 import { PinPad } from "@/components/PinPad";
 import { playSuccessSound, playErrorSound, playPopSound, getAudioCtx } from "@/lib/sounds";
 import { toast } from "sonner";
+import { useLanguage } from "@/context/LanguageContext";
+import { showIsland } from "@/components/MobileUX/DynamicIsland";
 
 // ── Midnight Navy Design Tokens (Matches Screenshot) ────────────────
 const D = {
@@ -42,7 +44,7 @@ const D = {
 
 export default function CashierHubPage() {
   const router = useRouter();
-  const [lang, setLang] = useState<"en" | "ar">("en");
+  const { language: lang, setLanguage, t: tFunc } = useLanguage();
   const [employees, setEmployees] = useState<any[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [pinInput, setPinInput] = useState("");
@@ -59,14 +61,30 @@ export default function CashierHubPage() {
   const [activeTab, setActiveTab] = useState("dashboard");
 
   const handleRefresh = async () => {
-    // Simulate refreshing dashboard data with minimal delay
-    await new Promise(r => setTimeout(r, 300));
+    // Refresh without artificial delay
+    showIsland(lang === "ar" ? "تم التحديث" : "Refreshed", { type: "success" });
   };
 
   useEffect(() => {
     const t = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  const getShiftProgress = () => {
+    const hours = currentTime.getHours();
+    const minutes = currentTime.getMinutes();
+    const seconds = currentTime.getSeconds();
+    
+    // Shifts are 12 hours: 00:00-12:00 or 12:00-00:00
+    // (hours % 12) gives elapsed hours in current shift
+    const elapsedSeconds = (hours % 12) * 3600 + minutes * 60 + seconds;
+    const totalSeconds = 12 * 3600;
+    
+    return elapsedSeconds / totalSeconds;
+  };
+  
+  const shiftProgress = getShiftProgress();
+  const shiftProgressPercentage = Math.round(shiftProgress * 100);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -277,7 +295,7 @@ export default function CashierHubPage() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
                   <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
                     <ActivityRing 
-                      progress={0.65} 
+                      progress={shiftProgress} 
                       size={64} 
                       strokeWidth={4} 
                       color="#22d3ee" 
@@ -291,7 +309,7 @@ export default function CashierHubPage() {
                     <div>
                       <div style={{ fontSize: 13, color: D.textSecondary, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 2 }}>{authenticatedUser.role}</div>
                       <div style={{ fontSize: 20, fontWeight: 800, color: D.textPrimary }}>{authenticatedUser.name.split(" ")[0]}</div>
-                      <div className="text-[10px] text-cyan-400 font-bold mt-0.5">Shift Progress: 65%</div>
+                      <div className="text-[10px] text-cyan-400 font-bold mt-0.5">Shift Progress: {shiftProgressPercentage}%</div>
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
@@ -373,9 +391,9 @@ export default function CashierHubPage() {
           CIRCLE K <span style={{ color: D.textDim, fontWeight: 500 }}>FRANCHISE</span>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-           <button onClick={() => { playPopSound(); setLang(lang === "en" ? "ar" : "en"); }} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 8, background: D.surface, border: `1px solid ${D.border}`, color: D.textSecondary, fontSize: 10, fontWeight: 700, cursor: "pointer" }}>
-             <Globe size={12} color={D.textSecondary} />
-             {lang === "en" ? "عربي" : "EN"}
+           <button onClick={() => { playPopSound(); setLanguage(lang === "en" ? "ar" : "en"); }} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 8, background: D.surface, border: `1px solid ${D.border}`, color: D.textSecondary, fontSize: 10, fontWeight: 700, cursor: "pointer" }}>
+             <Globe size={14} />
+             {lang === "en" ? "EN" : "AR"}
            </button>
         </div>
       </div>
