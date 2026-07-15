@@ -350,7 +350,7 @@ export default function CreditsPage() {
         onSalesOnly,
         poNumber,
         status: "open",
-        storeId: currentBranch === "all" ? "eL-alamein-4" : currentBranch,
+        storeId: branchIds.length > 0 ? branchIds[0] : "eL-alamein-4",
         tax: parseFloat(tax) || 0,
         paidAmount: 0,
         priceAdjustment: 0,
