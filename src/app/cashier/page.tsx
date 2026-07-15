@@ -16,6 +16,7 @@ import { PullToRefresh } from "@/components/MobileUX/PullToRefresh";
 import { SkeletonDashboard } from "@/components/MobileUX/SkeletonLoader";
 import { ActivityRing } from "@/components/MobileUX/ActivityRing";
 import { PinPad } from "@/components/PinPad";
+import { WelcomeSplash } from "@/components/MobileUX/WelcomeSplash";
 import { playSuccessSound, playErrorSound, playPopSound, getAudioCtx } from "@/lib/sounds";
 import { toast } from "sonner";
 import { useLanguage } from "@/context/LanguageContext";
@@ -48,6 +49,7 @@ export default function CashierHubPage() {
   const [employees, setEmployees] = useState<any[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [pinInput, setPinInput] = useState("");
+  const [pinError, setPinError] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [authenticatedUser, setAuthenticatedUser] = useState<any>(null);
@@ -56,6 +58,7 @@ export default function CashierHubPage() {
   const [isInstalled, setIsInstalled] = useState(true);
   const [isNotificationEnabled, setIsNotificationEnabled] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [showWelcome, setShowWelcome] = useState(false);
   
   // Fake state for bottom nav aesthetics
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -145,7 +148,7 @@ export default function CashierHubPage() {
   useEffect(() => {
     const saved = localStorage.getItem("active_cashier_session");
     if (saved) {
-      try { setAuthenticatedUser(JSON.parse(saved)); setLoading(false); return; }
+      try { setAuthenticatedUser(JSON.parse(saved)); setShowWelcome(true); setLoading(false); return; }
       catch { console.error("Bad session"); }
     }
     (async () => {
@@ -179,13 +182,17 @@ export default function CashierHubPage() {
       if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
       playErrorSound();
       toast.error(lang === "en" ? "Incorrect PIN" : "الرمز السري غير صحيح");
-      setPinInput(""); return;
+      setPinInput(""); 
+      setPinError(true);
+      setTimeout(() => setPinError(false), 500);
+      return;
     }
     playSuccessSound();
     const session = { id: user.id, name: user.name, employeeId: user.employeeId || "", storeId: user.storeId || "N/A", branchId: user.branchId || "alamein4", role: user.position || user.role || "cashier", loggedInAt: new Date().toISOString() };
     localStorage.setItem("active_cashier_session", JSON.stringify(session));
     setPinInput("");
     setAuthenticatedUser(session);
+    setShowWelcome(true);
   };
 
   const registerFaceId = async () => {
@@ -215,6 +222,7 @@ export default function CashierHubPage() {
           const session = { id: user.id, name: user.name, role: user.position || user.role || "cashier", loggedInAt: new Date().toISOString() };
           localStorage.setItem("active_cashier_session", JSON.stringify(session));
           setAuthenticatedUser(session);
+          setShowWelcome(true);
         }
       }
     } catch { playErrorSound(); }
@@ -271,6 +279,8 @@ export default function CashierHubPage() {
 
     return (
       <div style={{ ...rootStyle, direction: isRTL ? "rtl" : "ltr" }}>
+        {showWelcome && <WelcomeSplash name={authenticatedUser.name} onComplete={() => setShowWelcome(false)} />}
+        
         <style>{`
           .ck-cashier * { color-scheme: dark !important; }
         `}</style>
@@ -280,8 +290,17 @@ export default function CashierHubPage() {
           <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.15em", color: D.textSecondary, textTransform: "uppercase" }}>
             CIRCLE K <span style={{ color: D.textDim, fontWeight: 500 }}>FRANCHISE</span>
           </div>
-          <div style={{ width: 28, height: 28, borderRadius: 8, background: D.red, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 14, color: "#fff" }}>
-            K
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <button 
+              onClick={() => { playPopSound(); setLanguage(lang === "en" ? "ar" : "en"); }} 
+              style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 8, background: D.surfaceHigh, border: `1px solid ${D.border}`, color: D.cyan, fontSize: 10, fontWeight: 800, cursor: "pointer" }}
+            >
+              <Globe size={14} />
+              {lang === "en" ? "عربي" : "ENGLISH"}
+            </button>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: D.red, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 14, color: "#fff" }}>
+              K
+            </div>
           </div>
         </div>
 
@@ -446,8 +465,8 @@ export default function CashierHubPage() {
               <Lock size={12} color={D.cyan} />
               {lang === "en" ? "Enter 4-Digit PIN" : "أدخل الرمز السري"}
             </label>
-            <div className="ck-pinpad">
-              <PinPad onPinChange={(val) => setPinInput(val)} onSubmit={(val) => handleLogin(val as any)} maxLength={4} />
+            <div className="flex-1 flex flex-col justify-end pb-8">
+              <PinPad onPinChange={(val) => setPinInput(val)} onSubmit={(val) => handleLogin(val as any)} maxLength={4} error={pinError} />
             </div>
             {hasFaceIdRegistered && (
               <button type="button" onClick={() => { playPopSound(); loginWithFaceId(selectedEmployeeId); }} style={{ marginTop: 20, width: "100%", padding: "14px 20px", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, background: D.cyanDim, border: `1px solid ${D.cyanBorder}`, color: D.cyan, fontSize: 14, fontWeight: 700, cursor: "pointer", boxSizing: "border-box" }}>

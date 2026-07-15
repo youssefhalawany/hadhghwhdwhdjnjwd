@@ -3,9 +3,11 @@
 import React, { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { LayoutDashboard, FileText, User, ShieldAlert, LogOut, ScanBarcode, Plus, X } from "lucide-react";
+import { LayoutDashboard, FileText, User, ShieldAlert, LogOut, ScanBarcode, Plus, X, Globe } from "lucide-react";
 import { playClickSound, playSwooshSound } from "@/lib/audioCues";
 import { hapticLight } from "@/lib/haptics";
+import { useLanguage } from "@/context/LanguageContext";
+import { showIsland } from "@/components/MobileUX/DynamicIsland";
 
 const D = {
   bg:      "rgba(11, 17, 33, 0.75)", // Translucent for glassmorphism
@@ -22,16 +24,19 @@ const MAIN_NAV = [
 
 const DIAL_ACTIONS = [
   { label: "Shift", icon: FileText, href: "/shift-reports/cashier", color: "#34d399" },
-  { label: "Voids", icon: ShieldAlert, href: "/voids/cashier", color: "#ef4444" },
-  { label: "Logout", icon: LogOut, action: "logout", color: "#64748b" },
+  { label: "Voids", labelAr: "مرتجعات", icon: ShieldAlert, href: "/voids/cashier", color: "#ef4444" },
+  { label: "Lang", labelAr: "لغة", icon: Globe, action: "lang", color: "#8b5cf6" },
+  { label: "Logout", labelAr: "خروج", icon: LogOut, action: "logout", color: "#64748b" },
 ];
 
 interface Props { lang?: "en" | "ar"; }
 
-export function CashierBottomNav({ lang = "en" }: Props) {
+export function CashierBottomNav({ lang: propLang = "en" }: Props) {
   const router = useRouter();
   const pathname = usePathname();
+  const { language, setLanguage } = useLanguage();
   const [isDialOpen, setIsDialOpen] = useState(false);
+  const lang = language || propLang;
 
   const toggleDial = () => {
     playSwooshSound();
@@ -49,6 +54,15 @@ export function CashierBottomNav({ lang = "en" }: Props) {
         localStorage.removeItem("active_cashier_session");
         window.location.href = "/cashier";
       }
+      return;
+    }
+    if (action === "lang") {
+      const newLang = language === "en" ? "ar" : "en";
+      setLanguage(newLang);
+      showIsland(newLang === "ar" ? "تم تغيير اللغة" : "Language Changed", { 
+        type: "success", 
+        message: newLang === "ar" ? "العربية" : "English"
+      });
       return;
     }
     if (href) router.push(href);
@@ -84,11 +98,11 @@ export function CashierBottomNav({ lang = "en" }: Props) {
         display: "flex", alignItems: "center", justifyContent: "space-around",
         paddingBottom: "env(safe-area-inset-bottom, 12px)",
         paddingTop: 8,
-        backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+        backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)",
       }}>
         
         {/* Left Nav Item */}
-        <NavItem item={MAIN_NAV[0]} pathname={pathname} onClick={() => handleNav(MAIN_NAV[0].href)} />
+        <NavItem item={MAIN_NAV[0]} pathname={pathname} onClick={() => handleNav(MAIN_NAV[0].href)} lang={lang} />
 
         {/* Central Morphing Action Button */}
         <div className="relative flex justify-center w-20 h-14 -mt-6">
@@ -120,7 +134,9 @@ export function CashierBottomNav({ lang = "en" }: Props) {
                     >
                       <action.icon size={20} color="#fff" />
                     </div>
-                    <span className="text-[10px] font-bold text-white tracking-wider">{action.label}</span>
+                    <span className="text-[10px] font-bold text-white tracking-wider">
+                      {lang === "ar" ? (action.labelAr || action.label) : action.label}
+                    </span>
                   </motion.button>
                 ))}
               </motion.div>
@@ -139,14 +155,14 @@ export function CashierBottomNav({ lang = "en" }: Props) {
         </div>
 
         {/* Right Nav Item */}
-        <NavItem item={MAIN_NAV[1]} pathname={pathname} onClick={() => handleNav(MAIN_NAV[1].href)} />
+        <NavItem item={MAIN_NAV[1]} pathname={pathname} onClick={() => handleNav(MAIN_NAV[1].href)} lang={lang} />
 
       </nav>
     </>
   );
 }
 
-function NavItem({ item, pathname, onClick }: { item: any, pathname: string, onClick: () => void }) {
+function NavItem({ item, pathname, onClick, lang }: { item: any, pathname: string, onClick: () => void, lang: string }) {
   const isActive = item.href === "/cashier" ? pathname === "/cashier" : pathname.startsWith(item.href);
   const Icon = item.icon;
   
@@ -157,7 +173,9 @@ function NavItem({ item, pathname, onClick }: { item: any, pathname: string, onC
       style={{ color: isActive ? D.active : D.text }}
     >
       <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
-      <span className="text-[10px] font-bold uppercase tracking-wider">{item.label}</span>
+      <span className="text-[10px] font-bold uppercase tracking-wider">
+        {lang === "ar" ? (item.labelAr || item.label) : item.label}
+      </span>
       {isActive && (
         <motion.div 
           layoutId="activeTabIndicator" 

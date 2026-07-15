@@ -11,6 +11,7 @@ import { RadarOfflineScreen } from "@/components/RadarOfflineScreen";
 import { vibrateSuccess, vibrateError } from "@/lib/haptics";
 import { NumericFormat } from "react-number-format";
 import { CashierBottomNav } from "@/components/CashierBottomNav";
+import { motion, useScroll, useTransform } from "framer-motion";
 import dynamic from "next/dynamic";
 const SignaturePad = dynamic(() => import("react-signature-canvas"), { ssr: false });
 import { toast } from "sonner";
@@ -177,6 +178,13 @@ export default function CashierShiftReportPage() {
   const [offlineCount, setOfflineCount] = useState(0);
   const [showRadar, setShowRadar] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  
+  const { scrollY } = useScroll();
+  const headerHeight = useTransform(scrollY, [0, 100], [90, 60]);
+  const titleOpacity = useTransform(scrollY, [0, 60], [1, 0]);
+  const titleScale = useTransform(scrollY, [0, 60], [1, 0.8]);
+  const titleY = useTransform(scrollY, [0, 60], [0, -15]);
+  const parallaxY = useTransform(scrollY, [0, 300], [0, 80]); // Parallax slower move
   
   useEffect(() => {
     // Check if authenticated from Cashier Hub
@@ -768,8 +776,11 @@ export default function CashierShiftReportPage() {
 
       
       {/* Header */}
-      <header className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md shadow-sm border-b border-slate-200 dark:border-slate-700 p-4 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
+      <motion.header 
+        style={{ height: headerHeight }}
+        className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md shadow-sm border-b border-slate-200 dark:border-slate-700 px-4 sticky top-0 z-10 flex items-center overflow-hidden"
+      >
+        <motion.div style={{ y: parallaxY }} className="max-w-4xl mx-auto flex items-center justify-between w-full relative">
           <div className="flex items-center gap-3">
             <button 
               type="button"
@@ -777,16 +788,16 @@ export default function CashierShiftReportPage() {
               className="flex items-center gap-1 text-slate-555 hover:text-red-600 dark:hover:text-red-400 transition-colors cursor-pointer"
             >
               <ArrowLeft className={`h-5 w-5 ${lang === "ar" ? "rotate-180" : ""}`} />
-              <span className="font-bold text-sm">{lang === "en" ? "Back" : "رجوع"}</span>
+              <span className="font-bold text-sm hidden sm:inline">{lang === "en" ? "Back" : "رجوع"}</span>
             </button>
             <div className="h-5 w-px bg-slate-200 dark:bg-slate-700 hidden sm:block"></div>
-            <div>
-              <h1 className="text-lg sm:text-xl font-black tracking-tight text-slate-800 dark:text-white leading-none">{dict.dailyReport}</h1>
-              <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-semibold mt-1">{new Date().toLocaleDateString('en-GB')}</p>
-            </div>
+            <motion.div style={{ opacity: titleOpacity, scale: titleScale, y: titleY }} className="absolute left-10 sm:static origin-left">
+              <h1 className="text-lg sm:text-xl font-black tracking-tight text-slate-800 dark:text-white leading-none whitespace-nowrap">{dict.dailyReport}</h1>
+              <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-semibold mt-1 whitespace-nowrap">{new Date().toLocaleDateString('en-GB')}</p>
+            </motion.div>
           </div>
           
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 z-10 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-full pl-2">
             <button 
               type="button"
               onClick={() => setLang(lang === "en" ? "ar" : "en")}
@@ -798,8 +809,8 @@ export default function CashierShiftReportPage() {
               K
             </div>
           </div>
-        </div>
-      </header>
+        </motion.div>
+      </motion.header>
 
       {showRadar && (
         <RadarOfflineScreen 

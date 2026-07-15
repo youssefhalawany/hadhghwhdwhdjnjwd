@@ -12,15 +12,36 @@ export function SkeletonBlock({
   className?: string;
 }) {
   return (
-    <div
-      className={`animate-pulse ${className}`}
-      style={{
-        width,
-        height,
-        borderRadius,
-        backgroundColor: "rgba(148, 163, 184, 0.1)", // Subtle slate-400 with opacity
-      }}
-    />
+    <>
+      <style>{`
+        @keyframes shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+        .animate-shimmer {
+          position: relative;
+          overflow: hidden;
+          background-color: rgba(34, 211, 238, 0.05); /* Cyan tint base */
+        }
+        .animate-shimmer::after {
+          content: '';
+          position: absolute;
+          top: 0; left: 0; right: 0; bottom: 0;
+          transform: translateX(-100%);
+          background-image: linear-gradient(
+            90deg,
+            transparent,
+            rgba(34, 211, 238, 0.15), /* Glowing cyan core */
+            transparent
+          );
+          animation: shimmer 1.5s infinite ease-in-out;
+        }
+      `}</style>
+      <div
+        className={`animate-shimmer ${className}`}
+        style={{ width, height, borderRadius }}
+      />
+    </>
   );
 }
 

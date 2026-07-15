@@ -1,15 +1,29 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Delete } from 'lucide-react';
 import { playPopSound, playDeleteSound } from '@/lib/sounds';
+import { motion, useAnimation } from 'framer-motion';
 
 interface PinPadProps {
   onPinChange: (pin: string) => void;
   onSubmit: (pin: string) => void;
   maxLength?: number;
+  error?: boolean;
 }
 
-export function PinPad({ onPinChange, onSubmit, maxLength = 4 }: PinPadProps) {
-  const [pin, setPin] = React.useState('');
+export function PinPad({ onPinChange, onSubmit, maxLength = 4, error = false }: PinPadProps) {
+  const [pin, setPin] = useState('');
+  const controls = useAnimation();
+
+  useEffect(() => {
+    if (error) {
+      controls.start({
+        x: [-10, 10, -10, 10, -5, 5, 0],
+        transition: { duration: 0.4 }
+      });
+      setPin(''); // Auto clear on error
+      onPinChange('');
+    }
+  }, [error, controls, onPinChange]);
 
   const handlePress = (num: string) => {
     // Haptic feedback
@@ -42,7 +56,7 @@ export function PinPad({ onPinChange, onSubmit, maxLength = 4 }: PinPadProps) {
   };
 
   return (
-    <div className="w-full max-w-xs mx-auto animate-in fade-in zoom-in-95 duration-300">
+    <motion.div animate={controls} className="w-full max-w-xs mx-auto animate-in fade-in zoom-in-95 duration-300">
       {/* Visual PIN Display */}
       <div className="flex justify-center gap-4 mb-8">
         {Array.from({ length: maxLength }).map((_, i) => (
@@ -57,8 +71,7 @@ export function PinPad({ onPinChange, onSubmit, maxLength = 4 }: PinPadProps) {
         ))}
       </div>
 
-      {/* Numpad Grid */}
-      <div className="grid grid-cols-3 gap-3 sm:gap-4">
+      <div className="grid grid-cols-3 gap-4 sm:gap-6 place-items-center">
         {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
           <button
             key={num}
@@ -67,38 +80,36 @@ export function PinPad({ onPinChange, onSubmit, maxLength = 4 }: PinPadProps) {
               e.preventDefault();
               handlePress(num.toString());
             }}
-            className="h-16 sm:h-20 w-full rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm text-2xl font-black text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-700 active:scale-95 active:bg-slate-100 dark:active:bg-slate-600 transition-all flex items-center justify-center cursor-pointer relative overflow-hidden group select-none touch-manipulation"
+            className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-white/10 dark:bg-[#0b1121]/50 backdrop-blur-md border border-white/20 dark:border-cyan-400/20 shadow-[0_8px_32px_rgba(0,0,0,0.1)] text-2xl font-black text-slate-800 dark:text-slate-100 hover:bg-white/20 dark:hover:bg-cyan-500/20 active:scale-90 transition-all flex items-center justify-center cursor-pointer select-none touch-manipulation"
           >
-            <span className="relative z-10">{num}</span>
-            <span className="absolute inset-0 bg-red-100 dark:bg-red-900/30 scale-0 group-active:scale-100 rounded-2xl transition-transform duration-300 origin-center opacity-0 group-active:opacity-100"></span>
+            {num}
           </button>
         ))}
-        <div className="col-start-2">
+        <div className="col-start-2 flex justify-center w-full">
           <button
             type="button"
             onClick={(e) => {
               e.preventDefault();
               handlePress('0');
             }}
-            className="h-16 sm:h-20 w-full rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm text-2xl font-black text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-700 active:scale-95 active:bg-slate-100 dark:active:bg-slate-600 transition-all flex items-center justify-center cursor-pointer relative overflow-hidden group select-none touch-manipulation"
+            className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-white/10 dark:bg-[#0b1121]/50 backdrop-blur-md border border-white/20 dark:border-cyan-400/20 shadow-[0_8px_32px_rgba(0,0,0,0.1)] text-2xl font-black text-slate-800 dark:text-slate-100 hover:bg-white/20 dark:hover:bg-cyan-500/20 active:scale-90 transition-all flex items-center justify-center cursor-pointer select-none touch-manipulation"
           >
-            <span className="relative z-10">0</span>
-            <span className="absolute inset-0 bg-red-100 dark:bg-red-900/30 scale-0 group-active:scale-100 rounded-2xl transition-transform duration-300 origin-center opacity-0 group-active:opacity-100"></span>
+            0
           </button>
         </div>
-        <div className="col-start-3">
+        <div className="col-start-3 flex justify-center w-full">
           <button
             type="button"
             onClick={(e) => {
               e.preventDefault();
               handleDelete();
             }}
-            className="h-16 sm:h-20 w-full rounded-2xl bg-slate-100 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 shadow-sm text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 active:scale-95 transition-all flex items-center justify-center cursor-pointer touch-manipulation"
+            className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-white/5 dark:bg-red-500/10 backdrop-blur-md border border-white/10 dark:border-red-500/20 text-slate-600 dark:text-red-400 hover:bg-white/10 dark:hover:bg-red-500/30 active:scale-90 transition-all flex items-center justify-center cursor-pointer touch-manipulation"
           >
             <Delete className="h-6 w-6 sm:h-8 sm:w-8" />
           </button>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

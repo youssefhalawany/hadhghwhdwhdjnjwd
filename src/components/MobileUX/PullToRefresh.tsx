@@ -14,8 +14,11 @@ export function PullToRefresh({ onRefresh, children }: PullToRefreshProps) {
   const [isPulling, setIsPulling] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const lastHapticRef = useRef(0);
 
-  const pullDistance = Math.max(0, currentY - startY);
+  // Apply damping for elastic spring feel
+  const rawDistance = Math.max(0, currentY - startY);
+  const pullDistance = rawDistance * 0.45;
   const maxPull = 120;
   const threshold = 80;
   
@@ -37,13 +40,19 @@ export function PullToRefresh({ onRefresh, children }: PullToRefreshProps) {
       // Prevent default scrolling when pulling down
       e.cancelable && e.preventDefault();
       setCurrentY(y);
+      
+      const dist = y - startY;
+      if (dist - lastHapticRef.current > 30) {
+        if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(5);
+        lastHapticRef.current = dist;
+      }
     }
   };
 
   const handleTouchEnd = async () => {
     if (!isPulling) return;
-    
     setIsPulling(false);
+    lastHapticRef.current = 0;
     
     if (pullDistance > threshold && !isRefreshing) {
       setIsRefreshing(true);
@@ -79,9 +88,9 @@ export function PullToRefresh({ onRefresh, children }: PullToRefreshProps) {
         }}
       >
         <div 
-          className={`flex items-center justify-center rounded-full bg-slate-800/80 backdrop-blur shadow-lg shadow-black/20 p-2 border border-slate-700/50 ${isRefreshing ? 'animate-spin' : ''}`}
+          className={`flex items-center justify-center rounded-full bg-[#083344] backdrop-blur shadow-[0_0_15px_rgba(34,211,238,0.3)] p-2 border border-cyan-400/30 ${isRefreshing ? 'animate-spin' : ''}`}
           style={{
-            transform: `rotate(${isRefreshing ? 0 : pullPercentage * 3.6}deg)`,
+            transform: `rotate(${isRefreshing ? 0 : pullPercentage * 3.6}deg) scale(${pullPercentage / 100})`,
           }}
         >
           <RefreshCw size={24} className="text-cyan-400" />
