@@ -109,6 +109,9 @@ Return ONLY the JSON. No extra text.
     return NextResponse.json(parsedData);
   } catch (error: any) {
     console.error("Error processing PO:", error);
+    if (error?.status === 429) {
+      return NextResponse.json({ error: "RATE_LIMIT" }, { status: 429 });
+    }
     return NextResponse.json({ error: error.message || "Failed to process image" }, { status: 500 });
   }
 }

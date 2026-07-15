@@ -425,6 +425,9 @@ export default function CreditsPage() {
       });
         
         if (!response.ok) {
+          if (response.status === 429) {
+            throw new Error("RATE_LIMIT");
+          }
           throw new Error('Failed to process PO');
         }
 
@@ -453,9 +456,13 @@ export default function CreditsPage() {
         if (data.items) setPoItems(data.items);
         
         toast.success('PO processed successfully!');
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error processing PO:', error);
-        toast.error('Failed to extract PO details. Please enter manually.');
+        if (error.message === 'RATE_LIMIT') {
+          toast.error("Google AI is busy (Rate Limit). Please wait 60 seconds and try again.");
+        } else {
+          toast.error('Failed to extract PO details. Please enter manually.');
+        }
       } finally {
         setIsProcessingPo(false);
       }
@@ -507,9 +514,13 @@ export default function CreditsPage() {
           ));
           toast.success('PO added to credit and products synchronized!');
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error adding PO to old credit:', error);
-        toast.error('Failed to add PO to credit.');
+        if (error.message === 'RATE_LIMIT') {
+          toast.error("Google AI is busy (Rate Limit). Please wait 60 seconds and try again.");
+        } else {
+          toast.error('Failed to add PO to credit.');
+        }
       } finally {
         setUploadingPoToOldCredit(false);
         setSelectedCreditForPoUpload(null);

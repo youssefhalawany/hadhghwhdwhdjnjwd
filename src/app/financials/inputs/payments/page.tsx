@@ -322,7 +322,10 @@ export default function PaymentsRedesignPage() {
         body: JSON.stringify({ image: base64Image })
         });
         
-        if (!response.ok) throw new Error('Failed to process image');
+        if (!response.ok) {
+          if (response.status === 429) throw new Error("RATE_LIMIT");
+          throw new Error('Failed to process image');
+        }
         const data = await response.json();
         
         let newItems: any[] = [];
@@ -351,9 +354,13 @@ export default function PaymentsRedesignPage() {
 
         toast.success('PO added successfully to old invoice!');
         setSelectedPaymentForPoUpload(null);
-      } catch (err) {
+      } catch (err: any) {
         console.error(err);
-        toast.error('Error adding PO to old invoice.');
+        if (err.message === 'RATE_LIMIT') {
+          toast.error("Google AI is busy (Rate Limit). Please wait 60 seconds and try again.");
+        } else {
+          toast.error('Error adding PO to old invoice.');
+        }
       } finally {
         setUploadingPoToOldInvoice(false);
       }
@@ -375,7 +382,10 @@ export default function PaymentsRedesignPage() {
         body: JSON.stringify({ image: base64Image })
       });
         
-        if (!response.ok) throw new Error('Failed to process image');
+        if (!response.ok) {
+          if (response.status === 429) throw new Error("RATE_LIMIT");
+          throw new Error('Failed to process image');
+        }
         const data = await response.json();
         
         if (data.poNumber) setPoNumber(data.poNumber);
@@ -402,9 +412,13 @@ export default function PaymentsRedesignPage() {
         }
         
         toast.success('PO processed successfully!');
-      } catch (err) {
+      } catch (err: any) {
         console.error(err);
-        toast.error('Error processing PO image. Please enter manually.');
+        if (err.message === 'RATE_LIMIT') {
+          toast.error("Google AI is busy (Rate Limit). Please wait 60 seconds and try again.");
+        } else {
+          toast.error('Error processing PO image. Please enter manually.');
+        }
       } finally {
         setIsProcessingPo(false);
       }
