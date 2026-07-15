@@ -86,6 +86,39 @@ import { useBranch } from "@/context/BranchContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { syncProductsToMaster } from "@/lib/products-sync";
 
+const compressImage = (file: File, maxWidth: number = 1500, quality: number = 0.8): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new window.Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        } else {
+          resolve(event.target?.result as string);
+        }
+      };
+      img.onerror = (error) => reject(error);
+    };
+    reader.onerror = (error) => reject(error);
+  });
+};
+
 const CATEGORY_EMOJIS: Record<string, string> = {
   order: "📦",
   maintenance: "🔧",
@@ -281,15 +314,12 @@ export default function PaymentsRedesignPage() {
     }
     
     setUploadingPoToOldInvoice(true);
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = async () => {
-      const base64Image = reader.result as string;
-      try {
-        const response = await fetch('/api/process-po', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: base64Image })
+    try {
+      const base64Image = await compressImage(file);
+      const response = await fetch('/api/process-po', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64Image })
         });
         
         if (!response.ok) throw new Error('Failed to process image');
@@ -330,7 +360,6 @@ export default function PaymentsRedesignPage() {
       } finally {
         setUploadingPoToOldInvoice(false);
       }
-    };
   };
 
   const handleImageUpload = async (file: File) => {
@@ -341,16 +370,13 @@ export default function PaymentsRedesignPage() {
     
     setIsProcessingPo(true);
     setPoImageFile(file);
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = async () => {
-      const base64Image = reader.result as string;
-      try {
-        const response = await fetch('/api/process-po', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: base64Image })
-        });
+    try {
+      const base64Image = await compressImage(file);
+      const response = await fetch('/api/process-po', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64Image })
+      });
         
         if (!response.ok) throw new Error('Failed to process image');
         const data = await response.json();
@@ -385,7 +411,6 @@ export default function PaymentsRedesignPage() {
       } finally {
         setIsProcessingPo(false);
       }
-    };
   };
 
   useEffect(() => {

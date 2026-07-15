@@ -52,6 +52,39 @@ import html2canvas from "html2canvas";
 import dynamic from "next/dynamic";
 import { useBranch } from "@/context/BranchContext";
 
+const compressImage = (file: File, maxWidth: number = 1500, quality: number = 0.8): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new window.Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        } else {
+          resolve(event.target?.result as string);
+        }
+      };
+      img.onerror = (error) => reject(error);
+    };
+    reader.onerror = (error) => reject(error);
+  });
+};
+
 const SignaturePad = dynamic(() => import("react-signature-canvas"), { ssr: false });
 
 interface Credit {
@@ -383,16 +416,13 @@ export default function CreditsPage() {
     }
     
     setIsProcessingPo(true);
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = async () => {
-      const base64Image = reader.result as string;
-      try {
-        const response = await fetch('/api/process-po', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: base64Image })
-        });
+    try {
+      const base64Image = await compressImage(file);
+      const response = await fetch('/api/process-po', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64Image })
+      });
         
         if (!response.ok) {
           throw new Error('Failed to process PO');
@@ -432,7 +462,6 @@ export default function CreditsPage() {
       } finally {
         setIsProcessingPo(false);
       }
-    };
   };
 
   const handleUploadPoToOldCredit = async (file: File) => {
@@ -442,16 +471,13 @@ export default function CreditsPage() {
     }
     
     setUploadingPoToOldCredit(true);
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = async () => {
-      const base64Image = reader.result as string;
-      try {
-        const response = await fetch('/api/process-po', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: base64Image })
-        });
+    try {
+      const base64Image = await compressImage(file);
+      const response = await fetch('/api/process-po', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64Image })
+      });
         
         if (!response.ok) {
           throw new Error('Failed to process PO');
@@ -497,7 +523,6 @@ export default function CreditsPage() {
         setUploadingPoToOldCredit(false);
         setSelectedCreditForPoUpload(null);
       }
-    };
   };
 
   const handleDragOver = (e: React.DragEvent) => {
