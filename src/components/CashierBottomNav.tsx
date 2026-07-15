@@ -31,8 +31,8 @@ export function CashierBottomNav({ lang = "en" }: Props) {
   const handleLogout = () => {
     if (typeof window !== "undefined") {
       localStorage.removeItem("active_cashier_session");
+      window.location.href = "/cashier";
     }
-    router.push("/cashier");
   };
 
   return (

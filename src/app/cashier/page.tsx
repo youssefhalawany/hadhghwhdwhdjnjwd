@@ -58,8 +58,8 @@ export default function CashierHubPage() {
   const [activeTab, setActiveTab] = useState("dashboard");
 
   const handleRefresh = async () => {
-    // Simulate refreshing dashboard data
-    await new Promise(r => setTimeout(r, 1000));
+    // Simulate refreshing dashboard data with minimal delay
+    await new Promise(r => setTimeout(r, 300));
   };
 
   useEffect(() => {
