@@ -1173,9 +1173,12 @@ export default function CreditsPage() {
               transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
               className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl border border-slate-100"
             >
-              <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50/50">
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight">Record New Credit</h2>
-                <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-slate-200 text-slate-400 hover:text-slate-600 rounded-full transition-colors">
+              <div className="flex justify-between items-center p-6 border-b border-indigo-100 bg-gradient-to-r from-indigo-50 to-blue-50">
+                <div>
+                  <h2 className="text-2xl font-black text-indigo-900 tracking-tight">Record New Credit</h2>
+                  <p className="text-xs font-bold text-indigo-600/70 mt-1 uppercase tracking-wider">Fill in details or upload PO</p>
+                </div>
+                <button onClick={() => setShowAddModal(false)} className="p-2 bg-white/60 hover:bg-white text-indigo-400 hover:text-indigo-600 rounded-full transition-all shadow-sm">
                   <X size={20} />
                 </button>
               </div>
@@ -1184,32 +1187,38 @@ export default function CreditsPage() {
                 <div 
                   onDrop={handleDrop}
                   onDragOver={handleDragOver}
-                  className={`mb-6 border-2 border-dashed rounded-2xl p-6 text-center transition-colors ${isProcessingPo ? 'border-indigo-500 bg-indigo-50/50' : 'border-slate-300 hover:border-indigo-400 bg-slate-50 hover:bg-slate-50/80 dark:bg-slate-800/50 dark:border-slate-700'}`}
+                  className={`mb-6 border-2 border-dashed rounded-3xl p-8 text-center transition-all duration-300 ${isProcessingPo ? 'border-indigo-500 bg-indigo-50/50 scale-[0.98]' : 'border-indigo-200 hover:border-indigo-400 bg-indigo-50/30 hover:bg-indigo-50/60'}`}
                 >
                   {isProcessingPo ? (
-                    <div className="flex flex-col items-center justify-center gap-2 text-indigo-600">
-                      <Loader2 className="h-8 w-8 animate-spin" />
-                      <span className="font-bold">Reading Purchase Order...</span>
+                    <div className="flex flex-col items-center justify-center gap-3 text-indigo-600">
+                      <div className="p-3 bg-indigo-100 rounded-full mb-2">
+                        <Loader2 className="h-8 w-8 animate-spin" />
+                      </div>
+                      <span className="font-black text-lg tracking-tight">Reading Purchase Order...</span>
+                      <span className="text-sm font-medium text-indigo-500/80">Extracting details automatically</span>
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center justify-center gap-2 text-slate-500">
-                      <ImageIcon className="h-8 w-8 text-slate-400" />
-                      <span className="font-bold">Paste or Drop PO Image Here</span>
-                      <span className="text-xs">We'll automatically extract the details using AI</span>
+                    <div className="flex flex-col items-center justify-center gap-3 text-indigo-900/60">
+                      <div className="p-4 bg-white shadow-sm rounded-full mb-2 text-indigo-500">
+                        <ImageIcon className="h-8 w-8" />
+                      </div>
+                      <span className="font-black text-lg text-indigo-900 tracking-tight">Paste or Drop PO Image Here</span>
+                      <span className="text-sm font-medium">We'll automatically extract the details using AI</span>
                       <button
                         type="button"
                         onClick={handlePastePoImageButtonClick}
-                        className="mt-2 flex items-center gap-2 px-3 py-1.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-bold rounded-lg transition-colors text-xs"
+                        className="mt-3 flex items-center gap-2 px-5 py-2.5 bg-white border border-indigo-100 hover:border-indigo-300 hover:shadow-md text-indigo-700 font-bold rounded-xl transition-all text-sm group"
                       >
-                        <ClipboardPaste size={14} />
+                        <ClipboardPaste size={16} className="text-indigo-400 group-hover:text-indigo-600 transition-colors" />
                         Paste from Clipboard
                       </button>
                     </div>
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4 mb-6">
-                  <div>
+                <div className="bg-slate-50/50 p-5 rounded-3xl border border-slate-100 mb-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+                    <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Invoice # *</label>
                     <input required type="text" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} />
                   </div>
@@ -1243,24 +1252,25 @@ export default function CreditsPage() {
                       <input type="number" step="0.01" className="w-full pl-12 pr-4 p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-bold text-slate-900" value={tax} onChange={(e) => setTax(e.target.value)} />
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Collection Date</label>
-                    <input required type="date" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={collectionDate} onChange={(e) => setCollectionDate(e.target.value)} />
-                    <div className="flex gap-2 mt-2 flex-wrap">
-                      {[14, 15, 30, 45].map(days => (
-                        <button 
-                          key={days} 
-                          type="button" 
-                          onClick={() => {
-                            const d = new Date();
-                            d.setDate(d.getDate() + days);
-                            setCollectionDate(d.toISOString().split('T')[0]);
-                          }}
-                          className="text-[10px] font-bold px-2 py-1 bg-indigo-50 text-indigo-700 rounded hover:bg-indigo-100 transition-colors"
-                        >
-                          +{days} Days
-                        </button>
-                      ))}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Collection Date</label>
+                      <input required type="date" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={collectionDate} onChange={(e) => setCollectionDate(e.target.value)} />
+                      <div className="flex gap-2 mt-2 flex-wrap">
+                        {[14, 15, 30, 45].map(days => (
+                          <button 
+                            key={days} 
+                            type="button" 
+                            onClick={() => {
+                              const d = new Date();
+                              d.setDate(d.getDate() + days);
+                              setCollectionDate(d.toISOString().split('T')[0]);
+                            }}
+                            className="text-[10px] font-bold px-2 py-1 bg-indigo-50 text-indigo-700 rounded hover:bg-indigo-100 transition-colors"
+                          >
+                            +{days} Days
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
