@@ -88,8 +88,8 @@ export default function AdminSchedulePage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Fetch Schedule
-      const res = await fetch(`/api/schedule?storeId=${storeId}&month=${month}`);
+      // Fetch Schedule with cache busting
+      const res = await fetch(`/api/schedule?storeId=${storeId}&month=${month}&t=${Date.now()}`, { cache: 'no-store' });
       const data = await res.json();
       setSchedule(data.schedule);
 
@@ -97,8 +97,8 @@ export default function AdminSchedulePage() {
         setRules(data.schedule.rules);
       }
 
-      // Fetch Leave Requests
-      const leaveRes = await fetch(`/api/schedule/leave-requests?storeId=${storeId}`);
+      // Fetch Leave Requests with cache busting
+      const leaveRes = await fetch(`/api/schedule/leave-requests?storeId=${storeId}&t=${Date.now()}`, { cache: 'no-store' });
       const leaveData = await leaveRes.json();
       // Filter for this month
       const monthRequests = leaveData.requests.filter((r: any) => r.date.startsWith(month));
@@ -167,28 +167,35 @@ export default function AdminSchedulePage() {
     <ClientLayoutWrapper>
       <div className="p-6 max-w-7xl mx-auto min-h-screen">
         {/* Header - Hidden on Print */}
-        <div className="print:hidden mb-8 flex justify-between items-center bg-card p-6 rounded-2xl shadow-sm border border-border">
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">
+        <div className="print:hidden mb-8 flex flex-col md:flex-row justify-between items-start md:items-center bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-xl shadow-slate-200/40 dark:shadow-none border border-slate-200/60 dark:border-slate-800 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 dark:bg-blue-500/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+          <div className="relative z-10 mb-4 md:mb-0">
+            <h1 className="text-3xl font-black text-slate-900 dark:text-white flex items-center gap-3">
+              <CalendarDays className="w-8 h-8 text-blue-500" />
               Smart Scheduler
             </h1>
-            <p className="text-muted-foreground mt-1">Generate & manage employee rosters automatically.</p>
+            <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium">Generate & manage employee rosters automatically.</p>
           </div>
-          <div className="flex space-x-4">
-            <select 
-              value={storeId} 
-              onChange={(e) => setStoreId(e.target.value)}
-              className={`bg-background border border-border rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500 ${currentBranch !== "all" ? "opacity-75 cursor-not-allowed" : ""}`}
-              disabled={currentBranch !== "all"}
-            >
-              {(currentBranch === "all" || currentBranch === "alamein4") && <option value="eL-alamein-4">El Alamein 4</option>}
-              {(currentBranch === "all" || currentBranch === "ola") && <option value="ola-el-koronfol">Ola El Koronfol</option>}
-            </select>
+          <div className="flex flex-col sm:flex-row gap-3 relative z-10 w-full md:w-auto">
+            <div className="relative group">
+              <select 
+                value={storeId} 
+                onChange={(e) => setStoreId(e.target.value)}
+                className={`w-full sm:w-auto appearance-none bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl px-5 py-3 pr-10 font-bold text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all cursor-pointer ${currentBranch !== "all" ? "opacity-75 cursor-not-allowed" : "hover:border-blue-400"}`}
+                disabled={currentBranch !== "all"}
+              >
+                {(currentBranch === "all" || currentBranch === "alamein4") && <option value="eL-alamein-4">El Alamein 4</option>}
+                {(currentBranch === "all" || currentBranch === "ola") && <option value="ola-el-koronfol">Ola El Koronfol</option>}
+              </select>
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 group-hover:text-blue-500 transition-colors">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </div>
+            </div>
             <input 
               type="month" 
               value={month}
               onChange={(e) => setMonth(e.target.value)}
-              className="bg-background border border-border rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500"
+              className="w-full sm:w-auto bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl px-5 py-3 font-bold text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all hover:border-blue-400"
             />
           </div>
         </div>
@@ -199,81 +206,88 @@ export default function AdminSchedulePage() {
           <div className="lg:col-span-1 space-y-6 print:hidden">
             
             {/* Rules Builder */}
-            <div className="bg-card rounded-2xl shadow-sm border border-border p-5">
-              <div className="flex items-center space-x-2 mb-4">
-                <Settings className="w-5 h-5 text-blue-400" />
-                <h2 className="text-lg font-semibold">Generation Rules</h2>
+            <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl shadow-slate-200/40 dark:shadow-none border border-slate-200/60 dark:border-slate-800 p-6 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 dark:bg-blue-500/10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none transition-transform group-hover:scale-110"></div>
+              <div className="flex items-center space-x-3 mb-6 relative z-10">
+                <div className="bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 p-2 rounded-xl">
+                  <Settings className="w-5 h-5" />
+                </div>
+                <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Generation Rules</h2>
               </div>
               
-              <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="col-span-3">
-                    <label className="text-sm text-muted-foreground mb-1 block">Min Employees Per Shift</label>
-                  </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-1 block text-center">Morning</label>
-                    <input 
-                      type="number" min={0}
-                      value={rules.minEmployeesMorning || 0}
-                      onChange={(e) => setRules({...rules, minEmployeesMorning: parseInt(e.target.value) || 0})}
-                      className="w-full bg-background border border-border rounded-lg px-2 py-1.5 text-sm text-center focus:ring-1 focus:ring-blue-500 outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-1 block text-center">Noon</label>
-                    <input 
-                      type="number" min={0}
-                      value={rules.minEmployeesNoon || 0}
-                      onChange={(e) => setRules({...rules, minEmployeesNoon: parseInt(e.target.value) || 0})}
-                      className="w-full bg-background border border-border rounded-lg px-2 py-1.5 text-sm text-center focus:ring-1 focus:ring-blue-500 outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-1 block text-center">Night</label>
-                    <input 
-                      type="number" min={0}
-                      value={rules.minEmployeesNight || 0}
-                      onChange={(e) => setRules({...rules, minEmployeesNight: parseInt(e.target.value) || 0})}
-                      className="w-full bg-background border border-border rounded-lg px-2 py-1.5 text-sm text-center focus:ring-1 focus:ring-blue-500 outline-none"
-                    />
-                  </div>
-                </div>
+              <div className="space-y-6 relative z-10">
                 <div>
-                  <label className="text-sm text-muted-foreground mb-1 block">Max Days Off/Month</label>
-                  <input 
-                    type="number" min={0}
-                    value={rules.maxDaysOffPerMonth}
-                    onChange={(e) => setRules({...rules, maxDaysOffPerMonth: parseInt(e.target.value)})}
-                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm"
-                  />
+                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3 block">Min Employees Per Shift</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-2xl border border-slate-100 dark:border-slate-700">
+                      <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1 block text-center">Morning</label>
+                      <input 
+                        type="number" min={0}
+                        value={rules.minEmployeesMorning || 0}
+                        onChange={(e) => setRules({...rules, minEmployeesMorning: parseInt(e.target.value) || 0})}
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-2 py-2 text-sm font-bold text-center focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
+                      />
+                    </div>
+                    <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-2xl border border-slate-100 dark:border-slate-700">
+                      <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1 block text-center">Noon</label>
+                      <input 
+                        type="number" min={0}
+                        value={rules.minEmployeesNoon || 0}
+                        onChange={(e) => setRules({...rules, minEmployeesNoon: parseInt(e.target.value) || 0})}
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-2 py-2 text-sm font-bold text-center focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
+                      />
+                    </div>
+                    <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-2xl border border-slate-100 dark:border-slate-700">
+                      <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1 block text-center">Night</label>
+                      <input 
+                        type="number" min={0}
+                        value={rules.minEmployeesNight || 0}
+                        onChange={(e) => setRules({...rules, minEmployeesNight: parseInt(e.target.value) || 0})}
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-2 py-2 text-sm font-bold text-center focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <label className="text-sm text-muted-foreground">Consecutive Days Off</label>
-                  <input 
-                    type="checkbox"
-                    checked={rules.allowConsecutiveDaysOff}
-                    onChange={(e) => setRules({...rules, allowConsecutiveDaysOff: e.target.checked})}
-                    className="rounded text-blue-500 focus:ring-blue-500"
-                  />
-                </div>
-                {rules.allowConsecutiveDaysOff && (
-                  <div>
-                    <label className="text-sm text-muted-foreground mb-1 block">Max Consecutive</label>
+
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-700">
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Max Days Off / Month</label>
                     <input 
-                      type="number" min={1}
-                      value={rules.maxConsecutiveDaysOff}
-                      onChange={(e) => setRules({...rules, maxConsecutiveDaysOff: parseInt(e.target.value)})}
-                      className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm"
+                      type="number" min={0}
+                      value={rules.maxDaysOffPerMonth}
+                      onChange={(e) => setRules({...rules, maxDaysOffPerMonth: parseInt(e.target.value)})}
+                      className="w-16 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-2 py-1.5 text-sm font-bold text-center focus:ring-2 focus:ring-blue-500 outline-none"
                     />
                   </div>
-                )}
+                  
+                  <div className="w-full h-px bg-slate-200 dark:bg-slate-700 my-3"></div>
+
+                  <div className="flex items-center justify-between py-1">
+                    <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Allow Consecutive Off</label>
+                    <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${rules.allowConsecutiveDaysOff ? 'bg-blue-500' : 'bg-slate-300 dark:bg-slate-600'}`} onClick={() => setRules({...rules, allowConsecutiveDaysOff: !rules.allowConsecutiveDaysOff})}>
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${rules.allowConsecutiveDaysOff ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </div>
+                  </div>
+                  
+                  {rules.allowConsecutiveDaysOff && (
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 border-dashed">
+                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400">Max Consecutive Days</label>
+                      <input 
+                        type="number" min={1}
+                        value={rules.maxConsecutiveDaysOff}
+                        onChange={(e) => setRules({...rules, maxConsecutiveDaysOff: parseInt(e.target.value)})}
+                        className="w-16 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-2 py-1.5 text-sm font-bold text-center focus:ring-2 focus:ring-blue-500 outline-none"
+                      />
+                    </div>
+                  )}
+                </div>
                 
                 <button 
                   onClick={handleGenerate}
                   disabled={loading}
-                  className="w-full mt-4 flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"
+                  className="w-full mt-2 flex items-center justify-center space-x-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 active:scale-[0.98] shadow-lg shadow-blue-500/25 text-white py-3.5 rounded-xl font-bold transition-all disabled:opacity-70 disabled:cursor-not-allowed"
                 >
-                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CalendarDays className="w-4 h-4" />}
+                  {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <CalendarDays className="w-5 h-5" />}
                   <span>Auto-Generate Schedule</span>
                 </button>
               </div>
@@ -332,27 +346,27 @@ export default function AdminSchedulePage() {
             <div className="bg-card rounded-2xl shadow-sm border border-border p-1 md:p-6 print:border-none print:shadow-none print:p-0">
               
               {/* Toolbar */}
-              <div className="print:hidden flex justify-between items-center mb-6 px-4 pt-4 md:p-0 border-b border-border pb-4">
-                <div className="flex space-x-6 overflow-x-auto custom-scrollbar pr-4">
+              <div className="print:hidden flex flex-col md:flex-row justify-between items-start md:items-center mb-6 px-6 pt-6 md:p-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                <div className="flex bg-slate-200/50 dark:bg-slate-800/50 p-1.5 rounded-2xl mb-4 md:mb-0 overflow-x-auto w-full md:w-auto shadow-inner border border-slate-200/80 dark:border-slate-700">
                   <button 
                     onClick={() => setActiveTab('roster')}
-                    className={`pb-4 -mb-4 font-bold text-lg border-b-2 transition-colors whitespace-nowrap ${activeTab === 'roster' ? 'border-blue-500 text-blue-500' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                    className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${activeTab === 'roster' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                   >
                     Schedule Roster
                   </button>
                   <button 
                     onClick={() => setActiveTab('analytics')}
-                    className={`pb-4 -mb-4 font-bold text-lg border-b-2 transition-colors whitespace-nowrap ${activeTab === 'analytics' ? 'border-blue-500 text-blue-500' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                    className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${activeTab === 'analytics' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                   >
                     Employee Analytics
                   </button>
                   <button 
                     onClick={() => setActiveTab('requests')}
-                    className={`pb-4 -mb-4 font-bold text-lg border-b-2 transition-colors flex items-center whitespace-nowrap ${activeTab === 'requests' ? 'border-blue-500 text-blue-500' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                    className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center whitespace-nowrap ${activeTab === 'requests' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                   >
                     Staff Requests
                     {borrowRequests.filter(r => isStoreMatch(r.sourceStoreId) && r.status === 'pending').length > 0 && (
-                      <span className="ml-2 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                      <span className="ml-2 bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-black shadow-sm">
                         {borrowRequests.filter(r => isStoreMatch(r.sourceStoreId) && r.status === 'pending').length}
                       </span>
                     )}
@@ -398,12 +412,12 @@ export default function AdminSchedulePage() {
                     <p className="text-xs text-muted-foreground mt-2">Adjust your rules on the left and click Auto-Generate.</p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto rounded-xl border border-border print:border-black">
+                  <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm print:text-black">
-                      <thead className="bg-secondary/50 print:bg-gray-100">
+                      <thead className="bg-slate-50 dark:bg-slate-900 print:bg-gray-100">
                         <tr>
-                          <th className="p-3 font-semibold border-b border-border print:border-black">Date</th>
-                          <th className="p-3 font-semibold border-b border-border print:border-black">Assigned Employees & Shifts</th>
+                          <th className="p-4 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs border-y border-slate-200 dark:border-slate-800 print:border-black">Date</th>
+                          <th className="p-4 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs border-y border-slate-200 dark:border-slate-800 print:border-black">Assigned Employees & Shifts</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -412,52 +426,64 @@ export default function AdminSchedulePage() {
                           const isWeekend = dateObj.getDay() === 5 || dateObj.getDay() === 6; // Fri/Sat in some regions
                           
                           return (
-                            <tr key={day.date} className={`border-b border-border/50 print:border-black ${isWeekend ? 'bg-secondary/20' : ''}`}>
-                              <td className="p-3 border-r border-border/50 print:border-black w-32 whitespace-nowrap">
-                                <div className="font-medium">{dateObj.toLocaleDateString('en-US', { weekday: 'short' })}</div>
-                                <div className="text-xs text-muted-foreground print:text-gray-600">{day.date}</div>
+                            <tr key={day.date} className={`border-b border-slate-100 dark:border-slate-800/50 print:border-black transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-800/20 ${isWeekend ? 'bg-orange-50/30 dark:bg-orange-900/10' : ''}`}>
+                              <td className="p-4 border-r border-slate-100 dark:border-slate-800 print:border-black w-40 whitespace-nowrap align-top">
+                                <div className={`font-bold text-base ${isWeekend ? 'text-orange-600 dark:text-orange-400' : 'text-slate-800 dark:text-slate-200'}`}>{dateObj.toLocaleDateString('en-US', { weekday: 'long' })}</div>
+                                <div className="text-xs font-semibold text-slate-400 dark:text-slate-500 mt-1 print:text-gray-600">{dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
                               </td>
-                              <td className="p-3">
-                                <div className="flex flex-wrap gap-2 items-center">
+                              <td className="p-4 align-top">
+                                <div className="flex flex-wrap gap-3 items-start">
                                   {day.shifts.map((shift: any, i: number) => {
-                                    const isOff = shift.shiftTime.includes('Off');
+                                    const lower = shift.shiftTime.toLowerCase();
+                                    const isOff = lower.includes('off');
+                                    const isMorning = lower.includes('morning');
+                                    const isNoon = lower.includes('noon');
+                                    const isNight = lower.includes('night');
+
+                                    let badgeColors = 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700';
+                                    if (isOff) badgeColors = 'bg-red-50 text-red-600 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800/50';
+                                    else if (isMorning) badgeColors = 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800/50';
+                                    else if (isNight) badgeColors = 'bg-indigo-50 text-indigo-600 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-800/50';
+                                    else if (isNoon) badgeColors = 'bg-orange-50 text-orange-600 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800/50';
+
                                     return (
-                                      <div key={i} className={`px-3 py-1.5 rounded-xl border text-xs flex flex-col print:border-black backdrop-blur-sm transition-all
-                                        ${isOff 
-                                          ? 'bg-red-500/10 border-red-500/20 text-red-400 print:text-black print:bg-gray-100 hover:bg-red-500/15' 
-                                          : 'bg-blue-500/10 border-blue-500/20 text-blue-400 print:text-black print:bg-white hover:bg-blue-500/15 shadow-sm'}`}>
-                                        <span className="font-bold tracking-wide">
+                                      <div key={i} className={`p-2.5 rounded-xl border flex flex-col print:border-black backdrop-blur-sm shadow-sm transition-all w-36 ${badgeColors}`}>
+                                        <span className="font-bold text-[13px] tracking-tight leading-tight mb-2 flex items-start justify-between">
                                           {shift.employeeName}
-                                          {shift.isBorrowed && <span className="text-[9px] bg-purple-500/20 text-purple-400 px-1 rounded ml-1">Borrowed</span>}
+                                          {shift.isBorrowed && <span className="text-[9px] bg-purple-500/20 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded-sm ml-1 uppercase tracking-wider font-black">Borrowed</span>}
                                         </span>
                                         
-                                        <select 
-                                          value={shift.shiftTime}
-                                          onChange={(e) => {
-                                            const newSchedule = JSON.parse(JSON.stringify(schedule));
-                                            newSchedule.assignments[dayIndex].shifts[i].shiftTime = e.target.value;
-                                            setSchedule(newSchedule);
-                                            
-                                            // Auto-save if it's already published
-                                            if (schedule.isPublished) {
-                                              fetch('/api/schedule', {
-                                                method: 'POST',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify(newSchedule)
-                                              }).catch(console.error);
-                                            }
-                                          }}
-                                          className={`mt-1.5 rounded-md px-1.5 py-1 text-[10px] font-medium focus:ring-2 focus:ring-blue-500/50 outline-none print:hidden w-full cursor-pointer transition-colors shadow-sm
-                                            ${schedule.isPublished ? 'bg-background/40 border border-border/30 hover:bg-background/60 text-foreground/80' : 'bg-background/80 border border-border/80 text-foreground'}`}
-                                        >
-                                          <option value="Off">Off</option>
-                                          <option value="Scheduled">Scheduled</option>
-                                          <option value="Morning">Morning</option>
-                                          <option value="Noon">Noon</option>
-                                          <option value="Night">Night</option>
-                                          <option value="Off (Approved Leave)">Off (Approved Leave)</option>
-                                        </select>
-                                        <span className="hidden print:block opacity-80 mt-0.5">{shift.shiftTime}</span>
+                                        <div className="relative group">
+                                          <select 
+                                            value={shift.shiftTime}
+                                            onChange={(e) => {
+                                              const newSchedule = JSON.parse(JSON.stringify(schedule));
+                                              newSchedule.assignments[dayIndex].shifts[i].shiftTime = e.target.value;
+                                              setSchedule(newSchedule);
+                                              
+                                              if (schedule.isPublished) {
+                                                fetch('/api/schedule', {
+                                                  method: 'POST',
+                                                  headers: { 'Content-Type': 'application/json' },
+                                                  body: JSON.stringify(newSchedule)
+                                                }).catch(console.error);
+                                              }
+                                            }}
+                                            className={`appearance-none rounded-lg px-2 py-1.5 text-xs font-bold focus:ring-2 focus:ring-blue-500/50 outline-none print:hidden w-full cursor-pointer transition-colors border
+                                              ${schedule.isPublished ? 'bg-black/5 dark:bg-white/5 border-transparent hover:bg-black/10 dark:hover:bg-white/10' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 shadow-inner'}`}
+                                          >
+                                            <option value="Off">Off</option>
+                                            <option value="Scheduled">Scheduled</option>
+                                            <option value="Morning">Morning</option>
+                                            <option value="Noon">Noon</option>
+                                            <option value="Night">Night</option>
+                                            <option value="Off (Approved Leave)">Off (Approved Leave)</option>
+                                          </select>
+                                          <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50 print:hidden">
+                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                          </div>
+                                        </div>
+                                        <span className="hidden print:block opacity-80 mt-1 text-xs font-bold">{shift.shiftTime}</span>
                                       </div>
                                     );
                                   })}
@@ -465,11 +491,11 @@ export default function AdminSchedulePage() {
                                   {/* Borrow Button */}
                                   <button 
                                     onClick={() => setShowBorrowModal(dayIndex)} 
-                                    className="px-2 py-1.5 bg-secondary/30 text-xs rounded-lg border border-dashed border-border hover:bg-secondary/70 transition-colors flex items-center print:hidden"
-                                    title="Borrow employee from another branch"
+                                    className="p-2 h-[82px] w-20 flex flex-col items-center justify-center bg-slate-50 hover:bg-blue-50 dark:bg-slate-800/30 dark:hover:bg-blue-900/20 text-slate-400 hover:text-blue-500 border border-dashed border-slate-300 hover:border-blue-400 dark:border-slate-700 dark:hover:border-blue-500 rounded-xl transition-colors print:hidden group"
+                                    title="Borrow employee"
                                   >
-                                    <Plus className="w-3 h-3 text-muted-foreground mr-1"/>
-                                    <span className="text-muted-foreground font-medium">Borrow</span>
+                                    <Plus className="w-5 h-5 mb-1 group-hover:scale-110 transition-transform"/>
+                                    <span className="text-[10px] font-bold uppercase tracking-wider">Borrow</span>
                                   </button>
                                 </div>
                               </td>
