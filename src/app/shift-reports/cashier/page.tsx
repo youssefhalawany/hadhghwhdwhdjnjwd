@@ -1243,14 +1243,14 @@ export default function CashierShiftReportPage() {
         </div>
         <div className="active">
           <Radar size={22} />
-          <span>REPORT CENTER</span>
+          <span>DAILY SHIFT</span>
         </div>
-        <div>
-          <Shield size={22} />
-          <span>NOTIFICATIONS</span>
-        </div>
-        <div>
+        <div onClick={() => router.push("/cashier/account")}>
           <UserIcon size={22} />
+          <span>MY ACCOUNT</span>
+        </div>
+        <div onClick={() => router.push("/cashier")}>
+          <Shield size={22} />
           <span>PROFILE</span>
         </div>
       </div>
