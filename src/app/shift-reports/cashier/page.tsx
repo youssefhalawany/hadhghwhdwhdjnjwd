@@ -615,13 +615,15 @@ export default function CashierShiftReportPage() {
         .ck-shift-report .bg-red-600, .ck-shift-report .bg-red-500 { background-color: #ef4444 !important; color: white !important; }
         .ck-shift-report .bg-green-600, .ck-shift-report .bg-green-500 { background-color: #34d399 !important; color: #0B1121 !important; font-weight: 800 !important; }
         .ck-shift-report .border-slate-200, .ck-shift-report .dark\\:border-slate-700, .ck-shift-report .border-slate-300 { border-color: rgba(34, 211, 238, 0.15) !important; }
-        
         .ck-shift-report input, .ck-shift-report select { background-color: #1C2841 !important; color: #f8fafc !important; border: 1px solid rgba(34, 211, 238, 0.25) !important; border-radius: 12px !important; }
         .ck-shift-report input:focus, .ck-shift-report select:focus { border-color: #22d3ee !important; box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.2) !important; outline: none !important; }
         .ck-shift-report h2 { color: #22d3ee !important; }
-        
         .ck-pinpad button { background-color: #1C2841 !important; color: #f8fafc !important; border-color: rgba(34, 211, 238, 0.15) !important; }
         .ck-pinpad button:active { background-color: rgba(34, 211, 238, 0.1) !important; border-color: rgba(34, 211, 238, 0.25) !important; color: #22d3ee !important; }
+        .ck-bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #0B1121; border-top: 1px solid rgba(34,211,238,0.15); display: flex; align-items: center; justify-content: space-around; padding: 10px 8px 22px; z-index: 100; }
+        .ck-bottom-nav > div { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; color: #64748b; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; min-width: 60px; }
+        .ck-bottom-nav > div.active { color: #22d3ee; }
+        .ck-bottom-nav > div svg { flex-shrink: 0; }
       `}</style>
 
         <Skeleton className="h-16 w-16 rounded-full" />
@@ -642,13 +644,15 @@ export default function CashierShiftReportPage() {
         .ck-shift-report .bg-red-600, .ck-shift-report .bg-red-500 { background-color: #ef4444 !important; color: white !important; }
         .ck-shift-report .bg-green-600, .ck-shift-report .bg-green-500 { background-color: #34d399 !important; color: #0B1121 !important; font-weight: 800 !important; }
         .ck-shift-report .border-slate-200, .ck-shift-report .dark\\:border-slate-700, .ck-shift-report .border-slate-300 { border-color: rgba(34, 211, 238, 0.15) !important; }
-        
         .ck-shift-report input, .ck-shift-report select { background-color: #1C2841 !important; color: #f8fafc !important; border: 1px solid rgba(34, 211, 238, 0.25) !important; border-radius: 12px !important; }
         .ck-shift-report input:focus, .ck-shift-report select:focus { border-color: #22d3ee !important; box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.2) !important; outline: none !important; }
         .ck-shift-report h2 { color: #22d3ee !important; }
-        
         .ck-pinpad button { background-color: #1C2841 !important; color: #f8fafc !important; border-color: rgba(34, 211, 238, 0.15) !important; }
         .ck-pinpad button:active { background-color: rgba(34, 211, 238, 0.1) !important; border-color: rgba(34, 211, 238, 0.25) !important; color: #22d3ee !important; }
+        .ck-bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #0B1121; border-top: 1px solid rgba(34,211,238,0.15); display: flex; align-items: center; justify-content: space-around; padding: 10px 8px 22px; z-index: 100; }
+        .ck-bottom-nav > div { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; color: #64748b; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; min-width: 60px; }
+        .ck-bottom-nav > div.active { color: #22d3ee; }
+        .ck-bottom-nav > div svg { flex-shrink: 0; }
       `}</style>
 
         <div className="w-full max-w-md space-y-6">
@@ -748,13 +752,15 @@ export default function CashierShiftReportPage() {
         .ck-shift-report .bg-red-600, .ck-shift-report .bg-red-500 { background-color: #ef4444 !important; color: white !important; }
         .ck-shift-report .bg-green-600, .ck-shift-report .bg-green-500 { background-color: #34d399 !important; color: #0B1121 !important; font-weight: 800 !important; }
         .ck-shift-report .border-slate-200, .ck-shift-report .dark\\:border-slate-700, .ck-shift-report .border-slate-300 { border-color: rgba(34, 211, 238, 0.15) !important; }
-        
         .ck-shift-report input, .ck-shift-report select { background-color: #1C2841 !important; color: #f8fafc !important; border: 1px solid rgba(34, 211, 238, 0.25) !important; border-radius: 12px !important; }
         .ck-shift-report input:focus, .ck-shift-report select:focus { border-color: #22d3ee !important; box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.2) !important; outline: none !important; }
         .ck-shift-report h2 { color: #22d3ee !important; }
-        
         .ck-pinpad button { background-color: #1C2841 !important; color: #f8fafc !important; border-color: rgba(34, 211, 238, 0.15) !important; }
         .ck-pinpad button:active { background-color: rgba(34, 211, 238, 0.1) !important; border-color: rgba(34, 211, 238, 0.25) !important; color: #22d3ee !important; }
+        .ck-bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #0B1121; border-top: 1px solid rgba(34,211,238,0.15); display: flex; align-items: center; justify-content: space-around; padding: 10px 8px 22px; z-index: 100; }
+        .ck-bottom-nav > div { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; color: #64748b; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; min-width: 60px; }
+        .ck-bottom-nav > div.active { color: #22d3ee; }
+        .ck-bottom-nav > div svg { flex-shrink: 0; }
       `}</style>
 
       
