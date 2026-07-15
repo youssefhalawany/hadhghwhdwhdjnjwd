@@ -5,7 +5,34 @@ import { db, messaging, dbService } from "@/lib/firebase";
 import { collection, query, orderBy, limit, getDocs } from "firebase/firestore";
 import { getToken } from "firebase/messaging";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Bell, FileText, Shield, Calendar, RefreshCw, LogOut } from "lucide-react";
+import { ArrowLeft, Bell, FileText, Shield, Calendar, RefreshCw, LogOut, Activity, TrendingUp, Clock } from "lucide-react";
+
+// ── Design Tokens ────────────────────────────────────────────
+const D = {
+  bg:           "#0B1121",
+  surface:      "#151E32",
+  surfaceHigh:  "#1C2841",
+  border:       "rgba(34, 211, 238, 0.15)",
+  borderMid:    "rgba(34, 211, 238, 0.25)",
+  textPrimary:  "#f8fafc",
+  textSecondary:"#94a3b8",
+  textDim:      "#64748b",
+  cyan:         "#22d3ee",
+  cyanDim:      "rgba(34, 211, 238, 0.1)",
+  cyanBorder:   "rgba(34, 211, 238, 0.25)",
+  red:          "#ef4444",
+  redDim:       "rgba(239,68,68,0.12)",
+  redBorder:    "rgba(239,68,68,0.30)",
+  green:        "#34d399",
+  greenDim:     "rgba(52,211,153,0.12)",
+  greenBorder:  "rgba(52,211,153,0.25)",
+  amber:        "#f59e0b",
+  amberDim:     "rgba(245,158,11,0.12)",
+  amberBorder:  "rgba(245,158,11,0.3)",
+  blue:         "#60a5fa",
+  blueDim:      "rgba(96,165,250,0.12)",
+  blueBorder:   "rgba(96,165,250,0.3)",
+};
 
 export default function MasterCashierDashboard() {
   const router = useRouter();
@@ -13,49 +40,41 @@ export default function MasterCashierDashboard() {
   const [loading, setLoading] = useState(true);
   const [isNotificationEnabled, setIsNotificationEnabled] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const t = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => {
     const session = localStorage.getItem("active_cashier_session");
-    if (!session) {
-      router.push("/cashier");
-      return;
-    }
+    if (!session) { router.push("/cashier"); return; }
     const user = JSON.parse(session);
-    if (user.role !== "master") {
-      router.push("/cashier");
-      return;
-    }
-
+    if (user.role !== "master") { router.push("/cashier"); return; }
     if (typeof window !== "undefined" && "Notification" in window) {
-      if (Notification.permission === "granted") {
-        setIsNotificationEnabled(true);
-      }
+      if (Notification.permission === "granted") setIsNotificationEnabled(true);
     }
-
     fetchFeed();
   }, []);
 
   const fetchFeed = async () => {
     setLoading(true);
     try {
-      // Fetch shift reports
       const reportsQuery = query(collection(db, "shift_reports"), orderBy("createdAt", "desc"), limit(10));
       const reportsSnap = await getDocs(reportsQuery);
       const reports = reportsSnap.docs.map(d => ({ ...d.data(), id: d.id, _type: "shift_report" }));
 
-      // Fetch voids
       const voidsQuery = query(collection(db, "void_requests"), orderBy("createdAt", "desc"), limit(10));
       const voidsSnap = await getDocs(voidsQuery);
       const voids = voidsSnap.docs.map(d => ({ ...d.data(), id: d.id, _type: "void_request" }));
 
-      // Fetch expiries
       const expiriesQuery = query(collection(db, "expiries"), orderBy("createdAt", "desc"), limit(10));
       const expiriesSnap = await getDocs(expiriesQuery);
       const expiries = expiriesSnap.docs.map(d => ({ ...d.data(), id: d.id, _type: "expiry" }));
 
       const all = [...reports, ...voids, ...expiries];
       all.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      
       setFeed(all.slice(0, 30));
     } catch (e) {
       console.error(e);
@@ -65,26 +84,20 @@ export default function MasterCashierDashboard() {
   };
 
   const handleEnableNotifications = async () => {
-    if (!("Notification" in window)) {
-      alert("This browser does not support notifications.");
-      return;
-    }
+    if (!("Notification" in window)) { alert("This browser does not support notifications."); return; }
     try {
       const permission = await Notification.requestPermission();
       if (permission === "granted" && messaging) {
         const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
         const messagingInstance = await messaging;
         if (messagingInstance) {
-          const token = await getToken(messagingInstance, { 
+          const token = await getToken(messagingInstance, {
             vapidKey: "BHiDvLTbQ2DTED8p7X1BQ8Vu811fuu3dmpVfclmA5P7n-DuRltU7kkai9E2_2VkbLpS7Ns5ekNQClP5CsTeWf7M",
             serviceWorkerRegistration: swReg
           });
           if (token) {
             await dbService.setDoc("user_tokens", "master_youssef", {
-              fcmToken: token,
-              name: "Mr Youssef",
-              role: "master",
-              updatedAt: new Date().toISOString()
+              fcmToken: token, name: "Mr Youssef", role: "master", updatedAt: new Date().toISOString()
             });
             setIsNotificationEnabled(true);
             alert("Master Notifications enabled successfully!");
@@ -93,10 +106,7 @@ export default function MasterCashierDashboard() {
       } else {
         alert("Notification permission denied. Please enable in your device settings.");
       }
-    } catch (err: any) {
-      console.error(err);
-      alert("Failed to enable notifications. Error: " + err.message);
-    }
+    } catch (err: any) { console.error(err); alert("Failed to enable notifications. Error: " + err.message); }
   };
 
   const handleLogout = () => {
@@ -104,43 +114,93 @@ export default function MasterCashierDashboard() {
     router.push("/cashier");
   };
 
-  if (loading) {
-    return <div className="flex justify-center p-10"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-red-600"></div></div>;
-  }
+  const root: React.CSSProperties = {
+    backgroundColor: D.bg, color: D.textPrimary, minHeight: "100dvh",
+    fontFamily: "'Inter', 'Cairo', -apple-system, system-ui, sans-serif",
+    colorScheme: "dark",
+  };
+
+  if (loading) return (
+    <div style={{ ...root, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20 }}>
+      <div style={{ width: 56, height: 56, borderRadius: 16, background: "linear-gradient(135deg,#b91c1c,#ef4444)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 900, color: "#fff", boxShadow: "0 0 40px rgba(239,68,68,0.4)" }}>K</div>
+      <div style={{ display: "flex", gap: 6 }}>
+        {[0,1,2].map(i => (
+          <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: D.cyan, opacity: 0.7, animation: `bounce 1s ${i*0.15}s infinite` }} />
+        ))}
+      </div>
+      <span style={{ fontSize: 13, fontWeight: 700, color: D.textSecondary, letterSpacing: "0.1em" }}>LOADING MASTER FEED...</span>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-20">
-      <header className="bg-red-600 text-white p-4 shadow-lg sticky top-0 z-10 flex justify-between items-center">
-        <div>
-          <h1 className="font-black text-xl">Master Feed</h1>
-          <p className="text-xs text-red-200">Global Activity Monitor</p>
-        </div>
-        <div className="flex gap-2">
-          <button 
-            onClick={handleEnableNotifications} 
-            className={`relative p-2 rounded-full transition-colors ${
-              isNotificationEnabled 
-                ? "bg-emerald-500/20 text-emerald-100 hover:bg-emerald-500/30" 
-                : "bg-white/20 hover:bg-white/30"
-            }`}
-            title={isNotificationEnabled ? "Notifications On" : "Enable Notifications"}
-          >
-            <Bell className={`h-4 w-4 ${!isNotificationEnabled && "animate-pulse"}`} />
-            {isNotificationEnabled && <span className="absolute top-0 right-0 w-2 h-2 bg-emerald-400 rounded-full border-2 border-red-600"></span>}
-          </button>
-          <button onClick={fetchFeed} className="bg-white/20 p-2 rounded-full hover:bg-white/30 transition-colors">
-            <RefreshCw className="h-4 w-4" />
-          </button>
-          <button onClick={handleLogout} className="bg-white/20 p-2 rounded-full hover:bg-white/30 transition-colors">
-            <LogOut className="h-4 w-4" />
-          </button>
-        </div>
-      </header>
+    <div style={root}>
+      <style>{`
+        @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.4)} }
+        @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+        .feed-card { transition: border-color 0.15s, background 0.15s; }
+        .feed-card:hover { border-color: ${D.cyanBorder} !important; }
+        .icon-btn { transition: background 0.15s; cursor: pointer; border: none; }
+        .icon-btn:hover { opacity: 0.8; }
+      `}</style>
 
-      <main className="max-w-2xl mx-auto p-4 space-y-4">
-        {feed.map((item, idx) => {
+      {/* ── HEADER ── */}
+      <div style={{ position: "sticky", top: 0, zIndex: 50, backgroundColor: D.bg, borderBottom: `1px solid ${D.border}`, padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", backdropFilter: "blur(12px)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button className="icon-btn" onClick={() => router.push("/cashier")} style={{ width: 34, height: 34, borderRadius: 10, background: D.surfaceHigh, border: `1px solid ${D.border}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <ArrowLeft size={16} color={D.textSecondary} />
+          </button>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: D.textPrimary, letterSpacing: "0.05em" }}>
+              MASTER FEED
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
+              <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: D.green, animation: "pulse-dot 2s infinite" }} />
+              <span style={{ fontSize: 10, fontWeight: 700, color: D.green, textTransform: "uppercase", letterSpacing: "0.1em" }}>LIVE</span>
+              <span style={{ fontSize: 10, color: D.textDim, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
+                · {currentTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="icon-btn" onClick={handleEnableNotifications} style={{ width: 36, height: 36, borderRadius: 10, background: isNotificationEnabled ? D.greenDim : D.surfaceHigh, border: `1px solid ${isNotificationEnabled ? D.greenBorder : D.border}`, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+            <Bell size={16} color={isNotificationEnabled ? D.green : D.textSecondary} />
+            {isNotificationEnabled && <span style={{ position: "absolute", top: -2, right: -2, width: 7, height: 7, borderRadius: "50%", backgroundColor: D.green, border: `2px solid ${D.bg}` }} />}
+          </button>
+          <button className="icon-btn" onClick={fetchFeed} style={{ width: 36, height: 36, borderRadius: 10, background: D.surfaceHigh, border: `1px solid ${D.border}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <RefreshCw size={16} color={D.cyan} />
+          </button>
+          <button className="icon-btn" onClick={handleLogout} style={{ width: 36, height: 36, borderRadius: 10, background: D.redDim, border: `1px solid ${D.redBorder}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <LogOut size={16} color={D.red} />
+          </button>
+        </div>
+      </div>
+
+      {/* ── STATS BAR ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1, borderBottom: `1px solid ${D.border}` }}>
+        {[
+          { label: "SHIFT REPORTS", value: feed.filter(f => f._type === "shift_report").length, color: D.blue, dim: D.blueDim },
+          { label: "VOIDS / RETURNS", value: feed.filter(f => f._type === "void_request").length, color: D.red, dim: D.redDim },
+          { label: "EXPIRY LOGS", value: feed.filter(f => f._type === "expiry").length, color: D.amber, dim: D.amberDim },
+        ].map((s, i) => (
+          <div key={i} style={{ padding: "14px 16px", background: D.surface, textAlign: "center" }}>
+            <div style={{ fontSize: 22, fontWeight: 900, color: s.color }}>{s.value}</div>
+            <div style={{ fontSize: 9, fontWeight: 700, color: D.textDim, textTransform: "uppercase", letterSpacing: "0.1em", marginTop: 2 }}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── FEED ── */}
+      <div style={{ padding: "16px 16px 100px", maxWidth: 640, margin: "0 auto", display: "flex", flexDirection: "column", gap: 12 }}>
+        
+        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", color: D.textDim, textTransform: "uppercase", marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
+          <Activity size={12} color={D.cyan} /> OPERATIONAL FEED
+        </div>
+
+        {feed.map((item) => {
           const isExpanded = expandedId === item.id;
-          
+
           if (item._type === "shift_report") {
             const isPending = item.status === 'pending_manager';
             const systemSales = isPending ? null : ((item.managerAudit?.expectedCash || 0) + (item.managerAudit?.expectedVisa || 0));
@@ -149,200 +209,191 @@ export default function MasterCashierDashboard() {
             const totalDrops = item.safeDrops?.reduce((sum: number, drop: any) => sum + Number(drop.amount), 0) || 0;
 
             return (
-              <div key={item.id} className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow border border-slate-200 dark:border-slate-700 hover:shadow-md transition-shadow">
-                <div className="flex justify-between items-start mb-3 cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : item.id)}>
-                  <div className="flex gap-3">
-                    <div className="bg-blue-100 text-blue-600 p-2.5 rounded-xl h-fit"><FileText className="h-6 w-6"/></div>
-                    <div>
-                      <p className="font-bold text-lg text-slate-900 dark:text-white">Shift Report: {item.cashierDetails?.name}</p>
-                      <p className="text-sm font-medium text-slate-500">Store: {item.cashierDetails?.storeId} • Shift: {item.cashierDetails?.shift}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">{new Date(item.createdAt).toLocaleString()}</p>
-                    </div>
-                  </div>
-                  <span className={`text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider ${isPending ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'}`}>
-                    {item.status.replace("_", " ")}
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-100 dark:border-slate-700/50 cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : item.id)}>
-                  <div>
-                    <p className="text-xs text-slate-500 uppercase tracking-wider">System Sales</p>
-                    <p className="font-bold text-slate-800 dark:text-slate-200">
-                      {isPending ? "Pending Audit" : `${Number(systemSales).toLocaleString()} EGP`}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-500 uppercase tracking-wider">Actual Drawer</p>
-                    <p className="font-bold text-slate-800 dark:text-slate-200">{Number(actualSales).toLocaleString()} EGP</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-500 uppercase tracking-wider">Difference</p>
-                    <p className={`font-bold ${isPending ? "text-slate-500" : shortOverage! < 0 ? "text-red-500" : shortOverage! > 0 ? "text-blue-500" : "text-emerald-500"}`}>
-                      {isPending ? "Pending Audit" : `${shortOverage! < 0 ? "-" : "+"}${Math.abs(shortOverage!).toLocaleString()} EGP`}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-500 uppercase tracking-wider">Total Drops</p>
-                    <p className="font-bold text-slate-800 dark:text-slate-200">{Number(totalDrops).toLocaleString()} EGP</p>
-                  </div>
-                </div>
-                {item.expenses && item.expenses.length > 0 && (
-                  <div className="mt-3 text-sm text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/50 p-2 rounded-lg">
-                    <span className="font-bold text-slate-700 dark:text-slate-300">Expenses Logged:</span> {item.expenses.length} item(s) totaling {Number(item.expenses.reduce((sum: number, exp: any) => sum + Number(exp.amount), 0)).toLocaleString()} EGP
-                  </div>
-                )}
-                
-                {isExpanded && (
-                  <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700/50 space-y-4 animate-in fade-in slide-in-from-top-2">
-                    {/* Extra Details */}
-                    <div>
-                      <p className="font-bold text-slate-800 dark:text-slate-200 text-sm mb-2">Detailed Counts:</p>
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div className="bg-slate-50 dark:bg-slate-900 p-2 rounded">
-                          <span className="text-slate-500">Cash:</span> {Number(item.cashierCounts?.cash || 0).toLocaleString()} EGP
+              <div key={item.id} className="feed-card" style={{ backgroundColor: D.surface, borderRadius: 20, border: `1px solid ${D.border}`, overflow: "hidden" }}>
+                {/* Left accent bar */}
+                <div style={{ display: "flex" }}>
+                  <div style={{ width: 4, flexShrink: 0, background: `linear-gradient(to bottom, ${D.blue}, ${D.cyan})`, borderRadius: "20px 0 0 20px" }} />
+                  <div style={{ flex: 1 }}>
+                    <div onClick={() => setExpandedId(isExpanded ? null : item.id)} style={{ padding: "16px 16px 16px 14px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                      <div style={{ display: "flex", gap: 12, flex: 1 }}>
+                        <div style={{ width: 40, height: 40, borderRadius: 12, background: D.blueDim, border: `1px solid ${D.blueBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <FileText size={18} color={D.blue} />
                         </div>
-                        <div className="bg-slate-50 dark:bg-slate-900 p-2 rounded">
-                          <span className="text-slate-500">Visa:</span> {Number(item.cashierCounts?.visa || 0).toLocaleString()} EGP
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 14, fontWeight: 800, color: D.textPrimary }}>{item.cashierDetails?.name}</div>
+                          <div style={{ fontSize: 11, color: D.textSecondary, fontWeight: 600, marginTop: 3 }}>
+                            {item.cashierDetails?.storeId} · {item.cashierDetails?.shift}
+                          </div>
+                          <div style={{ fontSize: 10, color: D.textDim, fontWeight: 600, marginTop: 3, display: "flex", alignItems: "center", gap: 4 }}>
+                            <Clock size={10} /> {new Date(item.createdAt).toLocaleString()}
+                          </div>
                         </div>
                       </div>
+                      <span style={{ fontSize: 9, fontWeight: 800, padding: "4px 8px", borderRadius: 6, border: "1px solid", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap", flexShrink: 0, ...(isPending ? { background: D.amberDim, color: D.amber, borderColor: D.amberBorder } : { background: D.greenDim, color: D.green, borderColor: D.greenBorder }) }}>
+                        {item.status?.replace("_", " ")}
+                      </span>
                     </div>
-                    
-                    {item.expenses && item.expenses.length > 0 && (
-                      <div>
-                        <p className="font-bold text-slate-800 dark:text-slate-200 text-sm mb-2">Expenses Detail:</p>
-                        <ul className="text-sm space-y-1">
-                          {item.expenses.map((exp: any, i: number) => (
-                            <li key={i} className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-1">
-                              <span>{exp.reason}</span>
-                              <span className="font-semibold">{Number(exp.amount).toLocaleString()} EGP</span>
-                            </li>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", borderTop: `1px solid ${D.border}`, cursor: "pointer" }} onClick={() => setExpandedId(isExpanded ? null : item.id)}>
+                      {[
+                        { label: "System", value: isPending ? "—" : `${Number(systemSales).toLocaleString()}`, sub: "EGP" },
+                        { label: "Actual", value: Number(actualSales).toLocaleString(), sub: "EGP" },
+                        { label: "Diff", value: isPending ? "—" : `${shortOverage! < 0 ? "-" : "+"}${Math.abs(shortOverage!).toLocaleString()}`, sub: "EGP", color: isPending ? D.textDim : shortOverage! < 0 ? D.red : shortOverage! > 0 ? D.blue : D.green },
+                        { label: "Drops", value: Number(totalDrops).toLocaleString(), sub: "EGP" },
+                      ].map((stat, i) => (
+                        <div key={i} style={{ padding: "10px 10px", textAlign: "center", borderRight: i < 3 ? `1px solid ${D.border}` : "none" }}>
+                          <div style={{ fontSize: 9, fontWeight: 700, color: D.textDim, textTransform: "uppercase", letterSpacing: "0.08em" }}>{stat.label}</div>
+                          <div style={{ fontSize: 13, fontWeight: 900, color: stat.color || D.textPrimary, marginTop: 3, fontVariantNumeric: "tabular-nums" }}>{stat.value}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {isExpanded && (
+                      <div style={{ padding: "16px", borderTop: `1px solid ${D.border}`, background: D.surfaceHigh, display: "flex", flexDirection: "column", gap: 12 }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                          {[
+                            { label: "Cash", value: `EGP ${Number(item.cashierCounts?.cash || 0).toLocaleString()}` },
+                            { label: "Visa", value: `EGP ${Number(item.cashierCounts?.visa || 0).toLocaleString()}` },
+                          ].map((r, i) => (
+                            <div key={i} style={{ background: D.surface, borderRadius: 12, padding: "10px 14px", border: `1px solid ${D.border}` }}>
+                              <div style={{ fontSize: 9, color: D.textDim, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>{r.label}</div>
+                              <div style={{ fontSize: 14, fontWeight: 800, color: D.textPrimary, marginTop: 4, fontVariantNumeric: "tabular-nums" }}>{r.value}</div>
+                            </div>
                           ))}
-                        </ul>
-                      </div>
-                    )}
-                    
-                    {item.signature && (
-                      <div className="mt-4">
-                        <p className="text-xs text-slate-500 mb-1">Cashier Signature:</p>
-                        <div className="bg-white border border-slate-200 p-2 rounded-lg inline-block">
-                          <img src={item.signature} alt="Signature" className="h-16 object-contain" />
                         </div>
+                        {item.expenses && item.expenses.length > 0 && (
+                          <div style={{ background: D.surface, borderRadius: 12, padding: "12px 14px", border: `1px solid ${D.border}` }}>
+                            <div style={{ fontSize: 10, color: D.textDim, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>Expenses</div>
+                            {item.expenses.map((exp: any, i: number) => (
+                              <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 600, color: D.textSecondary, padding: "4px 0", borderBottom: i < item.expenses.length - 1 ? `1px solid ${D.border}` : "none" }}>
+                                <span>{exp.reason}</span>
+                                <span style={{ color: D.red, fontWeight: 800 }}>{Number(exp.amount).toLocaleString()} EGP</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {item.managerAudit && (
+                          <div style={{ background: D.surface, borderRadius: 12, padding: "12px 14px", border: `1px solid ${D.border}` }}>
+                            <div style={{ fontSize: 10, color: D.textDim, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Manager Audit</div>
+                            <div style={{ fontSize: 12, color: D.textSecondary, fontWeight: 600 }}>By: {item.managerAudit.managerName || item.managerAudit.auditedBy || 'Manager'}</div>
+                            <div style={{ fontSize: 12, fontWeight: 800, color: item.status === 'approved' ? D.green : D.red, marginTop: 4 }}>Status: {item.status}</div>
+                            {item.managerAudit.comments && <div style={{ fontSize: 11, color: D.textDim, fontStyle: "italic", marginTop: 4 }}>"{item.managerAudit.comments}"</div>}
+                          </div>
+                        )}
+                        <button onClick={(e) => { e.stopPropagation(); router.push(`/shift-reports/view?id=${item.id}`); }} style={{ padding: "12px", borderRadius: 12, background: D.blueDim, border: `1px solid ${D.blueBorder}`, color: D.blue, fontSize: 13, fontWeight: 800, cursor: "pointer", letterSpacing: "0.03em" }}>
+                          View Full Details & Print →
+                        </button>
                       </div>
                     )}
-                    
-                    {item.managerAudit && (
-                      <div className="mt-4 bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
-                        <p className="font-bold text-slate-800 dark:text-slate-200 text-sm mb-2">Manager Audit:</p>
-                        <p className="text-sm">Audited By: {item.managerAudit.managerName || item.managerAudit.auditedBy || 'Manager'}</p>
-                        <p className="text-sm">Status: <span className={item.status === 'approved' ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>{item.status}</span></p>
-                        {item.managerAudit.comments && <p className="text-sm mt-1 text-slate-600 italic">"{item.managerAudit.comments}"</p>}
-                      </div>
-                    )}
-                    
-                    <div className="mt-4 pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-end">
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          router.push(`/shift-reports/view?id=${item.id}`);
-                        }}
-                        className="bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 px-4 py-2 rounded-lg text-sm font-bold transition-colors shadow-sm"
-                      >
-                        View Full Details & Print
-                      </button>
-                    </div>
                   </div>
-                )}
+                </div>
               </div>
             );
           }
+
           if (item._type === "void_request") {
             return (
-              <div key={item.id} className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow border border-slate-200 dark:border-slate-700 hover:shadow-md transition-shadow">
-                <div className="flex justify-between items-start mb-3 cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : item.id)}>
-                  <div className="flex gap-3">
-                    <div className="bg-red-100 text-red-600 p-2.5 rounded-xl h-fit"><Shield className="h-6 w-6"/></div>
-                    <div>
-                      <p className="font-bold text-lg text-slate-900 dark:text-white">Void / Return: {item.cashierDetails?.name}</p>
-                      <p className="text-sm font-medium text-slate-500">Store: {item.cashierDetails?.storeId} • Ref: {item.receiptNumber || 'N/A'}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">{new Date(item.createdAt).toLocaleString()}</p>
+              <div key={item.id} className="feed-card" style={{ backgroundColor: D.surface, borderRadius: 20, border: `1px solid ${D.border}`, overflow: "hidden" }}>
+                <div style={{ display: "flex" }}>
+                  <div style={{ width: 4, flexShrink: 0, background: `linear-gradient(to bottom, ${D.red}, #f97316)`, borderRadius: "20px 0 0 20px" }} />
+                  <div style={{ flex: 1, padding: "16px 16px 16px 14px" }}>
+                    <div onClick={() => setExpandedId(isExpanded ? null : item.id)} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, cursor: "pointer", marginBottom: 12 }}>
+                      <div style={{ display: "flex", gap: 12 }}>
+                        <div style={{ width: 40, height: 40, borderRadius: 12, background: D.redDim, border: `1px solid ${D.redBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <Shield size={18} color={D.red} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 800, color: D.textPrimary }}>{item.cashierDetails?.name || "Cashier"}</div>
+                          <div style={{ fontSize: 11, color: D.textSecondary, fontWeight: 600, marginTop: 3 }}>
+                            {item.cashierDetails?.storeId} · Ref: {item.receiptNumber || 'N/A'}
+                          </div>
+                          <div style={{ fontSize: 10, color: D.textDim, fontWeight: 600, marginTop: 3, display: "flex", alignItems: "center", gap: 4 }}>
+                            <Clock size={10} /> {new Date(item.createdAt).toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                      <span style={{ fontSize: 9, fontWeight: 800, padding: "4px 8px", borderRadius: 6, border: "1px solid", textTransform: "uppercase", letterSpacing: "0.05em", flexShrink: 0, ...(item.status === 'approved' ? { background: D.greenDim, color: D.green, borderColor: D.greenBorder } : { background: D.redDim, color: D.red, borderColor: D.redBorder }) }}>
+                        {item.status || "LOGGED"}
+                      </span>
                     </div>
-                  </div>
-                  <span className={`text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider ${item.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                    {item.status || "LOGGED"}
-                  </span>
-                </div>
-                <div className="bg-red-50 dark:bg-red-950/20 p-3 rounded-xl border border-red-100 dark:border-red-900/30">
-                  <p className="text-sm font-bold text-red-800 dark:text-red-300">Amount: {Number(item.amount || 0).toLocaleString()} EGP</p>
-                  <p className="text-sm text-red-700 dark:text-red-400 mt-1"><span className="font-semibold">Reason:</span> {item.reason || 'No reason provided'}</p>
-                  {item.managerApproval && (
-                    <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-2 flex items-center gap-1">
-                      ✓ Approved by Manager ({item.managerApproval})
-                    </p>
-                  )}
-                </div>
-                
-                {isExpanded && (
-                  <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700/50 space-y-4 animate-in fade-in slide-in-from-top-2">
-                     <p className="text-sm text-slate-600 dark:text-slate-400">
-                       <span className="font-semibold">Item Details:</span> {item.itemDetails || 'N/A'}
-                     </p>
-                     {item.signature && (
-                      <div className="mt-2">
-                        <p className="text-xs text-slate-500 mb-1">Cashier Signature:</p>
-                        <div className="bg-white border border-slate-200 p-2 rounded-lg inline-block">
-                          <img src={item.signature} alt="Signature" className="h-12 object-contain" />
+                    <div style={{ background: D.redDim, border: `1px solid ${D.redBorder}`, borderRadius: 12, padding: "12px 14px" }}>
+                      <div style={{ fontSize: 16, fontWeight: 900, color: D.red, fontVariantNumeric: "tabular-nums" }}>-EGP {Number(item.amount || 0).toLocaleString()}</div>
+                      <div style={{ fontSize: 12, color: D.textSecondary, fontWeight: 600, marginTop: 4 }}>
+                        <span style={{ color: D.textDim }}>Reason: </span>{item.reason || 'No reason provided'}
+                      </div>
+                      {item.managerApproval && (
+                        <div style={{ fontSize: 11, color: D.green, fontWeight: 700, marginTop: 6 }}>✓ Approved by Manager ({item.managerApproval})</div>
+                      )}
+                    </div>
+                    {isExpanded && (
+                      <div style={{ marginTop: 12, padding: "12px 14px", background: D.surfaceHigh, borderRadius: 12, border: `1px solid ${D.border}` }}>
+                        <div style={{ fontSize: 12, color: D.textSecondary, fontWeight: 600 }}>
+                          <span style={{ color: D.textDim }}>Item Details: </span>{item.itemDetails || 'N/A'}
                         </div>
                       </div>
                     )}
                   </div>
-                )}
+                </div>
               </div>
             );
           }
+
           if (item._type === "expiry") {
             return (
-              <div key={item.id} onClick={() => setExpandedId(isExpanded ? null : item.id)} className="cursor-pointer bg-white dark:bg-slate-800 p-5 rounded-2xl shadow border border-slate-200 dark:border-slate-700 hover:shadow-md transition-shadow">
-                <div className="flex justify-between items-start mb-3">
-                  <div className="flex gap-3">
-                    <div className="bg-orange-100 text-orange-600 p-2.5 rounded-xl h-fit"><Calendar className="h-6 w-6"/></div>
-                    <div>
-                      <p className="font-bold text-lg text-slate-900 dark:text-white">Expiry Logged: {item.itemName}</p>
-                      <p className="text-sm font-medium text-slate-500">Store: {item.storeId || item.branchId || 'Unknown'}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">{new Date(item.createdAt).toLocaleString()}</p>
+              <div key={item.id} className="feed-card" onClick={() => setExpandedId(isExpanded ? null : item.id)} style={{ backgroundColor: D.surface, borderRadius: 20, border: `1px solid ${D.border}`, overflow: "hidden", cursor: "pointer" }}>
+                <div style={{ display: "flex" }}>
+                  <div style={{ width: 4, flexShrink: 0, background: `linear-gradient(to bottom, ${D.amber}, #f97316)`, borderRadius: "20px 0 0 20px" }} />
+                  <div style={{ flex: 1, padding: "16px 16px 16px 14px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                      <div style={{ display: "flex", gap: 12 }}>
+                        <div style={{ width: 40, height: 40, borderRadius: 12, background: D.amberDim, border: `1px solid ${D.amberBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <Calendar size={18} color={D.amber} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 800, color: D.textPrimary }}>{item.itemName}</div>
+                          <div style={{ fontSize: 11, color: D.textSecondary, fontWeight: 600, marginTop: 3 }}>
+                            {item.storeId || item.branchId || 'Unknown Store'}
+                          </div>
+                          <div style={{ fontSize: 10, color: D.textDim, fontWeight: 600, marginTop: 3, display: "flex", alignItems: "center", gap: 4 }}>
+                            <Clock size={10} /> {new Date(item.createdAt).toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                      <span style={{ fontSize: 9, fontWeight: 800, padding: "4px 8px", borderRadius: 6, border: `1px solid ${D.amberBorder}`, background: D.amberDim, color: D.amber, textTransform: "uppercase", letterSpacing: "0.05em", flexShrink: 0 }}>
+                        EXPIRED
+                      </span>
                     </div>
-                  </div>
-                  <span className="text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider bg-orange-100 text-orange-700">
-                    EXPIRED
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 gap-4 mt-2">
-                  <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl">
-                    <p className="text-xs text-slate-500 uppercase tracking-wider">Quantity</p>
-                    <p className="font-bold text-slate-800 dark:text-slate-200">{item.quantity} units</p>
-                  </div>
-                  {item.supplier && (
-                    <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl">
-                      <p className="text-xs text-slate-500 uppercase tracking-wider">Supplier</p>
-                      <p className="font-bold text-slate-800 dark:text-slate-200">{item.supplier}</p>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 12 }}>
+                      <div style={{ background: D.surfaceHigh, borderRadius: 10, padding: "8px 12px", border: `1px solid ${D.border}` }}>
+                        <div style={{ fontSize: 9, color: D.textDim, fontWeight: 700, textTransform: "uppercase" }}>Quantity</div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: D.textPrimary, marginTop: 2 }}>{item.quantity} units</div>
+                      </div>
+                      {item.supplier && (
+                        <div style={{ background: D.surfaceHigh, borderRadius: 10, padding: "8px 12px", border: `1px solid ${D.border}` }}>
+                          <div style={{ fontSize: 9, color: D.textDim, fontWeight: 700, textTransform: "uppercase" }}>Supplier</div>
+                          <div style={{ fontSize: 14, fontWeight: 800, color: D.textPrimary, marginTop: 2 }}>{item.supplier}</div>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-                
-                {isExpanded && (
-                  <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700/50 space-y-4 animate-in fade-in slide-in-from-top-2">
-                     <p className="text-sm text-slate-600 dark:text-slate-400">
-                       <span className="font-semibold">Expiry Date:</span> {item.expiryDate || 'N/A'}
-                     </p>
-                     <p className="text-sm text-slate-600 dark:text-slate-400">
-                       <span className="font-semibold">Logged By:</span> {item.loggedBy || 'Unknown'}
-                     </p>
+                    {isExpanded && (
+                      <div style={{ marginTop: 12, padding: "12px 14px", background: D.surfaceHigh, borderRadius: 12, border: `1px solid ${D.border}`, display: "flex", flexDirection: "column", gap: 6 }}>
+                        <div style={{ fontSize: 12, color: D.textSecondary, fontWeight: 600 }}><span style={{ color: D.textDim }}>Expiry Date: </span>{item.expiryDate || 'N/A'}</div>
+                        <div style={{ fontSize: 12, color: D.textSecondary, fontWeight: 600 }}><span style={{ color: D.textDim }}>Logged By: </span>{item.loggedBy || 'Unknown'}</div>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
             );
           }
         })}
-        {feed.length === 0 && <p className="text-center text-slate-500 mt-10">No recent activity.</p>}
-      </main>
+        {feed.length === 0 && (
+          <div style={{ textAlign: "center", padding: "60px 20px", color: D.textDim }}>
+            <Activity size={40} color={D.textDim} style={{ margin: "0 auto 12px", display: "block" }} />
+            <div style={{ fontWeight: 700, fontSize: 14 }}>No recent activity.</div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
