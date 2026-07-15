@@ -741,7 +741,7 @@ export default function CashierShiftReportPage() {
   const activeCashier = cashiers.find(x => x.id === selectedCashierId);
 
   return (
-    <div className="ck-shift-report min-h-screen bg-slate-50 dark:bg-slate-950/20 text-slate-900 dark:text-slate-100 transition-colors duration-300 pb-28" dir={lang === "ar" ? "rtl" : "ltr"}>
+    <div className="ck-shift-report min-h-screen bg-slate-50 dark:bg-slate-950/20 text-slate-900 dark:text-slate-100 transition-colors duration-300 pb-52" dir={lang === "ar" ? "rtl" : "ltr"}>
       <style>{`
         .ck-shift-report { background-color: #0B1121 !important; color: #f8fafc !important; color-scheme: dark !important; min-height: 100dvh; }
         .ck-shift-report .bg-white, .ck-shift-report .dark\\:bg-slate-800, .ck-shift-report .dark\\:bg-slate-800\\/80, .ck-shift-report .dark\\:bg-slate-900, .ck-shift-report .bg-slate-100 { background-color: #151E32 !important; border-color: rgba(34, 211, 238, 0.15) !important; }
@@ -1187,7 +1187,7 @@ export default function CashierShiftReportPage() {
           )}
 
           {/* Footer inside the form to allow submit trigger */}
-          <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 z-10 shadow-[0_-10px_40px_rgba(0,0,0,0.04)]">
+          <div className="fixed left-0 right-0 p-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 shadow-[0_-10px_40px_rgba(0,0,0,0.04)]" style={{ bottom: "74px", zIndex: 90 }}>
             <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
               <div className="hidden sm:block">
                 <p className="text-[10px] uppercase font-bold text-slate-450 tracking-wider leading-none">{lang === "en" ? "Ready Status" : "حالة التقرير"}</p>
