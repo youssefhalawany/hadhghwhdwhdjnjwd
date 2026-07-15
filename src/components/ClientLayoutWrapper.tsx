@@ -268,6 +268,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     {
       name: "Financials", icon: FileText, children: [
         { name: "Financial Inputs", href: "/financials/inputs", icon: Wallet },
+        { name: "Product Prices", href: "/financials/products-price", icon: Search },
         { name: t("nav.reports"), href: "/financial-reports", icon: FileText },
         { name: "Voids & Returns", href: "/voids/manager", icon: Shield },
         { name: "Shift Audit", href: "/shift-reports/manager", icon: Shield },
