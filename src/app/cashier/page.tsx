@@ -9,7 +9,7 @@ import {
   Lock, User as UserIcon, ChevronDown, FileText, Shield,
   Calendar as CalendarIcon, UserCircle, Globe, LogOut,
   Download, Bell, Fingerprint, ScanLine, ChevronRight,
-  ClipboardList, Clock, CheckSquare, LayoutGrid, LayoutDashboard, FileBarChart2, Pin
+  ClipboardList, Clock, CheckSquare, LayoutGrid, LayoutDashboard, FileBarChart2
 } from "lucide-react";
 import { CashierBottomNav } from "@/components/CashierBottomNav";
 import { PullToRefresh } from "@/components/MobileUX/PullToRefresh";
@@ -56,26 +56,6 @@ export default function CashierHubPage() {
   
   // Fake state for bottom nav aesthetics
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [pinnedProducts, setPinnedProducts] = useState<any[]>([]);
-
-  useEffect(() => {
-    // Load pinned products from local storage
-    if (authenticatedUser) {
-      try {
-        const stored = localStorage.getItem(`pinned_products_${authenticatedUser.id}`);
-        if (stored) {
-          setPinnedProducts(JSON.parse(stored));
-        } else {
-          // Defaults for demo
-          setPinnedProducts([
-            { id: "1", name: "Red Bull Energy", price: 55, sku: "9002490100070" },
-            { id: "2", name: "Doritos Nacho", price: 25, sku: "6221087053421" },
-            { id: "3", name: "Marlboro Red", price: 85, sku: "4012345678901" }
-          ]);
-        }
-      } catch (e) {}
-    }
-  }, [authenticatedUser]);
 
   const handleRefresh = async () => {
     // Simulate refreshing dashboard data
@@ -314,31 +294,6 @@ export default function CashierHubPage() {
                   <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: D.textPrimary, fontWeight: 700 }}>
                     <Clock size={14} className="text-cyan-400" />
                     <span style={{ fontVariantNumeric: "tabular-nums" }}>{currentTime.toLocaleTimeString(lang === "en" ? "en-US" : "ar-EG", { hour: "2-digit", minute: "2-digit" })}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Pinned Products Carousel */}
-              <div style={{ marginBottom: 28 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, padding: "0 4px" }}>
-                  <Pin size={14} className="text-cyan-400" />
-                  <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.1em", color: D.textPrimary, textTransform: "uppercase" }}>
-                    {lang === "en" ? "Quick Access" : "الوصول السريع"}
-                  </span>
-                </div>
-                <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8, scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
-                  {pinnedProducts.map((p, i) => (
-                    <div key={i} style={{ minWidth: 140, background: D.surfaceHigh, border: `1px solid ${D.border}`, borderRadius: 16, padding: "12px", flexShrink: 0, display: "flex", flexDirection: "column", gap: 8 }}>
-                      <div style={{ fontSize: 10, color: D.textSecondary, fontWeight: 600 }}>{p.sku}</div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: D.textPrimary, lineHeight: 1.2, height: 32, overflow: "hidden" }}>{p.name}</div>
-                      <div style={{ fontSize: 14, fontWeight: 800, color: D.cyan }}>{p.price} EGP</div>
-                    </div>
-                  ))}
-                  <div style={{ minWidth: 140, background: "rgba(34, 211, 238, 0.05)", border: `1px dashed ${D.cyanBorder}`, borderRadius: 16, padding: "12px", flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", color: D.cyan }}>
-                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: D.cyanDim, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <ScanLine size={16} />
-                    </div>
-                    <div style={{ fontSize: 12, fontWeight: 600 }}>Pin Product</div>
                   </div>
                 </div>
               </div>

@@ -3,8 +3,6 @@
 import React from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { LayoutDashboard, FileText, User, ShieldAlert, LogOut, ScanBarcode } from "lucide-react";
-import { BottomSheet } from "./MobileUX/BottomSheet";
-import { ScannerOverlay } from "./MobileUX/ScannerOverlay";
 import { hapticLight } from "@/lib/haptics";
 
 const D = {
@@ -29,8 +27,6 @@ interface Props { lang?: "en" | "ar"; }
 export function CashierBottomNav({ lang = "en" }: Props) {
   const router = useRouter();
   const pathname = usePathname();
-
-  const [isScannerOpen, setIsScannerOpen] = React.useState(false);
 
   const handleLogout = () => {
     if (typeof window !== "undefined") {
@@ -72,38 +68,6 @@ export function CashierBottomNav({ lang = "en" }: Props) {
           );
         })}
         
-        {/* Central Scanner FAB */}
-        <div style={{ flex: 0.5, display: "flex", justifyContent: "center", position: "relative" }}>
-          <button
-            onClick={() => {
-              hapticLight();
-              setIsScannerOpen(true);
-            }}
-            style={{
-              position: "absolute",
-              top: -24,
-              width: 56,
-              height: 56,
-              borderRadius: 28,
-              background: "linear-gradient(135deg, #06b6d4, #3b82f6)",
-              border: "4px solid #0B1121",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              boxShadow: "0 8px 16px rgba(6, 182, 212, 0.3)",
-              color: "white",
-              WebkitTapHighlightColor: "transparent",
-              zIndex: 210,
-              transition: "transform 0.15s",
-            }}
-            onTouchStart={e => e.currentTarget.style.transform = "scale(0.92)"}
-            onTouchEnd={e => e.currentTarget.style.transform = "scale(1)"}
-          >
-            <ScanBarcode size={24} strokeWidth={2} />
-          </button>
-        </div>
-
         {/* Logout */}
         <button onClick={handleLogout} style={{
           flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
@@ -123,21 +87,6 @@ export function CashierBottomNav({ lang = "en" }: Props) {
         </button>
       </nav>
 
-      <BottomSheet
-        isOpen={isScannerOpen}
-        onClose={() => setIsScannerOpen(false)}
-        title={lang === "ar" ? "مسح باركود المنتج" : "Scan Product Barcode"}
-      >
-        <ScannerOverlay 
-          onClose={() => setIsScannerOpen(false)}
-          onScan={(barcode) => {
-            setIsScannerOpen(false);
-            // Since product lookup is in admin, we can route to product lookup or just handle it. 
-            // The cashier product lookup seems to be missing from the nav, but we can emit an event or route.
-            router.push(`/cashier/product-lookup?barcode=${barcode}`); // Assuming this exists or will
-          }}
-        />
-      </BottomSheet>
     </>
   );
 }
