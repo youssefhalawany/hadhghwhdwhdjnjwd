@@ -319,19 +319,19 @@ export default function CashierHubPage() {
         `}</style>
 
         {/* ── HEADER ── */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px 10px" }}>
-          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.15em", color: D.textSecondary, textTransform: "uppercase" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "54px 20px 10px" }}>
+          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.15em", color: D.textSecondary, textTransform: "uppercase", flexShrink: 0 }}>
             CIRCLE K <span style={{ color: D.textDim, fontWeight: 500 }}>FRANCHISE</span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
             <button 
               onClick={() => { playPopSound(); setLanguage(lang === "en" ? "ar" : "en"); }} 
-              style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 8, background: D.surfaceHigh, border: `1px solid ${D.border}`, color: D.cyan, fontSize: 10, fontWeight: 800, cursor: "pointer" }}
+              style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 8, background: D.surfaceHigh, border: `1px solid ${D.border}`, color: D.cyan, fontSize: 10, fontWeight: 800, cursor: "pointer", flexShrink: 0 }}
             >
               <Globe size={14} />
-              {lang === "en" ? "عربي" : "ENGLISH"}
+              {lang === "en" ? "AR" : "EN"}
             </button>
-            <div style={{ width: 28, height: 28, borderRadius: 8, background: D.red, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 14, color: "#fff" }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: D.red, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 14, color: "#fff", flexShrink: 0 }}>
               K
             </div>
           </div>
@@ -417,12 +417,12 @@ export default function CashierHubPage() {
       `}</style>
 
       {/* Top Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "24px 20px 10px" }}>
-        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.15em", color: D.textSecondary, textTransform: "uppercase" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "54px 20px 10px" }}>
+        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.15em", color: D.textSecondary, textTransform: "uppercase", flexShrink: 0 }}>
           CIRCLE K <span style={{ color: D.textDim, fontWeight: 500 }}>FRANCHISE</span>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-           <button onClick={() => { playPopSound(); setLanguage(lang === "en" ? "ar" : "en"); }} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 8, background: D.surface, border: `1px solid ${D.border}`, color: D.textSecondary, fontSize: 10, fontWeight: 700, cursor: "pointer" }}>
+        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+           <button onClick={() => { playPopSound(); setLanguage(lang === "en" ? "ar" : "en"); }} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 8, background: D.surface, border: `1px solid ${D.border}`, color: D.textSecondary, fontSize: 10, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
              <Globe size={14} />
              {lang === "en" ? "EN" : "AR"}
            </button>
