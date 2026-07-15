@@ -1,6 +1,6 @@
 "use client";
 
-// @ts-ignore
+// @ts-expect-error
 import QRCodeLib from "qrcode";
 
 function numberToArabicWords(num: number): string {
@@ -69,7 +69,8 @@ import {
   Search,
   Loader2,
   X,
-  FileDown
+  FileDown,
+  Image as ImageIcon
 } from "lucide-react";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
@@ -146,6 +147,10 @@ export default function PaymentsRedesignPage() {
   const [showAddSupplier, setShowAddSupplier] = useState(false);
   const [qrCodeData, setQrCodeData] = useState("");
   
+  // PO Extraction State
+  const [poItems, setPoItems] = useState<{barcode: string, quantity: number, description: string, unitPrice: number}[]>([]);
+  const [isProcessingPo, setIsProcessingPo] = useState(false);
+  
   // Print State
   const [selectedPaymentForPrint, setSelectedPaymentForPrint] = useState<any>(null);
   const [generatingPDF, setGeneratingPDF] = useState(false);
@@ -153,12 +158,12 @@ export default function PaymentsRedesignPage() {
   useEffect(() => {
     if (selectedPaymentForPrint) {
       const text = `Payment ID: ${selectedPaymentForPrint.id}\nCompany: ${selectedPaymentForPrint.companyName}\nInvoice: ${selectedPaymentForPrint.invoiceNumber}\nAmount: ${selectedPaymentForPrint.total} EGP\nDate: ${selectedPaymentForPrint.date}`;
-      // @ts-ignore
+      // @ts-expect-error
       QRCodeLib.toDataURL(text)
-        // @ts-ignore
-        .then(url => setQrCodeData(url))
-        // @ts-ignore
-        .catch(err => console.error(err));
+        // @ts-expect-error
+        .then((url: string) => setQrCodeData(url))
+        // @ts-expect-error
+        .catch((err: any) => console.error(err));
     } else {
       setQrCodeData("");
     }
@@ -245,6 +250,85 @@ export default function PaymentsRedesignPage() {
     toast.success("Supplier ready to be used!");
   };
 
+  const handleImageUpload = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload a valid image file.');
+      return;
+    }
+    
+    setIsProcessingPo(true);
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = async () => {
+      const base64Image = reader.result as string;
+      try {
+        const response = await fetch('/api/process-po', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: base64Image })
+        });
+        
+        if (!response.ok) throw new Error('Failed to process image');
+        const data = await response.json();
+        
+        if (data.poNumber) setPoNumber(data.poNumber);
+        if (data.invoiceNumber) setInvoiceNumber(data.invoiceNumber);
+        if (data.date) setDate(data.date);
+        
+        if (data.companyName) {
+           const match = suppliers.find(s => s.name.toLowerCase().includes(data.companyName.toLowerCase()) || data.companyName.toLowerCase().includes(s.name.toLowerCase()));
+           if (match) setCompanyName(match.name);
+        }
+        
+        if (data.amount !== undefined) setAmount(data.amount.toString());
+        if (data.tax !== undefined) setTax(data.tax.toString());
+        
+        if (data.items && Array.isArray(data.items)) {
+          setPoItems(data.items);
+        }
+        
+        toast.success('PO processed successfully!');
+      } catch (err) {
+        console.error(err);
+        toast.error('Error processing PO image. Please enter manually.');
+      } finally {
+        setIsProcessingPo(false);
+      }
+    };
+  };
+
+  useEffect(() => {
+    const handleGlobalPaste = (e: ClipboardEvent) => {
+      if (!showAddModal || category !== 'order') return;
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const file = items[i].getAsFile();
+          if (file) {
+            e.preventDefault();
+            handleImageUpload(file);
+          }
+          break;
+        }
+      }
+    };
+    window.addEventListener('paste', handleGlobalPaste);
+    return () => window.removeEventListener('paste', handleGlobalPaste);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showAddModal, category]);
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (category !== 'order') return;
+    const file = e.dataTransfer.files[0];
+    if (file) handleImageUpload(file);
+  };
+  
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
   const handleSavePayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!companyName || !amount) {
@@ -275,7 +359,8 @@ export default function PaymentsRedesignPage() {
         tax: numTax,
         total,
         supplierRepName,
-        supplierNationalId
+        supplierNationalId,
+        ...(poItems.length > 0 ? { items: poItems } : {})
       };
 
       const docRef = await addDoc(collection(db, "cash_payments"), newPayment);
@@ -293,6 +378,7 @@ export default function PaymentsRedesignPage() {
       setCategoryNote("");
       setSupplierRepName("");
       setSupplierNationalId("");
+      setPoItems([]);
       
       // Auto Print
       setSelectedPaymentForPrint(savedPayment);
@@ -595,6 +681,27 @@ export default function PaymentsRedesignPage() {
               <form onSubmit={handleSavePayment} className="p-8">
                 <h2 className="text-2xl font-black text-slate-900 dark:text-white pb-6 tracking-tight">Record Payment</h2>
                 
+                {category === 'order' && (
+                  <div 
+                    onDrop={handleDrop}
+                    onDragOver={handleDragOver}
+                    className={`mb-6 border-2 border-dashed rounded-2xl p-6 text-center transition-colors ${isProcessingPo ? 'border-blue-500 bg-blue-50/50' : 'border-slate-300 hover:border-blue-400 bg-slate-50 hover:bg-slate-50/80 dark:bg-slate-800/50 dark:border-slate-700'}`}
+                  >
+                    {isProcessingPo ? (
+                      <div className="flex flex-col items-center justify-center gap-2 text-blue-600">
+                        <Loader2 className="h-8 w-8 animate-spin" />
+                        <span className="font-bold">Reading Purchase Order...</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center gap-2 text-slate-500">
+                        <ImageIcon className="h-8 w-8 text-slate-400" />
+                        <span className="font-bold">Paste or Drop PO Image Here</span>
+                        <span className="text-xs">We'll automatically extract the details using AI</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="grid md:grid-cols-2 gap-8">
                   <div className="space-y-6">
                     <div>
@@ -688,6 +795,36 @@ export default function PaymentsRedesignPage() {
                     </div>
                   </div>
                 </div>
+
+                {poItems.length > 0 && (
+                  <div className="mt-8 pt-6 border-t border-slate-100">
+                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4">Extracted Items ({poItems.length})</h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm text-left">
+                        <thead className="text-xs text-slate-500 bg-slate-50 dark:bg-slate-800/50 uppercase font-bold">
+                          <tr>
+                            <th className="px-4 py-3 rounded-l-xl">Barcode</th>
+                            <th className="px-4 py-3">Description</th>
+                            <th className="px-4 py-3 text-center">Qty</th>
+                            <th className="px-4 py-3 text-right">Price</th>
+                            <th className="px-4 py-3 text-right rounded-r-xl">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {poItems.map((item, idx) => (
+                            <tr key={idx} className="border-b border-slate-50 dark:border-slate-800/50 last:border-0 font-medium">
+                              <td className="px-4 py-3 text-slate-500">{item.barcode}</td>
+                              <td className="px-4 py-3 text-slate-900 dark:text-slate-300">{item.description}</td>
+                              <td className="px-4 py-3 text-center text-slate-900 dark:text-slate-300">{item.quantity}</td>
+                              <td className="px-4 py-3 text-right text-slate-900 dark:text-slate-300">{item.unitPrice}</td>
+                              <td className="px-4 py-3 text-right font-bold text-slate-900 dark:text-slate-300">{(item.quantity * item.unitPrice).toFixed(2)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
 
                 <div className="mt-8 pt-6 border-t border-slate-100 flex justify-end gap-3">
                   <button 
@@ -955,8 +1092,8 @@ export default function PaymentsRedesignPage() {
             <div style={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '180px' }}>
               {(() => {
                 const payMethod = selectedPaymentForPrint.method || 'cash';
-                let stampColor = payMethod === 'cash' ? '#16a34a' : '#ef4444';
-                let stampText = payMethod === 'cash' ? 'PAID IN CASH' : (payMethod === 'visa' ? 'PAID BY VISA' : 'PAID BY BANK');
+                const stampColor = payMethod === 'cash' ? '#16a34a' : '#ef4444';
+                const stampText = payMethod === 'cash' ? 'PAID IN CASH' : (payMethod === 'visa' ? 'PAID BY VISA' : 'PAID BY BANK');
                 
                 return (
                   <div style={{ transform: 'rotate(-5deg)', opacity: 0.85 }}>

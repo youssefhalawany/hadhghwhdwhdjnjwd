@@ -51,7 +51,7 @@ export default function ChequesPage() {
 
   useEffect(() => {
     setLoading(true);
-    let q = collection(db, "cheques") as any;
+    const q = collection(db, "cheques") as any;
 
 
 

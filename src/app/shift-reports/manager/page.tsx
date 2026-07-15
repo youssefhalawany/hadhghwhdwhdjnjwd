@@ -375,7 +375,7 @@ export default function ManagerAuditPage() {
           cigarettePercent: Number(cigarettePercent) || 0,
           comments,
           managerName,
-          signature: managerSignature || (hasSigned && sigPadRef.current ? sigPadRef.current.toDataURL() : null),
+          signature: managerSignature || null,
           auditedAt: selectedReport.managerAudit?.auditedAt || new Date().toISOString()
         }
       });
@@ -1413,8 +1413,8 @@ export default function ManagerAuditPage() {
                   I, the undersigned manager, declare that I have physically counted the funds and verified the variances against the system expectations.
                 </p>
                 <div style={{ position: 'relative', height: '45px', display: 'flex', alignItems: 'flex-end', borderBottom: '1px solid #000', marginBottom: '6px' }}>
-                  {(managerSignature || (hasSigned && sigPadRef.current && typeof sigPadRef.current.toDataURL === 'function' ? sigPadRef.current.toDataURL() : null) || selectedReport.managerAudit?.signature) ? (
-                    <img src={managerSignature || (hasSigned && sigPadRef.current && typeof sigPadRef.current.toDataURL === 'function' ? sigPadRef.current.toDataURL() : null) || selectedReport.managerAudit?.signature} alt="Signature" style={{ position: 'absolute', bottom: '2px', left: '50%', transform: 'translateX(-50%)', maxHeight: '50px', maxWidth: '100%', objectFit: 'contain' }} />
+                  {(managerSignature || selectedReport.managerAudit?.signature) ? (
+                    <img src={managerSignature || selectedReport.managerAudit?.signature} alt="Signature" style={{ position: 'absolute', bottom: '2px', left: '50%', transform: 'translateX(-50%)', maxHeight: '50px', maxWidth: '100%', objectFit: 'contain' }} />
                   ) : (
                     <div style={{ position: 'absolute', bottom: '6px', left: '0', width: '100%', textAlign: 'center', fontSize: '10px', fontWeight: 'bold', color: '#333', letterSpacing: '2px', textTransform: 'uppercase' }}>
                       [ PENDING REVIEW ]

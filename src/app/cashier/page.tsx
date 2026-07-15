@@ -9,25 +9,28 @@ import {
   Lock, User as UserIcon, ChevronDown, FileText, Shield,
   Calendar as CalendarIcon, UserCircle, Globe, LogOut,
   Download, Bell, Fingerprint, ScanLine, ChevronRight,
-  ClipboardList, Clock, CheckSquare
+  ClipboardList, Clock, CheckSquare, LayoutGrid, LayoutDashboard, FileBarChart2
 } from "lucide-react";
 import { PinPad } from "@/components/PinPad";
 import { playSuccessSound, playErrorSound, playPopSound, getAudioCtx } from "@/lib/sounds";
 import { toast } from "sonner";
 
-// ── Forced-dark design tokens ──────────────────────────────
+// ── Midnight Navy Design Tokens (Matches Screenshot) ────────────────
 const D = {
-  bg:           "#09090b",        // page background (zinc-950)
-  surface:      "#111113",        // card / section
-  surfaceHigh:  "#18181b",        // elevated surface
-  border:       "rgba(255,255,255,0.08)",
-  borderMid:    "rgba(255,255,255,0.13)",
+  bg:           "#0B1121",        // Deep midnight blue
+  surface:      "#151E32",        // Card background
+  surfaceHigh:  "#1C2841",        // Elevated surface / hovers
+  border:       "rgba(34, 211, 238, 0.15)", // Subtle cyan border
+  borderMid:    "rgba(34, 211, 238, 0.25)",
   red:          "#ef4444",
   redDim:       "rgba(239,68,68,0.15)",
   redBorder:    "rgba(239,68,68,0.30)",
-  textPrimary:  "#f4f4f5",        // zinc-100
-  textSecondary:"#a1a1aa",        // zinc-400
-  textDim:      "#52525b",        // zinc-600
+  textPrimary:  "#f8fafc",        // slate-50
+  textSecondary:"#94a3b8",        // slate-400
+  textDim:      "#64748b",        // slate-500
+  cyan:         "#22d3ee",        // Cyan accent
+  cyanDim:      "rgba(34, 211, 238, 0.1)",
+  cyanBorder:   "rgba(34, 211, 238, 0.25)",
   green:        "#34d399",
   greenDim:     "rgba(52,211,153,0.12)",
   greenBorder:  "rgba(52,211,153,0.25)",
@@ -47,6 +50,9 @@ export default function CashierHubPage() {
   const [isInstalled, setIsInstalled] = useState(true);
   const [isNotificationEnabled, setIsNotificationEnabled] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  
+  // Fake state for bottom nav aesthetics
+  const [activeTab, setActiveTab] = useState("dashboard");
 
   useEffect(() => {
     const t = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -224,130 +230,118 @@ export default function CashierHubPage() {
   // ─── AUTHENTICATED DASHBOARD ──────────────────────────────
   if (authenticatedUser) {
     const isMaster = authenticatedUser.role === "master";
-    const h = currentTime.getHours();
-    const greeting = lang === "en"
-      ? (h < 12 ? "Good Morning" : h < 18 ? "Good Afternoon" : "Good Evening")
-      : (h < 12 ? "صباح الخير" : h < 18 ? "مساء الخير" : "مساء النور");
 
     const actions = [
-      ...(isMaster ? [{ id: "master", label: lang === "en" ? "Master Feed" : "اللوحة الرئيسية", sub: lang === "en" ? "Live activity & global notifications" : "النشاط المباشر والإشعارات", icon: Bell, accent: "#f87171", dimBg: "rgba(248,113,113,0.08)", dimBorder: "rgba(248,113,113,0.18)", path: "/cashier/master", badge: "LIVE" }] : []),
-      { id: "shift",     label: lang === "en" ? "Daily Shift Report"  : "تقرير الوردية",          sub: lang === "en" ? "Submit end-of-shift counts"           : "إرسال جرد نهاية الوردية",          icon: FileText,     accent: "#f87171", dimBg: "rgba(248,113,113,0.06)",  dimBorder: "rgba(248,113,113,0.14)", path: "/shift-reports/cashier" },
-      { id: "void",      label: lang === "en" ? "Log a Void"          : "تسجيل مرتجع",            sub: lang === "en" ? "Cancelled items & returns"            : "المرتجعات والعناصر الملغاة",        icon: Shield,       accent: "#fb923c", dimBg: "rgba(251,146,60,0.06)",  dimBorder: "rgba(251,146,60,0.14)", path: "/voids/cashier" },
-      { id: "expiry",    label: lang === "en" ? "Expiry Tracker"      : "تواريخ الصلاحية",         sub: lang === "en" ? "Log fresh food & check dates"         : "تسجيل الطازج ومتابعة الصلاحية",    icon: CalendarIcon, accent: "#60a5fa", dimBg: "rgba(96,165,250,0.06)", dimBorder: "rgba(96,165,250,0.14)", path: "/expiries" },
-      { id: "checklist", label: lang === "en" ? "Checklists"          : "قوائم المراجعة",          sub: lang === "en" ? "Daily inspection checklists"          : "قوائم الفحص اليومية",               icon: CheckSquare,  accent: "#34d399", dimBg: "rgba(52,211,153,0.06)", dimBorder: "rgba(52,211,153,0.14)", path: "/checklists/cashier" },
-      { id: "account",   label: lang === "en" ? "My Account"          : "حسابي",                   sub: lang === "en" ? "Payroll, bonuses & deductions"        : "الراتب والمكافآت والخصومات",        icon: UserCircle,   accent: "#a78bfa", dimBg: "rgba(167,139,250,0.06)",dimBorder: "rgba(167,139,250,0.14)", path: "/cashier/account" },
-      { id: "schedule",  label: lang === "en" ? "My Schedule"         : "جدول العمل",              sub: lang === "en" ? "Shifts & leave requests"              : "الورديات وطلبات الإجازة",            icon: ClipboardList,accent: "#c084fc", dimBg: "rgba(192,132,252,0.06)",dimBorder: "rgba(192,132,252,0.14)", path: "/cashier/schedule" },
-      { id: "inventory", label: lang === "en" ? "Inventory Count"     : "جرد المخزون",             sub: lang === "en" ? "Blind cycle counting"                 : "عمليات الجرد العشوائية",            icon: ScanLine,     accent: "#fbbf24", dimBg: "rgba(251,191,36,0.06)", dimBorder: "rgba(251,191,36,0.14)", path: "/inventory-audit/cashier" },
+      ...(isMaster ? [{ id: "master", label: lang === "en" ? "Master Feed" : "اللوحة الرئيسية", icon: Bell, path: "/cashier/master", badge: "LIVE" }] : []),
+      { id: "shift",     label: lang === "en" ? "Daily Shift Report"  : "تقرير الوردية",          icon: FileText,     path: "/shift-reports/cashier" },
+      { id: "void",      label: lang === "en" ? "Log a Void"          : "تسجيل مرتجع",            icon: Shield,       path: "/voids/cashier" },
+      { id: "expiry",    label: lang === "en" ? "Expiry Tracker"      : "تواريخ الصلاحية",         icon: CalendarIcon, path: "/expiries" },
+      { id: "checklist", label: lang === "en" ? "Checklists"          : "قوائم المراجعة",          icon: CheckSquare,  path: "/checklists/cashier" },
+      { id: "account",   label: lang === "en" ? "My Account"          : "حسابي",                   icon: UserCircle,   path: "/cashier/account" },
+      { id: "schedule",  label: lang === "en" ? "My Schedule"         : "جدول العمل",              icon: ClipboardList,path: "/cashier/schedule" },
+      { id: "inventory", label: lang === "en" ? "Inventory Count"     : "جرد المخزون",             icon: ScanLine,     path: "/inventory-audit/cashier" },
     ] as any[];
 
     return (
       <div style={{ ...rootStyle, direction: isRTL ? "rtl" : "ltr" }}>
-        {/* force dark on pinpad + any child that might flip */}
         <style>{`
           .ck-cashier * { color-scheme: dark !important; }
-          .ck-pinpad button { background-color: #27272a !important; color: #f4f4f5 !important; border-color: rgba(255,255,255,0.08) !important; }
-          .ck-pinpad button:active { background-color: #3f3f46 !important; }
         `}</style>
 
         {/* ── HEADER ── */}
-        <div style={{ backgroundColor: D.surface, borderBottom: `1px solid ${D.border}`, padding: "16px 16px 12px", position: "sticky", top: 0, zIndex: 50, backdropFilter: "blur(20px)" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            {/* Left: Avatar + Name */}
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 42, height: 42, borderRadius: 14, background: "linear-gradient(135deg,#b91c1c,#ef4444)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 20, color: "#fff", flexShrink: 0, boxShadow: "0 0 16px rgba(239,68,68,0.35)" }}>K</div>
-              <div>
-                <div style={{ fontSize: 11, color: D.textDim, fontWeight: 600, lineHeight: 1 }}>{greeting}</div>
-                <div style={{ fontSize: 16, fontWeight: 800, color: D.textPrimary, lineHeight: 1.2, marginTop: 2 }}>{authenticatedUser.name}</div>
-              </div>
-            </div>
-            {/* Right: Controls */}
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <button onClick={() => { playPopSound(); handleEnableNotifications(); }} style={{ width: 38, height: 38, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", background: isNotificationEnabled ? D.greenDim : D.surfaceHigh, border: `1px solid ${isNotificationEnabled ? D.greenBorder : D.border}`, cursor: "pointer", position: "relative", flexShrink: 0 }}>
-                <Bell size={16} color={isNotificationEnabled ? D.green : D.textSecondary} />
-                {isNotificationEnabled && <span style={{ position: "absolute", top: -2, right: -2, width: 8, height: 8, borderRadius: "50%", backgroundColor: D.green, border: `2px solid ${D.surface}` }} />}
-              </button>
-              <button onClick={() => { playPopSound(); setLang(lang === "en" ? "ar" : "en"); }} style={{ height: 38, padding: "0 14px", borderRadius: 12, background: D.surfaceHigh, border: `1px solid ${D.border}`, color: D.textSecondary, fontSize: 12, fontWeight: 700, cursor: "pointer", letterSpacing: "0.05em" }}>{lang === "en" ? "عربي" : "EN"}</button>
-            </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px 10px" }}>
+          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.15em", color: D.textSecondary, textTransform: "uppercase" }}>
+            CIRCLE K <span style={{ color: D.textDim, fontWeight: 500 }}>FRANCHISE</span>
           </div>
-
-          {/* Time + date row */}
-          <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: 999, background: D.surfaceHigh, border: `1px solid ${D.border}` }}>
-              <Clock size={12} color={D.textDim} />
-              <span style={{ fontSize: 12, fontWeight: 700, color: D.textSecondary, fontVariantNumeric: "tabular-nums" }}>
-                {currentTime.toLocaleTimeString(lang === "en" ? "en-US" : "ar-EG", { hour: "2-digit", minute: "2-digit" })}
-              </span>
-              <span style={{ color: D.textDim }}>·</span>
-              <span style={{ fontSize: 12, color: D.textDim, fontWeight: 500 }}>
-                {currentTime.toLocaleDateString(lang === "en" ? "en-GB" : "ar-EG", { weekday: "short", day: "numeric", month: "short" })}
-              </span>
-            </div>
-            {!isInstalled && (
-              <button onClick={() => { playPopSound(); handleInstallClick(); }} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 999, background: D.redDim, border: `1px solid ${D.redBorder}`, color: D.red, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-                <Download size={12} color={D.red} />
-                {lang === "en" ? "Install" : "تثبيت"}
-              </button>
-            )}
+          <div style={{ width: 28, height: 28, borderRadius: 8, background: D.red, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 14, color: "#fff" }}>
+            K
           </div>
         </div>
 
-        {/* FaceID prompt */}
-        {!hasFaceIdRegistered && typeof window !== "undefined" && window.PublicKeyCredential && (
-          <div style={{ padding: "12px 16px 0" }}>
-            <button onClick={() => { playPopSound(); registerFaceId(); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", borderRadius: 16, background: D.greenDim, border: `1px solid ${D.greenBorder}`, cursor: "pointer", textAlign: isRTL ? "right" : "left" }}>
-              <div style={{ width: 38, height: 38, borderRadius: 12, background: "rgba(52,211,153,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <Fingerprint size={18} color={D.green} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: D.textPrimary }}>{lang === "en" ? "Enable FaceID / TouchID" : "تفعيل البصمة"}</div>
-                <div style={{ fontSize: 11, color: D.textSecondary, marginTop: 2 }}>{lang === "en" ? "Skip PIN on next login" : "تجاوز الرمز في المرة القادمة"}</div>
-              </div>
-              <ChevronRight size={16} color="rgba(52,211,153,0.4)" />
-            </button>
+        {/* ── MAIN CONTENT ── */}
+        <main style={{ flex: 1, padding: "16px 20px 100px" }}>
+          
+          {/* Welcome Card */}
+          <div style={{ backgroundColor: D.surface, borderRadius: 20, border: `1px solid ${D.border}`, padding: 20, marginBottom: 24 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+               <div>
+                  <div style={{ fontSize: 13, color: D.textSecondary, fontWeight: 600 }}>{lang === "en" ? "Logged in as:" : "مسجل دخول بحساب:"}</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: D.textPrimary, marginTop: 4 }}>{authenticatedUser.name}</div>
+               </div>
+               <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => { playPopSound(); setLang(lang === "en" ? "ar" : "en"); }} style={{ width: 32, height: 32, borderRadius: 8, background: D.surfaceHigh, border: `1px solid ${D.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                     <Globe size={14} color={D.cyan} />
+                  </button>
+                  <button onClick={() => { playPopSound(); handleEnableNotifications(); }} style={{ width: 32, height: 32, borderRadius: 8, background: isNotificationEnabled ? D.cyanDim : D.surfaceHigh, border: `1px solid ${isNotificationEnabled ? D.cyanBorder : D.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", position: "relative" }}>
+                     <Bell size={14} color={isNotificationEnabled ? D.cyan : D.textSecondary} />
+                     {isNotificationEnabled && <span style={{ position: "absolute", top: -2, right: -2, width: 6, height: 6, borderRadius: "50%", backgroundColor: D.cyan }} />}
+                  </button>
+               </div>
+            </div>
+            
+            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: D.textDim, fontWeight: 600 }}>
+              <Clock size={12} />
+              <span style={{ fontVariantNumeric: "tabular-nums" }}>{currentTime.toLocaleTimeString(lang === "en" ? "en-US" : "ar-EG", { hour: "2-digit", minute: "2-digit" })}</span>
+              <span>·</span>
+              <span>{currentTime.toLocaleDateString(lang === "en" ? "en-GB" : "ar-EG", { weekday: "short", day: "numeric", month: "short" })}</span>
+            </div>
           </div>
-        )}
 
-        {/* ── ACTION LIST ── */}
-        <main style={{ flex: 1, padding: "16px 16px 120px" }}>
-          <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.18em", color: D.textDim, textTransform: "uppercase", marginBottom: 12 }}>
-            {lang === "en" ? "Quick Actions" : "الإجراءات"}
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.15em", color: D.textSecondary, textTransform: "uppercase", marginBottom: 16 }}>
+            {lang === "en" ? "Operational Feed" : "العمليات"}
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+
+          {/* Action List (styled as cards) */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {actions.map((a: any) => {
               const Icon = a.icon;
               return (
-                <button key={a.id} onClick={() => nav(a.path)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderRadius: 18, background: a.dimBg, border: `1px solid ${a.dimBorder}`, cursor: "pointer", textAlign: isRTL ? "right" : "left", transition: "opacity 0.1s" }} onMouseDown={e => (e.currentTarget.style.opacity = "0.75")} onMouseUp={e => (e.currentTarget.style.opacity = "1")} onTouchStart={e => (e.currentTarget.style.opacity = "0.75")} onTouchEnd={e => (e.currentTarget.style.opacity = "1")}>
-                  {/* Icon */}
-                  <div style={{ width: 44, height: 44, borderRadius: 14, background: `${a.accent}18`, border: `1px solid ${a.accent}30`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <Icon size={20} color={a.accent} />
-                  </div>
-                  {/* Text */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-                      <span style={{ fontSize: 15, fontWeight: 700, color: D.textPrimary, lineHeight: 1.2 }}>{a.label}</span>
-                      {a.badge && (
-                        <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.12em", padding: "2px 6px", borderRadius: 999, background: `${a.accent}20`, color: a.accent, border: `1px solid ${a.accent}35`, textTransform: "uppercase" }}>{a.badge}</span>
-                      )}
+                <button 
+                  key={a.id} 
+                  onClick={() => nav(a.path)} 
+                  style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderRadius: 16, background: D.surface, border: `1px solid ${D.border}`, cursor: "pointer", textAlign: isRTL ? "right" : "left", transition: "all 0.1s" }} 
+                  onMouseDown={e => { e.currentTarget.style.opacity = "0.75"; e.currentTarget.style.borderColor = D.cyanBorder; }} 
+                  onMouseUp={e => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.borderColor = D.border; }} 
+                  onTouchStart={e => { e.currentTarget.style.opacity = "0.75"; e.currentTarget.style.borderColor = D.cyanBorder; }} 
+                  onTouchEnd={e => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.borderColor = D.border; }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, borderRadius: 8, background: D.cyanDim, border: `1px solid ${D.cyanBorder}` }}>
+                       <Icon size={16} color={D.cyan} />
                     </div>
-                    <div style={{ fontSize: 12, color: D.textSecondary, lineHeight: 1.35 }}>{a.sub}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                       <span style={{ fontSize: 15, fontWeight: 600, color: D.textPrimary }}>{a.label}</span>
+                       {a.badge && (
+                         <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 6px", borderRadius: 4, background: D.cyanDim, color: D.cyan, border: `1px solid ${D.cyanBorder}`, textTransform: "uppercase" }}>{a.badge}</span>
+                       )}
+                    </div>
                   </div>
-                  <ChevronRight size={16} color={`${a.accent}50`} style={{ flexShrink: 0 }} />
+                  <ChevronRight size={16} color={D.textDim} />
                 </button>
               );
             })}
           </div>
         </main>
 
-        {/* ── BOTTOM BAR ── */}
-        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: `linear-gradient(to top, ${D.bg} 55%, transparent)`, padding: "20px 16px 28px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, paddingTop: 12, borderTop: `1px solid ${D.border}` }}>
-            <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-              <span style={{ fontSize: 10, color: D.textDim, fontWeight: 600 }}>{lang === "en" ? "Signed in as" : "مسجل دخول"}</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: D.textSecondary, marginTop: 1 }}>{authenticatedUser.name}</span>
-            </div>
-            <button onClick={handleLogout} style={{ display: "flex", alignItems: "center", gap: 8, padding: "11px 20px", borderRadius: 14, background: D.redDim, border: `1px solid ${D.redBorder}`, color: D.red, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-              <LogOut size={16} color={D.red} />
-              {lang === "en" ? "Sign Out" : "خروج"}
+        {/* ── BOTTOM NAV TAB BAR ── */}
+        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: D.bg, padding: "12px 16px 24px", borderTop: `1px solid ${D.border}`, zIndex: 100 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-around" }}>
+            <button onClick={() => setActiveTab("dashboard")} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, cursor: "pointer", background: "none", border: "none", opacity: activeTab === "dashboard" ? 1 : 0.5 }}>
+               <LayoutDashboard size={20} color={activeTab === "dashboard" ? D.cyan : D.textPrimary} />
+               <span style={{ fontSize: 9, fontWeight: 700, color: activeTab === "dashboard" ? D.cyan : D.textPrimary }}>{lang === "en" ? "DASHBOARD" : "الرئيسية"}</span>
+            </button>
+            <button onClick={() => { playPopSound(); nav("/shift-reports/cashier"); }} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, cursor: "pointer", background: "none", border: "none", opacity: 0.5 }}>
+               <FileBarChart2 size={20} color={D.textPrimary} />
+               <span style={{ fontSize: 9, fontWeight: 700, color: D.textPrimary }}>{lang === "en" ? "REPORT CENTER" : "التقارير"}</span>
+            </button>
+            <button onClick={() => { playPopSound(); handleEnableNotifications(); }} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, cursor: "pointer", background: "none", border: "none", opacity: 0.5, position: "relative" }}>
+               <Bell size={20} color={D.textPrimary} />
+               {isNotificationEnabled && <span style={{ position: "absolute", top: -2, right: 8, width: 6, height: 6, borderRadius: "50%", backgroundColor: D.cyan }} />}
+               <span style={{ fontSize: 9, fontWeight: 700, color: D.textPrimary }}>{lang === "en" ? "NOTIFICATIONS" : "إشعارات"}</span>
+            </button>
+            <button onClick={handleLogout} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, cursor: "pointer", background: "none", border: "none", opacity: 0.5 }}>
+               <UserCircle size={20} color={D.textPrimary} />
+               <span style={{ fontSize: 9, fontWeight: 700, color: D.textPrimary }}>{lang === "en" ? "LOGOUT" : "خروج"}</span>
             </button>
           </div>
         </div>
@@ -360,67 +354,58 @@ export default function CashierHubPage() {
     <div style={{ ...rootStyle, direction: isRTL ? "rtl" : "ltr", alignItems: "stretch" }} onClick={() => getAudioCtx()}>
       <style>{`
         .ck-cashier * { color-scheme: dark !important; }
-        .ck-pinpad button { background-color: #27272a !important; color: #f4f4f5 !important; border-color: rgba(255,255,255,0.1) !important; }
-        .ck-pinpad button:active { background-color: #3f3f46 !important; }
+        .ck-pinpad button { background-color: ${D.surfaceHigh} !important; color: ${D.textPrimary} !important; border-color: ${D.border} !important; }
+        .ck-pinpad button:active { background-color: ${D.cyanDim} !important; border-color: ${D.cyanBorder} !important; color: ${D.cyan} !important; }
       `}</style>
 
-      {/* Top bar */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 8px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <button onClick={() => { playPopSound(); handleEnableNotifications(); }} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 12px", borderRadius: 999, background: isNotificationEnabled ? D.greenDim : D.surfaceHigh, border: `1px solid ${isNotificationEnabled ? D.greenBorder : D.border}`, color: isNotificationEnabled ? D.green : D.textSecondary, fontSize: 11, fontWeight: 700, cursor: "pointer", position: "relative" }}>
-            <Bell size={13} color={isNotificationEnabled ? D.green : D.textSecondary} />
-            {isNotificationEnabled ? (lang === "en" ? "On" : "مفعل") : (lang === "en" ? "Alerts" : "تنبيه")}
-            {isNotificationEnabled && <span style={{ position: "absolute", top: -2, right: -2, width: 7, height: 7, borderRadius: "50%", backgroundColor: D.green, border: `2px solid ${D.bg}` }} />}
-          </button>
-          {!isInstalled && (
-            <button onClick={() => { playPopSound(); handleInstallClick(); }} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 12px", borderRadius: 999, background: D.redDim, border: `1px solid ${D.redBorder}`, color: D.red, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-              <Download size={13} color={D.red} />
-              {lang === "en" ? "Install" : "تثبيت"}
-            </button>
-          )}
+      {/* Top Header */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "24px 20px 10px" }}>
+        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.15em", color: D.textSecondary, textTransform: "uppercase" }}>
+          CIRCLE K <span style={{ color: D.textDim, fontWeight: 500 }}>FRANCHISE</span>
         </div>
-        <button onClick={() => { playPopSound(); setLang(lang === "en" ? "ar" : "en"); }} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 12px", borderRadius: 999, background: D.surfaceHigh, border: `1px solid ${D.border}`, color: D.textSecondary, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-          <Globe size={13} color={D.textSecondary} />
-          {lang === "en" ? "عربي" : "EN"}
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+           <button onClick={() => { playPopSound(); setLang(lang === "en" ? "ar" : "en"); }} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 8, background: D.surface, border: `1px solid ${D.border}`, color: D.textSecondary, fontSize: 10, fontWeight: 700, cursor: "pointer" }}>
+             <Globe size={12} color={D.textSecondary} />
+             {lang === "en" ? "عربي" : "EN"}
+           </button>
+        </div>
       </div>
 
       {/* Hero */}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "24px 24px 16px" }}>
-        <div style={{ width: 80, height: 80, borderRadius: 26, background: "linear-gradient(135deg,#991b1b,#ef4444)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 38, fontWeight: 900, color: "#fff", marginBottom: 20, boxShadow: "0 0 0 1px rgba(239,68,68,0.25), 0 0 0 10px rgba(239,68,68,0.07), 0 20px 50px rgba(185,28,28,0.45)" }}>K</div>
-        <h1 style={{ fontSize: 30, fontWeight: 900, color: D.textPrimary, margin: 0, letterSpacing: "-0.5px" }}>{lang === "en" ? "Staff Login" : "تسجيل الدخول"}</h1>
-        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.22em", color: D.red, margin: "8px 0 0", textTransform: "uppercase" }}>{lang === "en" ? "Circle K Franchise" : "بوابة سيركل كي"}</p>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "32px 24px 24px" }}>
+        <div style={{ width: 80, height: 80, borderRadius: 20, background: D.red, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 38, fontWeight: 900, color: "#fff", marginBottom: 20, boxShadow: `0 0 0 4px ${D.redDim}, 0 10px 30px rgba(239,68,68,0.3)` }}>K</div>
+        <h1 style={{ fontSize: 26, fontWeight: 800, color: D.textPrimary, margin: 0 }}>{lang === "en" ? "Staff Login" : "تسجيل الدخول"}</h1>
       </div>
 
       {/* Form card */}
-      <div style={{ flex: 1, margin: "0 16px 32px" }}>
-        <form onSubmit={handleLogin} style={{ backgroundColor: D.surface, borderRadius: 28, border: `1px solid ${D.border}`, boxShadow: "0 30px 80px rgba(0,0,0,0.6)", overflow: "hidden" }}>
+      <div style={{ flex: 1, margin: "0 20px 32px" }}>
+        <form onSubmit={handleLogin} style={{ backgroundColor: D.surface, borderRadius: 24, border: `1px solid ${D.border}`, boxShadow: "0 20px 60px rgba(0,0,0,0.5)", overflow: "hidden" }}>
 
           {/* Name section */}
-          <div style={{ padding: "20px 20px 16px", borderBottom: `1px solid ${D.border}` }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, fontWeight: 800, letterSpacing: "0.18em", color: D.textDim, textTransform: "uppercase", marginBottom: 12 }}>
-              <UserIcon size={12} color={D.textDim} />
-              {lang === "en" ? "Your Name" : "اسمك"}
+          <div style={{ padding: "24px 24px 16px", borderBottom: `1px solid ${D.border}` }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", color: D.textDim, textTransform: "uppercase", marginBottom: 12 }}>
+              <UserIcon size={12} color={D.cyan} />
+              {lang === "en" ? "Select Account" : "اختر الحساب"}
             </label>
             <div style={{ position: "relative" }}>
-              <div onClick={() => { playPopSound(); setIsDropdownOpen(!isDropdownOpen); }} style={{ width: "100%", padding: "13px 16px", borderRadius: 14, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", backgroundColor: D.surfaceHigh, border: `1px solid ${isDropdownOpen ? "rgba(239,68,68,0.5)" : D.borderMid}`, boxSizing: "border-box" }}>
-                <span style={{ fontSize: 15, fontWeight: 700, color: selectedEmployeeId ? D.textPrimary : D.textDim }}>
-                  {selectedEmployeeId ? employees.find(x => x.id === selectedEmployeeId)?.name || (lang === "en" ? "Select your name" : "اختر اسمك") : (lang === "en" ? "Select your name" : "اختر اسمك")}
+              <div onClick={() => { playPopSound(); setIsDropdownOpen(!isDropdownOpen); }} style={{ width: "100%", padding: "14px 16px", borderRadius: 12, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", backgroundColor: D.surfaceHigh, border: `1px solid ${isDropdownOpen ? D.cyanBorder : D.border}`, boxSizing: "border-box" }}>
+                <span style={{ fontSize: 15, fontWeight: 600, color: selectedEmployeeId ? D.textPrimary : D.textDim }}>
+                  {selectedEmployeeId ? employees.find(x => x.id === selectedEmployeeId)?.name || (lang === "en" ? "Select name" : "اختر الاسم") : (lang === "en" ? "Select your name" : "اختر اسمك")}
                 </span>
                 <ChevronDown size={18} color={D.textDim} style={{ transform: isDropdownOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
               </div>
               {isDropdownOpen && (
-                <div style={{ position: "absolute", zIndex: 100, top: "calc(100% + 8px)", left: 0, right: 0, maxHeight: 220, overflowY: "auto", borderRadius: 16, backgroundColor: "#09090b", border: `1px solid ${D.borderMid}`, boxShadow: "0 20px 60px rgba(0,0,0,0.85)" }}>
+                <div style={{ position: "absolute", zIndex: 100, top: "calc(100% + 8px)", left: 0, right: 0, maxHeight: 240, overflowY: "auto", borderRadius: 12, backgroundColor: D.surface, border: `1px solid ${D.cyanBorder}`, boxShadow: "0 20px 40px rgba(0,0,0,0.7)" }}>
                   {employees.length === 0
-                    ? <div style={{ padding: 20, textAlign: "center", color: D.textDim, fontSize: 14 }}>{lang === "en" ? "No employees found." : "لا يوجد موظفون."}</div>
+                    ? <div style={{ padding: 20, textAlign: "center", color: D.textDim, fontSize: 13 }}>{lang === "en" ? "No employees found." : "لا يوجد موظفون."}</div>
                     : employees.map((c, idx) => (
-                      <div key={c.id} onClick={() => { playPopSound(); setSelectedEmployeeId(c.id); setIsDropdownOpen(false); if (localStorage.getItem(`faceid_enabled_${c.id}`) === "true") loginWithFaceId(c.id); }} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 16px", cursor: "pointer", borderBottom: idx < employees.length - 1 ? `1px solid ${D.border}` : "none" }}>
-                        <div style={{ width: 36, height: 36, borderRadius: 12, background: D.redDim, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 800, color: D.red, flexShrink: 0 }}>{c.name.charAt(0).toUpperCase()}</div>
+                      <div key={c.id} onClick={() => { playPopSound(); setSelectedEmployeeId(c.id); setIsDropdownOpen(false); if (localStorage.getItem(`faceid_enabled_${c.id}`) === "true") loginWithFaceId(c.id); }} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", cursor: "pointer", borderBottom: idx < employees.length - 1 ? `1px solid ${D.border}` : "none" }}>
+                        <div style={{ width: 32, height: 32, borderRadius: 8, background: D.cyanDim, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: D.cyan, flexShrink: 0 }}>{c.name.charAt(0).toUpperCase()}</div>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: D.textPrimary }}>{c.name}</div>
-                          {c.position && <div style={{ fontSize: 10, fontWeight: 700, color: "#60a5fa", marginTop: 2, letterSpacing: "0.1em", textTransform: "uppercase" }}>{c.position}</div>}
+                          <div style={{ fontSize: 14, fontWeight: 600, color: D.textPrimary }}>{c.name}</div>
+                          {c.position && <div style={{ fontSize: 10, fontWeight: 600, color: D.textSecondary, marginTop: 2, textTransform: "uppercase" }}>{c.position}</div>}
                         </div>
-                        {localStorage.getItem(`faceid_enabled_${c.id}`) === "true" && <Fingerprint size={16} color={D.green} style={{ opacity: 0.6, flexShrink: 0 }} />}
+                        {localStorage.getItem(`faceid_enabled_${c.id}`) === "true" && <Fingerprint size={16} color={D.cyan} style={{ opacity: 0.8, flexShrink: 0 }} />}
                       </div>
                     ))}
                 </div>
@@ -429,18 +414,18 @@ export default function CashierHubPage() {
           </div>
 
           {/* PIN section */}
-          <div style={{ padding: "20px 20px 24px" }}>
-            <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 10, fontWeight: 800, letterSpacing: "0.18em", color: D.textDim, textTransform: "uppercase", marginBottom: 20 }}>
-              <Lock size={12} color={D.textDim} />
+          <div style={{ padding: "20px 24px 24px" }}>
+            <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", color: D.textDim, textTransform: "uppercase", marginBottom: 20 }}>
+              <Lock size={12} color={D.cyan} />
               {lang === "en" ? "Enter 4-Digit PIN" : "أدخل الرمز السري"}
             </label>
             <div className="ck-pinpad">
               <PinPad onPinChange={(val) => setPinInput(val)} onSubmit={(val) => handleLogin(val as any)} maxLength={4} />
             </div>
             {hasFaceIdRegistered && (
-              <button type="button" onClick={() => { playPopSound(); loginWithFaceId(selectedEmployeeId); }} style={{ marginTop: 16, width: "100%", padding: "14px 20px", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, background: D.greenDim, border: `1px solid ${D.greenBorder}`, color: D.green, fontSize: 15, fontWeight: 700, cursor: "pointer", boxSizing: "border-box" }}>
-                <Fingerprint size={20} color={D.green} />
-                {lang === "en" ? "Use FaceID / TouchID" : "استخدام البصمة"}
+              <button type="button" onClick={() => { playPopSound(); loginWithFaceId(selectedEmployeeId); }} style={{ marginTop: 20, width: "100%", padding: "14px 20px", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, background: D.cyanDim, border: `1px solid ${D.cyanBorder}`, color: D.cyan, fontSize: 14, fontWeight: 700, cursor: "pointer", boxSizing: "border-box" }}>
+                <Fingerprint size={18} color={D.cyan} />
+                {lang === "en" ? "Login with FaceID" : "دخول بالبصمة"}
               </button>
             )}
           </div>
