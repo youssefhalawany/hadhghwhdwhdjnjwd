@@ -1171,7 +1171,7 @@ export default function CreditsPage() {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
-              className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl border border-slate-100"
+              className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[95vh]"
             >
               <div className="flex justify-between items-center p-6 border-b border-indigo-100 bg-gradient-to-r from-indigo-50 to-blue-50">
                 <div>
@@ -1183,8 +1183,9 @@ export default function CreditsPage() {
                 </button>
               </div>
 
-              <form onSubmit={handleAddCredit} className="p-6">
-                <div 
+              <form onSubmit={handleAddCredit} className="flex flex-col flex-1 min-h-0">
+                <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+                  <div 
                   onDrop={handleDrop}
                   onDragOver={handleDragOver}
                   className={`mb-6 border-2 border-dashed rounded-3xl p-8 text-center transition-all duration-300 ${isProcessingPo ? 'border-indigo-500 bg-indigo-50/50 scale-[0.98]' : 'border-indigo-200 hover:border-indigo-400 bg-indigo-50/30 hover:bg-indigo-50/60'}`}
@@ -1322,7 +1323,8 @@ export default function CreditsPage() {
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-3 pt-6 border-t border-slate-100">
+                </div>
+                <div className="flex justify-end gap-3 p-6 border-t border-slate-100 bg-slate-50 mt-auto">
                   <button type="button" onClick={() => setShowAddModal(false)} className="px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 hover:text-slate-900 transition-all shadow-sm">Cancel</button>
                   <button type="submit" disabled={isSubmitting} className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 shadow-md shadow-indigo-600/20 hover:shadow-indigo-600/40 hover:-translate-y-0.5 transition-all">
                     {isSubmitting && <Loader2 size={18} className="animate-spin" />}
@@ -1349,7 +1351,7 @@ export default function CreditsPage() {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
-              className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-slate-100"
+              className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[95vh]"
             >
               <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50/50">
                 <h2 className="text-2xl font-black text-slate-900 tracking-tight">Make Payment</h2>
@@ -1358,8 +1360,9 @@ export default function CreditsPage() {
                 </button>
               </div>
 
-              <form onSubmit={handleProcessPayment} className="p-6">
-                <div className="bg-gradient-to-br from-indigo-50 to-blue-50 p-5 rounded-2xl border border-indigo-100/50 mb-6 shadow-inner">
+              <form onSubmit={handleProcessPayment} className="flex flex-col flex-1 min-h-0">
+                <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+                  <div className="bg-gradient-to-br from-indigo-50 to-blue-50 p-5 rounded-2xl border border-indigo-100/50 mb-6 shadow-inner">
                   <p className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-1">Paying For</p>
                   <p className="text-lg text-indigo-900 font-black tracking-tight">{selectedCreditForPayment.companyName}</p>
                   <p className="text-sm font-medium text-indigo-600/80 mb-4 flex items-center gap-1"><FileText size={14}/> Inv: {selectedCreditForPayment.invoiceNumber}</p>
@@ -1398,7 +1401,8 @@ export default function CreditsPage() {
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-3 pt-6 border-t border-slate-100">
+                </div>
+                <div className="flex justify-end gap-3 p-6 border-t border-slate-100 bg-slate-50 mt-auto">
                   <button type="button" onClick={() => setShowPaymentModal(false)} className="px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 hover:text-slate-900 transition-all shadow-sm">Cancel</button>
                   <button type="submit" disabled={isSubmitting} className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 shadow-md shadow-indigo-600/20 hover:shadow-indigo-600/40 hover:-translate-y-0.5 transition-all">
                     {isSubmitting && <Loader2 size={18} className="animate-spin" />}
@@ -1423,7 +1427,7 @@ export default function CreditsPage() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl border border-slate-100"
+              className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl border border-slate-100 flex flex-col max-h-[95vh] overflow-y-auto custom-scrollbar"
             >
               <h3 className="text-xl font-black text-slate-900 mb-4 tracking-tight">Add New Supplier</h3>
               <input 
@@ -1466,7 +1470,7 @@ export default function CreditsPage() {
               initial={{ scale: 0.95, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-slate-100"
+              className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[95vh]"
             >
               <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50/50">
                 <h2 className="text-xl font-black text-slate-900 tracking-tight">Add PO to Credit</h2>
@@ -1478,7 +1482,7 @@ export default function CreditsPage() {
                 </button>
               </div>
 
-              <div className="p-6">
+              <div className="p-6 overflow-y-auto custom-scrollbar flex-1 min-h-0">
                 <p className="text-sm text-slate-500 mb-6 font-medium">
                   Upload, drag-and-drop, or paste a purchase order image. We'll automatically extract the products and sync them with the catalog. This will not overwrite any existing information except the products list and the PO Number/Invoice Number if they are missing.
                 </p>
