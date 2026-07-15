@@ -487,7 +487,7 @@ export default function CashierVoidPage() {
   };
 
   return (
-    <div className="ck-void-hub min-h-screen bg-slate-50 dark:bg-slate-950/20 text-slate-900 dark:text-slate-100 transition-colors duration-300 pb-28" dir={lang === "ar" ? "rtl" : "ltr"}>
+    <div className="ck-void-hub min-h-screen bg-slate-50 dark:bg-slate-950/20 text-slate-900 dark:text-slate-100 transition-colors duration-300 pb-48" dir={lang === "ar" ? "rtl" : "ltr"}>
       <style>{`
         .ck-void-hub { background-color: #0B1121 !important; color: #f8fafc !important; color-scheme: dark !important; min-height: 100dvh; }
         .ck-void-hub .bg-white, .ck-void-hub .dark\\:bg-slate-800, .ck-void-hub .dark\\:bg-slate-800\\/80, .ck-void-hub .dark\\:bg-slate-900, .ck-void-hub .bg-slate-100 { background-color: #151E32 !important; border-color: rgba(34, 211, 238, 0.15) !important; }
@@ -810,8 +810,8 @@ export default function CashierVoidPage() {
             </div>
           </div>
 
-          {/* Fixed Footer */}
-          <footer className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 z-10 shadow-[0_-10px_40px_rgba(0,0,0,0.04)]">
+          {/* Fixed Footer - sits above the bottom nav */}
+          <footer className="fixed left-0 right-0 p-4 bg-[#0B1121] backdrop-blur-md border-t border-[rgba(34,211,238,0.15)] z-[150] shadow-lg" style={{ bottom: 68 }}>
             <div className="max-w-4xl mx-auto flex items-center justify-end">
               <button 
                 type="submit" 

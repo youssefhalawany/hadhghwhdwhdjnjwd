@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { LayoutDashboard, FileText, User, ShieldAlert } from "lucide-react";
+import { LayoutDashboard, FileText, User, ShieldAlert, LogOut } from "lucide-react";
 
 const D = {
   bg:      "#0B1121",
@@ -10,13 +10,15 @@ const D = {
   text:    "#64748b",
   active:  "#22d3ee",
   activeBg:"rgba(34, 211, 238, 0.08)",
+  red:     "#ef4444",
+  redBg:   "rgba(239, 68, 68, 0.08)",
 };
 
 const NAV_ITEMS = [
   { label: "Dashboard",   labelAr: "الرئيسية",  icon: LayoutDashboard, href: "/cashier" },
   { label: "Daily Shift", labelAr: "وردية",      icon: FileText,        href: "/shift-reports/cashier" },
   { label: "My Account",  labelAr: "حسابي",      icon: User,            href: "/cashier/account" },
-  { label: "Voids",       labelAr: "المرتجعات",  icon: ShieldAlert,     href: "/voids/cashier" },
+  { label: "Voids",       labelAr: "مرتجعات",   icon: ShieldAlert,     href: "/voids/cashier" },
 ];
 
 interface Props { lang?: "en" | "ar"; }
@@ -24,6 +26,13 @@ interface Props { lang?: "en" | "ar"; }
 export function CashierBottomNav({ lang = "en" }: Props) {
   const router = useRouter();
   const pathname = usePathname();
+
+  const handleLogout = () => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("active_cashier_session");
+    }
+    router.push("/cashier");
+  };
 
   return (
     <>
@@ -57,6 +66,24 @@ export function CashierBottomNav({ lang = "en" }: Props) {
             </button>
           );
         })}
+
+        {/* Logout */}
+        <button onClick={handleLogout} style={{
+          flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
+          justifyContent: "center", gap: 4, padding: "10px 4px",
+          background: "transparent", border: "none", cursor: "pointer",
+          color: D.text, fontSize: 9, fontWeight: 700, textTransform: "uppercase",
+          letterSpacing: "0.07em", WebkitTapHighlightColor: "transparent", minHeight: 58,
+          transition: "color 0.15s",
+        }}
+          onTouchStart={e => { e.currentTarget.style.color = D.red; e.currentTarget.style.background = D.redBg; }}
+          onTouchEnd={e => { e.currentTarget.style.color = D.text; e.currentTarget.style.background = "transparent"; }}
+          onMouseEnter={e => { e.currentTarget.style.color = D.red; }}
+          onMouseLeave={e => { e.currentTarget.style.color = D.text; }}
+        >
+          <LogOut size={20} strokeWidth={1.8} />
+          <span>{lang === "ar" ? "خروج" : "Logout"}</span>
+        </button>
       </nav>
     </>
   );
