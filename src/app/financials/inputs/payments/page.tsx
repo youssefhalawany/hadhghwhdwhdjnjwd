@@ -330,11 +330,8 @@ export default function PaymentsRedesignPage() {
           newItems = data.items;
         }
 
-        const storageRef = ref(storage, `payments_pos/${Date.now()}_${file.name}`);
-        const snapshot = await uploadBytes(storageRef, file);
-        const poImageUrl = await getDownloadURL(snapshot.ref);
-
-        const updateData: any = { poImageUrl };
+        // User requested to skip saving PO images to storage for faster processing
+        const updateData: any = {};
         if (newItems.length > 0) updateData.items = newItems;
         if (data.poNumber && !selectedPaymentForPoUpload.poNumber) updateData.poNumber = data.poNumber;
 
@@ -508,11 +505,7 @@ export default function PaymentsRedesignPage() {
     try {
       setSubmitting(true);
       let poImageUrl = null;
-      if (poImageFile) {
-        const storageRef = ref(storage, `payments_pos/${Date.now()}_${poImageFile.name}`);
-        const snapshot = await uploadBytes(storageRef, poImageFile);
-        poImageUrl = await getDownloadURL(snapshot.ref);
-      }
+      // User requested to skip saving PO images to storage for faster processing
 
       const newPayment = {
         amount: numAmount,

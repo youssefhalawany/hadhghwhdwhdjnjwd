@@ -430,12 +430,9 @@ export default function CreditsPage() {
 
         const data = await response.json();
         
-        // Upload image to Firebase Storage for record keeping
-        const timestamp = Date.now();
-        const imageRef = ref(storage, `po_images/po_${timestamp}_${file.name}`);
-        await uploadBytes(imageRef, file);
-        const downloadUrl = await getDownloadURL(imageRef);
-        setPoImageUrl(downloadUrl);
+        // User requested to skip saving PO images to storage for faster processing
+        setPoImageUrl("");
+
 
         if (data.invoiceNumber && data.invoiceNumber !== "UNKNOWN") setInvoiceNumber(data.invoiceNumber);
         if (data.poNumber && data.poNumber !== "UNKNOWN") setPoNumber(data.poNumber);
@@ -485,14 +482,8 @@ export default function CreditsPage() {
 
         const data = await response.json();
         
-        // Upload image
-        const timestamp = Date.now();
-        const imageRef = ref(storage, `po_images/po_credit_update_${timestamp}_${file.name}`);
-        await uploadBytes(imageRef, file);
-        const downloadUrl = await getDownloadURL(imageRef);
-
+        // User requested to skip saving PO images to storage for faster processing
         const updateData: any = {
-          poImageUrl: downloadUrl,
           items: data.items || []
         };
         

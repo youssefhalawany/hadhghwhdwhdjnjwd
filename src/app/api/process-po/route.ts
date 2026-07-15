@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     const mimeType = matches[1];
     const base64Data = matches[2];
 
-    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const prompt = `
 You are a Purchase Order data extraction assistant.
