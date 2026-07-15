@@ -451,8 +451,8 @@ export default function CreditsPage() {
           });
         }
         
-        if (data.totalAmount) setAmountDue(data.totalAmount.toString());
-        if (data.taxAmount) setTax(data.taxAmount.toString());
+        if (data.amount !== undefined) setAmountDue(data.amount.toString());
+        if (data.tax !== undefined) setTax(data.tax.toString());
         if (data.items) setPoItems(data.items);
         
         toast.success('PO processed successfully!');
@@ -1278,6 +1278,33 @@ export default function CreditsPage() {
                   </div>
                 </div>
 
+                {poItems && poItems.length > 0 && (
+                  <div className="mb-8">
+                    <h4 className="text-sm font-bold text-slate-700 mb-2">Extracted PO Items</h4>
+                    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                      <div className="max-h-48 overflow-y-auto custom-scrollbar">
+                        <table className="w-full text-left text-sm">
+                          <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
+                            <tr>
+                              <th className="p-3 font-bold text-slate-500 uppercase text-[10px] tracking-wider">Description</th>
+                              <th className="p-3 font-bold text-slate-500 uppercase text-[10px] tracking-wider text-center">Qty</th>
+                              <th className="p-3 font-bold text-slate-500 uppercase text-[10px] tracking-wider text-right">Price</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {poItems.map((item, idx) => (
+                              <tr key={idx} className="border-b border-slate-100 last:border-0 hover:bg-indigo-50/50 transition-colors">
+                                <td className="p-3 text-slate-900 font-medium text-xs">{item.description || item.barcode || 'Unknown Item'}</td>
+                                <td className="p-3 text-slate-600 font-bold text-xs text-center">{item.quantity || 0}</td>
+                                <td className="p-3 text-indigo-600 font-bold text-xs text-right whitespace-nowrap">{item.unitPrice ? `${item.unitPrice} EGP` : '-'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center gap-6 mb-8 bg-slate-50 p-4 rounded-xl border border-slate-100">
                   <label className="flex items-center gap-3 cursor-pointer group">
                     <div className="relative flex items-center justify-center">
