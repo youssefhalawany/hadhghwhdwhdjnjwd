@@ -15,6 +15,20 @@ export default function MasterScannerPage() {
   const [productData, setProductData] = useState<any | null>(null);
 
   useEffect(() => {
+    // Fast path: Check local storage first for instant loading
+    try {
+      const cached = localStorage.getItem("active_cashier_session");
+      if (cached) {
+        const session = JSON.parse(cached);
+        if (session.features?.canUseMasterScanner || session.role === "owner" || session.role === "admin_editor") {
+          setCheckingAuth(false);
+          return; // Skip Firebase auth check to load instantly!
+        }
+      }
+    } catch (e) {
+      console.log("Local storage session parse error", e);
+    }
+
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (!user) {
         router.push("/cashier/login");
@@ -132,7 +146,7 @@ export default function MasterScannerPage() {
                   <Banknote className="h-3 w-3" /> Price
                 </p>
                 <p className="text-xl font-black text-emerald-400">
-                  {productData.sellPrice ? `${productData.sellPrice} EGP` : 'N/A'}
+                  {productData.sellPrice || productData.price || productData.sellingPrice ? `${productData.sellPrice || productData.price || productData.sellingPrice} EGP` : 'N/A'}
                 </p>
               </div>
               <div className="bg-[#151E32] rounded-xl p-3 border border-slate-800">
@@ -140,7 +154,7 @@ export default function MasterScannerPage() {
                   <Package className="h-3 w-3" /> Cost
                 </p>
                 <p className="text-xl font-black text-rose-400">
-                  {productData.costPrice ? `${productData.costPrice} EGP` : 'N/A'}
+                  {productData.costPrice || productData.cost || productData.purchasePrice ? `${productData.costPrice || productData.cost || productData.purchasePrice} EGP` : 'N/A'}
                 </p>
               </div>
             </div>

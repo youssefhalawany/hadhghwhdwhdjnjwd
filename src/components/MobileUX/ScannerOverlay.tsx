@@ -12,6 +12,86 @@ interface ScannerOverlayProps {
 export function ScannerOverlay({ onScan, onClose }: ScannerOverlayProps) {
   const [manualInput, setManualInput] = useState("");
 
+  const [scannerError, setScannerError] = useState("");
+  const scannerRef = React.useRef<any>(null);
+  const audioCtxRef = React.useRef<any>(null);
+
+  useEffect(() => {
+    // Only initialize scanner on mount
+    const initAudio = () => {
+      try {
+        if (!audioCtxRef.current) {
+          audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        }
+        if (audioCtxRef.current.state === "suspended") {
+          audioCtxRef.current.resume();
+        }
+      } catch(e) {}
+    };
+
+    const startScanner = async () => {
+      initAudio();
+      
+      // Dynamic import to avoid SSR issues
+      const { Html5Qrcode } = await import("html5-qrcode");
+      
+      setTimeout(async () => {
+        try {
+          const html5QrCode = new Html5Qrcode("master-scanner-reader");
+          const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+          const startWithConstraints = async (constraints: any) => {
+            return html5QrCode.start(
+              constraints,
+              config,
+              (decodedText) => {
+                try {
+                  const ctx = audioCtxRef.current;
+                  if (ctx) {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.type = "sine";
+                    osc.frequency.setValueAtTime(800, ctx.currentTime);
+                    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.15);
+                  }
+                } catch (e) {}
+                vibrateSuccess();
+                onScan(decodedText);
+              },
+              undefined
+            );
+          };
+
+          try {
+            await startWithConstraints({ facingMode: "environment" });
+            scannerRef.current = html5QrCode;
+          } catch (err) {
+            try {
+              await startWithConstraints({ video: true });
+              scannerRef.current = html5QrCode;
+            } catch (fallbackErr) {
+              setScannerError("Camera error. Please grant permissions.");
+            }
+          }
+        } catch (err: any) {
+          setScannerError("Scanner error.");
+        }
+      }, 300);
+    };
+
+    startScanner();
+
+    return () => {
+      if (scannerRef.current) {
+        try { scannerRef.current.stop(); } catch (e) {}
+      }
+    };
+  }, [onScan]);
+
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (manualInput.trim()) {
@@ -23,32 +103,21 @@ export function ScannerOverlay({ onScan, onClose }: ScannerOverlayProps) {
   };
 
   return (
-    <div className="relative w-full h-[70vh] flex flex-col bg-[#050810] rounded-xl overflow-hidden shadow-inner border border-slate-800">
+    <div className="relative w-full flex flex-col bg-[#050810] rounded-xl overflow-hidden shadow-inner border border-slate-800">
       
-      {/* Camera Area Mock */}
-      <div className="flex-1 relative flex items-center justify-center overflow-hidden">
-        {/* Placeholder for actual camera feed (e.g. react-qr-reader) */}
-        <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"></div>
-
-        {/* Targeting Box */}
-        <div className="relative w-64 h-64 border-2 border-cyan-500/50 rounded-2xl flex items-center justify-center z-10 shadow-[0_0_40px_rgba(34,211,238,0.2)]">
-          {/* Corner Markers */}
-          <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-cyan-400 rounded-tl-xl -ml-[2px] -mt-[2px]" />
-          <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-cyan-400 rounded-tr-xl -mr-[2px] -mt-[2px]" />
-          <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-cyan-400 rounded-bl-xl -ml-[2px] -mb-[2px]" />
-          <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-cyan-400 rounded-br-xl -mr-[2px] -mb-[2px]" />
-          
-          {/* Scanning Laser Animation */}
-          <div className="absolute w-full h-0.5 bg-red-500 shadow-[0_0_15px_rgba(239,68,68,1)] animate-scan-laser" />
-        </div>
-
-        {/* Scanning Instructions */}
-        <div className="absolute top-8 left-0 right-0 flex justify-center z-20">
-          <div className="bg-black/60 backdrop-blur px-6 py-2 rounded-full border border-white/10 text-cyan-50 flex items-center gap-2 shadow-lg">
-            <ScanLine size={16} className="text-cyan-400" />
-            <span className="text-sm font-medium">Align barcode within the frame</span>
+      {/* Camera Area */}
+      <div className="flex-1 relative flex items-center justify-center overflow-hidden min-h-[350px] bg-white">
+        {scannerError ? (
+          <div className="absolute inset-0 bg-[#050810] flex items-center justify-center z-30 flex-col px-6 text-center">
+             <div className="w-16 h-16 rounded-full border-2 border-dashed border-red-500/50 flex items-center justify-center mb-4">
+                <ScanLine className="text-red-500 opacity-50" />
+             </div>
+             <p className="text-red-400 font-bold mb-2">{scannerError}</p>
+             <p className="text-sm text-slate-500">You must allow camera access in your browser or phone settings to scan barcodes.</p>
           </div>
-        </div>
+        ) : (
+          <div id="master-scanner-reader" className="w-full h-full object-cover"></div>
+        )}
       </div>
 
       {/* Manual Entry Fallback */}
@@ -70,19 +139,6 @@ export function ScannerOverlay({ onScan, onClose }: ScannerOverlayProps) {
           </button>
         </form>
       </div>
-
-      {/* Inject animation keyframes for the laser */}
-      <style>{`
-        @keyframes scan-laser {
-          0% { transform: translateY(-120px); opacity: 0; }
-          10% { opacity: 1; }
-          90% { opacity: 1; }
-          100% { transform: translateY(120px); opacity: 0; }
-        }
-        .animate-scan-laser {
-          animation: scan-laser 2.5s infinite cubic-bezier(0.4, 0, 0.2, 1);
-        }
-      `}</style>
     </div>
   );
 }
