@@ -6,6 +6,8 @@ import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
 import { PageWrapper } from "@/components/PageWrapper";
 import { Sparkles, Calendar, User, Search, MapPin, Eye, Share2, X, FileText, Printer } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 interface CleaningLog {
   id: string;
@@ -72,41 +74,75 @@ export default function ManagerCleaningLogsPage() {
       ? (language === 'en' ? 'Morning Shift' : 'الوردية الصباحية')
       : (language === 'en' ? 'Night Shift' : 'الوردية المسائية');
 
-    const title = language === 'en' ? '*SHIFT CLEANING REPORT* 🧹' : '*تقرير نظافة الوردية* 🧹';
-    let text = `${title}\n*Date:* ${dateStr}\n*Shift:* ${shiftName}\n-----------------------\n`;
+    const title = language === 'en' ? 'Shift Cleaning Report' : 'تقرير نظافة الوردية';
 
-    generatedReportLogs.forEach((log) => {
-      const timeMatches = formatDate(log.timestamp, log.localTime).match(/(\d{1,2}:\d{2}\s(?:AM|PM|ص|م))/i);
-      const time = timeMatches ? timeMatches[0] : '';
-      const area = language === 'en' ? log.areaNameEn : log.areaNameAr;
-      text += `✅ *${area}* - ${log.cashierName} ${time ? `(${time})` : ''}\n`;
-    });
-
+    // Show loading text on button (optional, handled by fast processing)
     try {
-      if (navigator.share) {
-        const files: File[] = [];
-        for (let i = 0; i < generatedReportLogs.length; i++) {
-          const log = generatedReportLogs[i];
-          if (log.photoUrl.startsWith('data:')) {
-             const res = await fetch(log.photoUrl);
-             const blob = await res.blob();
-             files.push(new File([blob], `clean_${i+1}.jpg`, { type: 'image/jpeg' }));
-          }
-        }
+      const reportElement = document.getElementById("printable-report");
+      if (!reportElement) throw new Error("Report element not found");
 
-        if (navigator.canShare && navigator.canShare({ files: files.length > 0 ? files : undefined })) {
-          await navigator.share({
-            title: language === 'en' ? 'Shift Report' : 'تقرير الوردية',
-            text: text,
-            files: files.length > 0 ? files : undefined
-          });
-          return;
-        }
-      }
+      // Save original styles
+      const originalDisplay = reportElement.style.display;
+      const originalPosition = reportElement.style.position;
       
-      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+      // Temporarily modify for accurate capture
+      reportElement.style.display = 'block';
+
+      const canvas = await html2canvas(reportElement, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+
+      // Restore original styles
+      reportElement.style.display = originalDisplay;
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      
+      // Create PDF
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4"
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      
+      let position = 0;
+      let heightLeft = pdfHeight;
+
+      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft > 0) {
+        position = position - pageHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
+        heightLeft -= pageHeight;
+      }
+
+      const pdfBlob = pdf.output('blob');
+      const file = new File([pdfBlob], `Shift_Cleaning_Report_${reportDate}.pdf`, { type: 'application/pdf' });
+
+      const text = `*${title}*\n*Date:* ${dateStr}\n*Shift:* ${shiftName}\n(Please find the attached PDF report)`;
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: title,
+          text: text,
+          files: [file]
+        });
+      } else {
+        // Fallback for desktop: download PDF and open wa.me
+        pdf.save(`Shift_Cleaning_Report_${reportDate}.pdf`);
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+      }
     } catch (err) {
-      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+      console.error("Error generating PDF:", err);
+      alert(language === 'en' ? 'Error generating PDF report.' : 'حدث خطأ أثناء إنشاء التقرير.');
     }
   };
 
@@ -430,7 +466,7 @@ export default function ManagerCleaningLogsPage() {
             </div>
 
             {/* Printable Report Content */}
-            <div className="bg-white dark:bg-slate-900 print:bg-white p-6 md:p-10 rounded-3xl shadow-xl print:shadow-none border border-slate-200 dark:border-slate-800 print:border-none text-slate-900 dark:text-slate-900">
+            <div id="printable-report" className="bg-white dark:bg-slate-900 print:bg-white p-6 md:p-10 rounded-3xl shadow-xl print:shadow-none border border-slate-200 dark:border-slate-800 print:border-none text-slate-900 dark:text-slate-900">
               
               <div className="text-center mb-10 pb-6 border-b-2 border-slate-100 print:border-slate-300">
                 <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tight mb-2">
