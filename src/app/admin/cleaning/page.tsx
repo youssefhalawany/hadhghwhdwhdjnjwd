@@ -6,7 +6,7 @@ import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
 import { PageWrapper } from "@/components/PageWrapper";
 import { Sparkles, Calendar, User, Search, MapPin, Eye, Share2, X, FileText, Printer } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
-import html2canvas from "html2canvas";
+import domtoimage from "dom-to-image-more";
 import jsPDF from "jspdf";
 
 interface CleaningLog {
@@ -88,17 +88,14 @@ export default function ManagerCleaningLogsPage() {
       // Temporarily modify for accurate capture
       reportElement.style.display = 'block';
 
-      const canvas = await html2canvas(reportElement, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff'
+      // We use domtoimage to avoid "lab" color parsing errors from html2canvas
+      const imgData = await domtoimage.toJpeg(reportElement, { 
+        quality: 0.95, 
+        bgcolor: '#ffffff' 
       });
 
       // Restore original styles
       reportElement.style.display = originalDisplay;
-
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
       
       // Create PDF
       const pdf = new jsPDF({
@@ -108,7 +105,9 @@ export default function ManagerCleaningLogsPage() {
       });
 
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      // Calculate height based on aspect ratio
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
       const pageHeight = pdf.internal.pageSize.getHeight();
       
       let position = 0;

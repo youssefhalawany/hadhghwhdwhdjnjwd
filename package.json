@@ -18,6 +18,7 @@
     "clsx": "^2.1.1",
     "color-thief-react": "^2.1.0",
     "csv-parser": "^3.2.1",
+    "dom-to-image-more": "^3.10.2",
     "exceljs": "^4.4.0",
     "firebase": "^12.15.0",
     "firebase-admin": "^14.0.0",
