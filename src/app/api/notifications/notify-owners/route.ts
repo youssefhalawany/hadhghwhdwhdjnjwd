@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
-import * as admin from 'firebase-admin';
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import { getMessaging } from 'firebase-admin/messaging';
 
 // Initialize Firebase Admin if not already initialized
-if (!admin.apps.length) {
+if (!getApps().length) {
   try {
-    admin.initializeApp({
-      credential: admin.credential.cert({
+    initializeApp({
+      credential: cert({
         projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
         clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
         privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n'),
@@ -25,7 +27,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing title or message' }, { status: 400 });
     }
 
-    const db = admin.firestore();
+    const db = getFirestore();
     const usersSnapshot = await db.collection('users').where('role', 'in', ['owner', 'admin_editor', 'admin_viewer']).get();
     
     const tokens: string[] = [];
@@ -52,7 +54,7 @@ export async function POST(req: Request) {
       tokens: Array.from(new Set(tokens)), // Remove duplicates
     };
 
-    const response = await admin.messaging().sendEachForMulticast(payload);
+    const response = await getMessaging().sendEachForMulticast(payload);
     
     return NextResponse.json({ 
       success: true, 
