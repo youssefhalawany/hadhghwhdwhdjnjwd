@@ -38,20 +38,10 @@ export function OwnerBottomNav() {
 
   return (
     <div
+      className="fixed bottom-0 left-0 right-0 z-50 flex justify-around items-end bg-[#0B1121]/80 backdrop-blur-2xl border-t border-white/5"
       style={{
-        position: "fixed",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: 84, // Account for iOS home indicator
-        backgroundColor: "#151E32", // Match D.surface
-        borderTop: "1px solid rgba(34, 211, 238, 0.15)", // Match D.border
-        display: "flex",
-        justifyContent: "space-around",
-        alignItems: "flex-start",
         paddingTop: 12,
-        paddingBottom: "max(12px, env(safe-area-inset-bottom))",
-        zIndex: 50,
+        paddingBottom: "calc(16px + env(safe-area-inset-bottom))",
         direction: lang === "ar" ? "rtl" : "ltr"
       }}
     >
@@ -66,7 +56,7 @@ export function OwnerBottomNav() {
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              gap: 4,
+              gap: 6,
               flex: 1,
               background: "transparent",
               border: "none",
@@ -83,7 +73,7 @@ export function OwnerBottomNav() {
           >
             <div
               style={{
-                width: 44,
+                width: 48,
                 height: 32,
                 borderRadius: 16,
                 backgroundColor: isActive ? "rgba(34, 211, 238, 0.15)" : "transparent",
@@ -93,7 +83,7 @@ export function OwnerBottomNav() {
                 transition: "background-color 0.2s",
               }}
             >
-              <Icon size={20} color={isActive ? "#22d3ee" : "#64748b"} />
+              <Icon size={22} color={isActive ? "#22d3ee" : "#64748b"} strokeWidth={isActive ? 2.5 : 2} />
             </div>
             <span
               style={{

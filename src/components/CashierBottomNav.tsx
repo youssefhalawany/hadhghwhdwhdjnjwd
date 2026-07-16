@@ -92,13 +92,13 @@ export function CashierBottomNav({ lang: propLang = "en" }: Props) {
         )}
       </AnimatePresence>
 
-      <nav style={{
-        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200,
-        backgroundColor: D.bg, borderTop: `1px solid ${D.border}`,
-        display: "flex", alignItems: "center", justifyContent: "space-around",
-        paddingBottom: "env(safe-area-inset-bottom, 12px)",
-        paddingTop: 8,
-      }}>
+      <nav 
+        className="fixed bottom-0 left-0 right-0 z-[200] flex items-center justify-around bg-[#0B1121] border-t border-[rgba(34,211,238,0.15)]"
+        style={{
+          paddingBottom: "calc(16px + env(safe-area-inset-bottom))",
+          paddingTop: 12,
+        }}
+      >
         
         {/* Left Nav Item */}
         <NavItem item={MAIN_NAV[0]} pathname={pathname} onClick={() => handleNav(MAIN_NAV[0].href)} lang={lang} />
