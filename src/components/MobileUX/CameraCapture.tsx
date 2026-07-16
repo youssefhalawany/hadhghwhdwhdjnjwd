@@ -26,7 +26,6 @@ export function CameraCapture({ onPhotoUploaded, label }: CameraCaptureProps) {
     reader.onloadend = () => {
       const img = new Image();
       img.onload = () => {
-        // Compress image using canvas
         const canvas = document.createElement("canvas");
         const MAX_WIDTH = 800;
         const scaleSize = MAX_WIDTH / img.width;
@@ -39,25 +38,9 @@ export function CameraCapture({ onPhotoUploaded, label }: CameraCaptureProps) {
         const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.6);
         setPreview(compressedDataUrl);
 
-        // Upload data URL directly using uploadString
-        setUploading(true);
-        setProgress(10); // Show initial progress
-        const fileName = `checklists/proof_${Date.now()}_optimized.jpg`;
-        const storageRef = ref(productsStorage, fileName);
-        
-        import("firebase/storage").then(({ uploadString, getDownloadURL }) => {
-          uploadString(storageRef, compressedDataUrl, 'data_url')
-            .then(async (snapshot) => {
-              setProgress(100);
-              const downloadURL = await getDownloadURL(snapshot.ref);
-              setUploading(false);
-              onPhotoUploaded(downloadURL);
-            })
-            .catch((error) => {
-              console.error("Upload failed", error);
-              setUploading(false);
-            });
-        });
+        // Immediately pass the compressed base64 string to the parent
+        // This matches the "void upload" behavior and skips Firebase Storage
+        onPhotoUploaded(compressedDataUrl);
       };
       img.src = reader.result as string;
     };
