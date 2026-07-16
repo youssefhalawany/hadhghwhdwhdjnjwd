@@ -485,22 +485,43 @@ export default function ManagerCleaningLogsPage() {
                   {language === 'en' ? 'No cleaning tasks recorded during this shift.' : 'لم يتم تسجيل أي مهام نظافة خلال هذه الوردية.'}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 print:grid-cols-2">
+                <div className="flex flex-col gap-8 print:gap-12">
                   {generatedReportLogs.map((log, idx) => (
-                    <div key={log.id} className="flex gap-4 border border-slate-100 dark:border-slate-800 print:border-slate-300 p-4 rounded-2xl print:break-inside-avoid">
-                      <div className="w-24 h-24 shrink-0 bg-slate-100 rounded-xl overflow-hidden border border-slate-200">
+                    <div key={log.id} className="flex flex-col sm:flex-row gap-6 border border-slate-200 dark:border-slate-800 print:border-slate-400 p-6 rounded-3xl print:break-inside-avoid bg-slate-50 dark:bg-slate-800/50 print:bg-white">
+                      
+                      {/* Massive Image Container */}
+                      <div className="w-full sm:w-72 h-72 shrink-0 bg-slate-200 dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-300 dark:border-slate-700 shadow-inner">
                         <img src={log.photoUrl} alt="Cleaning" className="w-full h-full object-cover" />
                       </div>
-                      <div className="flex flex-col justify-center">
-                        <h3 className="font-black text-lg text-slate-800 dark:text-white print:text-black">
+                      
+                      {/* Big Details */}
+                      <div className="flex flex-col justify-center flex-1">
+                        <h3 className="font-black text-2xl md:text-3xl text-slate-900 dark:text-white print:text-black mb-4">
                           {idx + 1}. {language === 'en' ? log.areaNameEn : log.areaNameAr}
                         </h3>
-                        <div className="flex items-center gap-1.5 text-sm text-slate-500 font-medium mt-1">
-                          <User size={14} /> {log.cashierName}
+                        
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-3 text-lg font-bold text-slate-700 dark:text-slate-300 print:text-slate-800">
+                            <div className="bg-white dark:bg-slate-900 p-2 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800"><User size={20} className="text-cyan-500" /></div>
+                            {log.cashierName}
+                          </div>
+                          <div className="flex items-center gap-3 text-lg font-bold text-slate-700 dark:text-slate-300 print:text-slate-800">
+                            <div className="bg-white dark:bg-slate-900 p-2 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800"><Calendar size={20} className="text-cyan-500" /></div>
+                            {formatDate(log.timestamp, log.localTime)}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1.5 text-sm text-slate-500 font-medium mt-1">
-                          <Calendar size={14} /> {formatDate(log.timestamp, log.localTime)}
-                        </div>
+
+                        {/* Signature (if available) */}
+                        {log.signatureUrl && (
+                          <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700 print:border-slate-300">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">
+                              {language === 'en' ? 'Signature' : 'التوقيع'}
+                            </span>
+                            <div className="h-20 max-w-[200px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center justify-center p-2 shadow-sm">
+                              <img src={log.signatureUrl} alt="Signature" className="max-h-full max-w-full object-contain filter dark:invert print:invert-0" />
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
