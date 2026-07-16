@@ -11,6 +11,7 @@ import { CashierBottomNav } from "@/components/CashierBottomNav";
 import { CameraCapture } from "@/components/MobileUX/CameraCapture";
 import SignatureCanvas from "react-signature-canvas";
 import toast from "react-hot-toast";
+import { playSuccessSound } from "@/lib/sounds";
 
 const AREAS = [
   { id: "males_toilet", en: "Males Toilet", ar: "حمام الرجال" },
@@ -41,12 +42,13 @@ export default function CashierCleaningPage() {
   const [photoUrl, setPhotoUrl] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [cashierName, setCashierName] = useState("Unknown");
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const sigCanvas = useRef<SignatureCanvas>(null);
 
   useEffect(() => {
     // Attempt to get the logged-in cashier's name from localStorage
-    const savedSession = localStorage.getItem("ck_session");
+    const savedSession = localStorage.getItem("active_cashier_session");
     if (savedSession) {
       try {
         const parsed = JSON.parse(savedSession);
@@ -85,16 +87,19 @@ export default function CashierCleaningPage() {
         signatureUrl: signatureDataUrl,
         cashierName,
         timestamp: new Date().toISOString(),
+        localTime: new Date().toLocaleString("en-GB"), // e.g. 16/07/2026, 15:42:32
       };
 
       await addDoc(collection(productsDb, "cleaning_logs"), payload);
       
-      toast.success(language === 'en' ? 'Cleaning log submitted successfully!' : 'تم إرسال سجل النظافة بنجاح!');
-      router.push('/cashier');
+      playSuccessSound();
+      setShowSuccess(true);
+      setTimeout(() => {
+        router.push('/cashier');
+      }, 2000);
     } catch (error) {
       console.error("Error submitting cleaning log:", error);
       toast.error(language === 'en' ? 'Failed to submit.' : 'فشل الإرسال.');
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -207,6 +212,17 @@ export default function CashierCleaningPage() {
         </button>
 
       </main>
+
+      {showSuccess && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0B1121] animate-in fade-in duration-300">
+          <div className="h-32 w-32 bg-cyan-500/20 rounded-full flex items-center justify-center mb-6 animate-[pulse_1.5s_ease-in-out_infinite]">
+            <CheckCircle className="h-16 w-16 text-cyan-400 drop-shadow-[0_0_15px_rgba(34,211,238,0.8)]" />
+          </div>
+          <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 mb-2 drop-shadow-md">
+            {language === 'en' ? 'Submitted successfully!' : 'تم الإرسال بنجاح!'}
+          </h2>
+        </div>
+      )}
 
       <CashierBottomNav />
     </PageWrapper>
