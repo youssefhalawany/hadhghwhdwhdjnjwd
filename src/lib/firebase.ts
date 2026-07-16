@@ -43,6 +43,7 @@ const productsFirebaseConfig = {
 };
 const productsApp = getApps().find(a => a.name === "productsApp") || initializeApp(productsFirebaseConfig, "productsApp");
 export const productsDb = getFirestore(productsApp);
+export const productsStorage = getStorage(productsApp);
 
 export { app, db, productsApp };
 

@@ -7,6 +7,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PageWrapper } from "@/components/PageWrapper";
 import { motion } from "framer-motion";
 import { useBranch } from "@/context/BranchContext";
+import { productsDb } from "@/lib/firebase";
+import { collection, getDocs, query, orderBy, limit } from "firebase/firestore";
+import { useState, useEffect } from "react";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -14,12 +17,36 @@ export default function ManagerChecklistsPage() {
   const router = useRouter();
   const { currentBranch } = useBranch();
   
-  const { data, error, isLoading: loading } = useSWR("/api/checklists", fetcher, {
+  const { data, error, isLoading: apiLoading } = useSWR("/api/checklists", fetcher, {
     revalidateOnFocus: false, // Save Firebase reads!
     dedupingInterval: 60000, // Cache for 1 minute
   });
 
-  let checklists: any[] = data?.checklists || [];
+  const [productChecklists, setProductChecklists] = useState<any[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
+
+  useEffect(() => {
+    const fetchProductChecklists = async () => {
+      try {
+        const q = query(collection(productsDb, "audited_checklists"), orderBy("createdAt", "desc"), limit(20));
+        const snapshot = await getDocs(q);
+        const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setProductChecklists(docs);
+      } catch (err) {
+        console.error("Failed to fetch products db checklists", err);
+      } finally {
+        setLoadingProducts(false);
+      }
+    };
+    fetchProductChecklists();
+  }, []);
+
+  const loading = apiLoading || loadingProducts;
+
+  let allChecklistsCombined = [...(data?.checklists || []), ...productChecklists];
+  allChecklistsCombined.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  let checklists: any[] = allChecklistsCombined;
   if (currentBranch !== "all") {
     checklists = checklists.filter(cl => {
       if (cl.branchId) return cl.branchId === currentBranch;

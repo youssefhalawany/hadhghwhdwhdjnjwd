@@ -2,6 +2,8 @@ export interface ChecklistItem {
   id: string;
   text: string;
   score: number;
+  requiresPhoto?: boolean;
+  frequency?: string;
 }
 
 export interface ChecklistCategory {
@@ -349,27 +351,28 @@ export const temperatureChecklist: ChecklistSchema = {
 
 export const cleaningChecklist: ChecklistSchema = {
   id: "cleaning-checklist",
-  title: "نموذج متابعة نظافة الفرع",
-  version: "1.0",
+  title: "نموذج متابعة نظافة الفرع (Cleaning Tasks)",
+  version: "2.0",
   type: "hourly_cleaning",
-  totalScore: 16,
+  totalScore: 20,
   categories: [
     {
       id: "clean_ext",
-      title: "المنطقة الخارجية",
+      title: "المنطقة الخارجية والمداخل (Entrances)",
       items: [
         { id: "ce1", text: "الرصيف والارضية امام الفرع", score: 1 },
         { id: "ce2", text: "الترابيزات والكراسى فى المنطقة الخارجية", score: 1 },
         { id: "ce3", text: "بساكت التراش والارضية الترتان امام الفرع", score: 1 },
-        { id: "ce4", text: "زجاج اليافطة وزجاج باب الفرع", score: 1 }
+        { id: "ce4", text: "الأبواب (Doors) - نظافة كاملة للمقابض والزجاج", score: 1, requiresPhoto: true, frequency: "Morning" },
+        { id: "ce5", text: "النوافذ (Windows) - تلميع الزجاج من الداخل والخارج", score: 1, requiresPhoto: true, frequency: "Weekly" }
       ]
     },
     {
       id: "clean_int",
-      title: "داخل الفرع",
+      title: "داخل الفرع (Interior)",
       items: [
         { id: "ci1", text: "كونتر العملاء وطفايات السجائر", score: 1 },
-        { id: "ci2", text: "اسفل كونتر العملاء", score: 1 },
+        { id: "ci2", text: "محطة القهوة (Coffee Station) - تنظيف وتعبئة النواقص", score: 1, requiresPhoto: true, frequency: "Every 2 hours" },
         { id: "ci3", text: "الارضية داخل الفرع", score: 1 },
         { id: "ci4", text: "امام الكونتر وثلاجة الساندوتشات و كابينة البيكرى", score: 1 },
         { id: "ci5", text: "بساكت التراش بجوار كونتر العملاء وداخل الفرع", score: 1 }
@@ -377,9 +380,9 @@ export const cleaningChecklist: ChecklistSchema = {
     },
     {
       id: "clean_rr",
-      title: "دورات المياة",
+      title: "دورات المياة (Restrooms)",
       items: [
-        { id: "cr1", text: "المنطقة امام الحمامات نظيفة وخالية", score: 1 },
+        { id: "cr1", text: "دورة المياه (Toilet) - تعقيم وتلميع وتأكد من المناديل والصابون", score: 1, requiresPhoto: true, frequency: "Every hour" },
         { id: "cr2", text: "دسبنسر الصابون والمناديل ملىء بكميات كافية", score: 1 },
         { id: "cr3", text: "الحوض واسفل الحوض نظيف", score: 1 },
         { id: "cr4", text: "الارضية والحوائط والاركان نظيفة", score: 1 },

@@ -9,7 +9,7 @@ import {
   Lock, User as UserIcon, ChevronDown, FileText, Shield,
   Calendar as CalendarIcon, UserCircle, Globe, LogOut,
   Download, Bell, Fingerprint, ScanLine, ChevronRight,
-  ClipboardList, Clock, CheckSquare, LayoutGrid, LayoutDashboard, FileBarChart2
+  ClipboardList, Clock, CheckSquare, LayoutGrid, LayoutDashboard, FileBarChart2, Sparkles
 } from "lucide-react";
 import { CashierBottomNav } from "@/components/CashierBottomNav";
 import { PullToRefresh } from "@/components/MobileUX/PullToRefresh";
@@ -307,6 +307,7 @@ export default function CashierHubPage() {
       { id: "void", label: lang === "en" ? "Log a Void" : "تسجيل مرتجع", icon: Shield, path: "/voids/cashier" },
       { id: "expiry", label: lang === "en" ? "Expiry Tracker" : "تواريخ الصلاحية", icon: CalendarIcon, path: "/expiries" },
       { id: "checklist", label: lang === "en" ? "Checklists" : "قوائم المراجعة", icon: CheckSquare, path: "/checklists/cashier" },
+      { id: "cleaning", label: lang === "en" ? "Cleaning" : "النظافة", icon: Sparkles, path: "/cashier/cleaning" },
       { id: "account", label: lang === "en" ? "My Account" : "حسابي", icon: UserCircle, path: "/cashier/account" },
       { id: "schedule", label: lang === "en" ? "My Schedule" : "جدول العمل", icon: ClipboardList, path: "/cashier/schedule" },
       { id: "inventory", label: lang === "en" ? "Inventory Count" : "جرد المخزون", icon: ScanLine, path: "/inventory-audit/cashier" },

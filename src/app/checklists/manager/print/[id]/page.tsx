@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { db } from "@/lib/firebase";
+import { db, productsDb } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 import { allChecklists, mohamedAhmedChecklist } from "@/lib/checklists-data";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,8 +18,16 @@ import useSWR from "swr";
 
 const fetcher = async (url: string) => {
   const res = await fetch(url);
-  if (!res.ok) throw new Error("Checklist not found");
-  return res.json();
+  if (res.ok) return res.json();
+  
+  // If API fails (e.g. 404 because it's not in adminDb), try productsDb
+  const id = url.split('/').pop();
+  if (id) {
+    const docSnap = await getDoc(doc(productsDb, "audited_checklists", id));
+    if (docSnap.exists()) return { id: docSnap.id, ...docSnap.data() };
+  }
+  
+  throw new Error("Checklist not found");
 };
 
 export default function PrintChecklistPage() {
@@ -224,16 +233,27 @@ export default function PrintChecklistPage() {
               <tr className="bg-gray-200 print:bg-gray-200 print:exact-colors font-bold">
                 <td className="border border-black p-1 text-right pr-4" colSpan={hours.length + 1}>{cat.title}</td>
               </tr>
-              {cat.items.map((item) => (
-                <tr key={item.id}>
-                  <td className="border border-black p-1 text-right leading-tight">{item.text}</td>
-                  {hours.map(h => (
-                    <td key={h} className="border border-black p-0.5 font-bold text-green-600 text-sm">
-                      {isBlank ? "" : (data?.answers?.[item.id]?.[h] ? "✓" : "")}
+              {cat.items.map((item) => {
+                const photoUrl = !isBlank && data?.answers?.[item.id]?.photoUrl;
+                return (
+                  <tr key={item.id}>
+                    <td className="border border-black p-1 text-right leading-tight">
+                      {item.text}
+                      {photoUrl && (
+                        <div className="mt-1 print:hidden">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={photoUrl} alt="Proof" className="h-8 rounded cursor-pointer" onClick={() => window.open(photoUrl, "_blank")} />
+                        </div>
+                      )}
                     </td>
-                  ))}
-                </tr>
-              ))}
+                    {hours.map(h => (
+                      <td key={h} className="border border-black p-0.5 font-bold text-green-600 text-sm">
+                        {isBlank ? "" : (data?.answers?.[item.id]?.[h] ? "✓" : "")}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
             </tbody>
           ))}
         </table>

@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Receipt, Video, MessageSquare } from "lucide-react";
+import { Plus, Receipt, Video, MessageSquare, Tag } from "lucide-react";
 import { hapticMedium } from "@/lib/haptics";
 import { playPopSound } from "@/lib/sounds";
 import { useLanguage } from "@/context/LanguageContext";
@@ -11,6 +12,7 @@ import { showIsland } from "@/components/MobileUX/DynamicIsland";
 export function QuickActionsFAB() {
   const [isOpen, setIsOpen] = useState(false);
   const { language } = useLanguage();
+  const router = useRouter();
 
   const toggleOpen = () => {
     if ('vibrate' in navigator) vibrate(20);
@@ -31,6 +33,7 @@ export function QuickActionsFAB() {
 
   const actions = [
     { icon: <MessageSquare size={20} />, label: language === "en" ? "Message Shift" : "مراسلة الوردية", onClick: () => handleAction(language === "en" ? "Opening Messages..." : "جاري فتح الرسائل...") },
+    { icon: <Tag size={20} />, label: language === "en" ? "Manage Offers" : "إدارة العروض", onClick: () => { setIsOpen(false); router.push('/admin/offers'); } },
     { icon: <Video size={20} />, label: language === "en" ? "View CCTV" : "كاميرات المراقبة", onClick: () => handleAction(language === "en" ? "Connecting to Cameras..." : "جاري الاتصال بالكاميرات...") },
     { icon: <Receipt size={20} />, label: language === "en" ? "Add Expense" : "إضافة مصروف", onClick: () => handleAction(language === "en" ? "Opening Expense Form..." : "فتح نموذج المصروفات...") }
   ];

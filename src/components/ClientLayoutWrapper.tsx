@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sun, Moon, Shield, Database, LayoutDashboard, FileText, Printer, ClipboardList, CheckCircle, Search, LogOut, User, Users, Menu, X, Bell, PackageX, Truck, CalendarDays, DollarSign, Activity, Wallet } from "lucide-react";
+import { Sun, Moon, Shield, Database, LayoutDashboard, FileText, Printer, ClipboardList, CheckCircle, Search, LogOut, User, Users, Menu, X, Bell, PackageX, Truck, CalendarDays, DollarSign, Activity, Wallet, Tag, Sparkles } from "lucide-react";
 import { auth, messaging, dbService, db } from "@/lib/firebase";
 import { getToken } from "firebase/messaging";
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
@@ -292,6 +292,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
         { name: t("nav.smart_scheduler"), href: "/admin/schedule", icon: CalendarDays }
       ]
     },
+    { name: language === "ar" ? "إدارة العروض" : "Manage Offers", href: "/admin/offers", icon: Tag },
+    { name: language === "ar" ? "سجلات النظافة" : "Cleaning Logs", href: "/admin/cleaning", icon: Sparkles },
     { name: t("nav.checklists"), href: "/checklists/manager", icon: ClipboardList },
     {
       name: t("nav.admin"), icon: Shield, children: [

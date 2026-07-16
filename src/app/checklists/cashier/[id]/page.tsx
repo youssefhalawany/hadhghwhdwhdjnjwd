@@ -5,9 +5,10 @@ import { useRouter, useParams } from "next/navigation";
 import { ChevronLeft, Save, AlertTriangle } from "lucide-react";
 import { allChecklists } from "@/lib/checklists-data";
 import { collection, addDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db, productsDb } from "@/lib/firebase";
 import { toast } from "sonner";
 import { PageWrapper } from "@/components/PageWrapper";
+import { CameraCapture } from "@/components/MobileUX/CameraCapture";
 
 export default function ChecklistFillPage() {
   const router = useRouter();
@@ -85,11 +86,18 @@ export default function ChecklistFillPage() {
         const ans = answers[item.id];
         if (checklist.type === "temperature_grid" || checklist.type === "hourly_cleaning") {
            // For grids, at least one cell in the row must be filled
-           if (!ans || !Object.values(ans).some(val => val !== "" && val !== false)) {
+           const hasValue = ans && Object.keys(ans).some(k => k !== 'photoUrl' && ans[k] !== "" && ans[k] !== false);
+           if (!hasValue) {
+             unanswered++;
+           } else if (item.requiresPhoto && !ans.photoUrl) {
              unanswered++;
            }
         } else {
-           if (!ans) unanswered++;
+           if (!ans) {
+             unanswered++;
+           } else if (item.requiresPhoto && !ans.photoUrl) {
+             unanswered++;
+           }
         }
       });
     });
@@ -114,16 +122,20 @@ export default function ChecklistFillPage() {
         createdAt: new Date().toISOString()
       };
 
-      const response = await fetch('/api/submit-checklist', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
+      if (checklist.id === "cleaning-checklist") {
+        await addDoc(collection(productsDb, "audited_checklists"), payload);
+      } else {
+        const response = await fetch('/api/submit-checklist', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
 
-      if (!response.ok) {
-        throw new Error("Failed to submit checklist to server");
+        if (!response.ok) {
+          throw new Error("Failed to submit checklist to server");
+        }
       }
 
       toast.success("تم إرسال قائمة المراجعة بنجاح!");
@@ -238,13 +250,42 @@ export default function ChecklistFillPage() {
                   };
 
                   return (
-                    <div key={item.id} className={`p-4 flex flex-col ${checklist.type === 'yes_no' || checklist.type === 'food_dept' ? 'sm:flex-row sm:items-center' : ''} gap-4 justify-between hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors`}>
-                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300 flex-1 leading-relaxed">
-                        {item.text} <span className="text-slate-400 text-[10px] ml-2">({item.score} pts)</span>
-                      </p>
-                      <div className="w-full sm:w-auto">
-                        {renderInput(item)}
+                    <div key={item.id} className="p-4 flex flex-col gap-4 border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
+                      <div className={`flex flex-col ${checklist.type === 'yes_no' || checklist.type === 'food_dept' ? 'sm:flex-row sm:items-center' : ''} gap-4 justify-between w-full`}>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-slate-700 dark:text-slate-300 leading-relaxed">
+                            {item.text} <span className="text-slate-400 text-[10px] ml-2">({item.score} pts)</span>
+                          </p>
+                          {item.frequency && (
+                            <span className="inline-block mt-1 px-2 py-0.5 bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400 text-[10px] font-bold rounded">
+                              {item.frequency}
+                            </span>
+                          )}
+                        </div>
+                        <div className="w-full sm:w-auto">
+                          {renderInput(item)}
+                        </div>
                       </div>
+                      
+                      {item.requiresPhoto && (
+                        <div className="mt-2 w-full max-w-sm">
+                          <CameraCapture 
+                            onPhotoUploaded={(url) => {
+                              if (checklist.type === "temperature_grid" || checklist.type === "hourly_cleaning") {
+                                handleGridAnswer(item.id, "photoUrl", url);
+                              } else {
+                                setAnswers(prev => ({
+                                  ...prev,
+                                  [item.id]: {
+                                    value: typeof prev[item.id] === 'string' ? prev[item.id] : prev[item.id]?.value,
+                                    photoUrl: url
+                                  }
+                                }));
+                              }
+                            }} 
+                          />
+                        </div>
+                      )}
                     </div>
                   );
                 })}
