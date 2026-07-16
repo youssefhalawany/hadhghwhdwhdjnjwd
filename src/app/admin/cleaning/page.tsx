@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { productsDb } from "@/lib/firebase";
 import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
 import { PageWrapper } from "@/components/PageWrapper";
-import { Sparkles, Calendar, User, Search, MapPin, Eye } from "lucide-react";
+import { Sparkles, Calendar, User, Search, MapPin, Eye, Share2, X } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 
 interface CleaningLog {
@@ -29,7 +29,43 @@ export default function ManagerCleaningLogsPage() {
   const [dateFilter, setDateFilter] = useState("all_time"); // all_time, today, yesterday, this_week, this_month
   const [cashierFilter, setCashierFilter] = useState("all");
   
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedLog, setSelectedLog] = useState<CleaningLog | null>(null);
+
+  const shareToWhatsApp = async (log: CleaningLog) => {
+    try {
+      const formattedDate = formatDate(log.timestamp, log.localTime);
+      const text = language === 'en' 
+        ? `*Cleaning Report*\nArea: ${log.areaNameEn}\nCashier: ${log.cashierName}\nDate: ${formattedDate}`
+        : `*تقرير النظافة*\nالمنطقة: ${log.areaNameAr}\nالصراف: ${log.cashierName}\nالتاريخ: ${formattedDate}`;
+
+      if (navigator.share) {
+        let file: File | null = null;
+        if (log.photoUrl.startsWith('data:')) {
+          const res = await fetch(log.photoUrl);
+          const blob = await res.blob();
+          file = new File([blob], `cleaning_${log.cashierName.replace(/\s+/g, '_')}.jpg`, { type: 'image/jpeg' });
+        }
+        
+        if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            title: language === 'en' ? 'Cleaning Report' : 'تقرير النظافة',
+            text: text,
+            files: [file]
+          });
+          return;
+        }
+      }
+
+      // Fallback
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    } catch (err) {
+      console.error("Error sharing:", err);
+      // fallback
+      const formattedDate = formatDate(log.timestamp, log.localTime);
+      const text = `*Cleaning Report*\nArea: ${log.areaNameEn}\nCashier: ${log.cashierName}\nDate: ${formattedDate}`;
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    }
+  };
 
   useEffect(() => {
     const q = query(collection(productsDb, "cleaning_logs"), orderBy("timestamp", "desc"));
@@ -169,7 +205,7 @@ export default function ManagerCleaningLogsPage() {
                 {/* Photo Header */}
                 <div 
                   className="h-48 w-full bg-slate-100 dark:bg-slate-800 relative group cursor-pointer"
-                  onClick={() => setSelectedImage(log.photoUrl)}
+                  onClick={() => setSelectedLog(log)}
                 >
                   <img src={log.photoUrl} alt={log.areaNameEn} className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
@@ -216,12 +252,28 @@ export default function ManagerCleaningLogsPage() {
       </main>
 
       {/* Full Image Modal */}
-      {selectedImage && (
-        <div 
-          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 cursor-pointer"
-          onClick={() => setSelectedImage(null)}
-        >
-          <img src={selectedImage} alt="Full view" className="max-w-full max-h-full rounded-2xl object-contain shadow-2xl" />
+      {selectedLog && (
+        <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-md flex flex-col items-center justify-center p-4">
+          <div className="relative w-full max-w-lg flex flex-col items-center">
+            <button 
+              onClick={() => setSelectedLog(null)} 
+              className="absolute -top-12 right-0 text-white bg-white/10 hover:bg-white/20 rounded-full p-2 transition-colors"
+            >
+              <X size={24} />
+            </button>
+            
+            <img src={selectedLog.photoUrl} alt="Full view" className="max-w-full max-h-[70vh] rounded-2xl object-contain shadow-2xl" />
+            
+            <div className="w-full mt-6 flex flex-col items-center gap-4">
+              <button 
+                onClick={(e) => { e.stopPropagation(); shareToWhatsApp(selectedLog); }}
+                className="w-full flex items-center justify-center gap-2 bg-[#25D366] text-white px-6 py-4 rounded-2xl font-bold shadow-[0_0_20px_rgba(37,211,102,0.3)] active:scale-95 transition-transform text-lg"
+              >
+                <Share2 size={24} />
+                {language === 'en' ? 'Share to WhatsApp' : 'مشاركة عبر واتساب'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
