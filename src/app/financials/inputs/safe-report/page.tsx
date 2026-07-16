@@ -203,8 +203,8 @@ export default function SafeReportPage() {
       - (h.bankPayments + h.bankTaxes + h.bankCredits + h.depositsFromBank);
     const safeIn = p.salesCash + p.overAmount + p.depositsToSafe;
     const safeOut = p.shortAmount + p.totalCashPayments + p.totalCashTaxes + p.totalLoans + p.depositsFromSafe + p.totalOldCreditsCash + p.totalPayrolls;
-    const bankIn = p.visaSales + p.depositsFromSafe;
-    const bankOut = p.bankPayments + p.bankTaxes + p.bankCredits + p.depositsToSafe;
+    const bankIn = p.visaSales + p.depositsToBank;
+    const bankOut = p.bankPayments + p.bankTaxes + p.bankCredits + p.depositsFromBank;
     return { openingSafe, openingBank, closingSafe: openingSafe + safeIn - safeOut, closingBank: openingBank + bankIn - bankOut };
   };
 
@@ -282,8 +282,8 @@ export default function SafeReportPage() {
   const safeInflows  = reportData ? (reportData.period.salesCash + reportData.period.overAmount + reportData.period.depositsToSafe) : 0;
   const safeOutflows = reportData ? (reportData.period.shortAmount + reportData.period.totalCashPayments + reportData.period.totalCashTaxes + reportData.period.totalLoans + reportData.period.depositsFromSafe + reportData.period.totalOldCreditsCash + reportData.period.totalPayrolls) : 0;
   const closingSafe  = reportData ? reportData.openingSafeBalance + safeInflows - safeOutflows : 0;
-  const bankInflows  = reportData ? (reportData.period.visaSales + reportData.period.depositsFromSafe) : 0;
-  const bankOutflows = reportData ? (reportData.period.bankPayments + reportData.period.bankTaxes + reportData.period.bankCredits + reportData.period.depositsToSafe) : 0;
+  const bankInflows  = reportData ? (reportData.period.visaSales + reportData.period.depositsToBank) : 0;
+  const bankOutflows = reportData ? (reportData.period.bankPayments + reportData.period.bankTaxes + reportData.period.bankCredits + reportData.period.depositsFromBank) : 0;
   const closingBank  = reportData ? reportData.openingBankBalance + bankInflows - bankOutflows : 0;
 
   const fmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2 });
@@ -676,8 +676,8 @@ export default function SafeReportPage() {
                     </tr>
                     {[
                       ["Sales Visa · مبيعات الفيزا", "Card terminal settlements · مبيعات البطاقات", reportData.period.visaSales],
-                      ["Deposits from Safe · إيداعات من الخزنة", "Cash deposited to bank · نقد أودع في البنك", reportData.period.depositsFromSafe],
-                    ].map(([d, n, v]) => (
+                      ["Deposits to Bank · إيداعات للبنك", "Cash deposited to bank · نقد أودع في البنك", reportData.period.depositsToBank],
+                    ].map(([d, n, v], i) => (
                       <tr key={String(d)}>
                         <td className="py-1.5 px-3 pl-5">{d}</td>
                         <td className="py-1.5 px-3 text-[10px] italic" style={{ color: "#94a3b8" }}>{n}</td>
@@ -696,8 +696,8 @@ export default function SafeReportPage() {
                       ["Bank Payments · مدفوعات بنكية", "Transfers & visa expenses · تحويلات ومصاريف", reportData.period.bankPayments],
                       ["Taxes Paid (Bank) · الضرائب (بنك)", "Tax on bank payments · ضريبة المدفوعات البنكية", reportData.period.bankTaxes],
                       ["Credit Payments (Bank) · مدفوعات الائتمان (بنك)", "Debts settled via bank · ديون سددت بالبنك", reportData.period.bankCredits],
-                      ["Deposits (Bank→Safe) · إيداعات (البنك←الخزنة)", "Funds withdrawn to safe · سحب للخزنة", reportData.period.depositsToSafe],
-                    ].map(([d, n, v]) => (
+                      ["Deposits from Bank · سحوبات من البنك", "Funds withdrawn from bank · سحب من البنك", reportData.period.depositsFromBank],
+                    ].map(([d, n, v], i) => (
                       <tr key={String(d)}>
                         <td className="py-1.5 px-3 pl-5">{d}</td>
                         <td className="py-1.5 px-3 text-[10px] italic" style={{ color: "#94a3b8" }}>{n}</td>
