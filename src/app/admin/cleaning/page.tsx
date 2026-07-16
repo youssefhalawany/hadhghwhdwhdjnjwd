@@ -81,23 +81,9 @@ export default function ManagerCleaningLogsPage() {
       const reportElement = document.getElementById("printable-report");
       if (!reportElement) throw new Error("Report element not found");
 
-      // Save original styles
       const originalDisplay = reportElement.style.display;
-      const originalPosition = reportElement.style.position;
-      
-      // Temporarily modify for accurate capture
       reportElement.style.display = 'block';
 
-      // We use html-to-image because it handles modern React and Tailwind setups perfectly
-      const imgData = await toJpeg(reportElement, { 
-        quality: 0.95, 
-        backgroundColor: '#ffffff' 
-      });
-
-      // Restore original styles
-      reportElement.style.display = originalDisplay;
-      
-      // Create PDF
       const pdf = new jsPDF({
         orientation: "portrait",
         unit: "mm",
@@ -105,23 +91,52 @@ export default function ManagerCleaningLogsPage() {
       });
 
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      // Calculate height based on aspect ratio
-      const imgProps = pdf.getImageProperties(imgData);
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
       const pageHeight = pdf.internal.pageSize.getHeight();
       
-      let position = 0;
-      let heightLeft = pdfHeight;
+      let currentY = 10;
 
-      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft > 0) {
-        position = position - pageHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
-        heightLeft -= pageHeight;
+      // 1. Capture Header
+      const headerElement = document.getElementById("report-header");
+      if (headerElement) {
+        const headerImg = await toJpeg(headerElement, { quality: 1.0, backgroundColor: '#ffffff', pixelRatio: 2 });
+        const hProps = pdf.getImageProperties(headerImg);
+        const hHeight = (hProps.height * pdfWidth) / hProps.width;
+        pdf.addImage(headerImg, 'JPEG', 0, currentY, pdfWidth, hHeight);
+        currentY += hHeight + 10;
       }
+
+      // 2. Capture Each Log (One per page)
+      for (let i = 0; i < generatedReportLogs.length; i++) {
+        const logElement = document.getElementById(`report-log-${i}`);
+        if (logElement) {
+          const logImg = await toJpeg(logElement, { quality: 0.95, backgroundColor: '#ffffff', pixelRatio: 2 });
+          const lProps = pdf.getImageProperties(logImg);
+          
+          let lWidth = pdfWidth - 20; // 10mm padding on sides
+          let lHeight = (lProps.height * lWidth) / lProps.width;
+          
+          const maxAllowedHeight = pageHeight - currentY - 10;
+          
+          // Shrink if it exceeds the remaining page height
+          if (lHeight > maxAllowedHeight) {
+            const ratio = maxAllowedHeight / lHeight;
+            lHeight = lHeight * ratio;
+            lWidth = lWidth * ratio;
+          }
+          
+          const xOffset = (pdfWidth - lWidth) / 2;
+          pdf.addImage(logImg, 'JPEG', xOffset, currentY, lWidth, lHeight);
+          
+          // Add a new page for the next record
+          if (i < generatedReportLogs.length - 1) {
+            pdf.addPage();
+            currentY = 10;
+          }
+        }
+      }
+
+      // Restore original styles
+      reportElement.style.display = originalDisplay;
 
       const pdfBlob = pdf.output('blob');
       const file = new File([pdfBlob], `Shift_Cleaning_Report_${reportDate}.pdf`, { type: 'application/pdf' });
@@ -135,7 +150,6 @@ export default function ManagerCleaningLogsPage() {
           files: [file]
         });
       } else {
-        // Fallback for desktop: download PDF and open wa.me
         pdf.save(`Shift_Cleaning_Report_${reportDate}.pdf`);
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
       }
@@ -467,8 +481,8 @@ export default function ManagerCleaningLogsPage() {
             {/* Printable Report Content */}
             <div id="printable-report" className="bg-white dark:bg-slate-900 print:bg-white p-6 md:p-10 rounded-3xl shadow-xl print:shadow-none border border-slate-200 dark:border-slate-800 print:border-none text-slate-900 dark:text-slate-900">
               
-              <div className="text-center mb-10 pb-6 border-b-2 border-slate-100 print:border-slate-300">
-                <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tight mb-2">
+              <div id="report-header" className="text-center mb-10 pb-6 border-b-2 border-slate-100 print:border-slate-300 bg-white">
+                <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tight mb-2 text-black">
                   {language === 'en' ? 'Shift Cleaning Report' : 'تقرير نظافة الوردية'}
                 </h1>
                 <p className="text-lg text-slate-500 print:text-slate-700 font-medium">
@@ -487,7 +501,7 @@ export default function ManagerCleaningLogsPage() {
               ) : (
                 <div className="flex flex-col gap-8 print:gap-12">
                   {generatedReportLogs.map((log, idx) => (
-                    <div key={log.id} className="flex flex-col sm:flex-row gap-6 border border-slate-200 dark:border-slate-800 print:border-slate-400 p-6 rounded-3xl print:break-inside-avoid bg-slate-50 dark:bg-slate-800/50 print:bg-white">
+                    <div id={`report-log-${idx}`} key={log.id} className="flex flex-col sm:flex-row gap-6 border border-slate-200 dark:border-slate-800 print:border-slate-400 p-6 rounded-3xl print:break-inside-avoid bg-white dark:bg-slate-800/50 print:bg-white">
                       
                       {/* Massive Image Container */}
                       <div className="w-full sm:w-72 h-72 shrink-0 bg-slate-200 dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-300 dark:border-slate-700 shadow-inner">
