@@ -6,7 +6,7 @@ import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
 import { PageWrapper } from "@/components/PageWrapper";
 import { Sparkles, Calendar, User, Search, MapPin, Eye, Share2, X, FileText, Printer } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
-import domtoimage from "dom-to-image-more";
+import { toJpeg } from "html-to-image";
 import jsPDF from "jspdf";
 
 interface CleaningLog {
@@ -88,10 +88,10 @@ export default function ManagerCleaningLogsPage() {
       // Temporarily modify for accurate capture
       reportElement.style.display = 'block';
 
-      // We use domtoimage to avoid "lab" color parsing errors from html2canvas
-      const imgData = await domtoimage.toJpeg(reportElement, { 
+      // We use html-to-image because it handles modern React and Tailwind setups perfectly
+      const imgData = await toJpeg(reportElement, { 
         quality: 0.95, 
-        bgcolor: '#ffffff' 
+        backgroundColor: '#ffffff' 
       });
 
       // Restore original styles
@@ -139,9 +139,9 @@ export default function ManagerCleaningLogsPage() {
         pdf.save(`Shift_Cleaning_Report_${reportDate}.pdf`);
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error generating PDF:", err);
-      alert(language === 'en' ? 'Error generating PDF report.' : 'حدث خطأ أثناء إنشاء التقرير.');
+      alert((language === 'en' ? 'Error generating PDF report: ' : 'حدث خطأ أثناء إنشاء التقرير: ') + err.message);
     }
   };
 
