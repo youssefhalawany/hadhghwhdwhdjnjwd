@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ScannerOverlay } from "@/components/MobileUX/ScannerOverlay";
 import { ChevronLeft, PackageSearch, Activity, Package, Banknote, Calendar, Tag, Factory } from "lucide-react";
 import { collection, query, where, limit, getDocs, doc, getDoc } from "firebase/firestore";
-import { db, auth } from "@/lib/firebase";
+import { db, auth, productsDb } from "@/lib/firebase";
 import toast from "react-hot-toast";
 
 export default function MasterScannerPage() {
@@ -58,18 +58,29 @@ export default function MasterScannerPage() {
     setLoading(true);
     setProductData(null);
     try {
-      // Find in products
-      const q = query(collection(db, "products"), where("barcode", "==", barcode), limit(1));
+      // Find in productsDb (Secondary Firebase)
+      const q = query(collection(productsDb, "products"), where("barcode", "==", barcode), limit(1));
       const snap = await getDocs(q);
+      
+      // Also try to check by document ID just in case
+      let foundData = null;
+      if (!snap.empty) {
+        const pDoc = snap.docs[0];
+        foundData = { id: pDoc.id, ...pDoc.data() };
+      } else {
+        const docRef = await getDoc(doc(productsDb, "products", barcode));
+        if (docRef.exists()) {
+          foundData = { id: docRef.id, ...docRef.data() };
+        }
+      }
 
-      if (snap.empty) {
+      if (!foundData) {
         toast.error(`No product found for barcode: ${barcode}`);
         setLoading(false);
         return;
       }
 
-      const pDoc = snap.docs[0];
-      setProductData({ id: pDoc.id, ...pDoc.data() });
+      setProductData(foundData);
       toast.success("Product found!");
     } catch (error: any) {
       console.error(error);
@@ -146,7 +157,7 @@ export default function MasterScannerPage() {
                   <Banknote className="h-3 w-3" /> Price
                 </p>
                 <p className="text-xl font-black text-emerald-400">
-                  {productData.sellPrice || productData.price || productData.sellingPrice ? `${productData.sellPrice || productData.price || productData.sellingPrice} EGP` : 'N/A'}
+                  {productData.currentPrice || productData.sellPrice || productData.price || productData.sellingPrice ? `${productData.currentPrice || productData.sellPrice || productData.price || productData.sellingPrice} EGP` : 'N/A'}
                 </p>
               </div>
               <div className="bg-[#151E32] rounded-xl p-3 border border-slate-800">
