@@ -36,37 +36,28 @@ export function CameraCapture({ onPhotoUploaded, label }: CameraCaptureProps) {
         const ctx = canvas.getContext("2d");
         ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
         
-        const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.7);
+        const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.6);
         setPreview(compressedDataUrl);
 
-        // Convert data URL back to Blob for upload
-        fetch(compressedDataUrl)
-          .then(res => res.blob())
-          .then(blob => {
-            // Start upload with compressed blob
-            setUploading(true);
-            const fileName = `checklists/proof_${Date.now()}_optimized.jpg`;
-            const storageRef = ref(productsStorage, fileName);
-            
-            const uploadTask = uploadBytesResumable(storageRef, blob);
-
-            uploadTask.on(
-              "state_changed",
-              (snapshot) => {
-                const p = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                setProgress(p);
-              },
-              (error) => {
-                console.error("Upload failed", error);
-                setUploading(false);
-              },
-              async () => {
-                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                setUploading(false);
-                onPhotoUploaded(downloadURL);
-              }
-            );
-          });
+        // Upload data URL directly using uploadString
+        setUploading(true);
+        setProgress(10); // Show initial progress
+        const fileName = `checklists/proof_${Date.now()}_optimized.jpg`;
+        const storageRef = ref(productsStorage, fileName);
+        
+        import("firebase/storage").then(({ uploadString, getDownloadURL }) => {
+          uploadString(storageRef, compressedDataUrl, 'data_url')
+            .then(async (snapshot) => {
+              setProgress(100);
+              const downloadURL = await getDownloadURL(snapshot.ref);
+              setUploading(false);
+              onPhotoUploaded(downloadURL);
+            })
+            .catch((error) => {
+              console.error("Upload failed", error);
+              setUploading(false);
+            });
+        });
       };
       img.src = reader.result as string;
     };
