@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
   BarChart3, FileText, Database, ArrowRight, 
-  Wallet, Shield, TrendingUp, Tags, FileCode, CheckCircle, Clock
+  Wallet, Shield, TrendingUp, Tags, FileCode, CheckCircle, Clock, Download
 } from "lucide-react";
 
 export default function FinancialReportsHub() {
@@ -115,6 +115,29 @@ export default function FinancialReportsHub() {
               </Link>
             );
           })}
+        </div>
+
+        {/* Download Section */}
+        <div className="mt-12 pt-8 border-t border-border">
+          <div className="bg-primary/5 border border-primary/20 rounded-3xl p-8 flex flex-col sm:flex-row items-center justify-between gap-6">
+            <div>
+              <h3 className="text-xl font-bold text-foreground mb-2 flex items-center gap-2">
+                <Download className="h-6 w-6 text-primary" />
+                Cashier Desktop App
+              </h3>
+              <p className="text-muted-foreground text-sm sm:text-base max-w-xl">
+                Download the latest version of the Circle K Cashier Desktop Application. This setup file will install the offline-first cashier system on Windows machines.
+              </p>
+            </div>
+            <a 
+              href="/cashier-setup.exe" 
+              download
+              className="whitespace-nowrap flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold rounded-xl transition-colors shadow-sm"
+            >
+              <Download className="h-5 w-5" />
+              Download Setup (.exe)
+            </a>
+          </div>
         </div>
       </div>
     </div>

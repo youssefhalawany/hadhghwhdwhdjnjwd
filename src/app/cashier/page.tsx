@@ -370,31 +370,43 @@ export default function CashierHubPage() {
                 {lang === "en" ? "Operations" : "العمليات"}
               </div>
 
-              {/* Action Grid (Replacing List) */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              {/* Action Grid (Upgraded for POS Touch Screen) */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 16, marginTop: 12 }}>
                 {actions.map((a: any) => {
                   const Icon = a.icon;
+                  // Assign unique gradients based on the action type for a premium look
+                  let bgGradient = "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)";
+                  let iconColor = D.cyan;
+                  let iconBg = D.cyanDim;
+                  let borderColor = "rgba(255,255,255,0.05)";
+
+                  if (a.id === "shift") { bgGradient = "linear-gradient(135deg, #164e63 0%, #083344 100%)"; iconColor = "#22d3ee"; iconBg = "rgba(34,211,238,0.2)"; borderColor = "rgba(34,211,238,0.3)"; }
+                  if (a.id === "void") { bgGradient = "linear-gradient(135deg, #7f1d1d 0%, #450a0a 100%)"; iconColor = "#f87171"; iconBg = "rgba(248,113,113,0.2)"; borderColor = "rgba(248,113,113,0.3)"; }
+                  if (a.id === "inventory") { bgGradient = "linear-gradient(135deg, #065f46 0%, #022c22 100%)"; iconColor = "#34d399"; iconBg = "rgba(52,211,153,0.2)"; borderColor = "rgba(52,211,153,0.3)"; }
+
                   return (
                     <button
                       key={a.id}
                       onClick={() => nav(a.path)}
                       style={{
-                        display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 12,
-                        padding: "16px", borderRadius: 20, background: D.surface, border: `1px solid ${D.border}`,
-                        cursor: "pointer", textAlign: isRTL ? "right" : "left", transition: "all 0.1s"
+                        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16,
+                        padding: "24px 16px", borderRadius: 24, background: bgGradient, border: `1px solid ${borderColor}`,
+                        boxShadow: "0 8px 32px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,0.1)",
+                        cursor: "pointer", textAlign: "center", transition: "all 0.15s cubic-bezier(0.4, 0, 0.2, 1)",
+                        position: "relative", overflow: "hidden"
                       }}
-                      onTouchStart={e => { e.currentTarget.style.transform = "scale(0.96)"; e.currentTarget.style.backgroundColor = D.surfaceHigh; }}
-                      onTouchEnd={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.backgroundColor = D.surface; }}
+                      onPointerDown={e => { e.currentTarget.style.transform = "scale(0.94)"; e.currentTarget.style.filter = "brightness(1.2)"; }}
+                      onPointerUp={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.filter = "brightness(1)"; }}
+                      onPointerLeave={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.filter = "brightness(1)"; }}
                     >
-                      <div style={{ display: "flex", justifyContent: "space-between", width: "100%" }}>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 40, height: 40, borderRadius: 12, background: D.cyanDim, border: `1px solid ${D.cyanBorder}` }}>
-                          <Icon size={20} color={D.cyan} />
-                        </div>
-                        {a.badge && (
-                          <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 6px", borderRadius: 6, background: D.cyanDim, color: D.cyan, border: `1px solid ${D.cyanBorder}`, textTransform: "uppercase", height: 20, display: "flex", alignItems: "center" }}>{a.badge}</span>
-                        )}
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 56, height: 56, borderRadius: 16, background: iconBg, boxShadow: `0 4px 12px ${iconBg}` }}>
+                        <Icon size={28} color={iconColor} strokeWidth={2.5} />
                       </div>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: D.textPrimary, lineHeight: 1.3 }}>{a.label}</span>
+                      <span style={{ fontSize: 14, fontWeight: 800, color: "#fff", lineHeight: 1.2, letterSpacing: "0.02em" }}>{a.label}</span>
+                      
+                      {a.badge && (
+                        <span style={{ position: "absolute", top: 12, right: 12, fontSize: 10, fontWeight: 900, padding: "4px 8px", borderRadius: 8, background: D.cyan, color: D.bg, textTransform: "uppercase" }}>{a.badge}</span>
+                      )}
                     </button>
                   );
                 })}

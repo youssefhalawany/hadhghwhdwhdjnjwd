@@ -535,7 +535,45 @@ export default function CashierShiftReportPage() {
       }
     };
 
+    const triggerPrint = () => {
+      if (typeof window !== 'undefined' && (window as any).electronAPI) {
+        const html = `
+          <div style="text-align: center; margin-bottom: 10px; border-bottom: 1px dashed #000; padding-bottom: 10px;">
+            <h2 style="margin:0; font-size: 18px; font-weight: bold;">CIRCLE K</h2>
+            <p style="margin:5px 0 0; font-size: 14px; font-weight: bold;">End of Shift Report</p>
+          </div>
+          <div style="margin-bottom: 10px; font-size: 12px; line-height: 1.5;">
+            <p style="margin:0;"><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+            <p style="margin:0;"><strong>Time:</strong> ${new Date().toLocaleTimeString()}</p>
+            <p style="margin:0;"><strong>Cashier:</strong> ${c?.name || 'Unknown'}</p>
+            <p style="margin:0;"><strong>Store:</strong> ${c?.storeId || 'Unknown'}</p>
+            <p style="margin:0;"><strong>Shift:</strong> ${c?.shift || 'Unknown'}</p>
+          </div>
+          <div style="border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 10px 0; margin-bottom: 10px; font-size: 14px;">
+            <p style="margin:4px 0; display:flex; justify-content:space-between;"><span>Cash Drops:</span> <span>${calculateTotalCash()} EGP</span></p>
+            <p style="margin:4px 0; display:flex; justify-content:space-between;"><span>Visa Slips:</span> <span>${visa || 0} EGP</span></p>
+            <p style="margin:8px 0 0; font-size: 16px; font-weight:bold; display:flex; justify-content:space-between;"><span>TOTAL:</span> <span>${calculateTotalMoney()} EGP</span></p>
+          </div>
+          ${cashierRole === 1 ? `
+          <div style="margin-bottom: 10px; font-size: 12px;">
+            <p style="margin:0; font-weight: bold;">Inventory</p>
+            <p style="margin:0; display:flex; justify-content:space-between;"><span>Cigarettes (Packs):</span> <span>${Object.values(cigaretteCounts).reduce((a, b) => a + Number(b), 0)}</span></p>
+            <p style="margin:0; display:flex; justify-content:space-between;"><span>Lighters (Units):</span> <span>${calculateSold(lighters.start, lighters.delivery, lighters.end)}</span></p>
+          </div>
+          ` : ''}
+          <div style="text-align: center; margin-top: 30px;">
+            <p style="margin:0; font-size: 10px;">*** END OF REPORT ***</p>
+          </div>
+        `;
+        try {
+          (window as any).electronAPI.printReceipt(html);
+        } catch(e) { console.error("Printing failed:", e); }
+      }
+    };
+
     try {
+      // Trigger native thermal print if running in Electron
+      triggerPrint();
 
       if (isOffline) {
         throw new Error("OFFLINE_MODE");
