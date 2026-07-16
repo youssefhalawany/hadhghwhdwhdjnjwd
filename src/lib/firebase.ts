@@ -76,6 +76,20 @@ export const dbService = {
     try {
       const docRef = await addDoc(collection(db, collectionName), payload);
       const docSnap = await getDoc(docRef);
+      
+      // Trigger Push Notification for Managers
+      if (typeof window !== "undefined" && !collectionName.includes("audit_logs") && !collectionName.includes("notifications")) {
+        fetch('/api/notifications/notify-owners', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: `New Entry: ${collectionName.toUpperCase()}`,
+            message: `A new record was added to ${collectionName}.`,
+            url: `/owner/${collectionName}`
+          })
+        }).catch(() => {});
+      }
+
       return { id: docRef.id, ...(docSnap.data() as any) };
     } catch (err: any) {
       if (err?.code?.includes('unavailable') || err?.code?.includes('network') || !navigator.onLine) {
@@ -95,6 +109,20 @@ export const dbService = {
     try {
       const docRef = doc(db, collectionName, id);
       await setDoc(docRef, data);
+
+      // Trigger Push Notification for Managers
+      if (typeof window !== "undefined" && !collectionName.includes("audit_logs") && !collectionName.includes("notifications") && !collectionName.includes("users")) {
+        fetch('/api/notifications/notify-owners', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: `Updated Entry: ${collectionName.toUpperCase()}`,
+            message: `A record was updated in ${collectionName}.`,
+            url: `/owner/${collectionName}`
+          })
+        }).catch(() => {});
+      }
+
       return { id, ...data };
     } catch (err: any) {
       if (err?.code?.includes('unavailable') || err?.code?.includes('network') || !navigator.onLine) {

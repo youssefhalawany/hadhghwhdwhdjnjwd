@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { OwnerBottomNav } from "@/components/OwnerBottomNav";
+import { OwnerSidebar } from "@/components/OwnerSidebar";
 import { useLanguage } from "@/context/LanguageContext";
 import { Globe, Lock, Mail, Key } from "lucide-react";
 import { playSuccessSound, playErrorSound, playPopSound, getAudioCtx } from "@/lib/sounds";
@@ -43,6 +44,34 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
             const userRole = data.role;
             if (userRole === "admin_viewer" || userRole === "admin_editor" || userRole === "owner") {
               setAuthenticated(true);
+              
+              // Request Push Notification Permission and Save Token
+              if (typeof window !== "undefined" && "Notification" in window) {
+                Notification.requestPermission().then(async (permission) => {
+                  if (permission === "granted") {
+                    try {
+                      const { getToken } = await import("firebase/messaging");
+                      const { messaging } = await import("@/lib/firebase");
+                      if (messaging) {
+                        const token = await getToken(await messaging, { 
+                          vapidKey: "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeZ2Ig14" // Placeholder, Firebase often auto-resolves this from the project if omitted, but VAPID is technically required. We will try to fetch it.
+                        }).catch(() => null); // Catch if vapid is strictly needed and fails
+
+                        if (token) {
+                          const fcmTokens = data.fcmTokens || [];
+                          if (!fcmTokens.includes(token)) {
+                            const { updateDoc } = await import("firebase/firestore");
+                            await updateDoc(doc(db, "users", currentUser.uid), {
+                              fcmTokens: [...fcmTokens, token]
+                            });
+                          }
+                        }
+                      }
+                    } catch (e) { console.error("FCM Token Error:", e); }
+                  }
+                });
+              }
+
             } else {
               await signOut(auth);
               setAuthError(lang === "en" ? "Unauthorized access. Admins only." : "غير مصرح. للمديرين فقط.");
@@ -200,13 +229,18 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
         .ck-owner * { color-scheme: dark !important; }
       `}</style>
       
+      {/* Sidebar for Desktop */}
+      <OwnerSidebar />
+
       {/* Scrollable content area */}
-      <div style={{ flex: 1, overflowY: "auto", paddingBottom: "84px" }}>
+      <div className="flex-1 overflow-y-auto md:ml-64 md:pb-0" style={{ paddingBottom: "84px" }}>
         {children}
       </div>
 
-      {/* Bottom Nav */}
-      <OwnerBottomNav />
+      {/* Bottom Nav for Mobile */}
+      <div className="md:hidden">
+        <OwnerBottomNav />
+      </div>
     </div>
   );
 }
