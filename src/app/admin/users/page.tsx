@@ -14,6 +14,7 @@ interface UserProfile {
   role: string;
   storeIds: string[];
   isActive: boolean;
+  features?: any;
   createdAt?: string;
 }
 
@@ -36,6 +37,7 @@ export default function UserManagementPage() {
   const [role, setRole] = useState("manager");
   const [selectedBranches, setSelectedBranches] = useState<string[]>([]);
   const [isActive, setIsActive] = useState(true);
+  const [features, setFeatures] = useState<any>({});
   
   const [submitting, setSubmitting] = useState(false);
 
@@ -92,6 +94,7 @@ export default function UserManagementPage() {
     setRole("manager");
     setSelectedBranches([]);
     setIsActive(true);
+    setFeatures({ canUseMasterScanner: false });
     setIsModalOpen(true);
   };
 
@@ -104,6 +107,7 @@ export default function UserManagementPage() {
     setRole(user.role);
     setSelectedBranches(user.storeIds || []);
     setIsActive(user.isActive !== false);
+    setFeatures(user.features || {});
     setIsModalOpen(true);
   };
 
@@ -139,7 +143,8 @@ export default function UserManagementPage() {
         displayName,
         role,
         storeIds: selectedBranches,
-        isActive
+        isActive,
+        features
       };
       
       if (password) {
@@ -453,6 +458,27 @@ export default function UserManagementPage() {
                     <p className="text-xs text-muted-foreground mt-2">Select which branches this user can access. Manager roles typically need at least one branch.</p>
                   </div>
                 )}
+                
+                <div className="mt-4 pt-2">
+                  <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">Special Features</label>
+                  <div className="bg-slate-50 dark:bg-slate-950 border border-border rounded-xl p-3">
+                    <label className="flex items-center justify-between cursor-pointer">
+                      <div>
+                        <p className="font-semibold text-sm">Master Item Scanner</p>
+                        <p className="text-xs text-muted-foreground">Scan barcodes to view detailed pricing and supplier history.</p>
+                      </div>
+                      <div className="relative inline-flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={features.canUseMasterScanner || false}
+                          onChange={(e) => setFeatures({...features, canUseMasterScanner: e.target.checked})}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-red-600"></div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
                 
                 <div className="p-4 border-t border-border bg-slate-50 dark:bg-slate-950 flex justify-end gap-3 mt-4 -mx-6 -mb-6">
                   <button

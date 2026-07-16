@@ -219,7 +219,7 @@ export default function CashierHubPage() {
       return;
     }
     playSuccessSound();
-    const session = { id: user.id, name: user.name, employeeId: user.employeeId || "", storeId: user.storeId || "N/A", branchId: user.branchId || "alamein4", role: user.position || user.role || "cashier", loggedInAt: new Date().toISOString() };
+    const session = { id: user.id, name: user.name, employeeId: user.employeeId || "", storeId: user.storeId || "N/A", branchId: user.branchId || "alamein4", role: user.position || user.role || "cashier", features: user.features || {}, loggedInAt: new Date().toISOString() };
     localStorage.setItem("active_cashier_session", JSON.stringify(session));
     setPinInput("");
     setAuthenticatedUser(session);
@@ -250,7 +250,7 @@ export default function CashierHubPage() {
         const user = employees.find(x => x.id === empId);
         if (user) {
           playSuccessSound();
-          const session = { id: user.id, name: user.name, role: user.position || user.role || "cashier", loggedInAt: new Date().toISOString() };
+          const session = { id: user.id, name: user.name, role: user.position || user.role || "cashier", features: user.features || {}, loggedInAt: new Date().toISOString() };
           localStorage.setItem("active_cashier_session", JSON.stringify(session));
           setAuthenticatedUser(session);
           setShowWelcome(true);
@@ -298,9 +298,11 @@ export default function CashierHubPage() {
   // ─── AUTHENTICATED DASHBOARD ──────────────────────────────
   if (authenticatedUser) {
     const isMaster = authenticatedUser.role === "master";
+    const canUseScanner = isMaster || authenticatedUser.features?.canUseMasterScanner === true;
 
     const actions = [
       ...(isMaster ? [{ id: "master", label: lang === "en" ? "Master Feed" : "اللوحة الرئيسية", icon: Bell, path: "/cashier/master", badge: "LIVE" }] : []),
+      ...(canUseScanner ? [{ id: "scanner", label: lang === "en" ? "Master Scanner" : "ماسح الباركود", icon: ScanLine, path: "/cashier/scanner", badge: "NEW" }] : []),
       { id: "shift", label: lang === "en" ? "Daily Shift Report" : "تقرير الوردية", icon: FileText, path: "/shift-reports/cashier" },
       { id: "void", label: lang === "en" ? "Log a Void" : "تسجيل مرتجع", icon: Shield, path: "/voids/cashier" },
       { id: "expiry", label: lang === "en" ? "Expiry Tracker" : "تواريخ الصلاحية", icon: CalendarIcon, path: "/expiries" },

@@ -1,0 +1,179 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { ScannerOverlay } from "@/components/MobileUX/ScannerOverlay";
+import { ChevronLeft, PackageSearch, Activity, Package, Banknote, Calendar, Tag, Factory } from "lucide-react";
+import { collection, query, where, limit, getDocs, doc, getDoc } from "firebase/firestore";
+import { db, auth } from "@/lib/firebase";
+import toast from "react-hot-toast";
+
+export default function MasterScannerPage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [productData, setProductData] = useState<any | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      if (!user) {
+        router.push("/cashier/login");
+        return;
+      }
+      // Check features
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        const role = data.role || "manager";
+        const hasScannerFeature = data.features?.canUseMasterScanner;
+
+        if (role !== "owner" && role !== "admin_editor" && !hasScannerFeature) {
+          toast.error("You do not have permission to access the Master Scanner.");
+          router.push("/cashier");
+          return;
+        }
+        setCheckingAuth(false);
+      } else {
+        router.push("/cashier");
+      }
+    });
+    return () => unsubscribe();
+  }, [router]);
+
+  const handleScan = async (barcode: string) => {
+    setLoading(true);
+    setProductData(null);
+    try {
+      // Find in products
+      const q = query(collection(db, "products"), where("barcode", "==", barcode), limit(1));
+      const snap = await getDocs(q);
+
+      if (snap.empty) {
+        toast.error(`No product found for barcode: ${barcode}`);
+        setLoading(false);
+        return;
+      }
+
+      const pDoc = snap.docs[0];
+      setProductData({ id: pDoc.id, ...pDoc.data() });
+      toast.success("Product found!");
+    } catch (error: any) {
+      console.error(error);
+      toast.error("Error looking up product.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-[#050810] flex items-center justify-center text-cyan-500">
+        <Activity className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#050810] text-slate-100 flex flex-col">
+      {/* Header */}
+      <header className="sticky top-0 z-30 bg-[#0A101D]/90 backdrop-blur-md border-b border-cyan-900/30 px-4 py-4 flex items-center gap-3">
+        <button 
+          onClick={() => router.back()}
+          className="p-2 -ml-2 rounded-full hover:bg-slate-800/50 text-slate-400 transition-colors"
+        >
+          <ChevronLeft size={24} />
+        </button>
+        <div>
+          <h1 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-emerald-400 bg-clip-text text-transparent flex items-center gap-2">
+            <PackageSearch className="h-5 w-5 text-cyan-400" />
+            Master Scanner
+          </h1>
+          <p className="text-xs text-slate-400">Scan items to view detailed profile</p>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-1 p-4 max-w-lg mx-auto w-full space-y-6 pb-20">
+        
+        {/* Scanner Area */}
+        <div className="relative z-10">
+          <ScannerOverlay onScan={handleScan} onClose={() => {}} />
+          
+          {loading && (
+            <div className="absolute inset-0 bg-[#050810]/80 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center z-20 border border-cyan-500/20">
+              <Activity className="h-10 w-10 text-cyan-400 animate-spin mb-3" />
+              <p className="text-cyan-400 font-medium animate-pulse">Querying Database...</p>
+            </div>
+          )}
+        </div>
+
+        {/* Results Area */}
+        {productData && (
+          <div className="bg-[#0A101D] border border-cyan-900/40 rounded-2xl p-5 shadow-2xl animate-in slide-in-from-bottom-4 fade-in duration-300">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 mb-2">
+                  <Package className="h-3 w-3" />
+                  Item Profile Found
+                </span>
+                <h2 className="text-xl font-bold text-white leading-tight">
+                  {productData.itemName || productData.description || "Unknown Item"}
+                </h2>
+                <p className="text-sm text-slate-400 font-mono mt-1 flex items-center gap-1.5">
+                  <Tag className="h-3.5 w-3.5" />
+                  {productData.barcode}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mb-5">
+              <div className="bg-[#151E32] rounded-xl p-3 border border-slate-800">
+                <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-1 flex items-center gap-1">
+                  <Banknote className="h-3 w-3" /> Price
+                </p>
+                <p className="text-xl font-black text-emerald-400">
+                  {productData.sellPrice ? `${productData.sellPrice} EGP` : 'N/A'}
+                </p>
+              </div>
+              <div className="bg-[#151E32] rounded-xl p-3 border border-slate-800">
+                <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-1 flex items-center gap-1">
+                  <Package className="h-3 w-3" /> Cost
+                </p>
+                <p className="text-xl font-black text-rose-400">
+                  {productData.costPrice ? `${productData.costPrice} EGP` : 'N/A'}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-slate-900/50 rounded-xl border border-slate-800/50">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400">
+                    <Factory className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Supplier</p>
+                    <p className="text-sm font-semibold text-slate-200">{productData.supplier || "Not specified"}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-slate-900/50 rounded-xl border border-slate-800/50">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400">
+                    <Calendar className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Expiry Info</p>
+                    <p className="text-sm font-semibold text-slate-200">{productData.expiryDate || "Not tracked"}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}

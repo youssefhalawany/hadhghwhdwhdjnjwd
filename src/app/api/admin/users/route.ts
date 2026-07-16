@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { email, password, displayName, role, storeIds, isActive } = body;
+    const { email, password, displayName, role, storeIds, isActive, features } = body;
 
     if (!email || !password || !role) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -52,6 +52,7 @@ export async function POST(req: NextRequest) {
       role,
       storeIds: storeIds || [],
       isActive: isActive !== false,
+      features: features || {},
       createdAt: new Date().toISOString(),
       createdBy: adminUid
     });
@@ -71,7 +72,7 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { uid, email, password, displayName, role, storeIds, isActive } = body;
+    const { uid, email, password, displayName, role, storeIds, isActive, features } = body;
 
     if (!uid) {
       return NextResponse.json({ error: "Missing user UID" }, { status: 400 });
@@ -95,6 +96,7 @@ export async function PUT(req: NextRequest) {
     if (role) firestoreData.role = role;
     if (storeIds) firestoreData.storeIds = storeIds;
     if (isActive !== undefined) firestoreData.isActive = isActive;
+    if (features !== undefined) firestoreData.features = features;
     firestoreData.updatedAt = new Date().toISOString();
     firestoreData.updatedBy = adminUid;
 

@@ -17,6 +17,7 @@ export default function CashierSettingsPage() {
   const [pin, setPin] = useState("");
   const [shiftType, setShiftType] = useState("All");
   const [branchId, setBranchId] = useState<string>("");
+  const [features, setFeatures] = useState<any>({});
   
   useEffect(() => {
     if (!branchId && currentBranch !== "all") {
@@ -102,7 +103,8 @@ export default function CashierSettingsPage() {
           pin,
           shiftType,
           employeeId: empId,
-          branchId
+          branchId,
+          features
         });
       } else {
         await addDoc(collection(db, "cashiers"), {
@@ -112,6 +114,7 @@ export default function CashierSettingsPage() {
           shiftType,
           employeeId: empId,
           branchId,
+          features,
           createdAt: new Date().toISOString()
         });
       }
@@ -120,6 +123,7 @@ export default function CashierSettingsPage() {
       setStoreId("");
       setPin("");
       setShiftType("All");
+      setFeatures({});
       setEditId(null);
       fetchCashiers();
       toast.success("Cashier saved successfully!");
@@ -138,6 +142,7 @@ export default function CashierSettingsPage() {
     setPin(cashier.pin);
     setShiftType(cashier.shiftType || "All");
     setBranchId(cashier.branchId || "alamein4");
+    setFeatures(cashier.features || {});
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -185,14 +190,16 @@ export default function CashierSettingsPage() {
                 {editId ? 'Edit Cashier' : 'Add New Cashier'}
               </h2>
               {editId && (
-                <button type="button" onClick={() => { setEditId(null); setName(''); setStoreId(''); setPin(''); setShiftType('All'); }} className="text-xs text-slate-500 underline">Cancel Edit</button>
+                <button type="button" onClick={() => { setEditId(null); setName(''); setStoreId(''); setPin(''); setShiftType('All'); setFeatures({}); }} className="text-xs text-slate-500 underline">Cancel Edit</button>
               )}
             </div>
             
             <div>
               <label className="text-xs font-bold text-muted-foreground uppercase mb-1 block">Full Name</label>
-              <select
+              <input
                 required
+                type="text"
+                list="employee-names"
                 value={name}
                 onChange={e => {
                   const selectedName = e.target.value;
@@ -203,14 +210,15 @@ export default function CashierSettingsPage() {
                   }
                 }}
                 className="w-full p-2.5 bg-background border border-border rounded-lg outline-none focus:border-red-500 text-sm font-semibold"
-              >
-                <option value="">Select Employee...</option>
+                placeholder="Enter or select name..."
+              />
+              <datalist id="employee-names">
                 {employeesList.map(emp => (
                   <option key={emp.id} value={emp.name}>
-                    {emp.name} ({emp.position || "Employee"})
+                    {emp.position || "Employee"}
                   </option>
                 ))}
-              </select>
+              </datalist>
             </div>
 
             <div>
@@ -250,6 +258,25 @@ export default function CashierSettingsPage() {
                 <option value="Noon">Noon Only</option>
                 <option value="Night">Night Only</option>
               </select>
+            </div>
+
+            <div className="mt-4 border-t border-border pt-4">
+              <label className="text-xs font-bold text-muted-foreground uppercase mb-2 block">Special Features</label>
+              <label className="flex items-center justify-between cursor-pointer p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors">
+                <div>
+                  <p className="font-semibold text-sm">Master Item Scanner</p>
+                  <p className="text-xs text-muted-foreground">Scan barcodes to view detailed pricing and history.</p>
+                </div>
+                <div className="relative inline-flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={features.canUseMasterScanner || false}
+                    onChange={(e) => setFeatures({...features, canUseMasterScanner: e.target.checked})}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-red-500"></div>
+                </div>
+              </label>
             </div>
 
             <div>
