@@ -43,7 +43,7 @@ export default function ManagerChecklistsPage() {
 
   const loading = apiLoading || loadingProducts;
 
-  let allChecklistsCombined = [...(data?.checklists || []), ...productChecklists];
+  const allChecklistsCombined = [...(data?.checklists || []), ...productChecklists];
   allChecklistsCombined.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   let checklists: any[] = allChecklistsCombined;

@@ -314,5 +314,410 @@ export const SOP_DATA: SOPItem[] = [
         ]
       }
     ]
+  },
+  {
+    id: "sandwiches_salads",
+    categoryEn: "General",
+    categoryAr: "عام",
+    titleEn: "Ingredients & Serving Methods: Sandwiches, Salads, Meals, Clubs, Wraps",
+    titleAr: "مكونات وطريقة تقديم الساندوتشات والسلطات والوجبات والكلوب والراب",
+    tags: ["sandwiches", "salads", "meals", "club", "wrap", "ساندوتشات", "سلطات", "وجبات", "كلوب", "راب"],
+    blocks: [
+      {
+        type: "highlight",
+        titleEn: "Serving Methods",
+        titleAr: "طرق التقديم",
+        textEn: "Takeaway without heating: Place in sandwich bag with napkin. Wrapped in parchment paper.\nTakeaway with heating: Heat according to customer request, place in bag with napkin and store bag.\nInside branch: Heat and place on serving plate with napkin.\nSalads takeaway: Bag + fork + knife + napkin.",
+        textAr: "طريقة التقديم في حالة التيك اواي بدون تسخين: يوضع داخل كيس الساندوتش مع منديل ولفه بورق زبدة.\nطريقة التقديم في حالة التيك اواي بطلب التسخين: يتم تسخينه طبقا لرغبة العميل ووضعه داخل كيس الساندوتش مع منديل وشنطة.\nطريقة التقديم داخل الفرع: يتم تسخين الساندوتش ووضعه في طبق التقديم وتقديم منديل.\nطريقة تقديم السلاطة تيك اواي: شنطة + شوكة + سكينة + منديل."
+      },
+      {
+        type: "list",
+        titleEn: "General Heating Instructions (Sandwiches)",
+        titleAr: "تعليمات التسخين العامة (الساندوتشات)",
+        itemsEn: [
+          "Remove sandwich packaging and place on parchment paper inside the microwave.",
+          "Heat in microwave for 30 seconds.",
+          "Alternatively, place on toaster for 1 minute.",
+          "Wrap in parchment paper and place in serving bag with a napkin."
+        ],
+        itemsAr: [
+          "يتم إزالة تغليف الساندوتش ووضعه على ورق زبدة داخل الميكروويف.",
+          "يتم تسخين الساندوتش في الميكروويف لمدة 30 ثانية.",
+          "كما يمكن وضع الساندوتش على التوستر بعد ذلك لمدة دقيقة.",
+          "ثم يتم لف الساندوتش في ورق زبدة ووضع منديل ووضعه داخل كيس التقديم."
+        ]
+      },
+      {
+        type: "list",
+        titleEn: "General Heating Instructions (Meals)",
+        titleAr: "تعليمات التسخين العامة (الوجبات)",
+        itemsEn: [
+          "Remove sleeve, lift lid, and heat in microwave for 2 minutes until hot.",
+          "Close lid tightly, reapply sleeve.",
+          "Serve with fork, knife, and napkin. Place in a bag for takeaway."
+        ],
+        itemsAr: [
+          "يتم إزالة سليف الاسم ثم رفع الغطاء ويتم تسخين الوجبة في الميكروويف لمدة دقيقتين حتى تقديمها ساخنة.",
+          "يتم إعادة الغطاء والاغلاق الجيد ووضع سليف الاسم.",
+          "ويقدم معها شوكة + سكينة + منديل وتوضع في شنطة في حالة التيك اواي."
+        ]
+      },
+      {
+        type: "warning",
+        titleEn: "Cold Sandwiches",
+        titleAr: "الساندوتشات الباردة",
+        textEn: "Tuna Mix, Salmon, and Tuna Apricot sandwiches are NEVER heated. They are served cold. If the customer requests bread heating, heat the bread ONLY in the toaster for 30 seconds.",
+        textAr: "لا يتم تسخين الساندوتش نهائيا ويتم تقديمه بارد (تونة ميكس، سالمون، تونة بالمشمش). في حالة رغبة العميل لتسخين وتدفئة العيش يتم التسخين في التوستر لمدة 30 ثانية."
+      },
+      {
+        type: "warning",
+        titleEn: "Salads",
+        titleAr: "السلطات",
+        textEn: "Salads are NEVER heated. Served cold with fork, knife, and napkin in a takeaway bag. Ensure fridge temp does not exceed 5°C.",
+        textAr: "لا يتم تسخين المنتج نهائيا. يقدم بارد ويتم تقديم شوكة وسكينة ومناديل ويتم وضعه في شنطة التيك اواي. تأكد من درجة التبريد الخاصة بالثلاجة بحيث لا تتعدى 5 درجة مئوية."
+      }
+    ]
+  },
+  {
+    id: "chicken_strips",
+    categoryEn: "General",
+    categoryAr: "عام",
+    titleEn: "Chicken Strips SOP",
+    titleAr: "تعليمات تشغيل تشكن استربس",
+    tags: ["chicken", "strips", "frying", "فراخ", "استربس", "قلي"],
+    blocks: [
+      {
+        type: "list",
+        titleEn: "Operating Procedures",
+        titleAr: "إجراءات التشغيل",
+        itemsEn: [
+          "Receive product frozen at -18°C.",
+          "Store directly in freezer at -18°C.",
+          "Upon customer order, remove from freezer and defrost in microwave for 2 minutes.",
+          "After defrosting, sprinkle a small amount of flour on the strip.",
+          "Prepare fryer at 170°C.",
+          "Once fryer reaches temp, fry for 3 to 5 minutes using a timer.",
+          "Remove and drain oil for 20 seconds.",
+          "Place parchment paper in serving box, add product, close, and hand to customer."
+        ],
+        itemsAr: [
+          "يتم استلام المنتج مجمد في درجة حرارة -18 درجة مئوية.",
+          "يتم التخزين مباشرة في الفريزر عند درجة حرارة -18 درجة مئوية.",
+          "عند الطلب من العميل يتم اخراج المنتج من الفريزر وعمل ديفروست في الميكروويف لمدة دقيقتين.",
+          "بعد عمل الديفروست يتم رش نسبة من الدقيق على قطعة الاستربس.",
+          "يتم تجهيز القلاية على درجة 170 درجة مئوية.",
+          "عند تحقيق القلاية للدرجة المطلوبة يتم وضع المنتج بها لمدة من 3 الي 5 دقائق واستخدام تايمر.",
+          "وبعد التسوية يتم رفع المنتج من القلاية وتصفية الزيت لمدة 20 ثانية.",
+          "يتم تجهيز علبة التقديم ووضع ورق زبدة بداخلها ثم يتم وضع المنتج داخلها واغلاق العلبة وتسلم للعميل."
+        ]
+      }
+    ]
+  },
+  {
+    id: "pancakes",
+    categoryEn: "Bakery",
+    categoryAr: "مخبوزات",
+    titleEn: "Pancakes SOP",
+    titleAr: "تعليمات تشغيل البان كيك",
+    tags: ["pancakes", "breakfast", "بان كيك", "فطار"],
+    blocks: [
+      {
+        type: "list",
+        titleEn: "Preparation & Expiry",
+        titleAr: "التجهيز والصلاحية",
+        itemsEn: [
+          "Dough is ordered from the factory in 1 kg/liter amounts.",
+          "Expiry is 3 to 5 days in fridge.",
+          "Empty bag into a stainless steel bowl and label with expiry date.",
+          "Must be kept in fridge during operation. Do NOT freeze."
+        ],
+        itemsAr: [
+          "يتم طلب العجينة من المصنع بمقدار 1 كيلو / ليتر.",
+          "صلاحية العجينة من 3 الي 5 أيام من تاريخ الصلاحية في الثلاجة.",
+          "ويتم تفريغ العجينة من الكيس المورد به في بولة استانلس ويتم وضع تاريخ صلاحية عليها.",
+          "ويتم الحفاظ على البولة الاستانلس في الثلاجة طول فترة التشغيل ولا يتم وضعها في التجميد."
+        ]
+      },
+      {
+        type: "list",
+        titleEn: "Cooking Instructions",
+        titleAr: "إجراءات التسوية والتشغيل",
+        itemsEn: [
+          "Set heat surface to level 1 for gentle cooking.",
+          "Place 3 grams of butter in the dedicated pan.",
+          "Cook each slice individually (3 slices per order). Do not increase heat to avoid burning butter.",
+          "Pour batter using the ladle. Flip when bubbles appear.",
+          "Takes 3 minutes per slice. Total 10 minutes per order.",
+          "Layering: Place first slice in small donut box. Add 50g of desired sauce (Nutella/Lotus). Repeat for all 3 slices.",
+          "Dine-in: Serve on a ceramic plate. Never use foam plates."
+        ],
+        itemsAr: [
+          "يتم ضبط درجة حرارة المسطح الحراري على الدرجة رقم 1 للتسوية علي نار هادئة.",
+          "يتم وضع الزبدة (3 جرام) في الطاسة المخصصة.",
+          "تتم التسوية في الطاسة لكل شريحة على حده.",
+          "لا يتم رفع درجة المسطح الحراري حتى لا يؤدي الي حرق الزبدة.",
+          "يتم وضع العجينة بالكبشة وتترك على نار هادئة وعند ظهور فقاعات يتم قلب الشريحة.",
+          "تسوية الشريحة تأخذ 3 دقائق (10 دقائق للاوردر).",
+          "التقديم: شريحة ثم صوص (نوتيلا أو لوتس) بمقدار 50 جرام لكل الشرائح.",
+          "في حالة التقديم داخل الفرع يقدم في الطبق الصيني. لا يتم استخدام اطباق فوم نهائيا."
+        ]
+      }
+    ]
+  },
+  {
+    id: "burger_section",
+    categoryEn: "General",
+    categoryAr: "عام",
+    titleEn: "Burger Section SOP",
+    titleAr: "قسم البرجر",
+    tags: ["burger", "meat", "برجر", "لحوم"],
+    blocks: [
+      {
+        type: "list",
+        titleEn: "Ingredients & Weights",
+        titleAr: "المكونات والاحجام",
+        itemsEn: [
+          "Burger sizes: 120g.",
+          "Ingredients: Burger bun, Burger sauce, Marley cheese, Lettuce, Tomatoes, Ketchup (if requested), Onions (if requested)."
+        ],
+        itemsAr: [
+          "احجام البرجر: 120 جرام.",
+          "المواد المستخدمة: عيش برجر، برجر صوص، جبنة مارلي، خس، طماطم، كاتشب (في حالة طلب العميل)، بصل (في حالة طلب العميل)."
+        ]
+      },
+      {
+        type: "list",
+        titleEn: "Cooking Procedures",
+        titleAr: "إجراءات تشغيل البرجر",
+        itemsEn: [
+          "Receive frozen at -18°C and store directly in freezer.",
+          "Set grill temp to 150°C MAX.",
+          "Wipe grill with a tiny amount of oil.",
+          "Place burger on grill directly from freezer.",
+          "Grill first side for 3 minutes, flip, and grill second side for 3 minutes. Do NOT press it.",
+          "Toast the bun on the grill without oil until grill marks appear.",
+          "Spread burger sauce on both bun halves, add lettuce, then burger patty.",
+          "During the last minute of grilling, place Marley cheese on patty to melt. Add tomato.",
+          "Wrap the sandwich and place in serving box."
+        ],
+        itemsAr: [
+          "يتم استلام المنتج مجمد -18 درجة مئوية ويوضع في الفريزر.",
+          "يتم ضبط درجة حرارة الجريل على 150 درجة ولا يزيد نهائيا.",
+          "ثم يتم وضع زيت بنسبة قليلة لمسح الجريل فقط.",
+          "يتم وضع البرجر على الجريل من الفريزر مباشرة.",
+          "يترك البرجر على اول وجه لمدة 3 دقائق ثم يتم القلب على الوجه الاخر لمدة 3 دقائق ولا يتم الضغط عليه نهائيا.",
+          "يتم تجهيز قطعة الخبز وتوضع على الجريل للتسخين بدون زيوت.",
+          "يتم وضع صوص البرجر على وجهي الخبز ثم الخس.",
+          "اثناء تسوية البرجر على اخر دقيقة يتم وضع قطعة جبنة مارلي وتترك لمدة دقيقة. توضع طماطم.",
+          "يتم تغليف الساندوتش ووضعه في علبة التقديم."
+        ]
+      }
+    ]
+  },
+  {
+    id: "sausage_sop",
+    categoryEn: "General",
+    categoryAr: "عام",
+    titleEn: "Sausage SOP",
+    titleAr: "تعليمات تشغيل السجق",
+    tags: ["sausage", "سجق"],
+    blocks: [
+      {
+        type: "list",
+        titleEn: "Ingredients",
+        titleAr: "المكونات",
+        itemsEn: [
+          "Sausage: 70g",
+          "Bell Peppers: 100g",
+          "Cherry Tomatoes: 3 pieces",
+          "Pomegranate Molasses: 10g"
+        ],
+        itemsAr: [
+          "سجق: 70 جرام",
+          "فلفل ألوان: 100 جرام",
+          "طماطم شيري: 3 قطع",
+          "دبس رمان: 10 جرام"
+        ]
+      },
+      {
+        type: "list",
+        titleEn: "Preparation & Cooking",
+        titleAr: "طريقة التشغيل",
+        itemsEn: [
+          "Prep: Cut sausage and peppers into cubes. Cut cherry tomatoes in half.",
+          "Place oiled pan on heat surface, wait 1 minute for oil to heat.",
+          "Add bell peppers, stir for 1 minute.",
+          "Add sausage, salt, and pepper, and stir.",
+          "Add cherry tomatoes and pomegranate molasses, stir ONCE, then remove from heat.",
+          "Place mixture inside the bread (Hot dog bun or Shami bread baked in-house)."
+        ],
+        itemsAr: [
+          "التجهيز: تقطيع السجق والفلفل الألوان مكعبات. تقطيع الطماطم الشيري نصفين.",
+          "يتم وضع الطاسة على المسطح الحراري وبها الزيت ويتم الانتظار دقيقة لقدح الزيت.",
+          "يتم وضع الفلفل الألوان ويتم التقليب لمدة دقيقة.",
+          "ثم يتم النزول بالسجق وإضافة الملح والفلفل ويتم التقليب.",
+          "إضافة الطماطم الشيري ودبس الرمان ويتم التقليب مرة واحدة فقط والرفع من الحرارة.",
+          "يتم التقديم في عيش الهوت دوج او عيش شامي مخبوز لدينا."
+        ]
+      }
+    ]
+  },
+  {
+    id: "french_toast",
+    categoryEn: "Bakery",
+    categoryAr: "مخبوزات",
+    titleEn: "French Toast SOP",
+    titleAr: "تعليمات الفرنش توست",
+    tags: ["french toast", "toast", "فرنش توست", "توست"],
+    blocks: [
+      {
+        type: "list",
+        titleEn: "Varieties & Preparation",
+        titleAr: "الأصناف والتجهيز",
+        itemsEn: [
+          "Varieties: Fruits, Nutella, Lotus.",
+          "Toast expiry: 5-7 days in fridge.",
+          "Marination Sauce (for 2 orders): 2 eggs, 150ml milk, 10g cinnamon, 10g vanilla. Mix well. Expiry 1 day.",
+          "Sugar Syrup: 350g brown sugar with 10ml water. Heat for 10 mins, cool, put in squeezer. Expiry 1 month."
+        ],
+        itemsAr: [
+          "الأصناف: فواكه، نوتيلا، لوتس.",
+          "صلاحية التوست من 5 الي 7 أيام في الثلاجة.",
+          "صوص المارينيه (لعمل 2 اوردر): 2 بيضة، 150 ملي لبن، 10 جرام قرفة، 10 جرام فانيليا. تقليب جيد. صلاحية 1 يوم.",
+          "سكر سيرب: كيس سكر بني على 10 ملي مياه على النار لمدة 10 دقايق ثم يبرد ويوضع في سكويزر. صلاحية شهر."
+        ]
+      },
+      {
+        type: "list",
+        titleEn: "Cooking",
+        titleAr: "التسوية",
+        itemsEn: [
+          "Set heat surface to level 2.",
+          "Heat oil in large pan (half full).",
+          "Order is 2 slices. Cut edges off, making it 2cm thick.",
+          "Dip first slice in marination sauce until absorbed.",
+          "Fry slices individually.",
+          "Add sugar syrup, then layer with 50g Nutella/Lotus/Fruits between and on top.",
+          "Serve in a donut box."
+        ],
+        itemsAr: [
+          "يتم ضبط الحرارة على الدرجة 2.",
+          "وضع الزيت في طاسة يغطي نصفها.",
+          "الاوردر شريحتين. إزالة الحروف.",
+          "وضع الشريحة في صوص المارينيه لتتشرب.",
+          "تسوية كل شريحة على حده في الزيت.",
+          "وضع السكر السيرب. ثم الصوص المختار (50 جرام) بين الشريحتين وفوقهما.",
+          "تقدم في علبة الدونتس."
+        ]
+      }
+    ]
+  },
+  {
+    id: "rich_cut_hot_dog",
+    categoryEn: "General",
+    categoryAr: "عام",
+    titleEn: "Rich Cut & Hot Dog SOP",
+    titleAr: "قسم ريتش كت Rich Cut",
+    tags: ["hot dog", "rich cut", "هوت دوج", "ريتش كت"],
+    blocks: [
+      {
+        type: "list",
+        titleEn: "Sizes & Types",
+        titleAr: "الأحجام والأنواع",
+        itemsEn: [
+          "60g Frankfurter",
+          "80g Hot Dog",
+          "100g Hot Dog",
+          "Bread size: 18cm",
+          "Normal: ketchup, mayo, mustard, bbq.",
+          "Special: adds cheese, sweet relish, onions."
+        ],
+        itemsAr: [
+          "60 جرام فرانكفورتر",
+          "80 جرام هوت دوج",
+          "100 جرام هوت دوج",
+          "عيش 18 سم",
+          "العادي: كاتشب، مايونيز، مسطردة، باربكيو.",
+          "سبيشيال: يضاف جبنة، سويت ريلش، بصل."
+        ]
+      },
+      {
+        type: "list",
+        titleEn: "Cooking Procedures",
+        titleAr: "إجراءات التشغيل",
+        itemsEn: [
+          "Receive frozen at -18°C.",
+          "Place hot dog in water heater for 5-90 minutes (max temp 150°C).",
+          "Transfer to grill for 7 to 10 minutes.",
+          "Slice hot dog while on grill.",
+          "Toast bread on grill without oil.",
+          "Place hot dog in bread, add chosen sauces, serve in box."
+        ],
+        itemsAr: [
+          "يتم استلام المنتج مجمد -18 درجة.",
+          "يتم وضع الهوت دوج داخل سخان المياه لمدة 5 الي 90 دقائق (حرارة لا تزيد عن 150 درجة).",
+          "ثم يوضع على الجريل لمدة 7 الي 10 دقائق.",
+          "يتم تشريح الهوت دوج اثناء وضعه على الجريل.",
+          "تجهيز الخبز ووضعه على الجريل للتسخين بدون زيوت.",
+          "رفع الهوت دوج ووضعه داخل الخبز وإضافة الاضافات وتقديمه في علبة."
+        ]
+      }
+    ]
+  },
+  {
+    id: "circle_k_bread",
+    categoryEn: "Bakery",
+    categoryAr: "مخبوزات",
+    titleEn: "Circle K Bread Baking SOP",
+    titleAr: "تعليمات تشغيل عيش سيركل كي",
+    tags: ["bread", "baking", "عيش", "خبز"],
+    blocks: [
+      {
+        type: "recipe-table",
+        tableData: [
+          {
+            nameEn: "Bread Dough",
+            nameAr: "عجينة العيش",
+            ingredients: [
+              { nameEn: "Flour", nameAr: "دقيق", qty: 1, unit: "kg" },
+              { nameEn: "Salt", nameAr: "ملح", qty: 10, unit: "g" },
+              { nameEn: "Sugar", nameAr: "سكر", qty: 20, unit: "g" },
+              { nameEn: "Yeast", nameAr: "خميرة", qty: 30, unit: "g" },
+              { nameEn: "Butter", nameAr: "زبدة", qty: 30, unit: "g" },
+              { nameEn: "Milk", nameAr: "لبن", qty: 200, unit: "g" },
+              { nameEn: "Water", nameAr: "مياه", qty: 500, unit: "g" },
+              { nameEn: "Oil", nameAr: "زيت", qty: 15, unit: "g" }
+            ]
+          }
+        ]
+      },
+      {
+        type: "list",
+        titleEn: "Baking Instructions",
+        titleAr: "طريقة التشغيل",
+        itemsEn: [
+          "Mix flour, salt, and sugar until combined.",
+          "Add milk and water, knead by hand until dough forms.",
+          "Melt butter and add it, kneading well.",
+          "Add oil and knead well.",
+          "Cover with stretch film and let rest/ferment for 20 minutes.",
+          "Cut dough into 70g pieces.",
+          "Flatten pieces, add black seed and sesame.",
+          "Set oven to 250°C.",
+          "Place bread on oven floor and monitor until baked."
+        ],
+        itemsAr: [
+          "وضع دقيق ثم إضافة ملح وسكر والتقليب حتى التجانس.",
+          "إضافة اللبن والمياه ويتم العجين يدويا حتى تتجانس العجينة.",
+          "اسالة الزبدة ووضعها ثم التقليب جيدا.",
+          "إضافة زيت ثم العجين جيدا.",
+          "تغليف العجينة بالاسترتش وتترك لمدة 20 دقيقة للتخمير.",
+          "تقطيع العجين قطع بوزن 70 جرام.",
+          "يتم الفرد ووضع حبة البركة والسمسم.",
+          "ظبط درجة حرارة الفرن علي 250 درجة.",
+          "وضع العيش على أرضية الفرن مع المتابعة."
+        ]
+      }
+    ]
   }
 ];

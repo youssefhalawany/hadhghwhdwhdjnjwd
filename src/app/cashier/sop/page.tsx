@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useLanguage } from "@/context/LanguageContext";
 import { 
   ChevronLeft, Search, AlertTriangle, Info, List, 
-  Pizza, Clock, Thermometer, Globe, Calendar
+  Pizza, Clock, Thermometer, Globe, Calendar, BookOpen, ChefHat
 } from "lucide-react";
 import { SOP_DATA, SOPCategory } from "@/data/sopData";
 
@@ -98,7 +98,7 @@ export default function CashierSOPPage() {
         <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4, scrollbarWidth: "none" }}>
           {categories.map((cat) => {
             const isActive = activeCategory === cat;
-            let displayCat = cat;
+            let displayCat: string = cat;
             if (!isEn) {
               if (cat === "All") displayCat = "الكل";
               if (cat === "Bakery") displayCat = "البيكري";
