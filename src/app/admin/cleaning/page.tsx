@@ -516,6 +516,53 @@ export default function ManagerCleaningLogsPage() {
         </div>
       )}
 
+      {/* Full Image Modal */}
+      {selectedLog && (
+        <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex flex-col items-center justify-center p-4 print:hidden" onClick={() => setSelectedLog(null)}>
+          <div className="relative w-full max-w-lg flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
+            <button 
+              onClick={() => setSelectedLog(null)} 
+              className="absolute -top-12 right-0 text-white bg-white/10 hover:bg-white/20 rounded-full p-2 transition-colors"
+            >
+              <X size={24} />
+            </button>
+            
+            <img src={selectedLog.photoUrl} alt="Full view" className="max-w-full max-h-[70vh] rounded-2xl object-contain shadow-2xl" />
+            
+            <div className="w-full mt-6 flex flex-col items-center gap-4">
+              <button 
+                onClick={async (e) => { 
+                  e.stopPropagation(); 
+                  const text = `*${language === 'en' ? 'Cleaning Log' : 'سجل النظافة'}* 🧹\n*${language === 'en' ? 'Area:' : 'المنطقة:'}* ${language === 'en' ? selectedLog.areaNameEn : selectedLog.areaNameAr}\n*${language === 'en' ? 'Cashier:' : 'الكاشير:'}* ${selectedLog.cashierName}\n*${language === 'en' ? 'Date & Time:' : 'الوقت والتاريخ:'}* ${formatDate(selectedLog.timestamp, selectedLog.localTime)}`;
+                  
+                  try {
+                    if (navigator.share && selectedLog.photoUrl.startsWith('data:')) {
+                      const res = await fetch(selectedLog.photoUrl);
+                      const blob = await res.blob();
+                      const file = new File([blob], 'cleaning_log.jpg', { type: 'image/jpeg' });
+                      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        await navigator.share({
+                          text: text,
+                          files: [file]
+                        });
+                        return;
+                      }
+                    }
+                    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+                  } catch (err) {
+                    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+                  }
+                }}
+                className="w-full flex items-center justify-center gap-2 bg-[#25D366] text-white px-6 py-4 rounded-2xl font-bold shadow-[0_0_20px_rgba(37,211,102,0.3)] active:scale-95 transition-transform text-lg"
+              >
+                <Share2 size={24} />
+                {language === 'en' ? 'Share to WhatsApp' : 'مشاركة عبر واتساب'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </PageWrapper>
   );
 }
