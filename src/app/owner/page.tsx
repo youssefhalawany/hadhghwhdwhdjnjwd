@@ -9,6 +9,9 @@ import {
 import { PullToRefresh } from "@/components/MobileUX/PullToRefresh";
 import { showIsland } from "@/components/MobileUX/DynamicIsland";
 import { useLanguage } from "@/context/LanguageContext";
+import { motion } from "framer-motion";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
+import { hapticMedium, vibrateSuccess } from "@/lib/haptics";
 
 // ── Midnight Navy Design Tokens ────────────────
 const D = {
@@ -249,112 +252,175 @@ export default function OwnerDashboard() {
     );
   }
 
+  const chartData = [
+    { name: lang === "en" ? "Safe" : "الخزينة", amount: stats.safeMoney, fill: D.green },
+    { name: lang === "en" ? "Bank" : "البنك", amount: stats.bankMoney, fill: D.indigo }
+  ];
+
   return (
-    <div style={{ direction: "ltr", color: D.textPrimary }}>
-      <div style={{ maxWidth: 800, margin: "0 auto", paddingBottom: 100 }}>
+    <div className="min-h-screen bg-[#0B1121] text-slate-50 selection:bg-cyan-500/30">
+      {/* Decorative background blurs */}
+      <div className="fixed top-0 left-0 w-full h-96 bg-gradient-to-b from-cyan-900/20 to-transparent pointer-events-none" />
+      <div className="fixed top-[-10%] right-[-5%] w-96 h-96 bg-emerald-500/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="fixed bottom-[-10%] left-[-5%] w-96 h-96 bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none" />
+
+      <div className="max-w-[800px] mx-auto pb-32 relative z-10">
         {/* ── HEADER ── */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "54px 20px 10px" }}>
-          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.15em", color: D.textSecondary, textTransform: "uppercase" }}>
-            CIRCLE K <span style={{ color: D.textDim, fontWeight: 500 }}>{lang === "en" ? "Owner" : "المالك"}</span>
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center justify-between px-5 pt-14 pb-4 sticky top-0 bg-[#0B1121]/80 backdrop-blur-xl border-b border-white/5 z-50"
+        >
+          <div className="text-xs font-bold tracking-widest text-slate-400 uppercase">
+            CIRCLE K <span className="font-medium text-slate-500">{lang === "en" ? "Owner" : "المالك"}</span>
           </div>
-          <div style={{ width: 28, height: 28, borderRadius: 8, background: D.cyan, display: "flex", alignItems: "center", justifyContent: "center", color: D.bg, boxShadow: `0 0 10px ${D.cyanDim}` }}>
-            <Activity size={16} />
-          </div>
-        </div>
+          <motion.div 
+            whileTap={{ scale: 0.9 }}
+            className="w-8 h-8 rounded-xl bg-cyan-400 flex items-center justify-center text-[#0B1121] shadow-[0_0_15px_rgba(34,211,238,0.3)] cursor-pointer"
+          >
+            <Activity size={18} />
+          </motion.div>
+        </motion.div>
 
         {/* ── MAIN CONTENT ── */}
         <PullToRefresh onRefresh={handleRefresh}>
-        <div style={{ padding: "0 20px" }}>
-          <div style={{ marginBottom: 24 }}>
-              <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0, color: D.textPrimary }}>{lang === "en" ? "Overview" : "الرئيسية"}</h1>
-              <p style={{ fontSize: 14, color: D.textSecondary, marginTop: 4 }}>{lang === "en" ? "Lifetime enterprise financials" : "المالية الشاملة للمؤسسة"}</p>
+          <div className="px-5 mt-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.1 }}
+              className="mb-8"
+            >
+                <h1 className="text-3xl font-black m-0 text-white tracking-tight">{lang === "en" ? "Overview" : "الرئيسية"}</h1>
+                <p className="text-sm text-slate-400 mt-1">{lang === "en" ? "Lifetime enterprise financials" : "المالية الشاملة للمؤسسة"}</p>
+            </motion.div>
+
+            {/* Balances Chart */}
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.15 }}
+              className="w-full h-40 mb-6 bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2rem] p-4 shadow-2xl relative overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-[40px] pointer-events-none" />
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: D.textSecondary, fontSize: 12, fontWeight: 700 }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: D.textDim, fontSize: 10 }} tickFormatter={(val) => `${(val/1000).toFixed(0)}k`} />
+                  <Tooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} contentStyle={{ backgroundColor: D.surfaceHigh, border: `1px solid ${D.border}`, borderRadius: 12, color: '#fff', fontWeight: 700 }} />
+                  <Bar dataKey="amount" radius={[8, 8, 8, 8]} barSize={40}>
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </motion.div>
+
+            <div className="grid grid-cols-1 gap-5">
+              
+              {/* ---------------- SAFE SECTION ---------------- */}
+              <motion.div 
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.2 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => hapticMedium()}
+                className="bg-[#151E32]/60 backdrop-blur-2xl rounded-[2rem] p-6 border border-emerald-500/20 shadow-[0_8px_32px_rgba(16,185,129,0.05)] relative overflow-hidden group cursor-pointer"
+              >
+                <div className="absolute -top-10 -right-10 w-40 h-40 bg-emerald-500/10 rounded-full blur-[40px] pointer-events-none group-hover:bg-emerald-500/20 transition-all duration-500" />
+                
+                <div className="flex justify-between items-center mb-4">
+                    <div className="flex items-center gap-2 text-emerald-400 text-xs font-black uppercase tracking-widest">
+                        <ShieldCheck size={18} /> {lang === "en" ? "Lifetime Safe Balance" : "رصيد الخزينة الشامل"}
+                    </div>
+                </div>
+                
+                <div className="flex items-baseline gap-2 mb-2">
+                  <span className="text-2xl font-black text-emerald-500">EGP</span>
+                  <span className="text-[2.75rem] font-black text-white tracking-tighter leading-none">{fmt(stats.safeMoney)}</span>
+                </div>
+                <p className="text-xs text-slate-500 leading-relaxed max-w-[90%] mb-5">
+                  Cash Sales − Cash Payments (incl. Credits & Tax) + Deposits In − Deposits Out − Payrolls & Loans
+                </p>
+
+                <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-5">
+                    <div>
+                        <div className="text-[10px] text-slate-500 uppercase font-bold mb-1">{lang === "en" ? "Total Cash Sales" : "إجمالي المبيعات النقدية"}</div>
+                        <div className="text-lg text-white font-black">{fmt(stats.totalSales)}</div>
+                    </div>
+                    <div>
+                        <div className="text-[10px] text-slate-500 uppercase font-bold mb-1">{lang === "en" ? "Total Outflows" : "إجمالي المصروفات"}</div>
+                        <div className="text-lg text-white font-black">{fmt(stats.totalCashPayments + stats.totalOldCreditsCash + stats.totalTaxPaid + stats.totalPayrolls + stats.totalLoans)}</div>
+                    </div>
+                </div>
+              </motion.div>
+
+              {/* ---------------- BANK SECTION ---------------- */}
+              <motion.div 
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => hapticMedium()}
+                className="bg-[#151E32]/60 backdrop-blur-2xl rounded-[2rem] p-6 border border-indigo-500/20 shadow-[0_8px_32px_rgba(99,102,241,0.05)] relative overflow-hidden group cursor-pointer"
+              >
+                <div className="absolute -top-10 -right-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-[40px] pointer-events-none group-hover:bg-indigo-500/20 transition-all duration-500" />
+                
+                <div className="flex justify-between items-center mb-4">
+                    <div className="flex items-center gap-2 text-indigo-400 text-xs font-black uppercase tracking-widest">
+                        <Landmark size={18} /> {lang === "en" ? "Lifetime Bank Balance" : "رصيد البنك الشامل"}
+                    </div>
+                </div>
+                
+                <div className="flex items-baseline gap-2 mb-2">
+                  <span className="text-2xl font-black text-indigo-500">EGP</span>
+                  <span className="text-[2.75rem] font-black text-white tracking-tighter leading-none">{fmt(stats.bankMoney)}</span>
+                </div>
+                <p className="text-xs text-slate-500 leading-relaxed max-w-[90%] mb-5">
+                  Visa Sales − Bank Payments − Bank Tax Paid − Bank Credits + Deposits In − Deposits Out
+                </p>
+
+                <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-5">
+                    <div>
+                        <div className="text-[10px] text-slate-500 uppercase font-bold mb-1">{lang === "en" ? "Total Visa Sales" : "إجمالي مبيعات الفيزا"}</div>
+                        <div className="text-lg text-white font-black">{fmt(stats.totalVisaSales)}</div>
+                    </div>
+                    <div>
+                        <div className="text-[10px] text-slate-500 uppercase font-bold mb-1">{lang === "en" ? "Total Outflows" : "إجمالي المصروفات"}</div>
+                        <div className="text-lg text-white font-black">{fmt(stats.totalBankPayments + stats.totalBankTaxPaid + stats.totalBankCredits)}</div>
+                    </div>
+                </div>
+              </motion.div>
+
+              {/* Quick Metrics Grid */}
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="grid grid-cols-2 gap-3"
+              >
+                  <motion.div whileTap={{ scale: 0.95 }} className="bg-[#151E32]/40 backdrop-blur-xl rounded-3xl p-5 border border-white/5">
+                    <div className="text-[10px] text-slate-500 uppercase font-black tracking-wider mb-2">{lang === "en" ? "Bank Payments" : "مدفوعات بنكية"}</div>
+                    <div className="text-xl text-white font-black tracking-tight">{fmt(stats.totalBankPayments)}</div>
+                  </motion.div>
+                  <motion.div whileTap={{ scale: 0.95 }} className="bg-[#151E32]/40 backdrop-blur-xl rounded-3xl p-5 border border-white/5">
+                    <div className="text-[10px] text-slate-500 uppercase font-black tracking-wider mb-2">{lang === "en" ? "Bank Credits" : "ذمم بنكية"}</div>
+                    <div className="text-xl text-white font-black tracking-tight">{fmt(stats.totalBankCredits)}</div>
+                  </motion.div>
+                  <motion.div whileTap={{ scale: 0.95 }} className="bg-emerald-900/10 backdrop-blur-xl rounded-3xl p-5 border border-emerald-500/20">
+                    <div className="text-[10px] text-emerald-400 uppercase font-black tracking-wider mb-2">{lang === "en" ? "Safe Deposits In" : "إيداعات للخزينة"}</div>
+                    <div className="text-xl text-white font-black tracking-tight">+{fmt(stats.depositsToSafe)}</div>
+                  </motion.div>
+                  <motion.div whileTap={{ scale: 0.95 }} className="bg-rose-900/10 backdrop-blur-xl rounded-3xl p-5 border border-rose-500/20">
+                    <div className="text-[10px] text-rose-400 uppercase font-black tracking-wider mb-2">{lang === "en" ? "Safe Deposits Out" : "سحوبات من الخزينة"}</div>
+                    <div className="text-xl text-white font-black tracking-tight">-{fmt(stats.depositsFromSafe)}</div>
+                  </motion.div>
+              </motion.div>
+
+            </div>
           </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16 }}>
-            
-            {/* ---------------- SAFE SECTION ---------------- */}
-            <div style={{ backgroundColor: D.surface, borderRadius: 24, padding: "24px 20px", border: `1px solid ${D.greenBorder}`, boxShadow: "0 8px 32px rgba(16, 185, 129, 0.1)", position: "relative", overflow: "hidden" }}>
-              <div style={{ position: "absolute", top: -40, right: -40, width: 150, height: 150, background: D.greenDim, borderRadius: "50%", filter: "blur(30px)", pointerEvents: "none" }} />
-              
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, color: D.green, fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em" }}>
-                      <ShieldCheck size={16} /> {lang === "en" ? "Lifetime Safe Balance" : "رصيد الخزينة الشامل"}
-                  </div>
-              </div>
-              
-              <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 8 }}>
-                <span style={{ fontSize: 24, fontWeight: 800, color: D.green }}>EGP</span>
-                <span style={{ fontSize: 42, fontWeight: 900, color: D.textPrimary, letterSpacing: "-0.02em" }}>{fmt(stats.safeMoney)}</span>
-              </div>
-              <p style={{ fontSize: 11, color: D.textDim, lineHeight: 1.4, maxWidth: "90%" }}>
-                Cash Sales − Cash Payments (incl. Credits & Tax) + Deposits In − Deposits Out − Payrolls & Loans
-              </p>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, borderTop: `1px solid ${D.borderMid}`, paddingTop: 16, marginTop: 16 }}>
-                  <div>
-                      <div style={{ fontSize: 10, color: D.textDim, textTransform: "uppercase", fontWeight: 700 }}>{lang === "en" ? "Total Cash Sales" : "إجمالي المبيعات النقدية"}</div>
-                      <div style={{ fontSize: 16, color: D.textPrimary, fontWeight: 800 }}>{fmt(stats.totalSales)}</div>
-                  </div>
-                  <div>
-                      <div style={{ fontSize: 10, color: D.textDim, textTransform: "uppercase", fontWeight: 700 }}>{lang === "en" ? "Total Outflows" : "إجمالي المصروفات"}</div>
-                      <div style={{ fontSize: 16, color: D.textPrimary, fontWeight: 800 }}>{fmt(stats.totalCashPayments + stats.totalOldCreditsCash + stats.totalTaxPaid + stats.totalPayrolls + stats.totalLoans)}</div>
-                  </div>
-              </div>
-            </div>
-
-            {/* ---------------- BANK SECTION ---------------- */}
-            <div style={{ backgroundColor: D.surface, borderRadius: 24, padding: "24px 20px", border: `1px solid ${D.indigoBorder}`, boxShadow: "0 8px 32px rgba(99, 102, 241, 0.1)", position: "relative", overflow: "hidden" }}>
-              <div style={{ position: "absolute", top: -40, right: -40, width: 150, height: 150, background: D.indigoDim, borderRadius: "50%", filter: "blur(30px)", pointerEvents: "none" }} />
-              
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, color: D.indigo, fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em" }}>
-                      <Landmark size={16} /> {lang === "en" ? "Lifetime Bank Balance" : "رصيد البنك الشامل"}
-                  </div>
-              </div>
-              
-              <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 8 }}>
-                <span style={{ fontSize: 24, fontWeight: 800, color: D.indigo }}>EGP</span>
-                <span style={{ fontSize: 42, fontWeight: 900, color: D.textPrimary, letterSpacing: "-0.02em" }}>{fmt(stats.bankMoney)}</span>
-              </div>
-              <p style={{ fontSize: 11, color: D.textDim, lineHeight: 1.4, maxWidth: "90%" }}>
-                Visa Sales − Bank Payments − Bank Tax Paid − Bank Credits + Deposits In − Deposits Out
-              </p>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, borderTop: `1px solid ${D.borderMid}`, paddingTop: 16, marginTop: 16 }}>
-                  <div>
-                      <div style={{ fontSize: 10, color: D.textDim, textTransform: "uppercase", fontWeight: 700 }}>{lang === "en" ? "Total Visa Sales" : "إجمالي مبيعات الفيزا"}</div>
-                      <div style={{ fontSize: 16, color: D.textPrimary, fontWeight: 800 }}>{fmt(stats.totalVisaSales)}</div>
-                  </div>
-                  <div>
-                      <div style={{ fontSize: 10, color: D.textDim, textTransform: "uppercase", fontWeight: 700 }}>{lang === "en" ? "Total Outflows" : "إجمالي المصروفات"}</div>
-                      <div style={{ fontSize: 16, color: D.textPrimary, fontWeight: 800 }}>{fmt(stats.totalBankPayments + stats.totalBankTaxPaid + stats.totalBankCredits)}</div>
-                  </div>
-              </div>
-            </div>
-
-            {/* Quick Metrics Grid */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div style={{ backgroundColor: D.surface, borderRadius: 20, padding: "16px", border: `1px solid ${D.border}` }}>
-                  <div style={{ fontSize: 10, color: D.textDim, textTransform: "uppercase", fontWeight: 800, marginBottom: 4 }}>{lang === "en" ? "Bank Payments" : "مدفوعات بنكية"}</div>
-                  <div style={{ fontSize: 18, color: D.textPrimary, fontWeight: 900 }}>{fmt(stats.totalBankPayments)}</div>
-                </div>
-                <div style={{ backgroundColor: D.surface, borderRadius: 20, padding: "16px", border: `1px solid ${D.border}` }}>
-                  <div style={{ fontSize: 10, color: D.textDim, textTransform: "uppercase", fontWeight: 800, marginBottom: 4 }}>{lang === "en" ? "Bank Credits" : "ذمم بنكية"}</div>
-                  <div style={{ fontSize: 18, color: D.textPrimary, fontWeight: 900 }}>{fmt(stats.totalBankCredits)}</div>
-                </div>
-                <div style={{ backgroundColor: D.surface, borderRadius: 20, padding: "16px", border: `1px solid ${D.greenBorder}` }}>
-                  <div style={{ fontSize: 10, color: D.green, textTransform: "uppercase", fontWeight: 800, marginBottom: 4 }}>{lang === "en" ? "Safe Deposits In" : "إيداعات للخزينة"}</div>
-                  <div style={{ fontSize: 18, color: D.textPrimary, fontWeight: 900 }}>+ {fmt(stats.depositsToSafe)}</div>
-                </div>
-                <div style={{ backgroundColor: D.surface, borderRadius: 20, padding: "16px", border: `1px solid ${D.border}` }}>
-                  <div style={{ fontSize: 10, color: D.red, textTransform: "uppercase", fontWeight: 800, marginBottom: 4 }}>{lang === "en" ? "Safe Deposits Out" : "سحوبات من الخزينة"}</div>
-                  <div style={{ fontSize: 18, color: D.textPrimary, fontWeight: 900 }}>- {fmt(stats.depositsFromSafe)}</div>
-                </div>
-            </div>
-
-          </div>
-        </div>
-      </PullToRefresh>
+        </PullToRefresh>
       </div>
     </div>
   );
