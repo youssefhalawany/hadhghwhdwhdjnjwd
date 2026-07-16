@@ -16,13 +16,19 @@ interface CleaningLog {
   signatureUrl: string;
   cashierName: string;
   timestamp: string;
+  localTime?: string;
 }
 
 export default function ManagerCleaningLogsPage() {
   const { language } = useLanguage();
   const [logs, setLogs] = useState<CleaningLog[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Filters
   const [searchTerm, setSearchTerm] = useState("");
+  const [dateFilter, setDateFilter] = useState("all_time"); // all_time, today, yesterday, this_week, this_month
+  const [cashierFilter, setCashierFilter] = useState("all");
+  
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -42,43 +48,103 @@ export default function ManagerCleaningLogsPage() {
     return () => unsubscribe();
   }, []);
 
-  const filteredLogs = logs.filter(log => 
-    log.cashierName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    log.areaNameEn.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    log.areaNameAr.includes(searchTerm)
-  );
+  const uniqueCashiers = Array.from(new Set(logs.map(l => l.cashierName))).filter(Boolean);
 
-  const formatDate = (isoString: string) => {
-    const d = new Date(isoString);
-    return new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG' : 'en-US', {
-      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-    }).format(d);
+  const filteredLogs = logs.filter(log => {
+    // 1. Search filter
+    const matchesSearch = log.cashierName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          log.areaNameEn.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          log.areaNameAr.includes(searchTerm);
+    
+    // 2. Cashier filter
+    const matchesCashier = cashierFilter === "all" || log.cashierName === cashierFilter;
+    
+    // 3. Date filter
+    let matchesDate = true;
+    if (dateFilter !== "all_time") {
+      const logDate = new Date(log.timestamp);
+      const now = new Date();
+      if (dateFilter === "today") {
+        matchesDate = logDate.toDateString() === now.toDateString();
+      } else if (dateFilter === "yesterday") {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        matchesDate = logDate.toDateString() === yesterday.toDateString();
+      } else if (dateFilter === "this_week") {
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        matchesDate = logDate >= weekAgo;
+      } else if (dateFilter === "this_month") {
+        matchesDate = logDate.getMonth() === now.getMonth() && logDate.getFullYear() === now.getFullYear();
+      }
+    }
+    
+    return matchesSearch && matchesCashier && matchesDate;
+  });
+
+  const formatDate = (isoString: string, fallbackLocal?: string) => {
+    try {
+      const d = new Date(isoString);
+      return new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG' : 'en-US', {
+        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Riyadh'
+      }).format(d);
+    } catch {
+      return fallbackLocal || isoString;
+    }
   };
 
   return (
     <PageWrapper className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6 md:p-8" dir={language === "ar" ? "rtl" : "ltr"}>
       
-      {/* Header */}
-      <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+      {/* Header & Filters */}
+      <header className="mb-8 flex flex-col gap-6">
         <div>
           <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
             <Sparkles className="text-cyan-500" size={32} />
             {language === 'en' ? 'Cleaning Logs' : 'سجلات النظافة'}
           </h1>
           <p className="text-slate-500 mt-2">
-            {language === 'en' ? 'Review cleaning tasks submitted by cashiers.' : 'مراجعة مهام النظافة المقدمة من قبل الصرافين.'}
+            {language === 'en' ? 'Review and filter cleaning tasks submitted by cashiers.' : 'مراجعة وتصفية مهام النظافة المقدمة من قبل الصرافين.'}
           </p>
         </div>
 
-        <div className="relative max-w-sm w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-          <input 
-            type="text" 
-            placeholder={language === 'en' ? 'Search logs...' : 'ابحث في السجلات...'}
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-cyan-500 outline-none"
-          />
+        <div className="flex flex-col md:flex-row gap-4 items-center bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          {/* Search */}
+          <div className="relative w-full md:flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <input 
+              type="text" 
+              placeholder={language === 'en' ? 'Search logs...' : 'ابحث في السجلات...'}
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-cyan-500 outline-none transition-all"
+            />
+          </div>
+
+          {/* Date Filter */}
+          <select
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="w-full md:w-48 py-2.5 px-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-cyan-500 outline-none appearance-none"
+          >
+            <option value="all_time">{language === 'en' ? 'All Time' : 'كل الوقت'}</option>
+            <option value="today">{language === 'en' ? 'Today' : 'اليوم'}</option>
+            <option value="yesterday">{language === 'en' ? 'Yesterday' : 'أمس'}</option>
+            <option value="this_week">{language === 'en' ? 'This Week' : 'هذا الأسبوع'}</option>
+            <option value="this_month">{language === 'en' ? 'This Month' : 'هذا الشهر'}</option>
+          </select>
+
+          {/* Cashier Filter */}
+          <select
+            value={cashierFilter}
+            onChange={(e) => setCashierFilter(e.target.value)}
+            className="w-full md:w-48 py-2.5 px-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-cyan-500 outline-none appearance-none"
+          >
+            <option value="all">{language === 'en' ? 'All Cashiers' : 'كل الصرافين'}</option>
+            {uniqueCashiers.map(c => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
         </div>
       </header>
 
@@ -111,7 +177,7 @@ export default function ManagerCleaningLogsPage() {
                   </div>
                   <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1">
                     <Calendar size={12} />
-                    {formatDate(log.timestamp)}
+                    {formatDate(log.timestamp, log.localTime)}
                   </div>
                 </div>
 
