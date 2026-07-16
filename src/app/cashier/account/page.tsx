@@ -126,11 +126,26 @@ export default function MyAccountPage() {
           } catch (e) { console.error(`Error fetching from ${collectionName}:`, e); return []; }
         };
 
-        const uniqueDeds = await fetchRecordsByStaff("deductions"); setDeductions(uniqueDeds);
-        const uniqueAdjs = await fetchRecordsByStaff("adjustments"); setAdjustments(uniqueAdjs);
+        // Execute all independent queries concurrently to prevent waterfall delays
+        const [
+          uniqueDeds, 
+          uniqueAdjs, 
+          uniquePays1, 
+          uniquePays2, 
+          shiftSnap, 
+          voidSnap
+        ] = await Promise.all([
+          fetchRecordsByStaff("deductions"),
+          fetchRecordsByStaff("adjustments"),
+          fetchRecordsByStaff("payroll_lines"),
+          fetchRecordsByStaff("payroll"),
+          getDocs(query(collection(db, "shift_reports"), where("cashierDetails.name", "==", profileName))),
+          getDocs(query(collection(db, "void_requests"), where("cashierName", "==", profileName)))
+        ]);
 
-        const uniquePays1 = await fetchRecordsByStaff("payroll_lines");
-        const uniquePays2 = await fetchRecordsByStaff("payroll");
+        setDeductions(uniqueDeds);
+        setAdjustments(uniqueAdjs);
+
         const mergedPays = [...uniquePays1, ...uniquePays2];
         let finalPays = Array.from(new Map(mergedPays.map(p => {
           const normalized = { id: p.id, month: p.month || p.date?.substring(0, 7) || new Date(p.createdAt || Date.now()).toISOString().substring(0, 7) || "N/A", days: p.days || p.daysWorked || 30, deductions: Number(p.deductions) || Number(p.totalDeductions) || 0, netPay: Number(p.netPay) || Number(p.netSalary) || Number(p.amount) || 0, status: p.status || "paid" };
@@ -139,25 +154,29 @@ export default function MyAccountPage() {
         if (finalPays.length === 0) { finalPays = [{ id: "demo-payroll-1", month: new Date().toISOString().substring(0, 7), days: 30, deductions: 0, netPay: Number(profileData.baseSalary) || Number(profileData.salary) || 3000, status: "pending" }]; }
         setPayrollLines(finalPays.sort((a: any, b: any) => b.month.localeCompare(a.month)));
 
-        const shiftSnap = await getDocs(query(collection(db, "shift_reports"), where("cashierDetails.name", "==", profileName)));
         const fetchedShifts = shiftSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         fetchedShifts.sort((a: any, b: any) => (b.createdAt || "").localeCompare(a.createdAt || ""));
         setShiftReports(fetchedShifts);
 
-        const voidSnap = await getDocs(query(collection(db, "void_requests"), where("cashierName", "==", profileName)));
         const fetchedVoids = voidSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         fetchedVoids.sort((a: any, b: any) => (b.createdAt || "").localeCompare(a.createdAt || ""));
         setVoidRequests(fetchedVoids);
 
+        setLoading(false); // Stop loading early while global shifts fetch in background
+
+        // Fetch global shifts in background without blocking the UI
         try {
           const currentMonthPrefix = new Date().toISOString().substring(0, 7);
           const q = query(collection(db, "shift_reports"), where("createdAt", ">=", currentMonthPrefix), where("createdAt", "<=", currentMonthPrefix + "\uf8ff"));
-          const globalShiftsSnap = await getDocs(q);
-          setAllShiftsGlobally(globalShiftsSnap.docs.map(d => d.data()));
+          getDocs(q).then(globalShiftsSnap => {
+            setAllShiftsGlobally(globalShiftsSnap.docs.map(d => d.data()));
+          });
         } catch (e) { console.warn("Could not fetch global shifts for badges", e); }
 
-      } catch (error) { console.error("Error fetching staff data:", error); }
-      finally { setLoading(false); }
+      } catch (error) { 
+        console.error("Error fetching staff data:", error); 
+        setLoading(false);
+      }
     };
 
     fetchStaffData();

@@ -21,36 +21,56 @@ export function CameraCapture({ onPhotoUploaded, label }: CameraCaptureProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Show preview immediately
+    // Show preview and compress immediately
     const reader = new FileReader();
     reader.onloadend = () => {
-      setPreview(reader.result as string);
+      const img = new Image();
+      img.onload = () => {
+        // Compress image using canvas
+        const canvas = document.createElement("canvas");
+        const MAX_WIDTH = 800;
+        const scaleSize = MAX_WIDTH / img.width;
+        canvas.width = MAX_WIDTH;
+        canvas.height = img.height * scaleSize;
+        
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+        
+        const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.7);
+        setPreview(compressedDataUrl);
+
+        // Convert data URL back to Blob for upload
+        fetch(compressedDataUrl)
+          .then(res => res.blob())
+          .then(blob => {
+            // Start upload with compressed blob
+            setUploading(true);
+            const fileName = `checklists/proof_${Date.now()}_optimized.jpg`;
+            const storageRef = ref(productsStorage, fileName);
+            
+            const uploadTask = uploadBytesResumable(storageRef, blob);
+
+            uploadTask.on(
+              "state_changed",
+              (snapshot) => {
+                const p = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                setProgress(p);
+              },
+              (error) => {
+                console.error("Upload failed", error);
+                setUploading(false);
+              },
+              async () => {
+                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                setUploading(false);
+                onPhotoUploaded(downloadURL);
+              }
+            );
+          });
+      };
+      img.src = reader.result as string;
     };
     reader.readAsDataURL(file);
-
-    // Start upload
-    setUploading(true);
-    const fileName = `checklists/proof_${Date.now()}_${file.name}`;
-    const storageRef = ref(productsStorage, fileName);
-    
-    const uploadTask = uploadBytesResumable(storageRef, file);
-
-    uploadTask.on(
-      "state_changed",
-      (snapshot) => {
-        const p = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        setProgress(p);
-      },
-      (error) => {
-        console.error("Upload failed", error);
-        setUploading(false);
-      },
-      async () => {
-        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-        setUploading(false);
-        onPhotoUploaded(downloadURL);
-      }
-    );
   };
 
   return (
