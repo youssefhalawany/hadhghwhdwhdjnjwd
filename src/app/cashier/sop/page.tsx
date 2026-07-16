@@ -3,7 +3,10 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/context/LanguageContext";
-import { Search, ArrowLeft, BookOpen, ChefHat, AlertTriangle, Info, ListChecks, Pizza } from "lucide-react";
+import { 
+  ChevronLeft, Search, AlertTriangle, Info, List, 
+  Pizza, Clock, Thermometer, Globe, Calendar
+} from "lucide-react";
 import { SOP_DATA, SOPCategory } from "@/data/sopData";
 
 const D = {
@@ -14,6 +17,7 @@ const D = {
   borderMid: "rgba(34, 211, 238, 0.25)",
   red: "#ef4444",
   redDim: "rgba(239,68,68,0.15)",
+  redBorder: "rgba(239,68,68,0.3)",
   textPrimary: "#f8fafc",
   textSecondary: "#94a3b8",
   cyan: "#22d3ee",
@@ -57,7 +61,7 @@ export default function CashierSOPPage() {
               transform: isEn ? "none" : "rotate(180deg)"
             }}
           >
-            <ArrowLeft size={20} />
+            <ChevronLeft size={20} />
           </button>
           <div>
             <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
@@ -156,10 +160,12 @@ export default function CashierSOPPage() {
                     {(block.titleEn || block.titleAr) && (
                       <h3 style={{ fontSize: 16, fontWeight: 700, color: block.type === 'warning' ? D.red : D.cyan, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
                         {block.type === 'warning' && <AlertTriangle size={18} />}
-                        {block.type === 'highlight' && <Info size={18} />}
+                        {block.type === 'list' && <List size={18} />}
                         {block.type === 'recipe-table' && <Pizza size={18} />}
-                        {block.type === 'list' && <ListChecks size={18} />}
-                        {isEn ? block.titleEn : block.titleAr}
+                        {block.type === 'expiry-table' && <Calendar size={18} />}
+                        <span style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>
+                          {isEn ? block.titleEn : block.titleAr}
+                        </span>
                       </h3>
                     )}
 
@@ -229,6 +235,27 @@ export default function CashierSOPPage() {
                             </div>
                           </div>
                         ))}
+                      </div>
+                    )}
+
+                    {block.type === 'expiry-table' && block.tableData && (
+                      <div style={{ overflowX: "auto", borderRadius: 16, border: `1px solid ${D.borderMid}`, backgroundColor: D.surfaceHigh }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 400 }}>
+                          <thead>
+                            <tr style={{ backgroundColor: "rgba(0,0,0,0.3)", color: D.textSecondary, fontSize: 13, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: `1px solid ${D.border}` }}>
+                              <th style={{ textAlign: isEn ? "left" : "right", padding: "12px 16px" }}>{isEn ? "Item" : "الصنف"}</th>
+                              <th style={{ textAlign: isEn ? "left" : "right", padding: "12px 16px" }}>{isEn ? "Expiry Duration" : "مدة الصلاحية"}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {block.tableData.map((row: any, rIdx: number) => (
+                              <tr key={rIdx} style={{ borderBottom: rIdx === block.tableData.length - 1 ? "none" : `1px solid rgba(255,255,255,0.05)` }}>
+                                <td style={{ padding: "12px 16px", fontSize: 14, fontWeight: 700, color: D.cyan }}>{isEn ? row.nameEn : row.nameAr}</td>
+                                <td style={{ padding: "12px 16px", fontSize: 14, color: D.textPrimary, lineHeight: 1.5 }}>{isEn ? row.durationEn : row.durationAr}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     )}
                   </div>
