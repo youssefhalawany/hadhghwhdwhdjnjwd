@@ -23,10 +23,6 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent"
-  },
-  icons: {
-    icon: "/icons8-circled-k-50.png",
-    apple: "/apple-icon.png",
   }
 };
 
@@ -47,8 +43,6 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={inter.variable}>
       <head>
-        <link rel="apple-touch-icon" sizes="180x180" href="/icons8-circled-k-50.png" />
-        <link rel="icon" type="image/png" sizes="192x192" href="/icons8-circled-k-50.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
