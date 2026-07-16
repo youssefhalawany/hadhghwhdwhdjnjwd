@@ -266,40 +266,40 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
   const navItems = [
     {
-      name: "Financials", icon: FileText, children: [
-        { name: "Financial Inputs", href: "/financials/inputs", icon: Wallet },
-        { name: "Product Prices", href: "/financials/products-price", icon: Search },
+      name: t("nav.financials"), icon: FileText, children: [
+        { name: t("nav.financial_inputs"), href: "/financials/inputs", icon: Wallet },
+        { name: t("nav.product_prices"), href: "/financials/products-price", icon: Search },
         { name: t("nav.reports"), href: "/financial-reports", icon: FileText },
-        { name: "Voids & Returns", href: "/voids/manager", icon: Shield },
-        { name: "Shift Audit", href: "/shift-reports/manager", icon: Shield },
-        { name: "Margin Strategy", href: "/dashboard/margin-calculator", icon: Activity }
+        { name: t("nav.voids_returns"), href: "/voids/manager", icon: Shield },
+        { name: t("nav.shift_audit"), href: "/shift-reports/manager", icon: Shield },
+        { name: t("nav.margin_strategy"), href: "/dashboard/margin-calculator", icon: Activity }
       ]
     },
-    { name: "Returns", href: "/dashboard/supplier-returns", icon: Truck },
+    { name: t("nav.returns"), href: "/dashboard/supplier-returns", icon: Truck },
     {
-      name: "Expired", icon: PackageX, children: [
+      name: t("nav.expired"), icon: PackageX, children: [
         { name: t("nav.expiries"), href: "/dashboard/expiries-audit", icon: ClipboardList },
-        { name: "Product Lookup", href: "/admin/product-lookup", icon: Search },
-        { name: "Blind Audit", href: "/inventory-audit/manager", icon: Shield }
+        { name: t("nav.product_lookup"), href: "/admin/product-lookup", icon: Search },
+        { name: t("nav.blind_audit"), href: "/inventory-audit/manager", icon: Shield }
       ]
     },
     {
-      name: "HR", icon: Users, children: [
-        { name: "Employees", href: "/hr/employees", icon: Users },
-        { name: "Cashier Accounts", href: "/settings/cashiers", icon: Users },
-        { name: "Payroll System", href: "/admin/payroll", icon: DollarSign },
-        { name: "Adjustments & Loans", href: "/admin/adjustments", icon: FileText },
-        { name: "Smart Scheduler", href: "/admin/schedule", icon: CalendarDays }
+      name: t("nav.hr"), icon: Users, children: [
+        { name: t("nav.employees"), href: "/hr/employees", icon: Users },
+        { name: t("nav.cashier_accounts"), href: "/settings/cashiers", icon: Users },
+        { name: t("nav.payroll_system"), href: "/admin/payroll", icon: DollarSign },
+        { name: t("nav.adjustments_loans"), href: "/admin/adjustments", icon: FileText },
+        { name: t("nav.smart_scheduler"), href: "/admin/schedule", icon: CalendarDays }
       ]
     },
-    { name: "Checklists", href: "/checklists/manager", icon: ClipboardList },
+    { name: t("nav.checklists"), href: "/checklists/manager", icon: ClipboardList },
     {
-      name: "Admin", icon: Shield, children: [
-        { name: "User Management", href: "/admin/users", icon: Shield },
-        { name: "Inventory Predict", href: "/admin/inventory-predict", icon: Database },
-        { name: "Send Notifications", href: "/settings/notifications", icon: Bell },
-        { name: "Security Audit Log", href: "/settings/audit-log", icon: Shield },
-        { name: "Import Products", href: "/admin/import-csv", icon: Database }
+      name: t("nav.admin"), icon: Shield, children: [
+        { name: t("nav.user_management"), href: "/admin/users", icon: Shield },
+        { name: t("nav.inventory_predict"), href: "/admin/inventory-predict", icon: Database },
+        { name: t("nav.send_notifications"), href: "/settings/notifications", icon: Bell },
+        { name: t("nav.security_audit_log"), href: "/settings/audit-log", icon: Shield },
+        { name: t("nav.data_import"), href: "/admin/import-csv", icon: Database }
       ]
     },
 
@@ -452,17 +452,17 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                         >
                           <child.icon className={`h-4 w-4 ${isChildActive ? 'scale-110 drop-shadow-sm' : 'opacity-70 group-hover:opacity-100'}`} />
                           <span>{child.name}</span>
-                          {child.name === "Shift Audit" && pendingShiftCount > 0 && (
+                          {child.name === t("nav.shift_audit") && pendingShiftCount > 0 && (
                             <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
                               {pendingShiftCount}
                             </span>
                           )}
-                          {child.name === "Voids & Returns" && pendingVoidCount > 0 && (
+                          {child.name === t("nav.voids_returns") && pendingVoidCount > 0 && (
                             <span className="ml-auto bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
                               {pendingVoidCount}
                             </span>
                           )}
-                          {child.name === "Expiry Audits" && pendingExpiriesCount > 0 && (
+                          {child.name === t("nav.expiries") && pendingExpiriesCount > 0 && (
                             <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
                               {pendingExpiriesCount}
                             </span>
@@ -481,8 +481,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                   className={`group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive ? "bg-red-500/10 text-red-600 dark:text-red-500" : "text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-foreground"}`}
                 >
                   <Icon className={`h-4 w-4 ${isActive ? 'scale-110 drop-shadow-sm' : 'opacity-70 group-hover:opacity-100'}`} />
-                  {!item.isIconOnly && <span>{language === 'ar' && item.name === 'Returns' ? 'مرتجعات' : language === 'ar' && item.name === 'Admin' ? 'الإدارة' : item.name}</span>}
-                  {item.name === "Returns" && pendingReturnsCount > 0 && (
+                  {!item.isIconOnly && <span>{item.name}</span>}
+                  {item.name === t("nav.returns") && pendingReturnsCount > 0 && (
                     <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse shadow-sm shadow-red-500/30">
                       {pendingReturnsCount}
                     </span>
@@ -497,7 +497,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
               onClick={() => signOut(auth)}
               className="w-full flex items-center justify-center gap-2 p-2.5 rounded-lg border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors text-sm font-bold"
             >
-              <LogOut className="h-4 w-4" /> {language === "ar" ? "تسجيل الخروج" : "Sign Out"}
+              <LogOut className="h-4 w-4" /> {t("nav.sign_out")}
             </button>
           </div>
         </aside>
@@ -685,7 +685,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                 }}
                 className="w-full flex items-center justify-center gap-2 p-3 rounded-lg border border-red-500/30 bg-red-500/10 text-red-500 font-bold"
               >
-                <LogOut className="h-4 w-4" /> Sign Out
+                <LogOut className="h-4 w-4" /> {t("nav.sign_out")}
               </button>
             </div>
           </div>

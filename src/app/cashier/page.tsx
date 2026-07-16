@@ -290,7 +290,7 @@ export default function CashierHubPage() {
 
   // ─── LOADING ──────────────────────────────────────────────
   if (loading) return (
-    <div style={{ ...rootStyle, backgroundColor: D.bg }}>
+    <div style={rootStyle}>
       <SkeletonDashboard />
     </div>
   );

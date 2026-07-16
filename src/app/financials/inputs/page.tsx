@@ -5,9 +5,11 @@ import { collection, query, where, getAggregateFromServer, sum } from "firebase/
 import { db } from "@/lib/firebase";
 import { Wallet, Landmark, Loader2, AlertTriangle, ShieldCheck, ExternalLink } from "lucide-react";
 import { useBranch } from "@/context/BranchContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function FinancialInputsOverview() {
   const { currentBranch } = useBranch();
+  const { t } = useLanguage();
   
   const [stats, setStats] = useState({
     safeMoney: 0,
@@ -212,8 +214,8 @@ export default function FinancialInputsOverview() {
     return (
       <div className="flex flex-col items-center justify-center p-24 text-slate-500">
         <Loader2 className="h-12 w-12 animate-spin text-emerald-500 mb-4" />
-        <p className="font-bold">Loading overview...</p>
-        <p className="text-xs opacity-60 mt-1">Using zero-read server aggregations</p>
+        <p className="font-bold">{t("admin.financials_inputs.loading")}</p>
+        <p className="text-xs opacity-60 mt-1">{t("admin.financials_inputs.loading_desc")}</p>
       </div>
     );
   }
@@ -222,10 +224,10 @@ export default function FinancialInputsOverview() {
     return (
       <div className="flex flex-col items-center justify-center p-24 text-red-500 gap-4">
         <AlertTriangle className="h-12 w-12" />
-        <p className="font-bold text-xl">Action Required: Missing Database Indexes ({missingIndexes.length})</p>
+        <p className="font-bold text-xl">{t("admin.financials_inputs.action_required")} ({missingIndexes.length})</p>
         <div className="bg-red-50 border border-red-200 p-6 rounded-xl max-w-2xl text-center shadow-sm">
           <p className="text-sm text-red-800 mb-4 font-medium">
-            Please click EVERY SINGLE button below to create all required indexes at once. Once they finish building in Firebase, refresh this page.
+            {t("admin.financials_inputs.action_desc")}
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             {missingIndexes.map((url, i) => (
@@ -236,7 +238,7 @@ export default function FinancialInputsOverview() {
                 rel="noreferrer"
                 className="bg-white border border-red-300 text-red-700 hover:bg-red-100 font-bold py-2 px-4 rounded-lg text-sm shadow-sm transition-colors flex items-center gap-2"
               >
-                Create Index #{i + 1}
+                {t("admin.financials_inputs.create_index")} #{i + 1}
                 <ExternalLink className="w-4 h-4" />
               </a>
             ))}
@@ -263,14 +265,14 @@ export default function FinancialInputsOverview() {
           <div className="relative z-10 space-y-3">
             <div className="flex items-center gap-2 text-teal-100 font-bold uppercase tracking-[0.2em] text-xs">
               <ShieldCheck className="h-4 w-4" />
-              Lifetime Safe Balance
+              {t("admin.financials_inputs.lifetime_safe_balance")}
             </div>
             <h1 className="text-5xl md:text-7xl font-black tracking-tighter drop-shadow-sm flex items-baseline gap-2">
               <span className="text-3xl md:text-4xl text-teal-100 font-bold tracking-normal">EGP</span>
               {fmt(stats.safeMoney)}
             </h1>
             <p className="text-teal-50/80 font-medium text-sm max-w-2xl leading-relaxed">
-              Cash Sales − Cash Payments (incl. Credits) − Tax Paid + Deposits In − Deposits Out − Payrolls − Loans − Old Credits (Cash)
+              {t("admin.financials_inputs.safe_formula")}
             </p>
           </div>
         </div>
@@ -279,41 +281,41 @@ export default function FinancialInputsOverview() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6">
           <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md p-6 rounded-[1.5rem] hover:-translate-y-1 transition-all duration-300 group">
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 group-hover:text-emerald-500 transition-colors">
-              Cash Sales
+              {t("admin.financials_inputs.cash_sales")}
             </p>
             <p className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">EGP {fmt(stats.totalSales)}</p>
           </div>
           
           <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md p-6 rounded-[1.5rem] hover:-translate-y-1 transition-all duration-300 group">
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 group-hover:text-emerald-500 transition-colors">
-              Cash Payments + Tax
+              {t("admin.financials_inputs.cash_payments_tax")}
             </p>
             <p className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">EGP {fmt(stats.totalCashPayments + stats.totalOldCreditsCash)}</p>
             <p className="text-[10px] text-slate-400 font-bold mt-1.5 bg-slate-50 dark:bg-slate-800 inline-block px-2 py-0.5 rounded-md">
-              + Tax: EGP {fmt(stats.totalTaxPaid)}
+              + {t("admin.financials_inputs.tax")}: EGP {fmt(stats.totalTaxPaid)}
             </p>
           </div>
 
           <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md p-6 rounded-[1.5rem] hover:-translate-y-1 transition-all duration-300 group flex flex-col justify-between">
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3 group-hover:text-emerald-500 transition-colors">
-              Deposits (Bank/Owner)
+              {t("admin.financials_inputs.deposits_bank_owner")}
             </p>
             <div className="flex flex-col gap-3 mt-1">
               <div>
                 <p className="text-emerald-600 font-black text-xl tracking-tight">+ {fmt(stats.depositsToSafe)}</p>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">To Safe</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">{t("admin.financials_inputs.to_safe")}</p>
               </div>
               <div className="h-px w-full bg-slate-100 dark:bg-slate-800"></div>
               <div>
                 <p className="text-rose-500 font-black text-xl tracking-tight">- {fmt(stats.depositsFromSafe)}</p>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">From Safe</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">{t("admin.financials_inputs.from_safe")}</p>
               </div>
             </div>
           </div>
 
           <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md p-6 rounded-[1.5rem] hover:-translate-y-1 transition-all duration-300 group">
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 group-hover:text-emerald-500 transition-colors">
-              Payrolls & Loans
+              {t("admin.financials_inputs.payrolls_loans")}
             </p>
             <p className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">EGP {fmt(stats.totalPayrolls + stats.totalLoans)}</p>
           </div>
@@ -336,14 +338,14 @@ export default function FinancialInputsOverview() {
           <div className="relative z-10 space-y-3">
             <div className="flex items-center gap-2 text-indigo-200 font-bold uppercase tracking-[0.2em] text-xs">
               <Landmark className="h-4 w-4" />
-              Lifetime Bank Balance
+              {t("admin.financials_inputs.lifetime_bank_balance")}
             </div>
             <h1 className="text-5xl md:text-7xl font-black tracking-tighter drop-shadow-sm flex items-baseline gap-2">
               <span className="text-3xl md:text-4xl text-indigo-200 font-bold tracking-normal">EGP</span>
               {fmt(stats.bankMoney)}
             </h1>
             <p className="text-indigo-100/80 font-medium text-sm max-w-2xl leading-relaxed">
-              Visa Sales − Bank Payments − Bank Tax Paid − Bank Credits + Deposits In − Deposits Out
+              {t("admin.financials_inputs.bank_formula")}
             </p>
           </div>
         </div>
@@ -351,27 +353,27 @@ export default function FinancialInputsOverview() {
         {/* Bank Cards */}
         <div className="grid grid-cols-2 md:grid-cols-6 gap-3 md:gap-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md p-5 rounded-[1.25rem] hover:-translate-y-1 transition-all duration-300 group">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 group-hover:text-blue-500 transition-colors">Visa Sales</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 group-hover:text-blue-500 transition-colors">{t("admin.financials_inputs.visa_sales")}</p>
             <p className="text-lg font-black text-slate-800 dark:text-slate-100 tracking-tight">EGP {fmt(stats.totalVisaSales)}</p>
           </div>
           <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md p-5 rounded-[1.25rem] hover:-translate-y-1 transition-all duration-300 group">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 group-hover:text-blue-500 transition-colors">Bank Payments</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 group-hover:text-blue-500 transition-colors">{t("admin.financials_inputs.bank_payments")}</p>
             <p className="text-lg font-black text-slate-800 dark:text-slate-100 tracking-tight">EGP {fmt(stats.totalBankPayments)}</p>
           </div>
           <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md p-5 rounded-[1.25rem] hover:-translate-y-1 transition-all duration-300 group">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 group-hover:text-blue-500 transition-colors">Bank Tax Paid</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 group-hover:text-blue-500 transition-colors">{t("admin.financials_inputs.bank_tax_paid")}</p>
             <p className="text-lg font-black text-slate-800 dark:text-slate-100 tracking-tight">EGP {fmt(stats.totalBankTaxPaid)}</p>
           </div>
           <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md p-5 rounded-[1.25rem] hover:-translate-y-1 transition-all duration-300 group">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 group-hover:text-blue-500 transition-colors">Bank Credits</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 group-hover:text-blue-500 transition-colors">{t("admin.financials_inputs.bank_credits")}</p>
             <p className="text-lg font-black text-slate-800 dark:text-slate-100 tracking-tight">EGP {fmt(stats.totalBankCredits)}</p>
           </div>
           <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md p-5 rounded-[1.25rem] hover:-translate-y-1 transition-all duration-300 group">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 group-hover:text-emerald-500 transition-colors">Deposits In</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 group-hover:text-emerald-500 transition-colors">{t("admin.financials_inputs.deposits_in")}</p>
             <p className="text-lg font-black text-emerald-600 tracking-tight">+ EGP {fmt(stats.depositsToBank)}</p>
           </div>
           <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md p-5 rounded-[1.25rem] hover:-translate-y-1 transition-all duration-300 group">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 group-hover:text-rose-500 transition-colors">Deposits Out</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 group-hover:text-rose-500 transition-colors">{t("admin.financials_inputs.deposits_out")}</p>
             <p className="text-lg font-black text-rose-500 tracking-tight">- EGP {fmt(stats.depositsFromBank)}</p>
           </div>
         </div>

@@ -6,6 +6,7 @@ import { auth, db } from "@/lib/firebase";
 import { Plus, Edit2, Shield, UserX, CheckCircle, X, Search, ShieldCheck } from "lucide-react";
 import toast from "react-hot-toast";
 import { useBranch } from "@/context/BranchContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface UserProfile {
   id: string;
@@ -19,6 +20,7 @@ interface UserProfile {
 }
 
 export default function UserManagementPage() {
+  const { t } = useLanguage();
   const { availableBranches } = useBranch();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [currentUserRole, setCurrentUserRole] = useState<string>("manager");
@@ -225,16 +227,16 @@ export default function UserManagementPage() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Shield className="h-6 w-6 text-red-500" />
-            User Management
+            {t("admin.users.title")}
           </h1>
-          <p className="text-muted-foreground text-sm mt-1">Create and manage access for all system users.</p>
+          <p className="text-muted-foreground text-sm mt-1">{t("admin.users.subtitle")}</p>
         </div>
         {isAdminEditor && (
           <button
             onClick={handleOpenNewUser}
             className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-semibold shadow-md transition-colors"
           >
-            <Plus className="h-4 w-4" /> Add New User
+            <Plus className="h-4 w-4" /> {t("admin.users.add_new")}
           </button>
         )}
       </div>
@@ -246,7 +248,7 @@ export default function UserManagementPage() {
           <Search className="h-5 w-5 text-muted-foreground" />
           <input 
             type="text" 
-            placeholder="Search by email or name..." 
+            placeholder={t("admin.users.search")} 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="bg-transparent outline-none flex-grow text-sm placeholder:text-muted-foreground"
@@ -258,23 +260,23 @@ export default function UserManagementPage() {
           <table className="w-full text-left border-collapse min-w-[800px]">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-950 text-xs uppercase tracking-wider text-muted-foreground border-b border-border">
-                <th className="p-4 font-bold">User</th>
-                <th className="p-4 font-bold">Role</th>
-                <th className="p-4 font-bold">Branch Access</th>
-                <th className="p-4 font-bold">Status</th>
-                {isAdminEditor && <th className="p-4 font-bold text-right">Actions</th>}
+                <th className="p-4 font-bold">{t("admin.users.col_user")}</th>
+                <th className="p-4 font-bold">{t("admin.users.col_role")}</th>
+                <th className="p-4 font-bold">{t("admin.users.col_branch")}</th>
+                <th className="p-4 font-bold">{t("admin.users.col_status")}</th>
+                {isAdminEditor && <th className="p-4 font-bold text-right">{t("admin.users.col_actions")}</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {loading ? (
-                <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">Loading users...</td></tr>
+                <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">{t("admin.users.loading")}</td></tr>
               ) : filteredUsers.length === 0 ? (
-                <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">No users found.</td></tr>
+                <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">{t("admin.users.empty")}</td></tr>
               ) : (
                 filteredUsers.map((user) => (
                   <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                     <td className="p-4">
-                      <p className="font-bold text-sm text-foreground">{user.displayName || "Unknown User"}</p>
+                      <p className="font-bold text-sm text-foreground">{user.displayName || t("admin.users.unknown")}</p>
                       <p className="text-xs text-muted-foreground">{user.email}</p>
                     </td>
                     <td className="p-4">
@@ -282,14 +284,14 @@ export default function UserManagementPage() {
                         ${user.role === 'admin_editor' ? 'bg-red-500/10 text-red-600' : 
                           user.role === 'admin_viewer' ? 'bg-blue-500/10 text-blue-600' : 
                           'bg-emerald-500/10 text-emerald-600'}`}>
-                        {user.role === 'admin_editor' ? 'Admin Editor' : 
-                         user.role === 'admin_viewer' ? 'Admin Viewer' : 'Manager'}
+                        {user.role === 'admin_editor' ? t("admin.users.role_admin_editor") : 
+                         user.role === 'admin_viewer' ? t("admin.users.role_admin_viewer") : t("admin.users.role_manager")}
                       </span>
                     </td>
                     <td className="p-4">
                       <div className="flex flex-wrap gap-1">
                         {user.role === "admin_editor" || user.role === "admin_viewer" ? (
-                          <span className="text-xs font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">All Branches</span>
+                          <span className="text-xs font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">{t("admin.users.all_branches")}</span>
                         ) : (
                           user.storeIds && user.storeIds.length > 0 ? (
                             user.storeIds.map(storeId => {
@@ -350,7 +352,7 @@ export default function UserManagementPage() {
             <div className="flex justify-between items-center p-4 border-b border-border bg-slate-50 dark:bg-slate-950">
               <h2 className="text-lg font-bold flex items-center gap-2">
                 {isEditing ? <Edit2 className="h-5 w-5 text-blue-500" /> : <Plus className="h-5 w-5 text-red-500" />}
-                {isEditing ? "Edit User" : "Add New User"}
+                {isEditing ? t("admin.users.edit_user") : t("admin.users.new_user")}
               </h2>
               <button onClick={() => setIsModalOpen(false)} className="p-1 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition-colors">
                 <X className="h-5 w-5" />
@@ -368,7 +370,7 @@ export default function UserManagementPage() {
               <form id="user-form" onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Email Address *</label>
+                    <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">{t("admin.users.email")} *</label>
                     <input
                       type="email"
                       value={email}
@@ -379,7 +381,7 @@ export default function UserManagementPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Display Name *</label>
+                    <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">{t("admin.users.display_name")} *</label>
                     <input
                       type="text"
                       value={displayName}
@@ -393,7 +395,7 @@ export default function UserManagementPage() {
 
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">
-                    Password {isEditing ? "(Leave blank to keep unchanged)" : "*"}
+                    {t("admin.users.password")} {isEditing ? `(${t("admin.users.password_placeholder")})` : "*"}
                   </label>
                   <input
                     type="password"
@@ -407,21 +409,21 @@ export default function UserManagementPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Role *</label>
+                  <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">{t("admin.users.user_role")} *</label>
                   <select
                     value={role}
                     onChange={e => setRole(e.target.value)}
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-border rounded-lg p-2.5 text-sm outline-none focus:border-red-500"
                   >
-                    <option value="manager">Manager - Branch management access</option>
-                    <option value="admin_viewer">Admin Viewer - View only access to all data</option>
-                    <option value="admin_editor">Admin Editor - Full administrative access</option>
+                    <option value="manager">{t("admin.users.role_manager")}</option>
+                    <option value="admin_viewer">{t("admin.users.role_admin_viewer")}</option>
+                    <option value="admin_editor">{t("admin.users.role_admin_editor")}</option>
                   </select>
                 </div>
 
                 {role === "manager" && (
                   <div>
-                    <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">Branch Access</label>
+                    <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">{t("admin.users.branch_access")}</label>
                     <div className="bg-slate-50 dark:bg-slate-950 border border-border rounded-xl p-2 space-y-1">
                       {availableBranches.length > 0 ? availableBranches.map(branch => {
                         // We map branch IDs to storeIds (e.g. "alamein4" -> "eL-alamein-4")
@@ -460,12 +462,12 @@ export default function UserManagementPage() {
                 )}
                 
                 <div className="mt-4 pt-2">
-                  <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">Special Features</label>
+                  <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">{t("admin.users.special_features")}</label>
                   <div className="bg-slate-50 dark:bg-slate-950 border border-border rounded-xl p-3">
                     <label className="flex items-center justify-between cursor-pointer">
                       <div>
-                        <p className="font-semibold text-sm">Master Item Scanner</p>
-                        <p className="text-xs text-muted-foreground">Scan barcodes to view detailed pricing and supplier history.</p>
+                        <p className="font-semibold text-sm">{t("admin.users.feature_scanner")}</p>
+                        <p className="text-xs text-muted-foreground">{t("admin.users.feature_scanner_desc")}</p>
                       </div>
                       <div className="relative inline-flex items-center">
                         <input
@@ -487,14 +489,14 @@ export default function UserManagementPage() {
                     className="px-4 py-2 rounded-xl font-bold text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
                     disabled={submitting}
                   >
-                    Cancel
+                    {t("common.cancel")}
                   </button>
                   <button
                     type="submit"
                     disabled={submitting}
                     className="px-6 py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
                   >
-                    {submitting ? "Saving..." : (isEditing ? "Save Changes" : <><Plus className="h-4 w-4" /> Create User</>)}
+                    {submitting ? t("common.loading") : (isEditing ? t("common.save") : <><Plus className="h-4 w-4" /> {t("admin.users.add_new")}</>)}
                   </button>
                 </div>
               </form>

@@ -8,6 +8,7 @@ import { Plus, Check, X, ShieldAlert, DollarSign, Calendar, Save, Trash2, CheckC
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBranch, BranchId } from "@/context/BranchContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 type PayrollRecord = {
   id?: string;
@@ -35,6 +36,7 @@ type PayrollRecord = {
 export default function AdminPayrollPage() {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [currentUserEmail, setCurrentUserEmail] = useState("");
+  const { t } = useLanguage();
   
   const [employees, setEmployees] = useState<any[]>([]);
   const [drafts, setDrafts] = useState<PayrollRecord[]>([]);
@@ -407,17 +409,17 @@ export default function AdminPayrollPage() {
               <DollarSign className="w-6 h-6" strokeWidth={2.5} />
             </div>
             <h1 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight">
-              Payroll System
+              {t("admin.payroll.title")}
             </h1>
           </div>
-          <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Process salaries, bonuses, and deductions securely.</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">{t("admin.payroll.subtitle")}</p>
         </div>
         {!isAdding && (
           <button 
             onClick={() => setIsAdding(true)}
             className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm flex items-center gap-2"
           >
-            <Plus className="w-5 h-5" /> New Payroll Run
+            <Plus className="w-5 h-5" /> {t("admin.payroll.new_payroll")}
           </button>
         )}
       </div>
@@ -426,7 +428,7 @@ export default function AdminPayrollPage() {
         <div className="bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/50 rounded-2xl p-6 shadow-xl shadow-indigo-100/20 dark:shadow-none animate-in slide-in-from-top-4">
           <div className="flex justify-between items-center mb-6 border-b border-slate-100 dark:border-slate-800 pb-4">
             <h2 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-indigo-500" /> Draft New Payroll
+              <Calendar className="w-5 h-5 text-indigo-500" /> {t("admin.payroll.draft_new")}
             </h2>
             <button onClick={() => { setIsAdding(false); setSelectedEmp(null); }} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-500">
               <X className="w-5 h-5" />
@@ -435,7 +437,7 @@ export default function AdminPayrollPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Employee</label>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.payroll.employee")}</label>
               <select 
                 value={editForm.employeeId || ""}
                 onChange={e => handleEmpSelect(e.target.value)}
@@ -451,7 +453,7 @@ export default function AdminPayrollPage() {
             {selectedEmp && (
               <>
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Month</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.payroll.month")}</label>
                   <input 
                     type="month" 
                     value={editForm.month}
@@ -461,14 +463,14 @@ export default function AdminPayrollPage() {
                 </div>
                 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Base Salary (Info)</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.payroll.base_salary")}</label>
                   <div className="w-full p-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono text-slate-500">
                     {(Number(selectedEmp.baseSalary) || Number(selectedEmp.salary) || 3000).toLocaleString()} EGP
                   </div>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Days Worked</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.payroll.days_worked")}</label>
                   <input 
                     type="number" 
                     value={editForm.days}
@@ -478,7 +480,7 @@ export default function AdminPayrollPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Overtime (EGP)</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.payroll.overtime")}</label>
                   <input 
                     type="number" 
                     value={editForm.overtime}
@@ -488,7 +490,7 @@ export default function AdminPayrollPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Bonus (EGP)</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.payroll.bonus")}</label>
                   <input 
                     type="number" 
                     value={editForm.bonus}
@@ -498,7 +500,7 @@ export default function AdminPayrollPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Deductions (EGP)</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.payroll.deductions")}</label>
                   <input 
                     type="number" 
                     value={editForm.deductions}
@@ -508,17 +510,17 @@ export default function AdminPayrollPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Loan Repayment (EGP)</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.payroll.loan_deductions")}</label>
                   <input 
                     type="number" 
                     value={editForm.loanThisMonth}
                     onChange={e => setEditForm({...editForm, loanThisMonth: Number(e.target.value)})}
-                    className="w-full p-2.5 bg-white dark:bg-slate-950 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-600"
+                    className="w-full p-2.5 bg-white dark:bg-slate-950 border border-orange-200 dark:border-orange-800 rounded-xl text-sm text-orange-600"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Insurance (EGP)</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.payroll.insurance")}</label>
                   <input 
                     type="number" 
                     value={editForm.insurance}
