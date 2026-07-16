@@ -26,23 +26,27 @@ export async function syncProductsToMaster(items: any[], poDate: string, supplie
         const data = docSnap.data();
         const currentPrice = data.currentPrice || 0;
         
-        // If price changed, update and append to history
-        if (unitPrice !== currentPrice) {
-          const newHistoryEntry = { 
-            price: unitPrice, 
-            date: poDate, 
-            timestamp: Date.now(),
-            supplier: supplierName || "Unknown Supplier" 
-          };
+        const newHistoryEntry = { 
+          price: unitPrice, 
+          date: poDate, 
+          timestamp: Date.now(),
+          supplier: supplierName || "Unknown Supplier" 
+        };
+
+        // Check if we already have this exact entry to prevent duplicates from rapid saves
+        const isDuplicate = data.priceHistory?.some(
+           (h: any) => h.date === poDate && h.supplier === (supplierName || "Unknown Supplier") && h.price === unitPrice
+        );
+
+        if (!isDuplicate) {
           await updateDoc(docRef, {
-            currentPrice: unitPrice,
+            currentPrice: unitPrice, // Update current price (will be same if it hasn't changed)
             lastUpdated: poDate,
             priceHistory: [...(data.priceHistory || []), newHistoryEntry]
           });
-          console.log(`Updated price for ${barcode} from ${currentPrice} to ${unitPrice}`);
+          console.log(`Added history entry for ${barcode} at price ${unitPrice}`);
         } else {
-          // Price unchanged, do nothing to avoid duplicate history
-          console.log(`Price unchanged for ${barcode}, skipping write.`);
+          console.log(`Skipping duplicate history entry for ${barcode}`);
         }
       } else {
         // Create new product

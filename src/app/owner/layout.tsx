@@ -52,8 +52,9 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
                     try {
                       const { getToken } = await import("firebase/messaging");
                       const { messaging } = await import("@/lib/firebase");
-                      if (messaging) {
-                        const token = await getToken(await messaging, { 
+                      const messagingInstance = messaging ? await messaging : null;
+                      if (messagingInstance) {
+                        const token = await getToken(messagingInstance, { 
                           vapidKey: "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeZ2Ig14" // Placeholder, Firebase often auto-resolves this from the project if omitted, but VAPID is technically required. We will try to fetch it.
                         }).catch(() => null); // Catch if vapid is strictly needed and fails
 

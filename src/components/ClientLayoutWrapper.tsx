@@ -507,7 +507,14 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       <div className="flex-1 flex flex-col min-w-0 max-h-screen overflow-hidden print:max-h-none print:overflow-visible">
         {/* Top Header */}
         {!pathname.startsWith('/cashier') && !pathname.startsWith('/owner') && (
-          <header className="h-16 flex-shrink-0 glass-header border-b border-border flex items-center justify-between px-4 sm:px-6 z-40 print:hidden">
+          <header 
+            className="flex-shrink-0 glass-header border-b border-border flex items-center justify-between px-4 sm:px-6 z-40 print:hidden"
+            style={{ 
+              paddingTop: 'max(1rem, env(safe-area-inset-top))', 
+              paddingBottom: '1rem',
+              minHeight: 'calc(4rem + env(safe-area-inset-top))'
+            }}
+          >
 
             {/* Mobile Left: Logo & Hamburger */}
             <div className="flex lg:hidden items-center gap-3">
