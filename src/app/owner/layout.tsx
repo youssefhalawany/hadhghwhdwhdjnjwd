@@ -5,6 +5,7 @@ import { OwnerBottomNav } from "@/components/OwnerBottomNav";
 import { OwnerSidebar } from "@/components/OwnerSidebar";
 import { useLanguage } from "@/context/LanguageContext";
 import { Globe, Lock, Mail, Key } from "lucide-react";
+import { QuickActionsFAB } from "@/components/MobileUX/QuickActionsFAB";
 import { playSuccessSound, playErrorSound, playPopSound, getAudioCtx } from "@/lib/sounds";
 import { auth, db } from "@/lib/firebase";
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut, User } from "firebase/auth";
@@ -230,6 +231,9 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
         .ck-owner * { color-scheme: dark !important; }
       `}</style>
       
+      {/* Premium UI Overlay */}
+      <div className="film-grain"></div>
+
       {/* Sidebar for Desktop */}
       <OwnerSidebar />
 
@@ -242,6 +246,8 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
       <div className="md:hidden">
         <OwnerBottomNav />
       </div>
+
+      <QuickActionsFAB />
     </div>
   );
 }

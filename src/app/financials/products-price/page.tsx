@@ -68,8 +68,8 @@ export default function ProductsPricePage() {
       const term = searchTerm.trim().toUpperCase();
       const productsRef = collection(productsDb, "products");
       
-      let q = query(productsRef, where("barcode", "==", term), limit(50));
-      let snapshot = await getDocs(q);
+      const q = query(productsRef, where("barcode", "==", term), limit(50));
+      const snapshot = await getDocs(q);
       
       let results = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 

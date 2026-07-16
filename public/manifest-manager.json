@@ -25,15 +25,15 @@
       "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Manager Checklists",
-      "short_name": "Check",
-      "url": "/checklists/manager",
+      "name": "Financials",
+      "short_name": "Financials",
+      "url": "/owner",
       "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Supplier Returns",
-      "short_name": "Returns",
-      "url": "/dashboard/supplier-returns",
+      "name": "Inventory",
+      "short_name": "Inventory",
+      "url": "/admin/product-lookup",
       "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
     }
   ]

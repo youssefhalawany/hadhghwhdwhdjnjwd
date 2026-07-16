@@ -4,14 +4,27 @@ import React, { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getAggregateFromServer, sum } from "firebase/firestore";
 import {
-  TrendingUp, Wallet, CreditCard, Building, Activity, ShieldCheck, Landmark, ExternalLink, AlertTriangle
+  TrendingUp, Wallet, CreditCard, Building, Activity, ShieldCheck, Landmark, ExternalLink, AlertTriangle, BellRing
 } from "lucide-react";
 import { PullToRefresh } from "@/components/MobileUX/PullToRefresh";
 import { showIsland } from "@/components/MobileUX/DynamicIsland";
+import { SwipeToApprove } from "@/components/MobileUX/SwipeToApprove";
 import { useLanguage } from "@/context/LanguageContext";
-import { motion } from "framer-motion";
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
+import { motion, useMotionValue, useTransform, animate } from "framer-motion";
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, Cell } from "recharts";
 import { hapticMedium, vibrateSuccess } from "@/lib/haptics";
+
+function AnimatedNumber({ value }: { value: number }) {
+  const count = useMotionValue(0);
+  const rounded = useTransform(count, (latest) => new Intl.NumberFormat("en-EG", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(latest));
+
+  useEffect(() => {
+    const controls = animate(count, value, { duration: 1.5, ease: "easeOut" });
+    return controls.stop;
+  }, [value]);
+
+  return <motion.span className="tabular-nums">{rounded}</motion.span>;
+}
 
 // ── Midnight Navy Design Tokens ────────────────
 const D = {
@@ -70,24 +83,24 @@ export default function OwnerDashboard() {
 
     try {
       // --- ZERO READ: aggregate sums on the server ---
-      let salesQ: any = collection(db, "sales");
-      let cashPaymentsQ: any = query(collection(db, "cash_payments"), where("method", "==", "cash"));
-      let depositsToQ: any = query(collection(db, "deposits"), where("to", "==", "safe"));
-      let depositsFromQ: any = query(collection(db, "deposits"), where("from", "==", "safe"));
-      let payrollsQ: any = collection(db, "payroll_lines");
-      let newLoansQ: any = query(collection(db, "adjustments"), where("type", "==", "loan"));
-      let oldLoansQ: any = collection(db, "loans");
-      let oldCreditsCashQ: any = query(collection(db, "credit_payments"), where("method", "==", "cash"));
+      const salesQ: any = collection(db, "sales");
+      const cashPaymentsQ: any = query(collection(db, "cash_payments"), where("method", "==", "cash"));
+      const depositsToQ: any = query(collection(db, "deposits"), where("to", "==", "safe"));
+      const depositsFromQ: any = query(collection(db, "deposits"), where("from", "==", "safe"));
+      const payrollsQ: any = collection(db, "payroll_lines");
+      const newLoansQ: any = query(collection(db, "adjustments"), where("type", "==", "loan"));
+      const oldLoansQ: any = collection(db, "loans");
+      const oldCreditsCashQ: any = query(collection(db, "credit_payments"), where("method", "==", "cash"));
       
       // Bank Queries
-      let cashPaymentsVisaQ: any = query(collection(db, "cash_payments"), where("method", "==", "visa"));
-      let cashPaymentsBankTransferQ: any = query(collection(db, "cash_payments"), where("method", "==", "bank_transfer"));
-      let cashPaymentsBankQ: any = query(collection(db, "cash_payments"), where("method", "==", "bank"));
-      let creditPaymentsVisaQ: any = query(collection(db, "credit_payments"), where("method", "==", "visa"));
-      let creditPaymentsBankTransferQ: any = query(collection(db, "credit_payments"), where("method", "==", "bank_transfer"));
-      let creditPaymentsBankQ: any = query(collection(db, "credit_payments"), where("method", "==", "bank"));
-      let depositsToBankQ: any = query(collection(db, "deposits"), where("to", "==", "bank"));
-      let depositsFromBankQ: any = query(collection(db, "deposits"), where("from", "==", "bank"));
+      const cashPaymentsVisaQ: any = query(collection(db, "cash_payments"), where("method", "==", "visa"));
+      const cashPaymentsBankTransferQ: any = query(collection(db, "cash_payments"), where("method", "==", "bank_transfer"));
+      const cashPaymentsBankQ: any = query(collection(db, "cash_payments"), where("method", "==", "bank"));
+      const creditPaymentsVisaQ: any = query(collection(db, "credit_payments"), where("method", "==", "visa"));
+      const creditPaymentsBankTransferQ: any = query(collection(db, "credit_payments"), where("method", "==", "bank_transfer"));
+      const creditPaymentsBankQ: any = query(collection(db, "credit_payments"), where("method", "==", "bank"));
+      const depositsToBankQ: any = query(collection(db, "deposits"), where("to", "==", "bank"));
+      const depositsFromBankQ: any = query(collection(db, "deposits"), where("from", "==", "bank"));
 
       // Helper for safe fetching
       const safeSumAgg = async (q: any, sumFields: Record<string, ReturnType<typeof sum>>): Promise<any> => {
@@ -198,7 +211,7 @@ export default function OwnerDashboard() {
   useEffect(() => { loadData(); }, []);
 
   const handleRefresh = async () => {
-    if (navigator.vibrate) navigator.vibrate(50);
+    if ('vibrate' in navigator) navigator.vibrate(20);
     await loadData();
     showIsland("Dashboard Updated", { type: "success" });
   };
@@ -212,15 +225,15 @@ export default function OwnerDashboard() {
   if (loading) {
     return (
         <div style={{ padding: "54px 20px 20px" }}>
-            <div style={{ height: 30, width: 120, backgroundColor: D.surfaceHigh, borderRadius: 8, marginBottom: 40, animation: "pulse 2s infinite" }} />
-            <div style={{ height: 40, width: 200, backgroundColor: D.surfaceHigh, borderRadius: 8, marginBottom: 20, animation: "pulse 2s infinite" }} />
+            <div className="animate-shimmer" style={{ height: 30, width: 120, borderRadius: 8, marginBottom: 40 }} />
+            <div className="animate-shimmer" style={{ height: 40, width: 200, borderRadius: 8, marginBottom: 20 }} />
             <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16 }}>
-                <div style={{ height: 180, backgroundColor: D.surface, borderRadius: 24, animation: "pulse 2s infinite" }} />
+                <div className="glass-panel animate-shimmer" style={{ height: 180, borderRadius: 24 }} />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                    <div style={{ height: 120, backgroundColor: D.surface, borderRadius: 24, animation: "pulse 2s infinite" }} />
-                    <div style={{ height: 120, backgroundColor: D.surface, borderRadius: 24, animation: "pulse 2s infinite" }} />
+                    <div className="glass-panel animate-shimmer" style={{ height: 120, borderRadius: 24 }} />
+                    <div className="glass-panel animate-shimmer" style={{ height: 120, borderRadius: 24 }} />
                 </div>
-                <div style={{ height: 100, backgroundColor: D.surface, borderRadius: 24, animation: "pulse 2s infinite" }} />
+                <div className="glass-panel animate-shimmer" style={{ height: 100, borderRadius: 24 }} />
             </div>
         </div>
     );
@@ -296,28 +309,32 @@ export default function OwnerDashboard() {
             </motion.div>
 
             {/* Balances Chart */}
+            {/* Balances Chart */}
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.15 }}
-              className="w-full h-40 mb-6 bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2rem] p-4 shadow-2xl relative overflow-hidden"
+              className="w-full h-48 mb-6 glass-panel p-4 relative overflow-hidden"
             >
               <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-[40px] pointer-events-none" />
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={D.cyan} stopOpacity={0.4} />
+                      <stop offset="95%" stopColor={D.cyan} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: D.textSecondary, fontSize: 12, fontWeight: 700 }} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: D.textDim, fontSize: 10 }} tickFormatter={(val) => `${(val/1000).toFixed(0)}k`} />
-                  <Tooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} contentStyle={{ backgroundColor: D.surfaceHigh, border: `1px solid ${D.border}`, borderRadius: 12, color: '#fff', fontWeight: 700 }} />
-                  <Bar dataKey="amount" radius={[8, 8, 8, 8]} barSize={40}>
-                    {chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill} />
-                    ))}
-                  </Bar>
-                </BarChart>
+                  <Tooltip cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 2 }} contentStyle={{ backgroundColor: D.surfaceHigh, border: `1px solid ${D.border}`, borderRadius: 12, color: '#fff', fontWeight: 700 }} />
+                  <Area type="monotone" dataKey="amount" stroke={D.cyan} strokeWidth={3} fillOpacity={1} fill="url(#colorAmount)" />
+                </AreaChart>
               </ResponsiveContainer>
             </motion.div>
 
-            <div className="grid grid-cols-1 gap-5">
+            {/* BENTO BOX GRID */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
               
               {/* ---------------- SAFE SECTION ---------------- */}
               <motion.div 
@@ -326,7 +343,7 @@ export default function OwnerDashboard() {
                 transition={{ delay: 0.2 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => hapticMedium()}
-                className="bg-[#151E32]/60 backdrop-blur-2xl rounded-[2rem] p-6 border border-emerald-500/20 shadow-[0_8px_32px_rgba(16,185,129,0.05)] relative overflow-hidden group cursor-pointer"
+                className="col-span-1 md:col-span-2 glass-panel p-6 border-emerald-500/20 relative overflow-hidden group cursor-pointer"
               >
                 <div className="absolute -top-10 -right-10 w-40 h-40 bg-emerald-500/10 rounded-full blur-[40px] pointer-events-none group-hover:bg-emerald-500/20 transition-all duration-500" />
                 
@@ -338,7 +355,7 @@ export default function OwnerDashboard() {
                 
                 <div className="flex items-baseline gap-2 mb-2">
                   <span className="text-2xl font-black text-emerald-500">EGP</span>
-                  <span className="text-[2.75rem] font-black text-white tracking-tighter leading-none">{fmt(stats.safeMoney)}</span>
+                  <span className="text-[2.75rem] font-black text-white tracking-tighter leading-none"><AnimatedNumber value={stats.safeMoney} /></span>
                 </div>
                 <p className="text-xs text-slate-500 leading-relaxed max-w-[90%] mb-5">
                   Cash Sales − Cash Payments (incl. Credits & Tax) + Deposits In − Deposits Out − Payrolls & Loans
@@ -347,11 +364,11 @@ export default function OwnerDashboard() {
                 <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-5">
                     <div>
                         <div className="text-[10px] text-slate-500 uppercase font-bold mb-1">{lang === "en" ? "Total Cash Sales" : "إجمالي المبيعات النقدية"}</div>
-                        <div className="text-lg text-white font-black">{fmt(stats.totalSales)}</div>
+                        <div className="text-lg text-white font-black"><AnimatedNumber value={stats.totalSales} /></div>
                     </div>
                     <div>
                         <div className="text-[10px] text-slate-500 uppercase font-bold mb-1">{lang === "en" ? "Total Outflows" : "إجمالي المصروفات"}</div>
-                        <div className="text-lg text-white font-black">{fmt(stats.totalCashPayments + stats.totalOldCreditsCash + stats.totalTaxPaid + stats.totalPayrolls + stats.totalLoans)}</div>
+                        <div className="text-lg text-white font-black"><AnimatedNumber value={stats.totalCashPayments + stats.totalOldCreditsCash + stats.totalTaxPaid + stats.totalPayrolls + stats.totalLoans} /></div>
                     </div>
                 </div>
               </motion.div>
@@ -363,7 +380,7 @@ export default function OwnerDashboard() {
                 transition={{ delay: 0.3 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => hapticMedium()}
-                className="bg-[#151E32]/60 backdrop-blur-2xl rounded-[2rem] p-6 border border-indigo-500/20 shadow-[0_8px_32px_rgba(99,102,241,0.05)] relative overflow-hidden group cursor-pointer"
+                className="col-span-1 md:col-span-2 glass-panel p-6 border-indigo-500/20 relative overflow-hidden group cursor-pointer"
               >
                 <div className="absolute -top-10 -right-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-[40px] pointer-events-none group-hover:bg-indigo-500/20 transition-all duration-500" />
                 
@@ -375,7 +392,7 @@ export default function OwnerDashboard() {
                 
                 <div className="flex items-baseline gap-2 mb-2">
                   <span className="text-2xl font-black text-indigo-500">EGP</span>
-                  <span className="text-[2.75rem] font-black text-white tracking-tighter leading-none">{fmt(stats.bankMoney)}</span>
+                  <span className="text-[2.75rem] font-black text-white tracking-tighter leading-none"><AnimatedNumber value={stats.bankMoney} /></span>
                 </div>
                 <p className="text-xs text-slate-500 leading-relaxed max-w-[90%] mb-5">
                   Visa Sales − Bank Payments − Bank Tax Paid − Bank Credits + Deposits In − Deposits Out
@@ -384,11 +401,11 @@ export default function OwnerDashboard() {
                 <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-5">
                     <div>
                         <div className="text-[10px] text-slate-500 uppercase font-bold mb-1">{lang === "en" ? "Total Visa Sales" : "إجمالي مبيعات الفيزا"}</div>
-                        <div className="text-lg text-white font-black">{fmt(stats.totalVisaSales)}</div>
+                        <div className="text-lg text-white font-black"><AnimatedNumber value={stats.totalVisaSales} /></div>
                     </div>
                     <div>
                         <div className="text-[10px] text-slate-500 uppercase font-bold mb-1">{lang === "en" ? "Total Outflows" : "إجمالي المصروفات"}</div>
-                        <div className="text-lg text-white font-black">{fmt(stats.totalBankPayments + stats.totalBankTaxPaid + stats.totalBankCredits)}</div>
+                        <div className="text-lg text-white font-black"><AnimatedNumber value={stats.totalBankPayments + stats.totalBankTaxPaid + stats.totalBankCredits} /></div>
                     </div>
                 </div>
               </motion.div>
@@ -398,24 +415,75 @@ export default function OwnerDashboard() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
-                className="grid grid-cols-2 gap-3"
+                className="col-span-1 md:col-span-4 grid grid-cols-2 md:grid-cols-4 gap-3"
               >
-                  <motion.div whileTap={{ scale: 0.95 }} className="bg-[#151E32]/40 backdrop-blur-xl rounded-3xl p-5 border border-white/5">
+                  <motion.div whileTap={{ scale: 0.95 }} className="glass-panel p-5">
                     <div className="text-[10px] text-slate-500 uppercase font-black tracking-wider mb-2">{lang === "en" ? "Bank Payments" : "مدفوعات بنكية"}</div>
-                    <div className="text-xl text-white font-black tracking-tight">{fmt(stats.totalBankPayments)}</div>
+                    <div className="text-xl text-white font-black tracking-tight"><AnimatedNumber value={stats.totalBankPayments} /></div>
                   </motion.div>
-                  <motion.div whileTap={{ scale: 0.95 }} className="bg-[#151E32]/40 backdrop-blur-xl rounded-3xl p-5 border border-white/5">
+                  <motion.div whileTap={{ scale: 0.95 }} className="glass-panel p-5">
                     <div className="text-[10px] text-slate-500 uppercase font-black tracking-wider mb-2">{lang === "en" ? "Bank Credits" : "ذمم بنكية"}</div>
-                    <div className="text-xl text-white font-black tracking-tight">{fmt(stats.totalBankCredits)}</div>
+                    <div className="text-xl text-white font-black tracking-tight"><AnimatedNumber value={stats.totalBankCredits} /></div>
                   </motion.div>
-                  <motion.div whileTap={{ scale: 0.95 }} className="bg-emerald-900/10 backdrop-blur-xl rounded-3xl p-5 border border-emerald-500/20">
+                  <motion.div whileTap={{ scale: 0.95 }} className="glass-panel border-emerald-500/20 p-5">
                     <div className="text-[10px] text-emerald-400 uppercase font-black tracking-wider mb-2">{lang === "en" ? "Safe Deposits In" : "إيداعات للخزينة"}</div>
-                    <div className="text-xl text-white font-black tracking-tight">+{fmt(stats.depositsToSafe)}</div>
+                    <div className="text-xl text-white font-black tracking-tight">+<AnimatedNumber value={stats.depositsToSafe} /></div>
                   </motion.div>
-                  <motion.div whileTap={{ scale: 0.95 }} className="bg-rose-900/10 backdrop-blur-xl rounded-3xl p-5 border border-rose-500/20">
+                  <motion.div whileTap={{ scale: 0.95 }} className="glass-panel border-rose-500/20 p-5">
                     <div className="text-[10px] text-rose-400 uppercase font-black tracking-wider mb-2">{lang === "en" ? "Safe Deposits Out" : "سحوبات من الخزينة"}</div>
-                    <div className="text-xl text-white font-black tracking-tight">-{fmt(stats.depositsFromSafe)}</div>
+                    <div className="text-xl text-white font-black tracking-tight">-<AnimatedNumber value={stats.depositsFromSafe} /></div>
                   </motion.div>
+              </motion.div>
+
+              {/* ---------------- LIVE FEED TICKER ---------------- */}
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="col-span-1 md:col-span-4 glass-panel p-6 mt-2 relative overflow-hidden"
+              >
+                <div className="flex items-center gap-2 text-cyan-400 text-xs font-black uppercase tracking-widest mb-4">
+                  <BellRing size={18} className="animate-pulse" /> {lang === "en" ? "Live Command Feed" : "الأحداث المباشرة"}
+                </div>
+                
+                <div className="flex flex-col gap-3 max-h-40 overflow-hidden relative">
+                  <div className="absolute top-0 left-0 w-full h-8 bg-gradient-to-b from-[#151E32]/90 to-transparent z-10 pointer-events-none" />
+                  <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-[#151E32]/90 to-transparent z-10 pointer-events-none" />
+                  
+                  <motion.div 
+                    animate={{ y: [0, -100] }} 
+                    transition={{ repeat: Infinity, duration: 20, ease: "linear" }}
+                    className="flex flex-col gap-4 py-8"
+                  >
+                    {[
+                      { time: "Just now", msg: lang === "en" ? "Cashier Ahmed logged into Register 1" : "أحمد سجل دخول في الكاشير ١" },
+                      { time: "2 min ago", msg: lang === "en" ? "High-value void ($150) requested by Sarah" : "سارة طلبت إلغاء بقيمة عالية" },
+                      { time: "15 min ago", msg: lang === "en" ? "Inventory: Marlboro Red running low (5 packs left)" : "المخزون: مارلبورو أحمر على وشك النفاذ" },
+                      { time: "1 hr ago", msg: lang === "en" ? "Shift Report #4022 submitted for approval" : "تقرير الوردية ٤٠٢٢ بانتظار الموافقة" },
+                      { time: "2 hrs ago", msg: lang === "en" ? "Safe Cash Drop completed: $2,500" : "تم إيداع ٢٥٠٠ في الخزينة" },
+                      { time: "Just now", msg: lang === "en" ? "Cashier Ahmed logged into Register 1" : "أحمد سجل دخول في الكاشير ١" },
+                      { time: "2 min ago", msg: lang === "en" ? "High-value void ($150) requested by Sarah" : "سارة طلبت إلغاء بقيمة عالية" },
+                    ].map((evt, i) => (
+                      <div key={i} className="flex gap-4 items-center bg-black/20 p-3 rounded-xl border border-white/5">
+                        <span className="text-xs text-cyan-500 font-bold w-16 shrink-0">{evt.time}</span>
+                        <span className="text-sm text-slate-300">{evt.msg}</span>
+                      </div>
+                    ))}
+                  </motion.div>
+                </div>
+              </motion.div>
+
+              {/* ---------------- SWIPE TO APPROVE DEMO ---------------- */}
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
+                className="col-span-1 md:col-span-4 mt-4 mb-8"
+              >
+                <div className="mb-2 text-center text-xs font-bold text-slate-500 uppercase tracking-widest">
+                  {lang === "en" ? "Security Approval Demo" : "عرض تجريبي للموافقة الأمنية"}
+                </div>
+                <SwipeToApprove onComplete={() => showIsland(lang === "en" ? "Shift Approved Successfully!" : "تمت الموافقة بنجاح", { type: 'success' })} />
               </motion.div>
 
             </div>

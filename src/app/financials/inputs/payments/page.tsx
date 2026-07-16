@@ -458,7 +458,7 @@ export default function PaymentsRedesignPage() {
     };
     window.addEventListener('paste', handleGlobalPaste);
     return () => window.removeEventListener('paste', handleGlobalPaste);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [showAddModal, category, selectedPaymentForPoUpload]);
 
   const handleDrop = (e: React.DragEvent) => {
@@ -518,7 +518,7 @@ export default function PaymentsRedesignPage() {
 
     try {
       setSubmitting(true);
-      let poImageUrl = null;
+      const poImageUrl = null;
       // User requested to skip saving PO images to storage for faster processing
 
       const newPayment = {
@@ -1478,7 +1478,7 @@ export default function PaymentsRedesignPage() {
                   <div className="mt-8">
                     <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4">Original Purchase Order</h3>
                     <div className="border border-slate-100 dark:border-slate-800 rounded-2xl overflow-hidden bg-slate-50 dark:bg-slate-800/50 flex justify-center">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      { }
                       <img 
                         src={selectedPaymentForView.poImageUrl} 
                         alt="PO Document" 
