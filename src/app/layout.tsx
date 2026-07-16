@@ -22,10 +22,8 @@ export const metadata: Metadata = {
   description: "Enterprise level POS, fuel operations, inventory reporting and validation system for Circle K retail stores.",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
-    title: "CK Cashier"
+    statusBarStyle: "black-translucent"
   },
-  manifest: "/manifest.json",
   icons: {
     icon: "/icons8-circled-k-50.png",
     apple: "/apple-icon.png",
@@ -51,7 +49,6 @@ export default function RootLayout({
       <head>
         <link rel="apple-touch-icon" sizes="180x180" href="/icons8-circled-k-50.png" />
         <link rel="icon" type="image/png" sizes="192x192" href="/icons8-circled-k-50.png" />
-        <meta name="apple-mobile-web-app-title" content="CK Cashier" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>

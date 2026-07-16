@@ -1,7 +1,7 @@
 {
-  "name": "CK Manager Portal",
-  "short_name": "CK Manager",
-  "description": "Circle K Franchise Management — Shifts, Checklists, Inventory & Reports",
+  "name": "ANH CK Manager Portal",
+  "short_name": "ANH Manager",
+  "description": "ANH CK Franchise Management — Shifts, Checklists, Inventory & Reports",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -11,14 +11,8 @@
   "categories": ["business", "productivity"],
   "icons": [
     {
-      "src": "/icons/icon-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icons/icon-512x512.png",
-      "sizes": "512x512",
+      "src": "/icon-manager.png",
+      "sizes": "1024x1024",
       "type": "image/png",
       "purpose": "any maskable"
     }
