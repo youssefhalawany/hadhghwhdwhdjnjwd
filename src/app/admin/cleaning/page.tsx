@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { productsDb } from "@/lib/firebase";
 import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
 import { PageWrapper } from "@/components/PageWrapper";
-import { Sparkles, Calendar, User, Search, MapPin, Eye, Share2, X } from "lucide-react";
+import { Sparkles, Calendar, User, Search, MapPin, Eye, Share2, X, FileText, Printer } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 
 interface CleaningLog {
@@ -30,6 +30,85 @@ export default function ManagerCleaningLogsPage() {
   const [cashierFilter, setCashierFilter] = useState("all");
   
   const [selectedLog, setSelectedLog] = useState<CleaningLog | null>(null);
+
+  // Report States
+  const [showReportConfig, setShowReportConfig] = useState(false);
+  const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
+  const [reportShift, setReportShift] = useState("morning");
+  const [generatedReportLogs, setGeneratedReportLogs] = useState<CleaningLog[] | null>(null);
+
+  const generateShiftReport = () => {
+    if (!reportDate) return;
+    const [year, month, day] = reportDate.split('-').map(Number);
+    
+    // Using local browser timezone to match user expectation
+    const middleOfDay = new Date(year, month - 1, day, 12, 30, 0);
+    const middleOfNight = new Date(year, month - 1, day, 0, 30, 0);
+    const nextNight = new Date(year, month - 1, day + 1, 0, 30, 0);
+
+    let rLogs = [];
+    if (reportShift === 'morning') {
+      rLogs = logs.filter(log => {
+        const d = new Date(log.timestamp);
+        return d >= middleOfDay && d < nextNight;
+      });
+    } else {
+      rLogs = logs.filter(log => {
+        const d = new Date(log.timestamp);
+        return d >= middleOfNight && d < middleOfDay;
+      });
+    }
+    
+    rLogs.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    setGeneratedReportLogs(rLogs);
+    setShowReportConfig(false);
+  };
+
+  const shareReportToWhatsApp = async () => {
+    if (!generatedReportLogs) return;
+
+    const dateStr = reportDate.split('-').reverse().join('/');
+    const shiftName = reportShift === 'morning' 
+      ? (language === 'en' ? 'Morning Shift' : 'الوردية الصباحية')
+      : (language === 'en' ? 'Night Shift' : 'الوردية المسائية');
+
+    const title = language === 'en' ? '*SHIFT CLEANING REPORT* 🧹' : '*تقرير نظافة الوردية* 🧹';
+    let text = `${title}\n*Date:* ${dateStr}\n*Shift:* ${shiftName}\n-----------------------\n`;
+
+    generatedReportLogs.forEach((log) => {
+      const timeMatches = formatDate(log.timestamp, log.localTime).match(/(\d{1,2}:\d{2}\s(?:AM|PM|ص|م))/i);
+      const time = timeMatches ? timeMatches[0] : '';
+      const area = language === 'en' ? log.areaNameEn : log.areaNameAr;
+      text += `✅ *${area}* - ${log.cashierName} ${time ? `(${time})` : ''}\n`;
+    });
+
+    try {
+      if (navigator.share) {
+        const files: File[] = [];
+        for (let i = 0; i < generatedReportLogs.length; i++) {
+          const log = generatedReportLogs[i];
+          if (log.photoUrl.startsWith('data:')) {
+             const res = await fetch(log.photoUrl);
+             const blob = await res.blob();
+             files.push(new File([blob], `clean_${i+1}.jpg`, { type: 'image/jpeg' }));
+          }
+        }
+
+        if (navigator.canShare && navigator.canShare({ files: files.length > 0 ? files : undefined })) {
+          await navigator.share({
+            title: language === 'en' ? 'Shift Report' : 'تقرير الوردية',
+            text: text,
+            files: files.length > 0 ? files : undefined
+          });
+          return;
+        }
+      }
+      
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    } catch (err) {
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    }
+  };
 
   const shareToWhatsApp = async (log: CleaningLog) => {
     try {
@@ -133,15 +212,24 @@ export default function ManagerCleaningLogsPage() {
     <PageWrapper className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6 md:p-8" dir={language === "ar" ? "rtl" : "ltr"}>
       
       {/* Header & Filters */}
-      <header className="mb-8 flex flex-col gap-6">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
-            <Sparkles className="text-cyan-500" size={32} />
-            {language === 'en' ? 'Cleaning Logs' : 'سجلات النظافة'}
-          </h1>
-          <p className="text-slate-500 mt-2">
-            {language === 'en' ? 'Review and filter cleaning tasks submitted by cashiers.' : 'مراجعة وتصفية مهام النظافة المقدمة من قبل الصرافين.'}
-          </p>
+      <header className="mb-8 flex flex-col gap-6 print:hidden">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
+              <Sparkles className="text-cyan-500" size={32} />
+              {language === 'en' ? 'Cleaning Logs' : 'سجلات النظافة'}
+            </h1>
+            <p className="text-slate-500 mt-2">
+              {language === 'en' ? 'Review and filter cleaning tasks submitted by cashiers.' : 'مراجعة وتصفية مهام النظافة المقدمة من قبل الصرافين.'}
+            </p>
+          </div>
+          <button 
+            onClick={() => setShowReportConfig(true)}
+            className="flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white px-6 py-3 rounded-2xl font-bold shadow-lg shadow-cyan-500/25 active:scale-95 transition-all"
+          >
+            <FileText size={20} />
+            {language === 'en' ? 'Shift Report' : 'تقرير الوردية'}
+          </button>
         </div>
 
         <div className="flex flex-col md:flex-row gap-4 items-center bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
@@ -185,7 +273,7 @@ export default function ManagerCleaningLogsPage() {
       </header>
 
       {/* Main Content */}
-      <main>
+      <main className="print:hidden">
         {loading ? (
           <div className="flex justify-center p-20">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-cyan-500"></div>
@@ -251,27 +339,143 @@ export default function ManagerCleaningLogsPage() {
         )}
       </main>
 
-      {/* Full Image Modal */}
-      {selectedLog && (
-        <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-md flex flex-col items-center justify-center p-4">
-          <div className="relative w-full max-w-lg flex flex-col items-center">
-            <button 
-              onClick={() => setSelectedLog(null)} 
-              className="absolute -top-12 right-0 text-white bg-white/10 hover:bg-white/20 rounded-full p-2 transition-colors"
-            >
-              <X size={24} />
-            </button>
-            
-            <img src={selectedLog.photoUrl} alt="Full view" className="max-w-full max-h-[70vh] rounded-2xl object-contain shadow-2xl" />
-            
-            <div className="w-full mt-6 flex flex-col items-center gap-4">
-              <button 
-                onClick={(e) => { e.stopPropagation(); shareToWhatsApp(selectedLog); }}
-                className="w-full flex items-center justify-center gap-2 bg-[#25D366] text-white px-6 py-4 rounded-2xl font-bold shadow-[0_0_20px_rgba(37,211,102,0.3)] active:scale-95 transition-transform text-lg"
-              >
-                <Share2 size={24} />
-                {language === 'en' ? 'Share to WhatsApp' : 'مشاركة عبر واتساب'}
+      {/* Report Configuration Modal */}
+      {showReportConfig && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 print:hidden">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <FileText className="text-cyan-500" />
+                {language === 'en' ? 'Generate Shift Report' : 'إنشاء تقرير الوردية'}
+              </h2>
+              <button onClick={() => setShowReportConfig(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-white bg-slate-100 dark:bg-slate-800 rounded-full p-2">
+                <X size={20} />
               </button>
+            </div>
+            
+            <div className="space-y-4 mb-8">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                  {language === 'en' ? 'Select Date' : 'اختر التاريخ'}
+                </label>
+                <input 
+                  type="date" 
+                  value={reportDate}
+                  onChange={(e) => setReportDate(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-cyan-500 outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                  {language === 'en' ? 'Select Shift' : 'اختر الوردية'}
+                </label>
+                <div className="flex gap-4">
+                  <button 
+                    onClick={() => setReportShift('morning')}
+                    className={`flex-1 py-3 rounded-xl font-bold transition-all border ${reportShift === 'morning' ? 'bg-cyan-500 text-white border-cyan-500' : 'bg-slate-50 dark:bg-slate-950 text-slate-500 border-slate-200 dark:border-slate-800'}`}
+                  >
+                    {language === 'en' ? 'Morning (12:30 PM - 12:30 AM)' : 'الصباح (12:30 م - 12:30 ص)'}
+                  </button>
+                  <button 
+                    onClick={() => setReportShift('night')}
+                    className={`flex-1 py-3 rounded-xl font-bold transition-all border ${reportShift === 'night' ? 'bg-cyan-500 text-white border-cyan-500' : 'bg-slate-50 dark:bg-slate-950 text-slate-500 border-slate-200 dark:border-slate-800'}`}
+                  >
+                    {language === 'en' ? 'Night (12:30 AM - 12:30 PM)' : 'المساء (12:30 ص - 12:30 م)'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <button 
+              onClick={generateShiftReport}
+              className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 py-4 rounded-xl font-bold text-lg active:scale-95 transition-transform"
+            >
+              {language === 'en' ? 'Generate' : 'إنشاء'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Generated Report View */}
+      {generatedReportLogs && (
+        <div className="fixed inset-0 z-50 bg-slate-100 dark:bg-slate-950 overflow-y-auto print:bg-white print:p-0 print:m-0">
+          <div className="max-w-4xl mx-auto p-4 md:p-8 print:p-0">
+            
+            {/* Action Bar (Hidden in print) */}
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-6 print:hidden bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800">
+              <button 
+                onClick={() => setGeneratedReportLogs(null)}
+                className="flex items-center gap-2 text-slate-500 hover:text-slate-900 dark:hover:text-white font-bold px-4 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl"
+              >
+                <X size={20} />
+                {language === 'en' ? 'Close' : 'إغلاق'}
+              </button>
+              
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => window.print()}
+                  className="flex items-center gap-2 bg-blue-500 text-white px-5 py-2 rounded-xl font-bold shadow-md active:scale-95 transition-transform"
+                >
+                  <Printer size={18} />
+                  {language === 'en' ? 'Print' : 'طباعة'}
+                </button>
+                <button 
+                  onClick={shareReportToWhatsApp}
+                  className="flex items-center gap-2 bg-[#25D366] text-white px-5 py-2 rounded-xl font-bold shadow-md active:scale-95 transition-transform"
+                >
+                  <Share2 size={18} />
+                  WhatsApp
+                </button>
+              </div>
+            </div>
+
+            {/* Printable Report Content */}
+            <div className="bg-white dark:bg-slate-900 print:bg-white p-6 md:p-10 rounded-3xl shadow-xl print:shadow-none border border-slate-200 dark:border-slate-800 print:border-none text-slate-900 dark:text-slate-900">
+              
+              <div className="text-center mb-10 pb-6 border-b-2 border-slate-100 print:border-slate-300">
+                <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tight mb-2">
+                  {language === 'en' ? 'Shift Cleaning Report' : 'تقرير نظافة الوردية'}
+                </h1>
+                <p className="text-lg text-slate-500 print:text-slate-700 font-medium">
+                  {language === 'en' ? 'Date:' : 'التاريخ:'} {reportDate.split('-').reverse().join('/')} &nbsp;|&nbsp; 
+                  {language === 'en' ? 'Shift:' : 'الوردية:'} {reportShift === 'morning' ? (language === 'en' ? 'Morning Shift (12:30 PM - 12:30 AM)' : 'الصباح (12:30 م - 12:30 ص)') : (language === 'en' ? 'Night Shift (12:30 AM - 12:30 PM)' : 'المساء (12:30 ص - 12:30 م)')}
+                </p>
+                <p className="text-md text-slate-400 mt-2">
+                  {language === 'en' ? 'Total Tasks Completed:' : 'إجمالي المهام المنجزة:'} <span className="font-bold text-cyan-600">{generatedReportLogs.length}</span>
+                </p>
+              </div>
+
+              {generatedReportLogs.length === 0 ? (
+                <div className="text-center py-20 text-slate-400 font-medium">
+                  {language === 'en' ? 'No cleaning tasks recorded during this shift.' : 'لم يتم تسجيل أي مهام نظافة خلال هذه الوردية.'}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 print:grid-cols-2">
+                  {generatedReportLogs.map((log, idx) => (
+                    <div key={log.id} className="flex gap-4 border border-slate-100 dark:border-slate-800 print:border-slate-300 p-4 rounded-2xl print:break-inside-avoid">
+                      <div className="w-24 h-24 shrink-0 bg-slate-100 rounded-xl overflow-hidden border border-slate-200">
+                        <img src={log.photoUrl} alt="Cleaning" className="w-full h-full object-cover" />
+                      </div>
+                      <div className="flex flex-col justify-center">
+                        <h3 className="font-black text-lg text-slate-800 dark:text-white print:text-black">
+                          {idx + 1}. {language === 'en' ? log.areaNameEn : log.areaNameAr}
+                        </h3>
+                        <div className="flex items-center gap-1.5 text-sm text-slate-500 font-medium mt-1">
+                          <User size={14} /> {log.cashierName}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-sm text-slate-500 font-medium mt-1">
+                          <Calendar size={14} /> {formatDate(log.timestamp, log.localTime)}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-12 pt-6 border-t-2 border-slate-100 print:border-slate-300 text-center text-sm text-slate-400">
+                Generated via ANH Reports System
+              </div>
+
             </div>
           </div>
         </div>
