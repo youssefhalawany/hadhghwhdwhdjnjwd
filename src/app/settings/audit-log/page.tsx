@@ -28,10 +28,34 @@ export default function AuditLogPage() {
       }));
       setLogs(logsData);
       setLoading(false);
+    }, (error) => {
+      console.error("Audit log error:", error);
+      setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
+
+  const generateTestLog = async () => {
+    try {
+      const { addDoc, collection } = await import("firebase/firestore");
+      await addDoc(collection(db, "audit_logs"), {
+        userEmail: "admin@circlek.com",
+        userName: "Youssef Elhalawany",
+        role: "admin_editor",
+        action: "Generated Test Log",
+        previousValue: "N/A",
+        newValue: "Test Successful",
+        timestamp: new Date().toISOString(),
+        ip: "127.0.0.1",
+        device: "Mac OS Chrome"
+      });
+      alert("Test log generated!");
+    } catch (e) {
+      console.error(e);
+      alert("Failed to generate test log. Check your firestore.rules.");
+    }
+  };
 
   const filteredLogs = logs.filter(log => {
     const search = searchQuery.toLowerCase();
@@ -58,6 +82,12 @@ export default function AuditLogPage() {
           <div className="flex items-center gap-2">
             <ShieldAlert className="h-8 w-8 text-indigo-600" />
             <h1 className="text-3xl font-black text-foreground tracking-tight">Security Audit Log</h1>
+            <button 
+              onClick={generateTestLog}
+              className="ml-4 text-xs bg-indigo-100 text-indigo-700 hover:bg-indigo-200 px-3 py-1.5 rounded-lg font-bold transition-colors"
+            >
+              Generate Test Log
+            </button>
           </div>
           <p className="text-sm text-muted-foreground mt-1 ml-10">Monitor all critical system actions, logins, and settings changes.</p>
         </div>

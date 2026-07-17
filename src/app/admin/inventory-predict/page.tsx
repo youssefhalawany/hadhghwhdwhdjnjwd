@@ -20,7 +20,7 @@ export default function InventoryPredictionPage() {
             Automated Reorder Alerts
           </h1>
           <p className="text-slate-500 font-medium mt-1">
-            Analyze recent sales volume to predict when critical inventory will run out.
+            Analyze expiries and supplier deliveries to predict when critical inventory will run out.
           </p>
         </div>
       </div>
