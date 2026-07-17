@@ -9,7 +9,7 @@ import {
   Lock, User as UserIcon, ChevronDown, FileText, Shield,
   Calendar as CalendarIcon, UserCircle, Globe, LogOut,
   Download, Bell, Fingerprint, ScanLine, ChevronRight,
-  ClipboardList, Clock, CheckSquare, LayoutGrid, LayoutDashboard, FileBarChart2, Sparkles, BookOpen, Barcode
+  ClipboardList, Clock, CheckSquare, LayoutGrid, LayoutDashboard, FileBarChart2, Sparkles, BookOpen, Barcode, Pin, PinOff
 } from "lucide-react";
 import { CashierBottomNav } from "@/components/CashierBottomNav";
 import { PullToRefresh } from "@/components/MobileUX/PullToRefresh";
@@ -111,6 +111,23 @@ export default function CashierHubPage() {
   const [isInstalled, setIsInstalled] = useState(true);
   const [isNotificationEnabled, setIsNotificationEnabled] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
+  const [pinnedWidgets, setPinnedWidgets] = useState<string[]>([]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("ck_pinned_widgets");
+    if (saved) {
+      try { setPinnedWidgets(JSON.parse(saved)); } catch (e) {}
+    }
+  }, []);
+
+  const togglePin = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setPinnedWidgets(prev => {
+      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
+      localStorage.setItem("ck_pinned_widgets", JSON.stringify(next));
+      return next;
+    });
+  };
 
   // Fake state for bottom nav aesthetics
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -315,6 +332,14 @@ export default function CashierHubPage() {
       { id: "inventory", label: lang === "en" ? "Inventory Count" : "جرد المخزون", icon: ScanLine, path: "/inventory-audit/cashier" },
     ] as any[];
 
+    const sortedActions = [...actions].sort((a, b) => {
+      const aPinned = pinnedWidgets.includes(a.id);
+      const bPinned = pinnedWidgets.includes(b.id);
+      if (aPinned && !bPinned) return -1;
+      if (!aPinned && bPinned) return 1;
+      return 0;
+    });
+
     return (
       <div style={{ ...rootStyle, direction: isRTL ? "rtl" : "ltr" }}>
         {showWelcome && <WelcomeSplash name={authenticatedUser.name} onComplete={() => setShowWelcome(false)} />}
@@ -349,7 +374,7 @@ export default function CashierHubPage() {
             <div style={{ padding: "0 20px" }}>
 
               {/* Account Overview Header Card */}
-              <div style={{ backgroundColor: D.surface, borderRadius: 24, padding: "24px", marginBottom: 24, backgroundImage: "linear-gradient(135deg, rgba(34, 211, 238, 0.05) 0%, rgba(11, 17, 33, 0) 100%)", border: `1px solid ${D.border}`, boxShadow: "0 4px 16px rgba(0,0,0,0.2)" }}>
+              <div style={{ backgroundColor: "rgba(21, 30, 50, 0.6)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", borderRadius: 24, padding: "24px", marginBottom: 24, border: `1px solid ${D.border}`, boxShadow: "0 4px 24px -1px rgba(0,0,0,0.3)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
                   <DashboardTimeMetrics authenticatedUser={authenticatedUser} lang={lang} />
                   <div style={{ display: "flex", gap: 8 }}>
@@ -375,17 +400,18 @@ export default function CashierHubPage() {
 
               {/* Action Grid (Upgraded for POS Touch Screen) */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 16, marginTop: 12 }}>
-                {actions.map((a: any) => {
+                {sortedActions.map((a: any) => {
                   const Icon = a.icon;
+                  const isPinned = pinnedWidgets.includes(a.id);
                   // Assign unique gradients based on the action type for a premium look
-                  let bgGradient = "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)";
+                  let bgGradient = "rgba(30, 41, 59, 0.6)";
                   let iconColor = D.cyan;
                   let iconBg = D.cyanDim;
-                  let borderColor = "rgba(255,255,255,0.05)";
+                  let borderColor = "rgba(34, 211, 238, 0.15)";
 
-                  if (a.id === "shift") { bgGradient = "linear-gradient(135deg, #164e63 0%, #083344 100%)"; iconColor = "#22d3ee"; iconBg = "rgba(34,211,238,0.2)"; borderColor = "rgba(34,211,238,0.3)"; }
-                  if (a.id === "void") { bgGradient = "linear-gradient(135deg, #7f1d1d 0%, #450a0a 100%)"; iconColor = "#f87171"; iconBg = "rgba(248,113,113,0.2)"; borderColor = "rgba(248,113,113,0.3)"; }
-                  if (a.id === "inventory") { bgGradient = "linear-gradient(135deg, #065f46 0%, #022c22 100%)"; iconColor = "#34d399"; iconBg = "rgba(52,211,153,0.2)"; borderColor = "rgba(52,211,153,0.3)"; }
+                  if (a.id === "shift") { bgGradient = "rgba(22, 78, 99, 0.6)"; iconColor = "#22d3ee"; iconBg = "rgba(34,211,238,0.2)"; borderColor = "rgba(34,211,238,0.3)"; }
+                  if (a.id === "void") { bgGradient = "rgba(127, 29, 29, 0.6)"; iconColor = "#f87171"; iconBg = "rgba(248,113,113,0.2)"; borderColor = "rgba(248,113,113,0.3)"; }
+                  if (a.id === "inventory") { bgGradient = "rgba(6, 95, 70, 0.6)"; iconColor = "#34d399"; iconBg = "rgba(52,211,153,0.2)"; borderColor = "rgba(52,211,153,0.3)"; }
 
                   return (
                     <button
@@ -393,15 +419,22 @@ export default function CashierHubPage() {
                       onClick={() => nav(a.path)}
                       style={{
                         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16,
-                        padding: "24px 16px", borderRadius: 24, background: bgGradient, border: `1px solid ${borderColor}`,
+                        padding: "24px 16px", borderRadius: 24, background: bgGradient, backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: `1px solid ${borderColor}`,
                         boxShadow: "0 8px 32px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,0.1)",
-                        cursor: "pointer", textAlign: "center", transition: "all 0.15s cubic-bezier(0.4, 0, 0.2, 1)",
+                        cursor: "pointer", textAlign: "center", transition: "all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
                         position: "relative", overflow: "hidden"
                       }}
-                      onPointerDown={e => { e.currentTarget.style.transform = "scale(0.94)"; e.currentTarget.style.filter = "brightness(1.2)"; }}
+                      onPointerDown={e => { e.currentTarget.style.transform = "scale(0.98)"; e.currentTarget.style.filter = "brightness(1.2)"; }}
                       onPointerUp={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.filter = "brightness(1)"; }}
                       onPointerLeave={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.filter = "brightness(1)"; }}
                     >
+                      <div 
+                        onClick={(e) => togglePin(e, a.id)}
+                        style={{ position: "absolute", top: 12, left: 12, padding: "4px", borderRadius: "50%", background: isPinned ? D.cyan : "rgba(255,255,255,0.1)", color: isPinned ? D.bg : "#fff", zIndex: 10, cursor: "pointer", transition: "background 0.2s" }}
+                      >
+                        {isPinned ? <Pin size={12} fill="currentColor" /> : <Pin size={12} />}
+                      </div>
+
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 56, height: 56, borderRadius: 16, background: iconBg, boxShadow: `0 4px 12px ${iconBg}` }}>
                         <Icon size={28} color={iconColor} strokeWidth={2.5} />
                       </div>
