@@ -46,6 +46,10 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { onAuthStateChanged } from "firebase/auth";
+import { DndContext, closestCorners, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, useDroppable } from '@dnd-kit/core';
+import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, AreaChart, Area, ComposedChart, Line, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Cell } from "recharts";
 import Link from "next/link";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
@@ -109,6 +113,67 @@ interface Credit {
   poImageUrl?: string;
 }
 
+// --- Sortable Item for Kanban Board ---
+function SortableInvoiceCard({ credit, onSelect, onStatusChange }: { credit: Credit; onSelect: (c: Credit) => void; onStatusChange: (c: Credit, status: string) => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: credit.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 mb-3 cursor-grab active:cursor-grabbing hover:border-blue-300 dark:hover:border-blue-600 transition-colors"
+      {...attributes}
+      {...listeners}
+      onClick={() => onSelect(credit)}
+    >
+      <div className="flex justify-between items-start mb-2">
+        <h4 className="font-bold text-slate-900 dark:text-white capitalize text-sm">{credit.companyName}</h4>
+        <span className="text-xs font-semibold text-slate-500">{credit.invoiceNumber || 'No Inv'}</span>
+      </div>
+      <p className="text-lg font-black text-slate-900 dark:text-white mb-2">EGP {Number(credit.amountDue).toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+      <div className="flex justify-between items-center text-xs text-slate-500">
+        <span className="flex items-center gap-1"><Clock size={12} /> {credit.collectionDate || 'No Date'}</span>
+        {credit.paidAmount > 0 && <span className="text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">Partial</span>}
+      </div>
+    </div>
+  );
+}
+
+// --- Droppable Column for Kanban Board ---
+function DroppableColumn({ id, title, credits, onSelect }: { id: string, title: string, credits: Credit[], onSelect: (c: Credit) => void }) {
+  const { setNodeRef } = useDroppable({ id });
+  return (
+    <div className="flex-1 bg-slate-100/50 dark:bg-slate-900/50 rounded-2xl p-4 flex flex-col border border-slate-200/60 dark:border-slate-800">
+      <h3 className="font-black text-slate-800 dark:text-slate-200 mb-4 capitalize flex items-center gap-2">
+        {id === 'open' && <AlertCircle size={18} className="text-slate-500" />}
+        {id === 'pending' && <Clock size={18} className="text-blue-500" />}
+        {id === 'paid' && <CheckCircle size={18} className="text-emerald-500" />}
+        {title}
+        <span className="ml-auto bg-white dark:bg-slate-800 text-xs px-2 py-1 rounded-lg text-slate-500">
+          {credits.length}
+        </span>
+      </h3>
+      <div ref={setNodeRef} className="flex-1 overflow-y-auto pr-2 min-h-[200px]">
+        <SortableContext id={id} items={credits.map((c: any) => c.id)} strategy={verticalListSortingStrategy}>
+          {credits.map((credit: any) => (
+            <SortableInvoiceCard 
+              key={credit.id} 
+              credit={credit} 
+              onSelect={onSelect} 
+              onStatusChange={() => {}}
+            />
+          ))}
+        </SortableContext>
+      </div>
+    </div>
+  );
+}
+
 export default function CreditsPage() {
   const { currentBranch } = useBranch();
   const branchIds = useMemo(() => {
@@ -131,6 +196,11 @@ export default function CreditsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [monthFilter, setMonthFilter] = useState("");
+  const [viewMode, setViewMode] = useState<"list" | "board">("list");
+  
+  // Dashboard & Profile State
+  const [simulatorCash, setSimulatorCash] = useState<string>("");
+  const [selectedSupplierProfile, setSelectedSupplierProfile] = useState<string | null>(null);
 
   // Credit Form
   const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
@@ -784,6 +854,135 @@ export default function CreditsPage() {
     return matchesSearch && matchesStatus;
   });
 
+  // Derived Dashboard Data
+  const dashboardData = useMemo(() => {
+    let age0_15 = 0;
+    let age16_30 = 0;
+    let age30Plus = 0;
+    const waterfallMap: Record<string, number> = {};
+
+    const now = new Date();
+
+    credits.forEach(c => {
+      if (c.status === "paid" || c.onSalesOnly) return;
+      const remaining = (c.amountDue + c.tax) - c.paidAmount;
+      if (remaining <= 0) return;
+
+      const created = c.createdAt?.toDate ? c.createdAt.toDate() : new Date(c.createdAt);
+      const diffTime = Math.abs(now.getTime() - created.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays <= 15) age0_15 += remaining;
+      else if (diffDays <= 30) age16_30 += remaining;
+      else age30Plus += remaining;
+
+      const expectedDate = c.collectionDate ? new Date(c.collectionDate) : new Date(created.getTime() + 30 * 24 * 60 * 60 * 1000);
+      const expectedDateStr = expectedDate.toISOString().split("T")[0];
+      if (!waterfallMap[expectedDateStr]) waterfallMap[expectedDateStr] = 0;
+      waterfallMap[expectedDateStr] += remaining;
+    });
+
+    const agingChartData = [
+      { name: "0-15 Days", amount: age0_15, color: "#10b981" },
+      { name: "16-30 Days", amount: age16_30, color: "#eab308" },
+      { name: "30+ Days", amount: age30Plus, color: "#ef4444" }
+    ];
+
+    const waterfallChartData = Object.keys(waterfallMap).sort().slice(0, 30).map(date => {
+      return { date, amount: waterfallMap[date] };
+    });
+
+    return { agingChartData, waterfallChartData };
+  }, [credits]);
+
+  // Smart Simulator Logic
+  const simulatorResults = useMemo(() => {
+    if (!simulatorCash || isNaN(Number(simulatorCash))) return [];
+    let cash = Number(simulatorCash);
+    if (cash <= 0) return [];
+    
+    const openInvoices = credits.filter(c => c.status !== "paid" && !c.onSalesOnly).map(c => {
+      const remaining = (c.amountDue + c.tax) - c.paidAmount;
+      const created = c.createdAt?.toDate ? c.createdAt.toDate().getTime() : new Date(c.createdAt).getTime();
+      return { ...c, remaining, created };
+    }).sort((a, b) => a.created - b.created);
+
+    const plan = [];
+    for (const inv of openInvoices) {
+      if (cash <= 0) break;
+      if (cash >= inv.remaining) {
+        plan.push({ credit: inv, payAmount: inv.remaining, type: "Full" });
+        cash -= inv.remaining;
+      } else {
+        plan.push({ credit: inv, payAmount: cash, type: "Partial" });
+        cash = 0;
+      }
+    }
+    return plan;
+  }, [simulatorCash, credits]);
+
+  const selectedSupplierData = useMemo(() => {
+    if (!selectedSupplierProfile) return null;
+    const supplierCredits = credits.filter(c => c.companyName === selectedSupplierProfile);
+    let totalVolume = 0;
+    let totalDebt = 0;
+    let totalDaysToPay = 0;
+    let paidCount = 0;
+
+    supplierCredits.forEach(c => {
+      const total = c.amountDue + c.tax;
+      totalVolume += total;
+      totalDebt += total - c.paidAmount;
+      
+      if (c.status === 'paid' && c.payments && c.payments.length > 0) {
+        const created = c.createdAt?.toDate ? c.createdAt.toDate().getTime() : new Date(c.createdAt).getTime();
+        const lastPayment = c.payments[c.payments.length - 1];
+        const paidDate = new Date(lastPayment.date).getTime();
+        totalDaysToPay += (paidDate - created) / (1000 * 60 * 60 * 24);
+        paidCount++;
+      }
+    });
+
+    const avgDaysToPay = paidCount > 0 ? totalDaysToPay / paidCount : 30;
+    const trustScore = Math.max(0, 100 - (avgDaysToPay > 30 ? (avgDaysToPay - 30) * 2 : 0) - (totalDebt > totalVolume * 0.5 ? 20 : 0));
+
+    return {
+      name: selectedSupplierProfile,
+      totalVolume,
+      totalDebt,
+      avgDaysToPay: Math.round(avgDaysToPay),
+      trustScore: Math.round(trustScore),
+      radarData: [
+        { subject: 'Speed', A: Math.max(0, 100 - avgDaysToPay), fullMark: 100 },
+        { subject: 'Volume', A: Math.min(100, (totalVolume / 100000) * 100), fullMark: 100 },
+        { subject: 'Trust', A: trustScore, fullMark: 100 },
+        { subject: 'Health', A: 100 - ((totalDebt / (totalVolume || 1)) * 100), fullMark: 100 },
+      ]
+    };
+  }, [selectedSupplierProfile, credits]);
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+    
+    const creditId = active.id as string;
+    const newStatus = over.id as string;
+    
+    const credit = credits.find(c => c.id === creditId);
+    if (!credit) return;
+    
+    if (credit.status !== newStatus && ['open', 'pending', 'paid'].includes(newStatus)) {
+      setCredits(prev => prev.map(c => c.id === creditId ? { ...c, status: newStatus as any } : c));
+      try {
+        await updateDoc(doc(db, "credits", creditId), { status: newStatus });
+        toast.success(`Invoice moved to ${newStatus}`);
+      } catch (e) {
+        toast.error("Failed to move invoice");
+        fetchCredits();
+      }
+    }
+  };
+
   if (loading) {
     return <div className="flex h-screen items-center justify-center bg-[#F8FAFC]"><Loader2 className="animate-spin text-indigo-600" size={48} /></div>;
   }
@@ -810,6 +1009,94 @@ export default function CreditsPage() {
                 <Plus size={20} /> Add Credit
               </button>
             </div>
+          </div>
+
+          {/* ADVANCED DASHBOARDS */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* 1. Credit Aging Dashboard */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/60 p-6 rounded-3xl shadow-sm lg:col-span-1">
+              <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-6">
+                <AlertCircle size={20} className="text-rose-500" />
+                Credit Aging
+              </h3>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={dashboardData.agingChartData} margin={{top:10, right:10, left:-20, bottom:0}}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize:12, fill:'#64748b'}} />
+                    <YAxis axisLine={false} tickLine={false} tick={{fontSize:12, fill:'#64748b'}} tickFormatter={(val) => `£${(val/1000).toFixed(0)}k`} />
+                    <RechartsTooltip cursor={{fill: '#f1f5f9'}} contentStyle={{borderRadius:'12px', border:'none', boxShadow:'0 10px 15px -3px rgb(0 0 0 / 0.1)'}} />
+                    <Bar dataKey="amount" radius={[6,6,6,6]}>
+                      {dashboardData.agingChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* 2. Debt Waterfall */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/60 p-6 rounded-3xl shadow-sm lg:col-span-1">
+              <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-6">
+                <Calendar size={20} className="text-sky-500" />
+                30-Day Debt Waterfall
+              </h3>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={dashboardData.waterfallChartData} margin={{top:10, right:10, left:-20, bottom:0}}>
+                    <defs>
+                      <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis dataKey="date" axisLine={false} tickLine={false} tickFormatter={(val) => val.split('-').slice(1).join('/')} tick={{fontSize:12, fill:'#64748b'}} />
+                    <YAxis axisLine={false} tickLine={false} tick={{fontSize:12, fill:'#64748b'}} tickFormatter={(val) => `£${(val/1000).toFixed(0)}k`} />
+                    <RechartsTooltip cursor={{stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '4 4'}} contentStyle={{borderRadius:'12px', border:'none', boxShadow:'0 10px 15px -3px rgb(0 0 0 / 0.1)'}} />
+                    <Area type="monotone" dataKey="amount" stroke="#0ea5e9" strokeWidth={3} fillOpacity={1} fill="url(#colorAmount)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* 3. Smart Payment Simulator */}
+            <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-slate-800 dark:to-slate-900 border border-indigo-100 dark:border-slate-700 p-6 rounded-3xl shadow-sm lg:col-span-1 relative overflow-hidden flex flex-col">
+              <div className="absolute top-0 right-0 p-4 opacity-5"><Banknote size={100} /></div>
+              <h3 className="text-lg font-black text-indigo-900 dark:text-indigo-300 flex items-center gap-2 mb-2 relative z-10">
+                <Banknote size={20} /> Smart Settle Simulator
+              </h3>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 relative z-10">Type your available cash. We'll suggest the perfect payment plan.</p>
+              
+              <div className="relative z-10 flex gap-2 mb-4">
+                <input 
+                  type="number"
+                  placeholder="e.g. 20000"
+                  value={simulatorCash}
+                  onChange={(e) => setSimulatorCash(e.target.value)}
+                  className="flex-1 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 font-bold focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex-1 overflow-y-auto pr-1 space-y-2 relative z-10 max-h-40">
+                {simulatorResults.length === 0 ? (
+                  <div className="text-center text-slate-400 text-sm mt-8">Awaiting cash input...</div>
+                ) : (
+                  simulatorResults.map((res, i) => (
+                    <div key={i} className="flex justify-between items-center bg-white/60 dark:bg-slate-800/60 p-2 rounded-lg border border-slate-200/50">
+                      <div>
+                        <p className="text-xs font-bold text-slate-800 dark:text-white capitalize">{res.credit.companyName}</p>
+                        <p className="text-[10px] text-slate-500">{res.type} Payment</p>
+                      </div>
+                      <p className="text-sm font-black text-indigo-600">EGP {res.payAmount.toLocaleString()}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+            
           </div>
 
           {/* Premium Metric Cards */}
@@ -876,7 +1163,14 @@ export default function CreditsPage() {
           </div>
 
           {/* Unified Command Bar (Filters) */}
-          <div className="bg-white/80 backdrop-blur-md border border-slate-200/80 p-2 rounded-2xl shadow-sm flex flex-col md:flex-row gap-2">
+          <div className="bg-white/80 backdrop-blur-md border border-slate-200/80 p-2 rounded-2xl shadow-sm flex flex-col md:flex-row gap-2 items-center">
+            
+            {/* View Mode Toggle */}
+            <div className="flex bg-slate-100 p-1 rounded-xl">
+              <button onClick={() => setViewMode('list')} className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}>List</button>
+              <button onClick={() => setViewMode('board')} className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${viewMode === 'board' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}>Board</button>
+            </div>
+
             <div className="relative flex-1">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
               <input
@@ -903,8 +1197,9 @@ export default function CreditsPage() {
             </select>
           </div>
 
-        {/* Credits Data Grid */}
-        <div className="space-y-4">
+        {/* Credits Data View */}
+        {viewMode === 'list' ? (
+          <div className="space-y-4">
           <AnimatePresence>
             {filteredCredits.map((credit, idx) => {
               const isExpanded = expandedCredits[credit.id];
@@ -942,7 +1237,9 @@ export default function CreditsPage() {
                       </div>
                       <div>
                         <div className="flex items-center gap-3 mb-1">
-                          <h3 className="text-lg font-bold text-slate-900 capitalize tracking-tight">{credit.companyName}</h3>
+                          <button onClick={() => setSelectedSupplierProfile(credit.companyName)} className="text-lg font-bold text-slate-900 capitalize tracking-tight text-left hover:text-indigo-600 transition-colors underline decoration-dotted decoration-indigo-300 underline-offset-4">
+                            {credit.companyName}
+                          </button>
                           
                           {/* Modern Badges */}
                           {credit.status === 'paid' && <span className="bg-emerald-50 text-emerald-600 border border-emerald-200 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><CheckCircle size={12}/> Paid</span>}
@@ -1144,7 +1441,33 @@ export default function CreditsPage() {
               <p className="text-slate-400 text-sm">Try adjusting your search or filters.</p>
             </div>
           )}
+
         </div>
+        ) : (
+          /* KANBAN BOARD VIEW */
+          <div className="h-[700px] overflow-hidden flex gap-4">
+            <DndContext sensors={useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }))} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
+              <DroppableColumn 
+                id="open" 
+                title="Open Invoices" 
+                credits={filteredCredits.filter(c => c.status === 'open' && !c.onSalesOnly)} 
+                onSelect={(c) => setSelectedSupplierProfile(c.companyName)} 
+              />
+              <DroppableColumn 
+                id="pending" 
+                title="Pending Payment" 
+                credits={filteredCredits.filter(c => c.status === 'pending' && !c.onSalesOnly)} 
+                onSelect={(c) => setSelectedSupplierProfile(c.companyName)} 
+              />
+              <DroppableColumn 
+                id="paid" 
+                title="Paid Invoices" 
+                credits={filteredCredits.filter(c => c.status === 'paid' && !c.onSalesOnly)} 
+                onSelect={(c) => setSelectedSupplierProfile(c.companyName)} 
+              />
+            </DndContext>
+          </div>
+        )}
 
       </div>
 
@@ -1733,6 +2056,87 @@ export default function CreditsPage() {
         </div>
       </div>
     )}
+
+    {/* Supplier Trust Profile Drawer */}
+    <AnimatePresence>
+      {selectedSupplierData && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60]"
+            onClick={() => setSelectedSupplierProfile(null)}
+          />
+          <motion.div
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: "spring", bounce: 0, duration: 0.4 }}
+            className="fixed inset-y-0 right-0 w-full md:w-[450px] bg-white dark:bg-slate-900 shadow-2xl z-[70] border-l border-slate-200 dark:border-slate-800 flex flex-col"
+          >
+            <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+              <h2 className="text-xl font-black text-slate-900 dark:text-white capitalize tracking-tight flex items-center gap-2">
+                <Building className="text-indigo-600" size={24} />
+                {selectedSupplierData.name} Profile
+              </h2>
+              <button onClick={() => setSelectedSupplierProfile(null)} className="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6">
+              
+              {/* Trust Score Header */}
+              <div className="flex items-center gap-4 mb-8">
+                <div className={`w-20 h-20 rounded-full flex items-center justify-center border-4 shadow-inner ${selectedSupplierData.trustScore >= 80 ? 'border-emerald-500 bg-emerald-50 text-emerald-600' : selectedSupplierData.trustScore >= 50 ? 'border-amber-500 bg-amber-50 text-amber-600' : 'border-red-500 bg-red-50 text-red-600'}`}>
+                  <span className="text-2xl font-black">{selectedSupplierData.trustScore}%</span>
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest">Trust Score</h3>
+                  <p className="text-lg font-black text-slate-900 dark:text-white">
+                    {selectedSupplierData.trustScore >= 80 ? 'Excellent Partner' : selectedSupplierData.trustScore >= 50 ? 'Average Partner' : 'High Risk Partner'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Radar Chart */}
+              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-700 mb-8 h-64 flex flex-col">
+                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 text-center">Relationship Metrics</h4>
+                <div className="flex-1">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RadarChart cx="50%" cy="50%" outerRadius="70%" data={selectedSupplierData.radarData}>
+                      <PolarGrid stroke="#e2e8f0" />
+                      <PolarAngleAxis dataKey="subject" tick={{fill: '#64748b', fontSize: 10, fontWeight: 'bold'}} />
+                      <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                      <Radar name="Supplier" dataKey="A" stroke="#4f46e5" fill="#4f46e5" fillOpacity={0.4} />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Data Grid */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 rounded-xl shadow-sm">
+                  <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Total Volume</p>
+                  <p className="text-lg font-black text-slate-900 dark:text-white">EGP {selectedSupplierData.totalVolume.toLocaleString()}</p>
+                </div>
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 rounded-xl shadow-sm">
+                  <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Current Debt</p>
+                  <p className="text-lg font-black text-slate-900 dark:text-white">EGP {selectedSupplierData.totalDebt.toLocaleString()}</p>
+                </div>
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 rounded-xl shadow-sm col-span-2">
+                  <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Average Payment Speed</p>
+                  <p className="text-lg font-black text-slate-900 dark:text-white">{selectedSupplierData.avgDaysToPay} Days</p>
+                </div>
+              </div>
+
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+
     </>
   );
 }
