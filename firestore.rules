@@ -1,0 +1,361 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- Helpers ----------
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    function role() {
+      return userDoc().role;
+    }
+    
+    function isAdminViewer() { 
+      return role() == 'admin_viewer'; 
+    }
+    
+    function isAdminEditor() { 
+      return role() == 'admin_editor'; 
+    }
+    
+    function isAdmin() { 
+      return isAdminViewer() || isAdminEditor(); 
+    }
+
+    function managerStores() {
+      return userDoc().storeIds;
+    }
+    
+    function isManager() {
+      return role() == 'manager';
+    }
+    
+    function isManagerFor(storeId) {
+      return isManager() && (storeId in managerStores());
+    }
+    
+    function hasStoreAccess(storeId) {
+      return storeId in managerStores();
+    }
+    
+    function isOwningUser() {
+      return request.auth.uid == resource.id;
+    }
+
+    // ---------- Users profile docs ----------
+    match /users/{uid} {
+      // Users can read their own profile, admins can read all
+      allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
+      // Only admin_editor can create/update/delete users (not self-service)
+      allow write: if request.auth != null && isAdminEditor();
+    }
+   // shift_schedules (monthly schedules per branch)
+    match /shift_schedules/{doc} {
+      allow read: if request.auth != null && (isAdmin() || isManagerFor(resource.data.branchId));
+      allow create: if request.auth != null && (isAdminEditor() || isManagerFor(request.resource.data.branchId));
+      allow update, delete: if request.auth != null && (isAdminEditor() || isManagerFor(resource.data.branchId));
+    }
+    // ---------- Financials (admins or store manager) ----------
+    // sales
+    match /sales/{doc} {
+      allow read: if request.auth != null && (
+        isAdmin() || 
+        (isManager() && ('storeId' in resource.data) && resource.data.storeId in managerStores())
+      );
+      allow list: if request.auth != null && (
+        isAdmin() ||
+        isManager()
+      );
+      allow create: if request.auth != null && (isAdminEditor() || isManagerFor(request.resource.data.storeId));
+      allow update, delete: if request.auth != null && (isAdminEditor() || isManagerFor(resource.data.storeId));
+    }
+
+    // cash_payments
+    match /cash_payments/{doc} {
+      allow read: if request.auth != null && (
+        isAdmin() || 
+        (isManager() && ('storeId' in resource.data) && resource.data.storeId in managerStores())
+      );
+      allow list: if request.auth != null && (
+        isAdmin() ||
+        isManager()
+      );
+      allow create: if request.auth != null && (isAdminEditor() || isManagerFor(request.resource.data.storeId));
+      allow update, delete: if request.auth != null && (isAdminEditor() || isManagerFor(resource.data.storeId));
+    }
+
+    // credits
+    match /credits/{doc} {
+      allow read: if request.auth != null && (
+        isAdmin() || 
+        (isManager() && ('storeId' in resource.data) && resource.data.storeId in managerStores())
+      );
+      allow list: if request.auth != null && (
+        isAdmin() ||
+        isManager()
+      );
+      allow create: if request.auth != null && (isAdminEditor() || isManagerFor(request.resource.data.storeId));
+      allow update, delete: if request.auth != null && (isAdminEditor() || isManagerFor(resource.data.storeId));
+    }
+
+    // credit_payments
+    match /credit_payments/{doc} {
+      allow read: if request.auth != null && (
+        isAdmin() || 
+        (isManager() && ('storeId' in resource.data) && resource.data.storeId in managerStores())
+      );
+      allow list: if request.auth != null && (
+        isAdmin() ||
+        isManager()
+      );
+      allow create: if request.auth != null && (isAdminEditor() || isManagerFor(request.resource.data.storeId));
+      allow update, delete: if request.auth != null && (isAdminEditor() || isManagerFor(resource.data.storeId));
+    }
+        // credit_payments
+    match /creditPayments/{doc} {
+      allow read: if request.auth != null && (isAdmin() || isManagerFor(get(/databases/$(database)/documents/credits/$(resource.data.creditId)).data.storeId));
+      allow create: if request.auth != null && (isAdminEditor() || isManagerFor(get(/databases/$(database)/documents/credits/$(request.resource.data.creditId)).data.storeId));
+      allow update, delete: if request.auth != null && (isAdminEditor() || isManagerFor(get(/databases/$(database)/documents/credits/$(resource.data.creditId)).data.storeId));
+    }
+
+
+    // cheques
+    match /cheques/{doc} {
+      allow read: if request.auth != null && (
+        isAdmin() || 
+        (isManager() && ('storeId' in resource.data) && resource.data.storeId in managerStores())
+      );
+      allow list: if request.auth != null && (
+        isAdmin() ||
+        isManager()
+      );
+      allow create: if request.auth != null && (isAdminEditor() || isManagerFor(request.resource.data.storeId));
+      allow update, delete: if request.auth != null && (isAdminEditor() || isManagerFor(resource.data.storeId));
+    }
+
+    // deposits
+    match /deposits/{doc} {
+      allow read: if request.auth != null && (
+        isAdmin() || 
+        (isManager() && ('storeId' in resource.data) && resource.data.storeId in managerStores())
+      );
+      allow list: if request.auth != null && (
+        isAdmin() ||
+        isManager()
+      );
+      allow create: if request.auth != null && (isAdminEditor() || isManagerFor(request.resource.data.storeId));
+      allow update, delete: if request.auth != null && (isAdminEditor() || isManagerFor(resource.data.storeId));
+    }
+
+    // ---------- HR (Admins and managers for their stores) ----------
+    match /employees/{doc} {
+      allow read: if request.auth != null && (isAdmin() || isManagerFor(resource.data.storeId));
+      allow write: if request.auth != null && isAdminEditor();
+    }
+    match /loans/{doc} {
+      allow read: if request.auth != null && (
+        isAdmin() || 
+        (isManager() && ('storeId' in resource.data) && resource.data.storeId in managerStores())
+      );
+      allow list: if request.auth != null && (
+        isAdmin() ||
+        isManager()
+      );
+      allow write: if request.auth != null && isAdminEditor();
+    }
+    match /payroll_drafts/{doc} {
+      allow read: if request.auth != null && (
+        isAdmin() || 
+        (isManager() && ('storeId' in resource.data) && resource.data.storeId in managerStores())
+      );
+      allow list: if request.auth != null && (
+        isAdmin() ||
+        isManager()
+      );
+      allow write: if request.auth != null && isAdminEditor();
+    }
+    match /payroll_lines/{doc} {
+      allow read: if request.auth != null && (
+        isAdmin() || 
+        (isManager() && ('storeId' in resource.data) && resource.data.storeId in managerStores())
+      );
+      allow list: if request.auth != null && (
+        isAdmin() ||
+        isManager()
+      );
+      allow write: if request.auth != null && isAdminEditor();
+    }
+    match /deductions/{doc} {
+      allow read: if request.auth != null && (isAdmin() || isManagerFor(resource.data.storeId));
+      allow write: if request.auth != null && isAdminEditor();
+    }
+    match /adjustments/{doc} {
+      allow read: if request.auth != null && (isAdmin() || isManagerFor(resource.data.storeId));
+      allow write: if request.auth != null && isAdminEditor();
+    }
+    match /schedules/{doc} {
+      allow read: if request.auth != null && (isAdmin() || isManagerFor(resource.data.storeId));
+      allow write: if request.auth != null && isAdminEditor();
+    }
+        // expired_items
+    match /expired_items/{doc} {
+      allow read: if request.auth != null && (isAdmin() || isManagerFor(resource.data.storeId));
+      allow create: if request.auth != null && (isAdminEditor() || isManagerFor(request.resource.data.storeId));
+      allow update: if request.auth != null && isAdminEditor();
+      allow delete: if request.auth != null && isAdminEditor();
+    }
+ // tmt_invoices
+    match /tmt_invoices/{doc} {
+      allow read: if request.auth != null && (isAdmin() || isManagerFor(resource.data.storeId));
+      allow create: if request.auth != null && (isAdminEditor() || isManagerFor(request.resource.data.storeId));
+      allow update, delete: if request.auth != null && (isAdminEditor() || isManagerFor(resource.data.storeId));
+    }
+      // opening_money_ins (admins and managers can read)
+    match /opening_money_ins/{doc} {
+      allow read: if request.auth != null && (isAdmin() || isManagerFor(resource.data.storeId));
+      allow create: if request.auth != null && isAdminEditor();
+      allow update, delete: if request.auth != null && isAdminEditor();
+    }
+
+    // opening_money_outs (admins and managers can read)
+    match /opening_money_outs/{doc} {
+      allow read: if request.auth != null && (isAdmin() || isManagerFor(resource.data.storeId));
+      allow create: if request.auth != null && isAdminEditor();
+      allow update, delete: if request.auth != null && isAdminEditor();
+    }
+
+    // ---------- Branch & Tax Management ----------
+    match /branches/{doc} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && isAdminEditor();
+    }
+    
+    // ---------- Permissions & Roles ----------
+    match /permissions/{doc} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && isAdminEditor();
+    }
+    
+    match /roles/{doc} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && isAdminEditor();
+    }
+    match /tax_tasks/{doc} {
+      allow read: if request.auth != null && (isAdmin() || isManagerFor(resource.data.storeId));
+      allow create: if request.auth != null && (isAdminEditor() || isManagerFor(request.resource.data.storeId));
+      allow update, delete: if request.auth != null && (isAdminEditor() || isManagerFor(resource.data.storeId));
+    }
+    // ---------- Notice Board (admins publish, everyone reads) ----------
+    match /noticeBoard/{doc} {
+      // Everyone can read published notices
+      allow read: if request.auth != null && resource.data.isPublished == true;
+      // Admins can manage all notices (including unpublished drafts)
+      allow read: if request.auth != null && isAdmin();
+      // Only admin_editor can create/update/delete notices
+      allow create, update, delete: if request.auth != null && isAdminEditor();
+    }
+    // ---------- Reports & Audit (Read-only for managers) ----------
+    match /reports/{doc} {
+      allow read: if request.auth != null && (isAdmin() || isManagerFor(resource.data.storeId));
+      allow write: if request.auth != null && isAdminEditor();
+    }
+    match /audit/{doc} {
+      allow read: if request.auth != null && (isAdmin() || isManagerFor(resource.data.storeId));
+      allow create: if request.auth != null; // system creates audit logs
+      allow update, delete: if false; // audit logs are immutable
+    }
+
+    // ---------- Safe Balance Cache (system-managed) ----------
+    match /safe_balance/{doc} {
+      // Allow read if user is admin OR if they're a manager for the store/branch
+      // Note: safe_balance docs can have either storeId or branchId
+      allow read: if request.auth != null && (
+        isAdmin() || 
+        (isManager() && (
+          (resource == null) || // Allow query attempt even if document doesn't exist
+          ('storeId' in resource.data && resource.data.storeId in managerStores()) ||
+          ('branchId' in resource.data && resource.data.branchId in managerStores())
+        ))
+      );
+      allow create, update: if request.auth != null && (
+        isAdminEditor() || 
+        (isManager() && (
+          ('storeId' in request.resource.data && request.resource.data.storeId in managerStores()) ||
+          ('branchId' in request.resource.data && request.resource.data.branchId in managerStores())
+        ))
+      );
+      allow delete: if false; // no deletion
+    }
+        // ---------- Payroll ----------
+    match /payroll/{docId} {
+      allow read: if isAdmin() || (isManager() && hasStoreAccess(resource.data.storeId));
+      allow write: if isAdmin() || isManager();
+    }
+    
+    // ---------- Shift Input & Cashier Operations ----------
+    match /cashiers/{doc} {
+      allow read: if true;
+      allow write: if request.auth != null && isAdminEditor();
+    }
+
+    match /shift_reports/{doc} {
+      allow create, read, update: if true;
+      
+      allow delete: if request.auth != null && (
+        isAdmin() || 
+        (isManager() && ('cashierDetails' in resource.data) && resource.data.cashierDetails.storeId in managerStores())
+      );
+    }
+    
+    // ---------- Automated End Shift Cash ----------
+    match /end_shift_cash/{doc} {
+      allow read, write: if true;
+    }
+
+    // ---------- Voids & Returns ----------
+    match /void_requests/{doc} {
+      allow create, read, update, delete: if true;
+    }
+    
+    // ---------- Expiry Tracker ----------
+    match /expiries/{doc} {
+      allow create, read, update, delete: if true;
+    }
+
+    // ---------- Supplier Returns ----------
+    match /supplier_returns/{doc} {
+      allow create, read, update, delete: if true;
+    }
+
+    // ---------- Products ----------
+    match /products/{doc} {
+      allow create, read, update, delete: if true;
+    }
+
+    // ---------- User Push Notification Tokens ----------
+    match /user_tokens/{tokenId} {
+      allow read, write: if true;
+    }
+
+    // ---------- Early Day Requests ----------
+    match /early_day_requests/{doc} {
+      allow create, read, update, delete: if true;
+    }
+    
+    // ---------- System Notifications (NEW) ----------
+    match /notifications/{doc} {
+      allow create, read, update, delete: if true;
+    }
+
+    // ---------- Inventory Audit (NEW) ----------
+    match /audit_batches/{doc} {
+      allow create, read, update, delete: if true;
+    }
+
+    match /audit_scans/{doc} {
+      allow create, read, update, delete: if true;
+    }
+
+  }
+}
