@@ -35,7 +35,7 @@ export default function PwaInstallPrompt() {
       const isAndroidDevice = /android/.test(window.navigator.userAgent.toLowerCase());
       setIsIOS(isIOSDevice);
       setIsAndroid(isAndroidDevice);
-      if ((isIOSDevice || isAndroidDevice) && !isInstalled) {
+      if (!isInstalled) {
         setShowPrompt(true);
       }
     }, 0);
@@ -67,7 +67,10 @@ export default function PwaInstallPrompt() {
       return;
     }
 
-    if (!deferredPrompt) return;
+    if (!deferredPrompt) {
+      alert("To install this app, please use your browser's menu (e.g., 'Install App' or 'Add to Home Screen').");
+      return;
+    }
 
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
@@ -103,7 +106,9 @@ export default function PwaInstallPrompt() {
           <p className="text-xs text-muted-foreground mt-1 mb-3">
             {isIOS 
               ? "Install this app on your iPhone for quick access and offline capabilities."
-              : "Install this app on your device for a better experience and faster loading."}
+              : isAndroid 
+                ? "Install this app on your device for a better experience and faster loading."
+                : "Install this app on your computer for a native desktop experience."}
           </p>
           
           <button 
