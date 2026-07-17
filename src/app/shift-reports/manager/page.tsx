@@ -4,8 +4,9 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { db } from "@/lib/firebase";
 import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, addDoc, orderBy, limit, getDocs, setDoc } from "firebase/firestore";
-import { CheckCircle, Clock, FileText, Banknote, Package, Lock, Printer, Archive, Trash2, Calendar, QrCode, Search, AlertTriangle, X, ShieldAlert, Sparkles, Activity, Briefcase } from "lucide-react";
-import Barcode from "react-barcode";
+import { CheckCircle, Clock, FileText, Banknote, Package, Lock, Printer, Archive, Trash2, Calendar, QrCode, Search, AlertTriangle, X, ShieldAlert, Sparkles, Activity, Briefcase, Barcode as BarcodeIcon } from "lucide-react";
+import dynamic from "next/dynamic";
+const Barcode = dynamic(() => import("react-barcode"), { ssr: false });
 import QRCode from "react-qr-code";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
@@ -13,7 +14,6 @@ import { useBranch } from "@/context/BranchContext";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageTransition } from "@/components/PageTransition";
-import dynamic from "next/dynamic";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Legend, Tooltip as RechartsTooltip } from "recharts";
 
 const SignaturePad = dynamic(() => import("react-signature-canvas"), { ssr: false });
@@ -308,8 +308,8 @@ export default function ManagerAuditPage() {
       setLoading(false);
     });
 
-    // 2. Fetch History (Approved) - limit to 100 to ensure we get plenty of data immediately
-    const qHistory = query(collection(db, "shift_reports"), orderBy("createdAt", "desc"), limit(100));
+    // 2. Fetch History (Approved) - limit to 30 to improve render and reload speed
+    const qHistory = query(collection(db, "shift_reports"), orderBy("createdAt", "desc"), limit(30));
     const unsubHistory = onSnapshot(qHistory, (snapshot) => {
       const reports = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
       // Filter locally to avoid composite index requirement
@@ -603,34 +603,67 @@ export default function ManagerAuditPage() {
     if (!selectedReport) return;
     setGeneratingPDF(true);
     try {
-      const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-
-      // PAGE 1
       const page1 = document.getElementById("pdf-page-1");
-      if (page1) {
-        const canvas1 = await html2canvas(page1, { scale: 2, useCORS: true });
-        const imgData1 = canvas1.toDataURL("image/png");
-        const pdfHeight1 = (canvas1.height * pdfWidth) / canvas1.width;
-        pdf.addImage(imgData1, "PNG", 0, 0, pdfWidth, pdfHeight1);
-      }
-
-      // PAGE 2 (If applicable)
       const page2 = document.getElementById("pdf-page-2");
-      if (page2 && selectedReport.cashierRole === 1) {
-        pdf.addPage();
-        const canvas2 = await html2canvas(page2, { scale: 2, useCORS: true });
-        const imgData2 = canvas2.toDataURL("image/png");
-        const pdfHeight2 = (canvas2.height * pdfWidth) / canvas2.width;
-        pdf.addImage(imgData2, "PNG", 0, 0, pdfWidth, pdfHeight2);
+
+      if (!page1) {
+        setGeneratingPDF(false);
+        return;
       }
 
-      pdf.autoPrint();
-      window.open(pdf.output("bloburl"), "_blank");
+      // Create a hidden iframe for instant native vector printing
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'absolute';
+      iframe.style.top = '-9999px';
+      iframe.style.left = '-9999px';
+      document.body.appendChild(iframe);
+
+      const contentWindow = iframe.contentWindow;
+      const contentDocument = iframe.contentDocument || (contentWindow ? contentWindow.document : null);
+      
+      if (contentDocument) {
+        // Copy all stylesheets to preserve Tailwind styling
+        const styleNodes = document.querySelectorAll("style, link[rel='stylesheet']");
+        const stylesHtml = Array.from(styleNodes).map(node => node.outerHTML).join('');
+        
+        // Preserve theme classes
+        const htmlClasses = document.documentElement.className;
+        
+        contentDocument.write(`
+          <html class="${htmlClasses}">
+            <head>
+              <title>Shift Report - ${selectedReport.cashierDetails?.name}</title>
+              ${stylesHtml}
+              <style>
+                @media print {
+                  body { margin: 0; padding: 20px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                  .page-break { page-break-before: always; margin-top: 40px; }
+                  /* Hide non-printable UI elements if any snuck in */
+                  .no-print { display: none !important; }
+                }
+              </style>
+            </head>
+            <body class="bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+              <div class="print-container w-full max-w-4xl mx-auto">
+                ${page1.outerHTML}
+                ${(page2 && selectedReport.cashierRole === 1) ? '<div class="page-break"></div>' + page2.outerHTML : ''}
+              </div>
+            </body>
+          </html>
+        `);
+        contentDocument.close();
+
+        // Wait a tiny bit for styles and images to load in iframe before triggering print
+        setTimeout(() => {
+          contentWindow?.focus();
+          contentWindow?.print();
+          document.body.removeChild(iframe);
+          setGeneratingPDF(false);
+        }, 800); // 800ms gives enough time for SVGs/Fonts to render
+      }
     } catch (error) {
       console.error("PDF Generate Error:", error);
       toast.error("Failed to generate PDF Report.");
-    } finally {
       setGeneratingPDF(false);
     }
   };
@@ -1001,9 +1034,9 @@ export default function ManagerAuditPage() {
                                   <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest">
                                     <CheckCircle className="h-3 w-3" /> Approved
                                   </div>
-                                  {isMounted && report?.id && (
-                                    <Barcode value={report.id.substring(0, 8)} width={1} height={20} displayValue={false} background="transparent" lineColor={selectedReport?.id === report.id ? '#fff' : 'currentColor'} margin={0} />
-                                  )}
+                                  <div className={`opacity-60 flex items-center ${selectedReport?.id === report.id ? 'text-white' : 'text-slate-500'}`}>
+                                    <BarcodeIcon className="w-12 h-6" strokeWidth={1} />
+                                  </div>
                                </div>
                             </div>
                           </button>
