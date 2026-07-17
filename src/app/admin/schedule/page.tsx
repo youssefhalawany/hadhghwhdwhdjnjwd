@@ -423,11 +423,35 @@ export default function AdminSchedulePage() {
                           const dateObj = new Date(day.date);
                           const isWeekend = dateObj.getDay() === 5 || dateObj.getDay() === 6; // Fri/Sat in some regions
                           
+                          let morningCount = 0;
+                          let noonCount = 0;
+                          let nightCount = 0;
+                          day.shifts.forEach((s: any) => {
+                            const l = s.shiftTime.toLowerCase();
+                            if (l.includes('morning')) morningCount++;
+                            if (l.includes('noon')) noonCount++;
+                            if (l.includes('night')) nightCount++;
+                          });
+                          
+                          let overstaffed = false;
+                          let understaffed = false;
+                          if (morningCount > rules.minEmployeesMorning || noonCount > rules.minEmployeesNoon || nightCount > rules.minEmployeesNight) overstaffed = true;
+                          if (morningCount < rules.minEmployeesMorning || noonCount < rules.minEmployeesNoon || nightCount < rules.minEmployeesNight) understaffed = true;
+                          
+                          let heatmapClass = "";
+                          if (understaffed && overstaffed) heatmapClass = "bg-gradient-to-r from-red-500/10 to-blue-500/10 dark:from-red-900/20 dark:to-blue-900/20";
+                          else if (overstaffed) heatmapClass = "bg-red-500/10 dark:bg-red-900/20";
+                          else if (understaffed) heatmapClass = "bg-blue-500/10 dark:bg-blue-900/20";
+
                           return (
-                            <tr key={day.date} className={`border-b border-slate-100 dark:border-slate-800/50 print:border-black transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-800/20 ${isWeekend ? 'bg-orange-50/30 dark:bg-orange-900/10' : ''}`}>
+                            <tr key={day.date} className={`border-b border-slate-100 dark:border-slate-800/50 print:border-black transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-800/20 ${heatmapClass || (isWeekend ? 'bg-orange-50/30 dark:bg-orange-900/10' : '')}`}>
                               <td className="p-4 border-r border-slate-100 dark:border-slate-800 print:border-black w-40 whitespace-nowrap align-top">
                                 <div className={`font-bold text-base ${isWeekend ? 'text-orange-600 dark:text-orange-400' : 'text-slate-800 dark:text-slate-200'}`}>{dateObj.toLocaleDateString('en-US', { weekday: 'long' })}</div>
                                 <div className="text-xs font-semibold text-slate-400 dark:text-slate-500 mt-1 print:text-gray-600">{dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                                {overstaffed && !understaffed && <div className="mt-3 inline-block px-2 py-1 bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300 text-[10px] font-bold uppercase rounded-md border border-red-200 dark:border-red-800 shadow-sm shadow-red-500/20">Overstaffed</div>}
+                                {understaffed && !overstaffed && <div className="mt-3 inline-block px-2 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 text-[10px] font-bold uppercase rounded-md border border-blue-200 dark:border-blue-800 shadow-sm shadow-blue-500/20">Understaffed</div>}
+                                {understaffed && overstaffed && <div className="mt-3 inline-block px-2 py-1 bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 text-[10px] font-bold uppercase rounded-md border border-purple-200 dark:border-purple-800 shadow-sm shadow-purple-500/20">Unbalanced</div>}
+                                {!understaffed && !overstaffed && <div className="mt-3 inline-block px-2 py-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 text-[10px] font-bold uppercase rounded-md border border-emerald-200 dark:border-emerald-800 shadow-sm shadow-emerald-500/20">Optimal</div>}
                               </td>
                               <td className="p-4 align-top">
                                 <div className="flex flex-wrap gap-3 items-start">

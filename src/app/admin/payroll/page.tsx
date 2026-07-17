@@ -4,11 +4,13 @@ import React, { useState, useEffect } from "react";
 import { db, auth } from "@/lib/firebase";
 import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, getDocs, getDoc, updateDoc, where, limit } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
-import { Plus, Check, X, ShieldAlert, DollarSign, Calendar, Save, Trash2, CheckCircle2, Printer, Filter } from "lucide-react";
+import { Plus, Check, X, ShieldAlert, DollarSign, Calendar, Save, Trash2, CheckCircle2, Printer, Filter, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBranch, BranchId } from "@/context/BranchContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { motion, useAnimation, useMotionValue, useTransform } from "framer-motion";
+import confetti from "canvas-confetti";
 
 type PayrollRecord = {
   id?: string;
@@ -31,6 +33,49 @@ type PayrollRecord = {
   appliedLoanIds?: string[];
   appliedAdjustmentIds?: string[]; // for the new Adjustments system
   status?: string;
+};
+
+const SlideToRun = ({ onComplete }: { onComplete: () => void }) => {
+  const [isSuccess, setIsSuccess] = useState(false);
+  const x = useMotionValue(0);
+  const background = useTransform(
+    x,
+    [0, 250],
+    ["linear-gradient(90deg, #1e293b 0%, #0f172a 100%)", "linear-gradient(90deg, #059669 0%, #10b981 100%)"]
+  );
+
+  const handleDragEnd = (event: any, info: any) => {
+    if (info.offset.x > 200) {
+      setIsSuccess(true);
+      confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+      setTimeout(() => onComplete(), 1000);
+    } else {
+      // snap back
+    }
+  };
+
+  return (
+    <div className="w-80 mx-auto">
+      <motion.div style={{ background }} className="relative w-full h-16 rounded-2xl flex items-center justify-center overflow-hidden border border-slate-700 shadow-inner">
+        {!isSuccess && <span className="absolute z-0 text-slate-400 font-black tracking-widest uppercase text-sm ml-12">Slide to Run Payroll</span>}
+        {isSuccess && <span className="absolute z-0 text-white font-black tracking-widest uppercase text-sm">Payroll Locked! 🎉</span>}
+        
+        {!isSuccess && (
+          <motion.div
+            drag="x"
+            dragSnapToOrigin={true}
+            dragConstraints={{ left: 0, right: 256 }}
+            dragElastic={0.1}
+            onDragEnd={handleDragEnd}
+            style={{ x }}
+            className="absolute left-1 z-10 w-14 h-14 bg-white rounded-xl shadow-lg flex items-center justify-center cursor-grab active:cursor-grabbing"
+          >
+            <ChevronRight className="text-slate-800 w-6 h-6" />
+          </motion.div>
+        )}
+      </motion.div>
+    </div>
+  );
 };
 
 export default function AdminPayrollPage() {
@@ -740,18 +785,13 @@ export default function AdminPayrollPage() {
                 className="w-full p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium"
               />
             </div>
-            <div className="flex gap-3 pt-2">
+            <div className="flex flex-col gap-4 pt-4 items-center">
+              <SlideToRun onComplete={confirmMarkPaid} />
               <button 
                 onClick={() => setShowPaidModal(null)}
-                className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-colors"
+                className="w-full max-w-[320px] py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-colors"
               >
                 Cancel
-              </button>
-              <button 
-                onClick={confirmMarkPaid}
-                className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold flex justify-center items-center gap-2 transition-colors"
-              >
-                <Check className="w-4 h-4" /> Confirm Paid
               </button>
             </div>
           </div>

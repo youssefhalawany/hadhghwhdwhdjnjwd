@@ -188,60 +188,115 @@ export default function ManagerOffersPage() {
       </main>
 
       {/* New Offer Modal */}
+      {/* New Offer Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4 lg:p-8">
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white dark:bg-slate-900 rounded-3xl p-6 w-full max-w-md shadow-2xl border border-slate-200 dark:border-slate-800"
+            className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-5xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row overflow-hidden max-h-[90vh]"
           >
-            <h2 className="text-xl font-bold mb-4 text-slate-900 dark:text-white">Create Promotion</h2>
-            <form onSubmit={handleCreateOffer} className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Offer Title</label>
-                <input 
-                  type="text" 
-                  value={title} onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Free Coffee with Donut"
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 outline-none focus:border-red-500 transition-colors"
-                  required
-                />
+            {/* Left side: Form */}
+            <div className="flex-1 p-6 md:p-10 overflow-y-auto">
+              <h2 className="text-2xl font-black mb-6 text-slate-900 dark:text-white">Create Promotion</h2>
+              <form onSubmit={handleCreateOffer} className="space-y-5">
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Offer Title</label>
+                  <input 
+                    type="text" 
+                    value={title} onChange={(e) => setTitle(e.target.value)}
+                    placeholder="e.g. Free Coffee with Donut"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-4 outline-none focus:border-red-500 transition-colors font-medium text-lg"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Promo Code</label>
+                  <input 
+                    type="text" 
+                    value={code} onChange={(e) => setCode(e.target.value)}
+                    placeholder="e.g. FREECFDNT"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-4 outline-none focus:border-red-500 transition-colors uppercase font-mono text-xl tracking-widest text-red-600"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Description</label>
+                  <textarea 
+                    value={description} onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Details for the cashier..."
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-4 outline-none focus:border-red-500 transition-colors resize-none h-32 text-sm"
+                  />
+                </div>
+                
+                <div className="flex gap-3 pt-4">
+                  <button 
+                    type="button" 
+                    onClick={() => setShowModal(false)}
+                    className="flex-1 py-4 rounded-xl font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit" 
+                    className="flex-[2] py-4 rounded-xl font-bold bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-500/20 transition-all"
+                  >
+                    Create Offer
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Right side: Live Phone Mockup */}
+            <div className="hidden md:flex flex-1 bg-slate-100 dark:bg-slate-950 p-6 md:p-10 items-center justify-center border-l border-slate-200 dark:border-slate-800">
+              <div className="w-[300px] h-[600px] bg-black rounded-[3rem] p-3 shadow-2xl relative border-4 border-slate-800">
+                {/* iPhone Notch */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-black rounded-b-2xl z-20"></div>
+                
+                {/* Phone Screen */}
+                <div className="w-full h-full bg-slate-100 dark:bg-slate-900 rounded-[2.25rem] overflow-hidden relative flex flex-col pt-10">
+                  <div className="p-4 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
+                      <Tag className="w-4 h-4 text-red-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs font-bold text-slate-500 uppercase">Available Offer</p>
+                    </div>
+                  </div>
+                  
+                  <div className="p-4 flex-1">
+                    <motion.div 
+                      key={title || code}
+                      initial={{ scale: 0.95, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="bg-white dark:bg-slate-950 rounded-2xl p-5 shadow-lg border border-slate-100 dark:border-slate-800"
+                    >
+                      <h3 className="font-black text-xl text-slate-900 dark:text-white mb-2 leading-tight">
+                        {title || "Offer Title Preview"}
+                      </h3>
+                      <div className="inline-block bg-red-50 dark:bg-red-900/20 px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-800 mb-3">
+                        <span className="font-mono font-bold text-red-600 dark:text-red-400 tracking-widest text-sm">
+                          {code || "PROMOCODE"}
+                        </span>
+                      </div>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed break-words">
+                        {description || "Add a description to see how it looks to the cashier."}
+                      </p>
+                    </motion.div>
+                    
+                    {/* Mock Cashier interface below it */}
+                    <div className="mt-4 space-y-3 opacity-50 pointer-events-none">
+                      <div className="h-16 bg-slate-200 dark:bg-slate-800 rounded-xl w-full"></div>
+                      <div className="h-16 bg-slate-200 dark:bg-slate-800 rounded-xl w-full"></div>
+                    </div>
+                  </div>
+                  
+                  <div className="p-4 bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex justify-center">
+                    <div className="w-1/3 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full"></div>
+                  </div>
+                </div>
               </div>
-              <div>
-                <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Promo Code</label>
-                <input 
-                  type="text" 
-                  value={code} onChange={(e) => setCode(e.target.value)}
-                  placeholder="e.g. FREECFDNT"
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 outline-none focus:border-red-500 transition-colors uppercase font-mono"
-                  required
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Description</label>
-                <textarea 
-                  value={description} onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Details for the cashier..."
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 outline-none focus:border-red-500 transition-colors resize-none h-24"
-                />
-              </div>
-              
-              <div className="flex gap-3 pt-4">
-                <button 
-                  type="button" 
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 py-3 rounded-xl font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit" 
-                  className="flex-1 py-3 rounded-xl font-bold bg-red-600 text-white shadow-lg shadow-red-500/20"
-                >
-                  Create Offer
-                </button>
-              </div>
-            </form>
+            </div>
           </motion.div>
         </div>
       )}

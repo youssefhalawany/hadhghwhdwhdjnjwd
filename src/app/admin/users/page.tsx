@@ -3,9 +3,11 @@
 import React, { useState, useEffect } from "react";
 import { collection, query, onSnapshot, getDocs, orderBy, doc, getDoc, updateDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
-import { Plus, Edit2, Shield, UserX, CheckCircle, X, Search, ShieldCheck } from "lucide-react";
+import { Plus, Edit2, Shield, UserX, CheckCircle, X, Search, ShieldCheck, Activity } from "lucide-react";
 import toast from "react-hot-toast";
 import { useBranch } from "@/context/BranchContext";
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from "@/context/LanguageContext";
 
 interface UserProfile {
@@ -31,6 +33,7 @@ export default function UserManagementPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState("");
+  const [selectedProfileUser, setSelectedProfileUser] = useState<UserProfile | null>(null);
   
   // Form State
   const [email, setEmail] = useState("");
@@ -321,6 +324,13 @@ export default function UserManagementPage() {
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button
+                            onClick={() => setSelectedProfileUser(user)}
+                            className="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
+                            title="View Stats"
+                          >
+                            <Activity className="h-4 w-4" />
+                          </button>
+                          <button
                             onClick={() => handleOpenEditUser(user)}
                             className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
                             title="Edit User"
@@ -504,6 +514,73 @@ export default function UserManagementPage() {
           </div>
         </div>
       )}
+
+      {/* RPG Stats Modal */}
+      <AnimatePresence>
+        {selectedProfileUser && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-slate-950 border border-slate-800 rounded-3xl p-8 max-w-2xl w-full text-white shadow-2xl relative overflow-hidden"
+            >
+              {/* Background Glow */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-indigo-500/20 blur-[100px] rounded-full pointer-events-none" />
+              
+              <button 
+                onClick={() => setSelectedProfileUser(null)}
+                className="absolute top-6 right-6 p-2 rounded-full bg-slate-900 hover:bg-slate-800 transition-colors z-10"
+              >
+                <X className="w-5 h-5 text-slate-400" />
+              </button>
+
+              <div className="flex flex-col md:flex-row gap-8 items-center md:items-start relative z-10">
+                <div className="flex-1 text-center md:text-left space-y-4">
+                  <div className="inline-block px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-400 text-xs font-black tracking-widest uppercase mb-2">
+                    Lvl 42 {selectedProfileUser.role.replace('_', ' ')}
+                  </div>
+                  <h2 className="text-4xl font-black">{selectedProfileUser.displayName || 'Unknown Hero'}</h2>
+                  <p className="text-slate-400 font-medium">{selectedProfileUser.email}</p>
+                  
+                  <div className="grid grid-cols-2 gap-4 mt-6">
+                    <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800">
+                      <p className="text-xs text-slate-500 font-bold uppercase mb-1">XP Points</p>
+                      <p className="text-2xl font-black text-amber-400">14,250</p>
+                    </div>
+                    <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800">
+                      <p className="text-xs text-slate-500 font-bold uppercase mb-1">Quests Completed</p>
+                      <p className="text-2xl font-black text-emerald-400">312</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="w-full md:w-80 h-80 bg-slate-900/50 rounded-full border border-slate-800 p-4 flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RadarChart cx="50%" cy="50%" outerRadius="70%" data={[
+                      { subject: 'Speed', A: 85, fullMark: 100 },
+                      { subject: 'Accuracy', A: 98, fullMark: 100 },
+                      { subject: 'Sales', A: 70, fullMark: 100 },
+                      { subject: 'Attendance', A: 100, fullMark: 100 },
+                      { subject: 'Reviews', A: 88, fullMark: 100 },
+                    ]}>
+                      <PolarGrid stroke="#334155" />
+                      <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 'bold' }} />
+                      <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                      <Radar name="Stats" dataKey="A" stroke="#8b5cf6" strokeWidth={3} fill="#8b5cf6" fillOpacity={0.4} />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
