@@ -319,7 +319,7 @@ export default function CashierHubPage() {
 
     const actions = [
       ...(isMaster ? [{ id: "master", label: lang === "en" ? "Master Feed" : "اللوحة الرئيسية", icon: Bell, path: "/cashier/master", badge: "LIVE" }] : []),
-      ...(canUseScanner ? [{ id: "scanner", label: lang === "en" ? "Master Scanner" : "ماسح الباركود", icon: ScanLine, path: "/cashier/scanner", badge: "NEW" }] : []),
+      ...(canUseScanner ? [{ id: "scanner", label: lang === "en" ? "Master Scanner" : "ماسح الباركود", icon: ScanLine, path: "/cashier/master-scanner", badge: "NEW" }] : []),
       { id: "shift", label: lang === "en" ? "Daily Shift Report" : "تقرير الوردية", icon: FileText, path: "/shift-reports/cashier" },
       { id: "void", label: lang === "en" ? "Log a Void" : "تسجيل مرتجع", icon: Shield, path: "/voids/cashier" },
       { id: "expiry", label: lang === "en" ? "Expiry Tracker" : "تواريخ الصلاحية", icon: CalendarIcon, path: "/expiries" },
