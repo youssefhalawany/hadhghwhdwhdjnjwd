@@ -422,11 +422,11 @@ export default function CashierHubPage() {
                         padding: "24px 16px", borderRadius: 24, background: bgGradient, backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: `1px solid ${borderColor}`,
                         boxShadow: "0 8px 32px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,0.1)",
                         cursor: "pointer", textAlign: "center", transition: "all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
-                        position: "relative", overflow: "hidden"
+                        position: "relative", transform: "translateZ(0)", WebkitTransform: "translateZ(0)"
                       }}
-                      onPointerDown={e => { e.currentTarget.style.transform = "scale(0.98)"; e.currentTarget.style.filter = "brightness(1.2)"; }}
-                      onPointerUp={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.filter = "brightness(1)"; }}
-                      onPointerLeave={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.filter = "brightness(1)"; }}
+                      onPointerDown={e => { e.currentTarget.style.transform = "scale(0.98) translateZ(0)"; e.currentTarget.style.filter = "brightness(1.2)"; }}
+                      onPointerUp={e => { e.currentTarget.style.transform = "scale(1) translateZ(0)"; e.currentTarget.style.filter = "brightness(1)"; }}
+                      onPointerLeave={e => { e.currentTarget.style.transform = "scale(1) translateZ(0)"; e.currentTarget.style.filter = "brightness(1)"; }}
                     >
                       <div 
                         onClick={(e) => togglePin(e, a.id)}
