@@ -4,8 +4,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { db, productsDb } from "@/lib/firebase";
 import { collection, getDocs, query, where, getDoc, doc, setDoc, limit } from "firebase/firestore";
 import { Search, Package, Calendar, AlertTriangle, QrCode, Camera, X, CheckCircle, Edit, PlusCircle } from "lucide-react";
-import { Html5Qrcode } from "html5-qrcode";
 import { motion, AnimatePresence } from "framer-motion";
+import { CameraScanner } from "@/components/ui/CameraScanner";
 
 export default function ProductLookupPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -21,10 +21,7 @@ export default function ProductLookupPage() {
 
   // Scanner States
   const [showScanner, setShowScanner] = useState(false);
-  const [scannerError, setScannerError] = useState("");
   const [scannerTarget, setScannerTarget] = useState<"search" | "form">("search");
-  const scannerRef = useRef<Html5Qrcode | null>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
 
   // Supplier State
   const [isAddingSupplier, setIsAddingSupplier] = useState(false);
@@ -146,83 +143,10 @@ export default function ProductLookupPage() {
     }
   };
 
-  const initAudio = () => {
-    try {
-      if (!audioCtxRef.current) {
-        audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      }
-      if (audioCtxRef.current.state === "suspended") {
-        audioCtxRef.current.resume();
-      }
-    } catch(e) {}
-  };
-
   // Scanner Actions
   const startScanning = (target: "search" | "form" = "search") => {
     setScannerTarget(target);
-    initAudio();
     setShowScanner(true);
-    setScannerError("");
-    
-    setTimeout(async () => {
-      try {
-        const html5QrCode = new Html5Qrcode("scanner-reader-lookup");
-        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-
-        const startWithConstraints = async (constraints: any) => {
-          return html5QrCode.start(
-            constraints,
-            config,
-            (decodedText) => {
-              try {
-                const ctx = audioCtxRef.current;
-                if (ctx) {
-                  const osc = ctx.createOscillator();
-                  const gain = ctx.createGain();
-                  osc.connect(gain);
-                  gain.connect(ctx.destination);
-                  osc.type = "sine";
-                  osc.frequency.setValueAtTime(800, ctx.currentTime);
-                  gain.gain.setValueAtTime(0.1, ctx.currentTime);
-                  osc.start();
-                  osc.stop(ctx.currentTime + 0.15);
-                }
-              } catch (e) {}
-              if (target === "search") {
-                setSearchTerm(decodedText);
-                performLookup(decodedText);
-              } else {
-                setEditFormData(prev => ({...prev, barcode: decodedText}));
-              }
-              stopScanning();
-            },
-            undefined
-          );
-        };
-
-        try {
-          await startWithConstraints({ facingMode: "environment" });
-          scannerRef.current = html5QrCode;
-        } catch (err) {
-          try {
-            await startWithConstraints({ video: true });
-            scannerRef.current = html5QrCode;
-          } catch (fallbackErr) {
-            setScannerError("Camera error. Please grant permissions.");
-          }
-        }
-      } catch (err: any) {
-        setScannerError("Scanner error.");
-      }
-    }, 250);
-  };
-
-  const stopScanning = () => {
-    if (scannerRef.current) {
-      try { scannerRef.current.stop(); } catch (e) {}
-      scannerRef.current = null;
-    }
-    setShowScanner(false);
   };
 
   const filteredProducts = searchTerm
@@ -472,22 +396,18 @@ export default function ProductLookupPage() {
 
       {/* Barcode Camera Scanner Modal */}
       {showScanner && (
-        <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 text-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl relative">
-            <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950/40">
-              <h3 className="font-black text-base flex items-center gap-2"><Camera className="h-5 w-5 text-blue-500 animate-pulse" /> Scan Barcode</h3>
-              <button onClick={stopScanning} className="p-1 text-slate-400 hover:text-white rounded-lg"><X className="h-6 w-6" /></button>
-            </div>
-            <div className="p-4 space-y-4">
-              {scannerError ? (
-                <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl text-center"><p className="text-sm font-semibold text-red-400">{scannerError}</p></div>
-              ) : (
-                <div className="relative rounded-2xl overflow-hidden bg-white"><div id="scanner-reader-lookup" className="w-full"></div></div>
-              )}
-              <button onClick={stopScanning} className="w-full py-3 bg-slate-800 text-white rounded-xl font-bold">Cancel</button>
-            </div>
-          </div>
-        </div>
+        <CameraScanner 
+          onScan={(decodedText) => {
+            if (scannerTarget === "search") {
+              setSearchTerm(decodedText);
+              performLookup(decodedText);
+            } else {
+              setEditFormData(prev => ({...prev, barcode: decodedText}));
+            }
+            setShowScanner(false);
+          }} 
+          onClose={() => setShowScanner(false)} 
+        />
       )}
     </div>
   );
