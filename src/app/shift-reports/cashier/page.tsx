@@ -253,8 +253,9 @@ export default function CashierShiftReportPage() {
                 read: false,
                 link: "/shift-reports/manager",
               });
-            } catch (notifyErr) {
+            } catch (notifyErr: any) {
               console.error("Failed to push notification:", notifyErr);
+              toast.error("Bell Notification failed: " + (notifyErr.message || "Unknown error"));
             }
           }
           await removeFromOfflineQueue(item.id);
@@ -611,13 +612,14 @@ export default function CashierShiftReportPage() {
             type: "shift",
             message: `${c?.name || "Unknown"} submitted a new Shift Report`,
             cashierName: c?.name || "Unknown",
-            storeId: c?.storeId || "Unknown",
+            storeId: c?.branchId || c?.storeId || "alamein4",
             createdAt: serverTimestamp(),
             read: false,
             link: "/shift-reports/manager",
           });
-        } catch (notifyErr) {
+        } catch (notifyErr: any) {
           console.error("Failed to push notification:", notifyErr);
+          toast.error("Bell Notification failed: " + (notifyErr.message || "Unknown error"));
         }
       }
       

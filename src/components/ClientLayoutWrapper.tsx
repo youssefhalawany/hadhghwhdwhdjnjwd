@@ -236,7 +236,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
         let notifs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
         // Filter locally to avoid requiring Firestore composite indexes
         if (currentBranch !== "all") {
-          notifs = notifs.filter(n => n.storeId === currentBranch);
+          notifs = notifs.filter(n => n.storeId === currentBranch || n.branchId === currentBranch);
         }
         notifs = notifs.filter(n => n.read === false);
         
