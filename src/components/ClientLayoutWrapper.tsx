@@ -313,7 +313,6 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   };
 
   const navItems = [
-    { name: t("nav.overview") || "Overview", href: "/dashboard", icon: LayoutDashboard },
     {
       name: t("nav.financials"), icon: FileText, children: [
         { name: t("nav.financial_inputs"), href: "/financials/inputs", icon: Wallet },
