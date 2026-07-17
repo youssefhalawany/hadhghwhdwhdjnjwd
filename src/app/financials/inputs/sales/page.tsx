@@ -129,6 +129,8 @@ export default function SalesManagementPage() {
     // 1. Trend Data (Cash vs Visa per day) & Heatmap Data (Total per day)
     const dailyMap = new Map<string, { cash: number, visa: number, total: number, morning: number, night: number }>();
     let totalAllSales = 0;
+    let totalMorning = 0;
+    let totalNight = 0;
 
     sales.forEach(s => {
       const sDate = typeof s.date === 'string' && s.date.length >= 10 ? s.date.substring(0, 10) : "Unknown";
@@ -144,9 +146,14 @@ export default function SalesManagementPage() {
       dayData.visa += sVisa;
       dayData.total += sTotal;
       totalAllSales += sTotal;
-
-      if (s.shift?.toLowerCase() === 'morning') dayData.morning += sTotal;
-      if (s.shift?.toLowerCase() === 'night') dayData.night += sTotal;
+      if (s.shift?.toLowerCase() === 'morning') {
+        dayData.morning += sTotal;
+        totalMorning += sTotal;
+      }
+      if (s.shift?.toLowerCase() === 'night') {
+        dayData.night += sTotal;
+        totalNight += sTotal;
+      }
     });
 
     const sortedDates = Array.from(dailyMap.keys()).sort();
@@ -191,9 +198,6 @@ export default function SalesManagementPage() {
       fullMark: Math.max(...dayTotals) || 100
     }));
 
-    // 3. Shift Battle
-    const totalMorning = morningSales.reduce((acc, curr) => acc + (Number(curr.cash) || 0) + (Number(curr.visa) || 0), 0);
-    const totalNight = nightSales.reduce((acc, curr) => acc + (Number(curr.cash) || 0) + (Number(curr.visa) || 0), 0);
     const totalCombined = totalMorning + totalNight;
     
     const morningPercent = totalCombined > 0 ? Math.round((totalMorning / totalCombined) * 100) : 50;
@@ -206,7 +210,7 @@ export default function SalesManagementPage() {
       averageDailySales,
       shiftBattle: { morning: morningPercent, night: nightPercent, totalMorning, totalNight }
     };
-  }, [sales, morningSales, nightSales]);
+  }, [sales]);
 
   const formatMoney = (val: number) => {
     return val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -448,7 +452,7 @@ export default function SalesManagementPage() {
                     <YAxis tick={{fontSize: 10, fill: '#94a3b8'}} axisLine={false} tickLine={false} tickFormatter={(value) => `EGP ${value/1000}k`} />
                     <RechartsTooltip 
                       contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
-                      formatter={(value: number) => [`EGP ${value.toLocaleString()}`, undefined]}
+                      formatter={(value: any) => [`EGP ${Number(value).toLocaleString()}`, undefined]}
                     />
                     <Area type="monotone" dataKey="cash" name="Cash" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorCash)" />
                     <Area type="monotone" dataKey="visa" name="Visa" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorVisa)" />
@@ -470,7 +474,7 @@ export default function SalesManagementPage() {
                     <PolarRadiusAxis angle={90} domain={[0, 'auto']} tick={false} axisLine={false} />
                     <Radar name="Total Sales" dataKey="A" stroke="#8b5cf6" strokeWidth={2} fill="#8b5cf6" fillOpacity={0.5} />
                     <RechartsTooltip 
-                      formatter={(value: number) => [`EGP ${value.toLocaleString()}`, "Sales"]}
+                      formatter={(value: any) => [`EGP ${Number(value).toLocaleString()}`, "Sales"]}
                       contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
                     />
                   </RadarChart>
@@ -497,7 +501,8 @@ export default function SalesManagementPage() {
                     <RechartsTooltip 
                       cursor={{fill: 'rgba(0,0,0,0.05)'}}
                       contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
-                      formatter={(value: number, name: string) => [`EGP ${value.toLocaleString()}`, name === 'total' ? 'Total' : name.charAt(0).toUpperCase() + name.slice(1)]}
+                      formatter={(value: any, name: any) => [`EGP ${Number(value).toLocaleString()}`, name === 'total' ? 'Total' : String(name).charAt(0).toUpperCase() + String(name).slice(1)]}
+                      labelStyle={{ color: '#1e293b' }}
                     />
                     <Bar dataKey="total" radius={[4, 4, 0, 0]}>
                       {heatmapData.map((entry, index) => (

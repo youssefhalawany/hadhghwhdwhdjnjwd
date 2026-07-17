@@ -264,7 +264,7 @@ export default function PaymentsRedesignPage() {
       setSuppliers(Array.from(uniqueSuppliers).sort().map((name, index) => ({ id: `sup_${index}`, name })));
 
       // 3. Fetch Credits to calculate Outstanding Debt
-      let q2 = branchIds.length > 0 
+      const q2 = branchIds.length > 0 
           ? query(collection(db, "credits"), where("storeId", "in", branchIds), orderBy("createdAt", "desc"))
           : query(collection(db, "credits"), orderBy("createdAt", "desc"));
       try {
