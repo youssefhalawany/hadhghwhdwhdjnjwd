@@ -179,23 +179,23 @@ export default function MonthSummaryPage() {
 
       const mapDocs = (snapshot: any) => snapshot.docs.map((d: any) => ({ id: d.id, ...d.data() }));
       
-      const rawSales = mapDocs(sDocs).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      const rawPayments = mapDocs(pDocs).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      const rawDeposits = mapDocs(dDocs).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      const rawSales = mapDocs(sDocs).sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      const rawPayments = mapDocs(pDocs).sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      const rawDeposits = mapDocs(dDocs).sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
       
       // Filter credits and tmt locally since their date fields might vary (createdAt Timestamp vs date string)
-      const rawCredits = mapDocs(cDocs).filter(c => {
+      const rawCredits = mapDocs(cDocs).filter((c: any) => {
         let dStr = "";
         if (c.createdAt?.toDate) dStr = c.createdAt.toDate().toISOString();
         else if (c.date) dStr = c.date;
         else if (typeof c.createdAt === 'string') dStr = c.createdAt;
         return dStr >= startStr && dStr <= endStr + "T23:59:59";
-      }).sort((a, b) => new Date(b.createdAt?.toDate ? b.createdAt.toDate() : b.createdAt).getTime() - new Date(a.createdAt?.toDate ? a.createdAt.toDate() : a.createdAt).getTime());
+      }).sort((a: any, b: any) => new Date(b.createdAt?.toDate ? b.createdAt.toDate() : b.createdAt).getTime() - new Date(a.createdAt?.toDate ? a.createdAt.toDate() : a.createdAt).getTime());
 
-      const rawTmt = mapDocs(tDocs).filter(c => {
+      const rawTmt = mapDocs(tDocs).filter((c: any) => {
         let dStr = c.invoiceDate || c.date || "";
         return dStr >= startStr && dStr <= endStr;
-      }).sort((a, b) => new Date(b.invoiceDate || b.date).getTime() - new Date(a.invoiceDate || a.date).getTime());
+      }).sort((a: any, b: any) => new Date(b.invoiceDate || b.date).getTime() - new Date(a.invoiceDate || a.date).getTime());
 
       setSalesData(rawSales);
       setPaymentsData(rawPayments);
