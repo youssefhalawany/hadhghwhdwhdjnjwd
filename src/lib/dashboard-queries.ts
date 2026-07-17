@@ -1,0 +1,115 @@
+import { collection, query, where, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
+import { db } from './firebase';
+
+// Helper to get local date string YYYY-MM-DD
+const getLocalDateString = (date: Date) => {
+  const d = new Date(date);
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().split('T')[0];
+};
+
+export async function fetchDashboardData(branchId: string) {
+  const todayStr = getLocalDateString(new Date());
+  
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = getLocalDateString(tomorrow);
+
+  let shiftReportsQuery = query(collection(db, 'shift_reports'), where('date', '==', todayStr));
+  let voidsQuery = query(collection(db, 'voids'), where('date', '==', todayStr));
+  let expiriesQuery = query(collection(db, 'expiries'), where('expiryDate', '==', tomorrowStr));
+  let needsAttentionQuery = query(collection(db, 'shift_reports'), orderBy('createdAt', 'desc'), limit(20));
+
+  if (branchId !== 'all') {
+    shiftReportsQuery = query(collection(db, 'shift_reports'), where('date', '==', todayStr), where('branchId', '==', branchId));
+    voidsQuery = query(collection(db, 'voids'), where('date', '==', todayStr), where('storeId', '==', branchId));
+    expiriesQuery = query(collection(db, 'expiries'), where('expiryDate', '==', tomorrowStr), where('storeId', '==', branchId));
+    needsAttentionQuery = query(collection(db, 'shift_reports'), where('branchId', '==', branchId), orderBy('createdAt', 'desc'), limit(20));
+  }
+
+  const [shiftsSnap, voidsSnap, expiriesSnap, attentionSnap] = await Promise.all([
+    getDocs(shiftReportsQuery).catch(() => ({ docs: [] })),
+    getDocs(voidsQuery).catch(() => ({ docs: [] })),
+    getDocs(expiriesQuery).catch(() => ({ docs: [] })),
+    getDocs(needsAttentionQuery).catch(() => ({ docs: [] }))
+  ]);
+
+  let totalSales = 0;
+  let totalShortage = 0;
+  
+  shiftsSnap.docs.forEach((doc: any) => {
+    const data = doc.data();
+    totalSales += Number(data.totalSales || 0);
+    totalShortage += Number(data.cashShortage || 0);
+  });
+
+  let totalVoids = 0;
+  let pendingVoids = 0;
+  voidsSnap.docs.forEach((doc: any) => {
+    const data = doc.data();
+    totalVoids += Number(data.amount || 0);
+    if (!data.approved) pendingVoids++;
+  });
+
+  const expiringTomorrow = expiriesSnap.docs.length;
+
+  // Process Needs Attention
+  const needsAttention = [];
+  attentionSnap.docs.forEach((doc: any) => {
+    const data = doc.data();
+    if (Number(data.cashShortage || 0) < -100) {
+      needsAttention.push({
+        id: doc.id,
+        type: 'shortage',
+        message: `High Cash Shortage (${data.cashShortage} EGP) in ${data.cashierName}'s shift`,
+        link: '/shift-reports/manager'
+      });
+    }
+  });
+
+  if (pendingVoids > 0) {
+    needsAttention.push({
+      id: 'voids',
+      type: 'void',
+      message: `${pendingVoids} Voids waiting for approval`,
+      link: '/voids/manager'
+    });
+  }
+
+  // Fetch 7-Day Revenue Trend (very naive approach for quick dashboard load)
+  // To avoid massive queries, we fetch the last 7 days of shift reports and aggregate them.
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const sevenDaysAgoStr = getLocalDateString(sevenDaysAgo);
+
+  let weekQuery = query(collection(db, 'shift_reports'), where('date', '>=', sevenDaysAgoStr));
+  const weekSnap = await getDocs(weekQuery).catch(() => ({ docs: [] }));
+  
+  const chartDataMap: Record<string, any> = {};
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    chartDataMap[getLocalDateString(d)] = { name: getLocalDateString(d).substring(5), alamein4: 0, ola: 0 };
+  }
+
+  weekSnap.docs.forEach((doc: any) => {
+    const data = doc.data();
+    if (chartDataMap[data.date]) {
+      const branchKey = (data.branchId || data.storeId || '').toLowerCase().includes('ola') ? 'ola' : 'alamein4';
+      chartDataMap[data.date][branchKey] += Number(data.totalSales || 0);
+    }
+  });
+
+  const chartData = Object.values(chartDataMap);
+
+  return {
+    kpis: {
+      totalSales,
+      totalShortage,
+      totalVoids,
+      expiringTomorrow
+    },
+    chartData,
+    needsAttention
+  };
+}
