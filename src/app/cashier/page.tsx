@@ -9,7 +9,7 @@ import {
   Lock, User as UserIcon, ChevronDown, FileText, Shield,
   Calendar as CalendarIcon, UserCircle, Globe, LogOut,
   Download, Bell, Fingerprint, ScanLine, ChevronRight,
-  ClipboardList, Clock, CheckSquare, LayoutGrid, LayoutDashboard, FileBarChart2, Sparkles, BookOpen
+  ClipboardList, Clock, CheckSquare, LayoutGrid, LayoutDashboard, FileBarChart2, Sparkles, BookOpen, Barcode
 } from "lucide-react";
 import { CashierBottomNav } from "@/components/CashierBottomNav";
 import { PullToRefresh } from "@/components/MobileUX/PullToRefresh";
@@ -309,6 +309,7 @@ export default function CashierHubPage() {
       { id: "checklist", label: lang === "en" ? "Checklists" : "قوائم المراجعة", icon: CheckSquare, path: "/checklists/cashier" },
       { id: "cleaning", label: lang === "en" ? "Cleaning" : "النظافة", icon: Sparkles, path: "/cashier/cleaning" },
       { id: "sop", label: lang === "en" ? "Food SOP" : "دليل التشغيل", icon: BookOpen, path: "/cashier/sop", badge: "NEW" },
+      { id: "codes", label: lang === "en" ? "Food & Coffee Codes" : "أكواد الفود والقهوة", icon: Barcode, path: "/cashier/food-codes", badge: "NEW" },
       { id: "account", label: lang === "en" ? "My Account" : "حسابي", icon: UserCircle, path: "/cashier/account" },
       { id: "schedule", label: lang === "en" ? "My Schedule" : "جدول العمل", icon: ClipboardList, path: "/cashier/schedule" },
       { id: "inventory", label: lang === "en" ? "Inventory Count" : "جرد المخزون", icon: ScanLine, path: "/inventory-audit/cashier" },

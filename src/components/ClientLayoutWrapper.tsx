@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sun, Moon, Shield, Database, LayoutDashboard, FileText, Printer, ClipboardList, CheckCircle, Search, LogOut, User, Users, Menu, X, Bell, PackageX, Truck, CalendarDays, DollarSign, Activity, Wallet, Tag, Sparkles } from "lucide-react";
+import { Sun, Moon, Shield, Database, LayoutDashboard, FileText, Printer, ClipboardList, CheckCircle, Search, LogOut, User, Users, Menu, X, Bell, PackageX, Truck, CalendarDays, DollarSign, Activity, Wallet, Tag, Sparkles, Barcode, Briefcase } from "lucide-react";
 import { auth, messaging, dbService, db } from "@/lib/firebase";
 import { getToken } from "firebase/messaging";
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
@@ -181,7 +181,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
         collection(db, "supplier_returns"),
         where("status", "in", ["pending", "returned"]) // server-side filter
       );
-      
+
       const unsubscribeReturns = onSnapshot(returnsQ, (snap) => {
         let count = 0;
         snap.docs.forEach(doc => {
@@ -268,7 +268,6 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     {
       name: t("nav.financials"), icon: FileText, children: [
         { name: t("nav.financial_inputs"), href: "/financials/inputs", icon: Wallet },
-        { name: t("nav.product_prices"), href: "/financials/products-price", icon: Search },
         { name: t("nav.reports"), href: "/financial-reports", icon: FileText },
         { name: t("nav.voids_returns"), href: "/voids/manager", icon: Shield },
         { name: t("nav.shift_audit"), href: "/shift-reports/manager", icon: Shield },
@@ -277,10 +276,19 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     },
     { name: t("nav.returns"), href: "/dashboard/supplier-returns", icon: Truck },
     {
-      name: t("nav.expired"), icon: PackageX, children: [
+      name: t("nav.Products"), icon: PackageX, children: [
         { name: t("nav.expiries"), href: "/dashboard/expiries-audit", icon: ClipboardList },
         { name: t("nav.product_lookup"), href: "/admin/product-lookup", icon: Search },
+        { name: t("nav.product_prices"), href: "/financials/products-price", icon: Search },
         { name: t("nav.blind_audit"), href: "/inventory-audit/manager", icon: Shield }
+      ]
+    },
+    {
+      name: language === "ar" ? "العمليات" : "Operation", icon: Briefcase, children: [
+        { name: t("nav.checklists"), href: "/checklists/manager", icon: ClipboardList },
+        { name: language === "ar" ? "سجلات النظافة" : "Cleaning Logs", href: "/admin/cleaning", icon: Sparkles },
+        { name: language === "ar" ? "إدارة العروض" : "Manage Offers", href: "/admin/offers", icon: Tag },
+        { name: language === "ar" ? "أكواد الفود" : "Food Codes", href: "/admin/food-codes", icon: Barcode }
       ]
     },
     {
@@ -292,9 +300,6 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
         { name: t("nav.smart_scheduler"), href: "/admin/schedule", icon: CalendarDays }
       ]
     },
-    { name: language === "ar" ? "إدارة العروض" : "Manage Offers", href: "/admin/offers", icon: Tag },
-    { name: language === "ar" ? "سجلات النظافة" : "Cleaning Logs", href: "/admin/cleaning", icon: Sparkles },
-    { name: t("nav.checklists"), href: "/checklists/manager", icon: ClipboardList },
     {
       name: t("nav.admin"), icon: Shield, children: [
         { name: t("nav.user_management"), href: "/admin/users", icon: Shield },
@@ -509,10 +514,10 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       <div className="flex-1 flex flex-col min-w-0 max-h-screen overflow-hidden print:max-h-none print:overflow-visible">
         {/* Top Header */}
         {!pathname.startsWith('/cashier') && !pathname.startsWith('/owner') && (
-          <header 
+          <header
             className="flex-shrink-0 glass-header border-b border-border flex items-center justify-between px-4 sm:px-6 z-40 print:hidden"
-            style={{ 
-              paddingTop: 'max(1rem, env(safe-area-inset-top))', 
+            style={{
+              paddingTop: 'max(1rem, env(safe-area-inset-top))',
               paddingBottom: '1rem',
               minHeight: 'calc(4rem + env(safe-area-inset-top))'
             }}
