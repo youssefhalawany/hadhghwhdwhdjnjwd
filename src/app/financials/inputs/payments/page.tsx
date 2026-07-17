@@ -1863,7 +1863,7 @@ export default function PaymentsRedesignPage() {
                 
                 <div className="bg-white p-4 rounded-2xl border-4 border-slate-100 inline-block mb-6 shadow-sm">
                   <QRCode 
-                    value={`https://anhreports.web.app/handshake?data=${encodeURIComponent(JSON.stringify({ 
+                    value={`${typeof window !== 'undefined' ? window.location.origin : 'https://anhreports.web.app'}/handshake?data=${encodeURIComponent(JSON.stringify({ 
                       id: savedPaymentForQR.id, 
                       amount: savedPaymentForQR.total, 
                       company: savedPaymentForQR.companyName, 
