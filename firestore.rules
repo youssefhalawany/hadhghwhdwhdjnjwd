@@ -357,5 +357,10 @@ service cloud.firestore {
       allow create, read, update, delete: if true;
     }
 
+    // ---------- Security Audit Logs (NEW) ----------
+    match /audit_logs/{doc} {
+      allow create, read, update, delete: if true;
+    }
+
   }
 }

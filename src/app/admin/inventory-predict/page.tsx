@@ -31,10 +31,10 @@ export default function InventoryPredictionPage() {
           <div>
             <h3 className="font-bold text-amber-800 dark:text-amber-300 mb-2">Pending Configuration</h3>
             <p className="text-amber-700 dark:text-amber-400/80 mb-4">
-              To accurately generate a "Reorder List" for items like water, cigarettes, and coffee, the system needs a baseline of how many specific items are sold per day. Currently, the shift reports track total generic revenue. 
+              To accurately generate a "Reorder List" for items like water, cigarettes, and coffee, the system needs a baseline of expiries and supplier orders. Currently, the shift reports track total generic revenue instead of itemized metrics.
             </p>
             <p className="text-amber-700 dark:text-amber-400/80">
-              Please choose a method to ingest itemized sales (e.g. adding item counts to the cashier checklists, or syncing from the receipt extraction API) to activate these predictions.
+              Please choose a method to ingest itemized orders and expiries (e.g. logging supplier deliveries, or syncing from the receipt extraction API) to activate these predictions.
             </p>
           </div>
         </div>
