@@ -230,12 +230,16 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
         setPendingReturnsCount(count);
       }, (err) => console.log("Returns badge err", err));
 
-      const notifQ = currentBranch === "all"
-        ? query(collection(db, "notifications"), where("read", "==", false), orderBy("createdAt", "desc"), limit(30))
-        : query(collection(db, "notifications"), where("storeId", "==", currentBranch), where("read", "==", false), orderBy("createdAt", "desc"), limit(30));
+      const notifQ = query(collection(db, "notifications"), orderBy("createdAt", "desc"), limit(50));
 
       unsubscribeSystemNotifs = onSnapshot(notifQ, (snap) => {
-        const notifs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        let notifs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+        // Filter locally to avoid requiring Firestore composite indexes
+        if (currentBranch !== "all") {
+          notifs = notifs.filter(n => n.storeId === currentBranch);
+        }
+        notifs = notifs.filter(n => n.read === false);
+        
         setSystemNotifications(notifs);
       }, (err) => console.log("System Notifs err", err));
     }
