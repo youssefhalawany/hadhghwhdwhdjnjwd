@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { collection, addDoc, getDocs, query, where } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, where, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { toast } from "sonner";
 import { triggerSuccessOverlay } from "@/components/MobileUX/SuccessOverlay";
@@ -221,6 +221,15 @@ export default function CashierVoidPage() {
       for (const item of myQ) {
         try {
           await addDoc(collection(db, "void_requests"), item.payload.data);
+          await addDoc(collection(db, "notifications"), {
+            type: "void",
+            message: `${item.payload.data.cashierName} submitted a new Void Request (Offline Sync)`,
+            cashierName: item.payload.data.cashierName,
+            storeId: currentBranch,
+            createdAt: serverTimestamp(),
+            read: false,
+            link: "/voids/manager",
+          });
           await removeFromOfflineQueue(item.id);
           remainingCount--;
         } catch (e) {
@@ -461,6 +470,16 @@ export default function CashierVoidPage() {
 
     try {
       await addDoc(collection(db, "void_requests"), payload);
+      
+      await addDoc(collection(db, "notifications"), {
+        type: "void",
+        message: `${cashierName} submitted a new Void Request`,
+        cashierName,
+        storeId: currentBranch,
+        createdAt: serverTimestamp(),
+        read: false,
+        link: "/voids/manager",
+      });
       
       try {
         fetch("/api/notifications/notify-master", {

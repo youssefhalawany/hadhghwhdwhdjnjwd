@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, getDocs, getDoc, query, where, updateDoc, doc } from "firebase/firestore";
+import { collection, addDoc, getDocs, getDoc, query, where, updateDoc, doc, serverTimestamp } from "firebase/firestore";
 import { Calculator, Package, Banknote, Calendar, Clock, ArrowRight, ArrowLeft, Lock, User as UserIcon, Globe, WifiOff, RefreshCw, ChevronDown, Shield, ShieldCheck, ShieldAlert, Radar } from "lucide-react";
 import { getOfflineQueue, addToOfflineQueue, removeFromOfflineQueue } from '@/lib/offlineDb';
 import { useRouter } from "next/navigation";
@@ -243,6 +243,15 @@ export default function CashierShiftReportPage() {
             await updateDoc(doc(db, "shift_reports", item.payload.existingReportId), item.payload.data);
           } else {
             await addDoc(collection(db, "shift_reports"), item.payload.data);
+            await addDoc(collection(db, "notifications"), {
+              type: "shift",
+              message: `${item.payload.data.cashierName || "Unknown"} submitted a new Shift Report (Offline Sync)`,
+              cashierName: item.payload.data.cashierName || "Unknown",
+              storeId: item.payload.data.branchId || "Unknown",
+              createdAt: serverTimestamp(),
+              read: false,
+              link: "/shift-reports/manager",
+            });
           }
           await removeFromOfflineQueue(item.id);
           remainingCount--;
@@ -592,6 +601,16 @@ export default function CashierShiftReportPage() {
         // Create new report
         const docRef = await addDoc(collection(db, "shift_reports"), payload);
         submittedId = docRef.id;
+        
+        await addDoc(collection(db, "notifications"), {
+          type: "shift",
+          message: `${c?.name || "Unknown"} submitted a new Shift Report`,
+          cashierName: c?.name || "Unknown",
+          storeId: c?.storeId || "Unknown",
+          createdAt: serverTimestamp(),
+          read: false,
+          link: "/shift-reports/manager",
+        });
       }
       
       // Complete early day request if it exists

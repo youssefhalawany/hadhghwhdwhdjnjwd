@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, getDocs, query, orderBy, deleteDoc, doc, updateDoc, getDoc, setDoc, onSnapshot, limit } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, orderBy, deleteDoc, doc, updateDoc, getDoc, setDoc, onSnapshot, limit, serverTimestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { 
   ArrowLeft, Calendar as CalendarIcon, PlusCircle, AlertTriangle, 
@@ -271,6 +271,16 @@ export default function ExpiryTrackerPage() {
     try {
       const docRef = await addDoc(collection(db, "expiries"), newItem);
       
+      await addDoc(collection(db, "notifications"), {
+        type: "expiry",
+        message: `${authenticatedUser?.name || "Unknown"} submitted a new Expiry Record`,
+        cashierName: authenticatedUser?.name || "Unknown",
+        storeId: authenticatedUser?.branchId || "Unknown",
+        createdAt: serverTimestamp(),
+        read: false,
+        link: "/dashboard/expiries-audit",
+      });
+      
       try {
         fetch("/api/notifications/notify-master", {
           method: "POST",
@@ -348,6 +358,16 @@ export default function ExpiryTrackerPage() {
 
     try {
       const docRef = await addDoc(collection(db, "expiries"), newItem);
+      
+      await addDoc(collection(db, "notifications"), {
+        type: "expiry",
+        message: `Offline Sync: A new Expiry Record was submitted`,
+        cashierName: newItem.addedBy?.name || "Unknown",
+        storeId: newItem.branchId || "Unknown",
+        createdAt: serverTimestamp(),
+        read: false,
+        link: "/dashboard/expiries-audit",
+      });
       // Wait for snapshot to update list organically, or local update
     } catch(e) {
       console.error(e);

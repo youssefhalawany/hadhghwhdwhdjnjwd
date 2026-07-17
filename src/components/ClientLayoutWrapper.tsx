@@ -7,7 +7,7 @@ import { Sun, Moon, Shield, Database, LayoutDashboard, FileText, Printer, Clipbo
 import { auth, messaging, dbService, db } from "@/lib/firebase";
 import { getToken } from "firebase/messaging";
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
-import { collection, query, where, onSnapshot, doc, getDoc } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, getDoc, updateDoc, orderBy, limit } from "firebase/firestore";
 import PwaInstallPrompt from "./PwaInstallPrompt";
 import type { User as FirebaseUser } from "firebase/auth";
 import { useBranch, BranchId } from "@/context/BranchContext";
@@ -41,6 +41,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   const [pendingReturnsCount, setPendingReturnsCount] = useState(0);
   const [hasAgedShifts, setHasAgedShifts] = useState(false);
   const [currentDateTime, setCurrentDateTime] = useState<Date | null>(null);
+  const [systemNotifications, setSystemNotifications] = useState<any[]>([]);
   const pathname = usePathname();
 
   // Initialize theme, role, and mock status from localStorage
@@ -145,6 +146,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     let unsubscribeShifts: any = null;
     let unsubscribeVoids: any = null;
     let unsubscribeExpiries: any = null;
+    let unsubscribeSystemNotifs: any = null;
 
     if (user && currentBranch) {
       // Assuming managers query specific branch or all
@@ -226,6 +228,15 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
         });
         setPendingReturnsCount(count);
       }, (err) => console.log("Returns badge err", err));
+
+      const notifQ = currentBranch === "all"
+        ? query(collection(db, "notifications"), where("read", "==", false), orderBy("createdAt", "desc"), limit(30))
+        : query(collection(db, "notifications"), where("storeId", "==", currentBranch), where("read", "==", false), orderBy("createdAt", "desc"), limit(30));
+
+      unsubscribeSystemNotifs = onSnapshot(notifQ, (snap) => {
+        const notifs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setSystemNotifications(notifs);
+      }, (err) => console.log("System Notifs err", err));
     }
 
     // Global Sound Effects
@@ -261,6 +272,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       if (unsubscribeShifts) unsubscribeShifts();
       if (unsubscribeVoids) unsubscribeVoids();
       if (unsubscribeExpiries) unsubscribeExpiries();
+      if (unsubscribeSystemNotifs) unsubscribeSystemNotifs();
     };
   }, []);
 
@@ -351,7 +363,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     }
   };
 
-  const totalNotifications = pendingShiftCount + pendingVoidCount + pendingExpiriesCount + pendingReturnsCount;
+  const totalNotifications = systemNotifications.length + pendingShiftCount + pendingVoidCount + pendingExpiriesCount + pendingReturnsCount;
 
   // Completely isolate Cashier pages (No Enterprise Auth, No Sidebar)
   if (pathname?.startsWith('/shift-reports/cashier') || pathname?.startsWith('/voids/cashier') || pathname?.startsWith('/cashier') || pathname?.startsWith('/expiries') || pathname?.startsWith('/checklists/cashier') || pathname?.startsWith('/inventory-audit/cashier') || pathname?.startsWith('/owner')) {
@@ -627,6 +639,39 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                         <div className="p-4 text-center text-sm text-muted-foreground">All caught up!</div>
                       ) : (
                         <>
+                          {systemNotifications.length > 0 && (
+                            <div className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-[10px] font-bold uppercase text-slate-500 tracking-wider">
+                              Recent Actions
+                            </div>
+                          )}
+                          {systemNotifications.map(notif => (
+                            <Link 
+                              key={notif.id}
+                              href={notif.link || "/"} 
+                              onClick={async () => {
+                                setNotificationsOpen(false);
+                                try {
+                                  await updateDoc(doc(db, "notifications", notif.id), { read: true });
+                                } catch(e) { console.error("Error marking read", e); }
+                              }} 
+                              className="block p-3 border-b border-border hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors bg-blue-50/50 dark:bg-blue-900/10"
+                            >
+                              <div className="flex justify-between items-start mb-1">
+                                <p className="text-sm font-semibold text-foreground capitalize flex items-center gap-2">
+                                  <span className="w-2 h-2 rounded-full bg-blue-500 inline-block animate-pulse"></span>
+                                  {notif.type} Update
+                                </p>
+                                <span className="text-[10px] text-muted-foreground">{new Date(notif.createdAt?.toDate ? notif.createdAt.toDate() : Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                              </div>
+                              <p className="text-xs text-muted-foreground font-medium">{notif.message}</p>
+                            </Link>
+                          ))}
+
+                          {(pendingShiftCount > 0 || pendingVoidCount > 0 || pendingReturnsCount > 0 || pendingExpiriesCount > 0) && (
+                            <div className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-[10px] font-bold uppercase text-slate-500 tracking-wider">
+                              Pending Approvals
+                            </div>
+                          )}
                           {pendingShiftCount > 0 && (
                             <Link href="/shift-reports/manager" onClick={() => setNotificationsOpen(false)} className="block p-3 border-b border-border hover:bg-muted/50 transition-colors">
                               <p className="text-sm font-semibold text-foreground">Shift Audits</p>

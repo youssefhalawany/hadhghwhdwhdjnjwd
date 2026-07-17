@@ -3,8 +3,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Sparkles, CheckCircle, Droplets } from "lucide-react";
-import { productsDb } from "@/lib/firebase";
-import { collection, addDoc } from "firebase/firestore";
+import { productsDb, db } from "@/lib/firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { useLanguage } from "@/context/LanguageContext";
 import { PageWrapper } from "@/components/PageWrapper";
 import { CashierBottomNav } from "@/components/CashierBottomNav";
@@ -42,6 +42,7 @@ export default function CashierCleaningPage() {
   const [photoUrl, setPhotoUrl] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [cashierName, setCashierName] = useState("Unknown");
+  const [storeId, setStoreId] = useState("Unknown");
   const [showSuccess, setShowSuccess] = useState(false);
 
   const sigCanvas = useRef<SignatureCanvas>(null);
@@ -53,6 +54,7 @@ export default function CashierCleaningPage() {
       try {
         const parsed = JSON.parse(savedSession);
         if (parsed.name) setCashierName(parsed.name);
+        if (parsed.branchId) setStoreId(parsed.branchId);
       } catch (e) {}
     }
   }, []);
@@ -91,6 +93,16 @@ export default function CashierCleaningPage() {
       };
 
       await addDoc(collection(productsDb, "cleaning_logs"), payload);
+      
+      await addDoc(collection(db, "notifications"), {
+        type: "cleaning",
+        message: `${cashierName} submitted a new Cleaning Record`,
+        cashierName,
+        storeId: storeId,
+        createdAt: serverTimestamp(),
+        read: false,
+        link: "/admin/cleaning",
+      });
       
       playSuccessSound();
       setShowSuccess(true);
