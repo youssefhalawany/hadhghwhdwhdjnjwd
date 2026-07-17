@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { db } from "@/lib/firebase";
+import { db, productsDb } from "@/lib/firebase";
 import { collection, getDocs, query, where, getDoc, doc, setDoc, limit } from "firebase/firestore";
 import { Search, Package, Calendar, AlertTriangle, QrCode, Camera, X, CheckCircle, Edit, PlusCircle } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
@@ -36,7 +36,7 @@ export default function ProductLookupPage() {
   useEffect(() => {
     const fetchAllProducts = async () => {
       try {
-        const qProducts = query(collection(db, "products"), limit(200));
+        const qProducts = query(collection(productsDb, "products"), limit(200));
         const snap = await getDocs(qProducts);
         const products = snap.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
         setAllProducts(products);
@@ -58,8 +58,8 @@ export default function ProductLookupPage() {
     setIsEditing(false);
 
     try {
-      // 1. First, try to look up by barcode directly in the `products` collection.
-      const productRef = doc(db, "products", term);
+      // 1. First, try to look up by barcode directly in the central `products` collection.
+      const productRef = doc(productsDb, "products", term);
       const productSnap = await getDoc(productRef);
 
       let foundProduct = null;
@@ -75,10 +75,10 @@ export default function ProductLookupPage() {
 
         // 4 targeted queries costing a max of 40 reads instead of 80,000
         const queries = [
-          getDocs(query(collection(db, "products"), where("description", ">=", termLower), where("description", "<=", termLower + '\uf8ff'), limit(10))),
-          getDocs(query(collection(db, "products"), where("description", ">=", termUpper), where("description", "<=", termUpper + '\uf8ff'), limit(10))),
-          getDocs(query(collection(db, "products"), where("description", ">=", termTitle), where("description", "<=", termTitle + '\uf8ff'), limit(10))),
-          getDocs(query(collection(db, "products"), where("itemName", ">=", termTitle), where("itemName", "<=", termTitle + '\uf8ff'), limit(10)))
+          getDocs(query(collection(productsDb, "products"), where("description", ">=", termLower), where("description", "<=", termLower + '\uf8ff'), limit(10))),
+          getDocs(query(collection(productsDb, "products"), where("description", ">=", termUpper), where("description", "<=", termUpper + '\uf8ff'), limit(10))),
+          getDocs(query(collection(productsDb, "products"), where("description", ">=", termTitle), where("description", "<=", termTitle + '\uf8ff'), limit(10))),
+          getDocs(query(collection(productsDb, "products"), where("itemName", ">=", termTitle), where("itemName", "<=", termTitle + '\uf8ff'), limit(10)))
         ];
 
         const snaps = await Promise.all(queries);
@@ -98,11 +98,10 @@ export default function ProductLookupPage() {
       setProductData(foundProduct || { notFound: true, searchTerm: term });
       setDrawerOpen(true);
 
-      // 3. Look up active expiries for this barcode
+      // 3. Look up ALL expiries for this barcode (active and past)
       const searchBarcode = foundProduct?.barcode || term;
       const expiriesQuery = query(
         collection(db, "expiries"), 
-        where("status", "==", "active"),
         where("barcode", "==", searchBarcode)
       );
       const expiriesSnap = await getDocs(expiriesQuery);
@@ -127,7 +126,7 @@ export default function ProductLookupPage() {
     e.preventDefault();
     setSaveLoading(true);
     try {
-      const productRef = doc(db, "products", editFormData.barcode);
+      const productRef = doc(productsDb, "products", editFormData.barcode);
       await setDoc(productRef, {
         barcode: editFormData.barcode,
         description: editFormData.name,
@@ -398,7 +397,7 @@ export default function ProductLookupPage() {
                           </div>
                           <button onClick={() => { setEditFormData({ name: productData.description || productData.name || productData.itemName || "", supplier: productData.supplier || "", barcode: productData.barcode || productData.id }); setIsEditing(true); }} className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 p-2 rounded-lg font-bold hover:bg-slate-200 dark:hover:bg-slate-700"><Edit className="h-4 w-4" /></button>
                         </div>
-                        <div className="grid grid-cols-2 gap-4 mb-8">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
                           <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
                             <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">Barcode</p>
                             <p className="font-mono text-sm font-bold text-slate-800 dark:text-slate-200">{productData.barcode || productData.id}</p>
@@ -407,12 +406,16 @@ export default function ProductLookupPage() {
                             <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">Supplier</p>
                             <p className="font-bold text-sm text-slate-800 dark:text-slate-200">{productData.supplier || "N/A"}</p>
                           </div>
+                          <div className="bg-emerald-50 dark:bg-emerald-900/10 p-4 rounded-xl border border-emerald-100 dark:border-emerald-800/30 col-span-2 md:col-span-1">
+                            <p className="text-[10px] text-emerald-600 dark:text-emerald-500 font-bold uppercase mb-1">Catalog Price</p>
+                            <p className="font-bold text-lg text-emerald-700 dark:text-emerald-400">{productData.price ? `${productData.price} EGP` : "N/A"}</p>
+                          </div>
                         </div>
 
                         {/* Expiries */}
                         <div>
                           <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                            <Calendar className="h-4 w-4" /> Active Expiries
+                            <Calendar className="h-4 w-4" /> All Expiry Records
                           </h4>
                           {expiriesData.length === 0 ? (
                             <div className="text-center py-6 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
@@ -427,13 +430,25 @@ export default function ProductLookupPage() {
                                 const diffDays = Math.ceil((itemDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
                                 let bgClass = "bg-slate-50 border-slate-200 dark:bg-slate-800 dark:border-slate-700";
                                 let dateClass = "text-slate-900 dark:text-white";
-                                if (diffDays < 0) { bgClass = "bg-red-50 border-red-200 dark:bg-red-900/30 dark:border-red-800 animate-pulse"; dateClass = "text-red-600 font-black"; }
-                                else if (diffDays <= 7) { bgClass = "bg-orange-50 border-orange-200 dark:bg-orange-950/20 dark:border-orange-900/50"; dateClass = "text-orange-600 font-bold"; }
+                                
+                                if (exp.status === "removed" || exp.status === "resolved") {
+                                  bgClass = "bg-slate-100 border-slate-200 dark:bg-slate-900/50 dark:border-slate-800 opacity-75";
+                                  dateClass = "text-slate-500 line-through";
+                                } else if (diffDays < 0) { 
+                                  bgClass = "bg-red-50 border-red-200 dark:bg-red-900/30 dark:border-red-800 animate-pulse"; 
+                                  dateClass = "text-red-600 font-black"; 
+                                } else if (diffDays <= 7) { 
+                                  bgClass = "bg-orange-50 border-orange-200 dark:bg-orange-950/20 dark:border-orange-900/50"; 
+                                  dateClass = "text-orange-600 font-bold"; 
+                                }
+
                                 return (
                                   <div key={idx} className={`p-4 rounded-xl border ${bgClass} flex justify-between items-center`}>
                                     <div>
-                                      <p className={`font-mono text-base ${dateClass}`}>{exp.expiryDate} {diffDays < 0 && "(!)"}</p>
-                                      <p className="text-xs font-semibold mt-1 opacity-70">By: {exp.addedBy}</p>
+                                      <p className={`font-mono text-base ${dateClass}`}>
+                                        {exp.expiryDate} {diffDays < 0 && exp.status !== "removed" && exp.status !== "resolved" && "(!)"}
+                                      </p>
+                                      <p className="text-xs font-semibold mt-1 opacity-70">By: {exp.addedBy} {exp.status !== "active" && `• ${exp.status}`}</p>
                                     </div>
                                     <div className="text-right">
                                       <p className="text-xl font-black">{exp.quantity}</p>

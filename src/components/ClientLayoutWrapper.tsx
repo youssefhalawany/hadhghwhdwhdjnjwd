@@ -281,7 +281,6 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       name: t("nav.Products"), icon: PackageX, children: [
         { name: t("nav.expiries"), href: "/dashboard/expiries-audit", icon: ClipboardList },
         { name: t("nav.product_lookup"), href: "/admin/product-lookup", icon: Search },
-        { name: t("nav.product_prices"), href: "/financials/products-price", icon: Search },
         { name: t("nav.blind_audit"), href: "/inventory-audit/manager", icon: Shield }
       ]
     },
