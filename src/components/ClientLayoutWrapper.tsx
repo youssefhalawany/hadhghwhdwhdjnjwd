@@ -236,9 +236,13 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
         let notifs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
         // Filter locally to avoid requiring Firestore composite indexes
         if (currentBranch !== "all") {
-          notifs = notifs.filter(n => n.storeId === currentBranch || n.branchId === currentBranch);
+          notifs = notifs.filter((n: any) => {
+            const sId = (n.storeId || n.branchId || "").toLowerCase();
+            const inferred = sId.includes("ola") || sId.includes("koronfol") ? "ola" : "alamein4";
+            return inferred === currentBranch;
+          });
         }
-        notifs = notifs.filter(n => n.read === false);
+        notifs = notifs.filter((n: any) => n.read === false);
         
         setSystemNotifications(notifs);
       }, (err) => console.log("System Notifs err", err));
