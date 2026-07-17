@@ -1713,6 +1713,8 @@ export default function PaymentsRedesignPage() {
             </motion.div>
           </div>
         )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {selectedSupplierProfile && supplierProfileData && (
           <>
