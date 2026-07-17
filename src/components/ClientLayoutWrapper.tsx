@@ -326,7 +326,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     { name: t("nav.returns"), href: "/dashboard/supplier-returns", icon: Truck },
     {
       name: t("nav.Products"), icon: PackageX, children: [
-        { name: t("nav.expiries"), href: "/dashboard/expiries-audit", icon: ClipboardList },
+        { name: t("nav.expiries"), href: "/products/expiries-audit", icon: ClipboardList },
         { name: t("nav.product_lookup"), href: "/admin/product-lookup", icon: Search },
         { name: t("nav.blind_audit"), href: "/inventory-audit/manager", icon: Shield }
       ]
@@ -700,7 +700,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                             </Link>
                           )}
                           {pendingExpiriesCount > 0 && (
-                            <Link href="/dashboard/expiries-audit" onClick={() => setNotificationsOpen(false)} className="block p-3 hover:bg-muted/50 transition-colors">
+                            <Link href="/products/expiries-audit" onClick={() => setNotificationsOpen(false)} className="block p-3 hover:bg-muted/50 transition-colors">
                               <p className="text-sm font-semibold text-foreground">Expiry Audits</p>
                               <p className="text-xs text-muted-foreground">{pendingExpiriesCount} audits require review.</p>
                             </Link>
