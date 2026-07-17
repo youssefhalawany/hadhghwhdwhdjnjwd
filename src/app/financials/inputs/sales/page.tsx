@@ -131,10 +131,11 @@ export default function SalesManagementPage() {
     let totalAllSales = 0;
 
     sales.forEach(s => {
-      if (!dailyMap.has(s.date)) {
-        dailyMap.set(s.date, { cash: 0, visa: 0, total: 0, morning: 0, night: 0 });
+      const sDate = typeof s.date === 'string' && s.date.length >= 10 ? s.date.substring(0, 10) : "Unknown";
+      if (!dailyMap.has(sDate)) {
+        dailyMap.set(sDate, { cash: 0, visa: 0, total: 0, morning: 0, night: 0 });
       }
-      const dayData = dailyMap.get(s.date)!;
+      const dayData = dailyMap.get(sDate)!;
       const sCash = Number(s.cash) || 0;
       const sVisa = Number(s.visa) || 0;
       const sTotal = sCash + sVisa;
@@ -154,7 +155,7 @@ export default function SalesManagementPage() {
     const trendData = sortedDates.map(date => {
       const d = dailyMap.get(date)!;
       return {
-        date: date.substring(8, 10) + "/" + date.substring(5, 7), // DD/MM format
+        date: date.length >= 10 ? date.substring(8, 10) + "/" + date.substring(5, 7) : date, // DD/MM format
         fullDate: date,
         cash: d.cash,
         visa: d.visa,
@@ -165,7 +166,7 @@ export default function SalesManagementPage() {
     const heatmapData = sortedDates.map(date => {
       const d = dailyMap.get(date)!;
       return {
-        date: date.substring(8, 10) + "/" + date.substring(5, 7),
+        date: date.length >= 10 ? date.substring(8, 10) + "/" + date.substring(5, 7) : date,
         total: d.total,
         morning: d.morning,
         night: d.night,
