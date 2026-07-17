@@ -115,7 +115,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
             const messagingInstance = await messaging;
             if (messagingInstance) {
               const token = await getToken(messagingInstance, {
-                vapidKey: "BHiDvLTbQ2DTED8p7X1BQ8Vu811fuu3dmpVfclmA5P7n-DuRltU7kkai9E2_2VkbLpS7Ns5ekNQClP5CsTeWf7M"
+                vapidKey: process.env.NEXT_PUBLIC_VAPID_KEY || "BHiDvLTbQ2DTED8p7X1BQ8Vu811fuu3dmpVfclmA5P7n-DuRltU7kkai9E2_2VkbLpS7Ns5ekNQClP5CsTeWf7M"
               });
               if (token) {
                 console.log("FCM Token:", token);

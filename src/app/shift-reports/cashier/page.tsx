@@ -617,6 +617,20 @@ export default function CashierShiftReportPage() {
             read: false,
             link: "/shift-reports/manager",
           });
+
+          // Trigger OS Push Notification
+          try {
+            fetch('/api/notify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                title: 'New Shift Report',
+                body: `${c?.name || "Unknown"} submitted a shift report.`,
+                link: '/shift-reports/manager',
+                storeId: c?.branchId || c?.storeId || "alamein4"
+              })
+            }).catch(() => {});
+          } catch (e) {}
         } catch (notifyErr: any) {
           console.error("Failed to push notification:", notifyErr);
           toast.error("Bell Notification failed: " + (notifyErr.message || "Unknown error"));
