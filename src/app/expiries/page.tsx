@@ -271,15 +271,19 @@ export default function ExpiryTrackerPage() {
     try {
       const docRef = await addDoc(collection(db, "expiries"), newItem);
       
-      await addDoc(collection(db, "notifications"), {
-        type: "expiry",
-        message: `${authenticatedUser?.name || "Unknown"} submitted a new Expiry Record`,
-        cashierName: authenticatedUser?.name || "Unknown",
-        storeId: authenticatedUser?.branchId || "Unknown",
-        createdAt: serverTimestamp(),
-        read: false,
-        link: "/dashboard/expiries-audit",
-      });
+      try {
+        await addDoc(collection(db, "notifications"), {
+          type: "expiry",
+          message: `${authenticatedUser?.name || "Unknown"} submitted a new Expiry Record`,
+          cashierName: authenticatedUser?.name || "Unknown",
+          storeId: authenticatedUser?.branchId || "Unknown",
+          createdAt: serverTimestamp(),
+          read: false,
+          link: "/dashboard/expiries-audit",
+        });
+      } catch (notifyErr) {
+        console.error("Notification failed:", notifyErr);
+      }
       
       try {
         fetch("/api/notifications/notify-master", {
@@ -359,15 +363,19 @@ export default function ExpiryTrackerPage() {
     try {
       const docRef = await addDoc(collection(db, "expiries"), newItem);
       
-      await addDoc(collection(db, "notifications"), {
-        type: "expiry",
-        message: `Offline Sync: A new Expiry Record was submitted`,
-        cashierName: newItem.addedBy?.name || "Unknown",
-        storeId: newItem.branchId || "Unknown",
-        createdAt: serverTimestamp(),
-        read: false,
-        link: "/dashboard/expiries-audit",
-      });
+      try {
+        await addDoc(collection(db, "notifications"), {
+          type: "expiry",
+          message: `Offline Sync: A new Expiry Record was submitted`,
+          cashierName: newItem.addedBy?.name || "Unknown",
+          storeId: newItem.branchId || "Unknown",
+          createdAt: serverTimestamp(),
+          read: false,
+          link: "/dashboard/expiries-audit",
+        });
+      } catch (notifyErr) {
+        console.error("Notification failed:", notifyErr);
+      }
       // Wait for snapshot to update list organically, or local update
     } catch(e) {
       console.error(e);

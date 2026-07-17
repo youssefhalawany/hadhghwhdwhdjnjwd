@@ -94,15 +94,19 @@ export default function CashierCleaningPage() {
 
       await addDoc(collection(productsDb, "cleaning_logs"), payload);
       
-      await addDoc(collection(db, "notifications"), {
-        type: "cleaning",
-        message: `${cashierName} submitted a new Cleaning Record`,
-        cashierName,
-        storeId: storeId,
-        createdAt: serverTimestamp(),
-        read: false,
-        link: "/admin/cleaning",
-      });
+      try {
+        await addDoc(collection(db, "notifications"), {
+          type: "cleaning",
+          message: `${cashierName} submitted a new Cleaning Record`,
+          cashierName,
+          storeId: storeId,
+          createdAt: serverTimestamp(),
+          read: false,
+          link: "/admin/cleaning",
+        });
+      } catch (notifyErr) {
+        console.error("Notification failed:", notifyErr);
+      }
       
       playSuccessSound();
       setShowSuccess(true);

@@ -471,15 +471,19 @@ export default function CashierVoidPage() {
     try {
       await addDoc(collection(db, "void_requests"), payload);
       
-      await addDoc(collection(db, "notifications"), {
-        type: "void",
-        message: `${cashierName} submitted a new Void Request`,
-        cashierName,
-        storeId: currentBranch,
-        createdAt: serverTimestamp(),
-        read: false,
-        link: "/voids/manager",
-      });
+      try {
+        await addDoc(collection(db, "notifications"), {
+          type: "void",
+          message: `${cashierName} submitted a new Void Request`,
+          cashierName,
+          storeId: currentBranch,
+          createdAt: serverTimestamp(),
+          read: false,
+          link: "/voids/manager",
+        });
+      } catch (notifyErr) {
+        console.error("Notification failed:", notifyErr);
+      }
       
       try {
         fetch("/api/notifications/notify-master", {

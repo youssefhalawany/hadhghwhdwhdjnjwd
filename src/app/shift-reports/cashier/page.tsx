@@ -243,15 +243,19 @@ export default function CashierShiftReportPage() {
             await updateDoc(doc(db, "shift_reports", item.payload.existingReportId), item.payload.data);
           } else {
             await addDoc(collection(db, "shift_reports"), item.payload.data);
-            await addDoc(collection(db, "notifications"), {
-              type: "shift",
-              message: `${item.payload.data.cashierName || "Unknown"} submitted a new Shift Report (Offline Sync)`,
-              cashierName: item.payload.data.cashierName || "Unknown",
-              storeId: item.payload.data.branchId || "Unknown",
-              createdAt: serverTimestamp(),
-              read: false,
-              link: "/shift-reports/manager",
-            });
+            try {
+              await addDoc(collection(db, "notifications"), {
+                type: "shift",
+                message: `${item.payload.data.cashierName || "Unknown"} submitted a new Shift Report (Offline Sync)`,
+                cashierName: item.payload.data.cashierName || "Unknown",
+                storeId: item.payload.data.branchId || "Unknown",
+                createdAt: serverTimestamp(),
+                read: false,
+                link: "/shift-reports/manager",
+              });
+            } catch (notifyErr) {
+              console.error("Failed to push notification:", notifyErr);
+            }
           }
           await removeFromOfflineQueue(item.id);
           remainingCount--;
@@ -602,15 +606,19 @@ export default function CashierShiftReportPage() {
         const docRef = await addDoc(collection(db, "shift_reports"), payload);
         submittedId = docRef.id;
         
-        await addDoc(collection(db, "notifications"), {
-          type: "shift",
-          message: `${c?.name || "Unknown"} submitted a new Shift Report`,
-          cashierName: c?.name || "Unknown",
-          storeId: c?.storeId || "Unknown",
-          createdAt: serverTimestamp(),
-          read: false,
-          link: "/shift-reports/manager",
-        });
+        try {
+          await addDoc(collection(db, "notifications"), {
+            type: "shift",
+            message: `${c?.name || "Unknown"} submitted a new Shift Report`,
+            cashierName: c?.name || "Unknown",
+            storeId: c?.storeId || "Unknown",
+            createdAt: serverTimestamp(),
+            read: false,
+            link: "/shift-reports/manager",
+          });
+        } catch (notifyErr) {
+          console.error("Failed to push notification:", notifyErr);
+        }
       }
       
       // Complete early day request if it exists
@@ -663,7 +671,7 @@ export default function CashierShiftReportPage() {
         setVisa("");
       } else {
         vibrateError();
-        toast.error(lang === 'en' ? "Failed to submit. Please try again." : "فشل الإرسال. يرجى المحاولة مرة أخرى.");
+        toast.error(lang === 'en' ? `Failed: ${(error as any)?.message || error}` : "فشل الإرسال. يرجى المحاولة مرة أخرى.");
       }
     } finally {
       setLoading(false);
