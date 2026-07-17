@@ -709,18 +709,11 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
         {/* Scrollable Main Content */}
         <main className={`flex-grow overflow-y-auto custom-scrollbar flex flex-col ${(pathname.startsWith('/cashier') || pathname.startsWith('/owner')) ? '' : 'p-4 sm:p-6 lg:p-8 bg-slate-50/50 dark:bg-slate-950/20'}`}>
-          <AnimatePresence mode="wait">
-            <motion.div 
-              key={language + pathname} 
-              initial={{ rotateY: 90, opacity: 0 }}
-              animate={{ rotateY: 0, opacity: 1 }}
-              exit={{ rotateY: -90, opacity: 0 }}
-              transition={{ duration: 0.4 }}
-              className={`flex-grow w-full max-w-7xl mx-auto ${(pathname.startsWith('/cashier') || pathname.startsWith('/owner')) ? 'h-full p-0 m-0 max-w-full' : ''}`}
-            >
-              {children}
-            </motion.div>
-          </AnimatePresence>
+          <div 
+            className={`flex-grow w-full max-w-7xl mx-auto ${(pathname.startsWith('/cashier') || pathname.startsWith('/owner')) ? 'h-full p-0 m-0 max-w-full' : ''}`}
+          >
+            {children}
+          </div>
 
           {/* Footer inside scrollable area */}
           {!pathname.startsWith('/cashier') && !pathname.startsWith('/owner') && (

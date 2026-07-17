@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ScannerOverlay } from "@/components/MobileUX/ScannerOverlay";
-import { ChevronLeft, PackageSearch, Activity, Package, Banknote, Calendar, Tag, Factory } from "lucide-react";
+import { ChevronLeft, PackageSearch, Activity, Package, Banknote, Calendar, Tag, Factory, Search, ScanLine, X } from "lucide-react";
 import { collection, query, where, limit, getDocs, doc, getDoc } from "firebase/firestore";
 import { db, auth, productsDb } from "@/lib/firebase";
 import toast from "react-hot-toast";
@@ -13,6 +13,15 @@ export default function MasterScannerPage() {
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [productData, setProductData] = useState<any | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
+  const [manualInput, setManualInput] = useState("");
+
+  const handleManualSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (manualInput.trim()) {
+      handleScan(manualInput.trim());
+    }
+  };
 
   useEffect(() => {
     // Fast path: Check local storage first for instant loading
@@ -121,8 +130,57 @@ export default function MasterScannerPage() {
       <main className="flex-1 p-4 max-w-lg mx-auto w-full space-y-6 pb-20">
         
         {/* Scanner Area */}
-        <div className="relative z-10">
-          <ScannerOverlay onScan={handleScan} onClose={() => {}} />
+        <div className="relative z-10 mb-4">
+          {!isScanning ? (
+            <div className="bg-[#0A101D] border border-cyan-900/40 rounded-2xl p-6 text-center shadow-lg">
+              <div className="w-16 h-16 bg-cyan-500/10 text-cyan-400 rounded-full flex items-center justify-center mx-auto mb-4 border border-cyan-500/20">
+                <Search className="h-8 w-8" />
+              </div>
+              <h2 className="text-lg font-bold text-white mb-2">Find Product</h2>
+              <p className="text-sm text-slate-400 mb-6">Enter a barcode manually or use the camera to scan.</p>
+              
+              <form onSubmit={handleManualSearch} className="relative mb-4">
+                <input
+                  type="number"
+                  value={manualInput}
+                  onChange={(e) => setManualInput(e.target.value)}
+                  placeholder="e.g. 6221000..."
+                  className="w-full bg-[#151E32] border border-slate-700/50 rounded-xl py-3 pl-4 pr-12 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 transition-all"
+                />
+                <button 
+                  type="submit"
+                  className="absolute right-2 top-2 p-1.5 bg-cyan-500/20 text-cyan-400 rounded-lg hover:bg-cyan-500/30 transition-colors"
+                >
+                  <Search size={20} />
+                </button>
+              </form>
+
+              <div className="relative flex items-center gap-4 my-4">
+                <div className="h-px bg-slate-800 flex-1"></div>
+                <span className="text-xs text-slate-500 font-bold uppercase">OR</span>
+                <div className="h-px bg-slate-800 flex-1"></div>
+              </div>
+
+              <button 
+                onClick={() => setIsScanning(true)}
+                className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-cyan-900/50"
+              >
+                <ScanLine className="h-5 w-5" /> Open Camera Scanner
+              </button>
+            </div>
+          ) : (
+            <div className="relative rounded-2xl overflow-hidden border border-cyan-500/30 shadow-xl shadow-cyan-500/10">
+              <div className="absolute top-2 right-2 z-50">
+                <button 
+                  onClick={() => setIsScanning(false)}
+                  className="bg-slate-900/80 text-white p-2 rounded-full hover:bg-red-500 backdrop-blur-md border border-slate-700 transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <ScannerOverlay onScan={(code) => { handleScan(code); setIsScanning(false); }} onClose={() => setIsScanning(false)} />
+            </div>
+          )}
           
           {loading && (
             <div className="absolute inset-0 bg-[#050810]/80 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center z-20 border border-cyan-500/20">

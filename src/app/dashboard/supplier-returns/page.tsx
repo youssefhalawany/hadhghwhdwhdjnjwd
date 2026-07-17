@@ -6,7 +6,6 @@ import { db } from "@/lib/firebase";
 import { useBranch } from "@/context/BranchContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { Truck, CheckCircle, Search, Calendar, FileText, ArrowLeft, Printer, AlertTriangle } from "lucide-react";
-import Barcode from "react-barcode";
 import Link from "next/link";
 import { PageTransition } from "@/components/PageTransition";
 

@@ -284,24 +284,20 @@ export default function ManagerAuditPage() {
       setLoading(false);
     });
 
-    // 2. Fetch History (Approved) - limit to 50 to prevent excess reads, lazy loaded
-    let unsubHistory = () => {};
-    if (hasLoadedHistory) {
-      const qHistory = query(collection(db, "shift_reports"), orderBy("createdAt", "desc"), limit(50));
-      unsubHistory = onSnapshot(qHistory, (snapshot) => {
-        const reports = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
-        // Filter locally to avoid composite index requirement
-        const approvedReports = reports.filter((r: any) => r.status === "approved");
-        setHistoryReports(approvedReports);
-        setLoading(false);
-      });
-    }
+    // 2. Fetch History (Approved) - limit to 100 to ensure we get plenty of data immediately
+    const qHistory = query(collection(db, "shift_reports"), orderBy("createdAt", "desc"), limit(100));
+    const unsubHistory = onSnapshot(qHistory, (snapshot) => {
+      const reports = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
+      // Filter locally to avoid composite index requirement
+      const approvedReports = reports.filter((r: any) => r.status === "approved");
+      setHistoryReports(approvedReports);
+    });
 
     return () => {
       unsubPending();
       unsubHistory();
     };
-  }, [currentBranch, hasLoadedHistory]);
+  }, [currentBranch]);
 
   const handleSelectReport = (report: any) => {
     setSelectedReport(report);
