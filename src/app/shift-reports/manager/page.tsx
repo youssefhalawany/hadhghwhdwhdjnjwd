@@ -39,6 +39,11 @@ export default function ManagerAuditPage() {
 
   const [pendingReports, setPendingReports] = useState<any[]>([]);
   const [historyReports, setHistoryReports] = useState<any[]>([]);
+  
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const [selectedReport, setSelectedReport] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
@@ -996,7 +1001,9 @@ export default function ManagerAuditPage() {
                                   <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest">
                                     <CheckCircle className="h-3 w-3" /> Approved
                                   </div>
-                                  <Barcode value={report.id.substring(0, 8)} width={1} height={20} displayValue={false} background="transparent" lineColor={selectedReport?.id === report.id ? '#fff' : 'currentColor'} margin={0} />
+                                  {isMounted && report?.id && (
+                                    <Barcode value={report.id.substring(0, 8)} width={1} height={20} displayValue={false} background="transparent" lineColor={selectedReport?.id === report.id ? '#fff' : 'currentColor'} margin={0} />
+                                  )}
                                </div>
                             </div>
                           </button>
@@ -1105,17 +1112,19 @@ export default function ManagerAuditPage() {
 
                           return (
                             <div className="w-full max-w-lg h-[400px]">
-                              <ResponsiveContainer width="100%" height="100%">
-                                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={data}>
-                                  <PolarGrid stroke="#334155" />
-                                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 'bold' }} />
-                                  <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                                  <Radar name="Shift A" dataKey="A" stroke="#ef4444" fill="#ef4444" fillOpacity={0.5} />
-                                  <Radar name="Shift B" dataKey="B" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.5} />
-                                  <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                                  <RechartsTooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px' }} />
-                                </RadarChart>
-                              </ResponsiveContainer>
+                              {isMounted && (
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <RadarChart cx="50%" cy="50%" outerRadius="70%" data={data}>
+                                    <PolarGrid stroke="#334155" />
+                                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 'bold' }} />
+                                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                                    <Radar name="Shift A" dataKey="A" stroke="#ef4444" fill="#ef4444" fillOpacity={0.5} />
+                                    <Radar name="Shift B" dataKey="B" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.5} />
+                                    <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                                    <RechartsTooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px' }} />
+                                  </RadarChart>
+                                </ResponsiveContainer>
+                              )}
                             </div>
                           );
                         })()}
