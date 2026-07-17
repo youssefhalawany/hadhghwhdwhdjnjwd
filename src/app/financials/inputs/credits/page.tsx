@@ -198,6 +198,11 @@ export default function CreditsPage() {
   const [monthFilter, setMonthFilter] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "board">("list");
   
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
   // Dashboard & Profile State
   const [simulatorCash, setSimulatorCash] = useState<string>("");
   const [selectedSupplierProfile, setSelectedSupplierProfile] = useState<string | null>(null);
@@ -1446,7 +1451,7 @@ export default function CreditsPage() {
         ) : (
           /* KANBAN BOARD VIEW */
           <div className="h-[700px] overflow-hidden flex gap-4">
-            <DndContext sensors={useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }))} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
+            <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
               <DroppableColumn 
                 id="open" 
                 title="Open Invoices" 
