@@ -73,8 +73,15 @@ import {
   FileDown,
   Image as ImageIcon,
   Eye,
-  ClipboardPaste
+  ClipboardPaste,
+  ChevronRight,
+  TrendingUp,
+  AlertTriangle,
+  MessageCircle,
+  FileText,
+  PieChart as PieChartIcon
 } from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, LineChart, Line, XAxis, YAxis } from 'recharts';
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import Barcode from "react-barcode";
@@ -164,6 +171,11 @@ export default function PaymentsRedesignPage() {
     return `${today.getFullYear()}-${mm}`;
   });
 
+  // Supplier Features State
+  const [selectedSupplierProfile, setSelectedSupplierProfile] = useState<string | null>(null);
+  const [credits, setCredits] = useState<any[]>([]);
+  const [savedPaymentForQR, setSavedPaymentForQR] = useState<any>(null);
+
   // Modal State
   const [showAddModal, setShowAddModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -250,6 +262,17 @@ export default function PaymentsRedesignPage() {
       });
 
       setSuppliers(Array.from(uniqueSuppliers).sort().map((name, index) => ({ id: `sup_${index}`, name })));
+
+      // 3. Fetch Credits to calculate Outstanding Debt
+      let q2 = branchIds.length > 0 
+          ? query(collection(db, "credits"), where("storeId", "in", branchIds), orderBy("createdAt", "desc"))
+          : query(collection(db, "credits"), orderBy("createdAt", "desc"));
+      try {
+        const credSnapshot = await getDocs(q2);
+        setCredits(credSnapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) })));
+      } catch (err) {
+        console.error("Failed to load credits", err);
+      }
     } catch (err: any) {
       console.error(err);
       if (err.message?.includes("https://console.firebase.google.com")) {
@@ -568,8 +591,9 @@ export default function PaymentsRedesignPage() {
       setPoItems([]);
       setPoImageFile(null);
       
-      // Auto Print
+      // Auto Print & QR
       setSelectedPaymentForPrint(savedPayment);
+      setSavedPaymentForQR(savedPayment);
       setTimeout(() => generatePDF(), 500);
 
     } catch (err) {
@@ -648,6 +672,91 @@ export default function PaymentsRedesignPage() {
     return stats;
   }, [filteredPayments]);
 
+  // Derived Supplier Profile Data
+  const supplierProfileData = useMemo(() => {
+    if (!selectedSupplierProfile) return null;
+    
+    // 1. Filter payments for this supplier
+    const sPayments = payments.filter(p => p.companyName?.toUpperCase() === selectedSupplierProfile.toUpperCase());
+    sPayments.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
+    
+    // 2. Lifetime Spend
+    const lifetimeSpend = sPayments.reduce((sum, p) => sum + (p.total || 0), 0);
+    
+    // 3. Outstanding Debt (from credits)
+    const sCredits = credits.filter(c => c.companyName?.toUpperCase() === selectedSupplierProfile.toUpperCase() && c.status === "open");
+    const outstandingDebt = sCredits.reduce((sum, c) => sum + ((parseFloat(c.amountDue) || 0) - (parseFloat(c.paidAmount) || 0)), 0);
+    
+    // 4. Sparkline Trend (last 6 months)
+    const monthlyTotals: Record<string, number> = {};
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5); // include current month + 5 previous
+    sixMonthsAgo.setDate(1);
+    
+    sPayments.forEach(p => {
+      if (!p.date) return;
+      const d = new Date(p.date);
+      if (d >= sixMonthsAgo) {
+        const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        monthlyTotals[monthKey] = (monthlyTotals[monthKey] || 0) + (p.total || 0);
+      }
+    });
+    
+    const trendData = Object.entries(monthlyTotals)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([month, total]) => ({ month, total }));
+
+    let hasPriceHike = false;
+    if (trendData.length >= 2) {
+      const latestMonthTotal = trendData[trendData.length - 1].total;
+      const prevMonths = trendData.slice(0, trendData.length - 1);
+      const avgPrev = prevMonths.reduce((sum, t) => sum + t.total, 0) / prevMonths.length;
+      if (avgPrev > 0 && latestMonthTotal > (avgPrev * 1.2)) {
+        hasPriceHike = true;
+      }
+    }
+
+    return { sPayments, lifetimeSpend, outstandingDebt, trendData, hasPriceHike };
+  }, [selectedSupplierProfile, payments, credits]);
+
+  const handleGenerateSOA = () => {
+    if (!selectedSupplierProfile || !supplierProfileData) return;
+    try {
+      const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
+      pdf.setFontSize(22);
+      pdf.text(`Statement of Account`, 20, 20);
+      pdf.setFontSize(14);
+      pdf.setTextColor(100);
+      pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 30);
+      
+      pdf.setTextColor(0);
+      pdf.setFontSize(16);
+      pdf.text(`Supplier: ${selectedSupplierProfile}`, 20, 50);
+      pdf.text(`Outstanding Debt: EGP ${supplierProfileData.outstandingDebt.toLocaleString()}`, 20, 60);
+      pdf.text(`Lifetime Spend: EGP ${supplierProfileData.lifetimeSpend.toLocaleString()}`, 20, 70);
+      
+      pdf.setFontSize(14);
+      pdf.text(`Recent Payments:`, 20, 90);
+      pdf.setFontSize(11);
+      
+      let y = 100;
+      supplierProfileData.sPayments.slice(0, 15).forEach((p, i) => {
+        pdf.text(`${p.date}   |   EGP ${Number(p.total).toLocaleString()}   |   Inv: ${p.invoiceNumber || 'N/A'}`, 20, y);
+        y += 8;
+      });
+
+      pdf.save(`SOA_${selectedSupplierProfile}.pdf`);
+      
+      // Open WhatsApp
+      const waText = encodeURIComponent(`Hello ${selectedSupplierProfile} team. Please find our Statement of Account attached (downloaded to my device). Our records show an outstanding debt of EGP ${supplierProfileData.outstandingDebt.toLocaleString()} and a lifetime spend of EGP ${supplierProfileData.lifetimeSpend.toLocaleString()}.`);
+      window.open(`https://wa.me/?text=${waText}`, '_blank');
+      toast.success("SOA Generated! Please attach the downloaded PDF in WhatsApp.");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to generate SOA.");
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -679,57 +788,97 @@ export default function PaymentsRedesignPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          {categoryStats["order"] && (
-            <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100/50 p-5 rounded-2xl shadow-sm relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-5xl">📦</div>
-              <div className="flex items-center gap-2 text-blue-600 mb-3">
-                <span className="text-sm font-bold tracking-wide uppercase">Order</span>
-              </div>
-              <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {categoryStats["order"].total.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
-              <p className="text-xs font-semibold text-blue-600/70 mt-1 relative z-10">{categoryStats["order"].count} payment(s)</p>
-            </motion.div>
-          )}
-          {categoryStats["utilities"] && (
-            <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-amber-50 to-yellow-50 border border-amber-100/50 p-5 rounded-2xl shadow-sm relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-5xl">💡</div>
-              <div className="flex items-center gap-2 text-amber-600 mb-3">
-                <span className="text-sm font-bold tracking-wide uppercase">Utilities</span>
-              </div>
-              <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {categoryStats["utilities"].total.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
-              <p className="text-xs font-semibold text-amber-600/70 mt-1 relative z-10">{categoryStats["utilities"].count} payment(s)</p>
-            </motion.div>
-          )}
-          {categoryStats["maintenance"] && (
-            <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-purple-50 to-fuchsia-50 border border-purple-100/50 p-5 rounded-2xl shadow-sm relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-5xl">🔧</div>
-              <div className="flex items-center gap-2 text-purple-600 mb-3">
-                <span className="text-sm font-bold tracking-wide uppercase">Maintenance</span>
-              </div>
-              <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {categoryStats["maintenance"].total.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
-              <p className="text-xs font-semibold text-purple-600/70 mt-1 relative z-10">{categoryStats["maintenance"].count} payment(s)</p>
-            </motion.div>
-          )}
-          {categoryStats["transportation"] && (
-            <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-100/50 p-5 rounded-2xl shadow-sm relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-5xl">🚚</div>
-              <div className="flex items-center gap-2 text-emerald-600 mb-3">
-                <span className="text-sm font-bold tracking-wide uppercase">Transportation</span>
-              </div>
-              <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {categoryStats["transportation"].total.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
-              <p className="text-xs font-semibold text-emerald-600/70 mt-1 relative z-10">{categoryStats["transportation"].count} payment(s)</p>
-            </motion.div>
-          )}
-          {categoryStats["other"] && (
-            <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-slate-50 to-gray-50 border border-slate-100/50 p-5 rounded-2xl shadow-sm relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-5xl">📝</div>
-              <div className="flex items-center gap-2 text-slate-600 mb-3">
-                <span className="text-sm font-bold tracking-wide uppercase">Other</span>
-              </div>
-              <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {categoryStats["other"].total.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
-              <p className="text-xs font-semibold text-slate-600/70 mt-1 relative z-10">{categoryStats["other"].count} payment(s)</p>
-            </motion.div>
-          )}
+        {/* NEW DASHBOARD TOP */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 p-6 rounded-3xl shadow-sm flex flex-col justify-center">
+            <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight mb-4 flex items-center gap-2">
+              <PieChartIcon className="text-blue-500" size={20} /> Spending Breakdown
+            </h3>
+            <div className="h-64 w-full">
+              {Object.keys(categoryStats).length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={Object.entries(categoryStats).map(([name, val]) => ({ name, value: val.total }))}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="value"
+                      stroke="none"
+                    >
+                      {Object.entries(categoryStats).map(([name], index) => {
+                        const COLORS = ['#ef4444', '#3b82f6', '#f59e0b', '#10b981', '#8b5cf6', '#64748b'];
+                        return <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />;
+                      })}
+                    </Pie>
+                    <RechartsTooltip 
+                      formatter={(value: any) => `EGP ${Number(value).toLocaleString()}`} 
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-slate-400 font-medium text-sm">
+                  No data for this period
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div className="lg:col-span-2 grid grid-cols-2 md:grid-cols-3 gap-4">
+            {categoryStats["order"] && (
+              <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100/50 p-5 rounded-3xl shadow-sm relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-5xl">📦</div>
+                <div className="flex items-center gap-2 text-blue-600 mb-3">
+                  <span className="text-sm font-bold tracking-wide uppercase">Order</span>
+                </div>
+                <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {categoryStats["order"].total.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+                <p className="text-xs font-semibold text-blue-600/70 mt-1 relative z-10">{categoryStats["order"].count} payment(s)</p>
+              </motion.div>
+            )}
+            {categoryStats["utilities"] && (
+              <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-amber-50 to-yellow-50 border border-amber-100/50 p-5 rounded-3xl shadow-sm relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-5xl">💡</div>
+                <div className="flex items-center gap-2 text-amber-600 mb-3">
+                  <span className="text-sm font-bold tracking-wide uppercase">Utilities</span>
+                </div>
+                <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {categoryStats["utilities"].total.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+                <p className="text-xs font-semibold text-amber-600/70 mt-1 relative z-10">{categoryStats["utilities"].count} payment(s)</p>
+              </motion.div>
+            )}
+            {categoryStats["maintenance"] && (
+              <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-purple-50 to-fuchsia-50 border border-purple-100/50 p-5 rounded-3xl shadow-sm relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-5xl">🔧</div>
+                <div className="flex items-center gap-2 text-purple-600 mb-3">
+                  <span className="text-sm font-bold tracking-wide uppercase">Maintenance</span>
+                </div>
+                <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {categoryStats["maintenance"].total.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+                <p className="text-xs font-semibold text-purple-600/70 mt-1 relative z-10">{categoryStats["maintenance"].count} payment(s)</p>
+              </motion.div>
+            )}
+            {categoryStats["transportation"] && (
+              <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-100/50 p-5 rounded-3xl shadow-sm relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-5xl">🚚</div>
+                <div className="flex items-center gap-2 text-emerald-600 mb-3">
+                  <span className="text-sm font-bold tracking-wide uppercase">Transportation</span>
+                </div>
+                <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {categoryStats["transportation"].total.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+                <p className="text-xs font-semibold text-emerald-600/70 mt-1 relative z-10">{categoryStats["transportation"].count} payment(s)</p>
+              </motion.div>
+            )}
+            {categoryStats["other"] && (
+              <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-slate-50 to-gray-50 border border-slate-100/50 p-5 rounded-3xl shadow-sm relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-5xl">📝</div>
+                <div className="flex items-center gap-2 text-slate-600 mb-3">
+                  <span className="text-sm font-bold tracking-wide uppercase">Other</span>
+                </div>
+                <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {categoryStats["other"].total.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+                <p className="text-xs font-semibold text-slate-600/70 mt-1 relative z-10">{categoryStats["other"].count} payment(s)</p>
+              </motion.div>
+            )}
+          </div>
         </div>
 
         <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200/80 dark:border-slate-700/80 p-2 rounded-2xl shadow-sm flex flex-col md:flex-row gap-2">
@@ -789,7 +938,13 @@ export default function PaymentsRedesignPage() {
                       </div>
                       <div>
                         <div className="flex items-center gap-3 mb-1">
-                          <h3 className="text-lg font-bold text-slate-900 dark:text-white capitalize tracking-tight">{pay.companyName}</h3>
+                          <button 
+                            onClick={() => setSelectedSupplierProfile(pay.companyName)}
+                            className="text-lg font-bold text-slate-900 dark:text-white capitalize tracking-tight hover:text-blue-600 dark:hover:text-blue-400 hover:underline text-left transition-colors flex items-center gap-1 group/name"
+                          >
+                            {pay.companyName}
+                            <ChevronRight className="w-4 h-4 opacity-0 group-hover/name:opacity-100 transition-opacity -ml-1" />
+                          </button>
                           <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
                             {CATEGORY_EMOJIS[pay.category]} <span className="capitalize">{pay.category}</span>
                           </span>
@@ -1554,6 +1709,194 @@ export default function PaymentsRedesignPage() {
                     Paste Image from Clipboard
                   </button>
                 </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      <AnimatePresence>
+        {selectedSupplierProfile && supplierProfileData && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedSupplierProfile(null)}
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[70]"
+            />
+            <motion.div
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed top-0 right-0 bottom-0 w-full md:w-[500px] bg-white dark:bg-slate-900 shadow-2xl z-[80] flex flex-col border-l border-slate-200 dark:border-slate-800"
+            >
+              <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-start bg-slate-50/50 dark:bg-slate-900/50">
+                <div>
+                  <h2 className="text-2xl font-black text-slate-900 dark:text-white capitalize tracking-tight flex items-center gap-2">
+                    {selectedSupplierProfile}
+                  </h2>
+                  <p className="text-sm font-medium text-slate-500 mt-1">Supplier Profile & Analytics</p>
+                </div>
+                <button 
+                  onClick={() => setSelectedSupplierProfile(null)}
+                  className="p-2 text-slate-400 hover:text-slate-600 bg-white dark:bg-slate-800 rounded-full transition-colors shadow-sm"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 space-y-8">
+                {/* Highlight Stats */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800/50 dark:to-slate-800 border border-slate-200 dark:border-slate-700 p-5 rounded-3xl">
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Lifetime Spend</p>
+                    <p className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">EGP {supplierProfileData.lifetimeSpend.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                  </div>
+                  <div className={`border p-5 rounded-3xl ${supplierProfileData.outstandingDebt > 0 ? 'bg-gradient-to-br from-red-50 to-rose-50 border-red-200 dark:border-red-900/50' : 'bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-200 dark:border-emerald-900/50'}`}>
+                    <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${supplierProfileData.outstandingDebt > 0 ? 'text-red-600' : 'text-emerald-600'}`}>Outstanding Debt</p>
+                    <p className={`text-2xl font-black tracking-tight ${supplierProfileData.outstandingDebt > 0 ? 'text-red-700 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
+                      EGP {supplierProfileData.outstandingDebt.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Price Hike Warning */}
+                {supplierProfileData.hasPriceHike && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 rounded-r-2xl flex items-start gap-3"
+                  >
+                    <AlertTriangle className="text-red-500 shrink-0 mt-0.5" size={20} />
+                    <div>
+                      <h4 className="font-bold text-red-800 dark:text-red-400">Billing Spike Detected</h4>
+                      <p className="text-sm font-medium text-red-700/80 dark:text-red-400/80 mt-0.5">
+                        Recent payments to this supplier are &gt;20% higher than their 6-month average.
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Sparkline */}
+                {supplierProfileData.trendData.length > 0 && (
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-3xl">
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-4">
+                      <TrendingUp className="text-blue-500" size={16} /> 6-Month Billing Trend
+                    </h3>
+                    <div className="h-32 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={supplierProfileData.trendData}>
+                          <XAxis dataKey="month" hide />
+                          <YAxis hide domain={['auto', 'auto']} />
+                          <RechartsTooltip 
+                            formatter={(value: any) => `EGP ${Number(value).toLocaleString()}`}
+                            labelStyle={{ color: '#000' }}
+                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                          />
+                          <Line type="monotone" dataKey="total" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex flex-col gap-3">
+                  <button 
+                    onClick={handleGenerateSOA}
+                    className="w-full bg-[#25D366] hover:bg-[#1DA851] text-white py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 transition-colors shadow-sm"
+                  >
+                    <MessageCircle size={20} />
+                    Generate SOA & Share to WhatsApp
+                  </button>
+                </div>
+
+                {/* Timeline */}
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4">Payment History ({supplierProfileData.sPayments.length})</h3>
+                  <div className="space-y-3 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 dark:before:via-slate-800 before:to-transparent">
+                    {supplierProfileData.sPayments.slice(0, 15).map((pay, i) => (
+                      <div key={pay.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                        <div className="flex items-center justify-center w-10 h-10 rounded-full border-4 border-white dark:border-slate-900 bg-slate-100 dark:bg-slate-800 text-slate-500 shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 shadow-sm z-10">
+                          {METHOD_EMOJIS[pay.method] || "💵"}
+                        </div>
+                        <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700 p-4 rounded-2xl shadow-sm">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-bold text-slate-400">{pay.date}</span>
+                            <span className="text-sm font-black text-slate-900 dark:text-white">EGP {pay.total.toLocaleString()}</span>
+                          </div>
+                          <p className="text-xs text-slate-500 font-medium truncate">
+                            {pay.invoiceNumber ? `Inv: ${pay.invoiceNumber}` : (pay.categoryNote || "No details")}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* QR Handshake Modal */}
+      <AnimatePresence>
+        {savedPaymentForQR && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-slate-200 dark:border-slate-800"
+            >
+              <div className="p-8 text-center flex-1 flex flex-col items-center justify-center">
+                <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <FileText size={32} />
+                </div>
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mb-2">Payment Saved!</h2>
+                <p className="text-slate-500 font-medium mb-8">
+                  EGP {savedPaymentForQR.total.toLocaleString()} has been recorded for {savedPaymentForQR.companyName}.
+                </p>
+                
+                <div className="bg-white p-4 rounded-2xl border-4 border-slate-100 inline-block mb-6 shadow-sm">
+                  <QRCode 
+                    value={JSON.stringify({ 
+                      id: savedPaymentForQR.id, 
+                      amount: savedPaymentForQR.total, 
+                      company: savedPaymentForQR.companyName, 
+                      date: savedPaymentForQR.date,
+                      action: "verify_receipt" 
+                    })} 
+                    size={200}
+                    level="H"
+                  />
+                </div>
+                
+                <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                  Digital Handshake <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] ml-1 uppercase">Optional</span>
+                </p>
+                <p className="text-xs text-slate-500 mt-1 max-w-[250px] mx-auto">
+                  Ask the delivery driver to scan this QR code with their app to digitally verify they received the cash.
+                </p>
+              </div>
+              
+              <div className="p-6 border-t border-slate-100 dark:border-slate-800 flex gap-3">
+                <button 
+                  onClick={() => setSavedPaymentForQR(null)}
+                  className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-colors"
+                >
+                  Skip
+                </button>
+                <button 
+                  onClick={() => {
+                    toast.success("Digital Handshake simulated! (Waiting for driver app integration)");
+                    setSavedPaymentForQR(null);
+                  }}
+                  className="flex-[2] px-4 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl transition-colors shadow-sm"
+                >
+                  Driver Scanned
+                </button>
               </div>
             </motion.div>
           </div>
