@@ -636,10 +636,19 @@ export default function ManagerAuditPage() {
               ${stylesHtml}
               <style>
                 @media print {
-                  body { margin: 0; padding: 20px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                  .page-break { page-break-before: always; margin-top: 40px; }
-                  /* Hide non-printable UI elements if any snuck in */
+                  @page { margin: 10mm; }
+                  html, body { 
+                    margin: 0 !important; 
+                    padding: 0 !important; 
+                    height: auto !important; 
+                    overflow: visible !important;
+                    background: white !important;
+                    -webkit-print-color-adjust: exact; 
+                    print-color-adjust: exact; 
+                  }
+                  .page-break { page-break-before: always; margin-top: 20px; }
                   .no-print { display: none !important; }
+                  .print-container { max-width: none !important; width: 100% !important; padding: 0 !important; margin: 0 !important; }
                 }
               </style>
             </head>

@@ -296,6 +296,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       name: t("nav.financials"), icon: FileText, children: [
         { name: t("nav.financial_inputs"), href: "/financials/inputs", icon: Wallet },
         { name: t("nav.reports"), href: "/financial-reports", icon: FileText },
+        { name: "Month Summary", href: "/financial-reports/month-summary", icon: CalendarDays },
         { name: t("nav.voids_returns"), href: "/voids/manager", icon: Shield },
         { name: t("nav.shift_audit"), href: "/shift-reports/manager", icon: Shield },
         { name: t("nav.margin_strategy"), href: "/dashboard/margin-calculator", icon: Activity }
