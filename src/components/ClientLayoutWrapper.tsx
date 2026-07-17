@@ -153,8 +153,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       // We will just do a basic query for 'pending' status for the current branch
       // If "all", we query without branch filter if they are an admin.
       const shiftQ = currentBranch === "all"
-        ? query(collection(db, "shift_reports"), where("status", "==", "pending"))
-        : query(collection(db, "shift_reports"), where("status", "==", "pending"), where("branchId", "==", currentBranch));
+        ? query(collection(db, "shift_reports"), where("status", "in", ["pending", "pending_manager"]), limit(50))
+        : query(collection(db, "shift_reports"), where("status", "in", ["pending", "pending_manager"]), where("branchId", "==", currentBranch), limit(50));
 
       unsubscribeShifts = onSnapshot(shiftQ, (snap) => {
         setPendingShiftCount(snap.docs.length);
@@ -179,14 +179,14 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       }, (err) => console.log("Shift badge err", err));
 
       const voidQ = currentBranch === "all"
-        ? query(collection(db, "void_requests"), where("status", "==", "pending"))
-        : query(collection(db, "void_requests"), where("status", "==", "pending"), where("branchId", "==", currentBranch));
+        ? query(collection(db, "void_requests"), where("status", "==", "pending"), limit(50))
+        : query(collection(db, "void_requests"), where("status", "==", "pending"), where("branchId", "==", currentBranch), limit(50));
 
       unsubscribeVoids = onSnapshot(voidQ, (snap) => {
         setPendingVoidCount(snap.docs.length);
       }, (err) => console.log("Void badge err", err));
 
-      const expiriesQ = query(collection(db, "expiries"), where("status", "==", "pulled"));
+      const expiriesQ = query(collection(db, "expiries"), where("status", "==", "pulled"), limit(50));
       unsubscribeExpiries = onSnapshot(expiriesQ, (snap) => {
         let count = 0;
         snap.docs.forEach(doc => {
@@ -207,7 +207,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       // This prevents massive document reads (fetching all historical returns)
       const returnsQ = query(
         collection(db, "supplier_returns"),
-        where("status", "in", ["pending", "returned"]) // server-side filter
+        where("status", "in", ["pending", "returned"]), // server-side filter
+        limit(50)
       );
 
       const unsubscribeReturns = onSnapshot(returnsQ, (snap) => {
