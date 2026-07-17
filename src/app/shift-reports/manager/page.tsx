@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageTransition } from "@/components/PageTransition";
 import dynamic from "next/dynamic";
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Legend, Tooltip as RechartsTooltip } from "recharts";
 
 const SignaturePad = dynamic(() => import("react-signature-canvas"), { ssr: false });
 
@@ -41,7 +42,15 @@ export default function ManagerAuditPage() {
 
   const [selectedReport, setSelectedReport] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hasAgedShifts, setHasAgedShifts] = useState(false);
+  const [earlyRadars, setEarlyRadars] = useState<any[]>([]);
+  const [rejectedRadars, setRejectedRadars] = useState<any[]>([]);
+  
+  // Showdown Mode State
+  const [showdownMode, setShowdownMode] = useState(false);
+  const [showdownSelection, setShowdownSelection] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  
   const searchInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -280,6 +289,16 @@ export default function ManagerAuditPage() {
         reports = reports.filter(r => getReportBranch(r) === currentBranch);
       }
       reports.sort((a: any, b: any) => getDateValue(b.createdAt) - getDateValue(a.createdAt));
+      
+      let aged = false;
+      const now = Date.now();
+      reports.forEach(r => {
+        const subTime = getDateValue(r.createdAt || r.submittedAt);
+        if (subTime && now - subTime > 4 * 60 * 60 * 1000) {
+          aged = true;
+        }
+      });
+      setHasAgedShifts(aged);
       setPendingReports(reports);
       setLoading(false);
     });
@@ -293,9 +312,28 @@ export default function ManagerAuditPage() {
       setHistoryReports(approvedReports);
     });
 
+    // 3. Fetch Live Drop Radars (Early Drops & Rejected Shifts)
+    const unsubEarly = onSnapshot(query(collection(db, "early_day_requests"), where("status", "==", "pending")), (snap) => {
+      let requests = snap.docs.map(doc => ({ id: doc.id, type: 'early', ...doc.data() as any }));
+      if (currentBranch !== "all") {
+         requests = requests.filter(r => (r.branchId === currentBranch) || getReportBranch(r) === currentBranch);
+      }
+      setEarlyRadars(requests);
+    });
+
+    const unsubRejected = onSnapshot(query(collection(db, "shift_reports"), where("status", "==", "rejected")), (snap) => {
+      let rejected = snap.docs.map(doc => ({ id: doc.id, type: 'rejected', ...doc.data() as any }));
+      if (currentBranch !== "all") {
+         rejected = rejected.filter(r => (r.branchId === currentBranch) || getReportBranch(r) === currentBranch);
+      }
+      setRejectedRadars(rejected);
+    });
+
     return () => {
       unsubPending();
       unsubHistory();
+      unsubEarly();
+      unsubRejected();
     };
   }, [currentBranch]);
 
@@ -630,7 +668,7 @@ export default function ManagerAuditPage() {
             <div className="flex bg-muted/50 p-1 rounded-xl border border-border">
               <button
                 onClick={() => { setActiveTab("pending"); setSelectedReport(null); }}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "pending" ? "bg-card shadow text-red-500 border border-border" : "text-muted-foreground hover:text-foreground"}`}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "pending" ? "bg-card shadow text-red-500 border border-border" : "text-muted-foreground hover:text-foreground"} ${hasAgedShifts ? 'animate-pulse' : ''}`}
               >
                 <Clock className="h-4 w-4" /> Pending ({pendingReports.filter((r: any) => {
                   if (currentBranch === "all") return true;
@@ -717,54 +755,80 @@ export default function ManagerAuditPage() {
                   const isCashOver = cashier.cashVariance > 0;
                   const isVisaShort = cashier.visaVariance < 0;
                   const isVisaOver = cashier.visaVariance > 0;
+                  const accuracyRating = Math.max(0, 100 - (Math.abs(cashier.cashVariance) / (cashier.totalDeclared || 1)) * 100);
 
                   return (
-                    <div key={idx} className="glass-panel bg-card border border-border rounded-2xl overflow-hidden hover:shadow-xl transition-all hover:border-slate-300 dark:hover:border-slate-700 relative flex flex-col">
+                    <div key={idx} className="relative group rounded-2xl overflow-hidden transition-all hover:-translate-y-2 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)] duration-500 border border-slate-700 dark:border-slate-800 bg-slate-900">
+                      {/* Holographic Sheen Animation */}
+                      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 z-0 pointer-events-none bg-[linear-gradient(125deg,transparent_20%,rgba(255,255,255,0.1)_40%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.1)_60%,transparent_80%)] bg-[length:200%_200%] animate-[shimmer_3s_infinite_linear]" />
+                      
+                      {/* Dynamic Gradient Background */}
+                      <div className={`absolute inset-0 opacity-20 bg-gradient-to-br ${idx === 0 ? 'from-yellow-400 via-amber-600 to-orange-700' : accuracyRating > 99 ? 'from-emerald-400 via-teal-600 to-cyan-700' : 'from-slate-600 via-slate-700 to-slate-900'} z-0`} />
+                      <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-3xl z-0" />
+
+                      {/* Rank & Badges */}
                       {idx < 3 && (
-                        <div className="absolute top-0 right-0 bg-yellow-500 text-yellow-950 text-[10px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-wider">
-                          Top Earner #{idx + 1}
+                        <div className="absolute top-0 left-0 bg-gradient-to-r from-yellow-400 to-amber-600 text-yellow-950 text-[10px] font-black px-3 py-1 rounded-br-xl uppercase tracking-wider z-20 shadow-lg">
+                          Rank #{idx + 1}
                         </div>
                       )}
-                      <div className="p-5 border-b border-border/50">
-                        <h3 className="text-lg font-black text-foreground mb-1">{cashier.name}</h3>
-                        <div className="text-3xl font-black text-emerald-500 mb-2 font-mono">
-                          EGP {cashier.totalDeclared.toLocaleString()}
+                      
+                      {cashier.cashVariance === 0 && cashier.shifts > 0 && (
+                        <div className="absolute top-4 right-4 z-20 flex items-center gap-1 bg-gradient-to-r from-amber-300 to-yellow-500 text-amber-950 text-[10px] font-black px-2.5 py-1 rounded-full shadow-[0_0_15px_rgba(251,191,36,0.6)] border border-yellow-200/50">
+                          <Sparkles className="h-3 w-3" /> FLAWLESS
                         </div>
-                        <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">Total Money Handled</p>
-                      </div>
+                      )}
 
-                      <div className="p-5 flex-grow space-y-4">
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
-                            <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Cash Variance</p>
-                            <span className={`inline-block text-sm font-black ${isCashShort ? "text-red-600" :
-                                isCashOver ? "text-emerald-600" :
-                                  "text-slate-500"
-                              }`}>
+                      <div className="relative z-10 p-6 flex flex-col h-full">
+                        {/* Header */}
+                        <div className="text-center mb-6">
+                          <h3 className="text-xl font-black text-white tracking-tight mb-1">{cashier.name}</h3>
+                          <div className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full bg-slate-800/50 border border-slate-700/50">
+                            <Activity className={`h-3 w-3 ${accuracyRating > 99 ? 'text-emerald-400' : accuracyRating > 95 ? 'text-amber-400' : 'text-red-400'}`} />
+                            <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
+                              Accuracy: {accuracyRating.toFixed(1)}%
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Main Stat */}
+                        <div className="text-center mb-6">
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Total Handled</p>
+                          <div className="text-3xl font-black text-white font-mono drop-shadow-md">
+                            EGP {cashier.totalDeclared.toLocaleString()}
+                          </div>
+                        </div>
+
+                        {/* Variances */}
+                        <div className="grid grid-cols-2 gap-3 mb-6 flex-grow">
+                          <div className="bg-slate-900/50 backdrop-blur-md p-4 rounded-xl border border-slate-700/50 flex flex-col items-center justify-center">
+                            <p className="text-[10px] text-slate-500 uppercase font-bold mb-2">Cash Variance</p>
+                            <span className={`inline-block text-lg font-black ${isCashShort ? "text-red-500" : isCashOver ? "text-emerald-500" : "text-slate-400"}`}>
                               {isCashShort ? "-" : isCashOver ? "+" : ""}EGP {Math.abs(cashier.cashVariance).toLocaleString()}
                             </span>
                           </div>
-                          <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
-                            <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Visa Variance</p>
-                            <span className={`inline-block text-sm font-black ${isVisaShort ? "text-red-600" :
-                                isVisaOver ? "text-emerald-600" :
-                                  "text-slate-500"
-                              }`}>
+                          <div className="bg-slate-900/50 backdrop-blur-md p-4 rounded-xl border border-slate-700/50 flex flex-col items-center justify-center">
+                            <p className="text-[10px] text-slate-500 uppercase font-bold mb-2">Visa Variance</p>
+                            <span className={`inline-block text-lg font-black ${isVisaShort ? "text-red-500" : isVisaOver ? "text-emerald-500" : "text-slate-400"}`}>
                               {isVisaShort ? "-" : isVisaOver ? "+" : ""}EGP {Math.abs(cashier.visaVariance).toLocaleString()}
                             </span>
                           </div>
                         </div>
-                      </div>
 
-                      <div className="bg-muted/30 px-5 py-3 border-t border-border flex justify-between items-center text-xs text-muted-foreground font-medium">
-                        <div className="flex items-center gap-1" title="Days Active">
-                          <Calendar className="h-3.5 w-3.5" /> {cashier.daysActive}d
-                        </div>
-                        <div className="flex items-center gap-1" title="Total Shifts">
-                          <Clock className="h-3.5 w-3.5" /> {cashier.shifts} shifts
-                        </div>
-                        <div className="flex items-center gap-1" title="Average Revenue per Shift">
-                          <Banknote className="h-3.5 w-3.5" /> EGP {Math.round(cashier.avgPerShift).toLocaleString()}/sh
+                        {/* Footer Stats */}
+                        <div className="flex justify-between items-center pt-4 border-t border-slate-800 text-xs text-slate-400 font-medium">
+                          <div className="flex flex-col items-center gap-1" title="Days Active">
+                            <Calendar className="h-4 w-4 text-slate-500" />
+                            <span>{cashier.daysActive}d</span>
+                          </div>
+                          <div className="flex flex-col items-center gap-1" title="Total Shifts">
+                            <Briefcase className="h-4 w-4 text-slate-500" />
+                            <span>{cashier.shifts}</span>
+                          </div>
+                          <div className="flex flex-col items-center gap-1" title="Average Revenue per Shift">
+                            <Banknote className="h-4 w-4 text-slate-500" />
+                            <span>EGP {Math.round(cashier.avgPerShift).toLocaleString()}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -788,15 +852,51 @@ export default function ManagerAuditPage() {
                       placeholder="Search by Barcode or Cashier Name..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full p-3 pl-10 rounded-xl border border-border bg-muted/50 focus:bg-background outline-none focus:ring-2 focus:ring-red-500 text-sm"
+                      className="w-full p-3 pl-10 pr-32 rounded-xl border border-border bg-muted/50 focus:bg-background outline-none focus:ring-2 focus:ring-red-500 text-sm transition-all"
                     />
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                      <kbd className="hidden sm:inline-flex items-center gap-1 bg-background border border-border px-1.5 rounded text-[10px] font-bold text-muted-foreground uppercase shadow-sm">
-                        <span className="text-[12px]">⌘</span>K
-                      </kbd>
-                    </div>
+                    
+                    <button
+                      onClick={() => {
+                        setShowdownMode(!showdownMode);
+                        setShowdownSelection([]);
+                        setSelectedReport(null);
+                      }}
+                      className={`absolute right-1 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${showdownMode ? 'bg-red-500 text-white shadow-[0_0_15px_rgba(239,68,68,0.5)]' : 'bg-slate-200 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'}`}
+                    >
+                      {showdownMode ? 'Cancel' : 'Compare ⚔️'}
+                    </button>
                   </div>
+                </div>
+              )}
+
+              {activeTab === "pending" && [...earlyRadars, ...rejectedRadars].length > 0 && (
+                <div className="mb-4 space-y-3">
+                  {[...earlyRadars, ...rejectedRadars].map((radar, idx) => (
+                    <div key={idx} className="bg-slate-900 border border-slate-700 p-4 rounded-xl shadow-lg relative overflow-hidden flex items-center gap-4">
+                      {/* Scanning Radar Animation */}
+                      <div className="absolute inset-0 opacity-20 pointer-events-none overflow-hidden rounded-xl">
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent animate-[spin_3s_linear_infinite]" style={{ transformOrigin: 'center' }}></div>
+                        <div className="absolute inset-0 rounded-xl border-2 border-emerald-500/20"></div>
+                      </div>
+                      
+                      <div className="relative z-10 flex items-center justify-center h-10 w-10 bg-emerald-500/20 rounded-full border border-emerald-500/50">
+                        <div className="h-4 w-4 bg-emerald-500 rounded-full animate-ping"></div>
+                        <Clock className="h-5 w-5 text-emerald-400 absolute" />
+                      </div>
+                      
+                      <div className="relative z-10 flex-1">
+                        <h4 className="text-white font-bold text-sm tracking-wide">
+                          {radar.type === 'early' ? 'Awaiting Early Drop' : 'Awaiting Re-submission'}
+                        </h4>
+                        <p className="text-emerald-400 text-xs font-medium">
+                          {radar.type === 'early' 
+                            ? `Waiting for cashier to submit early day report...` 
+                            : `Waiting for ${radar.cashierDetails?.name || 'cashier'} to fix rejected shift...`}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
 
@@ -814,59 +914,216 @@ export default function ManagerAuditPage() {
                     if (currentBranch === "alamein4") return store.includes("alamein") || (!store.includes("alamein") && !store.includes("ola"));
                     if (currentBranch === "ola") return store.includes("ola");
                     return true;
-                  }).map(report => (
-                    <button
-                      key={report.id}
-                      onClick={() => { handleSelectReport(report); }}
-                      className={`w-full text-left p-4 rounded-xl border transition-all relative overflow-hidden ${selectedReport?.id === report.id
-                        ? 'border-red-500 bg-red-50 dark:bg-red-950/20 shadow-md shadow-red-500/10'
-                        : 'border-border bg-card hover:border-red-300'
-                        }`}
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="font-bold text-foreground text-sm">{report?.cashierDetails?.date}</span>
-                        <span className="text-xs font-bold px-2 py-1 bg-red-500/10 rounded-md text-red-500 border border-red-200/20 dark:border-red-950/30">{report?.cashierDetails?.shift}</span>
-                      </div>
-                      <div className="font-semibold text-lg text-foreground mb-1">
-                        {report?.cashierDetails?.name}
-                        {report?.isEarlyDay && (
-                          <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-700 text-[10px] font-bold uppercase tracking-wider">
-                            <Clock className="h-3 w-3" /> Early Day
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-xs text-muted-foreground font-mono mb-3">Store: {report?.cashierDetails?.storeId}</div>
+                  }).map((report, idx) => {
+                    if (activeTab === "history") {
+                      // Apple Wallet / Timeline Style
+                      return (
+                        <div key={report.id} className="relative pl-6 sm:pl-10">
+                          {/* Timeline Line & Dot */}
+                          <div className="absolute left-[11px] sm:left-[19px] top-0 bottom-[-16px] w-[2px] bg-slate-200 dark:bg-slate-800" />
+                          <div className="absolute left-[7px] sm:left-[15px] top-6 h-[10px] w-[10px] rounded-full bg-slate-400 dark:bg-slate-600 ring-4 ring-background z-10" />
+                          
+                          <button
+                            onClick={() => {
+                              if (showdownMode) {
+                                if (showdownSelection.find(s => s.id === report.id)) {
+                                  setShowdownSelection(showdownSelection.filter(s => s.id !== report.id));
+                                } else if (showdownSelection.length < 2) {
+                                  setShowdownSelection([...showdownSelection, report]);
+                                } else {
+                                  toast.error("You can only compare 2 shifts at a time!");
+                                }
+                              } else {
+                                handleSelectReport(report);
+                              }
+                            }}
+                            className={`w-full text-left rounded-2xl transition-all relative overflow-hidden group ${
+                              showdownMode && showdownSelection.find(s => s.id === report.id)
+                                ? 'scale-[1.02] shadow-[0_0_20px_rgba(239,68,68,0.3)] ring-2 ring-red-500 z-20'
+                                : selectedReport?.id === report.id
+                                  ? 'scale-[1.02] shadow-2xl z-20'
+                                  : 'hover:-translate-y-1 hover:shadow-xl hover:z-20'
+                              }`}
+                          >
+                            {/* Pass Background Gradient */}
+                            <div className={`absolute inset-0 opacity-90 ${
+                              showdownMode && showdownSelection.find(s => s.id === report.id) 
+                                ? 'bg-gradient-to-br from-red-900 to-red-950'
+                                : selectedReport?.id === report.id 
+                                  ? 'bg-gradient-to-br from-slate-800 to-slate-900' 
+                                  : 'bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900'
+                              }`} />
+                            
+                            <div className="relative z-10 p-0 flex flex-col h-full border border-slate-300/50 dark:border-slate-700/50 rounded-2xl overflow-hidden">
+                               {/* Pass Header */}
+                               <div className={`px-5 py-4 flex justify-between items-center ${
+                                  (selectedReport?.id === report.id || (showdownMode && showdownSelection.find(s => s.id === report.id))) 
+                                    ? 'bg-black/20 text-white' 
+                                    : 'bg-black/5 text-slate-800 dark:text-slate-200'
+                                }`}>
+                                 <div className="flex flex-col">
+                                   <span className="font-black tracking-tight text-lg">{report?.cashierDetails?.name}</span>
+                                   <span className="text-xs opacity-80 font-medium">Store: {report?.cashierDetails?.storeId}</span>
+                                 </div>
+                                 <div className="flex flex-col items-end">
+                                   <span className="font-bold text-sm">{report?.cashierDetails?.date}</span>
+                                   <span className="text-[10px] font-black uppercase tracking-wider opacity-80">{report?.cashierDetails?.shift} Shift</span>
+                                 </div>
+                               </div>
 
-                      {activeTab === "history" && report.managerAudit && (
-                        <div className="mb-3 space-y-2">
-                          <div className={`text-xs flex justify-between bg-card p-2 rounded border border-border ${report.managerAudit.overShort !== 0 ? 'border-red-500/30' : ''}`}>
-                            <span className="text-muted-foreground">Variance:</span>
-                            <span className={`font-bold ${report.managerAudit.overShort < 0 ? 'text-red-600' : report.managerAudit.overShort > 0 ? 'text-emerald-600' : 'text-slate-500'}`}>
-                              {report.managerAudit.overShort < 0 ? '-' : report.managerAudit.overShort > 0 ? '+' : ''}EGP {Math.abs(report.managerAudit.overShort)}
-                            </span>
-                          </div>
+                               {/* Pass Body */}
+                               <div className={`px-5 py-5 flex justify-between items-center bg-white dark:bg-slate-950`}>
+                                 <div className="flex flex-col">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Handled</span>
+                                    <span className="text-xl font-black text-slate-900 dark:text-white">EGP {report?.cashierCounts?.total?.toLocaleString()}</span>
+                                 </div>
+                                 {report.managerAudit && (
+                                   <div className="flex flex-col items-end">
+                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Variance</span>
+                                     <span className={`text-lg font-black ${report.managerAudit.overShort < 0 ? 'text-red-500' : report.managerAudit.overShort > 0 ? 'text-emerald-500' : 'text-slate-500'}`}>
+                                        {report.managerAudit.overShort < 0 ? '-' : report.managerAudit.overShort > 0 ? '+' : ''}EGP {Math.abs(report.managerAudit.overShort)}
+                                     </span>
+                                   </div>
+                                 )}
+                               </div>
 
-                          {Math.abs(report.managerAudit.overShort) > 150 && (
-                            <div className="animate-pulse flex items-center justify-center gap-1.5 w-full bg-red-500 text-white text-[10px] font-black uppercase tracking-wider py-1.5 rounded shadow-sm">
-                              <AlertTriangle className="h-3 w-3" /> High Variance
+                               {/* Pass Footer / Cutout effect */}
+                               <div className={`relative px-5 py-3 flex justify-between items-center border-t border-dashed ${selectedReport?.id === report.id ? 'bg-black/20 text-white border-white/20' : 'bg-black/5 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-700'}`}>
+                                  {/* Left/Right Cutouts to simulate ticket */}
+                                  <div className="absolute -left-2 -top-2 w-4 h-4 rounded-full bg-background border-r border-b border-transparent" />
+                                  <div className="absolute -right-2 -top-2 w-4 h-4 rounded-full bg-background border-l border-b border-transparent" />
+
+                                  <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest">
+                                    <CheckCircle className="h-3 w-3" /> Approved
+                                  </div>
+                                  <Barcode value={report.id.substring(0, 8)} width={1} height={20} displayValue={false} background="transparent" lineColor={selectedReport?.id === report.id ? '#fff' : 'currentColor'} margin={0} />
+                               </div>
                             </div>
+                          </button>
+                        </div>
+                      );
+                    }
+
+                    // Pending Style
+                    return (
+                      <button
+                        key={report.id}
+                        onClick={() => { handleSelectReport(report); }}
+                        className={`w-full text-left p-4 rounded-xl border transition-all relative overflow-hidden ${selectedReport?.id === report.id
+                          ? 'border-red-500 bg-red-50 dark:bg-red-950/20 shadow-md shadow-red-500/10'
+                          : 'border-border bg-card hover:border-red-300'
+                          }`}
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="font-bold text-foreground text-sm">{report?.cashierDetails?.date}</span>
+                          <span className="text-xs font-bold px-2 py-1 bg-red-500/10 rounded-md text-red-500 border border-red-200/20 dark:border-red-950/30">{report?.cashierDetails?.shift}</span>
+                        </div>
+                        <div className="font-semibold text-lg text-foreground mb-1">
+                          {report?.cashierDetails?.name}
+                          {report?.isEarlyDay && (
+                            <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-700 text-[10px] font-bold uppercase tracking-wider">
+                              <Clock className="h-3 w-3" /> Early Day
+                            </span>
                           )}
                         </div>
-                      )}
+                        <div className="text-xs text-muted-foreground font-mono mb-3">Store: {report?.cashierDetails?.storeId}</div>
 
-                      <div className="flex justify-between items-center pt-3 border-t border-red-100 dark:border-red-900/30">
-                        <span className="text-xs font-bold text-muted-foreground uppercase">Declared Total</span>
-                        <span className="font-bold text-red-600 dark:text-red-400">EGP {report?.cashierCounts?.total?.toLocaleString()}</span>
-                      </div>
-                    </button>
-                  ))}
+                        <div className="flex justify-between items-center pt-3 border-t border-red-100 dark:border-red-900/30">
+                          <span className="text-xs font-bold text-muted-foreground uppercase">Declared Total</span>
+                          <span className="font-bold text-red-600 dark:text-red-400">EGP {report?.cashierCounts?.total?.toLocaleString()}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
 
             {/* RIGHT COLUMN: AUDIT WORKSPACE */}
             <div className="lg:col-span-2">
-              {!selectedReport ? (
+              {showdownMode ? (
+                <div className="glass-panel h-full min-h-[500px] flex flex-col rounded-2xl border border-border bg-slate-950 text-white overflow-hidden relative">
+                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 pointer-events-none" />
+                  
+                  <div className="p-8 border-b border-slate-800 bg-black/40 backdrop-blur-xl relative z-10 text-center">
+                    <h2 className="text-3xl font-black uppercase tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-orange-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]">
+                      Shift Showdown 🥊
+                    </h2>
+                    <p className="text-slate-400 mt-2 text-sm font-medium">Select exactly 2 shifts from the history list to generate a comparative analysis.</p>
+                  </div>
+                  
+                  <div className="flex-grow flex flex-col items-center justify-center p-8 relative z-10">
+                    {showdownSelection.length < 2 ? (
+                      <div className="text-center animate-pulse">
+                        <div className="inline-flex items-center justify-center h-24 w-24 rounded-full border-2 border-dashed border-red-500/50 bg-red-500/10 mb-4">
+                          <span className="text-4xl font-black text-red-500">{showdownSelection.length}/2</span>
+                        </div>
+                        <p className="text-slate-500 font-bold uppercase tracking-wider">Awaiting Selection...</p>
+                      </div>
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center">
+                        <div className="flex justify-between w-full max-w-lg mb-8 px-8">
+                          <div className="text-center">
+                            <span className="inline-block px-3 py-1 bg-red-500 text-white text-[10px] font-black uppercase rounded-full mb-2 border border-red-400">Shift A</span>
+                            <h4 className="font-bold text-lg">{showdownSelection[0].cashierDetails.name}</h4>
+                            <p className="text-xs text-slate-400">{showdownSelection[0].cashierDetails.date} ({showdownSelection[0].cashierDetails.shift})</p>
+                          </div>
+                          <div className="flex flex-col items-center justify-center">
+                            <span className="text-2xl font-black italic text-slate-700">VS</span>
+                          </div>
+                          <div className="text-center">
+                            <span className="inline-block px-3 py-1 bg-blue-500 text-white text-[10px] font-black uppercase rounded-full mb-2 border border-blue-400">Shift B</span>
+                            <h4 className="font-bold text-lg">{showdownSelection[1].cashierDetails.name}</h4>
+                            <p className="text-xs text-slate-400">{showdownSelection[1].cashierDetails.date} ({showdownSelection[1].cashierDetails.shift})</p>
+                          </div>
+                        </div>
+
+                        {/* Radar Chart Generation */}
+                        {(() => {
+                          const A = showdownSelection[0];
+                          const B = showdownSelection[1];
+                          const maxVol = Math.max(A.cashierCounts?.total || 1, B.cashierCounts?.total || 1);
+                          
+                          // Convert to percentages (0-100 score) for the Radar chart
+                          const volA = Math.round(((A.cashierCounts?.total || 0) / maxVol) * 100);
+                          const volB = Math.round(((B.cashierCounts?.total || 0) / maxVol) * 100);
+                          
+                          // Accuracy: 100% minus variance penalty (stricter penalty for small amounts to make chart readable)
+                          const cashAccA = Math.max(0, 100 - (Math.abs(A.managerAudit?.overShort || 0) / 10));
+                          const cashAccB = Math.max(0, 100 - (Math.abs(B.managerAudit?.overShort || 0) / 10));
+                          
+                          const visaAccA = 100; // Assuming Visa is always exact in this simple example unless we tracked it separately
+                          const visaAccB = 100;
+
+                          const data = [
+                            { subject: 'Volume', A: volA, B: volB, fullMark: 100 },
+                            { subject: 'Cash Acc', A: cashAccA, B: cashAccB, fullMark: 100 },
+                            { subject: 'Visa Acc', A: visaAccA, B: visaAccB, fullMark: 100 },
+                            { subject: 'Punctuality', A: A.isEarlyDay ? 80 : 100, B: B.isEarlyDay ? 80 : 100, fullMark: 100 },
+                            { subject: 'Checklist', A: 100, B: 100, fullMark: 100 }, // Placeholder for future checklist features
+                          ];
+
+                          return (
+                            <div className="w-full max-w-lg h-[400px]">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={data}>
+                                  <PolarGrid stroke="#334155" />
+                                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 'bold' }} />
+                                  <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                                  <Radar name="Shift A" dataKey="A" stroke="#ef4444" fill="#ef4444" fillOpacity={0.5} />
+                                  <Radar name="Shift B" dataKey="B" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.5} />
+                                  <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                                  <RechartsTooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px' }} />
+                                </RadarChart>
+                              </ResponsiveContainer>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : !selectedReport ? (
                 <div className="glass-panel h-full min-h-[500px] flex flex-col items-center justify-center text-center rounded-2xl border border-border bg-muted/20">
                   <FileText className="h-16 w-16 text-muted-foreground/30 mb-4" />
                   <p className="text-lg font-bold text-muted-foreground">Select a report to view/audit</p>

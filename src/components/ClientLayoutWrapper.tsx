@@ -39,6 +39,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   const [pendingVoidCount, setPendingVoidCount] = useState(0);
   const [pendingExpiriesCount, setPendingExpiriesCount] = useState(0);
   const [pendingReturnsCount, setPendingReturnsCount] = useState(0);
+  const [hasAgedShifts, setHasAgedShifts] = useState(false);
+  const [currentDateTime, setCurrentDateTime] = useState<Date | null>(null);
   const pathname = usePathname();
 
   // Initialize theme, role, and mock status from localStorage
@@ -58,6 +60,10 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
     // Splash screen timer
     const splashTimer = setTimeout(() => setMinSplashDone(true), 1500);
+
+    // Live Clock timer
+    const clockTimer = setInterval(() => setCurrentDateTime(new Date()), 1000);
+    setCurrentDateTime(new Date());
 
     // Firebase Auth Listener
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -150,6 +156,24 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
       unsubscribeShifts = onSnapshot(shiftQ, (snap) => {
         setPendingShiftCount(snap.docs.length);
+        let aged = false;
+        const now = Date.now();
+        snap.docs.forEach(doc => {
+          const d = doc.data();
+          const submittedAt = d.createdAt || d.submittedAt;
+          if (submittedAt) {
+            let subTime = 0;
+            if (typeof submittedAt === 'object' && submittedAt.seconds) {
+              subTime = submittedAt.seconds * 1000;
+            } else {
+              subTime = new Date(submittedAt).getTime();
+            }
+            if (now - subTime > 4 * 60 * 60 * 1000) {
+              aged = true; // older than 4 hours
+            }
+          }
+        });
+        setHasAgedShifts(aged);
       }, (err) => console.log("Shift badge err", err));
 
       const voidQ = currentBranch === "all"
@@ -233,6 +257,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     return () => {
       unsubscribe();
       window.removeEventListener('click', handleClick);
+      clearInterval(clockTimer);
       if (unsubscribeShifts) unsubscribeShifts();
       if (unsubscribeVoids) unsubscribeVoids();
       if (unsubscribeExpiries) unsubscribeExpiries();
@@ -461,7 +486,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                           <child.icon className={`h-4 w-4 ${isChildActive ? 'scale-110 drop-shadow-sm' : 'opacity-70 group-hover:opacity-100'}`} />
                           <span>{child.name}</span>
                           {child.name === t("nav.shift_audit") && pendingShiftCount > 0 && (
-                            <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+                            <span className={`ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm ${hasAgedShifts ? 'animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.8)]' : ''}`}>
                               {pendingShiftCount}
                             </span>
                           )}
@@ -536,10 +561,23 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
             </div>
 
             {/* Desktop Left: Breadcrumb or Greeting */}
-            <div className="hidden lg:flex items-center">
+            <div className="hidden lg:flex items-center gap-6">
               {userDoc && (
                 <div className="text-sm font-semibold text-muted-foreground">
-                  <span>{language === 'ar' ? 'مرحباً، ' : 'Welcome, '}<span className="text-foreground">{userDoc.displayName || user?.email?.split('@')[0]}</span></span>
+                  <span>{language === 'ar' ? 'مرحباً، ' : 'Welcome, '}<span className="text-foreground text-lg">{userDoc.displayName || user?.email?.split('@')[0]}</span></span>
+                </div>
+              )}
+              {currentDateTime && (
+                <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/50 px-3 py-1.5 rounded-lg border border-border">
+                  <CalendarDays className="h-4 w-4 text-slate-500" />
+                  <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                    {currentDateTime.toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                  </span>
+                  <div className="w-px h-3 bg-border mx-1"></div>
+                  <Clock className="h-4 w-4 text-indigo-500" />
+                  <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 font-mono tracking-wider">
+                    {currentDateTime.toLocaleTimeString(language === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  </span>
                 </div>
               )}
             </div>
