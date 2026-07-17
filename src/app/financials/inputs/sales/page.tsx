@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import React, { useState, useEffect, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { db } from "@/lib/firebase";
 import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, getAggregateFromServer, sum } from "firebase/firestore";
-import { Banknote, CreditCard, Trash2, Edit, AlertTriangle, X, Sun, Moon, CalendarDays, Loader2, FileText } from "lucide-react";
+import { Banknote, CreditCard, Trash2, Edit, AlertTriangle, X, Sun, Moon, CalendarDays, Loader2, FileText, TrendingUp, Target, Activity } from "lucide-react";
 import { useBranch } from "@/context/BranchContext";
 import { toast } from "sonner";
 import { PageTransition } from "@/components/PageTransition";
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, BarChart, Bar, Cell } from "recharts";
 
 export default function SalesManagementPage() {
   const { currentBranch } = useBranch();
@@ -120,6 +121,91 @@ export default function SalesManagementPage() {
 
   const nightTotals = calcTotals(nightSales);
   const morningTotals = calcTotals(morningSales);
+
+  // --- NEW: Data Processing for Insights ---
+  const { trendData, radarData, heatmapData, shiftBattle, averageDailySales } = useMemo(() => {
+    if (!sales || sales.length === 0) return { trendData: [], radarData: [], heatmapData: [], shiftBattle: { morning: 50, night: 50, totalMorning: 0, totalNight: 0 }, averageDailySales: 0 };
+
+    // 1. Trend Data (Cash vs Visa per day) & Heatmap Data (Total per day)
+    const dailyMap = new Map<string, { cash: number, visa: number, total: number, morning: number, night: number }>();
+    let totalAllSales = 0;
+
+    sales.forEach(s => {
+      if (!dailyMap.has(s.date)) {
+        dailyMap.set(s.date, { cash: 0, visa: 0, total: 0, morning: 0, night: 0 });
+      }
+      const dayData = dailyMap.get(s.date)!;
+      const sCash = Number(s.cash) || 0;
+      const sVisa = Number(s.visa) || 0;
+      const sTotal = sCash + sVisa;
+      
+      dayData.cash += sCash;
+      dayData.visa += sVisa;
+      dayData.total += sTotal;
+      totalAllSales += sTotal;
+
+      if (s.shift?.toLowerCase() === 'morning') dayData.morning += sTotal;
+      if (s.shift?.toLowerCase() === 'night') dayData.night += sTotal;
+    });
+
+    const sortedDates = Array.from(dailyMap.keys()).sort();
+    const averageDailySales = sortedDates.length > 0 ? totalAllSales / sortedDates.length : 0;
+
+    const trendData = sortedDates.map(date => {
+      const d = dailyMap.get(date)!;
+      return {
+        date: date.substring(8, 10) + "/" + date.substring(5, 7), // DD/MM format
+        fullDate: date,
+        cash: d.cash,
+        visa: d.visa,
+        total: d.total
+      };
+    });
+
+    const heatmapData = sortedDates.map(date => {
+      const d = dailyMap.get(date)!;
+      return {
+        date: date.substring(8, 10) + "/" + date.substring(5, 7),
+        total: d.total,
+        morning: d.morning,
+        night: d.night,
+        isAboveAverage: d.total >= averageDailySales
+      };
+    });
+
+    // 2. Busiest Day Radar Data
+    const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const dayTotals = new Array(7).fill(0);
+    
+    sales.forEach(s => {
+      const dateObj = new Date(s.date);
+      if (!isNaN(dateObj.getTime())) {
+        dayTotals[dateObj.getDay()] += (Number(s.cash) || 0) + (Number(s.visa) || 0);
+      }
+    });
+
+    const radarData = daysOfWeek.map((day, index) => ({
+      subject: day,
+      A: dayTotals[index],
+      fullMark: Math.max(...dayTotals) || 100
+    }));
+
+    // 3. Shift Battle
+    const totalMorning = morningSales.reduce((acc, curr) => acc + (Number(curr.cash) || 0) + (Number(curr.visa) || 0), 0);
+    const totalNight = nightSales.reduce((acc, curr) => acc + (Number(curr.cash) || 0) + (Number(curr.visa) || 0), 0);
+    const totalCombined = totalMorning + totalNight;
+    
+    const morningPercent = totalCombined > 0 ? Math.round((totalMorning / totalCombined) * 100) : 50;
+    const nightPercent = totalCombined > 0 ? Math.round((totalNight / totalCombined) * 100) : 50;
+
+    return {
+      trendData,
+      radarData,
+      heatmapData,
+      averageDailySales,
+      shiftBattle: { morning: morningPercent, night: nightPercent, totalMorning, totalNight }
+    };
+  }, [sales, morningSales, nightSales]);
 
   const formatMoney = (val: number) => {
     return val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -290,6 +376,138 @@ export default function SalesManagementPage() {
           <div className="flex gap-4 text-xs font-semibold text-slate-500 dark:text-slate-400">
             <div>Cash: <span className="text-slate-700 dark:text-slate-300">EGP {formatMoney(allTimeStats.cash)}</span></div>
             <div>Visa: <span className="text-slate-700 dark:text-slate-300">EGP {formatMoney(allTimeStats.visa)}</span></div>
+          </div>
+        </div>
+
+        {/* --- SALES INSIGHTS DASHBOARD --- */}
+        <div className="space-y-6">
+          <div className="flex items-center gap-2">
+            <Activity className="text-indigo-500" size={24} />
+            <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Sales Insights</h2>
+          </div>
+
+          {/* Shift Battle (Tug of War) */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm">
+            <div className="flex justify-between items-end mb-4">
+              <div>
+                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2"><Sun size={16} className="text-amber-500"/> Morning Shift</h3>
+                <p className="text-2xl font-black text-amber-600">{shiftBattle.morning}%</p>
+              </div>
+              <div className="text-center">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full">Shift Battle</span>
+              </div>
+              <div className="text-right">
+                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 justify-end">Night Shift <Moon size={16} className="text-blue-500"/></h3>
+                <p className="text-2xl font-black text-blue-600">{shiftBattle.night}%</p>
+              </div>
+            </div>
+            <div className="h-6 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex relative border border-slate-200 dark:border-slate-700 shadow-inner">
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: `${shiftBattle.morning}%` }}
+                transition={{ duration: 1, type: "spring" }}
+                className="h-full bg-gradient-to-r from-amber-400 to-amber-500 relative"
+              >
+                {shiftBattle.morning > 0 && <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-black text-white/80">EGP {formatMoney(shiftBattle.totalMorning)}</span>}
+              </motion.div>
+              <div className="w-1 h-full bg-white z-10 skew-x-12"></div>
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: `${shiftBattle.night}%` }}
+                transition={{ duration: 1, type: "spring" }}
+                className="h-full bg-gradient-to-l from-blue-600 to-blue-500 relative"
+              >
+                 {shiftBattle.night > 0 && <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-black text-white/80">EGP {formatMoney(shiftBattle.totalNight)}</span>}
+              </motion.div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            {/* Cash vs Visa Trendline */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm h-80 flex flex-col">
+              <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <TrendingUp size={16} className="text-emerald-500" /> Cash vs. Visa Trend
+              </h3>
+              <div className="flex-1 w-full min-h-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorCash" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="colorVisa" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis dataKey="date" tick={{fontSize: 10, fill: '#94a3b8'}} axisLine={false} tickLine={false} />
+                    <YAxis tick={{fontSize: 10, fill: '#94a3b8'}} axisLine={false} tickLine={false} tickFormatter={(value) => `EGP ${value/1000}k`} />
+                    <RechartsTooltip 
+                      contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
+                      formatter={(value: number) => [`EGP ${value.toLocaleString()}`, undefined]}
+                    />
+                    <Area type="monotone" dataKey="cash" name="Cash" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorCash)" />
+                    <Area type="monotone" dataKey="visa" name="Visa" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorVisa)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Busiest Day Radar */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm h-80 flex flex-col">
+              <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <Target size={16} className="text-violet-500" /> Busiest Day Radar
+              </h3>
+              <div className="flex-1 w-full min-h-0 relative">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
+                    <PolarGrid stroke="#e2e8f0" />
+                    <PolarAngleAxis dataKey="subject" tick={{fill: '#64748b', fontSize: 11, fontWeight: 'bold'}} />
+                    <PolarRadiusAxis angle={90} domain={[0, 'auto']} tick={false} axisLine={false} />
+                    <Radar name="Total Sales" dataKey="A" stroke="#8b5cf6" strokeWidth={2} fill="#8b5cf6" fillOpacity={0.5} />
+                    <RechartsTooltip 
+                      formatter={(value: number) => [`EGP ${value.toLocaleString()}`, "Sales"]}
+                      contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
+                    />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+            
+            {/* Sales Heatmap (Bar Chart) */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm h-80 flex flex-col lg:col-span-2">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                  <CalendarDays size={16} className="text-rose-500" /> Daily Sales Heatmap
+                </h3>
+                <span className="text-xs font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full">
+                  Daily Average: EGP {formatMoney(averageDailySales)}
+                </span>
+              </div>
+              <div className="flex-1 w-full min-h-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={heatmapData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis dataKey="date" tick={{fontSize: 10, fill: '#94a3b8'}} axisLine={false} tickLine={false} />
+                    <YAxis tick={{fontSize: 10, fill: '#94a3b8'}} axisLine={false} tickLine={false} tickFormatter={(value) => `EGP ${value/1000}k`} />
+                    <RechartsTooltip 
+                      cursor={{fill: 'rgba(0,0,0,0.05)'}}
+                      contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
+                      formatter={(value: number, name: string) => [`EGP ${value.toLocaleString()}`, name === 'total' ? 'Total' : name.charAt(0).toUpperCase() + name.slice(1)]}
+                    />
+                    <Bar dataKey="total" radius={[4, 4, 0, 0]}>
+                      {heatmapData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.isAboveAverage ? '#10b981' : '#cbd5e1'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
           </div>
         </div>
 
