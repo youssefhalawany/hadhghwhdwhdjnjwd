@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     }
 
     const db = getFirestore();
-    const usersSnapshot = await db.collection('users').where('role', 'in', ['owner', 'admin_editor', 'admin_viewer']).get();
+    const usersSnapshot = await db.collection('users').get();
     
     const tokens: string[] = [];
     usersSnapshot.forEach(doc => {

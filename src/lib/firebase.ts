@@ -42,7 +42,18 @@ const productsFirebaseConfig = {
   measurementId: "G-TZGGKZ4PNR"
 };
 const productsApp = getApps().find(a => a.name === "productsApp") || initializeApp(productsFirebaseConfig, "productsApp");
-export const productsDb = getFirestore(productsApp);
+
+let productsDbLocal: Firestore;
+try {
+  productsDbLocal = initializeFirestore(productsApp, {
+    localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
+  });
+} catch (e) {
+  // Fallback if already initialized
+  productsDbLocal = getFirestore(productsApp);
+}
+
+export const productsDb = productsDbLocal;
 export const productsStorage = getStorage(productsApp);
 
 export { app, db, productsApp };

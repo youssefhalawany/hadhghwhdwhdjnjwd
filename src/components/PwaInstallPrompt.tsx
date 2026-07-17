@@ -89,7 +89,7 @@ export default function PwaInstallPrompt() {
   const appName = isCashierPortal ? "Cashier App" : "Manager App";
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-80 bg-background border-2 border-red-500 rounded-xl shadow-2xl p-4 z-50 animate-in slide-in-from-bottom-5">
+    <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-11/12 max-w-sm bg-background border-2 border-red-500 rounded-xl shadow-2xl p-4 z-[9999] animate-in zoom-in-95 duration-200">
       <button 
         onClick={() => setShowPrompt(false)}
         className="absolute top-2 right-2 text-muted-foreground hover:text-foreground"
