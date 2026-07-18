@@ -350,8 +350,6 @@ export default function ProductLookupPage() {
                             <p className="font-bold text-lg text-emerald-700 dark:text-emerald-400">{productData.currentPrice ? `${productData.currentPrice} EGP` : productData.price ? `${productData.price} EGP` : "N/A"}</p>
                           </div>
                         </div>
-
-                        </div>
                       </div>
                     )}
 
