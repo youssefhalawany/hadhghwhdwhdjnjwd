@@ -58,18 +58,12 @@ export async function fetchDashboardData(branchId: string) {
   ]);
 
   let totalSales = 0;
+  let totalShortage = 0;
   
   salesSnap.docs.forEach((doc: any) => {
     const data = doc.data();
     totalSales += Number(data.cash || 0) + Number(data.visa || 0);
-  });
-
-  let totalShortage = 0;
-  attentionSnap.docs.forEach((doc: any) => {
-    const data = doc.data();
-    if (data.date === todayStr) {
-      totalShortage += Number(data.cashShortage || 0);
-    }
+    totalShortage += Number(data.overShort || 0);
   });
 
   let totalVoids = 0;
