@@ -76,7 +76,8 @@ export function IdleScreensaver({ pendingTasksCount = 0 }: { pendingTasksCount?:
       ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       
-      ctx.fillStyle = "#0F0"; // Green text
+      // Circle K branding: Red rain
+      ctx.fillStyle = "rgba(220, 38, 38, 0.7)"; 
       ctx.font = fontSize + "px monospace";
       
       for (let i = 0; i < drops.length; i++) {
@@ -87,7 +88,8 @@ export function IdleScreensaver({ pendingTasksCount = 0 }: { pendingTasksCount?:
       }
     };
     
-    const interval = setInterval(draw, 33);
+    // Slow down the rain
+    const interval = setInterval(draw, 70);
     return () => clearInterval(interval);
   }, [isIdle]);
 
@@ -214,8 +216,8 @@ export function IdleScreensaver({ pendingTasksCount = 0 }: { pendingTasksCount?:
           </div>
 
           {/* Ticker at bottom */}
-          <div className="absolute bottom-0 left-0 right-0 h-10 bg-black/80 border-t border-white/10 flex items-center z-20 overflow-hidden backdrop-blur-md">
-            <div className="whitespace-nowrap animate-marquee flex gap-12 font-mono text-xs font-bold text-green-400/80">
+          <div className="absolute bottom-0 left-0 right-0 h-10 bg-red-950/40 border-t border-red-500/20 flex items-center z-20 overflow-hidden backdrop-blur-md">
+            <div className="whitespace-nowrap animate-marquee flex gap-12 font-mono text-xs font-bold text-white/80">
               {tickerItems.map((item, i) => (
                 <span key={i}>• {item}</span>
               ))}
