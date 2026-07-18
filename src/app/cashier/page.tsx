@@ -323,6 +323,7 @@ export default function CashierHubPage() {
       { id: "shift", label: lang === "en" ? "Daily Shift Report" : "تقرير الوردية", icon: FileText, path: "/shift-reports/cashier" },
       { id: "void", label: lang === "en" ? "Log a Void" : "تسجيل مرتجع", icon: Shield, path: "/voids/cashier" },
       { id: "expiry", label: lang === "en" ? "Expiry Tracker" : "تواريخ الصلاحية", icon: CalendarIcon, path: "/expiries" },
+      { id: "outofstock", label: lang === "en" ? "Out of Stock" : "النواقص", icon: AlertTriangle, path: "/cashier/out-of-stock", badge: "NEW" },
       { id: "checklist", label: lang === "en" ? "Checklists" : "قوائم المراجعة", icon: CheckSquare, path: "/checklists/cashier" },
       { id: "cleaning", label: lang === "en" ? "Cleaning" : "النظافة", icon: Sparkles, path: "/cashier/cleaning" },
       { id: "sop", label: lang === "en" ? "Food SOP" : "دليل التشغيل", icon: BookOpen, path: "/cashier/sop", badge: "NEW" },
@@ -421,6 +422,7 @@ export default function CashierHubPage() {
                   if (a.id === "shift") { bgGradient = "rgba(22, 78, 99, 0.6)"; iconColor = "#22d3ee"; iconBg = "rgba(34,211,238,0.2)"; borderColor = "rgba(34,211,238,0.3)"; }
                   if (a.id === "void") { bgGradient = "rgba(127, 29, 29, 0.6)"; iconColor = "#f87171"; iconBg = "rgba(248,113,113,0.2)"; borderColor = "rgba(248,113,113,0.3)"; }
                   if (a.id === "inventory") { bgGradient = "rgba(6, 95, 70, 0.6)"; iconColor = "#34d399"; iconBg = "rgba(52,211,153,0.2)"; borderColor = "rgba(52,211,153,0.3)"; }
+                  if (a.id === "outofstock") { bgGradient = "rgba(161, 98, 7, 0.6)"; iconColor = "#facc15"; iconBg = "rgba(250,204,21,0.2)"; borderColor = "rgba(250,204,21,0.3)"; }
 
                   return (
                     <button
