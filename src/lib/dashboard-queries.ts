@@ -76,27 +76,38 @@ export async function fetchDashboardData(branchId: string) {
     });
   }
 
-  // Fetch 7-Day Revenue Trend (very naive approach for quick dashboard load)
-  // To avoid massive queries, we fetch the last 7 days of shift reports and aggregate them.
+  // Fetch 7-Day Revenue Trend
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
   const sevenDaysAgoStr = getLocalDateString(sevenDaysAgo);
 
   let weekQuery = query(collection(db, 'shift_reports'), where('date', '>=', sevenDaysAgoStr));
+  if (branchId !== 'all') {
+    weekQuery = query(collection(db, 'shift_reports'), where('date', '>=', sevenDaysAgoStr), where('branchId', '==', branchId));
+  }
+  
   const weekSnap = await getDocs(weekQuery).catch(() => ({ docs: [] }));
   
   const chartDataMap: Record<string, any> = {};
   for (let i = 6; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    chartDataMap[getLocalDateString(d)] = { name: getLocalDateString(d).substring(5), alamein4: 0, ola: 0 };
+    const dateStr = getLocalDateString(d);
+    chartDataMap[dateStr] = { 
+      name: dateStr.substring(5), // MM-DD
+      fullDate: dateStr,
+      alamein4: 0, 
+      ola: 0,
+      total: 0 // single line if branch is selected
+    };
   }
 
   weekSnap.docs.forEach((doc: any) => {
     const data = doc.data();
     if (chartDataMap[data.date]) {
-      const branchKey = (data.branchId || data.storeId || '').toLowerCase().includes('ola') ? 'ola' : 'alamein4';
-      chartDataMap[data.date][branchKey] += Number(data.totalSales || 0);
+      const bKey = (data.branchId || data.storeId || '').toLowerCase().includes('ola') ? 'ola' : 'alamein4';
+      chartDataMap[data.date][bKey] += Number(data.totalSales || 0);
+      chartDataMap[data.date].total += Number(data.totalSales || 0);
     }
   });
 

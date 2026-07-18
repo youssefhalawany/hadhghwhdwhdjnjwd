@@ -376,8 +376,14 @@ export default function FinancialInputsOverview() {
                     itemStyle={{ color: '#fff' }}
                   />
                   <Legend />
-                  <Line type="monotone" dataKey="alamein4" name="El Alamein 4" stroke="#ef4444" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                  <Line type="monotone" dataKey="ola" name="Ola Koronfol" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                  {currentBranch === 'all' ? (
+                    <>
+                      <Line type="monotone" dataKey="alamein4" name="El Alamein 4" stroke="#ef4444" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                      <Line type="monotone" dataKey="ola" name="Ola Koronfol" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                    </>
+                  ) : (
+                    <Line type="monotone" dataKey="total" name={`${currentBranch === 'ola' ? 'Ola Koronfol' : 'El Alamein 4'} Revenue`} stroke="#10b981" strokeWidth={4} dot={{ r: 5 }} activeDot={{ r: 8 }} />
+                  )}
                 </LineChart>
               </ResponsiveContainer>
             </div>
