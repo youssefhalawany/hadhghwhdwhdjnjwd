@@ -7,16 +7,15 @@ import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, addDoc
 import { CheckCircle, Clock, FileText, Banknote, Package, Lock, Printer, Archive, Trash2, Calendar, QrCode, Search, AlertTriangle, X, ShieldAlert, Sparkles, Activity, Briefcase, Barcode as BarcodeIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 const Barcode = dynamic(() => import("react-barcode"), { ssr: false });
-import QRCode from "react-qr-code";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
-import { useBranch } from "@/context/BranchContext";
-import { toast } from "sonner";
-import { Skeleton } from "@/components/ui/skeleton";
 import { PageTransition } from "@/components/PageTransition";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Legend, Tooltip as RechartsTooltip } from "recharts";
 
 const SignaturePad = dynamic(() => import("react-signature-canvas"), { ssr: false });
+const QRCode = dynamic(() => import("react-qr-code"), { ssr: false });
+
+import { useBranch } from "@/context/BranchContext";
+import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ManagerAuditPage() {
   const { currentBranch } = useBranch();
