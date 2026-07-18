@@ -331,6 +331,9 @@ service cloud.firestore {
     match /void_requests/{doc} {
       allow create, read, update, delete: if true;
     }
+    match /voids/{doc} {
+      allow create, read, update, delete: if true;
+    }
     
     // ---------- Expiry Tracker ----------
     match /expiries/{doc} {

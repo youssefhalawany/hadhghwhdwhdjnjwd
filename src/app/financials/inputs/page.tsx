@@ -138,7 +138,7 @@ export default function FinancialInputsOverview() {
         }
 
         // Helper for safe fetching
-        const safeSumAgg = async (q: any, sumFields: Record<string, ReturnType<typeof sum>>): Promise<any> => {
+        const safeSumAgg = async (q: any, sumFields: Record<string, ReturnType<typeof sum>>, name: string): Promise<any> => {
           try {
             const agg = await getAggregateFromServer(q, sumFields);
             return agg.data();
@@ -147,7 +147,7 @@ export default function FinancialInputsOverview() {
               const urlMatch = err.message.match(/(https:\/\/console\.firebase\.google\.com[^\s]*)/);
               if (urlMatch) collectedUrls.add(urlMatch[0]);
             } else {
-              console.error("Query Error:", err);
+              console.error(`Query Error [${name}]:`, err);
             }
             return null;
           }
@@ -157,26 +157,26 @@ export default function FinancialInputsOverview() {
           salesData, cashPaymentsData, depositsToData, depositsFromData, payrollsData,
           newLoansData, oldLoansData, oldCreditsCashData, visaPaymentsData,
           bankTransferPaymentsData, visaCreditsData, bankTransferCreditsData, depositsToBankData, depositsFromBankData, visaTaxData, bankTransferTaxData, cashTaxData, cashPaymentsBankData, creditPaymentsBankData, bankTaxData] = await Promise.all([
-          safeSumAgg(salesQ, { cash: sum("cash"), overShort: sum("overShort"), visa: sum("visa") }),
-          safeSumAgg(cashPaymentsQ, { val: sum("amount") }),
-          safeSumAgg(depositsToQ, { val: sum("amount") }),
-          safeSumAgg(depositsFromQ, { val: sum("amount") }),
-          safeSumAgg(payrollsQ, { val: sum("netPay") }),
-          safeSumAgg(newLoansQ, { val: sum("amount") }),
-          safeSumAgg(oldLoansQ, { val: sum("approved") }),
-          safeSumAgg(oldCreditsCashQ, { val: sum("amount") }),
-          safeSumAgg(cashPaymentsVisaQ, { val: sum("amount") }),
-          safeSumAgg(cashPaymentsBankTransferQ, { val: sum("amount") }),
-          safeSumAgg(creditPaymentsVisaQ, { val: sum("amount") }),
-          safeSumAgg(creditPaymentsBankTransferQ, { val: sum("amount") }),
-          safeSumAgg(depositsToBankQ, { val: sum("amount") }),
-          safeSumAgg(depositsFromBankQ, { val: sum("amount") }),
-          safeSumAgg(cashPaymentsVisaQ, { val: sum("tax") }),
-          safeSumAgg(cashPaymentsBankTransferQ, { val: sum("tax") }),
-          safeSumAgg(cashPaymentsQ, { val: sum("tax") }),
-          safeSumAgg(cashPaymentsBankQ, { val: sum("amount") }),
-          safeSumAgg(creditPaymentsBankQ, { val: sum("amount") }),
-          safeSumAgg(cashPaymentsBankQ, { val: sum("tax") })
+          safeSumAgg(salesQ, { cash: sum("cash"), overShort: sum("overShort"), visa: sum("visa") }, "sales"),
+          safeSumAgg(cashPaymentsQ, { val: sum("amount") }, "cash_payments"),
+          safeSumAgg(depositsToQ, { val: sum("amount") }, "deposits_to_safe"),
+          safeSumAgg(depositsFromQ, { val: sum("amount") }, "deposits_from_safe"),
+          safeSumAgg(payrollsQ, { val: sum("netPay") }, "payroll_lines"),
+          safeSumAgg(newLoansQ, { val: sum("amount") }, "adjustments_loans"),
+          safeSumAgg(oldLoansQ, { val: sum("approved") }, "loans"),
+          safeSumAgg(oldCreditsCashQ, { val: sum("amount") }, "credit_payments_cash"),
+          safeSumAgg(cashPaymentsVisaQ, { val: sum("amount") }, "cash_payments_visa"),
+          safeSumAgg(cashPaymentsBankTransferQ, { val: sum("amount") }, "cash_payments_bank_transfer"),
+          safeSumAgg(creditPaymentsVisaQ, { val: sum("amount") }, "credit_payments_visa"),
+          safeSumAgg(creditPaymentsBankTransferQ, { val: sum("amount") }, "credit_payments_bank_transfer"),
+          safeSumAgg(depositsToBankQ, { val: sum("amount") }, "deposits_to_bank"),
+          safeSumAgg(depositsFromBankQ, { val: sum("amount") }, "deposits_from_bank"),
+          safeSumAgg(cashPaymentsVisaQ, { val: sum("tax") }, "cash_payments_visa_tax"),
+          safeSumAgg(cashPaymentsBankTransferQ, { val: sum("tax") }, "cash_payments_bank_transfer_tax"),
+          safeSumAgg(cashPaymentsQ, { val: sum("tax") }, "cash_payments_tax"),
+          safeSumAgg(cashPaymentsBankQ, { val: sum("amount") }, "cash_payments_bank"),
+          safeSumAgg(creditPaymentsBankQ, { val: sum("amount") }, "credit_payments_bank"),
+          safeSumAgg(cashPaymentsBankQ, { val: sum("tax") }, "cash_payments_bank_tax")
         ]);
 
         if (collectedUrls.size > 0) {
