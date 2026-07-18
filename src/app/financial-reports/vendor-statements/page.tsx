@@ -37,76 +37,108 @@ export default function VendorStatementsPage() {
   const fetchReceipts = async () => {
     setLoading(true);
     try {
-      // Build date range for selected month (reads only that month's docs)
-      const start = selectedMonth + "-01";
-      const end = selectedMonth + "-31";
+      const [creditsSnap, cashSnap, creditPaymentsSnap] = await Promise.all([
+        getDocs(collection(db, "credits")),
+        getDocs(collection(db, "cash_payments")),
+        getDocs(collection(db, "credit_payments"))
+      ]);
 
-      // 1. Fetch Cash Payments for the selected month only
-      const cashQ = query(
-        collection(db, "cash_payments"),
-        where("date", ">=", start),
-        where("date", "<=", end)
-      );
-      const cashSnap = await getDocs(cashQ);
-      const cashData = cashSnap.docs.map(doc => {
-        const d = doc.data();
-        if (!d.companyName) return null;
-        return {
-          id: doc.id,
-          companyName: d.companyName,
-          receiptDate: d.date || new Date().toISOString().substring(0, 10),
-          poNumber: d.poNumber || d.invoiceNumber || "",
-          price: Number(d.total || 0),
-          status: "Paid",
-          paymentDate: d.date || null
-        };
-      }).filter(Boolean);
+      const normalizeName = (name: string) => name ? name.toLowerCase().replace(/[-_.\s]/g, "") : "";
+      
+      const companyDisplayNames: Record<string, string> = {}; 
+      const creditIdToNormCompany: Record<string, string> = {};
 
-      // 2. Fetch Credits for the selected month only
-      const creditQ = query(
-        collection(db, "credits"),
-        where("collectionDate", ">=", start),
-        where("collectionDate", "<=", end)
-      );
-      const creditSnap = await getDocs(creditQ);
-      const creditData = creditSnap.docs.map(doc => {
+      const allData: any[] = [];
+
+      // 1. Process Credits (Invoices)
+      creditsSnap.docs.forEach(doc => {
         const d = doc.data();
-        if (!d.companyName) return null;
-        
-        // Removed filter for paid only to include pending credits
-        
-        let rDate = d.date || d.collectionDate;
-        if (!rDate && d.createdAt && typeof d.createdAt.toDate === 'function') {
-           rDate = d.createdAt.toDate().toISOString().substring(0, 10);
+        if (!d.companyName) return;
+
+        const norm = normalizeName(d.companyName);
+        if (!companyDisplayNames[norm]) companyDisplayNames[norm] = d.companyName;
+        creditIdToNormCompany[doc.id] = norm;
+
+        let rDate = d.createdAt && typeof d.createdAt.toDate === 'function' 
+          ? d.createdAt.toDate().toISOString().substring(0, 10) 
+          : d.date || d.collectionDate || "";
+
+        if (typeof d.createdAt === 'string' && !rDate) {
+          rDate = d.createdAt.substring(0, 10);
         }
-        
-        const isPaid = (d.status === "paid" || d.status === "Paid");
-        return {
+
+        allData.push({
           id: doc.id,
-          companyName: d.companyName,
+          normalizedCompany: norm,
+          originalCompany: companyDisplayNames[norm],
           receiptDate: rDate || new Date().toISOString().substring(0, 10),
-          poNumber: d.poNumber || d.invoiceNumber || "",
-          price: Number(d.amountDue || d.total || 0),
-          status: isPaid ? "Paid" : "Credit - For us",
-          paymentDate: d.paidAt ? d.paidAt.substring(0, 10) : null
-        };
-      }).filter(Boolean);
+          poNumber: d.poNumber || d.invoiceNumber || "-",
+          price: Number(d.amountDue || d.totalAmount || d.total || d.amount || 0),
+          status: "Invoice",
+          source: "credits"
+        });
+      });
 
-      const data = [...cashData, ...creditData] as any[];
-      
-      // Sort by date ascending for the statement
-      data.sort((a: any, b: any) => a.receiptDate.localeCompare(b.receiptDate));
-      
-      setAllReceipts(data);
+      // 2. Process Cash Payments
+      cashSnap.docs.forEach(doc => {
+        const d = doc.data();
+        if (!d.companyName) return;
 
-      const companies = Array.from(new Set(data.map((d: any) => d.companyName).filter(Boolean)));
-      setUniqueCompanies(companies as string[]);
+        const norm = normalizeName(d.companyName);
+        if (!companyDisplayNames[norm]) companyDisplayNames[norm] = d.companyName;
+
+        let rDate = d.date || (d.createdAt && typeof d.createdAt.toDate === 'function' ? d.createdAt.toDate().toISOString().substring(0, 10) : "");
+        if (typeof d.createdAt === 'string' && !rDate) rDate = d.createdAt.substring(0, 10);
+
+        allData.push({
+          id: doc.id,
+          normalizedCompany: norm,
+          originalCompany: companyDisplayNames[norm],
+          receiptDate: rDate || new Date().toISOString().substring(0, 10),
+          poNumber: d.poNumber || d.invoiceNumber || "Cash Payment",
+          price: Number(d.amount || d.total || 0),
+          status: "Payment",
+          source: "cash_payments"
+        });
+      });
+
+      // 3. Process Credit Payments
+      creditPaymentsSnap.docs.forEach(doc => {
+        const d = doc.data();
+        if (!d.creditId) return;
+
+        const norm = creditIdToNormCompany[d.creditId];
+        if (!norm) return; // Cannot link payment to a vendor without parent credit
+
+        let rDate = d.date || (d.createdAt && typeof d.createdAt.toDate === 'function' ? d.createdAt.toDate().toISOString().substring(0, 10) : "");
+        if (typeof d.createdAt === 'string' && !rDate) rDate = d.createdAt.substring(0, 10);
+
+        allData.push({
+          id: doc.id,
+          normalizedCompany: norm,
+          originalCompany: companyDisplayNames[norm],
+          receiptDate: rDate || new Date().toISOString().substring(0, 10),
+          poNumber: `Pmt ref: ${d.creditId.substring(0, 6)}`,
+          price: Number(d.amount || 0),
+          status: "Payment",
+          source: "credit_payments"
+        });
+      });
+
+      // Sort globally by date ascending
+      allData.sort((a, b) => a.receiptDate.localeCompare(b.receiptDate));
+      
+      setAllReceipts(allData);
+
+      // Unique companies sorted alphabetically
+      const companies = Object.values(companyDisplayNames).sort((a, b) => a.localeCompare(b));
+      setUniqueCompanies(companies);
       
       if (companies.length > 0 && !selectedCompany) {
-        setSelectedCompany(companies[0] as string);
+         setSelectedCompany(companies[0]);
       }
     } catch (error) {
-      console.error("Error fetching receipts from unified collections:", error);
+      console.error("Error fetching vendor records:", error);
     } finally {
       setLoading(false);
     }
@@ -117,8 +149,11 @@ export default function VendorStatementsPage() {
       setFilteredReceipts([]);
       return;
     }
+    const normalizeName = (name: string) => name ? name.toLowerCase().replace(/[-_.\s]/g, "") : "";
+    const selectedNorm = normalizeName(selectedCompany);
+
     const filtered = allReceipts.filter(r => 
-      r.companyName === selectedCompany && 
+      r.normalizedCompany === selectedNorm && 
       r.receiptDate && r.receiptDate.startsWith(selectedMonth)
     );
     setFilteredReceipts(filtered);
@@ -132,9 +167,9 @@ export default function VendorStatementsPage() {
     return `EGP ${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
-  const totalPurchased = filteredReceipts.reduce((sum, r) => sum + Number(r.price), 0);
-  const totalPaid = filteredReceipts.filter(r => r.status === "Paid").reduce((sum, r) => sum + Number(r.price), 0);
-  const totalCredit = filteredReceipts.filter(r => r.status === "Credit" || r.status === "Credit - For us").reduce((sum, r) => sum + Number(r.price), 0);
+  const totalPurchased = filteredReceipts.filter(r => r.status === "Invoice").reduce((sum, r) => sum + r.price, 0);
+  const totalPaid = filteredReceipts.filter(r => r.status === "Payment").reduce((sum, r) => sum + r.price, 0);
+  const totalCredit = totalPurchased - totalPaid;
 
   const [yearStr, monthStr] = selectedMonth.split('-');
   const monthName = new Date(Number(yearStr), Number(monthStr) - 1).toLocaleString('en-US', { month: 'long' });
@@ -142,9 +177,9 @@ export default function VendorStatementsPage() {
   const generateQRData = () => {
     let text = `Vendor: ${selectedCompany}\nPeriod: ${monthName} ${yearStr}\n`;
     text += `Total Invoiced: EGP ${totalPurchased}\nTotal Paid: EGP ${totalPaid}\nBalance Due: EGP ${totalCredit}\n\n`;
-    text += `--- Invoices ---\n`;
+    text += `--- Ledger ---\n`;
     filteredReceipts.forEach(r => {
-      text += `${r.receiptDate} | PO: ${r.poNumber || "N/A"} | ${r.status} | EGP ${r.price}\n`;
+      text += `${r.receiptDate} | ${r.poNumber || "N/A"} | ${r.status} | EGP ${r.price}\n`;
     });
     return text;
   };
@@ -264,17 +299,14 @@ export default function VendorStatementsPage() {
                         {r.poNumber || "-"}
                       </td>
                       <td className="py-4 px-2">
-                        {r.status === "Paid" ? (
-                          <div>
-                            <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-1 rounded-md">PAID</span>
-                            {r.paymentDate && <div className="text-[10px] text-slate-500 mt-1 font-semibold">on {r.paymentDate}</div>}
-                          </div>
+                        {r.status === "Payment" ? (
+                          <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-1 rounded-md uppercase">PAYMENT</span>
                         ) : (
-                          <span className="text-xs font-bold text-amber-700 bg-amber-100 px-2 py-1 rounded-md uppercase">{r.status}</span>
+                          <span className="text-xs font-bold text-amber-700 bg-amber-100 px-2 py-1 rounded-md uppercase">INVOICE</span>
                         )}
                       </td>
-                      <td className="py-4 px-2 text-sm font-black text-slate-900 text-right">
-                        {formatCurrency(Number(r.price))}
+                      <td className={`py-4 px-2 text-sm font-black text-right ${r.status === 'Payment' ? 'text-emerald-600' : 'text-slate-900'}`}>
+                        {r.status === "Payment" ? "-" : ""}{formatCurrency(Number(r.price))}
                       </td>
                     </tr>
                   ))}
