@@ -35,10 +35,57 @@ export default function ProductLookupPage() {
   useEffect(() => {
     const fetchAllProducts = async () => {
       try {
-        const qProducts = query(collection(productsDb, "products"), limit(200));
+        const qProducts = query(collection(productsDb, "products"), limit(300));
         const snap = await getDocs(qProducts);
-        const products = snap.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
-        setAllProducts(products);
+        const productsMap = new Map();
+        snap.docs.forEach(doc => {
+           const data = doc.data();
+           productsMap.set(data.barcode || doc.id, { id: doc.id, ...data });
+        });
+
+        // Also fetch from db.expiries to flesh out the list
+        const snapExpiries = await getDocs(query(collection(db, "expiries"), limit(100)));
+        snapExpiries.docs.forEach(doc => {
+           const data = doc.data();
+           if (data.barcode && !productsMap.has(data.barcode)) {
+               productsMap.set(data.barcode, {
+                   id: data.barcode, barcode: data.barcode, 
+                   description: data.itemName || "Unknown Expiry", 
+                   itemName: data.itemName, supplier: data.supplier,
+                   isPhantom: true
+               });
+           }
+        });
+
+        // Also from supplier_returns
+        const snapReturns = await getDocs(query(collection(db, "supplier_returns"), limit(100)));
+        snapReturns.docs.forEach(doc => {
+           const data = doc.data();
+           if (data.barcode && !productsMap.has(data.barcode)) {
+               productsMap.set(data.barcode, {
+                   id: data.barcode, barcode: data.barcode, 
+                   description: data.itemName || "Unknown Return Item", 
+                   itemName: data.itemName, supplier: data.supplier,
+                   isPhantom: true
+               });
+           }
+        });
+
+        // Also from expired_items
+        const snapExpiredItems = await getDocs(query(collection(db, "expired_items"), limit(100)));
+        snapExpiredItems.docs.forEach(doc => {
+           const data = doc.data();
+           if (data.barcode && !productsMap.has(data.barcode)) {
+               productsMap.set(data.barcode, {
+                   id: data.barcode, barcode: data.barcode, 
+                   description: data.name || data.itemName || "Unknown Expired Item", 
+                   itemName: data.name || data.itemName,
+                   isPhantom: true
+               });
+           }
+        });
+
+        setAllProducts(Array.from(productsMap.values()));
       } catch (e) {
         console.error("Failed to fetch products", e);
       } finally {
@@ -96,8 +143,7 @@ export default function ProductLookupPage() {
         }
       }
 
-      setProductData(foundProduct || { notFound: true, searchTerm: term });
-      setDrawerOpen(true);
+      // We no longer setProductData here. We wait to see if we can construct a phantom product from history!
 
       // 3. Look up ALL expiries for this barcode (active and past)
       const searchBarcode = foundProduct?.barcode || term;
@@ -120,6 +166,23 @@ export default function ProductLookupPage() {
       const returnsSnap = await getDocs(returnsQuery);
       const matchingReturns = returnsSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
       setSupplierReturnsData(matchingReturns.sort((a: any, b: any) => (b.createdAt || "").localeCompare(a.createdAt || "")));
+
+      // If not found in central catalog, but we have history data, construct a Phantom Product!
+      if (!foundProduct && (matchingExpiries.length > 0 || matchingReturns.length > 0 || matchingExpiredItems.length > 0)) {
+         const name = matchingExpiries[0]?.itemName || matchingReturns[0]?.itemName || matchingExpiredItems[0]?.name || "Unknown Item";
+         const supplier = matchingReturns[0]?.supplier || matchingExpiries[0]?.supplier || "Unknown Supplier";
+         foundProduct = {
+             id: searchBarcode,
+             barcode: searchBarcode,
+             description: name,
+             itemName: name,
+             supplier: supplier,
+             isPhantom: true
+         };
+      }
+
+      setProductData(foundProduct || { notFound: true, searchTerm: term });
+      setDrawerOpen(true);
 
     } catch (err: any) {
       console.error("Lookup failed:", err);
@@ -332,7 +395,12 @@ export default function ProductLookupPage() {
                         <div className="flex justify-between items-start mb-6">
                           <div>
                             <p className="text-xs text-slate-500 font-bold uppercase mb-1">Name</p>
-                            <h3 className="text-2xl font-black text-slate-900 dark:text-white leading-tight">{productData.description || productData.name || productData.itemName}</h3>
+                            <h3 className="text-2xl font-black text-slate-900 dark:text-white leading-tight flex items-center gap-2">
+                              {productData.description || productData.name || productData.itemName}
+                              {productData.isPhantom && (
+                                <span className="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded-md font-bold uppercase tracking-wider">Unregistered</span>
+                              )}
+                            </h3>
                           </div>
                           <button onClick={() => { setEditFormData({ name: productData.description || productData.name || productData.itemName || "", supplier: productData.supplier || "", barcode: productData.barcode || productData.id }); setIsEditing(true); }} className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 p-2 rounded-lg font-bold hover:bg-slate-200 dark:hover:bg-slate-700"><Edit className="h-4 w-4" /></button>
                         </div>
