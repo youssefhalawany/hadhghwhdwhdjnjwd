@@ -45,11 +45,8 @@ const productsApp = getApps().find(a => a.name === "productsApp") || initializeA
 
 let productsDbLocal: Firestore;
 try {
-  productsDbLocal = initializeFirestore(productsApp, {
-    localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
-  });
+  productsDbLocal = getFirestore(productsApp);
 } catch (e) {
-  // Fallback if already initialized
   productsDbLocal = getFirestore(productsApp);
 }
 
