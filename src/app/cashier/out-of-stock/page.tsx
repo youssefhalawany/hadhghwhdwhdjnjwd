@@ -165,7 +165,7 @@ export default function OutOfStockPage() {
   if (showScanner) {
     return (
       <div className="fixed inset-0 z-50 bg-black">
-        <CameraScanner onScan={handleScan} onClose={() => setShowScanner(false)} title={isRTL ? "مسح الباركود للنواقص" : "Scan Out of Stock Barcode"} />
+        <CameraScanner onScan={handleScan} onClose={() => setShowScanner(false)} />
       </div>
     );
   }

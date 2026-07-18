@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import {
   Lock, User as UserIcon, ChevronDown, FileText, Shield,
   Calendar as CalendarIcon, UserCircle, Globe, LogOut,
-  Download, Bell, Fingerprint, ScanLine, ChevronRight,
+  Download, Bell, Fingerprint, ScanLine, ChevronRight, AlertTriangle,
   ClipboardList, Clock, CheckSquare, LayoutGrid, LayoutDashboard, FileBarChart2, Sparkles, BookOpen, Barcode, Pin, PinOff
 } from "lucide-react";
 import { CashierBottomNav } from "@/components/CashierBottomNav";
