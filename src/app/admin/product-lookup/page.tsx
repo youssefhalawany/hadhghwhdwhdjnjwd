@@ -13,6 +13,8 @@ export default function ProductLookupPage() {
   const [productData, setProductData] = useState<any | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [expiriesData, setExpiriesData] = useState<any[]>([]);
+  const [expiredItemsData, setExpiredItemsData] = useState<any[]>([]);
+  const [supplierReturnsData, setSupplierReturnsData] = useState<any[]>([]);
 
   // Editing States
   const [isEditing, setIsEditing] = useState(false);
@@ -52,6 +54,8 @@ export default function ProductLookupPage() {
     setLoading(true);
     setProductData(null);
     setExpiriesData([]);
+    setExpiredItemsData([]);
+    setSupplierReturnsData([]);
     setIsEditing(false);
 
     try {
@@ -103,8 +107,19 @@ export default function ProductLookupPage() {
       );
       const expiriesSnap = await getDocs(expiriesQuery);
       const matchingExpiries = expiriesSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
-      
       setExpiriesData(matchingExpiries.sort((a: any, b: any) => (a.expiryDate || "").localeCompare(b.expiryDate || "")));
+
+      // 4. Look up expired_items
+      const expiredItemsQuery = query(collection(db, "expired_items"), where("barcode", "==", searchBarcode));
+      const expiredItemsSnap = await getDocs(expiredItemsQuery);
+      const matchingExpiredItems = expiredItemsSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+      setExpiredItemsData(matchingExpiredItems.sort((a: any, b: any) => (b.createdAt || "").localeCompare(a.createdAt || "")));
+
+      // 5. Look up supplier_returns
+      const returnsQuery = query(collection(db, "supplier_returns"), where("barcode", "==", searchBarcode));
+      const returnsSnap = await getDocs(returnsQuery);
+      const matchingReturns = returnsSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+      setSupplierReturnsData(matchingReturns.sort((a: any, b: any) => (b.createdAt || "").localeCompare(a.createdAt || "")));
 
     } catch (err: any) {
       console.error("Lookup failed:", err);
@@ -328,7 +343,7 @@ export default function ProductLookupPage() {
                           </div>
                           <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
                             <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">Supplier</p>
-                            <p className="font-bold text-sm text-slate-800 dark:text-slate-200">{productData.supplier || "N/A"}</p>
+                            <p className="font-bold text-sm text-slate-800 dark:text-slate-200">{productData.supplier || productData.priceHistory?.[0]?.supplier || "N/A"}</p>
                           </div>
                           <div className="bg-emerald-50 dark:bg-emerald-900/10 p-4 rounded-xl border border-emerald-100 dark:border-emerald-800/30 col-span-2 md:col-span-1">
                             <p className="text-[10px] text-emerald-600 dark:text-emerald-500 font-bold uppercase mb-1">Catalog Price</p>
@@ -381,6 +396,56 @@ export default function ProductLookupPage() {
                                   </div>
                                 );
                               })}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Expired Items */}
+                        <div className="mt-8">
+                          <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <AlertTriangle className="h-4 w-4" /> Expired Items History
+                          </h4>
+                          {expiredItemsData.length === 0 ? (
+                            <p className="text-sm text-slate-500 font-bold">No expired items recorded.</p>
+                          ) : (
+                            <div className="space-y-3">
+                              {expiredItemsData.map((exp, idx) => (
+                                <div key={idx} className="p-4 rounded-xl border bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                                  <div>
+                                    <p className="font-mono text-sm text-slate-900 dark:text-white">{exp.date ? new Date(exp.date).toLocaleDateString() : 'Unknown Date'}</p>
+                                    <p className="text-xs font-semibold mt-1 opacity-70">By: {exp.createdBy || "System"} • {exp.storeId}</p>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="text-xl font-black text-red-600 dark:text-red-400">{exp.quantity}</p>
+                                    <p className="text-[10px] font-bold uppercase opacity-60">Qty</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Supplier Returns */}
+                        <div className="mt-8">
+                          <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <Package className="h-4 w-4" /> Supplier Returns History
+                          </h4>
+                          {supplierReturnsData.length === 0 ? (
+                            <p className="text-sm text-slate-500 font-bold">No supplier returns recorded.</p>
+                          ) : (
+                            <div className="space-y-3">
+                              {supplierReturnsData.map((ret, idx) => (
+                                <div key={idx} className="p-4 rounded-xl border bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                                  <div>
+                                    <p className="font-mono text-sm text-slate-900 dark:text-white">{ret.supplier || "Unknown Supplier"}</p>
+                                    <p className="text-xs font-semibold mt-1 opacity-70">Status: {ret.status} • {ret.branchId || ret.storeId}</p>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="text-xl font-black text-blue-600 dark:text-blue-400">{ret.quantity}</p>
+                                    <p className="text-[10px] font-bold uppercase opacity-60">Qty</p>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
                           )}
                         </div>
