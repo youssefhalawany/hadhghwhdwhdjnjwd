@@ -362,6 +362,15 @@ export default function CashierHubPage() {
               <Globe size={14} />
               {lang === "en" ? "AR" : "EN"}
             </button>
+            {!isInstalled && (
+              <button
+                onClick={() => { playPopSound(); handleInstallClick(); }}
+                style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 8, background: D.redDim, border: `1px solid ${D.redBorder}`, color: D.red, fontSize: 10, fontWeight: 800, cursor: "pointer", flexShrink: 0 }}
+              >
+                <Download size={14} />
+                {lang === "en" ? "Install" : "تنزيل"}
+              </button>
+            )}
             <div style={{ width: 28, height: 28, borderRadius: 8, background: D.red, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 14, color: "#fff", flexShrink: 0 }}>
               K
             </div>
@@ -478,6 +487,12 @@ export default function CashierHubPage() {
             <Globe size={14} />
             {lang === "en" ? "EN" : "AR"}
           </button>
+          {!isInstalled && (
+            <button onClick={() => { playPopSound(); handleInstallClick(); }} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 8, background: D.redDim, border: `1px solid ${D.redBorder}`, color: D.red, fontSize: 10, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
+              <Download size={14} />
+              {lang === "en" ? "Install App" : "تنزيل التطبيق"}
+            </button>
+          )}
         </div>
       </div>
 
