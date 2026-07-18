@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sun, Moon, Shield, Database, LayoutDashboard, FileText, Printer, ClipboardList, CheckCircle, Search, LogOut, User, Users, Menu, X, Bell, PackageX, Truck, CalendarDays, DollarSign, Activity, Wallet, Tag, Sparkles, Barcode, Briefcase, Clock } from "lucide-react";
+import { Sun, Moon, Shield, Database, LayoutDashboard, FileText, Printer, ClipboardList, CheckCircle, Search, LogOut, User, Users, Menu, X, Bell, PackageX, Truck, CalendarDays, DollarSign, Activity, Wallet, Tag, Sparkles, Barcode, Briefcase, Clock, PackageMinus } from "lucide-react";
 import { auth, messaging, dbService, db } from "@/lib/firebase";
 import { getToken } from "firebase/messaging";
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
@@ -318,6 +318,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
         { name: t("nav.financial_inputs"), href: "/financials/inputs", icon: Wallet },
         { name: t("nav.reports"), href: "/financial-reports", icon: FileText },
         { name: "Month Summary", href: "/financial-reports/month-summary", icon: CalendarDays },
+        { name: language === "ar" ? "سجل النواقص" : "Out of Stock", href: "/financials/out-of-stock", icon: PackageMinus },
         { name: t("nav.voids_returns"), href: "/voids/manager", icon: Shield },
         { name: t("nav.shift_audit"), href: "/shift-reports/manager", icon: Shield },
         { name: t("nav.margin_strategy"), href: "/dashboard/margin-calculator", icon: Activity }
