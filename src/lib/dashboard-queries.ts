@@ -27,11 +27,27 @@ export async function fetchDashboardData(branchId: string) {
     needsAttentionQuery = query(collection(db, 'shift_reports'), where('branchId', '==', branchId), orderBy('createdAt', 'desc'), limit(20));
   }
 
+  const collectedUrls = new Set<string>();
+
+  const safeGet = async (q: any, queryName: string) => {
+    try {
+      return await getDocs(q);
+    } catch (err: any) {
+      if (err.message?.includes("https://console.firebase.google.com")) {
+        const urlMatch = err.message.match(/(https:\/\/console\.firebase\.google\.com[^\s]*)/);
+        if (urlMatch) collectedUrls.add(urlMatch[0]);
+      } else {
+        console.error(`${queryName} Error:`, err);
+      }
+      return { docs: [] };
+    }
+  };
+
   const [shiftsSnap, voidsSnap, expiriesSnap, attentionSnap] = await Promise.all([
-    getDocs(shiftReportsQuery).catch(() => ({ docs: [] })),
-    getDocs(voidsQuery).catch(() => ({ docs: [] })),
-    getDocs(expiriesQuery).catch(() => ({ docs: [] })),
-    getDocs(needsAttentionQuery).catch(() => ({ docs: [] }))
+    safeGet(shiftReportsQuery, "Shift Reports"),
+    safeGet(voidsQuery, "Voids"),
+    safeGet(expiriesQuery, "Expiries"),
+    safeGet(needsAttentionQuery, "Needs Attention")
   ]);
 
   let totalSales = 0;
@@ -86,7 +102,7 @@ export async function fetchDashboardData(branchId: string) {
     weekQuery = query(collection(db, 'shift_reports'), where('date', '>=', sevenDaysAgoStr), where('branchId', '==', branchId));
   }
   
-  const weekSnap = await getDocs(weekQuery).catch(() => ({ docs: [] }));
+  const weekSnap = await safeGet(weekQuery, "7-Day Trend");
   
   const chartDataMap: Record<string, any> = {};
   for (let i = 6; i >= 0; i--) {
@@ -121,6 +137,7 @@ export async function fetchDashboardData(branchId: string) {
       expiringTomorrow
     },
     chartData,
-    needsAttention
+    needsAttention,
+    missingIndexes: Array.from(collectedUrls)
   };
 }

@@ -45,7 +45,12 @@ export default function FinancialInputsOverview() {
     const loadDashboard = async () => {
       try {
         const result = await fetchDashboardData(currentBranch);
-        if (active) setDashboardData(result);
+        if (active) {
+          setDashboardData(result);
+          if (result.missingIndexes && result.missingIndexes.length > 0) {
+            setMissingIndexes(prev => Array.from(new Set([...prev, ...result.missingIndexes])));
+          }
+        }
       } catch (e) {
         console.error("Dashboard fetch error", e);
       }
