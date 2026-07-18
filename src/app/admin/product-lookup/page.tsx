@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { db, productsDb } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import { collection, getDocs, query, where, getDoc, doc, setDoc, limit } from "firebase/firestore";
 import { Search, Package, Calendar, AlertTriangle, QrCode, Camera, X, CheckCircle, Edit, PlusCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -33,7 +33,7 @@ export default function ProductLookupPage() {
   useEffect(() => {
     const fetchAllProducts = async () => {
       try {
-        const qProducts = query(collection(productsDb, "products"), limit(200));
+        const qProducts = query(collection(db, "products"), limit(200));
         const snap = await getDocs(qProducts);
         const products = snap.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
         setAllProducts(products);
@@ -56,7 +56,7 @@ export default function ProductLookupPage() {
 
     try {
       // 1. First, try to look up by barcode directly in the central `products` collection.
-      const productRef = doc(productsDb, "products", term);
+      const productRef = doc(db, "products", term);
       const productSnap = await getDoc(productRef);
 
       let foundProduct = null;
@@ -72,10 +72,10 @@ export default function ProductLookupPage() {
 
         // 4 targeted queries costing a max of 40 reads instead of 80,000
         const queries = [
-          getDocs(query(collection(productsDb, "products"), where("description", ">=", termLower), where("description", "<=", termLower + '\uf8ff'), limit(10))),
-          getDocs(query(collection(productsDb, "products"), where("description", ">=", termUpper), where("description", "<=", termUpper + '\uf8ff'), limit(10))),
-          getDocs(query(collection(productsDb, "products"), where("description", ">=", termTitle), where("description", "<=", termTitle + '\uf8ff'), limit(10))),
-          getDocs(query(collection(productsDb, "products"), where("itemName", ">=", termTitle), where("itemName", "<=", termTitle + '\uf8ff'), limit(10)))
+          getDocs(query(collection(db, "products"), where("description", ">=", termLower), where("description", "<=", termLower + '\uf8ff'), limit(10))),
+          getDocs(query(collection(db, "products"), where("description", ">=", termUpper), where("description", "<=", termUpper + '\uf8ff'), limit(10))),
+          getDocs(query(collection(db, "products"), where("description", ">=", termTitle), where("description", "<=", termTitle + '\uf8ff'), limit(10))),
+          getDocs(query(collection(db, "products"), where("itemName", ">=", termTitle), where("itemName", "<=", termTitle + '\uf8ff'), limit(10)))
         ];
 
         const snaps = await Promise.all(queries);
@@ -123,7 +123,7 @@ export default function ProductLookupPage() {
     e.preventDefault();
     setSaveLoading(true);
     try {
-      const productRef = doc(productsDb, "products", editFormData.barcode);
+      const productRef = doc(db, "products", editFormData.barcode);
       await setDoc(productRef, {
         barcode: editFormData.barcode,
         description: editFormData.name,
