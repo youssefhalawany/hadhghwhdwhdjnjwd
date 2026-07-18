@@ -40,14 +40,16 @@ export function IdleScreensaver({ pendingTasksCount = 0 }: { pendingTasksCount?:
         const snap = await getDocs(q);
         const items = snap.docs.map(doc => {
           const d = doc.data();
-          const date = d.timestamp?.toDate ? d.timestamp.toDate() : new Date();
+          const date = new Date(d.timestamp || new Date());
           const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
           return `${timeStr} - ${d.action} by ${d.userName || 'System'}`;
         });
         if (items.length > 0) setTickerItems(items);
-        else setTickerItems(["System Online", "All systems nominal", "Monitoring active"]);
+        else setTickerItems(["System Online", "Waiting for activity...", "Monitoring active"]);
       } catch (e) {
-        setTickerItems(["System Online", "Monitoring active"]);
+        // Fallback or retry logic
+        console.error("Ticker fetch error", e);
+        setTickerItems(["System Online", "Monitoring active", "Connecting to live feed..."]);
       }
     };
     fetchTicker();
@@ -66,8 +68,8 @@ export function IdleScreensaver({ pendingTasksCount = 0 }: { pendingTasksCount?:
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    const chars = "01$EGP%ANH489ALAMEINOLA".split("");
-    const fontSize = 16;
+    const chars = ["A", "N", "H", "K"];
+    const fontSize = 24;
     const columns = canvas.width / fontSize;
     const drops: number[] = [];
     for (let x = 0; x < columns; x++) drops[x] = 1;
