@@ -3,9 +3,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { db, productsDb } from "@/lib/firebase";
 import { collection, getDocs, query, where, getDoc, doc, setDoc, limit } from "firebase/firestore";
-import { Search, Package, Calendar, AlertTriangle, QrCode, Camera, X, CheckCircle, Edit, PlusCircle } from "lucide-react";
+import { Search, Package, Calendar, AlertTriangle, QrCode, Camera, X, CheckCircle, Edit, PlusCircle, DollarSign, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CameraScanner } from "@/components/ui/CameraScanner";
+import { useDebounce } from "use-debounce";
 
 export default function ProductLookupPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -31,69 +32,125 @@ export default function ProductLookupPage() {
   // All Products State
   const [allProducts, setAllProducts] = useState<any[]>([]);
   const [fetchingProducts, setFetchingProducts] = useState(true);
+  const [debouncedSearch] = useDebounce(searchTerm, 500);
 
   useEffect(() => {
-    const fetchAllProducts = async () => {
+    const fetchSearchProducts = async () => {
+      setFetchingProducts(true);
       try {
-        const qProducts = query(collection(productsDb, "products"), limit(300));
-        const snap = await getDocs(qProducts);
+        const term = debouncedSearch.trim();
         const productsMap = new Map();
-        snap.docs.forEach(doc => {
-           const data = doc.data();
-           productsMap.set(data.barcode || doc.id, { id: doc.id, ...data });
-        });
+        
+        if (!term) {
+           // If no term, just fetch random 100
+           const qProducts = query(collection(productsDb, "products"), limit(100));
+           const snap = await getDocs(qProducts);
+           snap.docs.forEach(doc => {
+              const data = doc.data();
+              productsMap.set(data.barcode || doc.id, { id: doc.id, ...data });
+           });
+           
+           // Also fetch some expiries to show
+           const snapExpiries = await getDocs(query(collection(db, "expiries"), limit(50)));
+           snapExpiries.docs.forEach(doc => {
+              const data = doc.data();
+              if (data.barcode && !productsMap.has(data.barcode)) {
+                 productsMap.set(data.barcode, {
+                     id: data.barcode, barcode: data.barcode, 
+                     description: data.itemName || "Unknown Expiry", 
+                     itemName: data.itemName, supplier: data.supplier,
+                     isPhantom: true,
+                     expiryDate: data.expiryDate
+                 });
+              } else if (data.barcode && productsMap.has(data.barcode)) {
+                 const existing = productsMap.get(data.barcode);
+                 if (!existing.expiryDate || new Date(data.expiryDate) < new Date(existing.expiryDate)) {
+                    existing.expiryDate = data.expiryDate;
+                 }
+              }
+           });
+           
+           setAllProducts(Array.from(productsMap.values()));
+           setFetchingProducts(false);
+           return;
+        }
+        
+        // Search by prefix
+        const termLower = term.toLowerCase();
+        const termUpper = term.toUpperCase();
+        const termTitle = term.charAt(0).toUpperCase() + term.slice(1).toLowerCase();
 
-        // Also fetch from db.expiries to flesh out the list
-        const snapExpiries = await getDocs(query(collection(db, "expiries"), limit(100)));
-        snapExpiries.docs.forEach(doc => {
-           const data = doc.data();
-           if (data.barcode && !productsMap.has(data.barcode)) {
-               productsMap.set(data.barcode, {
-                   id: data.barcode, barcode: data.barcode, 
-                   description: data.itemName || "Unknown Expiry", 
+        const queries = [
+          getDocs(query(collection(productsDb, "products"), where("description", ">=", termLower), where("description", "<=", termLower + '\uf8ff'), limit(20))),
+          getDocs(query(collection(productsDb, "products"), where("description", ">=", termUpper), where("description", "<=", termUpper + '\uf8ff'), limit(20))),
+          getDocs(query(collection(productsDb, "products"), where("description", ">=", termTitle), where("description", "<=", termTitle + '\uf8ff'), limit(20))),
+          getDocs(query(collection(productsDb, "products"), where("itemName", ">=", termTitle), where("itemName", "<=", termTitle + '\uf8ff'), limit(20))),
+          getDocs(query(collection(db, "expiries"), where("itemName", ">=", termTitle), where("itemName", "<=", termTitle + '\uf8ff'), limit(20))),
+        ];
+
+        const snaps = await Promise.all(queries);
+        
+        snaps.forEach((s, idx) => {
+          s.docs.forEach(doc => {
+            const data = doc.data();
+            const barcode = data.barcode || doc.id;
+            if (!productsMap.has(barcode)) {
+               productsMap.set(barcode, {
+                   id: barcode, barcode: barcode, 
+                   description: data.description || data.itemName || data.name || "Unknown Item", 
                    itemName: data.itemName, supplier: data.supplier,
-                   isPhantom: true
+                   price: data.currentPrice || data.price,
+                   expiryDate: data.expiryDate,
+                   isPhantom: idx === 4 // if from expiries
                });
-           }
+            } else {
+               const existing = productsMap.get(barcode);
+               if (data.expiryDate && (!existing.expiryDate || new Date(data.expiryDate) < new Date(existing.expiryDate))) {
+                  existing.expiryDate = data.expiryDate;
+               }
+               if (data.supplier && !existing.supplier) {
+                  existing.supplier = data.supplier;
+               }
+            }
+          });
         });
 
-        // Also from supplier_returns
-        const snapReturns = await getDocs(query(collection(db, "supplier_returns"), limit(100)));
-        snapReturns.docs.forEach(doc => {
-           const data = doc.data();
-           if (data.barcode && !productsMap.has(data.barcode)) {
-               productsMap.set(data.barcode, {
-                   id: data.barcode, barcode: data.barcode, 
-                   description: data.itemName || "Unknown Return Item", 
+        // Also try direct barcode match
+        const directSnap = await getDoc(doc(productsDb, "products", term));
+        if (directSnap.exists()) {
+           const data = directSnap.data();
+           productsMap.set(term, { id: term, barcode: term, ...data });
+        }
+        const directExpiries = await getDocs(query(collection(db, "expiries"), where("barcode", "==", term), limit(5)));
+        directExpiries.docs.forEach(doc => {
+            const data = doc.data();
+            const barcode = data.barcode || doc.id;
+            if (!productsMap.has(barcode)) {
+               productsMap.set(barcode, {
+                   id: barcode, barcode: barcode, 
+                   description: data.itemName || "Unknown Item", 
                    itemName: data.itemName, supplier: data.supplier,
+                   expiryDate: data.expiryDate,
                    isPhantom: true
                });
-           }
-        });
-
-        // Also from expired_items
-        const snapExpiredItems = await getDocs(query(collection(db, "expired_items"), limit(100)));
-        snapExpiredItems.docs.forEach(doc => {
-           const data = doc.data();
-           if (data.barcode && !productsMap.has(data.barcode)) {
-               productsMap.set(data.barcode, {
-                   id: data.barcode, barcode: data.barcode, 
-                   description: data.name || data.itemName || "Unknown Expired Item", 
-                   itemName: data.name || data.itemName,
-                   isPhantom: true
-               });
-           }
+            } else {
+               const existing = productsMap.get(barcode);
+               if (data.expiryDate && (!existing.expiryDate || new Date(data.expiryDate) < new Date(existing.expiryDate))) {
+                  existing.expiryDate = data.expiryDate;
+               }
+            }
         });
 
         setAllProducts(Array.from(productsMap.values()));
       } catch (e) {
-        console.error("Failed to fetch products", e);
+        console.error("Search failed", e);
       } finally {
         setFetchingProducts(false);
       }
     };
-    fetchAllProducts();
-  }, []);
+    
+    fetchSearchProducts();
+  }, [debouncedSearch]);
 
   const performLookup = async (rawTerm: string) => {
     const term = rawTerm.trim();
@@ -227,12 +284,7 @@ export default function ProductLookupPage() {
     setShowScanner(true);
   };
 
-  const filteredProducts = searchTerm
-    ? allProducts.filter(p => 
-        (p.description || p.name || p.itemName || "").toLowerCase().includes(searchTerm.toLowerCase()) || 
-        (p.barcode || p.id).includes(searchTerm)
-      )
-    : allProducts;
+  const filteredProducts = allProducts;
 
   return (
     <div className="space-y-6 relative overflow-hidden">
@@ -292,15 +344,29 @@ export default function ProductLookupPage() {
               onClick={() => performLookup(p.barcode || p.id)}
               className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 cursor-pointer hover:border-blue-400 dark:hover:border-blue-600 hover:shadow-lg transition-all group flex flex-col h-full"
             >
-              <div className="aspect-square bg-slate-50 dark:bg-slate-800 rounded-xl mb-4 flex items-center justify-center border border-slate-100 dark:border-slate-700 overflow-hidden relative">
-                {/* Placeholder Image */}
-                <Package className="w-12 h-12 text-slate-300 dark:text-slate-600 group-hover:scale-110 transition-transform duration-300" />
+              <div className="aspect-video bg-slate-50 dark:bg-slate-800 rounded-xl mb-4 flex items-center justify-center border border-slate-100 dark:border-slate-700 overflow-hidden relative">
+                <Package className="w-10 h-10 text-slate-300 dark:text-slate-600 group-hover:scale-110 transition-transform duration-300" />
+                {p.price && (
+                  <div className="absolute bottom-2 right-2 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-400 px-2 py-1 rounded-md text-[10px] font-black tracking-wider shadow-sm flex items-center gap-1">
+                    <DollarSign className="w-3 h-3" /> {p.price} EGP
+                  </div>
+                )}
               </div>
-              <h4 className="font-bold text-sm text-slate-900 dark:text-white line-clamp-2 leading-tight mb-auto group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+              <h4 className="font-bold text-sm text-slate-900 dark:text-white line-clamp-2 leading-tight mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                 {p.description || p.name || p.itemName || "Unnamed Product"}
               </h4>
+              <div className="mt-auto flex flex-col gap-1 text-[10px] text-slate-500 font-medium">
+                <div className="flex items-center gap-1">
+                  <Package className="w-3 h-3 text-slate-400" /> <span className="line-clamp-1">{p.supplier || "Unknown Supplier"}</span>
+                </div>
+                {p.expiryDate && (
+                  <div className="flex items-center gap-1 text-orange-600 dark:text-orange-400 font-bold">
+                    <Clock className="w-3 h-3" /> Expiry: {p.expiryDate}
+                  </div>
+                )}
+              </div>
               <div className="mt-3 text-xs text-slate-500 flex justify-between items-center border-t border-slate-100 dark:border-slate-800 pt-2">
-                <span className="font-mono text-[10px] truncate max-w-[80%]">{p.barcode || p.id}</span>
+                <span className="font-mono text-[10px] truncate max-w-[80%] opacity-60">#{p.barcode || p.id}</span>
               </div>
             </div>
           ))}
