@@ -29,10 +29,17 @@ export default function MonthSummaryPage() {
   const [searchTerm, setSearchTerm] = useState("");
 
   const getBranchIds = (): string[] => {
-    if (currentBranch === "alamein4") return ["eL-alamein-4"];
-    if (currentBranch === "ola") return ["ola-el-koronfol"];
-    if (currentBranch !== "all") return [currentBranch];
-    return [];
+    const branchIds: string[] = [];
+    if (currentBranch === "all") {
+      // No filter
+    } else if (currentBranch === "alamein4") {
+      branchIds.push("alamein4", "eL-alamein-4");
+    } else if (currentBranch === "ola") {
+      branchIds.push("ola", "ola-el-koronfol");
+    } else {
+      branchIds.push(currentBranch);
+    }
+    return branchIds;
   };
 
   const getBranchLabel = () => {

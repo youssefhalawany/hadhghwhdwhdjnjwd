@@ -16,15 +16,21 @@ export async function fetchDashboardData(branchId: string) {
   const tomorrowStr = getLocalDateString(tomorrow);
 
   let shiftReportsQuery = query(collection(db, 'shift_reports'), where('date', '==', todayStr));
-  let voidsQuery = query(collection(db, 'voids'), where('date', '==', todayStr));
+  let voidsQuery = query(collection(db, 'void_requests'), where('date', '==', todayStr));
   let expiriesQuery = query(collection(db, 'expiries'), where('expiryDate', '==', tomorrowStr));
   let needsAttentionQuery = query(collection(db, 'shift_reports'), orderBy('createdAt', 'desc'), limit(20));
 
   if (branchId !== 'all') {
-    shiftReportsQuery = query(collection(db, 'shift_reports'), where('date', '==', todayStr), where('branchId', '==', branchId));
-    voidsQuery = query(collection(db, 'voids'), where('date', '==', todayStr), where('storeId', '==', branchId));
-    expiriesQuery = query(collection(db, 'expiries'), where('expiryDate', '==', tomorrowStr), where('storeId', '==', branchId));
-    needsAttentionQuery = query(collection(db, 'shift_reports'), where('branchId', '==', branchId), orderBy('createdAt', 'desc'), limit(20));
+    const storeIdMap: Record<string, string> = {
+      "alamein4": "eL-alamein-4",
+      "ola": "ola-el-koronfol"
+    };
+    const dbStoreId = storeIdMap[branchId] || branchId;
+
+    shiftReportsQuery = query(collection(db, 'shift_reports'), where('date', '==', todayStr), where('branchId', 'in', [branchId, dbStoreId]));
+    voidsQuery = query(collection(db, 'void_requests'), where('date', '==', todayStr), where('storeId', 'in', [branchId, dbStoreId]));
+    expiriesQuery = query(collection(db, 'expiries'), where('expiryDate', '==', tomorrowStr), where('storeId', 'in', [branchId, dbStoreId]));
+    needsAttentionQuery = query(collection(db, 'shift_reports'), where('branchId', 'in', [branchId, dbStoreId]), orderBy('createdAt', 'desc'), limit(20));
   }
 
   const collectedUrls = new Set<string>();
@@ -99,7 +105,12 @@ export async function fetchDashboardData(branchId: string) {
 
   let weekQuery = query(collection(db, 'shift_reports'), where('date', '>=', sevenDaysAgoStr));
   if (branchId !== 'all') {
-    weekQuery = query(collection(db, 'shift_reports'), where('date', '>=', sevenDaysAgoStr), where('branchId', '==', branchId));
+    const storeIdMap: Record<string, string> = {
+      "alamein4": "eL-alamein-4",
+      "ola": "ola-el-koronfol"
+    };
+    const dbStoreId = storeIdMap[branchId] || branchId;
+    weekQuery = query(collection(db, 'shift_reports'), where('date', '>=', sevenDaysAgoStr), where('branchId', 'in', [branchId, dbStoreId]));
   }
   
   const weekSnap = await safeGet(weekQuery, "7-Day Trend");

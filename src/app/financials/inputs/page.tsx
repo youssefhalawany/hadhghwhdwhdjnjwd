@@ -88,9 +88,9 @@ export default function FinancialInputsOverview() {
         if (currentBranch === "all") {
           // No filter
         } else if (currentBranch === "alamein4") {
-          branchIds.push("eL-alamein-4");
+          branchIds.push("alamein4", "eL-alamein-4");
         } else if (currentBranch === "ola") {
-          branchIds.push("ola-el-koronfol");
+          branchIds.push("ola", "ola-el-koronfol");
         } else {
           branchIds.push(currentBranch);
         }
