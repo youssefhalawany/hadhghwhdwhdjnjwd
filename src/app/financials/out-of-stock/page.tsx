@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import Barcode from "react-barcode";
 
 export default function OutOfStockManagerPage() {
   const { language: lang } = useLanguage();
@@ -186,8 +187,16 @@ export default function OutOfStockManagerPage() {
                           <div className="text-sm font-bold text-slate-900 dark:text-white truncate">
                             {item.name || "Unknown Item"}
                           </div>
-                          <div className="text-[10px] text-slate-500 font-mono mt-0.5 flex items-center gap-1">
-                            <Hash size={10} /> {item.barcode}
+                          <div className="mt-2 bg-white p-2 rounded-lg inline-block">
+                            <Barcode 
+                              value={item.barcode} 
+                              width={1.5} 
+                              height={30} 
+                              fontSize={12}
+                              background="#ffffff"
+                              lineColor="#000000"
+                              margin={0}
+                            />
                           </div>
                         </div>
                         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg flex flex-col items-center justify-center min-w-[50px]">

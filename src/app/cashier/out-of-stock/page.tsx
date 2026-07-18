@@ -71,10 +71,10 @@ export default function OutOfStockPage() {
       const q = query(collection(productsDb, "products"), where("barcode", "==", code));
       const snap = await getDocs(q);
       
-      let foundName = "Unknown Product";
+      let foundName = code;
       if (!snap.empty) {
         const data = snap.docs[0].data();
-        foundName = data.description || data.name || data.itemName || "Unknown Product";
+        foundName = data.description || data.name || data.itemName || code;
       } else {
         // Try id if barcode field is missing
         const q2 = query(collection(productsDb, "products"));
@@ -82,7 +82,7 @@ export default function OutOfStockPage() {
         const match = allProducts.docs.find(d => d.id === code);
         if (match) {
            const data = match.data();
-           foundName = data.description || data.name || data.itemName || "Unknown Product";
+           foundName = data.description || data.name || data.itemName || code;
         } else {
            toast.warning(isRTL ? "المنتج غير مسجل، يمكنك الاستمرار." : "Product not found, you can continue.");
         }
