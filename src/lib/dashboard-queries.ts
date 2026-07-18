@@ -15,7 +15,7 @@ export async function fetchDashboardData(branchId: string) {
   tomorrow.setDate(tomorrow.getDate() + 1);
   const tomorrowStr = getLocalDateString(tomorrow);
 
-  let shiftReportsQuery = query(collection(db, 'shift_reports'), where('date', '==', todayStr));
+  let salesQuery = query(collection(db, 'sales'), where('date', '==', todayStr));
   let voidsQuery = query(collection(db, 'void_requests'), where('date', '==', todayStr));
   let expiriesQuery = query(collection(db, 'expiries'), where('expiryDate', '==', tomorrowStr));
   let needsAttentionQuery = query(collection(db, 'shift_reports'), orderBy('createdAt', 'desc'), limit(20));
@@ -27,8 +27,9 @@ export async function fetchDashboardData(branchId: string) {
     };
     const dbStoreId = storeIdMap[branchId] || branchId;
 
-    shiftReportsQuery = query(collection(db, 'shift_reports'), where('date', '==', todayStr), where('branchId', 'in', [branchId, dbStoreId]));
-    voidsQuery = query(collection(db, 'void_requests'), where('date', '==', todayStr), where('storeId', 'in', [branchId, dbStoreId]));
+    salesQuery = query(collection(db, 'sales'), where('date', '==', todayStr), where('storeId', 'in', [branchId, dbStoreId]));
+    // void_requests only has branchId
+    voidsQuery = query(collection(db, 'void_requests'), where('date', '==', todayStr), where('branchId', 'in', [branchId, dbStoreId]));
     expiriesQuery = query(collection(db, 'expiries'), where('expiryDate', '==', tomorrowStr), where('storeId', 'in', [branchId, dbStoreId]));
     needsAttentionQuery = query(collection(db, 'shift_reports'), where('branchId', 'in', [branchId, dbStoreId]), orderBy('createdAt', 'desc'), limit(20));
   }
@@ -49,20 +50,26 @@ export async function fetchDashboardData(branchId: string) {
     }
   };
 
-  const [shiftsSnap, voidsSnap, expiriesSnap, attentionSnap] = await Promise.all([
-    safeGet(shiftReportsQuery, "Shift Reports"),
+  const [salesSnap, voidsSnap, expiriesSnap, attentionSnap] = await Promise.all([
+    safeGet(salesQuery, "Sales"),
     safeGet(voidsQuery, "Voids"),
     safeGet(expiriesQuery, "Expiries"),
     safeGet(needsAttentionQuery, "Needs Attention")
   ]);
 
   let totalSales = 0;
-  let totalShortage = 0;
   
-  shiftsSnap.docs.forEach((doc: any) => {
+  salesSnap.docs.forEach((doc: any) => {
     const data = doc.data();
-    totalSales += Number(data.totalSales || 0);
-    totalShortage += Number(data.cashShortage || 0);
+    totalSales += Number(data.cash || 0) + Number(data.visa || 0);
+  });
+
+  let totalShortage = 0;
+  attentionSnap.docs.forEach((doc: any) => {
+    const data = doc.data();
+    if (data.date === todayStr) {
+      totalShortage += Number(data.cashShortage || 0);
+    }
   });
 
   let totalVoids = 0;
@@ -76,7 +83,7 @@ export async function fetchDashboardData(branchId: string) {
   const expiringTomorrow = expiriesSnap.docs.length;
 
   // Process Needs Attention
-  const needsAttention = [];
+  const needsAttention: any[] = [];
   attentionSnap.docs.forEach((doc: any) => {
     const data = doc.data();
     if (Number(data.cashShortage || 0) < -100) {
@@ -98,19 +105,19 @@ export async function fetchDashboardData(branchId: string) {
     });
   }
 
-  // Fetch 7-Day Revenue Trend
+  // Fetch 7-Day Revenue Trend from sales collection
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
   const sevenDaysAgoStr = getLocalDateString(sevenDaysAgo);
 
-  let weekQuery = query(collection(db, 'shift_reports'), where('date', '>=', sevenDaysAgoStr));
+  let weekQuery = query(collection(db, 'sales'), where('date', '>=', sevenDaysAgoStr));
   if (branchId !== 'all') {
     const storeIdMap: Record<string, string> = {
       "alamein4": "eL-alamein-4",
       "ola": "ola-el-koronfol"
     };
     const dbStoreId = storeIdMap[branchId] || branchId;
-    weekQuery = query(collection(db, 'shift_reports'), where('date', '>=', sevenDaysAgoStr), where('branchId', 'in', [branchId, dbStoreId]));
+    weekQuery = query(collection(db, 'sales'), where('date', '>=', sevenDaysAgoStr), where('storeId', 'in', [branchId, dbStoreId]));
   }
   
   const weekSnap = await safeGet(weekQuery, "7-Day Trend");
@@ -133,8 +140,9 @@ export async function fetchDashboardData(branchId: string) {
     const data = doc.data();
     if (chartDataMap[data.date]) {
       const bKey = (data.branchId || data.storeId || '').toLowerCase().includes('ola') ? 'ola' : 'alamein4';
-      chartDataMap[data.date][bKey] += Number(data.totalSales || 0);
-      chartDataMap[data.date].total += Number(data.totalSales || 0);
+      const saleAmount = Number(data.cash || 0) + Number(data.visa || 0);
+      chartDataMap[data.date][bKey] += saleAmount;
+      chartDataMap[data.date].total += saleAmount;
     }
   });
 
