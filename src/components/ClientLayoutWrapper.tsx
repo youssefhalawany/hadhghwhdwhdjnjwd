@@ -320,10 +320,10 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
         { name: "Month Summary", href: "/financial-reports/month-summary", icon: CalendarDays },
         { name: t("nav.voids_returns"), href: "/voids/manager", icon: Shield },
         { name: t("nav.shift_audit"), href: "/shift-reports/manager", icon: Shield },
-        { name: t("nav.margin_strategy"), href: "/dashboard/margin-calculator", icon: Activity }
+        { name: t("nav.margin_strategy"), href: "/margin-strategy", icon: Activity }
       ]
     },
-    { name: t("nav.returns"), href: "/dashboard/supplier-returns", icon: Truck },
+    { name: t("nav.returns"), href: "/returns", icon: Truck },
     {
       name: t("nav.Products"), icon: PackageX, children: [
         { name: t("nav.expiries"), href: "/products/expiries-audit", icon: ClipboardList },
@@ -694,7 +694,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                             </Link>
                           )}
                           {pendingReturnsCount > 0 && (
-                            <Link href="/dashboard/supplier-returns" onClick={() => setNotificationsOpen(false)} className="block p-3 border-b border-border hover:bg-muted/50 transition-colors">
+                            <Link href="/returns" onClick={() => setNotificationsOpen(false)} className="block p-3 border-b border-border hover:bg-muted/50 transition-colors">
                               <p className="text-sm font-semibold text-foreground">Supplier Returns</p>
                               <p className="text-xs text-muted-foreground">{pendingReturnsCount} returns pending settlement.</p>
                             </Link>
