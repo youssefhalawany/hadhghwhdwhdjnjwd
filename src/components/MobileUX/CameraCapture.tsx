@@ -68,7 +68,7 @@ export function CameraCapture({ onPhotoUploaded, label }: CameraCaptureProps) {
 
       {preview && (
         <div className="relative w-full h-40 rounded-2xl overflow-hidden border border-white/10 shadow-lg">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+          { }
           <img src={preview} alt="Proof" className="w-full h-full object-cover" />
           
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center">

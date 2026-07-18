@@ -17,7 +17,7 @@ export function IdleScreensaver({ pendingTasksCount = 0 }: { pendingTasksCount?:
     const resetTimer = () => {
       setIsIdle(false);
       clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => setIsIdle(true), 60000); // 1 minute
+      timeoutId = setTimeout(() => setIsIdle(true), 300000); // 5 minute
     };
     resetTimer();
     const events = ["mousemove", "keydown", "touchstart", "scroll", "click"];
@@ -32,7 +32,7 @@ export function IdleScreensaver({ pendingTasksCount = 0 }: { pendingTasksCount?:
   useEffect(() => {
     if (!isIdle) return;
     const interval = setInterval(() => setTime(new Date()), 1000);
-    
+
     // Fetch recent audit logs for the ticker
     const fetchTicker = async () => {
       try {
@@ -53,7 +53,7 @@ export function IdleScreensaver({ pendingTasksCount = 0 }: { pendingTasksCount?:
       }
     };
     fetchTicker();
-    
+
     return () => clearInterval(interval);
   }, [isIdle]);
 
@@ -77,11 +77,11 @@ export function IdleScreensaver({ pendingTasksCount = 0 }: { pendingTasksCount?:
     const draw = () => {
       ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
+
       // Circle K branding: Red rain
-      ctx.fillStyle = "rgba(220, 38, 38, 0.7)"; 
+      ctx.fillStyle = "rgba(220, 38, 38, 0.7)";
       ctx.font = fontSize + "px monospace";
-      
+
       for (let i = 0; i < drops.length; i++) {
         const text = chars[Math.floor(Math.random() * chars.length)];
         ctx.fillText(text, i * fontSize, drops[i] * fontSize);
@@ -89,7 +89,7 @@ export function IdleScreensaver({ pendingTasksCount = 0 }: { pendingTasksCount?:
         drops[i]++;
       }
     };
-    
+
     // Slow down the rain
     const interval = setInterval(draw, 70);
     return () => clearInterval(interval);
@@ -98,34 +98,34 @@ export function IdleScreensaver({ pendingTasksCount = 0 }: { pendingTasksCount?:
   // 4. DVD Bounce Logic
   const boxRef = useRef<HTMLDivElement>(null);
   const pos = useRef({ x: Math.random() * 200, y: Math.random() * 200, vx: 1.5, vy: 1.5 });
-  
+
   useEffect(() => {
     if (!isIdle || !boxRef.current) return;
     let animationFrameId: number;
-    
+
     const update = () => {
       const box = boxRef.current;
       if (!box) return;
-      
+
       let { x, y, vx, vy } = pos.current;
       const w = box.offsetWidth;
       const h = box.offsetHeight;
       const maxW = window.innerWidth;
       const maxH = window.innerHeight;
-      
+
       // We reserve bottom 40px for the ticker, so don't bounce below that
       if (x + w >= maxW || x <= 0) vx = -vx;
       if (y + h >= maxH - 50 || y <= 0) vy = -vy;
-      
+
       x += vx;
       y += vy;
-      
+
       pos.current = { x, y, vx, vy };
       box.style.transform = `translate(${x}px, ${y}px)`;
-      
+
       animationFrameId = requestAnimationFrame(update);
     };
-    
+
     animationFrameId = requestAnimationFrame(update);
     return () => cancelAnimationFrame(animationFrameId);
   }, [isIdle]);
@@ -134,8 +134,8 @@ export function IdleScreensaver({ pendingTasksCount = 0 }: { pendingTasksCount?:
   const getShiftTimeRemaining = () => {
     const now = time;
     const hours = now.getHours();
-    
-    let target = new Date(now);
+
+    const target = new Date(now);
     if (hours < 12) {
       // Current is AM shift. Target is 12:00 PM today
       target.setHours(12, 0, 0, 0);
@@ -144,12 +144,12 @@ export function IdleScreensaver({ pendingTasksCount = 0 }: { pendingTasksCount?:
       target.setDate(target.getDate() + 1);
       target.setHours(0, 0, 0, 0);
     }
-    
+
     const diffMs = target.getTime() - now.getTime();
     const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
     const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
     const diffSecs = Math.floor((diffMs % (1000 * 60)) / 1000);
-    
+
     return `${diffHrs}h ${diffMins}m ${diffSecs}s remaining in shift`;
   };
 
@@ -161,9 +161,8 @@ export function IdleScreensaver({ pendingTasksCount = 0 }: { pendingTasksCount?:
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 1 }}
-          className={`fixed inset-0 z-[9999] bg-black text-white overflow-hidden ${
-            pendingTasksCount > 0 ? "shadow-[inset_0_0_80px_rgba(239,68,68,0.5)] border-4 border-red-500/50" : ""
-          }`}
+          className={`fixed inset-0 z-[9999] bg-black text-white overflow-hidden ${pendingTasksCount > 0 ? "shadow-[inset_0_0_80px_rgba(239,68,68,0.5)] border-4 border-red-500/50" : ""
+            }`}
         >
           <style>{`
             @keyframes marquee {
@@ -180,7 +179,7 @@ export function IdleScreensaver({ pendingTasksCount = 0 }: { pendingTasksCount?:
 
           {/* Bouncing Box (DVD Style) */}
           <div ref={boxRef} className="absolute z-10 w-[400px] bg-black/60 backdrop-blur-md p-6 rounded-3xl border border-white/10 shadow-2xl flex flex-col items-center">
-            
+
             {/* Alert if pending tasks */}
             {pendingTasksCount > 0 && (
               <div className="absolute -top-4 -right-4 bg-red-600 text-white flex items-center gap-2 px-3 py-1.5 rounded-full font-bold shadow-lg shadow-red-500/50 animate-pulse border border-red-400">
@@ -195,15 +194,15 @@ export function IdleScreensaver({ pendingTasksCount = 0 }: { pendingTasksCount?:
               </div>
               <span className="text-3xl font-black tracking-widest text-white/90">ANH</span>
             </div>
-            
+
             <div className="text-[80px] leading-none font-black tracking-tighter font-mono bg-gradient-to-b from-white to-gray-500 bg-clip-text text-transparent drop-shadow-2xl">
               {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </div>
-            
+
             <div className="text-xl font-bold text-cyan-400 mt-2">
               {time.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}
             </div>
-            
+
             <div className="mt-6 text-yellow-400 font-mono font-bold text-sm bg-yellow-400/10 px-4 py-2 rounded-xl border border-yellow-400/20 shadow-[0_0_15px_rgba(250,204,21,0.2)]">
               ⏱️ {getShiftTimeRemaining()}
             </div>

@@ -193,7 +193,7 @@ export default function MonthSummaryPage() {
       }).sort((a: any, b: any) => new Date(b.createdAt?.toDate ? b.createdAt.toDate() : b.createdAt).getTime() - new Date(a.createdAt?.toDate ? a.createdAt.toDate() : a.createdAt).getTime());
 
       const rawTmt = mapDocs(tDocs).filter((c: any) => {
-        let dStr = c.invoiceDate || c.date || "";
+        const dStr = c.invoiceDate || c.date || "";
         return dStr >= startStr && dStr <= endStr;
       }).sort((a: any, b: any) => new Date(b.invoiceDate || b.date).getTime() - new Date(a.invoiceDate || a.date).getTime());
 

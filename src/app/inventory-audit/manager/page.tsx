@@ -164,7 +164,7 @@ export default function ManagerInventoryAudit() {
     });
 
     setReconciliationData(aggregated);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [scans, activeBatch?.status]);
 
   const handleStartBatch = async () => {

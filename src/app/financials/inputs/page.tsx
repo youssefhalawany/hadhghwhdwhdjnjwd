@@ -61,7 +61,7 @@ export default function FinancialInputsOverview() {
 
   useEffect(() => {
     // Listen to live activity feed
-    let q = query(collection(db, "notifications"), orderBy("createdAt", "desc"), limit(10));
+    const q = query(collection(db, "notifications"), orderBy("createdAt", "desc"), limit(10));
     const unsubscribe = onSnapshot(q, (snap) => {
       let notifs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
       if (currentBranch !== "all") {

@@ -1414,7 +1414,7 @@ export default function CreditsPage() {
                               <div className="mt-4">
                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Scanned PO Image</p>
                                 <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white flex justify-center p-2 shadow-sm">
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  { }
                                   <img 
                                     src={credit.poImageUrl} 
                                     alt="PO Document" 

@@ -241,7 +241,7 @@ export default function PrintChecklistPage() {
                       {item.text}
                       {photoUrl && (
                         <div className="mt-1 print:hidden">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          { }
                           <img src={photoUrl} alt="Proof" className="h-8 rounded cursor-pointer" onClick={() => window.open(photoUrl, "_blank")} />
                         </div>
                       )}
