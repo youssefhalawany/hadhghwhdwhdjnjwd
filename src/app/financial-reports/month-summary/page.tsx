@@ -121,17 +121,26 @@ export default function MonthSummaryPage() {
           prQ = query(prQ, where("createdAt", ">=", startTs), where("createdAt", "<=", endTs));
         }
 
+        const safeSumAggWrap = async (q: any, aggFields: any, name: string) => {
+          try {
+            return await safeSumAgg(q, aggFields);
+          } catch (err: any) {
+            console.error(`Permission Error on aggregation for ${name}:`, err);
+            return null;
+          }
+        };
+
         const [sD, cpD, dtD, dfD, prD, nlD, olD, occD, vpD, btD] = await Promise.all([
-          safeSumAgg(sQ, { cash: sum("cash"), overShort: sum("overShort"), visa: sum("visa") }),
-          safeSumAgg(cpQ, { val: sum("amount"), tax: sum("tax") }),
-          safeSumAgg(dtQ, { val: sum("amount") }),
-          safeSumAgg(dfQ, { val: sum("amount") }),
-          safeSumAgg(prQ, { val: sum("netPay") }),
-          safeSumAgg(nlQ, { val: sum("amount") }),
-          safeSumAgg(olQ, { val: sum("approved") }),
-          safeSumAgg(occQ, { val: sum("amount") }),
-          safeSumAgg(vpQ, { val: sum("amount") }),
-          safeSumAgg(btQ, { val: sum("amount") })
+          safeSumAggWrap(sQ, { cash: sum("cash"), overShort: sum("overShort"), visa: sum("visa") }, "sales"),
+          safeSumAggWrap(cpQ, { val: sum("amount"), tax: sum("tax") }, "cash_payments (cash)"),
+          safeSumAggWrap(dtQ, { val: sum("amount") }, "deposits (to)"),
+          safeSumAggWrap(dfQ, { val: sum("amount") }, "deposits (from)"),
+          safeSumAggWrap(prQ, { val: sum("netPay") }, "payroll_lines"),
+          safeSumAggWrap(nlQ, { val: sum("amount") }, "adjustments (loans)"),
+          safeSumAggWrap(olQ, { val: sum("approved") }, "loans"),
+          safeSumAggWrap(occQ, { val: sum("amount") }, "credit_payments (cash)"),
+          safeSumAggWrap(vpQ, { val: sum("amount") }, "cash_payments (visa)"),
+          safeSumAggWrap(btQ, { val: sum("amount") }, "cash_payments (bank)")
         ]);
 
         return {
@@ -173,8 +182,21 @@ export default function MonthSummaryPage() {
         docTmtQ = query(docTmtQ, where("storeId", "in", branchIds));
       }
 
+      const getDocsWrap = async (q: any, name: string) => {
+        try {
+          return await getDocs(q);
+        } catch (err: any) {
+          console.error(`Permission Error on getDocs for ${name}:`, err);
+          return { docs: [] };
+        }
+      };
+
       const [sDocs, pDocs, cDocs, dDocs, tDocs] = await Promise.all([
-        getDocs(docSalesQ), getDocs(docPaymentsQ), getDocs(docCreditsQ), getDocs(docDepositsQ), getDocs(docTmtQ)
+        getDocsWrap(docSalesQ, "sales (docs)"), 
+        getDocsWrap(docPaymentsQ, "payments (docs)"), 
+        getDocsWrap(docCreditsQ, "credits (docs)"), 
+        getDocsWrap(docDepositsQ, "deposits (docs)"), 
+        getDocsWrap(docTmtQ, "tmt_invoices (docs)")
       ]);
 
       const mapDocs = (snapshot: any) => snapshot.docs.map((d: any) => ({ id: d.id, ...d.data() }));
