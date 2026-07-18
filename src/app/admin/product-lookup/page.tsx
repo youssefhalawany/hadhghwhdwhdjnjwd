@@ -351,6 +351,35 @@ export default function ProductLookupPage() {
                           </div>
                         </div>
 
+                        </div>
+                      </div>
+                    )}
+
+                    {/* HISTORY SECTIONS - Rendered for all, even if not found in catalog */}
+                    {!isEditing && (
+                      <div className="space-y-8 pt-6 border-t border-slate-100 dark:border-slate-800">
+                        {/* Price History */}
+                        {!productData.notFound && productData.priceHistory && productData.priceHistory.length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                              <Calendar className="h-4 w-4" /> Price & Supplier History
+                            </h4>
+                            <div className="space-y-3">
+                              {productData.priceHistory.map((ph: any, idx: number) => (
+                                <div key={idx} className="p-4 rounded-xl border bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                                  <div>
+                                    <p className="font-bold text-sm text-slate-900 dark:text-white line-clamp-1">{ph.supplier || "Unknown Supplier"}</p>
+                                    <p className="text-xs font-semibold mt-1 opacity-70">Date: {ph.date}</p>
+                                  </div>
+                                  <div className="text-right whitespace-nowrap ml-4">
+                                    <p className="text-xl font-black text-emerald-600 dark:text-emerald-400">{ph.price} <span className="text-sm">EGP</span></p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
                         {/* Expiries */}
                         <div>
                           <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
@@ -401,7 +430,7 @@ export default function ProductLookupPage() {
                         </div>
 
                         {/* Expired Items */}
-                        <div className="mt-8">
+                        <div>
                           <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                             <AlertTriangle className="h-4 w-4" /> Expired Items History
                           </h4>
@@ -426,7 +455,7 @@ export default function ProductLookupPage() {
                         </div>
 
                         {/* Supplier Returns */}
-                        <div className="mt-8">
+                        <div>
                           <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                             <Package className="h-4 w-4" /> Supplier Returns History
                           </h4>
@@ -437,10 +466,10 @@ export default function ProductLookupPage() {
                               {supplierReturnsData.map((ret, idx) => (
                                 <div key={idx} className="p-4 rounded-xl border bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 flex justify-between items-center">
                                   <div>
-                                    <p className="font-mono text-sm text-slate-900 dark:text-white">{ret.supplier || "Unknown Supplier"}</p>
+                                    <p className="font-bold text-sm text-slate-900 dark:text-white line-clamp-1">{ret.supplier || "Unknown Supplier"}</p>
                                     <p className="text-xs font-semibold mt-1 opacity-70">Status: {ret.status} • {ret.branchId || ret.storeId}</p>
                                   </div>
-                                  <div className="text-right">
+                                  <div className="text-right ml-4">
                                     <p className="text-xl font-black text-blue-600 dark:text-blue-400">{ret.quantity}</p>
                                     <p className="text-[10px] font-bold uppercase opacity-60">Qty</p>
                                   </div>
