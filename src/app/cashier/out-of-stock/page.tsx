@@ -45,6 +45,7 @@ export default function OutOfStockPage() {
   
   const [submittedCode, setSubmittedCode] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [totalValue, setTotalValue] = useState("");
 
   useEffect(() => {
     const saved = localStorage.getItem("active_cashier_session");
@@ -134,6 +135,7 @@ export default function OutOfStockPage() {
         code,
         items,
         totalMissingQuantity: totalMissing,
+        totalValue: totalValue ? parseFloat(totalValue) : 0,
         cashierName: session?.name || "Unknown",
         branchId: session?.branchId || "alamein4",
         storeId: session?.storeId || session?.branchId || "alamein4",
@@ -312,17 +314,32 @@ export default function OutOfStockPage() {
       {/* Floating Action Area */}
       {items.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#0B1121] via-[#0B1121] to-transparent pt-12 pb-8">
-          <div className="bg-[#151E32] border border-slate-700 p-4 rounded-3xl shadow-2xl flex items-center justify-between">
-            <div>
-              <div className="text-xs text-slate-400 mb-1">{isRTL ? "إجمالي الأصناف" : "Total Items"}</div>
-              <div className="text-xl font-black text-white">{items.length}</div>
-            </div>
+          <div className="bg-[#151E32] border border-slate-700 p-4 rounded-3xl shadow-2xl flex flex-col gap-4">
             
-            <button 
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="bg-yellow-500 text-[#0B1121] font-black px-6 py-3 rounded-2xl flex items-center gap-2 hover:bg-yellow-400 transition-colors shadow-[0_0_20px_rgba(250,204,21,0.2)] disabled:opacity-50"
-            >
+            <div className="flex items-center gap-3 bg-[#0B1121] p-3 rounded-2xl border border-slate-800">
+              <div className="text-sm font-bold text-slate-400 whitespace-nowrap pl-2">
+                {isRTL ? "إجمالي القيمة (EGP):" : "Total Value (EGP):"}
+              </div>
+              <input 
+                type="number" 
+                placeholder="0.00"
+                value={totalValue}
+                onChange={e => setTotalValue(e.target.value)}
+                className="w-full bg-transparent text-white font-black text-xl outline-none"
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xs text-slate-400 mb-1">{isRTL ? "إجمالي الأصناف" : "Total Items"}</div>
+                <div className="text-xl font-black text-white">{items.length}</div>
+              </div>
+              
+              <button 
+                onClick={handleSubmit}
+                disabled={isSubmitting || !totalValue}
+                className="bg-yellow-500 text-[#0B1121] font-black px-6 py-3 rounded-2xl flex items-center gap-2 hover:bg-yellow-400 transition-colors shadow-[0_0_20px_rgba(250,204,21,0.2)] disabled:opacity-50"
+              >
               {isSubmitting ? (
                 <span className="animate-pulse">{isRTL ? "جاري الحفظ..." : "Saving..."}</span>
               ) : (

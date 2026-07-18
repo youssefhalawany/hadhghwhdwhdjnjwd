@@ -168,8 +168,15 @@ export default function OutOfStockManagerPage() {
                 </div>
 
                 <div className="space-y-3">
-                  <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-                    {isRTL ? "الأصناف الناقصة" : "Missing Items"} ({log.totalMissingQuantity || 0})
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      {isRTL ? "الأصناف الناقصة" : "Missing Items"} ({log.totalMissingQuantity || 0})
+                    </div>
+                    {log.totalValue !== undefined && (
+                      <div className="text-sm font-black text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-lg">
+                        EGP {log.totalValue.toFixed(2)}
+                      </div>
+                    )}
                   </div>
                   
                   <div className="max-h-48 overflow-y-auto pr-2 space-y-2">
