@@ -824,7 +824,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       </div>
 
       <PwaInstallPrompt />
-      <IdleScreensaver />
+      <IdleScreensaver pendingTasksCount={pendingShiftCount + pendingVoidCount + pendingExpiriesCount + pendingReturnsCount} />
     </div>
   );
 }
