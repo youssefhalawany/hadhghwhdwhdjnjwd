@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, getAggregateFromServer, sum, Timestamp } from "firebase/firestore";
 import { Banknote, CreditCard, CalendarDays, Loader2, FileText, TrendingUp, DollarSign, ArrowUpRight, ArrowDownRight, Printer, LayoutDashboard, Search, Package, ShieldAlert, X } from "lucide-react";
@@ -15,6 +17,7 @@ export default function MonthSummaryPage() {
   const { currentBranch } = useBranch();
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [loading, setLoading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "sales" | "payments" | "credits" | "deposits" | "tmt">("overview");
 
   // Data State
@@ -261,7 +264,147 @@ export default function MonthSummaryPage() {
     return Object.values(grouped).sort((a: any, b: any) => a.date.localeCompare(b.date));
   }, [salesData]);
 
-  const handlePrint = () => window.print();
+  const handleExportPDF = () => {
+    setIsExporting(true);
+    setTimeout(() => {
+      try {
+        const doc = new jsPDF('p', 'mm', 'a4');
+        const pageW = doc.internal.pageSize.width;
+        
+        // Add header
+        doc.setFontSize(20);
+        doc.text("Month Summary Report", pageW / 2, 20, { align: "center" });
+        doc.setFontSize(12);
+        const branchLabel = getBranchLabel().en;
+        doc.text(`Branch: ${branchLabel} | Month: ${selectedMonth}`, pageW / 2, 28, { align: "center" });
+
+        // Safe Math Summary
+        if (safeMath) {
+          doc.setFontSize(14);
+          doc.text("Safe Math Overview", 14, 40);
+          
+          autoTable(doc, {
+            startY: 45,
+            head: [['Metric', 'Amount (EGP)']],
+            body: [
+              ['Opening Safe Balance', safeMath.openingSafe.toLocaleString()],
+              ['Total Cash IN', (safeMath.period.salesCash + safeMath.period.depositsToSafe + (safeMath.period.overShort > 0 ? safeMath.period.overShort : 0)).toLocaleString()],
+              ['Total Cash OUT', (safeMath.period.totalCashPayments + safeMath.period.totalLoans + safeMath.period.totalPayrolls + safeMath.period.depositsFromSafe + safeMath.period.totalOldCreditsCash + (safeMath.period.overShort < 0 ? Math.abs(safeMath.period.overShort) : 0)).toLocaleString()],
+              ['Calculated Closing Safe Balance', safeMath.closingSafe.toLocaleString()]
+            ],
+            theme: 'grid',
+            headStyles: { fillColor: [79, 70, 229] }
+          });
+        }
+
+        // Sales Ledger
+        if (salesData.length > 0) {
+          doc.addPage();
+          doc.setFontSize(14);
+          doc.text("Sales Ledger", 14, 20);
+          autoTable(doc, {
+            startY: 25,
+            head: [['Date', 'Shift', 'Cashier', 'Cash', 'Visa', 'Over/Short', 'Total']],
+            body: salesData.map(s => [
+              s.date, 
+              s.shift, 
+              s.cashierName, 
+              s.cash?.toLocaleString(), 
+              s.visa?.toLocaleString(), 
+              s.overShort?.toLocaleString() || '0', 
+              (s.cash + s.visa).toLocaleString()
+            ]),
+            theme: 'striped',
+            headStyles: { fillColor: [79, 70, 229] }
+          });
+        }
+
+        // Payments Ledger
+        if (paymentsData.length > 0) {
+          doc.addPage();
+          doc.setFontSize(14);
+          doc.text("Payments Ledger", 14, 20);
+          autoTable(doc, {
+            startY: 25,
+            head: [['Date', 'Payee / Vendor', 'Category', 'Method', 'Amount']],
+            body: paymentsData.map(p => [
+              p.date, 
+              p.name, 
+              p.category, 
+              p.method.toUpperCase(), 
+              p.amount?.toLocaleString()
+            ]),
+            theme: 'striped',
+            headStyles: { fillColor: [79, 70, 229] }
+          });
+        }
+
+        // Deposits Ledger
+        if (depositsData.length > 0) {
+          doc.addPage();
+          doc.setFontSize(14);
+          doc.text("Deposits Ledger", 14, 20);
+          autoTable(doc, {
+            startY: 25,
+            head: [['Date', 'From', 'To', 'Amount']],
+            body: depositsData.map(d => [
+              d.date, 
+              d.from, 
+              d.to, 
+              d.amount?.toLocaleString()
+            ]),
+            theme: 'striped',
+            headStyles: { fillColor: [79, 70, 229] }
+          });
+        }
+
+        // Credits Ledger
+        if (creditsData.length > 0) {
+          doc.addPage();
+          doc.setFontSize(14);
+          doc.text("Credits Ledger", 14, 20);
+          autoTable(doc, {
+            startY: 25,
+            head: [['Date', 'Client', 'Total Amount', 'Paid', 'Remaining']],
+            body: creditsData.map(c => {
+              const d = c.createdAt?.toDate ? c.createdAt.toDate().toISOString().split("T")[0] : c.date || c.createdAt;
+              const r = (c.totalAmount || 0) - (c.paidAmount || 0);
+              return [d, c.clientName, c.totalAmount?.toLocaleString(), c.paidAmount?.toLocaleString(), r.toLocaleString()];
+            }),
+            theme: 'striped',
+            headStyles: { fillColor: [79, 70, 229] }
+          });
+        }
+
+        // TMT Invoices Ledger
+        if (tmtData.length > 0) {
+          doc.addPage();
+          doc.setFontSize(14);
+          doc.text("TMT Invoices Ledger", 14, 20);
+          autoTable(doc, {
+            startY: 25,
+            head: [['Invoice Date', 'Invoice #', 'Supplier', 'Total']],
+            body: tmtData.map(t => [
+              t.invoiceDate || t.date, 
+              `#${t.invoiceNumber}`, 
+              t.supplierName, 
+              t.invoiceTotal?.toLocaleString()
+            ]),
+            theme: 'striped',
+            headStyles: { fillColor: [79, 70, 229] }
+          });
+        }
+
+        doc.save(`Month_Summary_${selectedMonth}_${branchLabel}.pdf`);
+        toast.success("PDF exported successfully!");
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to generate PDF");
+      } finally {
+        setIsExporting(false);
+      }
+    }, 100);
+  };
 
   return (
     <PageTransition>
@@ -289,10 +432,12 @@ export default function MonthSummaryPage() {
                 className="px-4 py-2 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-indigo-500"
               />
               <button
-                onClick={handlePrint}
-                className="px-4 py-2 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-xl font-semibold shadow-sm hover:scale-105 transition-all flex items-center gap-2 text-sm"
+                onClick={handleExportPDF}
+                disabled={isExporting}
+                className="px-4 py-2 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-xl font-semibold shadow-sm hover:scale-105 transition-all flex items-center gap-2 text-sm disabled:opacity-50 disabled:hover:scale-100"
               >
-                <Printer className="h-4 w-4" /> Print
+                {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+                {isExporting ? "Exporting..." : "Export PDF"}
               </button>
             </div>
           </div>
