@@ -402,7 +402,8 @@ export default function MonthSummaryPage() {
 
                 <div className="p-6">
                   {/* OVERVIEW TAB */}
-                  {activeTab === "overview" && (
+                  <div className={activeTab === "overview" ? "block" : "hidden print:block print:break-inside-avoid print:mt-10"}>
+                    <h2 className="hidden print:block text-2xl font-black text-slate-900 border-b-2 border-slate-900 pb-2 mb-6">Safe Math Overview</h2>
                     <div className="space-y-6">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div>
@@ -430,10 +431,11 @@ export default function MonthSummaryPage() {
                         <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400">{safeMath.closingSafe.toLocaleString()} EGP</span>
                       </div>
                     </div>
-                  )}
+                  </div>
 
                   {/* SALES TAB */}
-                  {activeTab === "sales" && (
+                  <div className={activeTab === "sales" ? "block" : "hidden print:block print:break-inside-avoid print:mt-10"}>
+                    <h2 className="hidden print:block text-2xl font-black text-slate-900 border-b-2 border-slate-900 pb-2 mb-6">Sales Ledger</h2>
                     <div className="space-y-4">
                       <div className="flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-800 rounded-lg max-w-sm no-print">
                         <Search className="h-4 w-4 text-slate-400" />
@@ -469,10 +471,11 @@ export default function MonthSummaryPage() {
                         </table>
                       </div>
                     </div>
-                  )}
+                  </div>
 
                   {/* PAYMENTS TAB */}
-                  {activeTab === "payments" && (
+                  <div className={activeTab === "payments" ? "block" : "hidden print:block print:break-inside-avoid print:mt-10"}>
+                    <h2 className="hidden print:block text-2xl font-black text-slate-900 border-b-2 border-slate-900 pb-2 mb-6">Payments Ledger</h2>
                     <div className="space-y-4">
                       <div className="flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-800 rounded-lg max-w-sm no-print">
                         <Search className="h-4 w-4 text-slate-400" />
@@ -504,10 +507,11 @@ export default function MonthSummaryPage() {
                         </table>
                       </div>
                     </div>
-                  )}
+                  </div>
 
                   {/* DEPOSITS TAB */}
-                  {activeTab === "deposits" && (
+                  <div className={activeTab === "deposits" ? "block" : "hidden print:block print:break-inside-avoid print:mt-10"}>
+                    <h2 className="hidden print:block text-2xl font-black text-slate-900 border-b-2 border-slate-900 pb-2 mb-6">Deposits Ledger</h2>
                     <div className="space-y-4">
                       <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
                         <table className="w-full text-left text-sm whitespace-nowrap">
@@ -533,10 +537,11 @@ export default function MonthSummaryPage() {
                         </table>
                       </div>
                     </div>
-                  )}
+                  </div>
 
                   {/* CREDITS TAB */}
-                  {activeTab === "credits" && (
+                  <div className={activeTab === "credits" ? "block" : "hidden print:block print:break-inside-avoid print:mt-10"}>
+                    <h2 className="hidden print:block text-2xl font-black text-slate-900 border-b-2 border-slate-900 pb-2 mb-6">Credits Ledger</h2>
                     <div className="space-y-4">
                       <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
                         <table className="w-full text-left text-sm whitespace-nowrap">
@@ -568,10 +573,11 @@ export default function MonthSummaryPage() {
                         </table>
                       </div>
                     </div>
-                  )}
+                  </div>
 
                   {/* TMT INVOICES TAB */}
-                  {activeTab === "tmt" && (
+                  <div className={activeTab === "tmt" ? "block" : "hidden print:block print:break-inside-avoid print:mt-10"}>
+                    <h2 className="hidden print:block text-2xl font-black text-slate-900 border-b-2 border-slate-900 pb-2 mb-6">TMT Invoices Ledger</h2>
                     <div className="space-y-4">
                       <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
                         <table className="w-full text-left text-sm whitespace-nowrap">
@@ -597,7 +603,7 @@ export default function MonthSummaryPage() {
                         </table>
                       </div>
                     </div>
-                  )}
+                  </div>
                   
                 </div>
               </div>
