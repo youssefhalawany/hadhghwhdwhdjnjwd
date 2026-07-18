@@ -349,6 +349,7 @@ export default function OutOfStockPage() {
                 </>
               )}
             </button>
+            </div>
           </div>
         </div>
       )}
