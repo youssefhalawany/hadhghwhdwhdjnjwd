@@ -580,10 +580,8 @@ export default function PaymentsRedesignPage() {
       let bankTransferReceiptUrl = null;
 
       if (method === 'bank_transfer' && bankTransferFile) {
-        toast.loading("Uploading bank transfer receipt...", { id: "bank-upload" });
-        const fileRef = ref(storage, `bank_transfers/${Date.now()}_${bankTransferFile.name}`);
-        await uploadBytes(fileRef, bankTransferFile);
-        bankTransferReceiptUrl = await getDownloadURL(fileRef);
+        toast.loading("Processing bank transfer receipt...", { id: "bank-upload" });
+        bankTransferReceiptUrl = await compressImage(bankTransferFile, 800, 0.6);
         toast.dismiss("bank-upload");
       }
 
