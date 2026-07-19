@@ -230,6 +230,17 @@ export default function CashierVoidPage() {
             read: false,
             link: "/voids/manager",
           });
+
+          try {
+            fetch("/api/notifications/notify-master", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                title: "New Void/Return Request (Offline Sync)",
+                body: `Cashier: ${item.payload.data.cashierName || 'Unknown'}\nAmount: ${item.payload.data.amount} EGP`
+              })
+            }).catch(e => console.error("Notify error", e));
+          } catch (err) {}
           await removeFromOfflineQueue(item.id);
           remainingCount--;
         } catch (e) {

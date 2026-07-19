@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { db, productsDb } from "@/lib/firebase";
-import { collection, getDocs, doc, setDoc, query, where } from "firebase/firestore";
+import { collection, getDocs, doc, setDoc, query, where, addDoc, serverTimestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/context/LanguageContext";
 import { 
@@ -145,6 +145,31 @@ export default function OutOfStockPage() {
 
       await setDoc(doc(collection(db, "out_of_stock_logs"), code), payload);
       
+      try {
+        await addDoc(collection(db, "notifications"), {
+          type: "out_of_stock",
+          message: `${session?.name || "Unknown"} submitted a new Out of Stock Log`,
+          cashierName: session?.name || "Unknown",
+          storeId: session?.branchId || session?.storeId || "Unknown",
+          createdAt: serverTimestamp(),
+          read: false,
+          link: "/financials/out-of-stock",
+        });
+      } catch (notifyErr) {
+        console.error("Notification failed:", notifyErr);
+      }
+      
+      try {
+        fetch("/api/notifications/notify-master", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: "New Out of Stock Log",
+            body: `Cashier: ${session?.name || 'Unknown'}\nTotal Missing: ${totalMissing}`
+          })
+        }).catch(e => console.error("Notify error", e));
+      } catch (err) {}
+
       playSuccessSound();
       setSubmittedCode(code);
     } catch (e) {

@@ -5,7 +5,7 @@ import { db, messaging, dbService } from "@/lib/firebase";
 import { collection, query, orderBy, limit, getDocs } from "firebase/firestore";
 import { getToken } from "firebase/messaging";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Bell, FileText, Shield, Calendar, RefreshCw, LogOut, Activity, TrendingUp, Clock } from "lucide-react";
+import { ArrowLeft, Bell, FileText, Shield, Calendar, RefreshCw, LogOut, Activity, TrendingUp, Clock, AlertTriangle, Archive } from "lucide-react";
 
 // ── Design Tokens ────────────────────────────────────────────
 const D = {
@@ -73,8 +73,24 @@ export default function MasterCashierDashboard() {
       const expiriesSnap = await getDocs(expiriesQuery);
       const expiries = expiriesSnap.docs.map(d => ({ ...d.data(), id: d.id, _type: "expiry" }));
 
-      const all = [...reports, ...voids, ...expiries];
-      all.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      const cleaningQuery = query(collection(db, "cleaning_logs"), orderBy("timestamp", "desc"), limit(10));
+      const cleaningSnap = await getDocs(cleaningQuery);
+      const cleaning = cleaningSnap.docs.map(d => ({ ...d.data(), id: d.id, _type: "cleaning" }));
+
+      const outOfStockQuery = query(collection(db, "out_of_stock_logs"), orderBy("timestamp", "desc"), limit(10));
+      const outOfStockSnap = await getDocs(outOfStockQuery);
+      const outOfStock = outOfStockSnap.docs.map(d => ({ ...d.data(), id: d.id, _type: "out_of_stock" }));
+
+      const lostQuery = query(collection(db, "lost_and_found"), orderBy("timestamp", "desc"), limit(10));
+      const lostSnap = await getDocs(lostQuery);
+      const lostAndFound = lostSnap.docs.map(d => ({ ...d.data(), id: d.id, _type: "lost_and_found" }));
+
+      const all = [...reports, ...voids, ...expiries, ...cleaning, ...outOfStock, ...lostAndFound];
+      all.sort((a: any, b: any) => {
+        const dateA = a.createdAt || a.timestamp;
+        const dateB = b.createdAt || b.timestamp;
+        return new Date(dateB).getTime() - new Date(dateA).getTime();
+      });
       setFeed(all.slice(0, 30));
     } catch (e) {
       console.error(e);
@@ -355,7 +371,7 @@ export default function MasterCashierDashboard() {
                             {item.storeId || item.branchId || 'Unknown Store'}
                           </div>
                           <div style={{ fontSize: 10, color: D.textDim, fontWeight: 600, marginTop: 3, display: "flex", alignItems: "center", gap: 4 }}>
-                            <Clock size={10} /> {new Date(item.createdAt).toLocaleString()}
+                            <Clock size={10} /> {new Date(item.createdAt || item.timestamp).toLocaleString()}
                           </div>
                         </div>
                       </div>
@@ -379,6 +395,111 @@ export default function MasterCashierDashboard() {
                       <div style={{ marginTop: 12, padding: "12px 14px", background: D.surfaceHigh, borderRadius: 12, border: `1px solid ${D.border}`, display: "flex", flexDirection: "column", gap: 6 }}>
                         <div style={{ fontSize: 12, color: D.textSecondary, fontWeight: 600 }}><span style={{ color: D.textDim }}>Expiry Date: </span>{item.expiryDate || 'N/A'}</div>
                         <div style={{ fontSize: 12, color: D.textSecondary, fontWeight: 600 }}><span style={{ color: D.textDim }}>Logged By: </span>{item.loggedBy || 'Unknown'}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          if (item._type === "cleaning") {
+            return (
+              <div key={item.id} className="feed-card" onClick={() => setExpandedId(isExpanded ? null : item.id)} style={{ backgroundColor: D.surface, borderRadius: 20, border: `1px solid ${D.border}`, overflow: "hidden", cursor: "pointer" }}>
+                <div style={{ display: "flex" }}>
+                  <div style={{ width: 4, flexShrink: 0, background: `linear-gradient(to bottom, ${D.cyan}, ${D.blue})`, borderRadius: "20px 0 0 20px" }} />
+                  <div style={{ flex: 1, padding: "16px 16px 16px 14px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                      <div style={{ display: "flex", gap: 12 }}>
+                        <div style={{ width: 40, height: 40, borderRadius: 12, background: D.cyanDim, border: `1px solid ${D.cyanBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <Activity size={18} color={D.cyan} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 800, color: D.textPrimary }}>Cleaning: {item.areaNameEn || 'Area'}</div>
+                          <div style={{ fontSize: 11, color: D.textSecondary, fontWeight: 600, marginTop: 3 }}>
+                            {item.cashierName || 'Unknown'}
+                          </div>
+                          <div style={{ fontSize: 10, color: D.textDim, fontWeight: 600, marginTop: 3, display: "flex", alignItems: "center", gap: 4 }}>
+                            <Clock size={10} /> {new Date(item.timestamp).toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                      <span style={{ fontSize: 9, fontWeight: 800, padding: "4px 8px", borderRadius: 6, border: `1px solid ${D.cyanBorder}`, background: D.cyanDim, color: D.cyan, textTransform: "uppercase", letterSpacing: "0.05em", flexShrink: 0 }}>
+                        CLEANING
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          if (item._type === "out_of_stock") {
+            return (
+              <div key={item.id} className="feed-card" onClick={() => setExpandedId(isExpanded ? null : item.id)} style={{ backgroundColor: D.surface, borderRadius: 20, border: `1px solid ${D.border}`, overflow: "hidden", cursor: "pointer" }}>
+                <div style={{ display: "flex" }}>
+                  <div style={{ width: 4, flexShrink: 0, background: `linear-gradient(to bottom, ${D.amber}, ${D.red})`, borderRadius: "20px 0 0 20px" }} />
+                  <div style={{ flex: 1, padding: "16px 16px 16px 14px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                      <div style={{ display: "flex", gap: 12 }}>
+                        <div style={{ width: 40, height: 40, borderRadius: 12, background: D.amberDim, border: `1px solid ${D.amberBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <AlertTriangle size={18} color={D.amber} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 800, color: D.textPrimary }}>Out of Stock Log</div>
+                          <div style={{ fontSize: 11, color: D.textSecondary, fontWeight: 600, marginTop: 3 }}>
+                            {item.cashierName || 'Unknown'} · {item.storeId || 'Store'}
+                          </div>
+                          <div style={{ fontSize: 10, color: D.textDim, fontWeight: 600, marginTop: 3, display: "flex", alignItems: "center", gap: 4 }}>
+                            <Clock size={10} /> {new Date(item.timestamp).toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                      <span style={{ fontSize: 9, fontWeight: 800, padding: "4px 8px", borderRadius: 6, border: `1px solid ${D.amberBorder}`, background: D.amberDim, color: D.amber, textTransform: "uppercase", letterSpacing: "0.05em", flexShrink: 0 }}>
+                        OOS
+                      </span>
+                    </div>
+                    {isExpanded && (
+                      <div style={{ marginTop: 12, padding: "12px 14px", background: D.surfaceHigh, borderRadius: 12, border: `1px solid ${D.border}`, display: "flex", flexDirection: "column", gap: 6 }}>
+                        <div style={{ fontSize: 12, color: D.textSecondary, fontWeight: 600 }}><span style={{ color: D.textDim }}>Total Missing Qty: </span>{item.totalMissingQuantity}</div>
+                        <div style={{ fontSize: 12, color: D.textSecondary, fontWeight: 600 }}><span style={{ color: D.textDim }}>Total Value: </span>EGP {Number(item.totalValue || 0).toLocaleString()}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          if (item._type === "lost_and_found") {
+            return (
+              <div key={item.id} className="feed-card" onClick={() => setExpandedId(isExpanded ? null : item.id)} style={{ backgroundColor: D.surface, borderRadius: 20, border: `1px solid ${D.border}`, overflow: "hidden", cursor: "pointer" }}>
+                <div style={{ display: "flex" }}>
+                  <div style={{ width: 4, flexShrink: 0, background: `linear-gradient(to bottom, ${D.blue}, ${D.green})`, borderRadius: "20px 0 0 20px" }} />
+                  <div style={{ flex: 1, padding: "16px 16px 16px 14px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                      <div style={{ display: "flex", gap: 12 }}>
+                        <div style={{ width: 40, height: 40, borderRadius: 12, background: D.blueDim, border: `1px solid ${D.blueBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <Archive size={18} color={D.blue} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 800, color: D.textPrimary }}>Lost & Found</div>
+                          <div style={{ fontSize: 11, color: D.textSecondary, fontWeight: 600, marginTop: 3 }}>
+                            {item.cashierName || 'Unknown'} · {item.storeId || 'Store'}
+                          </div>
+                          <div style={{ fontSize: 10, color: D.textDim, fontWeight: 600, marginTop: 3, display: "flex", alignItems: "center", gap: 4 }}>
+                            <Clock size={10} /> {new Date(item.timestamp).toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                      <span style={{ fontSize: 9, fontWeight: 800, padding: "4px 8px", borderRadius: 6, border: `1px solid ${D.blueBorder}`, background: D.blueDim, color: D.blue, textTransform: "uppercase", letterSpacing: "0.05em", flexShrink: 0 }}>
+                        FOUND
+                      </span>
+                    </div>
+                    {isExpanded && (
+                      <div style={{ marginTop: 12, padding: "12px 14px", background: D.surfaceHigh, borderRadius: 12, border: `1px solid ${D.border}`, display: "flex", flexDirection: "column", gap: 6 }}>
+                        <div style={{ fontSize: 12, color: D.textSecondary, fontWeight: 600 }}><span style={{ color: D.textDim }}>Description: </span>{item.description}</div>
+                        <div style={{ fontSize: 12, color: D.textSecondary, fontWeight: 600 }}><span style={{ color: D.textDim }}>Location: </span>{item.locationFound}</div>
                       </div>
                     )}
                   </div>

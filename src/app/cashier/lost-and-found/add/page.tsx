@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle, Package } from "lucide-react";
-import { productsDb } from "@/lib/firebase";
-import { collection, addDoc } from "firebase/firestore";
+import { productsDb, db } from "@/lib/firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { useLanguage } from "@/context/LanguageContext";
 import { PageWrapper } from "@/components/PageWrapper";
 import { CashierBottomNav } from "@/components/CashierBottomNav";
@@ -73,6 +73,31 @@ export default function AddLostAndFoundPage() {
 
       await addDoc(collection(productsDb, "lost_and_found"), payload);
       
+      try {
+        await addDoc(collection(db, "notifications"), {
+          type: "lost_and_found",
+          message: `${cashierName} submitted a new Lost & Found Record`,
+          cashierName,
+          storeId,
+          createdAt: serverTimestamp(),
+          read: false,
+          link: "/admin/lost-and-found",
+        });
+      } catch (notifyErr) {
+        console.error("Notification failed:", notifyErr);
+      }
+      
+      try {
+        fetch("/api/notifications/notify-master", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: "New Lost & Found Record",
+            body: `Cashier: ${cashierName || 'Unknown'}\nItem: ${payload.description}`
+          })
+        }).catch(e => console.error("Notify error", e));
+      } catch (err) {}
+
       playSuccessSound();
       setShowSuccess(true);
       setTimeout(() => {

@@ -18,6 +18,7 @@ const eslintConfig = defineConfig([
       "react-compiler/react-compiler": "off",
       "react/no-unescaped-entities": "off",
       "@next/next/no-img-element": "off",
+      "react-hooks/preserve-manual-memoization": "off",
     }
   },
   // Override default ignores of eslint-config-next.
@@ -27,6 +28,7 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    "cashier-apk/**"
   ]),
 ]);
 

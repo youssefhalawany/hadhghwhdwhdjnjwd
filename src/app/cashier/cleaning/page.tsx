@@ -108,6 +108,16 @@ export default function CashierCleaningPage() {
         console.error("Notification failed:", notifyErr);
       }
       
+      try {
+        fetch("/api/notifications/notify-master", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: "New Cleaning Record",
+            body: `Cashier: ${cashierName || 'Unknown'}\nArea: ${payload.areaNameEn}`
+          })
+        }).catch(e => console.error("Notify error", e));
+      } catch (err) {}
       playSuccessSound();
       setShowSuccess(true);
       setTimeout(() => {
