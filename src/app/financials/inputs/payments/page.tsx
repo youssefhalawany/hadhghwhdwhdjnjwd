@@ -1518,12 +1518,36 @@ export default function PaymentsRedesignPage() {
       <AnimatePresence>
         {selectedPaymentForView && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-md overflow-y-auto">
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="relative w-full max-w-2xl my-auto flex flex-col"
-            >
+            
+            <div className="relative w-full max-w-2xl flex flex-col items-center">
+              {/* Printer Slot Hardware */}
+              <motion.div 
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, transition: { duration: 0.2 } }}
+                className="w-[102%] h-6 bg-slate-800 dark:bg-black rounded-full z-50 relative flex items-center justify-center shadow-2xl border-b-2 border-slate-900"
+                style={{ boxShadow: 'inset 0px -4px 6px rgba(0,0,0,0.4), 0 10px 15px -3px rgba(0,0,0,0.3)' }}
+              >
+                <div className="w-[98%] h-2 bg-black rounded-full" style={{ boxShadow: 'inset 0 4px 4px rgba(0,0,0,0.9)' }} />
+                {/* Printing light indicator */}
+                <motion.div 
+                  animate={{ opacity: [0.2, 1, 0.2] }} 
+                  transition={{ repeat: Infinity, duration: 0.8 }}
+                  className="absolute right-4 w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_5px_#22c55e]" 
+                />
+              </motion.div>
+
+              <motion.div 
+                initial={{ clipPath: 'inset(0% -10% 100% -10%)', y: -20, opacity: 0.8 }}
+                animate={{ clipPath: 'inset(-10% -10% -10% -10%)', y: 0, opacity: 1 }}
+                exit={{ clipPath: 'inset(0% -10% 100% -10%)', y: -20, opacity: 0, transition: { duration: 0.3 } }}
+                transition={{ 
+                  duration: 2.2, 
+                  ease: "linear", // Linear gives it that mechanical printer feel
+                  opacity: { duration: 0.2 } 
+                }}
+                className="relative w-full flex flex-col -mt-2"
+              >
               
               {/* Tear-off Top Edge */}
               <div style={{ height: '16px', backgroundSize: '24px 24px', backgroundImage: 'linear-gradient(-45deg, transparent 12px, #ffffff 0), linear-gradient(45deg, transparent 12px, #ffffff 0)' }} className="w-full absolute -top-[15px] left-0 right-0 z-10 drop-shadow-sm block dark:hidden" />
@@ -1692,7 +1716,8 @@ export default function PaymentsRedesignPage() {
               <div style={{ height: '16px', backgroundSize: '24px 24px', backgroundImage: 'linear-gradient(135deg, transparent 12px, #ffffff 0), linear-gradient(225deg, transparent 12px, #ffffff 0)' }} className="w-full absolute -bottom-[15px] left-0 right-0 z-10 drop-shadow-sm block dark:hidden" />
               <div style={{ height: '16px', backgroundSize: '24px 24px', backgroundImage: 'linear-gradient(135deg, transparent 12px, #0f172a 0), linear-gradient(225deg, transparent 12px, #0f172a 0)' }} className="w-full absolute -bottom-[15px] left-0 right-0 z-10 drop-shadow-sm hidden dark:block" />
               
-            </motion.div>
+              </motion.div>
+            </div>
           </div>
         )}
       </AnimatePresence>
