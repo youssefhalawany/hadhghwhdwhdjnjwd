@@ -990,18 +990,16 @@ export default function PaymentsRedesignPage() {
                             <Plus size={14} /> Add PO
                           </button>
                         )}
-                        {pay.items && pay.items.length > 0 && (
-                          <button 
-                            onClick={() => {
-                              setSelectedPaymentForView(pay);
-                              playPrinterSound();
-                            }}
-                            className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl transition-colors"
-                            title="View Items"
-                          >
-                            <Eye size={20} />
-                          </button>
-                        )}
+                        <button 
+                          onClick={() => {
+                            setSelectedPaymentForView(pay);
+                            playPrinterSound();
+                          }}
+                          className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl transition-colors"
+                          title="View Receipt"
+                        >
+                          <Eye size={20} />
+                        </button>
                         <button 
                           onClick={() => {
                             setSelectedPaymentForPrint(pay);
