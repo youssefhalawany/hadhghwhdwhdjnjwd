@@ -336,6 +336,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       name: language === "ar" ? "العمليات" : "Operation", icon: Briefcase, children: [
         { name: t("nav.checklists"), href: "/checklists/manager", icon: ClipboardList },
         { name: language === "ar" ? "سجلات النظافة" : "Cleaning Logs", href: "/admin/cleaning", icon: Sparkles },
+        { name: language === "ar" ? "المفقودات" : "Lost & Found", href: "/admin/lost-and-found", icon: Package },
         { name: language === "ar" ? "إدارة العروض" : "Manage Offers", href: "/admin/offers", icon: Tag },
         { name: language === "ar" ? "أكواد الفود" : "Food Codes", href: "/admin/food-codes", icon: Barcode }
       ]

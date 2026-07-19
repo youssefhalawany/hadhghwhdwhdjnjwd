@@ -9,7 +9,7 @@ import {
   Lock, User as UserIcon, ChevronDown, FileText, Shield,
   Calendar as CalendarIcon, UserCircle, Globe, LogOut,
   Download, Bell, Fingerprint, ScanLine, ChevronRight, AlertTriangle,
-  ClipboardList, Clock, CheckSquare, LayoutGrid, LayoutDashboard, FileBarChart2, Sparkles, BookOpen, Barcode, Pin, PinOff
+  ClipboardList, Clock, CheckSquare, LayoutGrid, LayoutDashboard, FileBarChart2, Sparkles, BookOpen, Barcode, Pin, PinOff, Package
 } from "lucide-react";
 import { CashierBottomNav } from "@/components/CashierBottomNav";
 import { PullToRefresh } from "@/components/MobileUX/PullToRefresh";
@@ -326,6 +326,7 @@ export default function CashierHubPage() {
       { id: "outofstock", label: lang === "en" ? "Out of Stock" : "النواقص", icon: AlertTriangle, path: "/cashier/out-of-stock", badge: "NEW" },
       { id: "checklist", label: lang === "en" ? "Checklists" : "قوائم المراجعة", icon: CheckSquare, path: "/checklists/cashier" },
       { id: "cleaning", label: lang === "en" ? "Cleaning" : "النظافة", icon: Sparkles, path: "/cashier/cleaning" },
+      { id: "lostandfound", label: lang === "en" ? "Lost & Found" : "المفقودات", icon: Package, path: "/cashier/lost-and-found", badge: "NEW" },
       { id: "sop", label: lang === "en" ? "Food SOP" : "دليل التشغيل", icon: BookOpen, path: "/cashier/sop", badge: "NEW" },
       { id: "codes", label: lang === "en" ? "Food & Coffee Codes" : "أكواد الفود والقهوة", icon: Barcode, path: "/cashier/food-codes", badge: "NEW" },
       { id: "account", label: lang === "en" ? "My Account" : "حسابي", icon: UserCircle, path: "/cashier/account" },
