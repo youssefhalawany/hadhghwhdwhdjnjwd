@@ -208,8 +208,14 @@ export default function PaymentsRedesignPage() {
 
   useEffect(() => {
     if (selectedPaymentForPrint) {
-      const text = `Payment ID: ${selectedPaymentForPrint.id}\nCompany: ${selectedPaymentForPrint.companyName}\nInvoice: ${selectedPaymentForPrint.invoiceNumber}\nAmount: ${selectedPaymentForPrint.total} EGP\nDate: ${selectedPaymentForPrint.date}`;
-      QRCodeLib.toDataURL(text)
+      const urlText = `${typeof window !== 'undefined' ? window.location.origin : 'https://anh-zeta.vercel.app'}/handshake?data=${encodeURIComponent(JSON.stringify({ 
+        id: selectedPaymentForPrint.id, 
+        amount: selectedPaymentForPrint.total, 
+        company: selectedPaymentForPrint.companyName, 
+        date: selectedPaymentForPrint.date,
+        action: "verify_receipt" 
+      }))}`;
+      QRCodeLib.toDataURL(urlText)
         .then((url: string) => setQrCodeData(url))
         .catch((err: any) => console.error(err));
     } else {
@@ -1508,141 +1514,184 @@ export default function PaymentsRedesignPage() {
         </div>
       )}
 
-      {/* View Items Modal */}
+      {/* View Items Modal - Tear-off Digital Receipt */}
       <AnimatePresence>
         {selectedPaymentForView && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-md overflow-y-auto">
             <motion.div 
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white dark:bg-slate-900 w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="relative w-full max-w-2xl my-auto flex flex-col"
             >
-              <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
-                <div>
-                  <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Invoice Details</h2>
-                  <p className="text-sm font-medium text-slate-500 mt-1">
-                    {selectedPaymentForView.companyName} • {selectedPaymentForView.date} 
-                    {selectedPaymentForView.poNumber && ` • PO: ${selectedPaymentForView.poNumber}`}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  {selectedPaymentForView.poImageUrl && (
-                    <a 
-                      href={selectedPaymentForView.poImageUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 mr-2"
-                    >
-                      <ImageIcon size={14} /> View PO Image
-                    </a>
-                  )}
-                  <button 
-                    onClick={() => setSelectedPaymentForView(null)}
-                    className="p-2 text-slate-400 hover:text-slate-600 bg-white dark:bg-slate-800 rounded-full transition-colors shadow-sm"
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
-              </div>
               
-              <div className="p-6 overflow-y-auto flex-1">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Company / Supplier</p>
-                    <p className="text-xl font-black text-slate-900 dark:text-white truncate" title={selectedPaymentForView.companyName}>{selectedPaymentForView.companyName}</p>
-                  </div>
-                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Date</p>
-                    <p className="text-xl font-black text-slate-900 dark:text-white">{selectedPaymentForView.date}</p>
-                  </div>
-                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Payment Method</p>
-                    <p className="text-xl font-black text-slate-900 dark:text-white capitalize flex items-center gap-2">
-                      {METHOD_EMOJIS[selectedPaymentForView.method] || "💵"} {selectedPaymentForView.method}
+              {/* Tear-off Top Edge */}
+              <div style={{ height: '16px', backgroundSize: '24px 24px', backgroundImage: 'linear-gradient(-45deg, transparent 12px, #ffffff 0), linear-gradient(45deg, transparent 12px, #ffffff 0)' }} className="w-full absolute -top-[15px] left-0 right-0 z-10 drop-shadow-sm block dark:hidden" />
+              <div style={{ height: '16px', backgroundSize: '24px 24px', backgroundImage: 'linear-gradient(-45deg, transparent 12px, #0f172a 0), linear-gradient(45deg, transparent 12px, #0f172a 0)' }} className="w-full absolute -top-[15px] left-0 right-0 z-10 drop-shadow-sm hidden dark:block" />
+
+              {/* Receipt Body */}
+              <div className="bg-white dark:bg-slate-900 shadow-2xl overflow-hidden flex flex-col relative z-20">
+                
+                <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-start bg-slate-50 dark:bg-slate-800/50">
+                  <div>
+                    <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+                      <FileText className="text-blue-500" size={24} /> Payment Receipt
+                    </h2>
+                    <p className="text-sm font-medium text-slate-500 mt-1">
+                      {selectedPaymentForView.companyName} • {selectedPaymentForView.date} 
+                      {selectedPaymentForView.poNumber && ` • PO: ${selectedPaymentForView.poNumber}`}
                     </p>
                   </div>
-                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Category</p>
-                    <p className="text-xl font-black text-slate-900 dark:text-white capitalize flex items-center gap-2">
-                      {CATEGORY_EMOJIS[selectedPaymentForView.category] || "📦"} {selectedPaymentForView.category}
-                    </p>
-                  </div>
-                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Amount</p>
-                    <p className="text-xl font-black text-slate-900 dark:text-white">EGP {Number(selectedPaymentForView.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                  </div>
-                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Tax Amount</p>
-                    <p className="text-xl font-black text-slate-900 dark:text-white">EGP {Number(selectedPaymentForView.tax || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                  </div>
-                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Invoice Number</p>
-                    <p className="text-xl font-black text-slate-900 dark:text-white truncate" title={selectedPaymentForView.invoiceNumber || "N/A"}>{selectedPaymentForView.invoiceNumber || "N/A"}</p>
-                  </div>
-                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">PO Number</p>
-                    <p className="text-xl font-black text-slate-900 dark:text-white truncate" title={selectedPaymentForView.poNumber || "N/A"}>{selectedPaymentForView.poNumber || "N/A"}</p>
+                  <div className="flex items-center gap-2">
+                    {selectedPaymentForView.poImageUrl && (
+                      <a 
+                        href={selectedPaymentForView.poImageUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 mr-2"
+                      >
+                        <ImageIcon size={14} /> View PO Image
+                      </a>
+                    )}
+                    <button 
+                      onClick={() => setSelectedPaymentForView(null)}
+                      className="p-2 text-slate-400 hover:text-slate-600 bg-white dark:bg-slate-800 rounded-full transition-colors shadow-sm"
+                    >
+                      <X size={20} />
+                    </button>
                   </div>
                 </div>
-
-                {(selectedPaymentForView.supplierRepName || selectedPaymentForView.categoryNote) && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                    {selectedPaymentForView.supplierRepName && (
-                      <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Supplier Representative</p>
-                        <p className="text-md font-bold text-slate-900 dark:text-white">{selectedPaymentForView.supplierRepName} {selectedPaymentForView.supplierNationalId ? `(${selectedPaymentForView.supplierNationalId})` : ""}</p>
-                      </div>
-                    )}
-                    {selectedPaymentForView.categoryNote && (
-                      <div className={`bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl ${!selectedPaymentForView.supplierRepName ? 'col-span-full' : ''}`}>
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Notes</p>
-                        <p className="text-md font-medium text-slate-700 dark:text-slate-300">{selectedPaymentForView.categoryNote}</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4">Products / Items ({selectedPaymentForView.items?.length || 0})</h3>
-                <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
-                  <table className="w-full text-sm text-left">
-                    <thead className="text-xs text-slate-500 bg-slate-50 dark:bg-slate-800/50 uppercase font-bold">
-                      <tr>
-                        <th className="px-4 py-3">Barcode</th>
-                        <th className="px-4 py-3">Description</th>
-                        <th className="px-4 py-3 text-center">Qty</th>
-                        <th className="px-4 py-3 text-right">Unit Price</th>
-                        <th className="px-4 py-3 text-right">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedPaymentForView.items?.map((item: any, idx: number) => (
-                        <tr key={idx} className="border-b border-slate-50 dark:border-slate-800/50 last:border-0 font-medium">
-                          <td className="px-4 py-3 text-slate-500">{item.barcode || "N/A"}</td>
-                          <td className="px-4 py-3 text-slate-900 dark:text-slate-300">{item.description || "N/A"}</td>
-                          <td className="px-4 py-3 text-center text-slate-900 dark:text-slate-300">{item.quantity}</td>
-                          <td className="px-4 py-3 text-right text-slate-900 dark:text-slate-300">{Number(item.unitPrice).toFixed(2)}</td>
-                          <td className="px-4 py-3 text-right font-bold text-slate-900 dark:text-slate-300">{(item.quantity * item.unitPrice).toFixed(2)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {selectedPaymentForView.poImageUrl && (
-                  <div className="mt-8">
-                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4">Original Purchase Order</h3>
-                    <div className="border border-slate-100 dark:border-slate-800 rounded-2xl overflow-hidden bg-slate-50 dark:bg-slate-800/50 flex justify-center">
-                      { }
-                      <img 
-                        src={selectedPaymentForView.poImageUrl} 
-                        alt="PO Document" 
-                        className="max-w-full h-auto object-contain max-h-[800px] rounded-xl"
-                      />
+                
+                <div className="p-6 overflow-y-auto max-h-[60vh] space-y-6">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Company / Supplier</p>
+                      <p className="text-xl font-black text-slate-900 dark:text-white truncate" title={selectedPaymentForView.companyName}>{selectedPaymentForView.companyName}</p>
+                    </div>
+                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Date</p>
+                      <p className="text-xl font-black text-slate-900 dark:text-white">{selectedPaymentForView.date}</p>
+                    </div>
+                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Payment Method</p>
+                      <p className="text-xl font-black text-slate-900 dark:text-white capitalize flex items-center gap-2">
+                        {METHOD_EMOJIS[selectedPaymentForView.method] || "💵"} {selectedPaymentForView.method}
+                      </p>
+                    </div>
+                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Category</p>
+                      <p className="text-xl font-black text-slate-900 dark:text-white capitalize flex items-center gap-2">
+                        {CATEGORY_EMOJIS[selectedPaymentForView.category] || "📦"} {selectedPaymentForView.category}
+                      </p>
+                    </div>
+                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Amount</p>
+                      <p className="text-xl font-black text-slate-900 dark:text-white">EGP {Number(selectedPaymentForView.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                    </div>
+                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Tax Amount</p>
+                      <p className="text-xl font-black text-slate-900 dark:text-white">EGP {Number(selectedPaymentForView.tax || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                    </div>
+                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Invoice Number</p>
+                      <p className="text-xl font-black text-slate-900 dark:text-white truncate" title={selectedPaymentForView.invoiceNumber || "N/A"}>{selectedPaymentForView.invoiceNumber || "N/A"}</p>
+                    </div>
+                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">PO Number</p>
+                      <p className="text-xl font-black text-slate-900 dark:text-white truncate" title={selectedPaymentForView.poNumber || "N/A"}>{selectedPaymentForView.poNumber || "N/A"}</p>
                     </div>
                   </div>
-                )}
+
+                  {(selectedPaymentForView.supplierRepName || selectedPaymentForView.categoryNote) && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                      {selectedPaymentForView.supplierRepName && (
+                        <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Supplier Representative</p>
+                          <p className="text-md font-bold text-slate-900 dark:text-white">{selectedPaymentForView.supplierRepName} {selectedPaymentForView.supplierNationalId ? `(${selectedPaymentForView.supplierNationalId})` : ""}</p>
+                        </div>
+                      )}
+                      {selectedPaymentForView.categoryNote && (
+                        <div className={`bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl ${!selectedPaymentForView.supplierRepName ? 'col-span-full' : ''}`}>
+                          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Notes</p>
+                          <p className="text-md font-medium text-slate-700 dark:text-slate-300">{selectedPaymentForView.categoryNote}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4">Products / Items ({selectedPaymentForView.items?.length || 0})</h3>
+                  <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                    <table className="w-full text-sm text-left">
+                      <thead className="text-xs text-slate-500 bg-slate-50 dark:bg-slate-800/50 uppercase font-bold">
+                        <tr>
+                          <th className="px-4 py-3">Barcode</th>
+                          <th className="px-4 py-3">Description</th>
+                          <th className="px-4 py-3 text-center">Qty</th>
+                          <th className="px-4 py-3 text-right">Unit Price</th>
+                          <th className="px-4 py-3 text-right">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedPaymentForView.items?.map((item: any, idx: number) => (
+                          <tr key={idx} className="border-b border-slate-50 dark:border-slate-800/50 last:border-0 font-medium">
+                            <td className="px-4 py-3 text-slate-500">{item.barcode || "N/A"}</td>
+                            <td className="px-4 py-3 text-slate-900 dark:text-slate-300">{item.description || "N/A"}</td>
+                            <td className="px-4 py-3 text-center text-slate-900 dark:text-slate-300">{item.quantity}</td>
+                            <td className="px-4 py-3 text-right text-slate-900 dark:text-slate-300">{Number(item.unitPrice).toFixed(2)}</td>
+                            <td className="px-4 py-3 text-right font-bold text-slate-900 dark:text-slate-300">{(item.quantity * item.unitPrice).toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Smart QR Code at bottom */}
+                  <div className="flex flex-col items-center justify-center mt-8 pt-8 border-t border-dashed border-slate-300 dark:border-slate-700">
+                    <div className="bg-white p-3 rounded-2xl border-4 border-slate-100 shadow-sm mb-3">
+                      <QRCode 
+                        value={`${typeof window !== 'undefined' ? window.location.origin : 'https://anh-zeta.vercel.app'}/handshake?data=${encodeURIComponent(JSON.stringify({ 
+                          id: selectedPaymentForView.id, 
+                          amount: selectedPaymentForView.total, 
+                          company: selectedPaymentForView.companyName, 
+                          date: selectedPaymentForView.date,
+                          action: "verify_receipt" 
+                        }))}`} 
+                        size={120}
+                        level="H"
+                      />
+                    </div>
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest text-center max-w-[200px]">Scan for Digital Transaction Verification</p>
+                  </div>
+                </div>
+                
+                {/* Action Bar */}
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 flex flex-wrap items-center justify-center gap-3 border-t border-slate-100 dark:border-slate-800">
+                   <button onClick={() => {
+                      setSelectedPaymentForPrint(selectedPaymentForView);
+                      setTimeout(() => generatePDF(), 100);
+                   }} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm">
+                      <Download size={18} /> Download PDF
+                   </button>
+                   <button onClick={() => {
+                      const text = `🧾 *Payment Receipt*\n*Supplier:* ${selectedPaymentForView.companyName}\n*Amount:* EGP ${Number(selectedPaymentForView.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}\n*Date:* ${selectedPaymentForView.date}\n*Method:* ${selectedPaymentForView.method}\n*ID:* ${selectedPaymentForView.id}`;
+                      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+                   }} className="flex items-center gap-2 bg-[#25D366] hover:bg-[#1DA851] text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm">
+                      WhatsApp
+                   </button>
+                   <button onClick={() => {
+                      const subject = `Payment Receipt - ${selectedPaymentForView.companyName}`;
+                      const body = `Payment Receipt\nSupplier: ${selectedPaymentForView.companyName}\nAmount: EGP ${Number(selectedPaymentForView.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}\nDate: ${selectedPaymentForView.date}\nMethod: ${selectedPaymentForView.method}\nID: ${selectedPaymentForView.id}`;
+                      window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                   }} className="flex items-center gap-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-white hover:bg-slate-300 dark:hover:bg-slate-600 px-5 py-2.5 rounded-xl font-bold transition-all">
+                      Email
+                   </button>
+                </div>
               </div>
+
+              {/* Tear-off Bottom Edge */}
+              <div style={{ height: '16px', backgroundSize: '24px 24px', backgroundImage: 'linear-gradient(135deg, transparent 12px, #ffffff 0), linear-gradient(225deg, transparent 12px, #ffffff 0)' }} className="w-full absolute -bottom-[15px] left-0 right-0 z-10 drop-shadow-sm block dark:hidden" />
+              <div style={{ height: '16px', backgroundSize: '24px 24px', backgroundImage: 'linear-gradient(135deg, transparent 12px, #0f172a 0), linear-gradient(225deg, transparent 12px, #0f172a 0)' }} className="w-full absolute -bottom-[15px] left-0 right-0 z-10 drop-shadow-sm hidden dark:block" />
+              
             </motion.div>
           </div>
         )}
