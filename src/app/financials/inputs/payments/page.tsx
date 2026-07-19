@@ -646,6 +646,24 @@ export default function PaymentsRedesignPage() {
     }
   };
 
+  const handleViewFullReceipt = (url: string) => {
+    const newTab = window.open();
+    if (newTab) {
+      newTab.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head><title>Bank Transfer Receipt</title></head>
+          <body style="margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #0f172a;">
+            <img src="${url}" style="max-width: 100%; max-height: 100vh; object-fit: contain;" />
+          </body>
+        </html>
+      `);
+      newTab.document.close();
+    } else {
+      toast.error("Popup blocked! Please allow popups to view the receipt.");
+    }
+  };
+
   const handleDelete = async (id: string) => {
     if (!window.confirm("Are you sure you want to delete this payment?")) return;
     try {
@@ -1777,14 +1795,13 @@ export default function PaymentsRedesignPage() {
                           alt="Bank Transfer Receipt" 
                           className="object-contain max-h-64 w-full"
                         />
-                        <a 
-                          href={selectedPaymentForView.bankTransferReceiptUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold gap-2"
+                        <button 
+                          onClick={() => handleViewFullReceipt(selectedPaymentForView.bankTransferReceiptUrl!)}
+                          type="button"
+                          className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold gap-2 w-full h-full"
                         >
                           <ImageIcon size={20} /> View Full Receipt
-                        </a>
+                        </button>
                       </div>
                     </div>
                   )}

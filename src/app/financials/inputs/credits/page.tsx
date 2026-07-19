@@ -1408,7 +1408,23 @@ export default function CreditsPage() {
                                       <p className="text-xs font-medium text-slate-500 flex items-center gap-1"><Calendar size={12}/> {payment.date} <span className="px-1 text-slate-300">•</span> {payment.method?.toUpperCase()}</p>
                                     </div>
                                   </div>
-                                  <span className="text-xs font-bold px-3 py-1 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-full">Paid</span>
+                                  <div className="flex items-center gap-2">
+                                    {payment.bankTransferReceiptUrl && (
+                                      <button 
+                                        onClick={() => {
+                                          const newTab = window.open();
+                                          if (newTab) {
+                                            newTab.document.write(`<!DOCTYPE html><html><head><title>Bank Transfer Receipt</title></head><body style="margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #0f172a;"><img src="${payment.bankTransferReceiptUrl}" style="max-width: 100%; max-height: 100vh; object-fit: contain;" /></body></html>`);
+                                            newTab.document.close();
+                                          }
+                                        }}
+                                        className="text-xs font-bold px-3 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded-full hover:bg-blue-100 transition-colors flex items-center gap-1"
+                                      >
+                                        <FileText size={12}/> Receipt
+                                      </button>
+                                    )}
+                                    <span className="text-xs font-bold px-3 py-1 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-full">Paid</span>
+                                  </div>
                                 </div>
                               ))}
                               <div className="flex justify-between items-center pt-4 mt-2 border-t border-slate-200">
