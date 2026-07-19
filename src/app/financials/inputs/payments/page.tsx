@@ -92,6 +92,7 @@ import Link from "next/link";
 import { useBranch } from "@/context/BranchContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { syncProductsToMaster } from "@/lib/products-sync";
+import { playPrinterSound } from "@/lib/audioCues";
 
 const compressImage = (file: File, maxWidth: number = 1500, quality: number = 0.8): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -991,7 +992,10 @@ export default function PaymentsRedesignPage() {
                         )}
                         {pay.items && pay.items.length > 0 && (
                           <button 
-                            onClick={() => setSelectedPaymentForView(pay)}
+                            onClick={() => {
+                              setSelectedPaymentForView(pay);
+                              playPrinterSound();
+                            }}
                             className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl transition-colors"
                             title="View Items"
                           >

@@ -100,3 +100,53 @@ export const playSuccessChime = () => {
   playNote(659.25, now, 0.4);       // E5
   playNote(830.61, now + 0.15, 0.6); // G#5
 };
+
+// Thermal printer "printing" sound
+export const playPrinterSound = () => {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  const now = ctx.currentTime;
+  
+  // Create white noise buffer for the paper scratching sound
+  const bufferSize = ctx.sampleRate * 2.5;
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = Math.random() * 2 - 1;
+  }
+
+  const noiseSource = ctx.createBufferSource();
+  noiseSource.buffer = buffer;
+  
+  // Filter the noise
+  const filter = ctx.createBiquadFilter();
+  filter.type = "highpass";
+  filter.frequency.value = 1200;
+  
+  // The motor sound (sawtooth)
+  const motorOsc = ctx.createOscillator();
+  motorOsc.type = "sawtooth";
+  motorOsc.frequency.value = 120;
+  
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0, now);
+  
+  // Simulate the rapid stuttering of a thermal printer over ~2.2 seconds
+  for(let i = 0; i < 25; i++) {
+    const time = now + (i * 0.09); // slightly faster stutters
+    gain.gain.setValueAtTime(0, time);
+    gain.gain.linearRampToValueAtTime(0.04, time + 0.02);
+    gain.gain.linearRampToValueAtTime(0, time + 0.08);
+  }
+
+  noiseSource.connect(filter);
+  filter.connect(gain);
+  motorOsc.connect(gain);
+  gain.connect(ctx.destination);
+  
+  noiseSource.start(now);
+  motorOsc.start(now);
+  noiseSource.stop(now + 2.3);
+  motorOsc.stop(now + 2.3);
+};
