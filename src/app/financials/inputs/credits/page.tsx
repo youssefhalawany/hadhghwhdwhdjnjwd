@@ -242,6 +242,7 @@ export default function CreditsPage() {
   const [paymentTime, setPaymentTime] = useState("");
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [bankTransferFile, setBankTransferFile] = useState<File | null>(null);
 
   const [expandedCredits, setExpandedCredits] = useState<Record<string, boolean>>({});
   const [selectedCreditForPrint, setSelectedCreditForPrint] = useState<Credit | null>(null);
@@ -653,13 +654,29 @@ export default function CreditsPage() {
         }
         return;
       }
+      
+      if (showPaymentModal) {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.indexOf('image') !== -1) {
+            const file = items[i].getAsFile();
+            if (file && paymentMethod === 'bank_transfer') {
+              e.preventDefault();
+              setBankTransferFile(file);
+              toast.success("Bank transfer receipt pasted!");
+            }
+            break;
+          }
+        }
+      }
     };
 
     window.addEventListener('paste', handleGlobalPaste);
     return () => {
       window.removeEventListener('paste', handleGlobalPaste);
     };
-  }, [selectedCreditForPoUpload, showAddModal]);
+  }, [selectedCreditForPoUpload, showAddModal, showPaymentModal, paymentMethod]);
 
   const handleOpenPaymentModal = (credit: Credit) => {
     setSelectedCreditForPayment(credit);
@@ -670,6 +687,7 @@ export default function CreditsPage() {
     const remaining = (credit.amountDue + credit.tax) - credit.paidAmount;
     setPaymentAmount(remaining.toString());
     setPaymentMethod("cash");
+    setBankTransferFile(null);
     setShowPaymentModal(true);
   };
 
@@ -701,6 +719,16 @@ export default function CreditsPage() {
         updatedAt: serverTimestamp()
       });
 
+      let bankTransferReceiptUrl = null;
+
+      if (paymentMethod === 'bank_transfer' && bankTransferFile) {
+        toast.loading("Uploading bank transfer receipt...", { id: "bank-upload" });
+        const fileRef = ref(storage, `bank_transfers/${Date.now()}_${bankTransferFile.name}`);
+        await uploadBytes(fileRef, bankTransferFile);
+        bankTransferReceiptUrl = await getDownloadURL(fileRef);
+        toast.dismiss("bank-upload");
+      }
+
       // 2. Add to Cash Payments
       const paymentRecord = {
         amount: pAmt,
@@ -722,7 +750,8 @@ export default function CreditsPage() {
         storeId: branchIds.length > 0 && branchIds[0] !== "all" ? branchIds[0] : "eL-alamein-4",
         tax: 0,
         total: pAmt,
-        creditId: selectedCreditForPayment.id
+        creditId: selectedCreditForPayment.id,
+        ...(bankTransferReceiptUrl ? { bankTransferReceiptUrl } : {})
       };
       await addDoc(collection(db, "cash_payments"), paymentRecord);
 
@@ -733,7 +762,8 @@ export default function CreditsPage() {
         createdAt: serverTimestamp(),
         createdBy: currentUser?.email || "unknown",
         date: paymentDate,
-        method: paymentMethod
+        method: paymentMethod,
+        ...(bankTransferReceiptUrl ? { bankTransferReceiptUrl } : {})
       });
 
       // Refresh data
@@ -1746,9 +1776,31 @@ export default function CreditsPage() {
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Amount to Pay *</label>
                     <div className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-black">EGP</span>
-                      <input required type="number" step="0.01" max={(selectedCreditForPayment.amountDue + selectedCreditForPayment.tax) - selectedCreditForPayment.paidAmount} className="w-full pl-14 pr-4 py-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none font-black text-2xl text-slate-900 shadow-sm transition-all bg-white" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} />
                     </div>
                   </div>
+
+                  {paymentMethod === 'bank_transfer' && (
+                    <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 mb-8 mt-2">
+                      <label className="block text-xs font-bold text-blue-600 uppercase tracking-wider mb-2">Bank Transfer Receipt *</label>
+                      <div className="flex flex-col gap-2">
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              setBankTransferFile(e.target.files[0]);
+                            }
+                          }}
+                          className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200"
+                        />
+                        {bankTransferFile ? (
+                          <p className="text-xs font-medium text-blue-800 break-all bg-blue-100/50 p-2 rounded-lg border border-blue-200 inline-flex items-center gap-1"><CheckCircle2 size={12}/> {bankTransferFile.name}</p>
+                        ) : (
+                          <p className="text-[10px] text-blue-500 mt-1 flex items-center gap-1"><ClipboardPaste size={10}/> Or paste image directly (Ctrl+V)</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 </div>

@@ -196,6 +196,7 @@ export default function PaymentsRedesignPage() {
   const [supplierNationalId, setSupplierNationalId] = useState("");
   const [showAddSupplier, setShowAddSupplier] = useState(false);
   const [qrCodeData, setQrCodeData] = useState("");
+  const [bankTransferFile, setBankTransferFile] = useState<File | null>(null);
   
   // PO Extraction State
   const [poItems, setPoItems] = useState<{barcode: string, quantity: number, description: string, unitPrice: number}[]>([]);
@@ -480,7 +481,12 @@ export default function PaymentsRedesignPage() {
           const file = items[i].getAsFile();
           if (file) {
             e.preventDefault();
-            handleImageUpload(file);
+            if (method === 'bank_transfer') {
+              setBankTransferFile(file);
+              toast.success("Bank transfer receipt pasted!");
+            } else {
+              handleImageUpload(file);
+            }
           }
           break;
         }
@@ -489,7 +495,7 @@ export default function PaymentsRedesignPage() {
     window.addEventListener('paste', handleGlobalPaste);
     return () => window.removeEventListener('paste', handleGlobalPaste);
      
-  }, [showAddModal, category, selectedPaymentForPoUpload]);
+  }, [showAddModal, category, selectedPaymentForPoUpload, method]);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -519,6 +525,7 @@ export default function PaymentsRedesignPage() {
     setShowAddSupplier(false);
     setPoItems([]);
     setIsProcessingPo(false);
+    setBankTransferFile(null);
   };
 
   const handlePoItemChange = (index: number, field: 'barcode' | 'quantity' | 'description' | 'unitPrice', value: any) => {
@@ -549,7 +556,15 @@ export default function PaymentsRedesignPage() {
     try {
       setSubmitting(true);
       const poImageUrl = null;
-      // User requested to skip saving PO images to storage for faster processing
+      let bankTransferReceiptUrl = null;
+
+      if (method === 'bank_transfer' && bankTransferFile) {
+        toast.loading("Uploading bank transfer receipt...", { id: "bank-upload" });
+        const fileRef = ref(storage, `bank_transfers/${Date.now()}_${bankTransferFile.name}`);
+        await uploadBytes(fileRef, bankTransferFile);
+        bankTransferReceiptUrl = await getDownloadURL(fileRef);
+        toast.dismiss("bank-upload");
+      }
 
       const newPayment = {
         amount: numAmount,
@@ -570,7 +585,8 @@ export default function PaymentsRedesignPage() {
         supplierRepName,
         supplierNationalId,
         ...(poItems.length > 0 ? { items: poItems } : {}),
-        ...(poImageUrl ? { poImageUrl } : {})
+        ...(poImageUrl ? { poImageUrl } : {}),
+        ...(bankTransferReceiptUrl ? { bankTransferReceiptUrl } : {})
       };
 
       const docRef = await addDoc(collection(db, "cash_payments"), newPayment);
@@ -1123,6 +1139,29 @@ export default function PaymentsRedesignPage() {
                           <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Rep National ID</label>
                           <input type="text" placeholder="14-digit ID" maxLength={14} className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={supplierNationalId} onChange={(e) => setSupplierNationalId(e.target.value)} />
                         </div>
+
+                        {method === 'bank_transfer' && (
+                          <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                            <label className="block text-xs font-bold text-blue-600 uppercase tracking-wider mb-2">Bank Transfer Receipt *</label>
+                            <div className="flex flex-col gap-2">
+                              <input 
+                                type="file" 
+                                accept="image/*" 
+                                onChange={(e) => {
+                                  if (e.target.files && e.target.files[0]) {
+                                    setBankTransferFile(e.target.files[0]);
+                                  }
+                                }}
+                                className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200"
+                              />
+                              {bankTransferFile ? (
+                                <p className="text-xs font-medium text-blue-800 break-all bg-blue-100/50 p-2 rounded-lg border border-blue-200 inline-flex items-center gap-1"><CheckCircle2 size={12}/> {bankTransferFile.name}</p>
+                              ) : (
+                                <p className="text-[10px] text-blue-500 mt-1 flex items-center gap-1"><ClipboardPaste size={10}/> Or paste image directly (Ctrl+V)</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1433,6 +1472,24 @@ export default function PaymentsRedesignPage() {
               </div>
             </div>
 
+            {selectedPaymentForPrint.bankTransferReceiptUrl && (
+              <div style={{ padding: '0 30px', marginTop: '30px', pageBreakInside: 'avoid' }}>
+                <div style={{ border: '2px solid #000', borderRadius: '4px', backgroundColor: '#fff', padding: '15px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
+                    <span style={{ fontSize: '12px', color: '#000', textTransform: 'uppercase', fontWeight: 'bold' }}>Bank Transfer Receipt</span>
+                    <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#000' }}>إيصال التحويل البنكي</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    <img 
+                      src={selectedPaymentForPrint.bankTransferReceiptUrl} 
+                      alt="Bank Transfer Receipt" 
+                      style={{ maxHeight: '400px', maxWidth: '100%', objectFit: 'contain' }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Signatures & Stamp */}
             <div style={{ padding: '0 30px', marginTop: '50px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '20px', backgroundColor: '#fff', border: '2px solid #000', borderRadius: '4px', position: 'relative', zIndex: 10, minHeight: '140px' }}>
@@ -1659,6 +1716,27 @@ export default function PaymentsRedesignPage() {
                           <p className="text-md font-medium text-slate-700 dark:text-slate-300">{selectedPaymentForView.categoryNote}</p>
                         </div>
                       )}
+                    </div>
+                  )}
+
+                  {selectedPaymentForView.bankTransferReceiptUrl && (
+                    <div className="mb-8">
+                      <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 dark:border-slate-800 pb-2">Bank Transfer Receipt</h3>
+                      <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm max-h-64 relative bg-slate-50 dark:bg-slate-900 flex justify-center items-center group">
+                        <img 
+                          src={selectedPaymentForView.bankTransferReceiptUrl} 
+                          alt="Bank Transfer Receipt" 
+                          className="object-contain max-h-64 w-full"
+                        />
+                        <a 
+                          href={selectedPaymentForView.bankTransferReceiptUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold gap-2"
+                        >
+                          <ImageIcon size={20} /> View Full Receipt
+                        </a>
+                      </div>
                     </div>
                   )}
 
