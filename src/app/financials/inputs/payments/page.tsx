@@ -673,6 +673,17 @@ export default function PaymentsRedesignPage() {
         page1.style.left = "-9999px";
       }
 
+      const page2 = document.getElementById("pdf-receipt-page2");
+      if (page2) {
+        page2.style.left = "0";
+        const canvas2 = await html2canvas(page2, { scale: 2, useCORS: true });
+        const imgData2 = canvas2.toDataURL("image/png");
+        const pdfHeight2 = (canvas2.height * pdfWidth) / canvas2.width;
+        pdf.addPage();
+        pdf.addImage(imgData2, "PNG", 0, 0, pdfWidth, pdfHeight2);
+        page2.style.left = "-9999px";
+      }
+
       pdf.autoPrint();
       window.open(pdf.output("bloburl"), "_blank");
       setSelectedPaymentForPrint(null);
@@ -1501,24 +1512,6 @@ export default function PaymentsRedesignPage() {
               </div>
             </div>
 
-            {selectedPaymentForPrint.bankTransferReceiptUrl && (
-              <div style={{ padding: '0 30px', marginTop: '30px', pageBreakInside: 'avoid' }}>
-                <div style={{ border: '2px solid #000', borderRadius: '4px', backgroundColor: '#fff', padding: '15px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
-                    <span style={{ fontSize: '12px', color: '#000', textTransform: 'uppercase', fontWeight: 'bold' }}>Bank Transfer Receipt</span>
-                    <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#000' }}>إيصال التحويل البنكي</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                    <img 
-                      src={selectedPaymentForPrint.bankTransferReceiptUrl} 
-                      alt="Bank Transfer Receipt" 
-                      style={{ maxHeight: '400px', maxWidth: '100%', objectFit: 'contain' }}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Signatures & Stamp */}
             <div style={{ padding: '0 30px', marginTop: '50px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '20px', backgroundColor: '#fff', border: '2px solid #000', borderRadius: '4px', position: 'relative', zIndex: 10, minHeight: '140px' }}>
@@ -1616,6 +1609,33 @@ export default function PaymentsRedesignPage() {
             </div>
 
           </div>
+
+          {selectedPaymentForPrint.bankTransferReceiptUrl && (
+            <div id="pdf-receipt-page2" style={{ width: '794px', height: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', padding: '40px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #000', paddingBottom: '20px', marginBottom: '30px' }}>
+                <div>
+                  <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#000', margin: 0, textTransform: 'uppercase' }}>Bank Transfer Receipt</h1>
+                  <p style={{ fontSize: '14px', color: '#666', margin: '5px 0 0' }}>Inv: {selectedPaymentForPrint.invoiceNumber || 'N/A'}</p>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#000', margin: 0 }}>إيصال التحويل البنكي</h1>
+                  <p style={{ fontSize: '14px', color: '#666', margin: '5px 0 0' }}>{selectedPaymentForPrint.companyName}</p>
+                </div>
+              </div>
+
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed #ccc', borderRadius: '12px', padding: '20px', backgroundColor: '#fafafa' }}>
+                <img 
+                  src={selectedPaymentForPrint.bankTransferReceiptUrl} 
+                  alt="Bank Transfer Receipt Full" 
+                  style={{ maxHeight: '900px', maxWidth: '100%', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}
+                />
+              </div>
+              
+              <div style={{ textAlign: 'center', marginTop: '20px', color: '#999', fontSize: '12px' }}>
+                Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
