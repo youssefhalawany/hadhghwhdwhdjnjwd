@@ -12,6 +12,7 @@ import { CameraScanner } from "@/components/ui/CameraScanner";
 import { CashierBottomNav } from "@/components/CashierBottomNav";
 import { SkeletonList } from "@/components/MobileUX/SkeletonLoader";
 import { triggerSuccessOverlay } from "@/components/MobileUX/SuccessOverlay";
+import { LaserScannerOverlay } from "@/components/SkeuomorphicUX/LaserScannerOverlay";
 
 export default function CashierInventoryAudit() {
   const { language: lang } = useLanguage();
@@ -41,6 +42,7 @@ export default function CashierInventoryAudit() {
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [scanResult, setScanResult] = useState<"SUCCESS" | "ERROR" | null>(null);
   
   const [myScans, setMyScans] = useState<any[]>([]);
   const [editingScanId, setEditingScanId] = useState<string | null>(null);
@@ -175,10 +177,12 @@ export default function CashierInventoryAudit() {
       }
       
       triggerSuccessOverlay(lang === "ar" ? "تم تسجيل الصنف!" : "Item Scanned!");
+      setScanResult("SUCCESS");
       setBarcode("");
       setQuantity("");
     } catch (error) {
       console.error("Error submitting scan:", error);
+      setScanResult("ERROR");
       alert(lang === "ar" ? "حدث خطأ" : "An error occurred");
     } finally {
       setSubmitting(false);
@@ -273,7 +277,8 @@ export default function CashierInventoryAudit() {
               <p className="text-xs font-mono tracking-widest">BATCH: {activeBatch.id.substring(0, 15)}...</p>
             </div>
           </div>
-          <div className="p-6">
+          <div className="p-6 relative overflow-hidden">
+            <LaserScannerOverlay isScanning={submitting} scanResult={scanResult} onResetResult={() => setScanResult(null)} />
             
             {successMsg && (
               <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl flex items-center gap-3 animate-in fade-in zoom-in duration-300">

@@ -5,7 +5,9 @@ import { db, messaging, dbService } from "@/lib/firebase";
 import { collection, query, orderBy, limit, getDocs } from "firebase/firestore";
 import { getToken } from "firebase/messaging";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Bell, FileText, Shield, Calendar, RefreshCw, LogOut, Activity, TrendingUp, Clock, AlertTriangle, Archive } from "lucide-react";
+import { ArrowLeft, Bell, FileText, Shield, Calendar, RefreshCw, LogOut, Activity, TrendingUp, Clock, AlertTriangle, Archive, Check, X } from "lucide-react";
+import { RubberStamp } from "@/components/SkeuomorphicUX/RubberStamp";
+import { DocumentShredder } from "@/components/SkeuomorphicUX/DocumentShredder";
 
 // ── Design Tokens ────────────────────────────────────────────
 const D = {
@@ -41,6 +43,34 @@ export default function MasterCashierDashboard() {
   const [isNotificationEnabled, setIsNotificationEnabled] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  
+  // Skeuomorphic State
+  const [stampId, setStampId] = useState<string | null>(null);
+  const [stampType, setStampType] = useState<"APPROVED" | "REJECTED" | null>(null);
+  const [shredId, setShredId] = useState<string | null>(null);
+
+  const handleApproveAction = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setStampId(id);
+    setStampType("APPROVED");
+    setTimeout(() => { setStampId(null); setStampType(null); }, 2500);
+  };
+
+  const handleRejectAction = (id: string, isVoid: boolean, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isVoid) {
+      setShredId(id);
+    } else {
+      setStampId(id);
+      setStampType("REJECTED");
+      setTimeout(() => { setStampId(null); setStampType(null); }, 2500);
+    }
+  };
+
+  const handleShredComplete = (id: string) => {
+    setFeed(prev => prev.filter(f => f.id !== id));
+    setShredId(null);
+  };
 
   useEffect(() => {
     const t = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -225,7 +255,9 @@ export default function MasterCashierDashboard() {
             const totalDrops = item.safeDrops?.reduce((sum: number, drop: any) => sum + Number(drop.amount), 0) || 0;
 
             return (
-              <div key={item.id} className="feed-card" style={{ backgroundColor: D.surface, borderRadius: 20, border: `1px solid ${D.border}`, overflow: "hidden" }}>
+              <DocumentShredder key={item.id} isShredding={shredId === item.id} onComplete={() => handleShredComplete(item.id)}>
+                <RubberStamp stampType={stampId === item.id ? stampType : null}>
+                  <div className="feed-card" style={{ backgroundColor: D.surface, borderRadius: 20, border: `1px solid ${D.border}`, overflow: "hidden" }}>
                 {/* Left accent bar */}
                 <div style={{ display: "flex" }}>
                   <div style={{ width: 4, flexShrink: 0, background: `linear-gradient(to bottom, ${D.blue}, ${D.cyan})`, borderRadius: "20px 0 0 20px" }} />
@@ -296,20 +328,36 @@ export default function MasterCashierDashboard() {
                             {item.managerAudit.comments && <div style={{ fontSize: 11, color: D.textDim, fontStyle: "italic", marginTop: 4 }}>"{item.managerAudit.comments}"</div>}
                           </div>
                         )}
-                        <button onClick={(e) => { e.stopPropagation(); router.push(`/shift-reports/view?id=${item.id}`); }} style={{ padding: "12px", borderRadius: 12, background: D.blueDim, border: `1px solid ${D.blueBorder}`, color: D.blue, fontSize: 13, fontWeight: 800, cursor: "pointer", letterSpacing: "0.03em" }}>
-                          View Full Details & Print →
-                        </button>
+                        <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                          {isPending && (
+                            <>
+                              <button onClick={(e) => handleApproveAction(item.id, e)} style={{ flex: 1, padding: "10px", borderRadius: 10, background: D.greenDim, border: `1px solid ${D.greenBorder}`, color: D.green, fontSize: 13, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                                <Check size={16} /> Approve
+                              </button>
+                              <button onClick={(e) => handleRejectAction(item.id, false, e)} style={{ flex: 1, padding: "10px", borderRadius: 10, background: D.redDim, border: `1px solid ${D.redBorder}`, color: D.red, fontSize: 13, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                                <X size={16} /> Reject
+                              </button>
+                            </>
+                          )}
+                          <button onClick={(e) => { e.stopPropagation(); router.push(`/shift-reports/view?id=${item.id}`); }} style={{ flex: 1, padding: "10px", borderRadius: 10, background: D.blueDim, border: `1px solid ${D.blueBorder}`, color: D.blue, fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+                            View Details
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
                 </div>
               </div>
+              </RubberStamp>
+              </DocumentShredder>
             );
           }
 
           if (item._type === "void_request") {
             return (
-              <div key={item.id} className="feed-card" style={{ backgroundColor: D.surface, borderRadius: 20, border: `1px solid ${D.border}`, overflow: "hidden" }}>
+              <DocumentShredder key={item.id} isShredding={shredId === item.id} onComplete={() => handleShredComplete(item.id)}>
+                <RubberStamp stampType={stampId === item.id ? stampType : null}>
+                  <div className="feed-card" style={{ backgroundColor: D.surface, borderRadius: 20, border: `1px solid ${D.border}`, overflow: "hidden" }}>
                 <div style={{ display: "flex" }}>
                   <div style={{ width: 4, flexShrink: 0, background: `linear-gradient(to bottom, ${D.red}, #f97316)`, borderRadius: "20px 0 0 20px" }} />
                   <div style={{ flex: 1, padding: "16px 16px 16px 14px" }}>
@@ -343,14 +391,26 @@ export default function MasterCashierDashboard() {
                     </div>
                     {isExpanded && (
                       <div style={{ marginTop: 12, padding: "12px 14px", background: D.surfaceHigh, borderRadius: 12, border: `1px solid ${D.border}` }}>
-                        <div style={{ fontSize: 12, color: D.textSecondary, fontWeight: 600 }}>
+                        <div style={{ fontSize: 12, color: D.textSecondary, fontWeight: 600, marginBottom: 12 }}>
                           <span style={{ color: D.textDim }}>Item Details: </span>{item.itemDetails || 'N/A'}
                         </div>
+                        {item.status !== 'approved' && (
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <button onClick={(e) => handleApproveAction(item.id, e)} style={{ flex: 1, padding: "8px", borderRadius: 8, background: D.greenDim, border: `1px solid ${D.greenBorder}`, color: D.green, fontSize: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                              <Check size={14} /> Authorize Void
+                            </button>
+                            <button onClick={(e) => handleRejectAction(item.id, true, e)} style={{ flex: 1, padding: "8px", borderRadius: 8, background: D.redDim, border: `1px solid ${D.redBorder}`, color: D.red, fontSize: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                              <X size={14} /> Reject & Delete
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
                 </div>
               </div>
+              </RubberStamp>
+              </DocumentShredder>
             );
           }
 

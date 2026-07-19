@@ -56,6 +56,10 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import dynamic from "next/dynamic";
 import { useBranch } from "@/context/BranchContext";
+import { AnalogOdometer } from "@/components/SkeuomorphicUX/AnalogOdometer";
+import { CoinDropWallet } from "@/components/SkeuomorphicUX/CoinDropWallet";
+import { PosReceiptPrinter } from "@/components/SkeuomorphicUX/PosReceiptPrinter";
+import { RubberStamp } from "@/components/SkeuomorphicUX/RubberStamp";
 
 const compressImage = (file: File, maxWidth: number = 1500, quality: number = 0.8): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -250,6 +254,10 @@ export default function CreditsPage() {
   const [expandedCredits, setExpandedCredits] = useState<Record<string, boolean>>({});
   const [selectedCreditForPrint, setSelectedCreditForPrint] = useState<Credit | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
+  
+  // Skeuomorphic States
+  const [isCoinDropping, setIsCoinDropping] = useState(false);
+  const [isReceiptPrinting, setIsReceiptPrinting] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -787,6 +795,14 @@ export default function CreditsPage() {
         ...(bankTransferReceiptUrl ? { bankTransferReceiptUrl } : {})
       });
 
+      // Trigger Skeuomorphic effects
+      setIsCoinDropping(true);
+      setTimeout(() => {
+        setIsCoinDropping(false);
+        setIsReceiptPrinting(true);
+        setTimeout(() => setIsReceiptPrinting(false), 3000);
+      }, 1500);
+
       // Refresh data
       await fetchCredits();
       
@@ -1167,7 +1183,10 @@ export default function CreditsPage() {
                 <AlertCircle size={18} className="drop-shadow-sm" />
                 <p className="text-sm font-bold tracking-wide uppercase">Outstanding</p>
               </div>
-              <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {stats.outstanding.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+              <div className="flex items-center gap-1 relative z-10">
+                <span className="text-xl font-bold text-slate-900 tracking-tight mt-1">EGP</span>
+                <AnalogOdometer value={stats.outstanding.amount} />
+              </div>
               <p className="text-xs font-semibold text-orange-600/70 mt-1 relative z-10">{stats.outstanding.count} open invoices</p>
             </motion.div>
 
@@ -1768,8 +1787,19 @@ export default function CreditsPage() {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
-              className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[95vh]"
+              className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[95vh] relative"
             >
+              {/* Skeuomorphic Overlays */}
+              {isCoinDropping && (
+                <div className="absolute inset-0 z-[100] flex items-center justify-center bg-white/90 backdrop-blur-sm">
+                  <CoinDropWallet isDropping={isCoinDropping} onComplete={() => setShowPaymentModal(false)} />
+                </div>
+              )}
+              {isReceiptPrinting && (
+                <div className="absolute inset-0 z-[100] flex items-center justify-center bg-white/90 backdrop-blur-sm">
+                  <PosReceiptPrinter isPrinting={isReceiptPrinting} />
+                </div>
+              )}
               <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50/50">
                 <h2 className="text-2xl font-black text-slate-900 tracking-tight">Make Payment</h2>
                 <button onClick={() => setShowPaymentModal(false)} className="p-2 hover:bg-slate-200 text-slate-400 hover:text-slate-600 rounded-full transition-colors">

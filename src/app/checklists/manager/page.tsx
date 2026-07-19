@@ -9,7 +9,9 @@ import { motion } from "framer-motion";
 import { useBranch } from "@/context/BranchContext";
 import { productsDb } from "@/lib/firebase";
 import { collection, getDocs, query, orderBy, limit } from "firebase/firestore";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
+import { ClipboardChecklist } from "@/components/SkeuomorphicUX/ClipboardChecklist";
+import { AnimatePresence } from "framer-motion";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -24,6 +26,8 @@ export default function ManagerChecklistsPage() {
 
   const [productChecklists, setProductChecklists] = useState<any[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [reviewedMap, setReviewedMap] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const fetchProductChecklists = async () => {
@@ -133,36 +137,70 @@ export default function ManagerChecklistsPage() {
                 ) : checklists.length === 0 ? (
                   <tr><td colSpan={5} className="p-8 text-center text-slate-500">لا توجد قوائم مكتملة بعد</td></tr>
                 ) : checklists.map((cl, i) => (
-                  <motion.tr 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    key={cl.id} 
-                    className="hover:bg-muted/50 transition-colors"
-                  >
-                    <td className="px-4 py-3 font-mono text-muted-foreground">
-                      {new Date(cl.createdAt).toLocaleString('en-GB')}
-                    </td>
-                    <td className="px-4 py-3 font-bold text-foreground">{cl.checklistTitle}</td>
-                    <td className="px-4 py-3">{cl.cashierName}</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded text-xs font-bold ${
-                        (cl.score / cl.totalScore) > 0.8 ? "bg-green-100 text-green-700" :
-                        (cl.score / cl.totalScore) > 0.5 ? "bg-amber-100 text-amber-700" :
-                        "bg-red-100 text-red-700"
-                      }`}>
-                        {cl.score} / {cl.totalScore}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <button 
-                        onClick={() => router.push(`/checklists/manager/print/${cl.id}`)}
-                        className="text-red-600 hover:text-red-800 font-bold bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 inline-flex"
-                      >
-                        <Printer className="h-3.5 w-3.5" /> عرض وطباعة
-                      </button>
-                    </td>
-                  </motion.tr>
+                  <React.Fragment key={cl.id}>
+                    <motion.tr 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      className="hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => setExpandedRow(expandedRow === cl.id ? null : cl.id)}
+                    >
+                      <td className="px-4 py-3 font-mono text-muted-foreground">
+                        {new Date(cl.createdAt).toLocaleString('en-GB')}
+                      </td>
+                      <td className="px-4 py-3 font-bold text-foreground">{cl.checklistTitle}</td>
+                      <td className="px-4 py-3">{cl.cashierName}</td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-1 rounded text-xs font-bold ${
+                          (cl.score / cl.totalScore) > 0.8 ? "bg-green-100 text-green-700" :
+                          (cl.score / cl.totalScore) > 0.5 ? "bg-amber-100 text-amber-700" :
+                          "bg-red-100 text-red-700"
+                        }`}>
+                          {cl.score} / {cl.totalScore}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                        <button 
+                          onClick={() => router.push(`/checklists/manager/print/${cl.id}`)}
+                          className="text-red-600 hover:text-red-800 font-bold bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 inline-flex"
+                        >
+                          <Printer className="h-3.5 w-3.5" /> عرض وطباعة
+                        </button>
+                      </td>
+                    </motion.tr>
+                    <AnimatePresence>
+                      {expandedRow === cl.id && (
+                        <motion.tr
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="bg-slate-50/50 overflow-hidden"
+                        >
+                          <td colSpan={5} className="p-0 border-b border-slate-100">
+                            <motion.div 
+                              initial={{ opacity: 0, y: -20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -20 }}
+                              className="p-6 max-w-lg mx-auto"
+                              dir="ltr"
+                            >
+                              <ClipboardChecklist 
+                                items={[
+                                  { id: 'score', label: `Audit Validated (Score: ${cl.score}/${cl.totalScore})`, checked: true },
+                                  { id: 'review', label: 'Manager Review Complete', checked: reviewedMap[cl.id] || false }
+                                ]}
+                                onToggle={(id) => {
+                                  if (id === 'review') {
+                                    setReviewedMap(prev => ({ ...prev, [cl.id]: !prev[cl.id] }));
+                                  }
+                                }}
+                              />
+                            </motion.div>
+                          </td>
+                        </motion.tr>
+                      )}
+                    </AnimatePresence>
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>

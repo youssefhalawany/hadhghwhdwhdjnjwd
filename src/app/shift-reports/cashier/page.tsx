@@ -9,8 +9,10 @@ import { useRouter } from "next/navigation";
 import { PinPad } from "@/components/PinPad";
 import { RadarOfflineScreen } from "@/components/RadarOfflineScreen";
 import { vibrateSuccess, vibrateError } from "@/lib/haptics";
+import { CameraScanner } from "@/components/ui/CameraScanner";
 import { NumericFormat } from "react-number-format";
 import { CashierBottomNav } from "@/components/CashierBottomNav";
+import { SafeDropVault } from "@/components/SkeuomorphicUX/SafeDropVault";
 import { motion, useScroll, useTransform } from "framer-motion";
 import dynamic from "next/dynamic";
 const SignaturePad = dynamic(() => import("react-signature-canvas"), { ssr: false });
@@ -159,6 +161,7 @@ export default function CashierShiftReportPage() {
   const [lighters, setLighters] = useState({ start: "", delivery: "", end: "" });
 
   const [existingReportId, setExistingReportId] = useState<string | null>(null);
+  const [isDroppingSafe, setIsDroppingSafe] = useState(false);
   const [reportStatus, setReportStatus] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState<string | null>(null);
   const [disputeReason, setDisputeReason] = useState<string | null>(null);
@@ -658,10 +661,9 @@ export default function CashierShiftReportPage() {
           body: `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' })}\nCashier: ${c?.name || 'Unknown'}\nStore: ${c?.storeId || 'Unknown'}\nShift: ${c?.shift || 'Unknown'}\nTotal Cash: ${calculateTotalCash()} EGP\nVisa: ${visa} EGP\nTotal Submitted: ${calculateTotalMoney()} EGP\nSignature: ${signature ? 'Captured' : 'None'}\n\nView Full Report & Signature:\n${window.location.origin}/shift-reports/view?id=${submittedId}`
         })
       }).catch(err => console.error("Notify error", err));
+      
+      setIsDroppingSafe(true);
 
-      vibrateSuccess();
-      triggerSuccessOverlay(lang === "ar" ? "تم الإرسال!" : "Submitted!");
-      router.push("/cashier");
     } catch (error: any) {
       console.error("Error submitting shift report:", error);
       
@@ -1329,6 +1331,13 @@ export default function CashierShiftReportPage() {
           </div>
         </form>
       </main>
+      
+      <SafeDropVault 
+        isDropping={isDroppingSafe} 
+        onComplete={() => {
+          router.push("/cashier");
+        }}
+      />
     
       {/* Bottom Navigation */}
       <CashierBottomNav lang={lang} />

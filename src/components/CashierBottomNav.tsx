@@ -8,6 +8,7 @@ import { playClickSound, playSwooshSound } from "@/lib/audioCues";
 import { hapticLight } from "@/lib/haptics";
 import { useLanguage } from "@/context/LanguageContext";
 import { showIsland } from "@/components/MobileUX/DynamicIsland";
+import { LockKeyOverlay } from "@/components/SkeuomorphicUX/LockKeyOverlay";
 
 const D = {
   bg:      "#0B1121", // Solid color instead of translucent to remove blur overhead
@@ -37,6 +38,7 @@ export function CashierBottomNav({ lang: propLang = "en" }: Props) {
   const pathname = usePathname();
   const { language, setLanguage } = useLanguage();
   const [isDialOpen, setIsDialOpen] = useState(false);
+  const [isLocking, setIsLocking] = useState(false);
   const lang = language || propLang;
 
   const toggleDial = () => {
@@ -51,10 +53,7 @@ export function CashierBottomNav({ lang: propLang = "en" }: Props) {
     setIsDialOpen(false);
     
     if (action === "logout") {
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("active_cashier_session");
-        window.location.href = "/cashier";
-      }
+      setIsLocking(true);
       return;
     }
     if (action === "lang") {
@@ -78,6 +77,15 @@ export function CashierBottomNav({ lang: propLang = "en" }: Props) {
 
   return (
     <>
+      <LockKeyOverlay 
+        isLocking={isLocking} 
+        onComplete={() => {
+          if (typeof window !== "undefined") {
+            localStorage.removeItem("active_cashier_session");
+            window.location.href = "/cashier";
+          }
+        }} 
+      />
       <div style={{ height: 80 }} /> {/* Spacer */}
       
       {/* Dim Overlay when dial is open */}
