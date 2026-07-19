@@ -2,12 +2,14 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Plus, Search, MapPin, Clock, User, Package, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, Plus, Search, MapPin, Clock, User, Package, Image as ImageIcon, CheckCircle, X } from "lucide-react";
 import { productsDb } from "@/lib/firebase";
-import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { useLanguage } from "@/context/LanguageContext";
 import { PageWrapper } from "@/components/PageWrapper";
 import { CashierBottomNav } from "@/components/CashierBottomNav";
+import { CameraCapture } from "@/components/MobileUX/CameraCapture";
+import toast from "react-hot-toast";
 
 const D = {
   bg: "#0B1121",
@@ -24,16 +26,77 @@ export default function LostAndFoundList() {
   const { language } = useLanguage();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [storeId, setStoreId] = useState("Unknown");
+  const [cashierName, setCashierName] = useState("Unknown");
+
+  // Modal State
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [takenName, setTakenName] = useState("");
+  const [takenPhone, setTakenPhone] = useState("");
+  const [takenPhotoUrl, setTakenPhotoUrl] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    const savedSession = localStorage.getItem("active_cashier_session");
+    if (savedSession) {
+      try {
+        const parsed = JSON.parse(savedSession);
+        if (parsed.branchId) setStoreId(parsed.branchId);
+        if (parsed.name) setCashierName(parsed.name);
+      } catch (e) {}
+    } else {
+      setLoading(false); // If no session, at least stop loading
+    }
+  }, []);
+
+  useEffect(() => {
+    if (storeId === "Unknown") return; // Wait until storeId is loaded
+
     const q = query(collection(productsDb, "lost_and_found"), orderBy("timestamp", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setItems(data);
+      const filtered = data.filter((item: any) => item.status !== "taken" && item.storeId === storeId);
+      setItems(filtered);
       setLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [storeId]);
+
+  const handleMarkAsTaken = async () => {
+    if (!takenName.trim() || !takenPhone.trim() || !takenPhotoUrl) {
+      toast.error(language === 'en' ? 'Please provide all details and a photo.' : 'يرجى تقديم جميع التفاصيل وصورة.');
+      return;
+    }
+    if (!selectedItemId) return;
+
+    setIsSubmitting(true);
+    try {
+      await updateDoc(doc(productsDb, "lost_and_found", selectedItemId), {
+        status: "taken",
+        takenAt: new Date().toISOString(),
+        takenDetails: {
+          name: takenName.trim(),
+          phone: takenPhone.trim(),
+          photoUrl: takenPhotoUrl,
+          takenByCashierName: cashierName
+        }
+      });
+      toast.success(language === 'en' ? 'Item marked as taken!' : 'تم التحديد كمستلم!');
+      closeModal();
+    } catch (error) {
+      console.error("Error updating item status:", error);
+      toast.error(language === 'en' ? 'Failed to update status.' : 'فشل التحديث.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const closeModal = () => {
+    setSelectedItemId(null);
+    setTakenName("");
+    setTakenPhone("");
+    setTakenPhotoUrl("");
+  };
 
   return (
     <PageWrapper className="min-h-screen pb-32" dir={language === "ar" ? "rtl" : "ltr"} style={{ backgroundColor: D.bg }}>
@@ -76,7 +139,7 @@ export default function LostAndFoundList() {
           <div className="text-center p-8 rounded-2xl border" style={{ backgroundColor: D.surface, borderColor: D.border }}>
             <Search className="mx-auto text-slate-500 mb-3" size={32} />
             <p className="text-slate-400 text-sm">
-              {language === 'en' ? 'No items recorded yet.' : 'لا توجد عناصر مسجلة بعد.'}
+              {language === 'en' ? 'No pending items found.' : 'لم يتم العثور على عناصر معلقة.'}
             </p>
           </div>
         ) : (
@@ -107,10 +170,91 @@ export default function LostAndFoundList() {
                   <span>{item.localTime || new Date(item.timestamp).toLocaleString()}</span>
                 </div>
               </div>
+
+              <div className="mt-2 pt-3 border-t border-white/5">
+                <button
+                  onClick={() => setSelectedItemId(item.id)}
+                  className="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-cyan-400 py-2.5 rounded-xl text-sm font-bold transition-all"
+                >
+                  <CheckCircle size={16} />
+                  {language === 'en' ? 'Mark as Taken' : 'تحديد كمستلم'}
+                </button>
+              </div>
             </div>
           ))
         )}
       </main>
+
+      {/* Mark as Taken Modal */}
+      {selectedItemId && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" dir={language === 'ar' ? 'rtl' : 'ltr'}>
+          <div className="w-full max-w-sm rounded-2xl p-5 relative" style={{ backgroundColor: D.surface, border: `1px solid ${D.border}` }}>
+            <button 
+              onClick={closeModal}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white"
+            >
+              <X size={20} />
+            </button>
+            <h2 className="text-lg font-bold text-white mb-4 pr-6">
+              {language === 'en' ? 'Customer Details' : 'تفاصيل العميل'}
+            </h2>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-400 mb-1.5">
+                  {language === 'en' ? 'Customer Name' : 'اسم العميل'}
+                </label>
+                <input
+                  type="text"
+                  value={takenName}
+                  onChange={e => setTakenName(e.target.value)}
+                  className="w-full bg-slate-800/50 border border-white/10 rounded-xl p-3 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400"
+                  placeholder={language === 'en' ? 'Full Name' : 'الاسم الكامل'}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-400 mb-1.5">
+                  {language === 'en' ? 'Phone Number' : 'رقم الهاتف'}
+                </label>
+                <input
+                  type="tel"
+                  value={takenPhone}
+                  onChange={e => setTakenPhone(e.target.value)}
+                  className="w-full bg-slate-800/50 border border-white/10 rounded-xl p-3 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400"
+                  placeholder={language === 'en' ? '01xxxxxxxxx' : '٠١xxxxxxxxx'}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-400 mb-1.5">
+                  {language === 'en' ? 'National ID Photo' : 'صورة بطاقة الرقم القومي'}
+                </label>
+                <div className="p-1 rounded-xl" style={{ backgroundColor: D.bg, border: `1px solid ${D.border}` }}>
+                  <CameraCapture onPhotoUploaded={setTakenPhotoUrl} label={language === 'en' ? 'Photo of ID + Item' : 'صورة للبطاقة مع العنصر'} />
+                </div>
+                <p className="text-[10px] text-cyan-400/70 mt-2">
+                  {language === 'en' ? 'Take a picture of the ID next to the claimed item.' : 'التقط صورة للبطاقة بجوار العنصر المستلم.'}
+                </p>
+              </div>
+
+              <button
+                onClick={handleMarkAsTaken}
+                disabled={isSubmitting}
+                className="w-full h-12 rounded-xl font-bold text-sm flex items-center justify-center gap-2 mt-2"
+                style={{ background: 'linear-gradient(135deg, #0891b2, #06b6d4)', color: '#fff' }}
+              >
+                {isSubmitting ? (
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                ) : (
+                  <>
+                    <CheckCircle size={18} />
+                    {language === 'en' ? 'Confirm Delivery' : 'تأكيد التسليم'}
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <CashierBottomNav />
     </PageWrapper>

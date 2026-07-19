@@ -4,9 +4,17 @@ import React, { useState, useEffect } from "react";
 import { productsDb } from "@/lib/firebase";
 import { collection, query, orderBy, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { PageWrapper } from "@/components/PageWrapper";
-import { Package, Search, MapPin, Eye, X, CheckCircle, User, Calendar, Clock } from "lucide-react";
+import { Package, Search, MapPin, Eye, X, CheckCircle, User, Calendar, Clock, Phone } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
+import { useBranch } from "@/context/BranchContext";
 import toast from "react-hot-toast";
+
+interface TakenDetails {
+  name: string;
+  phone: string;
+  photoUrl: string;
+  takenByCashierName: string;
+}
 
 interface LostAndFoundItem {
   id: string;
@@ -18,10 +26,13 @@ interface LostAndFoundItem {
   localTime?: string;
   status?: string;
   takenAt?: string;
+  storeId?: string;
+  takenDetails?: TakenDetails;
 }
 
 export default function ManagerLostAndFoundPage() {
   const { language } = useLanguage();
+  const { currentBranch } = useBranch();
   const [items, setItems] = useState<LostAndFoundItem[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -75,7 +86,15 @@ export default function ManagerLostAndFoundPage() {
                           (statusFilter === "taken" && isTaken) || 
                           (statusFilter === "pending" && !isTaken);
     
-    return matchesSearch && matchesStatus;
+    // 3. Branch filter
+    let matchesBranch = true;
+    if (currentBranch !== "all") {
+      const sId = (item.storeId || "").toLowerCase();
+      const inferred = sId.includes("ola") || sId.includes("koronfol") ? "ola" : "alamein4";
+      matchesBranch = (item.storeId === currentBranch) || (!item.storeId && inferred === currentBranch);
+    }
+    
+    return matchesSearch && matchesStatus && matchesBranch;
   });
 
   const formatDate = (isoString: string, fallbackLocal?: string) => {
@@ -101,7 +120,7 @@ export default function ManagerLostAndFoundPage() {
               {language === 'en' ? 'Lost & Found' : 'المفقودات'}
             </h1>
             <p className="text-slate-500 mt-2">
-              {language === 'en' ? 'Manage reported lost items and mark them when claimed.' : 'إدارة المفقودات المبلغ عنها وتحديدها عند استلامها.'}
+              {language === 'en' ? 'Manage reported lost items and view customer details for claimed items.' : 'إدارة المفقودات المبلغ عنها وعرض تفاصيل العملاء للعناصر المستلمة.'}
             </p>
           </div>
         </div>
@@ -142,7 +161,7 @@ export default function ManagerLostAndFoundPage() {
           <div className="text-center p-20 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800">
             <Package size={48} className="mx-auto text-slate-300 dark:text-slate-700 mb-4" />
             <h3 className="text-xl font-bold text-slate-800 dark:text-white">
-              {language === 'en' ? 'No items found' : 'لم يتم العثور على عناصر'}
+              {language === 'en' ? 'No items found for this branch' : 'لم يتم العثور على عناصر لهذا الفرع'}
             </h3>
           </div>
         ) : (
@@ -190,7 +209,10 @@ export default function ManagerLostAndFoundPage() {
                     </div>
 
                     <div className="space-y-2 mt-auto">
-                      <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                      <div className="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800 pb-2">
+                        <span className="font-semibold text-xs uppercase">{language === 'en' ? 'Found By' : 'تم العثور عليه بواسطة'}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                         <User size={14} />
                         {item.cashierName}
                       </div>
@@ -200,15 +222,47 @@ export default function ManagerLostAndFoundPage() {
                       </div>
                     </div>
 
-                    {/* Action */}
-                    {!isTaken && (
+                    {/* Action or Taken Details */}
+                    {isTaken ? (
+                      item.takenDetails ? (
+                        <div className="mt-5 pt-4 border-t border-emerald-500/20 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-xl p-3">
+                          <div className="flex items-center gap-2 mb-2 text-emerald-600 dark:text-emerald-400 font-bold text-xs uppercase tracking-wider">
+                            <CheckCircle size={14} />
+                            {language === 'en' ? 'Claim Details' : 'تفاصيل الاستلام'}
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                              <User size={14} className="text-slate-400" />
+                              <span className="font-medium">{item.takenDetails.name}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                              <Phone size={14} className="text-slate-400" />
+                              <span>{item.takenDetails.phone}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-2">
+                              <span>{language === 'en' ? 'Handed over by:' : 'تم تسليمه بواسطة:'}</span>
+                              <span className="font-bold">{item.takenDetails.takenByCashierName}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-slate-400">
+                              <Calendar size={12} />
+                              {item.takenAt ? formatDate(item.takenAt) : ''}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 text-sm text-emerald-600 dark:text-emerald-400 font-medium flex items-center justify-center gap-2">
+                          <CheckCircle size={16} />
+                          {language === 'en' ? 'Claimed (Legacy Record)' : 'مستلم (سجل قديم)'}
+                        </div>
+                      )
+                    ) : (
                       <div className="mt-5 pt-5 border-t border-slate-100 dark:border-slate-800">
                         <button
                           onClick={() => handleMarkAsTaken(item.id)}
                           className="w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 py-3 rounded-xl font-bold transition-all"
                         >
                           <CheckCircle size={18} />
-                          {language === 'en' ? 'Mark as Taken' : 'تحديد كمستلم'}
+                          {language === 'en' ? 'Mark as Taken (Bypass)' : 'تحديد كمستلم (تخطي)'}
                         </button>
                       </div>
                     )}
@@ -222,8 +276,8 @@ export default function ManagerLostAndFoundPage() {
 
       {/* Full Image Modal */}
       {selectedItem && (
-        <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex flex-col items-center justify-center p-4" onClick={() => setSelectedItem(null)}>
-          <div className="relative w-full max-w-lg flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex flex-col items-center justify-center p-4 overflow-y-auto" onClick={() => setSelectedItem(null)}>
+          <div className="relative w-full max-w-lg flex flex-col items-center my-8" onClick={(e) => e.stopPropagation()}>
             <button 
               onClick={() => setSelectedItem(null)} 
               className="absolute -top-12 right-0 text-white bg-white/10 hover:bg-white/20 rounded-full p-2 transition-colors"
@@ -231,16 +285,67 @@ export default function ManagerLostAndFoundPage() {
               <X size={24} />
             </button>
             
-            <img src={selectedItem.photoUrl} alt="Full view" className="max-w-full max-h-[70vh] rounded-2xl object-contain shadow-2xl" />
+            <div className="w-full flex flex-col items-center gap-6">
+              <div className="w-full flex flex-col items-center">
+                <p className="text-white/60 font-bold text-xs uppercase tracking-wider mb-2">
+                  {language === 'en' ? 'Item Photo' : 'صورة العنصر'}
+                </p>
+                <img src={selectedItem.photoUrl} alt="Item view" className="max-w-full max-h-[50vh] rounded-2xl object-contain shadow-2xl" />
+              </div>
+
+              {selectedItem.status === 'taken' && selectedItem.takenDetails && selectedItem.takenDetails.photoUrl && (
+                <div className="w-full flex flex-col items-center pt-6 border-t border-white/10">
+                  <p className="text-emerald-400 font-bold text-xs uppercase tracking-wider mb-2 flex items-center gap-2">
+                    <CheckCircle size={14} />
+                    {language === 'en' ? 'Claim Proof (ID)' : 'إثبات الاستلام (البطاقة)'}
+                  </p>
+                  <img src={selectedItem.takenDetails.photoUrl} alt="ID view" className="max-w-full max-h-[50vh] rounded-2xl object-contain shadow-2xl" />
+                </div>
+              )}
+            </div>
             
-            <div className="w-full mt-6 bg-white/10 backdrop-blur-md rounded-2xl p-4 text-white">
-              <h3 className="text-xl font-bold mb-2">{selectedItem.description}</h3>
-              <p className="text-white/70 text-sm flex items-center gap-2 mb-1">
-                <MapPin size={14} /> {selectedItem.locationFound}
-              </p>
-              <p className="text-white/70 text-sm flex items-center gap-2">
-                <User size={14} /> {selectedItem.cashierName} - {formatDate(selectedItem.timestamp, selectedItem.localTime)}
-              </p>
+            <div className="w-full mt-6 bg-white/10 backdrop-blur-md rounded-2xl p-5 text-white shadow-xl">
+              <h3 className="text-xl font-bold mb-3">{selectedItem.description}</h3>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-white/50 text-[10px] font-bold uppercase mb-1">
+                    {language === 'en' ? 'Found Location' : 'مكان العثور'}
+                  </p>
+                  <p className="text-white/90 text-sm flex items-center gap-2">
+                    <MapPin size={14} className="text-cyan-400" /> {selectedItem.locationFound}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-white/50 text-[10px] font-bold uppercase mb-1">
+                    {language === 'en' ? 'Found By' : 'تم العثور بواسطة'}
+                  </p>
+                  <p className="text-white/90 text-sm flex items-center gap-2">
+                    <User size={14} className="text-slate-400" /> {selectedItem.cashierName}
+                  </p>
+                  <p className="text-white/60 text-xs mt-1">{formatDate(selectedItem.timestamp, selectedItem.localTime)}</p>
+                </div>
+              </div>
+
+              {selectedItem.status === 'taken' && selectedItem.takenDetails && (
+                <div className="mt-4 pt-4 border-t border-white/10">
+                  <p className="text-emerald-400/80 text-[10px] font-bold uppercase mb-2">
+                    {language === 'en' ? 'Claim Information' : 'معلومات الاستلام'}
+                  </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-white/50 text-[10px] font-bold mb-1">{language === 'en' ? 'Customer' : 'العميل'}</p>
+                      <p className="text-white/90 text-sm font-medium">{selectedItem.takenDetails.name}</p>
+                      <p className="text-white/70 text-xs">{selectedItem.takenDetails.phone}</p>
+                    </div>
+                    <div>
+                      <p className="text-white/50 text-[10px] font-bold mb-1">{language === 'en' ? 'Processed By' : 'تم المعالجة بواسطة'}</p>
+                      <p className="text-white/90 text-sm">{selectedItem.takenDetails.takenByCashierName}</p>
+                      <p className="text-white/60 text-xs">{selectedItem.takenAt ? formatDate(selectedItem.takenAt) : ''}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
