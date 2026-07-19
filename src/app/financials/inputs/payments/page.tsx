@@ -1376,6 +1376,23 @@ export default function PaymentsRedesignPage() {
                     <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '16px', color: '#000' }}>{selectedPaymentForPrint.date}</div>
                   </div>
                 </div>
+                {/* Row 4 */}
+                <div style={{ display: 'flex', borderTop: '1px solid #000' }}>
+                  <div style={{ flex: 1, padding: '12px 15px', borderRight: '1px solid #000', backgroundColor: '#ffffff' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '10px', color: '#666', textTransform: 'uppercase', fontWeight: 'bold' }}>Category</span>
+                      <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#333' }}>القسم</span>
+                    </div>
+                    <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '14px', color: '#000', textTransform: 'capitalize' }}>{selectedPaymentForPrint.category || '-'}</div>
+                  </div>
+                  <div style={{ flex: 2, padding: '12px 15px', backgroundColor: '#ffffff' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '10px', color: '#666', textTransform: 'uppercase', fontWeight: 'bold' }}>Notes</span>
+                      <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#333' }}>ملاحظات</span>
+                    </div>
+                    <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '14px', color: '#000' }}>{selectedPaymentForPrint.categoryNote || selectedPaymentForPrint.description || '-'}</div>
+                  </div>
+                </div>
               </div>
             </div>
 
