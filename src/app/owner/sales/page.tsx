@@ -41,6 +41,7 @@ export default function OwnerSalesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [viewMode, setViewMode] = useState<"detailed" | "grouped">("detailed");
 
   const loadData = async () => {
     setLoading(true);
@@ -76,6 +77,31 @@ export default function OwnerSalesPage() {
 
   const totalFilteredSales = filteredSales.reduce((acc, s) => acc + (Number(s.cash) || 0) + (Number(s.visa) || 0), 0);
   const totalFilteredOverShort = filteredSales.reduce((acc, s) => acc + (Number(s.overShort) || 0), 0);
+
+  const groupedSales = useMemo(() => {
+    const groups: Record<string, any> = {};
+    filteredSales.forEach(s => {
+      const d = s.date || "Unknown Date";
+      if (!groups[d]) {
+        groups[d] = {
+          id: `group-${d}`,
+          date: d,
+          cash: 0,
+          visa: 0,
+          overShort: 0,
+          isGrouped: true,
+          count: 0
+        };
+      }
+      groups[d].cash += (Number(s.cash) || 0);
+      groups[d].visa += (Number(s.visa) || 0);
+      groups[d].overShort += (Number(s.overShort) || 0);
+      groups[d].count += 1;
+    });
+    return Object.values(groups).sort((a, b) => b.date.localeCompare(a.date));
+  }, [filteredSales]);
+
+  const displayedSales = viewMode === "grouped" ? groupedSales : filteredSales;
 
   if (loading) {
     return (
@@ -156,12 +182,81 @@ export default function OwnerSalesPage() {
               </div>
             </div>
 
+            <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+              <button 
+                onClick={() => { setViewMode("detailed"); playPopSound(); }}
+                style={{ flex: 1, padding: "10px", borderRadius: 12, fontSize: 13, fontWeight: 700, border: `1px solid ${viewMode === "detailed" ? D.blueBorder : D.border}`, background: viewMode === "detailed" ? D.blueDim : D.surfaceHigh, color: viewMode === "detailed" ? D.blue : D.textPrimary }}
+              >
+                {lang === "en" ? "Detailed View" : "عرض مفصل"}
+              </button>
+              <button 
+                onClick={() => { setViewMode("grouped"); playPopSound(); }}
+                style={{ flex: 1, padding: "10px", borderRadius: 12, fontSize: 13, fontWeight: 700, border: `1px solid ${viewMode === "grouped" ? D.greenBorder : D.border}`, background: viewMode === "grouped" ? D.greenDim : D.surfaceHigh, color: viewMode === "grouped" ? D.green : D.textPrimary }}
+              >
+                {lang === "en" ? "Grouped by Day" : "تجميع باليوم"}
+              </button>
+            </div>
+
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {filteredSales.map((sale) => {
+              {displayedSales.map((sale) => {
                 const totalCash = Number(sale.cash) || 0;
                 const totalVisa = Number(sale.visa) || 0;
                 const totalSales = totalCash + totalVisa;
                 const overShort = Number(sale.overShort) || 0;
+
+                if (sale.isGrouped) {
+                  return (
+                    <div key={sale.id} style={{ backgroundColor: D.surface, borderRadius: 20, padding: "20px", border: `1px solid ${D.border}` }}>
+                      <div style={{ display: "flex", justifyItems: "space-between", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          <div style={{ 
+                            width: 36, height: 36, borderRadius: 10, 
+                            background: D.greenDim, 
+                            border: `1px solid ${D.greenBorder}`, 
+                            display: "flex", alignItems: "center", justifyContent: "center" 
+                          }}>
+                              <Calendar size={18} color={D.green} />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: D.textPrimary }}>
+                              {lang === "en" ? "Daily Total" : "إجمالي اليوم"}
+                            </div>
+                            <div style={{ fontSize: 11, color: D.textDim, display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
+                              <FileText size={10} /> {sale.count} {lang === "en" ? "Transactions" : "عمليات"}
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: D.textSecondary, display: "flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}>
+                            <Calendar size={10} /> {sale.date}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ fontSize: 24, fontWeight: 800, color: D.textPrimary, marginBottom: 16 }}>
+                        EGP {totalSales.toLocaleString()}
+                      </div>
+
+                      <div style={{ display: "flex", gap: 12, borderTop: `1px solid ${D.borderMid}`, paddingTop: 12 }}>
+                          <div>
+                              <div style={{ fontSize: 10, color: D.textDim, textTransform: "uppercase", fontWeight: 700 }}>{lang === "en" ? "Cash" : "كاش"}</div>
+                              <div style={{ fontSize: 13, color: D.green, fontWeight: 700 }}>{totalCash.toLocaleString()}</div>
+                          </div>
+                          <div style={{ width: 1, backgroundColor: D.borderMid }} />
+                          <div>
+                              <div style={{ fontSize: 10, color: D.textDim, textTransform: "uppercase", fontWeight: 700 }}>{lang === "en" ? "Visa" : "فيزا"}</div>
+                              <div style={{ fontSize: 13, color: D.blue, fontWeight: 700 }}>{totalVisa.toLocaleString()}</div>
+                          </div>
+                          <div style={{ width: 1, backgroundColor: D.borderMid }} />
+                          <div>
+                              <div style={{ fontSize: 10, color: D.textDim, textTransform: "uppercase", fontWeight: 700 }}>{lang === "en" ? "Over/Short" : "العجز/الزيادة"}</div>
+                              <div style={{ fontSize: 13, color: overShort < 0 ? D.red : D.green, fontWeight: 700 }}>{overShort.toLocaleString()}</div>
+                          </div>
+                      </div>
+                    </div>
+                  );
+                }
+
                 const isNight = sale.shift?.toLowerCase() === "night";
 
                 return (
@@ -223,7 +318,7 @@ export default function OwnerSalesPage() {
                 );
               })}
               
-              {filteredSales.length === 0 && (
+              {displayedSales.length === 0 && (
                 <div style={{ textAlign: "center", padding: "40px 20px", color: D.textDim, fontSize: 14 }}>
                   {lang === "en" ? "No sales records found matching your filters." : "لا توجد سجلات مبيعات تطابق بحثك."}
                 </div>
