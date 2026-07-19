@@ -16,6 +16,7 @@ export default function SalesManagementPage() {
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState<"day" | "month" | "year">("month");
   const [filterValue, setFilterValue] = useState(new Date().toISOString().substring(0, 10));
+  const [viewMode, setViewMode] = useState<"detailed" | "grouped">("detailed");
   const [allTimeStats, setAllTimeStats] = useState({ cash: 0, visa: 0, overShort: 0 });
 
   useEffect(() => {
@@ -211,6 +212,31 @@ export default function SalesManagementPage() {
       shiftBattle: { morning: morningPercent, night: nightPercent, totalMorning, totalNight }
     };
   }, [sales]);
+
+  const groupedSales = useMemo(() => {
+    const groups: Record<string, any> = {};
+    sales.forEach(s => {
+      const d = s.date || "Unknown Date";
+      if (!groups[d]) {
+        groups[d] = {
+          id: `group-${d}`,
+          date: d,
+          cash: 0,
+          visa: 0,
+          overShort: 0,
+          isGrouped: true,
+          count: 0
+        };
+      }
+      groups[d].cash += (Number(s.cash) || 0);
+      groups[d].visa += (Number(s.visa) || 0);
+      groups[d].overShort += (Number(s.overShort) || 0);
+      groups[d].count += 1;
+    });
+    return Object.values(groups).sort((a, b) => b.date.localeCompare(a.date));
+  }, [sales]);
+
+  const displayedSales = viewMode === "grouped" ? groupedSales : sales;
 
   const formatMoney = (val: number) => {
     return val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -602,14 +628,86 @@ export default function SalesManagementPage() {
                 <div key={i} className="h-32 bg-muted animate-pulse rounded-2xl border border-border"></div>
               ))}
             </div>
-          ) : sales.length === 0 ? (
+          ) : displayedSales.length === 0 ? (
             <div className="text-center py-12 bg-card rounded-2xl border border-border border-dashed">
               <CalendarDays className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
               <p className="text-muted-foreground font-medium">No sales recorded for this month.</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {sales.map((sale) => {
+              <div className="flex gap-2 mb-6">
+                <button 
+                  onClick={() => setViewMode("detailed")}
+                  className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-colors ${viewMode === "detailed" ? 'bg-indigo-500 text-white shadow-md' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+                >
+                  Detailed View
+                </button>
+                <button 
+                  onClick={() => setViewMode("grouped")}
+                  className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-colors ${viewMode === "grouped" ? 'bg-emerald-500 text-white shadow-md' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+                >
+                  Grouped by Day
+                </button>
+              </div>
+
+              {displayedSales.map((sale) => {
+                if (sale.isGrouped) {
+                  return (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      key={sale.id} 
+                      className="bg-card rounded-2xl border border-emerald-500/30 p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
+                    >
+                      <div className="absolute top-0 right-0 p-6 opacity-5">
+                        <CalendarDays size={80} className="text-emerald-500" />
+                      </div>
+                      <div className="flex justify-between items-start mb-4 relative z-10">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
+                            <CalendarDays className="text-emerald-600 dark:text-emerald-400 h-5 w-5" />
+                          </div>
+                          <div>
+                            <h4 className="font-black text-foreground tracking-tight uppercase text-emerald-600 dark:text-emerald-400">
+                              DAILY TOTAL
+                            </h4>
+                            <p className="text-xs text-muted-foreground font-medium mt-0.5 flex items-center gap-1">
+                              <FileText size={12} /> {sale.count} Transactions • {sale.date}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-muted/50 p-4 rounded-xl relative z-10 border border-emerald-500/10">
+                        <div>
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">TOTAL (CASH + VISA)</p>
+                          <p className="text-xl font-black text-foreground">
+                            EGP {formatMoney((Number(sale.cash) || 0) + (Number(sale.visa) || 0))}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">CASH</p>
+                          <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                            EGP {formatMoney(Number(sale.cash) || 0)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">VISA</p>
+                          <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                            EGP {formatMoney(Number(sale.visa) || 0)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">OVER/SHORT</p>
+                          <p className={`text-lg font-bold ${(Number(sale.overShort) || 0) < 0 ? "text-red-500" : "text-green-500"}`}>
+                            EGP {formatMoney(Number(sale.overShort) || 0)}
+                          </p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                }
+
                 const isDuplicate = duplicateIds.has(sale.id);
                 return (
                 <motion.div 
