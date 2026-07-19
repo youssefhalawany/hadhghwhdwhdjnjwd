@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { db } from "@/lib/firebase";
 import { collection, query, orderBy, limit, getDocs } from "firebase/firestore";
 import { PullToRefresh } from "@/components/MobileUX/PullToRefresh";
@@ -198,7 +198,7 @@ export default function OwnerSalesPage() {
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {displayedSales.map((sale) => {
+              {displayedSales.map((sale: any) => {
                 const totalCash = Number(sale.cash) || 0;
                 const totalVisa = Number(sale.visa) || 0;
                 const totalSales = totalCash + totalVisa;

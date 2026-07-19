@@ -77,6 +77,7 @@ import {
   ChevronRight,
   TrendingUp,
   AlertTriangle,
+  CheckCircle2,
   MessageCircle,
   FileText,
   PieChart as PieChartIcon
@@ -336,6 +337,26 @@ export default function PaymentsRedesignPage() {
     } catch (err) {
       console.error(err);
       toast.error('Failed to read clipboard. Please use Cmd+V / Ctrl+V on your keyboard.');
+    }
+  };
+
+  const handlePasteBankReceipt = async () => {
+    try {
+      const clipboardItems = await navigator.clipboard.read();
+      for (const clipboardItem of clipboardItems) {
+        const imageTypes = clipboardItem.types.filter(type => type.startsWith('image/'));
+        for (const imageType of imageTypes) {
+          const blob = await clipboardItem.getType(imageType);
+          const file = new File([blob], "pasted-bank-receipt.png", { type: imageType });
+          setBankTransferFile(file);
+          toast.success('Bank transfer receipt pasted successfully!');
+          return;
+        }
+      }
+      toast.error('No image found in clipboard');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to read clipboard. Please use Ctrl+V / Cmd+V directly or upload a file.');
     }
   };
   const handleUploadPoToOldInvoice = async (file: File) => {
@@ -1157,7 +1178,17 @@ export default function PaymentsRedesignPage() {
                               {bankTransferFile ? (
                                 <p className="text-xs font-medium text-blue-800 break-all bg-blue-100/50 p-2 rounded-lg border border-blue-200 inline-flex items-center gap-1"><CheckCircle2 size={12}/> {bankTransferFile.name}</p>
                               ) : (
-                                <p className="text-[10px] text-blue-500 mt-1 flex items-center gap-1"><ClipboardPaste size={10}/> Or paste image directly (Ctrl+V)</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-[10px] text-blue-500">Or: </span>
+                                  <button 
+                                    type="button" 
+                                    onClick={handlePasteBankReceipt}
+                                    className="text-[10px] text-blue-600 bg-blue-100 hover:bg-blue-200 px-2 py-1 rounded flex items-center gap-1 transition-colors border border-blue-200"
+                                  >
+                                    <ClipboardPaste size={10}/> Paste from Clipboard
+                                  </button>
+                                  <span className="text-[10px] text-blue-400">(or press Ctrl+V)</span>
+                                </div>
                               )}
                             </div>
                           </div>
