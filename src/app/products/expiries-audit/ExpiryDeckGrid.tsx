@@ -68,7 +68,7 @@ function DeckStack({ group, onAuditAction }: { group: any[], onAuditAction: (ite
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="relative w-full" style={{ height: expanded ? group.length * 280 : 280 }} onClick={() => setExpanded(!expanded)}>
+    <div className="relative w-full" style={{ height: expanded ? group.length * 310 : 310 }} onClick={() => setExpanded(!expanded)}>
       <AnimatePresence>
         {group.map((item, index) => {
           if (!expanded && index > 2) return null;
@@ -161,7 +161,7 @@ function SwipeableExpiryCard({ item, index, totalInGroup, isExpanded, onAuditAct
     }
   };
 
-  const stackOffset = isExpanded ? index * 280 : index * 8;
+  const stackOffset = isExpanded ? index * 310 : index * 8;
   const zIndex = 30 - index;
   const scale = isExpanded ? 1 : 1 - (index * 0.05);
   const opacity = isExpanded ? 1 : 1 - (index * 0.2);
@@ -177,7 +177,7 @@ function SwipeableExpiryCard({ item, index, totalInGroup, isExpanded, onAuditAct
       whileInView={{ scale, opacity, y: stackOffset }}
       exit={{ scale: 0.5, opacity: 0 }}
       style={{ zIndex }}
-      className={`absolute top-0 left-0 w-full h-[260px] bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden cursor-grab active:cursor-grabbing ${urgencyLevel === 'critical' ? 'shadow-[0_0_15px_rgba(239,68,68,0.3)]' : ''}`}
+      className={`absolute top-0 left-0 w-full h-[290px] bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden cursor-grab active:cursor-grabbing ${urgencyLevel === 'critical' ? 'shadow-[0_0_15px_rgba(239,68,68,0.3)]' : ''}`}
     >
       <RubberStamp stampType={stamp} stampText={stampText} className="w-full h-full absolute inset-0">
         <div className="p-4 sm:p-5 h-full flex flex-col justify-between">
