@@ -151,7 +151,10 @@ export default function OutOfStockManagerPage() {
       (log.cashierName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (log.branchId || "").toLowerCase().includes(searchTerm.toLowerCase());
       
-    const matchesBranch = currentBranch !== "all" ? (!log.branchId || log.branchId === currentBranch) : (selectedBranch === "all" || !log.branchId || log.branchId === selectedBranch);
+    const resolvedBranchId = log.branchId || "el-alamein-4";
+    const matchesBranch = currentBranch !== "all" 
+      ? resolvedBranchId === currentBranch 
+      : (selectedBranch === "all" || resolvedBranchId === selectedBranch);
 
     if (filterResolved === "pending" && log.resolved) return false;
     if (filterResolved === "resolved" && !log.resolved) return false;

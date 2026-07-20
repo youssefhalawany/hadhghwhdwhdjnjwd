@@ -219,7 +219,8 @@ export default function ManagerCleaningLogsPage() {
 
   const filteredLogs = logs.filter(log => {
     // 0. Branch filter
-    if (currentBranch !== "all" && log.branchId && log.branchId !== currentBranch) return false;
+    const resolvedBranchId = log.branchId || "el-alamein-4";
+    if (currentBranch !== "all" && resolvedBranchId !== currentBranch) return false;
 
     // 1. Search filter
     const matchesSearch = log.cashierName.toLowerCase().includes(searchTerm.toLowerCase()) ||
