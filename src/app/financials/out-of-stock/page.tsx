@@ -109,10 +109,13 @@ export default function OutOfStockManagerPage() {
         reader.onerror = (error) => reject(error);
       });
 
-      // Upload the compressed base64 string
-      const { uploadString } = await import("firebase/storage");
+      // Convert the compressed base64 string to a Blob
+      const response = await fetch(compressedDataUrl);
+      const blob = await response.blob();
+
+      // Upload the compressed blob using the already imported uploadBytes
       const storageRef = ref(storage, `out_of_stock_receipts/${selectedLogId}_${Date.now()}.jpg`);
-      await uploadString(storageRef, compressedDataUrl, 'data_url');
+      await uploadBytes(storageRef, blob);
       const url = await getDownloadURL(storageRef);
 
       // Update Firestore
