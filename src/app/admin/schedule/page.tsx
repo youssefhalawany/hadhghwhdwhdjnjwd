@@ -34,9 +34,8 @@ export default function AdminSchedulePage() {
   });
 
   useEffect(() => {
-    // Set default month to next month
+    // Set default month to current month
     const d = new Date();
-    d.setMonth(d.getMonth() + 1);
     setMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
 
     const fetchAllEmps = async () => {
@@ -120,9 +119,13 @@ export default function AdminSchedulePage() {
       const data = await res.json();
       if (data.success) {
         setSchedule(data.schedule);
+        alert("Schedule generated successfully!");
+      } else {
+        alert("Failed to generate: " + (data.error || "Unknown error"));
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      alert("Error during generation: " + e.message);
     }
     setLoading(false);
   };
