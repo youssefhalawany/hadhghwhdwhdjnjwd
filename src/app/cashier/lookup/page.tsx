@@ -236,7 +236,7 @@ export default function MasterScannerPage() {
                   </div>
                   <div>
                     <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Supplier</p>
-                    <p className="text-sm font-semibold text-slate-200">{productData.supplier || "Not specified"}</p>
+                    <p className="text-sm font-semibold text-slate-200">{productData.supplier || productData.priceHistory?.[0]?.supplier || productData.priceHistory?.[productData.priceHistory.length - 1]?.supplier || "Not specified"}</p>
                   </div>
                 </div>
               </div>

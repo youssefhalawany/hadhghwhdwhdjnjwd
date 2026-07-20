@@ -58,7 +58,7 @@ export default function ProductLookupPage() {
                  productsMap.set(data.barcode, {
                      id: data.barcode, barcode: data.barcode, 
                      description: data.itemName || "Unknown Expiry", 
-                     itemName: data.itemName, supplier: data.supplier,
+                     itemName: data.itemName, supplier: data.supplier || data.priceHistory?.[0]?.supplier || "",
                      isPhantom: true,
                      expiryDate: data.expiryDate
                  });
@@ -98,7 +98,7 @@ export default function ProductLookupPage() {
                productsMap.set(barcode, {
                    id: barcode, barcode: barcode, 
                    description: data.description || data.itemName || data.name || "Unknown Item", 
-                   itemName: data.itemName, supplier: data.supplier,
+                   itemName: data.itemName, supplier: data.supplier || data.priceHistory?.[0]?.supplier || "",
                    price: data.currentPrice || data.price,
                    expiryDate: data.expiryDate,
                    isPhantom: idx === 4 // if from expiries
@@ -129,7 +129,7 @@ export default function ProductLookupPage() {
                productsMap.set(barcode, {
                    id: barcode, barcode: barcode, 
                    description: data.itemName || "Unknown Item", 
-                   itemName: data.itemName, supplier: data.supplier,
+                   itemName: data.itemName, supplier: data.supplier || data.priceHistory?.[0]?.supplier || "",
                    expiryDate: data.expiryDate,
                    isPhantom: true
                });
@@ -468,7 +468,7 @@ export default function ProductLookupPage() {
                               )}
                             </h3>
                           </div>
-                          <button onClick={() => { setEditFormData({ name: productData.description || productData.name || productData.itemName || "", supplier: productData.supplier || "", barcode: productData.barcode || productData.id }); setIsEditing(true); }} className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 p-2 rounded-lg font-bold hover:bg-slate-200 dark:hover:bg-slate-700"><Edit className="h-4 w-4" /></button>
+                          <button onClick={() => { setEditFormData({ name: productData.description || productData.name || productData.itemName || "", supplier: productData.supplier || productData.priceHistory?.[0]?.supplier || "", barcode: productData.barcode || productData.id }); setIsEditing(true); }} className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 p-2 rounded-lg font-bold hover:bg-slate-200 dark:hover:bg-slate-700"><Edit className="h-4 w-4" /></button>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
                           <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
