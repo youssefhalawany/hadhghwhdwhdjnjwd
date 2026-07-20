@@ -991,6 +991,7 @@ export default function SupplierReturnsDashboard() {
                         <th className="pb-2 font-semibold">Item</th>
                         <th className="pb-2 font-semibold">{lang === "ar" ? "الباركود" : "Barcode"}</th>
                         <th className="pb-2 font-semibold text-right">Handover Qty</th>
+                        <th className="pb-2 font-semibold text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
@@ -1011,6 +1012,29 @@ export default function SupplierReturnsDashboard() {
                               }}
                               className="w-20 p-2 border border-border rounded-lg bg-background font-black outline-none focus:border-blue-500 text-center"
                             />
+                          </td>
+                          <td className="py-3 text-right">
+                            <button
+                              onClick={async () => {
+                                const pin = window.prompt("Enter PIN to delete:");
+                                if (pin === "1111") {
+                                  try {
+                                    await deleteDoc(doc(db, "supplier_returns", item.id));
+                                    const newItems = handoverItems.filter((_, i) => i !== index);
+                                    setHandoverItems(newItems);
+                                    if (newItems.length === 0) setHandoverSupplier(null);
+                                  } catch (e) {
+                                    console.error("Failed to delete", e);
+                                    alert("Failed to delete item.");
+                                  }
+                                } else if (pin !== null) {
+                                  alert("Incorrect PIN");
+                                }
+                              }}
+                              className="text-red-500 hover:text-red-600 font-bold text-xs bg-red-100 dark:bg-red-900/30 px-3 py-1.5 rounded-lg"
+                            >
+                              Delete
+                            </button>
                           </td>
                         </tr>
                       ))}
