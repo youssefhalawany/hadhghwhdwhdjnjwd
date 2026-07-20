@@ -199,7 +199,7 @@ export default function ManagerCleaningLogsPage() {
   };
 
   useEffect(() => {
-    const q = query(collection(productsDb, "cleaning_logs"), orderBy("timestamp", "desc"), limit(300));
+    const q = query(collection(productsDb, "cleaning_logs"), orderBy("timestamp", "desc"), limit(30));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data: CleaningLog[] = [];
       snapshot.forEach(doc => {

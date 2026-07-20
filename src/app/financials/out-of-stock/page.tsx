@@ -34,7 +34,7 @@ export default function OutOfStockManagerPage() {
 
   useEffect(() => {
     setLoading(true);
-    const q = query(collection(db, "out_of_stock_logs"), orderBy("timestamp", "desc"), limit(300));
+    const q = query(collection(db, "out_of_stock_logs"), orderBy("timestamp", "desc"), limit(30));
     const unsubscribe = onSnapshot(q, (snap) => {
       const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       setLogs(data);
