@@ -122,7 +122,12 @@ export default function AdminSchedulePage() {
       try {
         data = JSON.parse(text);
       } catch (err) {
-        throw new Error(`Server returned invalid response: ${text.substring(0, 150)}`);
+        let errorTitle = "Unknown HTML Error";
+        const titleMatch = text.match(/<title>(.*?)<\/title>/i);
+        if (titleMatch && titleMatch[1]) {
+          errorTitle = titleMatch[1];
+        }
+        throw new Error(`Server returned HTML error: ${errorTitle}. Status: ${res.status}.`);
       }
       
       if (data.success) {
