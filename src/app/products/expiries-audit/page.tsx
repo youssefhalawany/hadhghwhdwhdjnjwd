@@ -12,6 +12,8 @@ import { useLanguage } from "@/context/LanguageContext";
 import { DataTable } from "@/components/ui/DataTable";
 import { PageTransition } from "@/components/PageTransition";
 import { X } from "lucide-react";
+import { ExpiryDeckGrid } from './ExpiryDeckGrid';
+
 
 export default function ExpiryAuditPage() {
   const { currentBranch } = useBranch();
@@ -20,7 +22,7 @@ export default function ExpiryAuditPage() {
   const [supplierReturns, setSupplierReturns] = useState<any[]>([]);
   const [alreadyExpired, setAlreadyExpired] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"active" | "pending" | "returns" | "reports" | "already_expired">("active");
+  const [activeTab, setActiveTab] = useState<"active" | "pending" | "reports" | "already_expired">("active");
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -101,6 +103,31 @@ export default function ExpiryAuditPage() {
       unsubscribeExpired();
     };
   }, []);
+
+  
+  const handleSwipeAction = async (item: any, action: "destroy" | "return") => {
+    try {
+      if (action === "return") {
+        await addDoc(collection(db, "supplier_returns"), {
+          itemName: item.itemName,
+          barcode: item.barcode,
+          quantity: item.quantity,
+          supplier: item.supplier || "Unknown",
+          createdAt: new Date().toISOString(),
+          branchId: currentBranch || "master",
+          status: "pending",
+          expiryId: item.id
+        });
+        await updateDoc(doc(db, "expiries", item.id), { status: "pending_return" });
+        setAllExpiries(prev => prev.map(i => i.id === item.id ? { ...i, status: "pending_return" } : i));
+      } else {
+        await updateDoc(doc(db, "expiries", item.id), { status: "pulled" });
+        setAllExpiries(prev => prev.map(i => i.id === item.id ? { ...i, status: "pulled" } : i));
+      }
+    } catch (error) {
+      console.error("Error processing swipe action:", error);
+    }
+  };
 
   const handleOpenAuditModal = (item: any) => {
     setAuditModalItem(item);
@@ -503,16 +530,7 @@ export default function ExpiryAuditPage() {
             >
               {t("expiries_audit.tab_reports")}
             </button>
-            <button 
-              onClick={() => setActiveTab("returns")}
-              className={`flex-1 py-3 px-4 text-center font-bold text-sm transition-all whitespace-nowrap ${
-                activeTab === "returns" 
-                  ? "bg-foreground text-background shadow-md" 
-                  : "bg-transparent text-muted-foreground hover:bg-muted"
-              }`}
-            >
-              {t("expiries_audit.tab_returns")}
-            </button>
+            
             <button 
               onClick={() => setActiveTab("already_expired")}
               className={`flex-1 py-3 px-4 text-center font-bold text-sm transition-all whitespace-nowrap ${
@@ -590,89 +608,11 @@ export default function ExpiryAuditPage() {
             </div>
 
             {/* Data Grid for Active Expiries */}
-            <div className="bg-card border border-border rounded-xl p-4 sm:p-6 shadow-sm">
-              <DataTable
-                columns={[
-                  {
-                    accessorKey: "itemName",
-                    header: "Item Name",
-                    cell: ({ row }) => (
-                      <div>
-                        <div className="font-bold">{row.getValue("itemName")}</div>
-                        <div className="text-xs font-mono text-muted-foreground">{row.original.barcode}</div>
-                      </div>
-                    )
-                  },
-                  {
-                    accessorKey: "expiryDate",
-                    header: "Expiry Risk",
-                    cell: ({ row }) => {
-                      const item = row.original;
-                      const itemDate = new Date(item.expiryDate);
-                      itemDate.setHours(0,0,0,0);
-                      const today = new Date();
-                      today.setHours(0,0,0,0);
-                      const tomorrow = new Date(today);
-                      tomorrow.setDate(tomorrow.getDate() + 1);
-                      const diffTime = itemDate.getTime() - today.getTime();
-                      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-                      let badgeClass = "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 border-green-200";
-                      let badgeText = "Safe";
-
-                      if (item.status === "pulled") {
-                        badgeClass = "bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border-slate-300";
-                        badgeText = "Pulled";
-                      } else if (diffDays < 0) {
-                        badgeClass = "bg-red-200 text-red-800 dark:bg-red-900/40 dark:text-red-400 border-red-400 font-black animate-pulse";
-                        badgeText = "EXPIRED";
-                      } else if (diffDays <= 2) {
-                        badgeClass = "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 border-red-300 font-bold";
-                        badgeText = "≤ 48 Hrs";
-                      } else if (diffDays <= 7) {
-                        badgeClass = "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400 border-orange-300";
-                        badgeText = "Soon";
-                      } else if (diffDays <= 30) {
-                        badgeClass = "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-400 border-yellow-300";
-                        badgeText = "1 Month";
-                      }
-
-                      return (
-                        <div className="flex flex-col gap-1 items-start">
-                          <span className="font-bold font-mono">{item.expiryDate}</span>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${badgeClass}`}>{badgeText}</span>
-                        </div>
-                      );
-                    }
-                  },
-                  {
-                    accessorKey: "storeId",
-                    header: "Store",
-                    cell: ({ row }) => <span className="text-sm">{row.getValue("storeId") || "Unknown"}</span>
-                  },
-                  {
-                    accessorKey: "quantity",
-                    header: "Qty",
-                    cell: ({ row }) => (
-                      <span className={`font-black text-lg ${Number(row.getValue("quantity")) > 10 ? 'text-red-500 animate-pulse' : ''}`}>
-                        {row.getValue("quantity")}
-                      </span>
-                    )
-                  },
-                  {
-                    id: "actions",
-                    cell: ({ row }) => (
-                      <button
-                        onClick={() => { setSelectedExpiry(row.original); setEditExpiryDate(row.original.expiryDate); setEditExpiryQty(String(row.original.quantity)); setIsEditingExpiry(false); }}
-                        className="px-3 py-1.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-lg text-xs font-bold shadow-sm hover:scale-105 transition-transform"
-                      >
-                        Review
-                      </button>
-                    )
-                  }
-                ]}
-                data={filteredExpiries}
-                searchPlaceholder="Search Items, Barcode..."
+            <div className="w-full">
+              <ExpiryDeckGrid 
+                items={filteredExpiries.filter(e => !["pulled", "audited", "pending_return", "returned", "damaged"].includes(e.status || ""))} 
+                searchQuery={searchQuery} 
+                onAuditAction={handleSwipeAction} 
               />
             </div>
 

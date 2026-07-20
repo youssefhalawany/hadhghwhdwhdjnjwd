@@ -7,10 +7,11 @@ import { playStampSound } from "@/lib/audioCues";
 interface RubberStampProps {
   children: React.ReactNode;
   stampType: "APPROVED" | "REJECTED" | null;
+  stampText?: string;
   className?: string;
 }
 
-export function RubberStamp({ children, stampType, className = "" }: RubberStampProps) {
+export function RubberStamp({ children, stampType, stampText, className = "" }: RubberStampProps) {
   const [internalStamp, setInternalStamp] = useState<"APPROVED" | "REJECTED" | null>(null);
 
   useEffect(() => {
@@ -50,7 +51,7 @@ export function RubberStamp({ children, stampType, className = "" }: RubberStamp
                 boxShadow: `inset 0 0 10px ${isApproved ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}, 0 0 10px ${isApproved ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}`
               }}
             >
-              {internalStamp}
+              {stampText || internalStamp}
             </div>
           </motion.div>
         )}
