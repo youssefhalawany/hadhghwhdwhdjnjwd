@@ -1,14 +1,15 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { db } from "@/lib/firebase";
+import { db, storage } from "@/lib/firebase";
 import { collection, getDocs, query, orderBy, doc, updateDoc } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useLanguage } from "@/context/LanguageContext";
 import { 
   PackageMinus, Hash, Search, Filter, Calendar as CalendarIcon, 
-  MapPin, User as UserIcon, CheckCircle2, Clock
+  MapPin, User as UserIcon, CheckCircle2, Clock, Upload, X, FileImage
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import Barcode from "react-barcode";
 
@@ -20,6 +21,13 @@ export default function OutOfStockManagerPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterResolved, setFilterResolved] = useState<"all" | "pending" | "resolved">("all");
+  const [selectedBranch, setSelectedBranch] = useState<string>("all");
+
+  // Receipt Upload State
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     fetchLogs();
@@ -40,6 +48,50 @@ export default function OutOfStockManagerPage() {
     }
   };
 
+  const handleResolveClick = (id: string, currentStatus: boolean) => {
+    if (currentStatus) {
+      // If already resolved, just unresolve it instantly
+      toggleResolved(id, currentStatus);
+    } else {
+      // If resolving, require receipt upload
+      setSelectedLogId(id);
+      setReceiptFile(null);
+      setUploadModalOpen(true);
+    }
+  };
+
+  const handleUploadAndResolve = async () => {
+    if (!selectedLogId) return;
+    if (!receiptFile) {
+      toast.error(isRTL ? "يرجى إرفاق صورة الإيصال أولاً" : "Please attach receipt image first");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      // Upload to Firebase Storage
+      const storageRef = ref(storage, `out_of_stock_receipts/${selectedLogId}_${Date.now()}`);
+      await uploadBytes(storageRef, receiptFile);
+      const url = await getDownloadURL(storageRef);
+
+      // Update Firestore
+      await updateDoc(doc(db, "out_of_stock_logs", selectedLogId), {
+        resolved: true,
+        receiptUrl: url,
+        resolvedAt: new Date().toISOString()
+      });
+
+      setLogs(prev => prev.map(l => l.id === selectedLogId ? { ...l, resolved: true, receiptUrl: url } : l));
+      toast.success(isRTL ? "تمت المراجعة ورفع الإيصال بنجاح" : "Resolved and receipt uploaded");
+      setUploadModalOpen(false);
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to upload receipt and resolve");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const toggleResolved = async (id: string, currentStatus: boolean) => {
     try {
       await updateDoc(doc(db, "out_of_stock_logs", id), {
@@ -53,19 +105,24 @@ export default function OutOfStockManagerPage() {
     }
   };
 
+  const uniqueBranches = Array.from(new Set(logs.map(l => l.branchId).filter(Boolean)));
+
   const filteredLogs = logs.filter(log => {
     const matchesSearch = 
       (log.code || "").includes(searchTerm) || 
       (log.cashierName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (log.branchId || "").toLowerCase().includes(searchTerm.toLowerCase());
       
-    if (filterResolved === "pending") return !log.resolved && matchesSearch;
-    if (filterResolved === "resolved") return log.resolved && matchesSearch;
-    return matchesSearch;
+    const matchesBranch = selectedBranch === "all" || log.branchId === selectedBranch;
+
+    if (filterResolved === "pending" && log.resolved) return false;
+    if (filterResolved === "resolved" && !log.resolved) return false;
+
+    return matchesSearch && matchesBranch;
   });
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6" dir={isRTL ? "rtl" : "ltr"}>
+    <div className="max-w-7xl mx-auto space-y-6 relative" dir={isRTL ? "rtl" : "ltr"}>
       {/* Header */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
@@ -93,11 +150,21 @@ export default function OutOfStockManagerPage() {
             />
           </div>
           <select 
+            value={selectedBranch}
+            onChange={e => setSelectedBranch(e.target.value)}
+            className="w-full sm:w-auto px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none cursor-pointer"
+          >
+            <option value="all">{isRTL ? "جميع الفروع" : "All Branches"}</option>
+            {uniqueBranches.map(b => (
+              <option key={b} value={b}>{b}</option>
+            ))}
+          </select>
+          <select 
             value={filterResolved}
             onChange={e => setFilterResolved(e.target.value as any)}
             className="w-full sm:w-auto px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none cursor-pointer"
           >
-            <option value="all">{isRTL ? "الكل" : "All"}</option>
+            <option value="all">{isRTL ? "الكل" : "All Status"}</option>
             <option value="pending">{isRTL ? "قيد المراجعة" : "Pending"}</option>
             <option value="resolved">{isRTL ? "تمت المراجعة" : "Resolved"}</option>
           </select>
@@ -144,7 +211,7 @@ export default function OutOfStockManagerPage() {
                   </div>
                 </div>
                 <button 
-                  onClick={() => toggleResolved(log.id, log.resolved)}
+                  onClick={() => handleResolveClick(log.id, log.resolved)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors flex items-center gap-1 ${log.resolved ? 'bg-emerald-500 text-white border-emerald-600' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-yellow-50 dark:hover:bg-yellow-900/30'}`}
                 >
                   {log.resolved ? (
@@ -210,12 +277,126 @@ export default function OutOfStockManagerPage() {
                       </div>
                     ))}
                   </div>
+                  
+                  {/* Receipt Link */}
+                  {log.receiptUrl && (
+                    <div className="pt-4 border-t border-slate-200 dark:border-slate-700 mt-4">
+                      <a 
+                        href={log.receiptUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-bold text-sm hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                      >
+                        <FileImage size={16} />
+                        {isRTL ? "عرض الإيصال المرفق" : "View Uploaded Receipt"}
+                      </a>
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>
           ))}
         </div>
       )}
+
+      {/* Upload Modal */}
+      <AnimatePresence>
+        {uploadModalOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800"
+            >
+              <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  {isRTL ? "إرفاق صورة الإيصال" : "Upload Receipt"}
+                </h3>
+                <button 
+                  onClick={() => !uploading && setUploadModalOpen(false)}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                  disabled={uploading}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-6">
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                    {isRTL 
+                      ? "لإتمام المراجعة، يرجى تصوير إيصال الدفع الخاص بهذه النواقص ورفعه هنا."
+                      : "To mark this as resolved, please take a photo of the payment receipt and upload it."}
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-center w-full">
+                  <label htmlFor="receipt-upload" className={`flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-2xl cursor-pointer ${receiptFile ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-900/10' : 'border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      {receiptFile ? (
+                        <>
+                          <CheckCircle2 className="w-10 h-10 text-emerald-500 mb-3" />
+                          <p className="mb-2 text-sm text-emerald-600 font-bold truncate max-w-[200px]">{receiptFile.name}</p>
+                          <p className="text-xs text-emerald-500">{isRTL ? "تم اختيار الملف بنجاح" : "File selected successfully"}</p>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-10 h-10 text-slate-400 mb-3" />
+                          <p className="mb-2 text-sm text-slate-600 dark:text-slate-300 font-bold">
+                            {isRTL ? "اضغط هنا لاختيار صورة" : "Click to select image"}
+                          </p>
+                          <p className="text-xs text-slate-500">{isRTL ? "PNG, JPG حتى 5MB" : "PNG, JPG up to 5MB"}</p>
+                        </>
+                      )}
+                    </div>
+                    <input 
+                      id="receipt-upload" 
+                      type="file" 
+                      accept="image/*" 
+                      capture="environment"
+                      className="hidden" 
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setReceiptFile(e.target.files[0]);
+                        }
+                      }}
+                      disabled={uploading}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div className="p-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
+                <button 
+                  onClick={() => setUploadModalOpen(false)}
+                  className="px-5 py-2.5 rounded-xl font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                  disabled={uploading}
+                >
+                  {isRTL ? "إلغاء" : "Cancel"}
+                </button>
+                <button 
+                  onClick={handleUploadAndResolve}
+                  disabled={!receiptFile || uploading}
+                  className={`px-5 py-2.5 rounded-xl font-bold text-white flex items-center gap-2 transition-colors ${!receiptFile || uploading ? 'bg-emerald-300 cursor-not-allowed' : 'bg-emerald-500 hover:bg-emerald-600'}`}
+                >
+                  {uploading ? (
+                    <><div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" /> {isRTL ? "جاري الرفع..." : "Uploading..."}</>
+                  ) : (
+                    <><CheckCircle2 size={16} /> {isRTL ? "تأكيد الرفع" : "Upload & Resolve"}</>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }
