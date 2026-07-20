@@ -116,6 +116,27 @@ function SwipeableExpiryCard({ item, index, totalInGroup, isExpanded, onAuditAct
     urgencyLevel = "soon";
   }
 
+  
+  const handleButtonClick = async (e: React.MouseEvent, action: "destroy" | "return") => {
+    e.stopPropagation();
+    if (isProcessing) return;
+    setIsProcessing(true);
+    
+    if (action === "destroy") {
+      setStamp("REJECTED");
+      setStampText("PULLED");
+      controls.start({ x: 500, opacity: 0, transition: { duration: 0.5, delay: 0.8 } });
+      await new Promise(r => setTimeout(r, 800));
+      await onAuditAction(item, "destroy");
+    } else {
+      setStamp("APPROVED");
+      setStampText("RETURNED");
+      controls.start({ x: -500, opacity: 0, transition: { duration: 0.5, delay: 0.8 } });
+      await new Promise(r => setTimeout(r, 800));
+      await onAuditAction(item, "return");
+    }
+  };
+
   const handleDragEnd = async (event: any, info: any) => {
     if (isProcessing) return;
     const offset = info.offset.x;
@@ -196,13 +217,21 @@ function SwipeableExpiryCard({ item, index, totalInGroup, isExpanded, onAuditAct
               />
             </div>
             
-            <div className="flex justify-between mt-4 px-1 opacity-50">
-              <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500">
-                <ArchiveRestore size={12} /> ← Return
-              </div>
-              <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500">
-                Pull → <Trash2 size={12} />
-              </div>
+            <div className="flex justify-between mt-3 gap-2">
+              <button 
+                onClick={(e) => handleButtonClick(e, "return")}
+                disabled={isProcessing}
+                className="flex-1 flex items-center justify-center gap-1 text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 py-1.5 rounded-lg transition-colors active:scale-95 disabled:opacity-50"
+              >
+                <ArchiveRestore size={14} /> Return
+              </button>
+              <button 
+                onClick={(e) => handleButtonClick(e, "destroy")}
+                disabled={isProcessing}
+                className="flex-1 flex items-center justify-center gap-1 text-xs font-bold text-red-500 bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-900/40 py-1.5 rounded-lg transition-colors active:scale-95 disabled:opacity-50"
+              >
+                Pull <Trash2 size={14} />
+              </button>
             </div>
           </div>
         </div>
