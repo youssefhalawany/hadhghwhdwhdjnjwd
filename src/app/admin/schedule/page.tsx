@@ -116,7 +116,15 @@ export default function AdminSchedulePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ storeId, month, rules })
       });
-      const data = await res.json();
+      
+      const text = await res.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (err) {
+        throw new Error(`Server returned invalid response: ${text.substring(0, 150)}`);
+      }
+      
       if (data.success) {
         setSchedule(data.schedule);
         alert("Schedule generated successfully!");
