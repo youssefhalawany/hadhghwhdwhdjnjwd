@@ -11,19 +11,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Fetch active employees for this store
+    // Fetch active cashiers for this store
     const adminDb = getAdminDb();
-    const employeesSnapshot = await adminDb.collection('employees')
+    const employeesSnapshot = await adminDb.collection('cashiers')
       .where('storeId', '==', storeId)
-      .where('status', '==', 'active')
       .get();
       
     const employees: Employee[] = employeesSnapshot.docs.map((doc: any) => ({
       id: doc.id,
       name: doc.data().name || 'Unknown',
       storeId: doc.data().storeId,
-      shiftTime: doc.data().shiftTime,
-      status: doc.data().status
+      shiftTime: doc.data().shiftType || 'All',
+      status: 'active'
     }));
 
     // Fetch approved leave requests for this store in this month
