@@ -28,6 +28,7 @@ export default function OutOfStockManagerPage() {
   const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [viewImage, setViewImage] = useState<string | null>(null);
 
   useEffect(() => {
     fetchLogs();
@@ -109,14 +110,8 @@ export default function OutOfStockManagerPage() {
         reader.onerror = (error) => reject(error);
       });
 
-      // Convert the compressed base64 string to a Blob
-      const response = await fetch(compressedDataUrl);
-      const blob = await response.blob();
-
-      // Upload the compressed blob using the already imported uploadBytes
-      const storageRef = ref(storage, `out_of_stock_receipts/${selectedLogId}_${Date.now()}.jpg`);
-      await uploadBytes(storageRef, blob);
-      const url = await getDownloadURL(storageRef);
+      // Save the compressed base64 string directly to Firestore (Super Fast, like Voids)
+      const url = compressedDataUrl;
 
       // Update Firestore
       await updateDoc(doc(db, "out_of_stock_logs", selectedLogId), {
@@ -325,15 +320,13 @@ export default function OutOfStockManagerPage() {
                   {/* Receipt Link */}
                   {log.receiptUrl && (
                     <div className="pt-4 border-t border-slate-200 dark:border-slate-700 mt-4">
-                      <a 
-                        href={log.receiptUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
+                      <button 
+                        onClick={() => setViewImage(log.receiptUrl)}
                         className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-bold text-sm hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
                       >
                         <FileImage size={16} />
                         {isRTL ? "عرض الإيصال المرفق" : "View Uploaded Receipt"}
-                      </a>
+                      </button>
                     </div>
                   )}
                 </div>
@@ -436,6 +429,39 @@ export default function OutOfStockManagerPage() {
                   )}
                 </button>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* View Image Modal */}
+      <AnimatePresence>
+        {viewImage && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
+            onClick={() => setViewImage(null)}
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative max-w-3xl max-h-[90vh] w-full flex items-center justify-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button 
+                onClick={() => setViewImage(null)}
+                className="absolute -top-12 right-0 text-white hover:text-slate-300 transition-colors bg-white/10 rounded-full p-2"
+              >
+                <X size={24} />
+              </button>
+              <img 
+                src={viewImage} 
+                alt="Receipt" 
+                className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl border border-white/20"
+              />
             </motion.div>
           </motion.div>
         )}
