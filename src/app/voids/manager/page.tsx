@@ -3,11 +3,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Search, Printer, Shield, Image as ImageIcon, ArrowLeftRight, Calendar, CheckCircle, ArrowLeft, TrendingUp, X, Clock } from "lucide-react";
+import { Search, Printer, Shield, ShieldAlert, Image as ImageIcon, ArrowLeftRight, Calendar, CheckCircle, ArrowLeft, TrendingUp, X, Clock } from "lucide-react";
 import Barcode from "react-barcode";
 import { useBranch } from "@/context/BranchContext";
 import { DataTable } from "@/components/ui/DataTable";
 import { PageTransition } from "@/components/PageTransition";
+import { DrawerProfile } from "@/components/DrawerProfile";
 
 export default function ManagerVoidsPage() {
   const [voids, setVoids] = useState<any[]>([]);
@@ -235,10 +236,15 @@ export default function ManagerVoidsPage() {
 
   return (
     <PageTransition>
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div className="border-b border-border pb-4 mb-8">
-          <h1 className="text-3xl font-black text-foreground tracking-tight">Void & Return Requests</h1>
-          <p className="text-sm text-muted-foreground mt-1">Review and print customer return logs and receipts.</p>
+      <div className="max-w-6xl mx-auto space-y-6 pb-20">
+        
+        {/* Sticky Blur Header */}
+        <div className="sticky top-0 z-40 -mx-4 px-4 sm:mx-0 sm:px-0 py-4 bg-white/80 dark:bg-[#050810]/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800/50 mb-8">
+          <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
+            <ShieldAlert className="w-8 h-8 text-amber-500" />
+            Void & Return Requests
+          </h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Review and print customer return logs and receipts.</p>
         </div>
 
         <div className="bg-card border border-border rounded-xl p-4 sm:p-6 shadow-sm relative z-10">
@@ -251,9 +257,11 @@ export default function ManagerVoidsPage() {
                   const voidData = row.original;
                   return (
                     <div>
-                      <div className="font-bold">{voidData.preciseTimestamp || new Date(voidData.createdAt).toLocaleString('en-GB')}</div>
+                      <div className="font-bold text-slate-900 dark:text-slate-200">{voidData.preciseTimestamp || new Date(voidData.createdAt).toLocaleString('en-GB')}</div>
                       {Number(voidData.amount) > 150 && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 bg-red-500 text-white rounded-full">High Value</span>
+                        <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 bg-red-500/20 text-red-600 dark:text-red-400 border border-red-500/30 rounded-full shadow-[0_0_10px_rgba(239,68,68,0.1)] dark:shadow-[0_0_10px_rgba(239,68,68,0.3)]">
+                          High Value
+                        </span>
                       )}
                     </div>
                   );
@@ -262,23 +270,23 @@ export default function ManagerVoidsPage() {
               {
                 accessorKey: "transactionNumber",
                 header: "TXN #",
-                cell: ({ row }) => <span className="font-mono text-slate-500 font-bold">{row.getValue("transactionNumber")}</span>
+                cell: ({ row }) => <span className="font-mono text-slate-600 dark:text-slate-500 font-bold">{row.getValue("transactionNumber")}</span>
               },
               {
                 accessorKey: "cashierName",
                 header: "Cashier",
-                cell: ({ row }) => <span className="font-semibold">{row.getValue("cashierName") || 'N/A'}</span>
+                cell: ({ row }) => <span className="font-semibold text-slate-700 dark:text-slate-300">{row.getValue("cashierName") || 'N/A'}</span>
               },
               {
                 accessorKey: "customerName",
                 header: "Customer",
-                cell: ({ row }) => <span className="font-semibold">{row.getValue("customerName")}</span>
+                cell: ({ row }) => <span className="font-semibold text-slate-700 dark:text-slate-300">{row.getValue("customerName")}</span>
               },
               {
                 accessorKey: "amount",
                 header: "Amount",
                 cell: ({ row }) => (
-                  <span className={`font-mono font-bold ${Number(row.getValue("amount")) > 150 ? 'text-red-600' : ''}`}>
+                  <span className={`font-mono font-bold ${Number(row.getValue("amount")) > 150 ? 'text-red-600 dark:text-red-500' : 'text-slate-900 dark:text-slate-200'}`}>
                     {Number(row.getValue("amount")).toFixed(2)} EGP
                   </span>
                 )
@@ -288,10 +296,14 @@ export default function ManagerVoidsPage() {
                 header: "Status",
                 cell: ({ row }) => {
                   const status = row.getValue("status") as string;
+                  const isClosed = status === "closed_on_system";
                   return (
-                    <span className={`text-xs font-bold px-2 py-1 rounded-lg ${status === "closed_on_system" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
-                      }`}>
-                      {status === "closed_on_system" ? "Closed" : "Pending"}
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${
+                      isClosed 
+                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.2)]" 
+                        : "bg-amber-500/10 text-amber-400 border-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.2)]"
+                    }`}>
+                      {isClosed ? "Closed" : "Pending"}
                     </span>
                   );
                 }
@@ -301,7 +313,7 @@ export default function ManagerVoidsPage() {
                 cell: ({ row }) => (
                   <button
                     onClick={() => setSelectedVoid(row.original)}
-                    className="px-3 py-1.5 bg-slate-900 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-slate-800 transition-colors"
+                    className="px-3 py-1.5 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded-lg text-xs font-bold hover:bg-cyan-500/20 hover:shadow-[0_0_15px_rgba(34,211,238,0.2)] transition-all"
                   >
                     Review
                   </button>
@@ -313,53 +325,48 @@ export default function ManagerVoidsPage() {
           />
         </div>
 
-        {/* Detail Modal */}
+        {/* Detail Drawer */}
         {selectedVoid && (
-          <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
-            <div className="bg-card w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-              <div className="flex justify-between items-center p-4 sm:p-6 border-b border-border bg-muted/30">
-                <h2 className="text-xl font-black flex items-center gap-2">
-                  <span className="bg-red-500/10 text-red-500 p-2 rounded-lg"><ArrowLeftRight className="h-5 w-5" /></span>
-                  Void/Return Review
-                </h2>
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={async () => {
-                      try {
-                        await updateDoc(doc(db, "void_requests", selectedVoid.id), {
-                          status: selectedVoid.status === "closed_on_system" ? "pending" : "closed_on_system"
-                        });
-                      } catch (e) {
-                        console.error("Failed to update status", e);
-                        alert("Failed to update status. Check permissions.");
-                      }
-                    }}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold shadow transition-all ${selectedVoid.status === "closed_on_system"
-                      ? "bg-green-100 text-green-700 hover:bg-green-200 border border-green-200"
-                      : "bg-amber-100 border border-amber-200 text-amber-700 hover:bg-amber-200"
-                      }`}
-                  >
-                    {selectedVoid.status === "closed_on_system" ? <CheckCircle className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
-                    {selectedVoid.status === "closed_on_system" ? "Closed on System" : "Pending (Mark as Closed)"}
-                  </button>
-                  <button
-                    onClick={generatePDF}
-                    className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg font-bold shadow hover:bg-slate-800 transition-all"
-                  >
-                    <Printer className="h-4 w-4" />
-                    Print PDF
-                  </button>
-                  <button
-                    onClick={() => setSelectedVoid(null)}
-                    className="p-2 bg-muted hover:bg-slate-300 dark:hover:bg-slate-700 rounded-lg text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition-colors"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
+          <DrawerProfile 
+            isOpen={!!selectedVoid} 
+            onClose={() => setSelectedVoid(null)} 
+            title={`Void Details - ${selectedVoid.transactionNumber}`}
+          >
+            <div className="flex flex-col h-full space-y-6">
+              
+              {/* Drawer Actions */}
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={async () => {
+                    try {
+                      await updateDoc(doc(db, "void_requests", selectedVoid.id), {
+                        status: selectedVoid.status === "closed_on_system" ? "pending" : "closed_on_system"
+                      });
+                    } catch (e) {
+                      console.error("Failed to update status", e);
+                      alert("Failed to update status. Check permissions.");
+                    }
+                  }}
+                  className={`flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl font-bold transition-all ${
+                    selectedVoid.status === "closed_on_system"
+                      ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.15)]"
+                      : "bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.15)]"
+                  }`}
+                >
+                  {selectedVoid.status === "closed_on_system" ? <CheckCircle className="h-5 w-5" /> : <Clock className="h-5 w-5" />}
+                  {selectedVoid.status === "closed_on_system" ? "Closed on System" : "Pending (Mark as Closed)"}
+                </button>
+                <button
+                  onClick={generatePDF}
+                  className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded-xl font-bold hover:bg-cyan-500/20 hover:shadow-[0_0_15px_rgba(34,211,238,0.15)] transition-all"
+                >
+                  <Printer className="h-5 w-5" />
+                  Print Official Record
+                </button>
               </div>
 
-              <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar bg-background">
-                <div id="void-print-capture" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
+              <div className="bg-white rounded-lg p-2 overflow-x-auto print-container-wrapper relative">
+                <div id="void-print-capture" style={{ width: '800px', height: '1131px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', transform: 'scale(0.45)', transformOrigin: 'top left', marginBottom: '-55%' }}>
 
                   {/* Micro-Typography Security Borders */}
                   <div style={{ position: 'absolute', top: '-15mm', left: '-15mm', right: '-15mm', bottom: '-15mm', zIndex: 1, pointerEvents: 'none', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '4px', overflow: 'hidden' }}>
@@ -561,7 +568,7 @@ export default function ManagerVoidsPage() {
                 </div>
               </div>
             </div>
-          </div>
+          </DrawerProfile>
         )}
       </div>
     </PageTransition>

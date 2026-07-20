@@ -11,6 +11,7 @@ import { SuccessOverlay } from "@/components/MobileUX/SuccessOverlay";
 import { BranchProvider } from "@/context/BranchContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { BrandProvider } from "@/context/BrandContext";
+import { CommandBar } from "@/components/CommandBar";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -57,6 +58,7 @@ export default function RootLayout({
                 <OfflineBanner />
                 <DynamicIsland />
                 <SuccessOverlay />
+                <CommandBar />
                 <ClientLayoutWrapper>{children}</ClientLayoutWrapper>
                 <Toaster position="top-center" richColors closeButton theme="system" />
               </LanguageProvider>

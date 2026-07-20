@@ -13,6 +13,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import Barcode from "react-barcode";
+import { DrawerProfile } from "@/components/DrawerProfile";
 
 export default function OutOfStockManagerPage() {
   const { language: lang } = useLanguage();
@@ -31,6 +32,7 @@ export default function OutOfStockManagerPage() {
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [viewImage, setViewImage] = useState<string | null>(null);
+  const [selectedLog, setSelectedLog] = useState<any | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -163,18 +165,15 @@ export default function OutOfStockManagerPage() {
   });
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 relative" dir={isRTL ? "rtl" : "ltr"}>
-      {/* Header */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+    <div className="max-w-7xl mx-auto space-y-6 relative pb-20" dir={isRTL ? "rtl" : "ltr"}>
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-40 -mx-4 px-4 sm:mx-0 sm:px-0 py-4 bg-[#050810]/80 backdrop-blur-xl border-b border-slate-800/50 mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-500 mb-2 font-bold text-sm">
-            <PackageMinus size={18} />
-            {isRTL ? "الماليات / النواقص" : "Financials / Out of Stock"}
-          </div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-white">
+          <h1 className="text-3xl font-black text-white tracking-tight flex items-center gap-3">
+            <PackageMinus className="w-8 h-8 text-rose-500" />
             {isRTL ? "مراجعة النواقص" : "Out of Stock Review"}
           </h1>
-          <p className="text-slate-500 mt-1">
+          <p className="text-sm text-slate-400 mt-1">
             {isRTL ? "مطابقة الأكواد الورقية من الخزينة مع السجلات الإلكترونية." : "Cross-reference paper codes from the safe with digital logs."}
           </p>
         </div>
@@ -236,16 +235,16 @@ export default function OutOfStockManagerPage() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               key={log.id} 
-              className={`bg-white dark:bg-slate-900 rounded-3xl overflow-hidden border ${log.resolved ? 'border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]' : 'border-yellow-500/30 shadow-[0_0_15px_rgba(250,204,21,0.1)]'} transition-all`}
+              className={`bg-[#0A101D]/60 backdrop-blur-md rounded-[2rem] overflow-hidden border ${log.resolved ? 'border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.05)]' : 'border-rose-500/20 shadow-[0_0_20px_rgba(244,63,94,0.05)]'} transition-all`}
             >
               {/* Header */}
-              <div className={`p-4 border-b flex items-center justify-between ${log.resolved ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800/50' : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-100 dark:border-yellow-800/50'}`}>
+              <div className={`p-5 border-b flex items-center justify-between ${log.resolved ? 'bg-emerald-500/5 border-emerald-500/10' : 'bg-rose-500/5 border-rose-500/10'}`}>
                 <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl shadow-sm border ${log.resolved ? 'bg-emerald-100 dark:bg-emerald-800 border-emerald-200 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300' : 'bg-yellow-100 dark:bg-yellow-800 border-yellow-200 dark:border-yellow-700 text-yellow-700 dark:text-yellow-300'}`}>
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl shadow-sm border ${log.resolved ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'}`}>
                     {log.code || "---"}
                   </div>
                   <div>
-                    <div className={`text-[10px] font-bold uppercase tracking-widest ${log.resolved ? 'text-emerald-600 dark:text-emerald-400' : 'text-yellow-600 dark:text-yellow-500'}`}>
+                    <div className={`text-[10px] font-bold uppercase tracking-widest ${log.resolved ? 'text-emerald-500/70' : 'text-rose-500/70'}`}>
                       {isRTL ? "كود الخزينة" : "Vault Code"}
                     </div>
                     <div className="text-xs text-slate-500 font-medium">
@@ -253,16 +252,13 @@ export default function OutOfStockManagerPage() {
                     </div>
                   </div>
                 </div>
-                <button 
-                  onClick={() => handleResolveClick(log.id, log.resolved)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors flex items-center gap-1 ${log.resolved ? 'bg-emerald-500 text-white border-emerald-600' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-yellow-50 dark:hover:bg-yellow-900/30'}`}
-                >
+                <div className={`px-3 py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1 ${log.resolved ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.2)]' : 'bg-rose-500/10 text-rose-400 border-rose-500/20 shadow-[0_0_10px_rgba(244,63,94,0.2)]'}`}>
                   {log.resolved ? (
                     <><CheckCircle2 size={14} /> {isRTL ? "تمت المراجعة" : "Resolved"}</>
                   ) : (
                     <><Clock size={14} /> {isRTL ? "قيد المراجعة" : "Pending"}</>
                   )}
-                </button>
+                </div>
               </div>
 
               {/* Body */}
@@ -278,61 +274,25 @@ export default function OutOfStockManagerPage() {
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between mb-2">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
                     <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                       {isRTL ? "الأصناف الناقصة" : "Missing Items"} ({log.totalMissingQuantity || 0})
                     </div>
                     {log.totalValue !== undefined && (
-                      <div className="text-sm font-black text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-lg">
+                      <div className="text-sm font-black text-white bg-slate-800 px-3 py-1 rounded-lg">
                         EGP {log.totalValue.toFixed(2)}
                       </div>
                     )}
                   </div>
                   
-                  <div className="max-h-48 overflow-y-auto pr-2 space-y-2">
-                    {(log.items || []).map((item: any, idx: number) => (
-                      <div key={idx} className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-100 dark:border-slate-800 flex justify-between items-center">
-                        <div className="flex-1 min-w-0 pr-4">
-                          <div className="text-sm font-bold text-slate-900 dark:text-white truncate">
-                            {item.name || "Unknown Item"}
-                          </div>
-                          <div className="mt-2 bg-white p-2 rounded-lg inline-block">
-                            <Barcode 
-                              value={item.barcode} 
-                              width={1.5} 
-                              height={30} 
-                              fontSize={12}
-                              background="#ffffff"
-                              lineColor="#000000"
-                              margin={0}
-                            />
-                          </div>
-                        </div>
-                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg flex flex-col items-center justify-center min-w-[50px]">
-                          <span className="text-[10px] text-slate-400 font-bold uppercase leading-none mb-1">
-                            {isRTL ? "الكمية" : "Qty"}
-                          </span>
-                          <span className="text-sm font-black text-slate-900 dark:text-white leading-none">
-                            {item.missingQty || 0}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  {/* Receipt Link */}
-                  {log.receiptUrl && (
-                    <div className="pt-4 border-t border-slate-200 dark:border-slate-700 mt-4">
-                      <button 
-                        onClick={() => setViewImage(log.receiptUrl)}
-                        className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-bold text-sm hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
-                      >
-                        <FileImage size={16} />
-                        {isRTL ? "عرض الإيصال المرفق" : "View Uploaded Receipt"}
-                      </button>
-                    </div>
-                  )}
+                  <button 
+                    onClick={() => setSelectedLog(log)}
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold text-sm hover:bg-cyan-500/20 transition-all hover:shadow-[0_0_15px_rgba(34,211,238,0.2)]"
+                  >
+                    <Search size={16} />
+                    {isRTL ? "عرض التفاصيل" : "Review Details"}
+                  </button>
                 </div>
               </div>
             </motion.div>
@@ -340,103 +300,87 @@ export default function OutOfStockManagerPage() {
         </div>
       )}
 
-      {/* Upload Modal */}
-      <AnimatePresence>
-        {uploadModalOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-          >
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800"
-            >
-              <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                  {isRTL ? "إرفاق صورة الإيصال" : "Upload Receipt"}
-                </h3>
+      {/* Selected Log Drawer Profile */}
+      <DrawerProfile
+        isOpen={!!selectedLog}
+        onClose={() => setSelectedLog(null)}
+        title={isRTL ? `تفاصيل النواقص - ${selectedLog?.code}` : `Out of Stock Details - ${selectedLog?.code}`}
+      >
+        {selectedLog && (
+          <div className="space-y-6 flex flex-col h-full">
+            
+            {/* Action Buttons */}
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={() => {
+                  setSelectedLog(null);
+                  handleResolveClick(selectedLog.id, selectedLog.resolved);
+                }}
+                className={`flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl font-bold transition-all ${
+                  selectedLog.resolved 
+                    ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20' 
+                    : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.15)]'
+                }`}
+              >
+                {selectedLog.resolved ? (
+                  <><X size={16} /> {isRTL ? "إلغاء المراجعة" : "Mark as Pending"}</>
+                ) : (
+                  <><CheckCircle2 size={16} /> {isRTL ? "تأكيد المراجعة ورفع إيصال" : "Resolve & Upload Receipt"}</>
+                )}
+              </button>
+
+              {selectedLog.receiptUrl && (
                 <button 
-                  onClick={() => !uploading && setUploadModalOpen(false)}
-                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
-                  disabled={uploading}
+                  onClick={() => setViewImage(selectedLog.receiptUrl)}
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20 font-bold text-sm hover:bg-blue-500/20 transition-all hover:shadow-[0_0_15px_rgba(59,130,246,0.2)]"
                 >
-                  <X size={20} />
+                  <FileImage size={18} />
+                  {isRTL ? "عرض الإيصال المرفق" : "View Uploaded Receipt"}
                 </button>
+              )}
+            </div>
+
+            {/* Items List */}
+            <div className="flex-1 space-y-3">
+              <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                {isRTL ? "الأصناف الناقصة" : "Missing Items"}
               </div>
-
-              <div className="p-6 space-y-6">
-                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
-                  <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                    {isRTL 
-                      ? "لإتمام المراجعة، يرجى تصوير إيصال الدفع الخاص بهذه النواقص ورفعه هنا."
-                      : "To mark this as resolved, please take a photo of the payment receipt and upload it."}
-                  </p>
-                </div>
-
-                <div className="flex items-center justify-center w-full">
-                  <label htmlFor="receipt-upload" className={`flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-2xl cursor-pointer ${receiptFile ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-900/10' : 'border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                      {receiptFile ? (
-                        <>
-                          <CheckCircle2 className="w-10 h-10 text-emerald-500 mb-3" />
-                          <p className="mb-2 text-sm text-emerald-600 font-bold truncate max-w-[200px]">{receiptFile.name}</p>
-                          <p className="text-xs text-emerald-500">{isRTL ? "تم اختيار الملف بنجاح" : "File selected successfully"}</p>
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="w-10 h-10 text-slate-400 mb-3" />
-                          <p className="mb-2 text-sm text-slate-600 dark:text-slate-300 font-bold">
-                            {isRTL ? "اضغط هنا لاختيار صورة" : "Click to select image"}
-                          </p>
-                          <p className="text-xs text-slate-500">{isRTL ? "PNG, JPG حتى 5MB" : "PNG, JPG up to 5MB"}</p>
-                        </>
-                      )}
+              
+              <div className="space-y-2">
+                {(selectedLog.items || []).map((item: any, idx: number) => (
+                  <div key={idx} className="bg-slate-800/50 rounded-xl p-4 border border-slate-700 flex justify-between items-center">
+                    <div className="flex-1 min-w-0 pr-4">
+                      <div className="text-sm font-bold text-white truncate mb-2">
+                        {item.name || "Unknown Item"}
+                      </div>
+                      <div className="bg-white p-2 rounded-lg inline-block shadow-sm">
+                        <Barcode 
+                          value={item.barcode} 
+                          width={1.5} 
+                          height={40} 
+                          fontSize={14}
+                          background="#ffffff"
+                          lineColor="#000000"
+                          margin={0}
+                        />
+                      </div>
                     </div>
-                    <input 
-                      id="receipt-upload" 
-                      type="file" 
-                      accept="image/*" 
-                      capture="environment"
-                      className="hidden" 
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          setReceiptFile(e.target.files[0]);
-                        }
-                      }}
-                      disabled={uploading}
-                    />
-                  </label>
-                </div>
+                    <div className="bg-slate-900 border border-slate-700 px-4 py-2 rounded-xl flex flex-col items-center justify-center">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase leading-none mb-1">
+                        {isRTL ? "الكمية" : "Qty"}
+                      </span>
+                      <span className="text-xl font-black text-white leading-none">
+                        {item.missingQty || 0}
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
+            </div>
 
-              <div className="p-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
-                <button 
-                  onClick={() => setUploadModalOpen(false)}
-                  className="px-5 py-2.5 rounded-xl font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                  disabled={uploading}
-                >
-                  {isRTL ? "إلغاء" : "Cancel"}
-                </button>
-                <button 
-                  onClick={handleUploadAndResolve}
-                  disabled={!receiptFile || uploading}
-                  className={`px-5 py-2.5 rounded-xl font-bold text-white flex items-center gap-2 transition-colors ${!receiptFile || uploading ? 'bg-emerald-300 cursor-not-allowed' : 'bg-emerald-500 hover:bg-emerald-600'}`}
-                >
-                  {uploading ? (
-                    <><div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" /> {isRTL ? "جاري الرفع..." : "Uploading..."}</>
-                  ) : (
-                    <><CheckCircle2 size={16} /> {isRTL ? "تأكيد الرفع" : "Upload & Resolve"}</>
-                  )}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
+      </DrawerProfile>
 
       {/* View Image Modal */}
       <AnimatePresence>

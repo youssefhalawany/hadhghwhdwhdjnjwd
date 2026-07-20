@@ -5,11 +5,24 @@ import { db, productsDb } from "@/lib/firebase";
 import { collection, getDocs, query, where, getDoc, doc, setDoc, limit } from "firebase/firestore";
 import { Search, Package, Calendar, AlertTriangle, QrCode, Camera, X, CheckCircle, Edit, PlusCircle, DollarSign, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { CameraScanner } from "@/components/ui/CameraScanner";
 import { useDebounce } from "use-debounce";
 
 export default function ProductLookupPage() {
-  const [searchTerm, setSearchTerm] = useState("");
+  return (
+    <Suspense fallback={<div className="flex justify-center p-12"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div></div>}>
+      <ProductLookupContent />
+    </Suspense>
+  );
+}
+
+function ProductLookupContent() {
+  const searchParams = useSearchParams();
+  const initialSearch = searchParams.get("search") || "";
+
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
   const [loading, setLoading] = useState(false);
   const [productData, setProductData] = useState<any | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -33,6 +46,13 @@ export default function ProductLookupPage() {
   const [allProducts, setAllProducts] = useState<any[]>([]);
   const [fetchingProducts, setFetchingProducts] = useState(true);
   const [debouncedSearch] = useDebounce(searchTerm, 500);
+
+  // If a search param was passed via URL, immediately look it up on mount
+  useEffect(() => {
+    if (initialSearch) {
+      performLookup(initialSearch);
+    }
+  }, [initialSearch]);
 
   useEffect(() => {
     const fetchSearchProducts = async () => {

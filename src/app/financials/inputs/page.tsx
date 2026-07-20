@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import { collection, query, where, getAggregateFromServer, sum, orderBy, limit, onSnapshot } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { Wallet, Landmark, Loader2, AlertTriangle, ShieldCheck, ExternalLink, TrendingUp, DollarSign, ShieldAlert, Package, Activity, CheckCircle } from "lucide-react";
+import { auth, db } from "@/lib/firebase";
+import { Wallet, Landmark, Loader2, AlertTriangle, ShieldCheck, ExternalLink, TrendingUp, DollarSign, ShieldAlert, Package, Activity, CheckCircle, Clock } from "lucide-react";
 import { useBranch } from "@/context/BranchContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { fetchDashboardData } from "@/lib/dashboard-queries";
@@ -39,6 +39,29 @@ export default function FinancialInputsOverview() {
   const [missingIndexes, setMissingIndexes] = useState<string[]>([]);
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [feed, setFeed] = useState<any[]>([]);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [userName, setUserName] = useState("Manager");
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        setUserName(user.displayName || "Manager");
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const getShiftName = (hour: number) => {
+    if (hour >= 6 && hour < 14) return "Morning";
+    if (hour >= 14 && hour < 22) return "Evening";
+    return "Night";
+  };
+
 
   useEffect(() => {
     let active = true;
@@ -254,10 +277,14 @@ export default function FinancialInputsOverview() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center p-24 text-slate-500">
-        <Loader2 className="h-12 w-12 animate-spin text-emerald-500 mb-4" />
-        <p className="font-bold">{t("admin.financials_inputs.loading")}</p>
-        <p className="text-xs opacity-60 mt-1">{t("admin.financials_inputs.loading_desc")}</p>
+      <div className="flex flex-col items-center justify-center min-h-[50vh] text-slate-500">
+        {/* Shimmering Skeleton Loader */}
+        <div className="w-16 h-16 relative flex items-center justify-center mb-6">
+          <div className="absolute inset-0 rounded-full border-4 border-emerald-500/20 border-t-emerald-500 animate-spin"></div>
+          <Activity className="h-6 w-6 text-emerald-500 animate-pulse" />
+        </div>
+        <p className="font-bold text-lg animate-pulse">{t("admin.financials_inputs.loading")}</p>
+        <p className="text-sm opacity-60 mt-2">{t("admin.financials_inputs.loading_desc")}</p>
       </div>
     );
   }
@@ -295,90 +322,107 @@ export default function FinancialInputsOverview() {
   return (
     <div className="space-y-10 pb-12">
       
-      {/* ---------------- NEW DASHBOARD OVERVIEW ---------------- */}
-      <div className="space-y-8 mb-12 bg-slate-50/50 dark:bg-slate-900/50 p-6 rounded-3xl border border-slate-100 dark:border-slate-800">
-        {/* Header Section */}
-        <div className="flex justify-between items-end border-b border-border pb-6">
+      {/* ---------------- NEW COMMAND CENTER DASHBOARD ---------------- */}
+      
+      {/* Welcome Screen & Live Clock */}
+      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="relative bg-white/80 dark:bg-[#0A101D]/80 backdrop-blur-xl border border-slate-200 dark:border-cyan-500/20 rounded-[2rem] p-8 md:p-10 shadow-sm dark:shadow-[0_0_40px_rgba(34,211,238,0.05)] overflow-hidden group">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/10 dark:bg-cyan-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 group-hover:bg-cyan-500/20 dark:group-hover:bg-cyan-500/10 transition-colors duration-700"></div>
+        <div className="absolute bottom-0 left-0 w-72 h-72 bg-emerald-500/10 dark:bg-emerald-500/5 rounded-full blur-3xl translate-y-1/3 -translate-x-1/4"></div>
+        
+        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground flex items-center gap-3">
-              <Activity className="h-8 w-8 text-red-600" />
-              Overview
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-600 dark:text-cyan-400 text-xs font-bold uppercase tracking-widest mb-4">
+              <Activity className="w-4 h-4" /> Command Center
+            </div>
+            <h1 className="text-4xl sm:text-5xl font-black text-slate-900 dark:text-white tracking-tight mb-2">
+              Good {currentTime.getHours() < 12 ? 'morning' : currentTime.getHours() < 18 ? 'afternoon' : 'evening'}, <span className="text-cyan-600 dark:text-cyan-400">{userName}</span>.
             </h1>
-            <p className="mt-2 text-base text-muted-foreground">
-              Real-time snapshot of your franchise operations.
+            <p className="text-slate-600 dark:text-slate-400 text-lg flex items-center gap-2">
+              Here is the real-time snapshot of your franchise operations.
             </p>
           </div>
-        </div>
 
-        {/* The Pulse: KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {/* Card 1: Sales */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-border flex flex-col shadow-sm">
+          <div className="flex flex-col items-end bg-slate-50/80 dark:bg-[#151E32]/80 backdrop-blur-md border border-slate-200 dark:border-slate-700/50 p-4 rounded-2xl">
+            <div className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter font-mono">
+              {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </div>
+            <div className="flex items-center gap-2 mt-1">
+              <Clock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Active Shift: {getShiftName(currentTime.getHours())}</span>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* The Pulse: KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Card 1: Sales */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white/60 dark:bg-[#0A101D]/60 backdrop-blur-md p-6 rounded-3xl border border-slate-200 dark:border-emerald-500/20 flex flex-col shadow-sm dark:shadow-[0_0_20px_rgba(16,185,129,0.05)] hover:shadow-md dark:hover:shadow-[0_0_30px_rgba(16,185,129,0.15)] transition-all group">
             <div className="flex justify-between items-start mb-4">
               <div className="p-3 bg-emerald-500/10 rounded-xl">
-                <DollarSign className="h-6 w-6 text-emerald-500" />
+                <DollarSign className="h-6 w-6 text-emerald-600 dark:text-emerald-500" />
               </div>
-              <span className="text-xs font-bold px-2 py-1 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center gap-1">
+              <span className="text-xs font-bold px-2 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 rounded-full flex items-center gap-1">
                 <TrendingUp className="h-3 w-3" /> Live
               </span>
             </div>
-            <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-1">Today's Sales</p>
-            <h3 className="text-3xl font-black text-foreground">{kpis?.totalSales?.toLocaleString()} <span className="text-sm font-medium text-muted-foreground">EGP</span></h3>
+            <p className="text-xs font-bold text-emerald-600/70 dark:text-emerald-500/70 uppercase tracking-widest mb-1">Today's Sales</p>
+            <h3 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">{kpis?.totalSales?.toLocaleString()} <span className="text-base font-bold text-emerald-600/50 dark:text-emerald-500/50">EGP</span></h3>
           </motion.div>
 
           {/* Card 2: Shortage */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-border flex flex-col shadow-sm">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white/60 dark:bg-[#0A101D]/60 backdrop-blur-md p-6 rounded-3xl border border-slate-200 dark:border-slate-800 flex flex-col shadow-sm dark:shadow-[0_0_20px_rgba(255,255,255,0.02)] hover:shadow-md dark:hover:shadow-[0_0_30px_rgba(239,68,68,0.1)] transition-all group">
             <div className="flex justify-between items-start mb-4">
               <div className={`p-3 rounded-xl ${Number(kpis?.totalShortage) < -100 ? 'bg-red-500/10' : 'bg-emerald-500/10'}`}>
-                <Wallet className={`h-6 w-6 ${Number(kpis?.totalShortage) < -100 ? 'text-red-500' : 'text-emerald-500'}`} />
+                <Wallet className={`h-6 w-6 ${Number(kpis?.totalShortage) < -100 ? 'text-red-600 dark:text-red-500' : 'text-emerald-600 dark:text-emerald-500'}`} />
               </div>
             </div>
-            <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-1">Net Shortage</p>
-            <h3 className={`text-3xl font-black ${Number(kpis?.totalShortage) < -100 ? 'text-red-500' : 'text-foreground'}`}>
-              {kpis?.totalShortage?.toLocaleString()} <span className="text-sm font-medium text-muted-foreground">EGP</span>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Net Shortage</p>
+            <h3 className={`text-4xl font-black tracking-tighter ${Number(kpis?.totalShortage) < -100 ? 'text-red-500 dark:text-red-400 drop-shadow-sm dark:drop-shadow-[0_0_10px_rgba(248,113,113,0.5)]' : 'text-slate-900 dark:text-white'}`}>
+              {kpis?.totalShortage?.toLocaleString()} <span className="text-base font-bold text-slate-400 dark:text-slate-600">EGP</span>
             </h3>
           </motion.div>
 
           {/* Card 3: Voids */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-border flex flex-col shadow-sm">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-white/60 dark:bg-[#0A101D]/60 backdrop-blur-md p-6 rounded-3xl border border-slate-200 dark:border-amber-500/20 flex flex-col shadow-sm dark:shadow-[0_0_20px_rgba(245,158,11,0.05)] hover:shadow-md dark:hover:shadow-[0_0_30px_rgba(245,158,11,0.15)] transition-all group">
             <div className="flex justify-between items-start mb-4">
               <div className="p-3 bg-amber-500/10 rounded-xl">
-                <ShieldAlert className="h-6 w-6 text-amber-500" />
+                <ShieldAlert className="h-6 w-6 text-amber-600 dark:text-amber-500" />
               </div>
             </div>
-            <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-1">Voids Today</p>
-            <h3 className="text-3xl font-black text-foreground">{kpis?.totalVoids?.toLocaleString()} <span className="text-sm font-medium text-muted-foreground">EGP</span></h3>
+            <p className="text-xs font-bold text-amber-600/70 dark:text-amber-500/70 uppercase tracking-widest mb-1">Voids Today</p>
+            <h3 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter drop-shadow-sm dark:drop-shadow-[0_0_8px_rgba(245,158,11,0.3)]">{kpis?.totalVoids?.toLocaleString()} <span className="text-base font-bold text-amber-600/50 dark:text-amber-500/50">EGP</span></h3>
           </motion.div>
 
           {/* Card 4: Expiries */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-border flex flex-col shadow-sm">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="bg-white/60 dark:bg-[#0A101D]/60 backdrop-blur-md p-6 rounded-3xl border border-slate-200 dark:border-blue-500/20 flex flex-col shadow-sm dark:shadow-[0_0_20px_rgba(59,130,246,0.05)] hover:shadow-md dark:hover:shadow-[0_0_30px_rgba(59,130,246,0.15)] transition-all group">
             <div className="flex justify-between items-start mb-4">
               <div className="p-3 bg-blue-500/10 rounded-xl">
-                <Package className="h-6 w-6 text-blue-500" />
+                <Package className="h-6 w-6 text-blue-600 dark:text-blue-500" />
               </div>
             </div>
-            <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-1">Expiring Tomorrow</p>
-            <h3 className="text-3xl font-black text-foreground">{kpis?.expiringTomorrow} <span className="text-sm font-medium text-muted-foreground">Items</span></h3>
+            <p className="text-xs font-bold text-blue-600/70 dark:text-blue-500/70 uppercase tracking-widest mb-1">Expiring Tomorrow</p>
+            <h3 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter drop-shadow-sm dark:drop-shadow-[0_0_8px_rgba(59,130,246,0.3)]">{kpis?.expiringTomorrow} <span className="text-base font-bold text-blue-600/50 dark:text-blue-500/50">Items</span></h3>
           </motion.div>
         </div>
 
         {/* Main Grid: Chart & Action Center */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           
-          {/* 7-Day Trend Chart */}
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 }} className="xl:col-span-2 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-border shadow-sm">
-            <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-muted-foreground" /> 7-Day Revenue Trend
+          {/* 7-Day Trend Chart & Heatmap */}
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 }} className="xl:col-span-2 bg-white/60 dark:bg-[#0A101D]/60 backdrop-blur-md p-6 sm:p-8 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-[0_0_20px_rgba(0,0,0,0.5)]">
+            <h3 className="text-lg font-bold mb-6 flex items-center gap-2 text-slate-900 dark:text-white">
+              <TrendingUp className="h-5 w-5 text-slate-500 dark:text-muted-foreground" /> 7-Day Revenue Trend
             </h3>
             <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#888" strokeOpacity={0.2} vertical={false} />
                   <XAxis dataKey="name" stroke="#888" fontSize={12} tickMargin={10} />
                   <YAxis stroke="#888" fontSize={12} tickFormatter={(val) => `${val / 1000}k`} />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid #333', borderRadius: '8px' }}
-                    itemStyle={{ color: '#fff' }}
+                    contentStyle={{ backgroundColor: 'rgba(255,255,255,0.9)', border: '1px solid #e2e8f0', borderRadius: '8px', color: '#0f172a' }}
+                    itemStyle={{ color: '#0f172a' }}
                   />
                   <Legend />
                   {currentBranch === 'all' ? (
@@ -394,26 +438,26 @@ export default function FinancialInputsOverview() {
             </div>
           </motion.div>
 
-          {/* Action Center & Feed */}
+          {/* Action Center */}
           <div className="space-y-6 flex flex-col">
             
             {/* Needs Attention */}
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.6 }} className="bg-white dark:bg-slate-900 border border-red-500/30 rounded-2xl p-6 flex-grow shadow-sm">
-              <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-red-500">
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.6 }} className="bg-white/60 dark:bg-[#0A101D]/60 backdrop-blur-md border border-slate-200 dark:border-red-500/20 rounded-[2rem] p-6 flex-grow shadow-sm dark:shadow-[0_0_20px_rgba(239,68,68,0.05)]">
+              <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-red-600 dark:text-red-500">
                 <AlertTriangle className="h-5 w-5" /> Needs Attention
               </h3>
               
               <div className="space-y-3">
                 {needsAttention && needsAttention.length > 0 ? (
                   needsAttention.map((item: any, idx: number) => (
-                    <Link href={item.link || '#'} key={idx} className="block p-4 rounded-xl bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-colors">
-                      <p className="text-sm font-semibold text-red-400">{item.message}</p>
+                    <Link href={item.link || '#'} key={idx} className="block p-4 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors">
+                      <p className="text-sm font-semibold text-red-600 dark:text-red-400">{item.message}</p>
                     </Link>
                   ))
                 ) : (
-                  <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex flex-col items-center justify-center text-center h-32">
-                    <CheckCircle className="h-8 w-8 text-emerald-500 mb-2" />
-                    <p className="text-sm font-semibold text-emerald-500">All caught up! No active alerts.</p>
+                  <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 flex flex-col items-center justify-center text-center h-32">
+                    <CheckCircle className="h-8 w-8 text-emerald-600 dark:text-emerald-500 mb-2" />
+                    <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-500">All caught up! No active alerts.</p>
                   </div>
                 )}
               </div>
@@ -422,19 +466,19 @@ export default function FinancialInputsOverview() {
           </div>
         </div>
 
-        {/* Live Activity Feed */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }} className="bg-white dark:bg-slate-900 border border-border rounded-2xl p-6 shadow-sm">
-          <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-            <Activity className="h-5 w-5 text-muted-foreground" /> Live Activity Feed
+        {/* Live Activity Feed Heatmap style */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }} className="bg-white/60 dark:bg-[#0A101D]/60 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-[2rem] p-6 sm:p-8 shadow-sm dark:shadow-[0_0_20px_rgba(0,0,0,0.5)]">
+          <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-slate-900 dark:text-white">
+            <Activity className="h-5 w-5 text-slate-500 dark:text-muted-foreground" /> Live Activity Feed
           </h3>
           <div className="space-y-4">
             {feed && feed.length > 0 ? (
               feed.map((notif: any, idx: number) => (
-                <div key={idx} className="flex items-start gap-4 p-3 rounded-lg hover:bg-muted/30 transition-colors">
+                <div key={idx} className="flex items-start gap-4 p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-muted/30 transition-colors">
                   <div className="w-2 h-2 rounded-full bg-red-500 mt-2 flex-shrink-0"></div>
                   <div>
-                    <p className="text-sm font-medium text-foreground">{notif.message}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="text-sm font-medium text-slate-900 dark:text-foreground">{notif.message}</p>
+                    <p className="text-xs text-slate-500 dark:text-muted-foreground mt-1">
                       {notif.createdAt?.toDate ? notif.createdAt.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Just now'} 
                       &nbsp;&bull;&nbsp; {notif.storeId}
                     </p>
@@ -442,11 +486,10 @@ export default function FinancialInputsOverview() {
                 </div>
               ))
             ) : (
-              <p className="text-sm text-muted-foreground">No recent activity.</p>
+              <p className="text-sm text-slate-500">No recent activity.</p>
             )}
           </div>
         </motion.div>
-      </div>
 
       {/* ---------------- SAFE SECTION ---------------- */}
       <div className="space-y-4">
