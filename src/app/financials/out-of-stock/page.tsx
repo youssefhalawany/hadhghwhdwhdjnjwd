@@ -5,6 +5,7 @@ import { db, storage } from "@/lib/firebase";
 import { collection, onSnapshot, query, orderBy, doc, updateDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useLanguage } from "@/context/LanguageContext";
+import { useBranch } from "@/context/BranchContext";
 import { 
   PackageMinus, Hash, Search, Filter, Calendar as CalendarIcon, 
   MapPin, User as UserIcon, CheckCircle2, Clock, Upload, X, FileImage
@@ -15,6 +16,7 @@ import Barcode from "react-barcode";
 
 export default function OutOfStockManagerPage() {
   const { language: lang } = useLanguage();
+  const { currentBranch } = useBranch();
   const isRTL = lang === "ar";
 
   const [logs, setLogs] = useState<any[]>([]);
@@ -149,7 +151,7 @@ export default function OutOfStockManagerPage() {
       (log.cashierName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (log.branchId || "").toLowerCase().includes(searchTerm.toLowerCase());
       
-    const matchesBranch = selectedBranch === "all" || log.branchId === selectedBranch;
+    const matchesBranch = currentBranch !== "all" ? log.branchId === currentBranch : (selectedBranch === "all" || log.branchId === selectedBranch);
 
     if (filterResolved === "pending" && log.resolved) return false;
     if (filterResolved === "resolved" && !log.resolved) return false;
@@ -185,6 +187,7 @@ export default function OutOfStockManagerPage() {
               className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500/50"
             />
           </div>
+          {currentBranch === "all" && (
           <select 
             value={selectedBranch}
             onChange={e => setSelectedBranch(e.target.value)}
@@ -195,6 +198,7 @@ export default function OutOfStockManagerPage() {
               <option key={b} value={b}>{b}</option>
             ))}
           </select>
+          )}
           <select 
             value={filterResolved}
             onChange={e => setFilterResolved(e.target.value as any)}

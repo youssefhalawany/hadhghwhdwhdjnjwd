@@ -6,6 +6,7 @@ import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
 import { PageWrapper } from "@/components/PageWrapper";
 import { Sparkles, Calendar, User, Search, MapPin, Eye, Share2, X, FileText, Printer } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
+import { useBranch } from "@/context/BranchContext";
 import { toJpeg } from "html-to-image";
 import jsPDF from "jspdf";
 
@@ -17,12 +18,14 @@ interface CleaningLog {
   photoUrl: string;
   signatureUrl: string;
   cashierName: string;
+  branchId?: string;
   timestamp: string;
   localTime?: string;
 }
 
 export default function ManagerCleaningLogsPage() {
   const { language } = useLanguage();
+  const { currentBranch } = useBranch();
   const [logs, setLogs] = useState<CleaningLog[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -215,6 +218,9 @@ export default function ManagerCleaningLogsPage() {
   const uniqueCashiers = Array.from(new Set(logs.map(l => l.cashierName))).filter(Boolean);
 
   const filteredLogs = logs.filter(log => {
+    // 0. Branch filter
+    if (currentBranch !== "all" && log.branchId !== currentBranch) return false;
+
     // 1. Search filter
     const matchesSearch = log.cashierName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           log.areaNameEn.toLowerCase().includes(searchTerm.toLowerCase()) ||

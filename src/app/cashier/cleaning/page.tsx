@@ -88,6 +88,7 @@ export default function CashierCleaningPage() {
         photoUrl,
         signatureUrl: signatureDataUrl,
         cashierName,
+        branchId: storeId,
         timestamp: new Date().toISOString(),
         localTime: new Date().toLocaleString("en-GB"), // e.g. 16/07/2026, 15:42:32
       };
