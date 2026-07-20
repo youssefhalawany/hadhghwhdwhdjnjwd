@@ -201,18 +201,27 @@ export default function CashierHubPage() {
     }
     (async () => {
       try {
+        const [empSnap, cashSnap] = await Promise.all([
+          getDocs(collection(db, "employees")).catch(() => null),
+          getDocs(collection(db, "cashiers"))
+        ]);
+
         let activeNames: Set<string> | null = null;
-        try {
-          const s = await getDocs(collection(db, "employees"));
-          activeNames = new Set(s.docs.filter(d => d.data().status === "active").map(d => d.data().name));
-        } catch { }
-        const snap = await getDocs(collection(db, "cashiers"));
-        let list: any[] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (empSnap) {
+          activeNames = new Set(empSnap.docs.filter(d => d.data().status === "active").map(d => d.data().name));
+        }
+
+        let list: any[] = cashSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         if (activeNames) {
           list = list.filter(c => activeNames!.has(c.name));
-          for (const c of snap.docs.map(d => ({ id: d.id, ...d.data() })))
-            if (!activeNames.has((c as any).name)) try { await deleteDoc(doc(db, "cashiers", (c as any).id)); } catch { }
+          
+          // Non-blocking background cleanup for inactive cashiers
+          const toDelete = cashSnap.docs.filter(d => !activeNames!.has(d.data().name));
+          if (toDelete.length > 0) {
+            Promise.all(toDelete.map(d => deleteDoc(doc(db, "cashiers", d.id)).catch(() => {}))).catch(() => {});
+          }
         }
+        
         list.push({ id: "master_youssef", employeeId: "master_youssef", name: "Mr Youssef (Owner)", pin: "4321", role: "master", storeId: "ALL" });
         setEmployees(list);
       } catch (e) { console.error(e); }

@@ -36,13 +36,21 @@ const D = {
   blueBorder:   "rgba(96,165,250,0.3)",
 };
 
+function HeaderClock() {
+  const [currentTime, setCurrentTime] = useState(new Date());
+  useEffect(() => {
+    const t = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  return <span>· {currentTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}</span>;
+}
+
 export default function MasterCashierDashboard() {
   const router = useRouter();
   const [feed, setFeed] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isNotificationEnabled, setIsNotificationEnabled] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [currentTime, setCurrentTime] = useState(new Date());
   
   // Skeuomorphic State
   const [stampId, setStampId] = useState<string | null>(null);
@@ -73,11 +81,6 @@ export default function MasterCashierDashboard() {
   };
 
   useEffect(() => {
-    const t = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
-
-  useEffect(() => {
     const session = localStorage.getItem("active_cashier_session");
     if (!session) { router.push("/cashier"); return; }
     const user = JSON.parse(session);
@@ -92,27 +95,33 @@ export default function MasterCashierDashboard() {
     setLoading(true);
     try {
       const reportsQuery = query(collection(db, "shift_reports"), orderBy("createdAt", "desc"), limit(10));
-      const reportsSnap = await getDocs(reportsQuery);
-      const reports = reportsSnap.docs.map(d => ({ ...d.data(), id: d.id, _type: "shift_report" }));
-
       const voidsQuery = query(collection(db, "void_requests"), orderBy("createdAt", "desc"), limit(10));
-      const voidsSnap = await getDocs(voidsQuery);
-      const voids = voidsSnap.docs.map(d => ({ ...d.data(), id: d.id, _type: "void_request" }));
-
       const expiriesQuery = query(collection(db, "expiries"), orderBy("createdAt", "desc"), limit(10));
-      const expiriesSnap = await getDocs(expiriesQuery);
-      const expiries = expiriesSnap.docs.map(d => ({ ...d.data(), id: d.id, _type: "expiry" }));
-
       const cleaningQuery = query(collection(db, "cleaning_logs"), orderBy("timestamp", "desc"), limit(10));
-      const cleaningSnap = await getDocs(cleaningQuery);
-      const cleaning = cleaningSnap.docs.map(d => ({ ...d.data(), id: d.id, _type: "cleaning" }));
-
       const outOfStockQuery = query(collection(db, "out_of_stock_logs"), orderBy("timestamp", "desc"), limit(10));
-      const outOfStockSnap = await getDocs(outOfStockQuery);
-      const outOfStock = outOfStockSnap.docs.map(d => ({ ...d.data(), id: d.id, _type: "out_of_stock" }));
-
       const lostQuery = query(collection(db, "lost_and_found"), orderBy("timestamp", "desc"), limit(10));
-      const lostSnap = await getDocs(lostQuery);
+
+      const [
+        reportsSnap,
+        voidsSnap,
+        expiriesSnap,
+        cleaningSnap,
+        outOfStockSnap,
+        lostSnap
+      ] = await Promise.all([
+        getDocs(reportsQuery),
+        getDocs(voidsQuery),
+        getDocs(expiriesQuery),
+        getDocs(cleaningQuery),
+        getDocs(outOfStockQuery),
+        getDocs(lostQuery)
+      ]);
+
+      const reports = reportsSnap.docs.map(d => ({ ...d.data(), id: d.id, _type: "shift_report" }));
+      const voids = voidsSnap.docs.map(d => ({ ...d.data(), id: d.id, _type: "void_request" }));
+      const expiries = expiriesSnap.docs.map(d => ({ ...d.data(), id: d.id, _type: "expiry" }));
+      const cleaning = cleaningSnap.docs.map(d => ({ ...d.data(), id: d.id, _type: "cleaning" }));
+      const outOfStock = outOfStockSnap.docs.map(d => ({ ...d.data(), id: d.id, _type: "out_of_stock" }));
       const lostAndFound = lostSnap.docs.map(d => ({ ...d.data(), id: d.id, _type: "lost_and_found" }));
 
       const all = [...reports, ...voids, ...expiries, ...cleaning, ...outOfStock, ...lostAndFound];
@@ -202,9 +211,9 @@ export default function MasterCashierDashboard() {
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
               <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: D.green, animation: "pulse-dot 2s infinite" }} />
               <span style={{ fontSize: 10, fontWeight: 700, color: D.green, textTransform: "uppercase", letterSpacing: "0.1em" }}>LIVE</span>
-              <span style={{ fontSize: 10, color: D.textDim, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
-                · {currentTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
-              </span>
+              <div style={{ fontSize: 11, fontWeight: 700, color: D.textDim, textTransform: "uppercase", letterSpacing: "0.1em", marginTop: 2 }}>
+              Active Session <HeaderClock />
+            </div>
             </div>
           </div>
         </div>
