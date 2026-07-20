@@ -312,7 +312,7 @@ export default function ExpiryAuditPage() {
   const pendingItems = items.filter(i => (i.status || "").toLowerCase() === "pulled" && (i.itemName || "").toLowerCase().includes((reportFilters.item || "").toLowerCase()));
   
   // Apply Advanced Filters
-  const filteredReportItems = items.filter(i => {
+  const filteredReportItemsRaw = items.filter(i => {
     // Status Filter
     if (reportFilters.status !== "all" && (i.status || "").toLowerCase() !== reportFilters.status.toLowerCase()) return false;
     
@@ -328,6 +328,30 @@ export default function ExpiryAuditPage() {
     
     return true;
   });
+
+  const filteredReportItems = React.useMemo(() => {
+    const map = new Map<string, any>();
+    filteredReportItemsRaw.forEach(item => {
+      const qty = Number(item.quantity) || 0;
+      if (qty <= 0) return; // exclude zero quantity
+
+      const key = item.barcode || item.itemName;
+      if (map.has(key)) {
+        const existing = map.get(key);
+        existing.quantity += qty;
+        if (!existing.allDates.includes(item.expiryDate)) {
+          existing.allDates.push(item.expiryDate);
+        }
+      } else {
+        map.set(key, { ...item, quantity: qty, allDates: [item.expiryDate] });
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => {
+      const aDate = new Date(a.allDates[0]).getTime();
+      const bDate = new Date(b.allDates[0]).getTime();
+      return aDate - bDate;
+    });
+  }, [filteredReportItemsRaw]);
 
     const totalFilteredQuantity = filteredReportItems.reduce((acc, curr) => acc + Number(curr.quantity || 0), 0);
 
@@ -993,7 +1017,15 @@ export default function ExpiryAuditPage() {
                         </td>
                         <td className="p-4 text-sm">{item.supplier || "-"}</td>
                         <td className="p-4 text-xs font-bold uppercase text-muted-foreground">{item.status}</td>
-                        <td className="p-4 text-sm font-mono text-foreground">{item.expiryDate}</td>
+                        <td className="p-4 text-sm font-mono text-foreground">
+                          {item.allDates ? (
+                            <div className="flex flex-col gap-1">
+                              {item.allDates.map((d: string, idx: number) => (
+                                <span key={idx}>{d}</span>
+                              ))}
+                            </div>
+                          ) : item.expiryDate}
+                        </td>
                         <td className="p-4 text-base font-black text-foreground text-right">{item.quantity}</td>
                       </tr>
                     ))}
