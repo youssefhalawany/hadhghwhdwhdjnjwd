@@ -22,10 +22,13 @@ export function ExpiryDeckGrid({ items, searchQuery, onAuditAction }: ExpiryDeck
       groups[key].push(item);
     });
     // Sort items within each group by expiry date (closest first)
-    Object.values(groups).forEach(group => {
+    const sortedGroups = Object.values(groups).map(group => {
       group.sort((a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime());
+      return group;
     });
-    return Object.values(groups);
+    // Sort groups globally so the one with the earliest expiry date is at the top of the feed
+    sortedGroups.sort((groupA, groupB) => new Date(groupA[0].expiryDate).getTime() - new Date(groupB[0].expiryDate).getTime());
+    return sortedGroups;
   }, [items]);
 
   return (
@@ -156,10 +159,10 @@ function SwipeableExpiryCard({ item, index, totalInGroup, isExpanded, onAuditAct
       className={`absolute top-0 left-0 w-full h-[260px] bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden cursor-grab active:cursor-grabbing ${urgencyLevel === 'critical' ? 'shadow-[0_0_15px_rgba(239,68,68,0.3)]' : ''}`}
     >
       <RubberStamp stampType={stamp} stampText={stampText} className="w-full h-full absolute inset-0">
-        <div className="p-5 h-full flex flex-col justify-between">
+        <div className="p-4 sm:p-5 h-full flex flex-col justify-between">
           <div>
-            <div className="flex justify-between items-start mb-2">
-              <h3 className="font-black text-lg text-slate-800 dark:text-slate-100 line-clamp-2">{item.itemName}</h3>
+            <div className="flex justify-between items-start mb-2 w-full overflow-hidden">
+              <h3 className="font-black text-base sm:text-lg text-slate-800 dark:text-slate-100 line-clamp-2 pr-2">{item.itemName}</h3>
               <div className="bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full text-xs font-bold text-slate-500 whitespace-nowrap">
                 {item.quantity} UNITS
               </div>
@@ -173,7 +176,7 @@ function SwipeableExpiryCard({ item, index, totalInGroup, isExpanded, onAuditAct
               </div>
               <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
                 <p className="text-[9px] uppercase font-bold text-slate-400 mb-1">Store / Branch</p>
-                <p className="font-bold text-slate-700 dark:text-slate-300 truncate">{item.storeId || "Unknown"}</p>
+                <p className="font-bold text-xs text-slate-700 dark:text-slate-300 leading-tight">{item.storeId || "Unknown"}</p>
               </div>
             </div>
           </div>

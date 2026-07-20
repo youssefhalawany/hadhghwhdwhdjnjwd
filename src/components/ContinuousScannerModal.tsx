@@ -7,11 +7,11 @@ import { playSuccessSound } from "@/lib/sounds";
 
 interface ContinuousScannerModalProps {
   onClose: () => void;
-  onScan: (decodedText: string) => void;
+  onSubmitBatch: (batch: { barcode: string, quantity: number }[]) => void;
 }
 
-export function ContinuousScannerModal({ onClose, onScan }: ContinuousScannerModalProps) {
-  const [scannedItems, setScannedItems] = useState<string[]>([]);
+export function ContinuousScannerModal({ onClose, onSubmitBatch }: ContinuousScannerModalProps) {
+  const [scannedItems, setScannedItems] = useState<{barcode: string, quantity: number}[]>([]);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [error, setError] = useState("");
   const scannerRef = useRef<Html5Qrcode | null>(null);
@@ -37,12 +37,17 @@ export function ContinuousScannerModal({ onClose, onScan }: ContinuousScannerMod
           lastScannedText = decodedText;
           lastScannedTime = now;
 
-          setScannedItems((prev) => [decodedText, ...prev]);
+          setScannedItems((prev) => {
+            const existing = prev.find(item => item.barcode === decodedText);
+            if (existing) {
+              return prev.map(item => item.barcode === decodedText ? { ...item, quantity: item.quantity + 1 } : item);
+            } else {
+              return [{ barcode: decodedText, quantity: 1 }, ...prev];
+            }
+          });
           if (soundEnabled) {
             playSuccessSound();
           }
-          
-          onScan(decodedText);
         };
 
         const config = { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
@@ -72,7 +77,7 @@ export function ContinuousScannerModal({ onClose, onScan }: ContinuousScannerMod
         scannerRef.current = null;
       }
     };
-  }, [onScan, soundEnabled]);
+  }, [soundEnabled]);
 
   return (
     <div className="fixed inset-0 z-[999] bg-[#050810] flex flex-col overflow-hidden">
@@ -145,17 +150,22 @@ export function ContinuousScannerModal({ onClose, onScan }: ContinuousScannerMod
       <div className="absolute bottom-0 left-0 right-0 z-50 p-4 pb-8 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none">
         <div className="w-full max-w-sm mx-auto pointer-events-auto flex flex-col gap-3">
           
-          <div className="h-40 overflow-y-auto flex flex-col-reverse gap-2 pr-2 scrollbar-hide" style={{ maskImage: "linear-gradient(to top, black 50%, transparent 100%)", WebkitMaskImage: "linear-gradient(to top, black 50%, transparent 100%)" }}>
+          <div className="h-40 overflow-y-auto flex flex-col gap-2 pr-2 scrollbar-hide" style={{ maskImage: "linear-gradient(to top, black 50%, transparent 100%)", WebkitMaskImage: "linear-gradient(to top, black 50%, transparent 100%)" }}>
             {scannedItems.length === 0 ? (
-              <div className="text-center py-4 text-white/40 text-sm font-medium animate-pulse">
+              <div className="text-center py-4 text-white/40 text-sm font-medium animate-pulse mt-auto">
                 Awaiting first scan...
               </div>
             ) : (
-              scannedItems.map((barcode, idx) => (
-                <div key={idx} className="flex items-center gap-3 p-3 bg-white/10 backdrop-blur-md border border-white/10 rounded-xl shadow-lg">
+              scannedItems.map((item, idx) => (
+                <div key={idx} className="flex items-center gap-3 p-3 bg-white/10 backdrop-blur-md border border-white/10 rounded-xl shadow-lg mt-auto">
                   <CheckCircle className="h-5 w-5 text-green-400 shrink-0" />
                   <div className="flex-1">
-                    <p className="font-mono text-sm font-semibold text-white">{barcode}</p>
+                    <p className="font-mono text-sm font-semibold text-white truncate">{item.barcode}</p>
+                  </div>
+                  <div className="flex items-center gap-2 bg-black/40 rounded-lg p-1">
+                    <button onClick={() => setScannedItems(prev => prev.map(i => i.barcode === item.barcode ? { ...i, quantity: Math.max(1, i.quantity - 1) } : i))} className="w-7 h-7 rounded bg-white/10 flex items-center justify-center text-white font-bold active:scale-95 text-lg">-</button>
+                    <span className="text-white font-bold min-w-[24px] text-center">{item.quantity}</span>
+                    <button onClick={() => setScannedItems(prev => prev.map(i => i.barcode === item.barcode ? { ...i, quantity: i.quantity + 1 } : i))} className="w-7 h-7 rounded bg-white/10 flex items-center justify-center text-white font-bold active:scale-95 text-lg">+</button>
                   </div>
                 </div>
               ))
@@ -163,10 +173,11 @@ export function ContinuousScannerModal({ onClose, onScan }: ContinuousScannerMod
           </div>
 
           <button 
-            onClick={onClose}
-            className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-bold text-lg shadow-[0_0_20px_rgba(79,70,229,0.3)] border border-indigo-400/50 active:scale-95 transition-all flex items-center justify-center gap-2"
+            onClick={() => onSubmitBatch(scannedItems)}
+            disabled={scannedItems.length === 0}
+            className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:bg-indigo-900 text-white rounded-2xl font-bold text-lg shadow-[0_0_20px_rgba(79,70,229,0.3)] border border-indigo-400/50 active:scale-95 transition-all flex items-center justify-center gap-2"
           >
-            Finish Batch ({scannedItems.length})
+            Submit Batch ({scannedItems.reduce((acc, curr) => acc + curr.quantity, 0)} Units)
           </button>
         </div>
       </div>

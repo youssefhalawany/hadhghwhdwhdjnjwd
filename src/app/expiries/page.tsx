@@ -318,67 +318,70 @@ export default function ExpiryTrackerPage() {
     }
   };
 
-  const handleContinuousScan = async (scannedBarcode: string) => {
-    const cleanBarcode = scannedBarcode.trim();
-    if (!cleanBarcode) return;
+  const handleContinuousScanBatch = async (batch: { barcode: string, quantity: number }[]) => {
+    setShowContinuousScanner(false);
     
-    let pName = "Unknown Scanned Item";
-    let pSupplier = "";
-    
-    try {
-      const productRef = doc(db, "products", cleanBarcode);
-      const productSnap = await getDoc(productRef);
-      if (productSnap.exists()) {
-        const data = productSnap.data();
-        pName = data.description || data.name || data.itemName || pName;
-        pSupplier = data.supplier || pSupplier;
-      } else {
-        await setDoc(doc(db, "products", cleanBarcode), {
-          barcode: cleanBarcode,
-          description: pName,
-          supplier: pSupplier,
-          addedFromExpiryContinuous: true,
-          createdAt: new Date().toISOString()
-        });
-      }
-    } catch (e) {
-      console.error(e);
-    }
-
-    const todayStr = new Date().toISOString().split('T')[0];
-
-    const newItem = {
-      itemName: pName,
-      barcode: cleanBarcode,
-      supplier: pSupplier,
-      quantity: 1, 
-      expiryDate: todayStr, 
-      storeId: authenticatedUser?.storeId || "Unknown Store",
-      branchId: (authenticatedUser?.storeId || "").toLowerCase().includes("ola") || (authenticatedUser?.storeId || "").toLowerCase().includes("koronfol") ? "ola" : "alamein4",
-      addedBy: authenticatedUser?.name || authenticatedUser?.email || "Unknown User",
-      createdAt: new Date().toISOString(),
-      status: "active" 
-    };
-
-    try {
-      const docRef = await addDoc(collection(db, "expiries"), newItem);
+    for (const item of batch) {
+      const cleanBarcode = item.barcode.trim();
+      if (!cleanBarcode) continue;
+      
+      let pName = "Unknown Scanned Item";
+      let pSupplier = "";
       
       try {
-        await addDoc(collection(db, "notifications"), {
-          type: "expiry",
-          message: `Offline Sync: A new Expiry Record was submitted`,
-          cashierName: newItem.addedBy?.name || "Unknown",
-          storeId: newItem.branchId || "Unknown",
-          createdAt: serverTimestamp(),
-          read: false,
-          link: "/dashboard/expiries-audit",
-        });
-      } catch (notifyErr) {
-        console.error("Notification failed:", notifyErr);
+        const productRef = doc(db, "products", cleanBarcode);
+        const productSnap = await getDoc(productRef);
+        if (productSnap.exists()) {
+          const data = productSnap.data();
+          pName = data.description || data.name || data.itemName || pName;
+          pSupplier = data.supplier || pSupplier;
+        } else {
+          await setDoc(doc(db, "products", cleanBarcode), {
+            barcode: cleanBarcode,
+            description: pName,
+            supplier: pSupplier,
+            addedFromExpiryContinuous: true,
+            createdAt: new Date().toISOString()
+          });
+        }
+      } catch (e) {
+        console.error(e);
       }
-      // Wait for snapshot to update list organically, or local update
-    } catch(e) {
-      console.error(e);
+
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      const newItem = {
+        itemName: pName,
+        barcode: cleanBarcode,
+        supplier: pSupplier,
+        quantity: item.quantity, 
+        expiryDate: todayStr, 
+        storeId: authenticatedUser?.storeId || "Unknown Store",
+        branchId: (authenticatedUser?.storeId || "").toLowerCase().includes("ola") || (authenticatedUser?.storeId || "").toLowerCase().includes("koronfol") ? "ola" : "alamein4",
+        addedBy: authenticatedUser?.name || authenticatedUser?.email || "Unknown User",
+        createdAt: new Date().toISOString(),
+        status: "active" 
+      };
+
+      try {
+        await addDoc(collection(db, "expiries"), newItem);
+        
+        try {
+          await addDoc(collection(db, "notifications"), {
+            type: "expiry",
+            message: `Offline Sync: A new Expiry Record was submitted`,
+            cashierName: newItem.addedBy?.name || "Unknown",
+            storeId: newItem.branchId || "Unknown",
+            createdAt: serverTimestamp(),
+            read: false,
+            link: "/dashboard/expiries-audit",
+          });
+        } catch (notifyErr) {
+          console.error("Notification failed:", notifyErr);
+        }
+      } catch(e) {
+        console.error(e);
+      }
     }
   };
 
@@ -468,7 +471,7 @@ export default function ExpiryTrackerPage() {
         {showContinuousScanner && (
           <ContinuousScannerModal 
             onClose={() => setShowContinuousScanner(false)} 
-            onScan={handleContinuousScan} 
+            onSubmitBatch={handleContinuousScanBatch} 
           />
         )}
         
