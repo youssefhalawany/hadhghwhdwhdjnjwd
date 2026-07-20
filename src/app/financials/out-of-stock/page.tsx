@@ -69,9 +69,50 @@ export default function OutOfStockManagerPage() {
 
     setUploading(true);
     try {
-      // Upload to Firebase Storage
-      const storageRef = ref(storage, `out_of_stock_receipts/${selectedLogId}_${Date.now()}`);
-      await uploadBytes(storageRef, receiptFile);
+      // Compress the image before uploading (same as Voids)
+      const compressedDataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(receiptFile);
+        reader.onload = (event) => {
+          const img = new Image();
+          img.src = event.target?.result as string;
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const MAX_WIDTH = 1200;
+            const MAX_HEIGHT = 1600;
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+              if (width > MAX_WIDTH) {
+                height *= MAX_WIDTH / width;
+                width = MAX_WIDTH;
+              }
+            } else {
+              if (height > MAX_HEIGHT) {
+                width *= MAX_HEIGHT / height;
+                height = MAX_HEIGHT;
+              }
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, width, height);
+              resolve(canvas.toDataURL('image/jpeg', 0.6));
+            } else {
+              resolve(event.target?.result as string);
+            }
+          };
+          img.onerror = (error) => reject(error);
+        };
+        reader.onerror = (error) => reject(error);
+      });
+
+      // Upload the compressed base64 string
+      const { uploadString } = await import("firebase/storage");
+      const storageRef = ref(storage, `out_of_stock_receipts/${selectedLogId}_${Date.now()}.jpg`);
+      await uploadString(storageRef, compressedDataUrl, 'data_url');
       const url = await getDownloadURL(storageRef);
 
       // Update Firestore
