@@ -156,6 +156,61 @@ export default function ManagerVoidsPage() {
 
   const cashierHistory = selectedVoid ? getCashierHistory(selectedVoid.cashierName, selectedVoid.id) : null;
 
+
+  // ── Analytics ─────────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = React.useState<"table" | "analytics">("table");
+
+  const analyticsData = React.useMemo(() => {
+    const branchVoids = currentBranch === "all" 
+      ? voids 
+      : voids.filter(v => !v.branchId || v.branchId === currentBranch);
+
+    // Reason frequency — extract keywords from free-text reason field
+    const reasonMap = new Map<string, number>();
+    branchVoids.forEach(v => {
+      const r = (v.reason || "Other").trim();
+      // Normalize: take first 40 chars to bucket similar reasons
+      const key = r.length > 0 ? r.substring(0, 40) : "Other";
+      reasonMap.set(key, (reasonMap.get(key) || 0) + 1);
+    });
+    const topReasons = Array.from(reasonMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([reason, count]) => ({ reason, count }));
+
+    // Cashier frequency
+    const cashierMap = new Map<string, { count: number; total: number }>();
+    branchVoids.forEach(v => {
+      const name = v.cashierName || "Unknown";
+      const prev = cashierMap.get(name) || { count: 0, total: 0 };
+      cashierMap.set(name, { count: prev.count + 1, total: prev.total + Number(v.amount || 0) });
+    });
+    const topCashiers = Array.from(cashierMap.entries())
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 8)
+      .map(([name, data]) => ({ name, ...data }));
+
+    // Weekly trend — last 7 days
+    const weekTrend: { day: string; count: number; total: number }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dayStr = d.toISOString().split("T")[0];
+      const dayVoids = branchVoids.filter(v => (v.createdAt || "").startsWith(dayStr));
+      weekTrend.push({
+        day: d.toLocaleDateString("en-US", { weekday: "short" }),
+        count: dayVoids.length,
+        total: dayVoids.reduce((s, v) => s + Number(v.amount || 0), 0),
+      });
+    }
+
+    const totalAmount = branchVoids.reduce((s, v) => s + Number(v.amount || 0), 0);
+    const avgAmount = branchVoids.length > 0 ? totalAmount / branchVoids.length : 0;
+    const highValue = branchVoids.filter(v => Number(v.amount || 0) > 150).length;
+
+    return { topReasons, topCashiers, weekTrend, totalAmount, avgAmount, highValue, total: branchVoids.length };
+  }, [voids, currentBranch]);
+
   if (loading) {
     return <div className="flex justify-center p-10"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-red-600"></div></div>;
   }

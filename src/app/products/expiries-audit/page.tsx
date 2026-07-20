@@ -13,6 +13,7 @@ import { DataTable } from "@/components/ui/DataTable";
 import { PageTransition } from "@/components/PageTransition";
 import { X } from "lucide-react";
 import { ExpiryDeckGrid } from './ExpiryDeckGrid';
+import { WasteAnalyticsPanel } from './WasteAnalyticsPanel';
 
 
 export default function ExpiryAuditPage() {
@@ -22,7 +23,7 @@ export default function ExpiryAuditPage() {
   const [supplierReturns, setSupplierReturns] = useState<any[]>([]);
   const [alreadyExpired, setAlreadyExpired] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"active" | "pending" | "reports" | "already_expired">("active");
+  const [activeTab, setActiveTab] = useState<"active" | "pending" | "reports" | "already_expired" | "waste">("active");
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -565,6 +566,16 @@ export default function ExpiryAuditPage() {
             >
               Already Expired
             </button>
+            <button 
+              onClick={() => setActiveTab("waste")}
+              className={`flex-1 py-3 px-4 text-center font-bold text-sm transition-all whitespace-nowrap ${
+                activeTab === "waste" 
+                  ? "bg-orange-600 text-white shadow-md" 
+                  : "bg-transparent text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              🔥 Waste Cost
+            </button>
           </div>
         </div>
 
@@ -1091,6 +1102,8 @@ export default function ExpiryAuditPage() {
               />
             </div>
           </div>
+        ) : activeTab === "waste" ? (
+          <WasteAnalyticsPanel alreadyExpired={alreadyExpired} currentBranch={currentBranch} />
         ) : null}
       </div>
 
