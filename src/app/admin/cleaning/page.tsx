@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { productsDb } from "@/lib/firebase";
-import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
+import { collection, query, orderBy, limit, onSnapshot } from "firebase/firestore";
 import { PageWrapper } from "@/components/PageWrapper";
 import { Sparkles, Calendar, User, Search, MapPin, Eye, Share2, X, FileText, Printer } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
@@ -199,7 +199,7 @@ export default function ManagerCleaningLogsPage() {
   };
 
   useEffect(() => {
-    const q = query(collection(productsDb, "cleaning_logs"), orderBy("timestamp", "desc"));
+    const q = query(collection(productsDb, "cleaning_logs"), orderBy("timestamp", "desc"), limit(300));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data: CleaningLog[] = [];
       snapshot.forEach(doc => {
@@ -219,7 +219,7 @@ export default function ManagerCleaningLogsPage() {
 
   const filteredLogs = logs.filter(log => {
     // 0. Branch filter
-    if (currentBranch !== "all" && log.branchId !== currentBranch) return false;
+    if (currentBranch !== "all" && log.branchId && log.branchId !== currentBranch) return false;
 
     // 1. Search filter
     const matchesSearch = log.cashierName.toLowerCase().includes(searchTerm.toLowerCase()) ||

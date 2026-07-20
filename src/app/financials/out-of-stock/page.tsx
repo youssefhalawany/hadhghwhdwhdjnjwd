@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { db, storage } from "@/lib/firebase";
-import { collection, onSnapshot, query, orderBy, doc, updateDoc } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, limit, doc, updateDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useLanguage } from "@/context/LanguageContext";
 import { useBranch } from "@/context/BranchContext";
@@ -34,7 +34,7 @@ export default function OutOfStockManagerPage() {
 
   useEffect(() => {
     setLoading(true);
-    const q = query(collection(db, "out_of_stock_logs"), orderBy("timestamp", "desc"));
+    const q = query(collection(db, "out_of_stock_logs"), orderBy("timestamp", "desc"), limit(300));
     const unsubscribe = onSnapshot(q, (snap) => {
       const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       setLogs(data);
@@ -151,7 +151,7 @@ export default function OutOfStockManagerPage() {
       (log.cashierName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (log.branchId || "").toLowerCase().includes(searchTerm.toLowerCase());
       
-    const matchesBranch = currentBranch !== "all" ? log.branchId === currentBranch : (selectedBranch === "all" || log.branchId === selectedBranch);
+    const matchesBranch = currentBranch !== "all" ? (!log.branchId || log.branchId === currentBranch) : (selectedBranch === "all" || !log.branchId || log.branchId === selectedBranch);
 
     if (filterResolved === "pending" && log.resolved) return false;
     if (filterResolved === "resolved" && !log.resolved) return false;
