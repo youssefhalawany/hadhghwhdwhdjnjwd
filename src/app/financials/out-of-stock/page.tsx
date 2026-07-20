@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { db, storage } from "@/lib/firebase";
-import { collection, getDocs, query, orderBy, doc, updateDoc } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, doc, updateDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useLanguage } from "@/context/LanguageContext";
 import { 
@@ -31,23 +31,20 @@ export default function OutOfStockManagerPage() {
   const [viewImage, setViewImage] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchLogs();
-  }, []);
-
-  const fetchLogs = async () => {
     setLoading(true);
-    try {
-      const q = query(collection(db, "out_of_stock_logs"), orderBy("timestamp", "desc"));
-      const snap = await getDocs(q);
+    const q = query(collection(db, "out_of_stock_logs"), orderBy("timestamp", "desc"));
+    const unsubscribe = onSnapshot(q, (snap) => {
       const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       setLogs(data);
-    } catch (e) {
+      setLoading(false);
+    }, (e) => {
       console.error(e);
       toast.error("Failed to load logs");
-    } finally {
       setLoading(false);
-    }
-  };
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const handleResolveClick = (id: string, currentStatus: boolean) => {
     if (currentStatus) {
