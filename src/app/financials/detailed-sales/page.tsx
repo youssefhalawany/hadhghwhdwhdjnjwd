@@ -179,10 +179,11 @@ export default function DetailedSalesPage() {
     e.target.value = '';
   };
 
-  const fetchComparisonData = async () => {
+  const fetchComparisonData = async (isPrimaryLookup = false) => {
     if (!comparisonDate || !currentBranch) return;
     setIsLoadingComparison(true);
-    setComparisonData(null);
+    if (!isPrimaryLookup) setComparisonData(null);
+    
     try {
       const q = query(
         collection(productsDb, "detailed_sales_daily"),
@@ -192,8 +193,14 @@ export default function DetailedSalesPage() {
       );
       const snapshot = await getDocs(q);
       if (!snapshot.empty) {
-        setComparisonData(snapshot.docs[0].data() as DetailedSalesData);
-        toast.success(`Loaded data for ${comparisonDate}`);
+        const data = snapshot.docs[0].data() as DetailedSalesData;
+        if (isPrimaryLookup) {
+          setExtractedData(data);
+          toast.success(`Loaded historical report for ${comparisonDate}`);
+        } else {
+          setComparisonData(data);
+          toast.success(`Loaded comparison data for ${comparisonDate}`);
+        }
       } else {
         toast.error(`No data found for ${comparisonDate}`);
       }
@@ -352,7 +359,7 @@ export default function DetailedSalesPage() {
                 className="flex-1 bg-muted/50 border border-border rounded-lg p-3 text-sm outline-none focus:border-indigo-500 transition-colors"
               />
               <button
-                onClick={fetchComparisonData}
+                onClick={() => fetchComparisonData(true)}
                 disabled={!comparisonDate || isLoadingComparison}
                 className="bg-indigo-500 hover:bg-indigo-600 text-white p-3 rounded-lg font-bold transition-all disabled:opacity-50 flex items-center gap-2"
               >
@@ -385,7 +392,7 @@ export default function DetailedSalesPage() {
                   className="bg-muted border border-border rounded-lg px-3 py-1.5 text-sm outline-none focus:border-indigo-500 transition-colors"
                 />
                 <button
-                  onClick={fetchComparisonData}
+                  onClick={() => fetchComparisonData(false)}
                   disabled={!comparisonDate || isLoadingComparison}
                   className="bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500 hover:text-white px-3 py-1.5 rounded-lg text-sm font-bold transition-all disabled:opacity-50 flex items-center gap-2"
                 >
