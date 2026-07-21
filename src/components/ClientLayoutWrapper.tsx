@@ -39,6 +39,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   const [pendingVoidCount, setPendingVoidCount] = useState(0);
   const [pendingExpiriesCount, setPendingExpiriesCount] = useState(0);
   const [pendingReturnsCount, setPendingReturnsCount] = useState(0);
+  const [pendingOosCount, setPendingOosCount] = useState(0);
   const [hasAgedShifts, setHasAgedShifts] = useState(false);
   const [currentDateTime, setCurrentDateTime] = useState<Date | null>(null);
   const [systemNotifications, setSystemNotifications] = useState<any[]>([]);
@@ -146,6 +147,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     let unsubscribeShifts: any = null;
     let unsubscribeVoids: any = null;
     let unsubscribeExpiries: any = null;
+    let unsubscribeOos: any = null;
     let unsubscribeSystemNotifs: any = null;
 
     if (user && currentBranch) {
@@ -230,6 +232,21 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
         setPendingReturnsCount(count);
       }, (err) => console.log("Returns badge err", err));
 
+      const oosQ = query(collection(db, "out_of_stock_logs"), where("resolved", "==", false), limit(50));
+      unsubscribeOos = onSnapshot(oosQ, (snap) => {
+        let count = 0;
+        snap.docs.forEach(doc => {
+          const d = doc.data();
+          if (currentBranch === "all") {
+            count++;
+          } else {
+            const inferred = (d.branchId || "alamein4").toLowerCase();
+            if (inferred === currentBranch) count++;
+          }
+        });
+        setPendingOosCount(count);
+      }, (err) => console.log("OOS badge err", err));
+
       const notifQ = query(collection(db, "notifications"), orderBy("createdAt", "desc"), limit(50));
 
       unsubscribeSystemNotifs = onSnapshot(notifQ, (snap) => {
@@ -281,6 +298,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       if (unsubscribeShifts) unsubscribeShifts();
       if (unsubscribeVoids) unsubscribeVoids();
       if (unsubscribeExpiries) unsubscribeExpiries();
+      if (unsubscribeOos) unsubscribeOos();
       if (unsubscribeSystemNotifs) unsubscribeSystemNotifs();
     };
   }, []);
@@ -374,7 +392,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     }
   };
 
-  const totalNotifications = systemNotifications.length + pendingShiftCount + pendingVoidCount + pendingExpiriesCount + pendingReturnsCount;
+  const totalNotifications = systemNotifications.length + pendingShiftCount + pendingVoidCount + pendingExpiriesCount + pendingReturnsCount + pendingOosCount;
 
   // Completely isolate Cashier pages (No Enterprise Auth, No Sidebar)
   if (pathname?.startsWith('/shift-reports/cashier') || pathname?.startsWith('/voids/cashier') || pathname?.startsWith('/cashier') || pathname?.startsWith('/expiries') || pathname?.startsWith('/checklists/cashier') || pathname?.startsWith('/inventory-audit/cashier') || pathname?.startsWith('/owner')) {
@@ -522,6 +540,11 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                           {child.name === t("nav.expiries") && pendingExpiriesCount > 0 && (
                             <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
                               {pendingExpiriesCount}
+                            </span>
+                          )}
+                          {(child.name === "Out of Stock" || child.name === "سجل النواقص") && pendingOosCount > 0 && (
+                            <span className="ml-auto bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(244,63,94,0.4)] animate-pulse">
+                              {pendingOosCount}
                             </span>
                           )}
                         </Link>
