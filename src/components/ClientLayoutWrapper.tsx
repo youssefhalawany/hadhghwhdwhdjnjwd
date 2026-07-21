@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sun, Moon, Shield, Database, LayoutDashboard, FileText, Printer, ClipboardList, CheckCircle, Search, LogOut, User, Users, Menu, X, Bell, PackageX, Truck, CalendarDays, DollarSign, Activity, Wallet, Tag, Sparkles, Barcode, Briefcase, Clock, PackageMinus, Package } from "lucide-react";
+import { Sun, Moon, Shield, Database, LayoutDashboard, FileText, Printer, ClipboardList, CheckCircle, Search, LogOut, User, Users, Menu, X, Bell, PackageX, Truck, CalendarDays, DollarSign, Activity, Wallet, Tag, Sparkles, Barcode, Briefcase, Clock, PackageMinus, Package, Bot } from "lucide-react";
 import { auth, messaging, dbService, db } from "@/lib/firebase";
 import { getToken } from "firebase/messaging";
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
@@ -359,6 +359,9 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
         { name: language === "ar" ? "إدارة العروض" : "Manage Offers", href: "/admin/offers", icon: Tag },
         { name: language === "ar" ? "أكواد الفود" : "Food Codes", href: "/admin/food-codes", icon: Barcode }
       ]
+    },
+    {
+      name: language === "ar" ? "الذكاء الاصطناعي" : "Intelligence", href: "/ai-assistant", icon: Bot
     },
     {
       name: t("nav.hr"), icon: Users, children: [
