@@ -17,6 +17,7 @@ interface DepartmentData {
 }
 
 interface DetailedSalesData {
+  id?: string;
   store_name: string;
   generated_on: string;
   date_sold: string;
@@ -61,7 +62,7 @@ export default function DetailedSalesPage() {
       const snapshot = await getDocs(q);
       const reports: DetailedSalesData[] = [];
       snapshot.forEach(doc => {
-        reports.push({ id: doc.id, ...doc.data() } as DetailedSalesData);
+        reports.push({ id: doc.id, ...doc.data() } as unknown as DetailedSalesData);
       });
       setHistoricalReports(reports);
     } catch (error) {
