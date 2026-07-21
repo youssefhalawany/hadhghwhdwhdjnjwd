@@ -61,8 +61,8 @@ export default function DetailedSalesPage() {
             img.src = event.target?.result as string;
             img.onload = () => {
               const canvas = document.createElement('canvas');
-              const MAX_WIDTH = 1200;
-              const MAX_HEIGHT = 1600;
+              const MAX_WIDTH = 2400;
+              const MAX_HEIGHT = 3200;
               let width = img.width;
               let height = img.height;
 
@@ -82,7 +82,7 @@ export default function DetailedSalesPage() {
               const ctx = canvas.getContext('2d');
               if (ctx) {
                 ctx.drawImage(img, 0, 0, width, height);
-                resolve(canvas.toDataURL('image/jpeg', 0.6));
+                resolve(canvas.toDataURL('image/jpeg', 0.85));
               } else {
                 resolve(event.target?.result as string);
               }
