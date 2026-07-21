@@ -53,17 +53,29 @@ export default function DetailedSalesPage() {
     if (!currentBranch || currentBranch === "all") return;
     setIsLoadingHistory(true);
     try {
-      const q = query(
-        collection(productsDb, "detailed_sales_daily"),
-        where("branchId", "==", currentBranch),
-        orderBy("date_sold", "desc"),
-        limit(100)
-      );
+      const storeIdMap: Record<string, string> = {
+        "alamein4": "eL-alamein-4",
+        "ola": "ola-el-koronfol",
+        "eL-alamein-4": "alamein4",
+        "ola-el-koronfol": "ola"
+      };
+      const altBranch = storeIdMap[currentBranch] || currentBranch;
+
+      // Fetch all reports and filter in memory to avoid missing composite index errors
+      // and to catch both branchId aliases (eL-alamein-4 vs alamein4)
+      const q = query(collection(productsDb, "detailed_sales_daily"), limit(300));
       const snapshot = await getDocs(q);
       const reports: DetailedSalesData[] = [];
       snapshot.forEach(doc => {
-        reports.push({ id: doc.id, ...doc.data() } as unknown as DetailedSalesData);
+        const data = doc.data();
+        if (data.branchId === currentBranch || data.branchId === altBranch || data.storeId === currentBranch || data.storeId === altBranch) {
+          reports.push({ id: doc.id, ...data } as unknown as DetailedSalesData);
+        }
       });
+      
+      // Sort descending by date_sold
+      reports.sort((a, b) => (b.date_sold || "").localeCompare(a.date_sold || ""));
+      
       setHistoricalReports(reports);
     } catch (error) {
       console.error("Failed to fetch historical reports:", error);
