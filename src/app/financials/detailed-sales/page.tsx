@@ -210,7 +210,7 @@ export default function DetailedSalesPage() {
       }
 
       // Convert format for easier querying (DD/MM/YYYY -> YYYY-MM-DD if needed, but we keep raw for now, or standardize)
-      let standardDate = extractedData.date_sold;
+      let standardDate = extractedData.date_sold || "";
       if (standardDate.includes("/")) {
         const [day, month, year] = standardDate.split("/");
         standardDate = `${year}-${month}-${day}`;
@@ -436,15 +436,15 @@ export default function DetailedSalesPage() {
                     <tr className="bg-blue-500/5 hover:bg-blue-500/10 transition-colors">
                       <td className="px-4 py-4 font-black text-blue-600 dark:text-blue-400 border-b border-border">Totals</td>
                       <td className="px-4 py-4 font-semibold border-b border-border">
-                        {extractedData.overall_qty_sold}
-                        {comparisonData && renderComparisonDiff(extractedData.overall_qty_sold, comparisonData.overall_qty_sold)}
+                        {extractedData.overall_qty_sold || 0}
+                        {comparisonData && renderComparisonDiff(extractedData.overall_qty_sold || 0, comparisonData.overall_qty_sold)}
                       </td>
                       <td className="px-4 py-4 font-semibold border-b border-border">
-                        LE {extractedData.overall_total_sales.toFixed(2)}
-                        {comparisonData && renderComparisonDiff(extractedData.overall_total_sales, comparisonData.overall_total_sales, true)}
+                        LE {Number(extractedData.overall_total_sales || 0).toFixed(2)}
+                        {comparisonData && renderComparisonDiff(extractedData.overall_total_sales || 0, comparisonData.overall_total_sales, true)}
                       </td>
-                      <td className="px-4 py-4 font-semibold border-b border-border">LE {extractedData.overall_total_tax_ex.toFixed(2)}</td>
-                      <td className="px-4 py-4 font-semibold border-b border-border text-rose-500">LE {extractedData.overall_sales_tax.toFixed(2)}</td>
+                      <td className="px-4 py-4 font-semibold border-b border-border">LE {Number(extractedData.overall_total_tax_ex || 0).toFixed(2)}</td>
+                      <td className="px-4 py-4 font-semibold border-b border-border text-rose-500">LE {Number(extractedData.overall_sales_tax || 0).toFixed(2)}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -463,25 +463,25 @@ export default function DetailedSalesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {extractedData.departments.map((dept, idx) => {
-                      const compDept = comparisonData?.departments.find(d => d.name === dept.name);
+                    {(extractedData.departments || []).map((dept, idx) => {
+                      const compDept = comparisonData?.departments?.find(d => d.name === dept.name);
                       
                       return (
                         <tr key={idx} className="hover:bg-muted/50 transition-colors border-b border-border last:border-0">
                           <td className="px-4 py-3 font-semibold text-foreground flex items-center gap-2">
                             <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600"></span>
-                            {dept.name}
+                            {dept.name || 'Unknown'}
                           </td>
                           <td className="px-4 py-3 text-sm font-medium">
-                            {dept.qty_sold}
-                            {compDept && renderComparisonDiff(dept.qty_sold, compDept.qty_sold)}
+                            {dept.qty_sold || 0}
+                            {compDept && renderComparisonDiff(dept.qty_sold || 0, compDept.qty_sold)}
                           </td>
                           <td className="px-4 py-3 text-sm font-medium">
-                            LE {dept.total_sales.toFixed(2)}
-                            {compDept && renderComparisonDiff(dept.total_sales, compDept.total_sales, true)}
+                            LE {Number(dept.total_sales || 0).toFixed(2)}
+                            {compDept && renderComparisonDiff(dept.total_sales || 0, compDept.total_sales, true)}
                           </td>
-                          <td className="px-4 py-3 text-sm text-muted-foreground">{dept.total_tax_ex.toFixed(2)}</td>
-                          <td className="px-4 py-3 text-sm text-muted-foreground">{dept.sales_tax.toFixed(2)}</td>
+                          <td className="px-4 py-3 text-sm text-muted-foreground">{Number(dept.total_tax_ex || 0).toFixed(2)}</td>
+                          <td className="px-4 py-3 text-sm text-muted-foreground">{Number(dept.sales_tax || 0).toFixed(2)}</td>
                         </tr>
                       );
                     })}
