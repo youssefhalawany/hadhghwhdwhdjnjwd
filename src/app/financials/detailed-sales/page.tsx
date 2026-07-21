@@ -87,9 +87,9 @@ export default function DetailedSalesPage() {
                 resolve(event.target?.result as string);
               }
             };
-            img.onerror = (e) => reject(e);
+            img.onerror = () => reject(new Error("Could not decode image. If this is an HEIC photo from an iPhone, please convert it to JPEG/PNG or take a direct screenshot."));
           };
-          reader.onerror = error => reject(error);
+          reader.onerror = () => reject(new Error("Failed to read the file."));
         });
       };
 

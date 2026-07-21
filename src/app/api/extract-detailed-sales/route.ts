@@ -42,12 +42,10 @@ export async function POST(req: NextRequest) {
                   total_sales: { type: SchemaType.NUMBER },
                   total_tax_ex: { type: SchemaType.NUMBER },
                   sales_tax: { type: SchemaType.NUMBER }
-                },
-                required: ["name", "qty_sold", "total_sales", "total_tax_ex", "sales_tax"]
+                }
               }
             }
-          },
-          required: ["store_name", "generated_on", "date_sold", "overall_qty_sold", "overall_total_sales", "departments"]
+          }
         }
       }
     });
