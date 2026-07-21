@@ -335,6 +335,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       name: t("nav.financials"), icon: FileText, children: [
         { name: t("nav.financial_inputs"), href: "/financials/inputs", icon: Wallet },
         { name: t("nav.reports"), href: "/financial-reports", icon: FileText },
+        { name: "Detailed Sales", href: "/financials/detailed-sales", icon: Activity },
         { name: "Month Summary", href: "/financial-reports/month-summary", icon: CalendarDays },
         { name: language === "ar" ? "سجل النواقص" : "Out of Stock", href: "/financials/out-of-stock", icon: PackageMinus },
         { name: t("nav.voids_returns"), href: "/voids/manager", icon: Shield },
