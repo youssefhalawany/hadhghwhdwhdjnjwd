@@ -34,17 +34,22 @@ export default function DetailedSalesPage() {
   const [extractedData, setExtractedData] = useState<DetailedSalesData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [comparisonData, setComparisonData] = useState<DetailedSalesData | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Comparison State
   const [comparisonDate, setComparisonDate] = useState("");
-  const [comparisonData, setComparisonData] = useState<DetailedSalesData | null>(null);
   const [isLoadingComparison, setIsLoadingComparison] = useState(false);
 
   // Handle image upload or paste
   const processImage = async (file: File) => {
+    setErrorMsg(null);
     if (!file.type.startsWith("image/")) {
-      toast.error("Please provide a valid image file.");
+      const msg = "Please provide a valid image file.";
+      toast.error(msg);
+      setErrorMsg(msg);
       return;
     }
 
@@ -61,8 +66,8 @@ export default function DetailedSalesPage() {
             img.src = event.target?.result as string;
             img.onload = () => {
               const canvas = document.createElement('canvas');
-              const MAX_WIDTH = 2400;
-              const MAX_HEIGHT = 3200;
+              const MAX_WIDTH = 1800; // Lowered to prevent payload too large errors
+              const MAX_HEIGHT = 2800;
               let width = img.width;
               let height = img.height;
 
@@ -77,12 +82,13 @@ export default function DetailedSalesPage() {
                   height = MAX_HEIGHT;
                 }
               }
+
               canvas.width = width;
               canvas.height = height;
               const ctx = canvas.getContext('2d');
               if (ctx) {
                 ctx.drawImage(img, 0, 0, width, height);
-                resolve(canvas.toDataURL('image/jpeg', 0.85));
+                resolve(canvas.toDataURL('image/jpeg', 0.75));
               } else {
                 resolve(event.target?.result as string);
               }
@@ -120,10 +126,11 @@ export default function DetailedSalesPage() {
         throw new Error(json.error || "Invalid response format");
       }
       setIsProcessing(false);
-
     } catch (error: any) {
       console.error(error);
-      toast.error(error.message || "Something went wrong.");
+      const msg = error.message || "Something went wrong.";
+      toast.error(msg);
+      setErrorMsg(msg);
       setIsProcessing(false);
     }
   };
@@ -168,6 +175,8 @@ export default function DetailedSalesPage() {
     if (file) {
       processImage(file);
     }
+    // Clear the input value so the exact same file can be selected again if needed
+    e.target.value = '';
   };
 
   const fetchComparisonData = async () => {
@@ -276,6 +285,15 @@ export default function DetailedSalesPage() {
           </p>
         </div>
       </div>
+
+      {errorMsg && (
+          <div className="mb-6 w-full max-w-2xl mx-auto bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 p-4 rounded-xl shadow-sm">
+            <h4 className="font-bold flex items-center gap-2 mb-1">
+              <AlertCircle className="w-5 h-5" /> Extraction Error
+            </h4>
+            <p className="text-sm font-medium">{errorMsg}</p>
+          </div>
+        )}
 
       {!extractedData ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

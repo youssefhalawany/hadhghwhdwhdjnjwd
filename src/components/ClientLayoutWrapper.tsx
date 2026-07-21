@@ -260,7 +260,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
           });
         }
         notifs = notifs.filter((n: any) => n.read === false);
-        
+
         setSystemNotifications(notifs);
       }, (err) => console.log("System Notifs err", err));
     }
@@ -680,15 +680,15 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                             </div>
                           )}
                           {systemNotifications.map(notif => (
-                            <Link 
+                            <Link
                               key={notif.id}
-                              href={notif.link || "/"} 
+                              href={notif.link || "/"}
                               onClick={async () => {
                                 setNotificationsOpen(false);
                                 try {
                                   await updateDoc(doc(db, "notifications", notif.id), { read: true });
-                                } catch(e) { console.error("Error marking read", e); }
-                              }} 
+                                } catch (e) { console.error("Error marking read", e); }
+                              }}
                               className="block p-3 border-b border-border hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors bg-blue-50/50 dark:bg-blue-900/10"
                             >
                               <div className="flex justify-between items-start mb-1">
@@ -696,7 +696,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                                   <span className="w-2 h-2 rounded-full bg-blue-500 inline-block animate-pulse"></span>
                                   {notif.type} Update
                                 </p>
-                                <span className="text-[10px] text-muted-foreground">{new Date(notif.createdAt?.toDate ? notif.createdAt.toDate() : Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                <span className="text-[10px] text-muted-foreground">{new Date(notif.createdAt?.toDate ? notif.createdAt.toDate() : Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                               </div>
                               <p className="text-xs text-muted-foreground font-medium">{notif.message}</p>
                             </Link>
@@ -827,7 +827,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
         {/* Scrollable Main Content */}
         <main className={`flex-grow overflow-y-auto custom-scrollbar flex flex-col ${(pathname.startsWith('/cashier') || pathname.startsWith('/owner')) ? '' : 'p-4 sm:p-6 lg:p-8 bg-slate-50/50 dark:bg-slate-950/20'}`}>
-          <div 
+          <div
             className={`flex-grow w-full max-w-7xl mx-auto ${(pathname.startsWith('/cashier') || pathname.startsWith('/owner')) ? 'h-full p-0 m-0 max-w-full' : ''}`}
           >
             {children}
@@ -837,10 +837,10 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
           {!pathname.startsWith('/cashier') && !pathname.startsWith('/owner') && (
             <footer className="mt-8 border-t border-border/50 py-4 text-center text-xs text-muted-foreground no-print">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
-                <p>© 2026 Circle K Franchise Group. All rights reserved.</p>
+                <p>© 2026 Circle K Franchise ANH Group. All rights reserved.</p>
                 <div className="flex items-center gap-4">
                   <span className="flex items-center gap-1">
-                    <CheckCircle className="h-3 w-3 text-green-500" /> SHA-256 Hash Validation Enabled
+                    <CheckCircle className="h-3 w-3 text-green-500" /> Created by Youssef Elhalawany
                   </span>
                 </div>
               </div>
