@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useEffect } from "react";
-import { Upload, FileText, CheckCircle, Loader2, Save, Calendar, GitCompare, RefreshCcw, TrendingUp, TrendingDown, Minus, Search } from "lucide-react";
+import { Upload, FileText, CheckCircle, Loader2, Save, Calendar, GitCompare, RefreshCcw, TrendingUp, TrendingDown, Minus, Search, Clipboard } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { useBranch } from "@/context/BranchContext";
 import { productsDb } from "@/lib/firebase";
@@ -141,6 +141,28 @@ export default function DetailedSalesPage() {
     }
   }, []);
 
+  const handlePasteButtonClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation(); // prevent triggering the file input click
+    try {
+      const clipboardItems = await navigator.clipboard.read();
+      for (const clipboardItem of clipboardItems) {
+        for (const type of clipboardItem.types) {
+          if (type.startsWith("image/")) {
+            const blob = await clipboardItem.getType(type);
+            const file = new File([blob], "pasted-image.png", { type });
+            processImage(file);
+            return;
+          }
+        }
+      }
+      toast.error("No image found in clipboard.");
+    } catch (err) {
+      console.error(err);
+      toast.error("Could not read clipboard. Try pressing Ctrl+V / Cmd+V instead.");
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -278,9 +300,16 @@ export default function DetailedSalesPage() {
                   <Upload className="h-8 w-8" />
                 </div>
                 <h3 className="text-lg font-bold">Upload POS Report</h3>
-                <p className="text-sm text-muted-foreground mt-2 max-w-sm">
+                <p className="text-sm text-muted-foreground mt-2 max-w-sm mb-4">
                   Drag & drop, click to upload, or simply <strong>Paste (Ctrl+V)</strong> your screenshot here.
                 </p>
+                <button
+                  onClick={handlePasteButtonClick}
+                  className="relative z-20 flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-foreground font-semibold rounded-lg transition-colors border border-border"
+                >
+                  <Clipboard className="h-4 w-4 text-blue-500" />
+                  Paste from Clipboard
+                </button>
               </>
             )}
           </div>
