@@ -58,9 +58,18 @@ export default function DetailedSalesPage() {
     setIsLoadingShiftTotals(true);
     setShiftTotals(null);
     try {
+      const storeIdMap: Record<string, string> = {
+        "alamein4": "eL-alamein-4",
+        "ola": "ola-el-koronfol",
+        "eL-alamein-4": "alamein4",
+        "ola-el-koronfol": "ola"
+      };
+      const altBranch = storeIdMap[branch] || branch;
+
+      // We can't easily do OR across two different fields in standard Firestore without composite indexes, 
+      // so we'll just fetch all for the date and filter in memory since it's only a few docs per day!
       const q = query(
         collection(productsDb, "sales"),
-        where("branchId", "==", branch),
         where("date", "==", date)
       );
       const snapshot = await getDocs(q);
@@ -68,8 +77,10 @@ export default function DetailedSalesPage() {
       let visa = 0;
       snapshot.forEach(doc => {
         const data = doc.data();
-        cash += (Number(data.cash) || 0);
-        visa += (Number(data.visa) || 0);
+        if (data.branchId === branch || data.branchId === altBranch || data.storeId === branch || data.storeId === altBranch) {
+          cash += (Number(data.cash) || 0);
+          visa += (Number(data.visa) || 0);
+        }
       });
       setShiftTotals({ cash, visa, total: cash + visa });
     } catch (error) {
@@ -98,12 +109,15 @@ export default function DetailedSalesPage() {
     const totalSales = extractedData.overall_total_sales || 1; 
     const deps = extractedData.departments || [];
 
-    const coffeeCig = deps.filter(d => 
-      d.name?.toLowerCase().includes("coffee") || 
-      d.name?.toLowerCase().includes("cig") ||
-      d.name?.toLowerCase().includes("tobacco")
+    const coffee = deps.filter(d => 
+      d.name?.toLowerCase().includes("coffee")
     ).reduce((sum, d) => sum + (d.total_sales || 0), 0);
-    const coffeeCigPct = ((coffeeCig / totalSales) * 100).toFixed(1);
+    const coffeePct = ((coffee / totalSales) * 100).toFixed(1);
+
+    const cig = deps.filter(d => 
+      d.name?.toLowerCase().includes("cig") || d.name?.toLowerCase().includes("tobacco")
+    ).reduce((sum, d) => sum + (d.total_sales || 0), 0);
+    const cigPct = ((cig / totalSales) * 100).toFixed(1);
 
     const foodKeywords = ["cold cut", "bakery", "rich cut", "burger", "pizza", "donut", "cookie"];
     const food = deps.filter(d => 
@@ -111,7 +125,7 @@ export default function DetailedSalesPage() {
     ).reduce((sum, d) => sum + (d.total_sales || 0), 0);
     const foodPct = ((food / totalSales) * 100).toFixed(1);
 
-    return { coffeeCig, coffeeCigPct, food, foodPct, totalSales };
+    return { coffee, coffeePct, cig, cigPct, food, foodPct, totalSales };
   };
 
   const analytics = calcAnalytics();
@@ -486,21 +500,38 @@ export default function DetailedSalesPage() {
           </div>
 
           {analytics && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-              {/* Coffee & Cigarettes */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+              {/* Coffee Alone */}
               <div className="glass-panel p-6 rounded-2xl border border-border shadow-sm flex flex-col justify-between">
                 <div className="flex items-center justify-between mb-4">
                   <div className="h-10 w-10 bg-amber-500/10 rounded-xl flex items-center justify-center">
                     <Coffee className="h-5 w-5 text-amber-600" />
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-semibold text-muted-foreground">Coffee & Cigs</div>
-                    <div className="text-2xl font-black text-amber-600">{analytics.coffeeCigPct}%</div>
+                    <div className="text-sm font-semibold text-muted-foreground">Coffee</div>
+                    <div className="text-2xl font-black text-amber-600">{analytics.coffeePct}%</div>
                   </div>
                 </div>
                 <div>
-                  <div className="text-3xl font-black">LE {analytics.coffeeCig.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                  <div className="text-sm text-muted-foreground mt-1">Total revenue from Coffee & Cigarettes</div>
+                  <div className="text-3xl font-black">LE {analytics.coffee.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                  <div className="text-sm text-muted-foreground mt-1">Total revenue from Coffee</div>
+                </div>
+              </div>
+
+              {/* Cigarettes Alone */}
+              <div className="glass-panel p-6 rounded-2xl border border-border shadow-sm flex flex-col justify-between">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="h-10 w-10 bg-slate-500/10 rounded-xl flex items-center justify-center">
+                    <Banknote className="h-5 w-5 text-slate-600" />
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-semibold text-muted-foreground">Cigarettes</div>
+                    <div className="text-2xl font-black text-slate-600">{analytics.cigPct}%</div>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-3xl font-black">LE {analytics.cig.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                  <div className="text-sm text-muted-foreground mt-1">Total revenue from Cigarettes</div>
                 </div>
               </div>
 
