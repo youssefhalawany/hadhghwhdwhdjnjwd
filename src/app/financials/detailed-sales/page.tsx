@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useEffect } from "react";
-import { Upload, FileText, CheckCircle, Loader2, Save, Calendar, GitCompare, RefreshCcw, TrendingUp, TrendingDown, Minus, Search, Clipboard, AlertCircle } from "lucide-react";
+import { Upload, FileText, CheckCircle, Loader2, Save, Calendar, GitCompare, RefreshCcw, TrendingUp, TrendingDown, Minus, Search, Clipboard, AlertCircle, Coffee, Pizza, Banknote, CreditCard, Wallet, AlertTriangle } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { useBranch } from "@/context/BranchContext";
 import { productsDb } from "@/lib/firebase";
@@ -42,6 +42,79 @@ export default function DetailedSalesPage() {
   // Comparison State
   const [comparisonDate, setComparisonDate] = useState("");
   const [isLoadingComparison, setIsLoadingComparison] = useState(false);
+
+  // Shift Totals State
+  interface ShiftTotals {
+    cash: number;
+    visa: number;
+    total: number;
+  }
+  const [shiftTotals, setShiftTotals] = useState<ShiftTotals | null>(null);
+  const [isLoadingShiftTotals, setIsLoadingShiftTotals] = useState(false);
+
+  // Fetch shift totals
+  const fetchShiftTotals = useCallback(async (date: string, branch: string) => {
+    if (!date || !branch) return;
+    setIsLoadingShiftTotals(true);
+    setShiftTotals(null);
+    try {
+      const q = query(
+        collection(productsDb, "sales"),
+        where("branchId", "==", branch),
+        where("date", "==", date)
+      );
+      const snapshot = await getDocs(q);
+      let cash = 0;
+      let visa = 0;
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        cash += (Number(data.cash) || 0);
+        visa += (Number(data.visa) || 0);
+      });
+      setShiftTotals({ cash, visa, total: cash + visa });
+    } catch (error) {
+      console.error("Failed to fetch shift totals:", error);
+    } finally {
+      setIsLoadingShiftTotals(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (extractedData?.date_sold && currentBranch) {
+      let standardDate = extractedData.date_sold || "";
+      if (standardDate.includes("/")) {
+        const parts = standardDate.split("/");
+        if (parts.length === 3) {
+          standardDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+      }
+      fetchShiftTotals(standardDate, currentBranch);
+    }
+  }, [extractedData, currentBranch, fetchShiftTotals]);
+
+  // Analytics Helper
+  const calcAnalytics = () => {
+    if (!extractedData) return null;
+    const totalSales = extractedData.overall_total_sales || 1; 
+    const deps = extractedData.departments || [];
+
+    const coffeeCig = deps.filter(d => 
+      d.name?.toLowerCase().includes("coffee") || 
+      d.name?.toLowerCase().includes("cig") ||
+      d.name?.toLowerCase().includes("tobacco")
+    ).reduce((sum, d) => sum + (d.total_sales || 0), 0);
+    const coffeeCigPct = ((coffeeCig / totalSales) * 100).toFixed(1);
+
+    const foodKeywords = ["cold cut", "bakery", "rich cut", "burger", "pizza", "donut", "cookie"];
+    const food = deps.filter(d => 
+      foodKeywords.some(kw => d.name?.toLowerCase().includes(kw))
+    ).reduce((sum, d) => sum + (d.total_sales || 0), 0);
+    const foodPct = ((food / totalSales) * 100).toFixed(1);
+
+    return { coffeeCig, coffeeCigPct, food, foodPct, totalSales };
+  };
+
+  const analytics = calcAnalytics();
 
   // Handle image upload or paste
   const processImage = async (file: File) => {
@@ -410,7 +483,97 @@ export default function DetailedSalesPage() {
               {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
               {isSaving ? "Saving..." : "Save Report"}
             </button>
+            </button>
           </div>
+
+          {analytics && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              {/* Coffee & Cigarettes */}
+              <div className="glass-panel p-6 rounded-2xl border border-border shadow-sm flex flex-col justify-between">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="h-10 w-10 bg-amber-500/10 rounded-xl flex items-center justify-center">
+                    <Coffee className="h-5 w-5 text-amber-600" />
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-semibold text-muted-foreground">Coffee & Cigs</div>
+                    <div className="text-2xl font-black text-amber-600">{analytics.coffeeCigPct}%</div>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-3xl font-black">LE {analytics.coffeeCig.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                  <div className="text-sm text-muted-foreground mt-1">Total revenue from Coffee & Cigarettes</div>
+                </div>
+              </div>
+
+              {/* Food Category */}
+              <div className="glass-panel p-6 rounded-2xl border border-border shadow-sm flex flex-col justify-between">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="h-10 w-10 bg-emerald-500/10 rounded-xl flex items-center justify-center">
+                    <Pizza className="h-5 w-5 text-emerald-600" />
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-semibold text-muted-foreground">Food Category</div>
+                    <div className="text-2xl font-black text-emerald-600">{analytics.foodPct}%</div>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-3xl font-black">LE {analytics.food.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                  <div className="text-sm text-muted-foreground mt-1">Bakery, Cold Cuts, Pizza, Burgers, etc.</div>
+                </div>
+              </div>
+
+              {/* Actual Total Day */}
+              <div className="glass-panel p-6 rounded-2xl border border-border shadow-sm flex flex-col justify-between bg-gradient-to-br from-indigo-500/5 to-purple-500/5">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="h-10 w-10 bg-indigo-500/10 rounded-xl flex items-center justify-center">
+                    <Wallet className="h-5 w-5 text-indigo-600" />
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-semibold text-muted-foreground">Actual Shift Totals</div>
+                    {isLoadingShiftTotals ? (
+                      <Loader2 className="h-5 w-5 animate-spin ml-auto text-indigo-500" />
+                    ) : (
+                      <div className="text-2xl font-black text-indigo-600">
+                        {shiftTotals ? `LE ${shiftTotals.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "N/A"}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {shiftTotals ? (
+                  <div>
+                    <div className="flex justify-between text-sm font-medium mb-1">
+                      <span className="flex items-center gap-1 text-muted-foreground"><Banknote className="h-3.5 w-3.5" /> Cash</span>
+                      <span>LE {shiftTotals.cash.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-sm font-medium mb-3">
+                      <span className="flex items-center gap-1 text-muted-foreground"><CreditCard className="h-3.5 w-3.5" /> Visa</span>
+                      <span>LE {shiftTotals.visa.toLocaleString()}</span>
+                    </div>
+                    
+                    {/* Variance Calculation */}
+                    {(() => {
+                      const variance = shiftTotals.total - analytics.totalSales;
+                      const isOver = variance > 0;
+                      const isShort = variance < 0;
+                      const isExact = variance === 0;
+                      return (
+                        <div className={`mt-3 pt-3 border-t border-border flex items-center justify-between font-bold ${isOver ? 'text-emerald-500' : isShort ? 'text-rose-500' : 'text-slate-500'}`}>
+                          <span className="flex items-center gap-1 text-sm">
+                            {isShort ? <AlertTriangle className="h-4 w-4" /> : null}
+                            {isOver ? 'Over' : isShort ? 'Short' : 'Exact Match'}
+                          </span>
+                          <span>{variance > 0 ? '+' : ''}{variance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground mt-1">No shift reports found for this date.</div>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             
