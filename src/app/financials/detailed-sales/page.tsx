@@ -4,7 +4,7 @@ import React, { useState, useCallback, useEffect } from "react";
 import { Upload, FileText, CheckCircle, Loader2, Save, Calendar, GitCompare, RefreshCcw, TrendingUp, TrendingDown, Minus, Search, Clipboard, AlertCircle, Coffee, Pizza, Banknote, CreditCard, Wallet, AlertTriangle, Eye } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { useBranch } from "@/context/BranchContext";
-import { productsDb } from "@/lib/firebase";
+import { productsDb, db } from "@/lib/firebase";
 import { collection, addDoc, getDocs, query, where, orderBy, limit } from "firebase/firestore";
 import toast from "react-hot-toast";
 
@@ -119,7 +119,7 @@ export default function DetailedSalesPage() {
       // We can't easily do OR across two different fields in standard Firestore without composite indexes, 
       // so we'll just fetch all for the date and filter in memory since it's only a few docs per day!
       const q = query(
-        collection(productsDb, "sales"),
+        collection(db, "sales"),
         where("date", "==", date)
       );
       const snapshot = await getDocs(q);
