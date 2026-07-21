@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useEffect } from "react";
-import { Upload, FileText, CheckCircle, Loader2, Save, Calendar, GitCompare, RefreshCcw, TrendingUp, TrendingDown, Minus, Search, Clipboard } from "lucide-react";
+import { Upload, FileText, CheckCircle, Loader2, Save, Calendar, GitCompare, RefreshCcw, TrendingUp, TrendingDown, Minus, Search, Clipboard, AlertCircle } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { useBranch } from "@/context/BranchContext";
 import { productsDb } from "@/lib/firebase";
