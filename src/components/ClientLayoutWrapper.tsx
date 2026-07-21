@@ -528,17 +528,17 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                           <child.icon className={`h-4 w-4 ${isChildActive ? 'scale-110 drop-shadow-sm' : 'opacity-70 group-hover:opacity-100'}`} />
                           <span>{child.name}</span>
                           {child.name === t("nav.shift_audit") && pendingShiftCount > 0 && (
-                            <span className={`ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm ${hasAgedShifts ? 'animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.8)]' : ''}`}>
+                            <span className={`ml-auto bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(244,63,94,0.4)] animate-pulse ${hasAgedShifts ? 'shadow-[0_0_15px_rgba(239,68,68,0.8)]' : ''}`}>
                               {pendingShiftCount}
                             </span>
                           )}
                           {child.name === t("nav.voids_returns") && pendingVoidCount > 0 && (
-                            <span className="ml-auto bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+                            <span className="ml-auto bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(244,63,94,0.4)] animate-pulse">
                               {pendingVoidCount}
                             </span>
                           )}
                           {child.name === t("nav.expiries") && pendingExpiriesCount > 0 && (
-                            <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+                            <span className="ml-auto bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(244,63,94,0.4)] animate-pulse">
                               {pendingExpiriesCount}
                             </span>
                           )}
