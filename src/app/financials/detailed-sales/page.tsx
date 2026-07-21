@@ -483,7 +483,6 @@ export default function DetailedSalesPage() {
               {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
               {isSaving ? "Saving..." : "Save Report"}
             </button>
-            </button>
           </div>
 
           {analytics && (
