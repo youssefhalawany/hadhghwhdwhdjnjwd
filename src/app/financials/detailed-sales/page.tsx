@@ -52,36 +52,74 @@ export default function DetailedSalesPage() {
     setPreviewUrl(URL.createObjectURL(file));
 
     try {
-      // Convert to base64
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = async () => {
-        const base64 = reader.result as string;
+      const getBase64 = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target?.result as string;
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              const MAX_WIDTH = 1200;
+              const MAX_HEIGHT = 1600;
+              let width = img.width;
+              let height = img.height;
 
-        const res = await fetch("/api/extract-detailed-sales", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imageBase64: base64 }),
+              if (width > height) {
+                if (width > MAX_WIDTH) {
+                  height *= MAX_WIDTH / width;
+                  width = MAX_WIDTH;
+                }
+              } else {
+                if (height > MAX_HEIGHT) {
+                  width *= MAX_HEIGHT / height;
+                  height = MAX_HEIGHT;
+                }
+              }
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', 0.6));
+              } else {
+                resolve(event.target?.result as string);
+              }
+            };
+            img.onerror = (e) => reject(e);
+          };
+          reader.onerror = error => reject(error);
         });
-
-        if (!res.ok) {
-          throw new Error("Failed to extract data from image");
-        }
-
-        const json = await res.json();
-        if (json.success && json.data) {
-          setExtractedData(json.data);
-          toast.success("Report data extracted successfully!");
-        } else {
-          throw new Error("Invalid response format");
-        }
-        setIsProcessing(false);
       };
-      
-      reader.onerror = () => {
-        toast.error("Failed to read image file.");
-        setIsProcessing(false);
-      };
+
+      const base64 = await getBase64(file);
+
+      const res = await fetch("/api/extract-detailed-sales", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64: base64 }),
+      });
+
+      if (!res.ok) {
+        let errorMessage = "Failed to extract data from image";
+        try {
+           const errJson = await res.json();
+           errorMessage = errJson.error || errorMessage;
+        } catch(e) {
+           errorMessage = res.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+
+      const json = await res.json();
+      if (json.success && json.data) {
+        setExtractedData(json.data);
+        toast.success("Report data extracted successfully!");
+      } else {
+        throw new Error(json.error || "Invalid response format");
+      }
+      setIsProcessing(false);
 
     } catch (error: any) {
       console.error(error);
