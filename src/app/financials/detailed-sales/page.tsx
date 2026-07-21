@@ -42,6 +42,11 @@ export default function DetailedSalesPage() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // Monthly Mode State
+  const [viewMode, setViewMode] = useState<"daily" | "monthly">("daily");
+  const [selectedMonth, setSelectedMonth] = useState("");
+  const [isAggregating, setIsAggregating] = useState(false);
+
   // Comparison State
   const [comparisonDate, setComparisonDate] = useState("");
   const [isLoadingComparison, setIsLoadingComparison] = useState(false);
@@ -95,6 +100,91 @@ export default function DetailedSalesPage() {
     report.overall_total_sales?.toString().includes(searchQuery)
   );
 
+  // Monthly Aggregation Engine
+  const aggregateMonthlyData = useCallback(async (monthStr: string): Promise<DetailedSalesData | null> => {
+    if (!monthStr || !currentBranch) return null;
+    
+    const storeIdMap: Record<string, string> = {
+      "alamein4": "eL-alamein-4",
+      "ola": "ola-el-koronfol",
+      "eL-alamein-4": "alamein4",
+      "ola-el-koronfol": "ola"
+    };
+    const altBranch = storeIdMap[currentBranch] || currentBranch;
+    
+    const q = query(collection(productsDb, "detailed_sales_daily"), limit(1000));
+    const snapshot = await getDocs(q);
+    
+    let overall_qty = 0;
+    let overall_sales = 0;
+    let overall_tax_ex = 0;
+    let overall_tax = 0;
+    
+    const deptMap: Record<string, DepartmentData> = {};
+    
+    snapshot.forEach(doc => {
+      const data = doc.data() as DetailedSalesData;
+      if (data.date_sold?.startsWith(monthStr)) {
+        if (currentBranch === "all" || data.branchId === currentBranch || data.branchId === altBranch || data.storeId === currentBranch || data.storeId === altBranch) {
+           overall_qty += data.overall_qty_sold || 0;
+           overall_sales += data.overall_total_sales || 0;
+           overall_tax_ex += data.overall_total_tax_ex || 0;
+           overall_tax += data.overall_sales_tax || 0;
+           
+           (data.departments || []).forEach(d => {
+             const lowerName = d.name.toLowerCase();
+             if (!deptMap[lowerName]) {
+               deptMap[lowerName] = { ...d, name: d.name };
+             } else {
+               deptMap[lowerName].qty_sold += (d.qty_sold || 0);
+               deptMap[lowerName].total_sales += (d.total_sales || 0);
+               deptMap[lowerName].total_tax_ex += (d.total_tax_ex || 0);
+               deptMap[lowerName].sales_tax += (d.sales_tax || 0);
+             }
+           });
+        }
+      }
+    });
+    
+    if (overall_sales === 0) return null;
+
+    const aggregatedDeps = Object.values(deptMap).sort((a, b) => b.total_sales - a.total_sales);
+    
+    return {
+      store_name: currentBranch === "all" ? "All Branches" : currentBranch,
+      branchId: currentBranch,
+      storeId: altBranch,
+      generated_on: new Date().toLocaleDateString('en-GB'),
+      date_sold: monthStr,
+      overall_qty_sold: overall_qty,
+      overall_total_sales: overall_sales,
+      overall_total_tax_ex: overall_tax_ex,
+      overall_sales_tax: overall_tax,
+      departments: aggregatedDeps
+    };
+  }, [currentBranch]);
+
+  const handleGenerateMonthly = async () => {
+    if (!selectedMonth) {
+      toast.error("Please select a month.");
+      return;
+    }
+    setIsAggregating(true);
+    try {
+      const report = await aggregateMonthlyData(selectedMonth);
+      if (report) {
+        setExtractedData(report);
+      } else {
+        toast.error("No reports found for this month.");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to aggregate monthly data.");
+    } finally {
+      setIsAggregating(false);
+    }
+  };
+
   // Shift Totals State
   interface ShiftTotals {
     cash: number;
@@ -120,10 +210,20 @@ export default function DetailedSalesPage() {
 
       // We can't easily do OR across two different fields in standard Firestore without composite indexes, 
       // so we'll just fetch all for the date and filter in memory since it's only a few docs per day!
-      const q = query(
-        collection(db, "sales"),
-        where("date", "==", date)
-      );
+      let q;
+      if (date.length === 7) {
+        // Monthly string YYYY-MM
+        q = query(
+          collection(db, "sales"),
+          where("date", ">=", date + "-01"),
+          where("date", "<=", date + "-31")
+        );
+      } else {
+        q = query(
+          collection(db, "sales"),
+          where("date", "==", date)
+        );
+      }
       const snapshot = await getDocs(q);
       let cash = 0;
       let visa = 0;
@@ -331,24 +431,39 @@ export default function DetailedSalesPage() {
     if (!isPrimaryLookup) setComparisonData(null);
     
     try {
-      const q = query(
-        collection(productsDb, "detailed_sales_daily"),
-        where("branchId", "==", currentBranch),
-        where("date_sold", "==", comparisonDate),
-        limit(1)
-      );
-      const snapshot = await getDocs(q);
-      if (!snapshot.empty) {
-        const data = snapshot.docs[0].data() as DetailedSalesData;
-        if (isPrimaryLookup) {
-          setExtractedData(data);
-          toast.success(`Loaded historical report for ${comparisonDate}`);
+      if (viewMode === "monthly") {
+        const aggregated = await aggregateMonthlyData(comparisonDate);
+        if (aggregated) {
+          if (isPrimaryLookup) {
+            setExtractedData(aggregated);
+            toast.success(`Loaded historical report for ${comparisonDate}`);
+          } else {
+            setComparisonData(aggregated);
+            toast.success(`Loaded comparison data for ${comparisonDate}`);
+          }
         } else {
-          setComparisonData(data);
-          toast.success(`Loaded comparison data for ${comparisonDate}`);
+          toast.error(`No data found for ${comparisonDate}`);
         }
       } else {
-        toast.error(`No data found for ${comparisonDate}`);
+        const q = query(
+          collection(productsDb, "detailed_sales_daily"),
+          where("branchId", "==", currentBranch),
+          where("date_sold", "==", comparisonDate),
+          limit(1)
+        );
+        const snapshot = await getDocs(q);
+        if (!snapshot.empty) {
+          const data = snapshot.docs[0].data() as DetailedSalesData;
+          if (isPrimaryLookup) {
+            setExtractedData(data);
+            toast.success(`Loaded historical report for ${comparisonDate}`);
+          } else {
+            setComparisonData(data);
+            toast.success(`Loaded comparison data for ${comparisonDate}`);
+          }
+        } else {
+          toast.error(`No data found for ${comparisonDate}`);
+        }
       }
     } catch (error) {
       console.error("Error fetching comparison data:", error);
@@ -506,19 +621,62 @@ export default function DetailedSalesPage() {
                 </div>
               </div>
               
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <input 
-                  type="text" 
-                  placeholder="Search by date (YYYY-MM-DD)..." 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:border-indigo-500 w-full sm:w-64"
-                />
+              <div className="flex bg-muted p-1 rounded-lg">
+                <button 
+                  onClick={() => setViewMode("daily")}
+                  className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-all ${viewMode === "daily" ? "bg-white dark:bg-slate-800 shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  Daily View
+                </button>
+                <button 
+                  onClick={() => setViewMode("monthly")}
+                  className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-all ${viewMode === "monthly" ? "bg-white dark:bg-slate-800 shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  Monthly Aggregation
+                </button>
               </div>
             </div>
 
-            {isLoadingHistory ? (
+            {viewMode === "monthly" ? (
+              <div className="flex flex-col items-center justify-center py-12 border border-dashed border-border rounded-xl bg-muted/20">
+                <Calendar className="h-12 w-12 text-indigo-500/50 mb-4" />
+                <h3 className="text-xl font-bold mb-2">Monthly Aggregator</h3>
+                <p className="text-sm text-muted-foreground mb-6 max-w-md text-center">
+                  Select a month to instantly merge all daily reports and shift totals into a single, comprehensive monthly analytics dashboard.
+                </p>
+                <div className="flex items-center gap-3">
+                  <input 
+                    type="month"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    className="bg-muted border border-border rounded-lg px-4 py-2 outline-none focus:border-indigo-500 transition-colors"
+                  />
+                  <button
+                    onClick={handleGenerateMonthly}
+                    disabled={isAggregating || !selectedMonth}
+                    className="bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold transition-all disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {isAggregating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                    Generate
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex justify-end mb-6">
+                  <div className="relative w-full sm:w-64">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <input 
+                      type="text" 
+                      placeholder="Search by date (YYYY-MM-DD)..." 
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-9 pr-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:border-indigo-500 w-full"
+                    />
+                  </div>
+                </div>
+
+                {isLoadingHistory ? (
               <div className="flex justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
               </div>
@@ -573,7 +731,9 @@ export default function DetailedSalesPage() {
                 </table>
               </div>
             )}
-          </div>
+            </>
+          )}
+        </div>
         </div>
       ) : (
         <div className="space-y-6">
@@ -592,7 +752,7 @@ export default function DetailedSalesPage() {
               <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold text-muted-foreground">Compare with:</span>
                 <input 
-                  type="date" 
+                  type={viewMode === "monthly" ? "month" : "date"}
                   value={comparisonDate}
                   onChange={(e) => setComparisonDate(e.target.value)}
                   className="bg-muted border border-border rounded-lg px-3 py-1.5 text-sm outline-none focus:border-indigo-500 transition-colors"
@@ -831,7 +991,6 @@ export default function DetailedSalesPage() {
         </div>
       )}
       
-      {/* Search Icon is missing from lucide-react import above, need to add it if it complains but wait I didn't import Search in the current block, ah I did use <Search> on line 185 */}
     </div>
   );
 }
