@@ -18,6 +18,8 @@ interface DepartmentData {
 
 interface DetailedSalesData {
   id?: string;
+  branchId?: string;
+  storeId?: string;
   store_name: string;
   generated_on: string;
   date_sold: string;
@@ -50,7 +52,7 @@ export default function DetailedSalesPage() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const fetchHistoricalReports = useCallback(async () => {
-    if (!currentBranch || currentBranch === "all") return;
+    if (!currentBranch) return;
     setIsLoadingHistory(true);
     try {
       const storeIdMap: Record<string, string> = {
@@ -68,7 +70,7 @@ export default function DetailedSalesPage() {
       const reports: DetailedSalesData[] = [];
       snapshot.forEach(doc => {
         const data = doc.data();
-        if (data.branchId === currentBranch || data.branchId === altBranch || data.storeId === currentBranch || data.storeId === altBranch) {
+        if (currentBranch === "all" || data.branchId === currentBranch || data.branchId === altBranch || data.storeId === currentBranch || data.storeId === altBranch) {
           reports.push({ id: doc.id, ...data } as unknown as DetailedSalesData);
         }
       });
@@ -149,7 +151,14 @@ export default function DetailedSalesPage() {
           standardDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
         }
       }
-      fetchShiftTotals(standardDate, currentBranch);
+      
+      // If we are on "All Branches", pass the specific report's branch so shift totals query works correctly
+      let targetBranchForTotals = currentBranch;
+      if (currentBranch === "all") {
+        targetBranchForTotals = extractedData.branchId || extractedData.storeId || "all";
+      }
+      
+      fetchShiftTotals(standardDate, targetBranchForTotals);
     }
   }, [extractedData, currentBranch, fetchShiftTotals]);
 
@@ -524,6 +533,7 @@ export default function DetailedSalesPage() {
                   <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b border-border">
                     <tr>
                       <th className="px-4 py-3 font-semibold">Date Sold</th>
+                      {currentBranch === "all" && <th className="px-4 py-3 font-semibold">Branch</th>}
                       <th className="px-4 py-3 font-semibold">Total Revenue</th>
                       <th className="px-4 py-3 font-semibold text-center">Total Qty</th>
                       <th className="px-4 py-3 font-semibold text-right">Action</th>
@@ -535,6 +545,11 @@ export default function DetailedSalesPage() {
                         <td className="px-4 py-3 font-semibold text-foreground">
                           {report.date_sold}
                         </td>
+                        {currentBranch === "all" && (
+                          <td className="px-4 py-3 text-xs font-medium text-muted-foreground">
+                            {report.store_name || report.branchId}
+                          </td>
+                        )}
                         <td className="px-4 py-3 font-medium text-emerald-600 dark:text-emerald-400">
                           LE {(report.overall_total_sales || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </td>
