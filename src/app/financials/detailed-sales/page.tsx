@@ -155,7 +155,7 @@ export default function DetailedSalesPage() {
       // If we are on "All Branches", pass the specific report's branch so shift totals query works correctly
       let targetBranchForTotals = currentBranch;
       if (currentBranch === "all") {
-        targetBranchForTotals = extractedData.branchId || extractedData.storeId || "all";
+        targetBranchForTotals = (extractedData.branchId || extractedData.storeId || "all") as any;
       }
       
       fetchShiftTotals(standardDate, targetBranchForTotals);
