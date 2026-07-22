@@ -368,6 +368,10 @@ service cloud.firestore {
       allow create, read, update, delete: if true;
     }
 
+    match /borrow_requests/{doc} {
+      allow create, read, update, delete: if true;
+    }
+
     // ---------- Inventory Audit (NEW) ----------
     match /audit_batches/{doc} {
       allow create, read, update, delete: if true;
