@@ -129,6 +129,7 @@ export default function SupplierOrdersPage() {
     setIsGenerating(true);
     try {
       // 1. Generate PDF
+      console.log("Generating PDF...");
       const doc = new jsPDF();
       doc.setFontSize(20);
       doc.text("Supplier Purchase Order", 14, 22);
@@ -144,6 +145,7 @@ export default function SupplierOrdersPage() {
         orderItems[item.barcode].toString()
       ]);
 
+      console.log("Drawing autoTable...");
       autoTable(doc, {
         startY: 55,
         head: [['Barcode', 'Product Description', 'Qty Ordered']],
@@ -153,12 +155,15 @@ export default function SupplierOrdersPage() {
       const pdfBlob = doc.output('blob');
 
       // 2. Upload PDF
-      const filename = `order_${supplier.name.replace(/\\s/g, '_')}_${Date.now()}.pdf`;
+      console.log("Uploading PDF to Storage...");
+      const filename = `order_${supplier.name.replace(/\s/g, '_')}_${Date.now()}.pdf`;
       const storageRef = ref(productsStorage, `supplier_orders/${filename}`);
       await uploadBytes(storageRef, pdfBlob);
+      console.log("Getting download URL...");
       const pdfUrl = await getDownloadURL(storageRef);
 
       // 3. Save to Firestore
+      console.log("Saving order to Firestore...");
       const orderData = {
         supplierId: supplier.id,
         supplierName: supplier.name,
@@ -173,10 +178,11 @@ export default function SupplierOrdersPage() {
       };
       await addDoc(collection(productsDb, "supplier_orders"), orderData);
 
+      console.log("Order saved successfully.");
       // 4. Open WhatsApp
       const text = `Hello ${supplier.name},\n\nWe would like to place an order for branch: *${currentBranch}*.\n\nPlease find the attached Purchase Order PDF below:\n${pdfUrl}\n\nThank you!`;
       const encodedText = encodeURIComponent(text);
-      const waLink = `https://wa.me/${supplier.phone.replace(/\\D/g, '')}?text=${encodedText}`;
+      const waLink = `https://wa.me/${supplier.phone.replace(/\D/g, '')}?text=${encodedText}`;
       
       window.open(waLink, '_blank');
       
@@ -184,9 +190,9 @@ export default function SupplierOrdersPage() {
       setOrderItems({});
       setSelectedSupplierId("");
 
-    } catch (err) {
-      console.error(err);
-      toast.error("Error processing order");
+    } catch (err: any) {
+      console.error("Order generation error:", err);
+      toast.error(`Error: ${err.message || "Failed to process order"}`);
     }
     setIsGenerating(false);
   };
