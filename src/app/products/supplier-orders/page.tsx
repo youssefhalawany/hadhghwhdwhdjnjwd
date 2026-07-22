@@ -170,7 +170,15 @@ export default function SupplierOrdersPage() {
       console.log("Order saved successfully.");
       // 3. Open WhatsApp
       const encodedText = encodeURIComponent(arabicText);
-      const waLink = `https://wa.me/${supplier.phone.replace(/\D/g, '')}?text=${encodedText}`;
+      let phoneStr = supplier.phone.replace(/\D/g, '');
+      // Add Egypt country code if missing
+      if (phoneStr.startsWith('01')) {
+        phoneStr = '2' + phoneStr;
+      } else if (phoneStr.startsWith('1')) {
+        phoneStr = '20' + phoneStr;
+      }
+      
+      const waLink = `https://wa.me/${phoneStr}?text=${encodedText}`;
       
       // Use location.href if window.open is blocked, but window.open usually works if user interaction started the chain.
       // We will try window.open, and if it's blocked, we can fallback, but _blank is best.
