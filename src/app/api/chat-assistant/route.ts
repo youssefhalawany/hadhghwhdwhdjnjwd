@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI, FunctionDeclaration, SchemaType } from "@google/generative-ai";
-import { productsDb, db } from "@/lib/firebase";
+import { productsDb } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebaseAdmin";
 import { doc, getDoc, collection, query, where, orderBy, limit, getDocs } from "firebase/firestore";
 
 // Initialize Gemini
@@ -223,57 +224,63 @@ Do not add any other conversational text when outputting a chart.
         else if (call.name === "get_shift_audits") {
           console.log(`AI executing get_shift_audits for branch: ${branchId}`);
           
-          const q = query(
-            collection(db, "shift_reports"),
-            where("branchId", "in", [branchId, altBranch])
-          );
-          const snapshot = await getDocs(q);
-          const audits: any[] = [];
-          snapshot.forEach(doc => audits.push(doc.data()));
-          
-          // Sort descending by date
-          audits.sort((a, b) => {
-            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-            return dateB - dateA;
-          });
-          
-          const recentAudits = audits.slice(0, 15).map(data => ({
-             shift: data.cashierDetails?.shift || "Unknown",
-             cashierName: data.cashierDetails?.name || "Unknown",
-             date: data.cashierDetails?.date || data.createdAt,
-             cashVariance: data.managerAudit?.cashVariance || 0,
-             visaVariance: data.managerAudit?.visaVariance || 0,
-             status: data.status
-          }));
-          
-          apiResponse = recentAudits.length > 0 ? recentAudits : { error: "No recent shift audits found." };
+          if (!adminDb) {
+            apiResponse = { error: "Admin database not initialized." };
+          } else {
+            const snapshot = await adminDb.collection("shift_reports")
+              .where("branchId", "in", [branchId, altBranch])
+              .get();
+              
+            const audits: any[] = [];
+            snapshot.forEach(doc => audits.push(doc.data()));
+            
+            // Sort descending by date
+            audits.sort((a, b) => {
+              const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+              const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+              return dateB - dateA;
+            });
+            
+            const recentAudits = audits.slice(0, 15).map(data => ({
+               shift: data.cashierDetails?.shift || "Unknown",
+               cashierName: data.cashierDetails?.name || "Unknown",
+               date: data.cashierDetails?.date || data.createdAt,
+               cashVariance: data.managerAudit?.cashVariance || 0,
+               visaVariance: data.managerAudit?.visaVariance || 0,
+               status: data.status
+            }));
+            
+            apiResponse = recentAudits.length > 0 ? recentAudits : { error: "No recent shift audits found." };
+          }
         }
         else if (call.name === "get_expiries_watcher") {
           console.log(`AI executing get_expiries_watcher for branch: ${branchId}`);
           
-          const q = query(collection(db, "expiries"));
-          const snapshot = await getDocs(q);
-          const activeExpiries: any[] = [];
-          snapshot.forEach(doc => {
-            const data = doc.data();
-            // Fallback check for branch/store in memory to avoid index issues
-            const bId = data.branchId || "";
-            const sId = (data.storeId || "").toLowerCase();
-            const matchesBranch = (bId === branchId || bId === altBranch) || (branchId === "ola" && sId.includes("ola")) || (branchId === "alamein4" && sId.includes("alamein"));
+          if (!adminDb) {
+            apiResponse = { error: "Admin database not initialized." };
+          } else {
+            const snapshot = await adminDb.collection("expiries").get();
+            const activeExpiries: any[] = [];
+            snapshot.forEach(doc => {
+              const data = doc.data();
+              // Fallback check for branch/store in memory to avoid index issues
+              const bId = data.branchId || "";
+              const sId = (data.storeId || "").toLowerCase();
+              const matchesBranch = (bId === branchId || bId === altBranch) || (branchId === "ola" && sId.includes("ola")) || (branchId === "alamein4" && sId.includes("alamein"));
+              
+              if (matchesBranch && data.status !== "pulled" && data.status !== "audited" && data.status !== "damaged") {
+                 activeExpiries.push({
+                   itemName: data.itemName,
+                   quantity: data.quantity,
+                   expiryDate: data.expiryDate,
+                   status: data.status
+                 });
+              }
+            });
             
-            if (matchesBranch && data.status !== "pulled" && data.status !== "audited" && data.status !== "damaged") {
-               activeExpiries.push({
-                 itemName: data.itemName,
-                 quantity: data.quantity,
-                 expiryDate: data.expiryDate,
-                 status: data.status
-               });
-            }
-          });
-          
-          activeExpiries.sort((a, b) => (a.expiryDate || "").localeCompare(b.expiryDate || ""));
-          apiResponse = activeExpiries.slice(0, 20);
+            activeExpiries.sort((a, b) => (a.expiryDate || "").localeCompare(b.expiryDate || ""));
+            apiResponse = activeExpiries.slice(0, 20);
+          }
         }
         else if (call.name === "get_sales_predictor") {
            console.log(`AI executing get_sales_predictor for branch: ${branchId}`);
