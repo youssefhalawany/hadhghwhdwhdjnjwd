@@ -61,7 +61,7 @@ Do not guess numbers. If a tool returns null or empty data, inform the user that
 
     // Initialize the model
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-flash-latest",
+      model: "gemini-3.5-flash",
       systemInstruction: systemInstruction,
       tools: [{ functionDeclarations: [getDailySalesDeclaration, getHistoricalSalesDeclaration] }]
     });
