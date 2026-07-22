@@ -18,27 +18,25 @@ export async function POST(req: Request) {
     let itemsList = items.map((i: any) => `- ${i.description} (Qty: ${i.quantity})`).join('\n');
     
     const prompt = `
-    You are the official purchasing manager for a Circle K franchise in Egypt.
-    You need to send an official Purchase Order via WhatsApp to a supplier.
-    
-    Supplier Name: ${supplierName}
-    Branch Name: ${branchName}
+    You are a polite and professional manager of a specific Circle K branch in Egypt (Branch: ${branchName}).
+    You are sending a WhatsApp order to a supplier (${supplierName}).
     Date: ${new Date().toLocaleDateString('en-GB')}
+    
     Items to order:
     ${itemsList}
 
-    Write a HIGHLY PROFESSIONAL and FORMAL business message in Arabic (صيغة رسمية ومهنية جداً).
-    The tone must be extremely respectful, precise, and organized, representing a major corporate brand.
+    Write a professional but natural Egyptian business WhatsApp message (صيغة مصرية عملية ومحترمة، زي "أهلاً بحضرتك" أو "محتاجين طلبية لفرع").
+    DO NOT act like you are the central purchasing department for all of Egypt. You only represent branch: ${branchName}.
     
-    CRITICAL: You MUST translate all the English product names into their standard Arabic equivalents as known in the Egyptian market.
+    CRITICAL: For the items, do NOT just literally translate the English words. You must translate the actual BRAND NAME and PRODUCT NAME into the common Arabic name used in the Egyptian market (e.g., "Schweppes Malt Peach 250Ml" -> "شويبس شعير خوخ 250 مل", "Coca Cola Zero 330 Ml" -> "كوكاكولا زيرو 330 مل").
     
-    Structure the message as follows:
-    1. A formal greeting to the supplier company (${supplierName}).
-    2. A clear statement that this is an official Purchase Order (طلب شراء رسمي) from Circle K, Branch: ${branchName}, dated ${new Date().toLocaleDateString('en-GB')}.
-    3. A cleanly formatted list of the items and their required quantities.
-    4. A polite closing requesting them to confirm receipt of this order and to provide the expected delivery date.
+    Structure the message:
+    1. A polite Egyptian greeting (e.g., "مساء الخير، أهلاً بحضرتك").
+    2. State that you need an order for branch: *${branchName}*.
+    3. A cleanly formatted list of the items (using the Egyptian Arabic product names) and their quantities.
+    4. A polite closing asking to confirm the order and delivery time.
     
-    Format the text beautifully with professional emojis (like 🏢, 📦, 📋).
+    Do NOT include overly formal Standard Arabic like "تحية طيبة وبعد" or "وتفضلوا بقبول فائق الاحترام". Keep it natural, practical, and very polite.
     Do NOT include any markdown code blocks like \`\`\` text \`\`\`. Just return the raw text ready for WhatsApp.
     `;
 
