@@ -62,16 +62,18 @@ export default function SupplierOrdersPage() {
 
   // Fetch Past Orders
   useEffect(() => {
-    if (activeTab === "history") {
-      const q = query(collection(productsDb, "supplier_orders"), orderBy("createdAt", "desc"));
+    if (activeTab === "history" && currentBranch) {
+      const q = query(collection(productsDb, "supplier_orders"), where("branchId", "==", currentBranch));
       const unsub = onSnapshot(q, (snap) => {
         const data: any[] = [];
         snap.forEach(d => data.push({ id: d.id, ...d.data() }));
+        // Client-side sort to avoid needing a composite index
+        data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         setPastOrders(data);
       });
       return () => unsub();
     }
-  }, [activeTab]);
+  }, [activeTab, currentBranch]);
 
   // Fetch Supplier Products when supplier is selected
   useEffect(() => {
@@ -172,11 +174,23 @@ export default function SupplierOrdersPage() {
 
       console.log("Order saved successfully.");
       // 4. Open WhatsApp
-      const text = `Hello ${supplier.name},\n\nWe would like to place an order for branch: *${currentBranch}*.\n\nPlease find the attached Purchase Order PDF.\n\nThank you!`;
+      let text = `Hello ${supplier.name},\n\nWe would like to place an order for branch: *${currentBranch}*.\n\n`;
+      text += `*Items Ordered:*\n`;
+      itemsToOrder.forEach(item => {
+        text += `- ${item.description}: *${orderItems[item.barcode]}*\n`;
+      });
+      text += `\nPlease find the attached Purchase Order PDF (if required).\n\nThank you!`;
+      
       const encodedText = encodeURIComponent(text);
       const waLink = `https://wa.me/${supplier.phone.replace(/\D/g, '')}?text=${encodedText}`;
       
-      window.open(waLink, '_blank');
+      // Use location.href if window.open is blocked, but window.open usually works if user interaction started the chain.
+      // We will try window.open, and if it's blocked, we can fallback, but _blank is best.
+      const newWin = window.open(waLink, '_blank');
+      if (!newWin || newWin.closed || typeof newWin.closed === 'undefined') {
+        // Popup blocked, use location.href
+        window.location.href = waLink;
+      }
       
       toast.success("Order processed and WhatsApp opened!");
       setOrderItems({});
