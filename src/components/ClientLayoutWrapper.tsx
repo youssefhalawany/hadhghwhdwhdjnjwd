@@ -361,7 +361,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       ]
     },
     {
-      name: language === "ar" ? "الذكاء الاصطناعي" : "Intelligence", href: "/ai-assistant", icon: Bot
+      name: language === "ar" ? "إبراهيم (مساعد)" : "Ibrahim (AI)", href: "/ai-assistant", icon: Bot
     },
     {
       name: t("nav.hr"), icon: Users, children: [

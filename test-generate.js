@@ -18,13 +18,13 @@ const options = {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
-    'Content-Length': data.length
+    'Content-Length': Buffer.byteLength(data)
   }
 };
 const req = http.request(options, res => {
   let body = '';
   res.on('data', d => body += d);
-  res.on('end', () => console.log(body));
+  res.on('end', () => console.log('STATUS:', res.statusCode, '\nBODY:', body.substring(0, 200)));
 });
 req.write(data);
 req.end();

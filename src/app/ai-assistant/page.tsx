@@ -13,7 +13,7 @@ interface Message {
 export default function AiAssistantPage() {
   const { currentBranch } = useBranch();
   const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", content: "Hello! I am your Branch Operations AI. Ask me anything about your store's performance, or just chat with me normally!" }
+    { role: "assistant", content: "Hello! I am Ibrahim, your Manager Assistant (مساعد مدير). Ask me anything about your store's performance, or just chat with me normally!" }
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -48,15 +48,19 @@ export default function AiAssistantPage() {
 
       const data = await response.json();
 
-      if (data.success) {
+      if (response.ok && data.success) {
         setMessages(prev => [...prev, { role: "assistant", content: data.reply }]);
       } else {
-        throw new Error(data.error || "Failed to get response");
+        if (data.error && data.error.includes("429")) {
+          setMessages(prev => [...prev, { role: "assistant", content: "I am receiving too many requests right now because we are on the free tier limit. Please wait about 60 seconds and try asking me again!" }]);
+        } else {
+          setMessages(prev => [...prev, { role: "assistant", content: "Sorry, I encountered an error. Please try again." }]);
+          console.error("Chat error:", data.error);
+        }
       }
     } catch (error: any) {
       console.error(error);
-      toast.error("Error communicating with AI");
-      setMessages(prev => [...prev, { role: "assistant", content: `Error: ${error.message}` }]);
+      setMessages(prev => [...prev, { role: "assistant", content: "Sorry, I encountered a network error. Please try again." }]);
     } finally {
       setIsLoading(false);
     }
@@ -77,7 +81,7 @@ export default function AiAssistantPage() {
   ];
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto h-[calc(100vh-80px)] flex flex-col">
+    <div className="p-2 sm:p-4 lg:p-6 w-full h-[calc(100vh-6rem)] sm:h-[calc(100vh-5rem)] flex flex-col">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <div className="h-12 w-12 bg-indigo-500/10 rounded-xl flex items-center justify-center border border-indigo-500/20">
@@ -85,10 +89,10 @@ export default function AiAssistantPage() {
         </div>
         <div>
           <h1 className="text-2xl font-black text-foreground tracking-tight flex items-center gap-2">
-            Intelligence <Sparkles className="h-5 w-5 text-indigo-500" />
+            Ibrahim <Sparkles className="h-5 w-5 text-indigo-500" />
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Your personal AI operations assistant.
+            Your Manager Assistant (مساعد مدير).
           </p>
         </div>
       </div>
