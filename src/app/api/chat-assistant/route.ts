@@ -7,6 +7,14 @@ import { doc, getDoc, collection, query, where, orderBy, limit, getDocs } from "
 // Initialize Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
+// In-memory cache to save Firebase reads
+let cache = {
+  products: null as any[] | null,
+  foodCodes: null as any[] | null,
+  lastFetch: 0
+};
+const CACHE_DURATION_MS = 1000 * 60 * 60; // 1 hour
+
 const getDailySalesDeclaration: FunctionDeclaration = {
   name: "get_daily_sales",
   description: "Retrieves the detailed daily sales report for a specific date from the POS database. Use this when the user asks for sales totals, category breakdowns, or performance for a specific day.",
@@ -201,20 +209,19 @@ Do not add any other conversational text when outputting a chart.
         else if (call.name === "get_historical_sales") {
           console.log(`AI executing get_historical_sales for branch: ${branchId}`);
           
-          // Fetch all for the branch and sort in memory to avoid Firebase Composite Index requirement
+          // Fetch limited recent sales across all branches, then filter in memory to save reads and avoid composite index
           const q = query(
             collection(productsDb, "detailed_sales_daily"),
-            where("branchId", "in", [branchId, altBranch])
+            orderBy("date_sold", "desc"),
+            limit(100)
           );
           const snapshot = await getDocs(q);
           const allSales: any[] = [];
-          snapshot.forEach(doc => allSales.push(doc.data()));
-          
-          // Sort descending by date
-          allSales.sort((a, b) => {
-            const dateA = a.date_sold ? new Date(a.date_sold).getTime() : 0;
-            const dateB = b.date_sold ? new Date(b.date_sold).getTime() : 0;
-            return dateB - dateA;
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.branchId === branchId || data.branchId === altBranch) {
+              allSales.push(data);
+            }
           });
           
           const recentSales = allSales.slice(0, 7);
@@ -227,18 +234,18 @@ Do not add any other conversational text when outputting a chart.
           if (!adminDb) {
             apiResponse = { error: "Admin database not initialized." };
           } else {
+            // Fetch recent 50 globally and filter to save reads
             const snapshot = await adminDb.collection("shift_reports")
-              .where("branchId", "in", [branchId, altBranch])
+              .orderBy("createdAt", "desc")
+              .limit(50)
               .get();
               
             const audits: any[] = [];
-            snapshot.forEach(doc => audits.push(doc.data()));
-            
-            // Sort descending by date
-            audits.sort((a, b) => {
-              const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-              const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-              return dateB - dateA;
+            snapshot.forEach(doc => {
+              const data = doc.data();
+              if (data.branchId === branchId || data.branchId === altBranch) {
+                audits.push(data);
+              }
             });
             
             const recentAudits = audits.slice(0, 15).map(data => ({
@@ -259,7 +266,8 @@ Do not add any other conversational text when outputting a chart.
           if (!adminDb) {
             apiResponse = { error: "Admin database not initialized." };
           } else {
-            const snapshot = await adminDb.collection("expiries").get();
+            // Limit to 200 to save reads
+            const snapshot = await adminDb.collection("expiries").limit(200).get();
             const activeExpiries: any[] = [];
             snapshot.forEach(doc => {
               const data = doc.data();
@@ -285,18 +293,19 @@ Do not add any other conversational text when outputting a chart.
         else if (call.name === "get_sales_predictor") {
            console.log(`AI executing get_sales_predictor for branch: ${branchId}`);
            
+           // Fetch recent 150 globally and filter to save reads
            const q = query(
             collection(productsDb, "detailed_sales_daily"),
-            where("branchId", "in", [branchId, altBranch])
+            orderBy("date_sold", "desc"),
+            limit(150)
           );
           const snapshot = await getDocs(q);
           const allSales: any[] = [];
-          snapshot.forEach(doc => allSales.push(doc.data()));
-          
-          allSales.sort((a, b) => {
-            const dateA = a.date_sold ? new Date(a.date_sold).getTime() : 0;
-            const dateB = b.date_sold ? new Date(b.date_sold).getTime() : 0;
-            return dateB - dateA;
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.branchId === branchId || data.branchId === altBranch) {
+              allSales.push(data);
+            }
           });
           
           const recentSales = allSales.slice(0, 30);
@@ -327,11 +336,16 @@ Do not add any other conversational text when outputting a chart.
             }
           });
 
-          // Fetch products matching vendor
-          const productsSnap = await getDocs(collection(productsDb, "products"));
+          // Fetch products matching vendor (USING CACHE TO SAVE READS)
+          if (!cache.products || Date.now() - cache.lastFetch > CACHE_DURATION_MS) {
+             const pSnap = await getDocs(collection(productsDb, "products"));
+             cache.products = [];
+             pSnap.forEach(doc => cache.products!.push(doc.data()));
+             cache.lastFetch = Date.now();
+          }
+          
           const matchingItems: any[] = [];
-          productsSnap.forEach(doc => {
-            const data = doc.data();
+          cache.products.forEach(data => {
             if (data.priceHistory && Array.isArray(data.priceHistory)) {
               const matchesSupplier = data.priceHistory.some((ph: any) => ph.supplier && ph.supplier.toLowerCase().includes(vendorName.toLowerCase()));
               if (matchesSupplier && matchingItems.length < 50) {
@@ -356,16 +370,23 @@ Do not add any other conversational text when outputting a chart.
           const searchQuery = (args.searchQuery || "").toLowerCase();
           console.log(`AI executing get_product_info for query: ${searchQuery}`);
 
-          // We will fetch both products and food_codes and filter in memory since Firebase text search is limited
-          const [productsSnap, foodCodesSnap] = await Promise.all([
-            getDocs(collection(productsDb, "products")),
-            getDocs(collection(productsDb, "food_codes"))
-          ]);
+          // Use Cache to save reads
+          if (!cache.products || !cache.foodCodes || Date.now() - cache.lastFetch > CACHE_DURATION_MS) {
+             console.log("Cache miss: Fetching products and food codes to save reads in future...");
+             const [pSnap, fSnap] = await Promise.all([
+               getDocs(collection(productsDb, "products")),
+               getDocs(collection(productsDb, "food_codes"))
+             ]);
+             cache.products = [];
+             cache.foodCodes = [];
+             pSnap.forEach(doc => cache.products!.push(doc.data()));
+             fSnap.forEach(doc => cache.foodCodes!.push(doc.data()));
+             cache.lastFetch = Date.now();
+          }
 
           const foundProducts: any[] = [];
           
-          productsSnap.forEach(doc => {
-            const data = doc.data();
+          cache.products.forEach(data => {
             if (data.description && data.description.toLowerCase().includes(searchQuery)) {
               if (foundProducts.length < 10) foundProducts.push(data);
             } else if (data.barcode && data.barcode.includes(searchQuery)) {
@@ -374,8 +395,7 @@ Do not add any other conversational text when outputting a chart.
           });
 
           const foundFoodCodes: any[] = [];
-          foodCodesSnap.forEach(doc => {
-            const data = doc.data();
+          cache.foodCodes.forEach(data => {
             if ((data.nameAr && data.nameAr.toLowerCase().includes(searchQuery)) || 
                 (data.nameEn && data.nameEn.toLowerCase().includes(searchQuery)) ||
                 (data.itemCode && data.itemCode.includes(searchQuery))) {
