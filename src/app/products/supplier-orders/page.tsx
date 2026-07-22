@@ -130,32 +130,27 @@ export default function SupplierOrdersPage() {
 
     setIsGenerating(true);
     try {
-      // 1. Generate PDF
-      console.log("Generating PDF...");
-      const doc = new jsPDF();
-      doc.setFontSize(20);
-      doc.text("Supplier Purchase Order", 14, 22);
-      
-      doc.setFontSize(12);
-      doc.text(`Supplier: ${supplier.name}`, 14, 32);
-      doc.text(`Branch: ${currentBranch}`, 14, 40);
-      doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 48);
-
-      const tableData = itemsToOrder.map(item => [
-        item.barcode,
-        item.description,
-        orderItems[item.barcode].toString()
-      ]);
-
-      console.log("Drawing autoTable...");
-      autoTable(doc, {
-        startY: 55,
-        head: [['Barcode', 'Product Description', 'Qty Ordered']],
-        body: tableData,
+      // 1. Generate Arabic WhatsApp Text via AI
+      console.log("Generating Arabic WhatsApp message via AI...");
+      const aiResponse = await fetch("/api/translate-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          supplierName: supplier.name,
+          branchName: currentBranch,
+          items: itemsToOrder.map(item => ({
+            description: item.description,
+            quantity: orderItems[item.barcode]
+          }))
+        })
       });
-
-      const filename = `order_${supplier.name.replace(/\s/g, '_')}_${Date.now()}.pdf`;
-      doc.save(filename); // Download locally instead of uploading
+      
+      const aiData = await aiResponse.json();
+      if (!aiResponse.ok || !aiData.success) {
+        throw new Error(aiData.error || "Failed to generate Arabic message");
+      }
+      
+      const arabicText = aiData.text;
 
       // 3. Save to Firestore
       console.log("Saving order to Firestore...");
@@ -173,15 +168,8 @@ export default function SupplierOrdersPage() {
       await addDoc(collection(productsDb, "supplier_orders"), orderData);
 
       console.log("Order saved successfully.");
-      // 4. Open WhatsApp
-      let text = `Hello ${supplier.name},\n\nWe would like to place an order for branch: *${currentBranch}*.\n\n`;
-      text += `*Items Ordered:*\n`;
-      itemsToOrder.forEach(item => {
-        text += `- ${item.description}: *${orderItems[item.barcode]}*\n`;
-      });
-      text += `\nPlease find the attached Purchase Order PDF (if required).\n\nThank you!`;
-      
-      const encodedText = encodeURIComponent(text);
+      // 3. Open WhatsApp
+      const encodedText = encodeURIComponent(arabicText);
       const waLink = `https://wa.me/${supplier.phone.replace(/\D/g, '')}?text=${encodedText}`;
       
       // Use location.href if window.open is blocked, but window.open usually works if user interaction started the chain.
