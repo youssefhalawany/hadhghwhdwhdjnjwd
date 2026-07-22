@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { collection, addDoc, getDocs, onSnapshot, query, doc, updateDoc, where, orderBy } from "firebase/firestore";
 import { db, productsDb } from "@/lib/firebase";
-import { ShoppingCart, Truck, History, Plus, Phone, FileText, Send, Loader2, Package, Search, PackageX, Edit2, X } from "lucide-react";
+import { ShoppingCart, Truck, History, Plus, Phone, FileText, Send, Loader2, Package, Search, PackageX, Edit2, X, RefreshCcw } from "lucide-react";
 import { useBranch } from "@/context/BranchContext";
 import { toast } from "react-hot-toast";
 import jsPDF from "jspdf";
@@ -31,6 +31,7 @@ export default function SupplierOrdersPage() {
   
   // Past Orders State
   const [pastOrders, setPastOrders] = useState<any[]>([]);
+  const [reorderState, setReorderState] = useState<any[] | null>(null);
   
   // Fetch System Suppliers from Products
   useEffect(() => {
@@ -87,14 +88,30 @@ export default function SupplierOrdersPage() {
           const prods: any[] = [];
           snap.forEach(d => prods.push({ id: d.id, ...d.data() }));
           setSupplierProducts(prods);
-          setOrderItems({}); // reset
+          
+          if (reorderState) {
+            const newOrderItems: any = {};
+            reorderState.forEach((item: any) => {
+              newOrderItems[item.barcode] = item.quantity;
+            });
+            setOrderItems(newOrderItems);
+            setReorderState(null);
+          } else {
+            setOrderItems({}); // reset
+          }
         });
       }
     } else {
       setSupplierProducts([]);
       setOrderItems({});
     }
-  }, [selectedSupplierId, suppliers]);
+  }, [selectedSupplierId, suppliers, reorderState]);
+
+  const handleReorder = (order: any) => {
+    setReorderState(order.items);
+    setSelectedSupplierId(order.supplierId);
+    setActiveTab("order");
+  };
 
   const handleEditSupplier = (sup: any) => {
     setEditingSupplier(sup);
@@ -573,12 +590,20 @@ export default function SupplierOrdersPage() {
                         </span>
                       </td>
                       <td className="p-4 text-right">
-                        <button 
-                          onClick={() => downloadPastOrderPDF(order)}
-                          className="inline-flex items-center gap-2 text-xs font-bold text-blue-600 hover:text-white border border-blue-200 hover:bg-blue-600 hover:border-blue-600 px-4 py-2 rounded-xl transition-all shadow-sm"
-                        >
-                          <FileText className="h-4 w-4" /> Save PDF
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button 
+                            onClick={() => handleReorder(order)}
+                            className="inline-flex items-center gap-2 text-xs font-bold text-green-600 hover:text-white border border-green-200 hover:bg-green-600 hover:border-green-600 px-4 py-2 rounded-xl transition-all shadow-sm"
+                          >
+                            <RefreshCcw className="h-4 w-4" /> Reorder
+                          </button>
+                          <button 
+                            onClick={() => downloadPastOrderPDF(order)}
+                            className="inline-flex items-center gap-2 text-xs font-bold text-blue-600 hover:text-white border border-blue-200 hover:bg-blue-600 hover:border-blue-600 px-4 py-2 rounded-xl transition-all shadow-sm"
+                          >
+                            <FileText className="h-4 w-4" /> Save PDF
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
