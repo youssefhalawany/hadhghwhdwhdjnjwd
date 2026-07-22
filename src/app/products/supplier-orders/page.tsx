@@ -152,21 +152,8 @@ export default function SupplierOrdersPage() {
         body: tableData,
       });
 
-      const pdfBlob = doc.output('blob');
-
-      // 2. Upload PDF
-      console.log("Uploading PDF to Storage...");
       const filename = `order_${supplier.name.replace(/\s/g, '_')}_${Date.now()}.pdf`;
-      const storageRef = ref(productsStorage, `supplier_orders/${filename}`);
-      
-      // 10 second timeout for the upload to prevent infinite hanging
-      await Promise.race([
-        uploadBytes(storageRef, pdfBlob),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Upload timed out! You must click 'Get Started' under the Storage tab in your anhproducts Firebase Console to enable Storage.")), 10000))
-      ]);
-      
-      console.log("Getting download URL...");
-      const pdfUrl = await getDownloadURL(storageRef);
+      doc.save(filename); // Download locally instead of uploading
 
       // 3. Save to Firestore
       console.log("Saving order to Firestore...");
@@ -174,7 +161,6 @@ export default function SupplierOrdersPage() {
         supplierId: supplier.id,
         supplierName: supplier.name,
         branchId: currentBranch,
-        pdfUrl,
         items: itemsToOrder.map(item => ({
           barcode: item.barcode,
           description: item.description,
@@ -186,7 +172,7 @@ export default function SupplierOrdersPage() {
 
       console.log("Order saved successfully.");
       // 4. Open WhatsApp
-      const text = `Hello ${supplier.name},\n\nWe would like to place an order for branch: *${currentBranch}*.\n\nPlease find the attached Purchase Order PDF below:\n${pdfUrl}\n\nThank you!`;
+      const text = `Hello ${supplier.name},\n\nWe would like to place an order for branch: *${currentBranch}*.\n\nPlease find the attached Purchase Order PDF.\n\nThank you!`;
       const encodedText = encodeURIComponent(text);
       const waLink = `https://wa.me/${supplier.phone.replace(/\D/g, '')}?text=${encodedText}`;
       
@@ -201,6 +187,37 @@ export default function SupplierOrdersPage() {
       toast.error(`Error: ${err.message || "Failed to process order"}`);
     }
     setIsGenerating(false);
+  };
+
+  const downloadPastOrderPDF = (order: any) => {
+    try {
+      const doc = new jsPDF();
+      doc.setFontSize(20);
+      doc.text("Supplier Purchase Order", 14, 22);
+      
+      doc.setFontSize(12);
+      doc.text(`Supplier: ${order.supplierName}`, 14, 32);
+      doc.text(`Branch: ${order.branchId}`, 14, 40);
+      doc.text(`Date: ${new Date(order.createdAt).toLocaleDateString()}`, 14, 48);
+
+      const tableData = order.items.map((item: any) => [
+        item.barcode,
+        item.description,
+        item.quantity.toString()
+      ]);
+
+      autoTable(doc, {
+        startY: 55,
+        head: [['Barcode', 'Product Description', 'Qty Ordered']],
+        body: tableData,
+      });
+
+      const filename = `order_${order.supplierName.replace(/\s/g, '_')}_${new Date(order.createdAt).getTime()}.pdf`;
+      doc.save(filename);
+    } catch (err) {
+      console.error(err);
+      toast.error("Error generating PDF");
+    }
   };
 
   return (
@@ -442,18 +459,12 @@ export default function SupplierOrdersPage() {
                         </span>
                       </td>
                       <td className="p-3 text-right">
-                        {order.pdfUrl ? (
-                          <a 
-                            href={order.pdfUrl} 
-                            target="_blank" 
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1 text-xs font-medium text-blue-500 hover:text-blue-700 bg-blue-500/10 px-3 py-1.5 rounded-lg transition-colors"
-                          >
-                            <FileText className="h-4 w-4" /> View PDF
-                          </a>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">No PDF</span>
-                        )}
+                        <button 
+                          onClick={() => downloadPastOrderPDF(order)}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-blue-500 hover:text-blue-700 bg-blue-500/10 px-3 py-1.5 rounded-lg transition-colors"
+                        >
+                          <FileText className="h-4 w-4" /> Download PDF
+                        </button>
                       </td>
                     </tr>
                   ))}
