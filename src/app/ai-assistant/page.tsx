@@ -13,7 +13,7 @@ interface Message {
 export default function AiAssistantPage() {
   const { currentBranch } = useBranch();
   const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", content: "Hello! I am Ibrahim, your Manager Assistant (مساعد مدير). Ask me anything about your store's performance, or just chat with me normally!" }
+    { role: "assistant", content: "صباح الفل يا ريس! أنا إبراهيم، الدراع اليمين بتاعك في الفرع. جاهز أظبطلك الدنيا وأجيبلك الخلاصة في المبيعات، اسألني براحتك!" }
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
