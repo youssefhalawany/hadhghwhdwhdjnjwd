@@ -16,6 +16,7 @@ export default function SupplierOrdersPage() {
   
   // Suppliers State
   const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [availableSuppliers, setAvailableSuppliers] = useState<string[]>([]);
   const [showAddSupplier, setShowAddSupplier] = useState(false);
   const [newSupplierName, setNewSupplierName] = useState("");
   const [newSupplierPhone, setNewSupplierPhone] = useState("");
@@ -28,6 +29,26 @@ export default function SupplierOrdersPage() {
   
   // Past Orders State
   const [pastOrders, setPastOrders] = useState<any[]>([]);
+  
+  // Fetch System Suppliers from Products
+  useEffect(() => {
+    const fetchSystemSuppliers = async () => {
+      try {
+        const snap = await getDocs(collection(productsDb, "products"));
+        const uniqueSuppliers = new Set<string>();
+        snap.forEach(doc => {
+          const s = doc.data().supplier;
+          if (s && typeof s === 'string') {
+            uniqueSuppliers.add(s.trim());
+          }
+        });
+        setAvailableSuppliers(Array.from(uniqueSuppliers).sort());
+      } catch (err) {
+        console.error("Error fetching system suppliers:", err);
+      }
+    };
+    fetchSystemSuppliers();
+  }, []);
   
   // Fetch Suppliers
   useEffect(() => {
@@ -226,14 +247,17 @@ export default function SupplierOrdersPage() {
               <form onSubmit={handleAddSupplier} className="bg-muted p-4 rounded-lg flex flex-col md:flex-row gap-4 items-end">
                 <div className="flex-1 w-full">
                   <label className="text-xs font-medium text-muted-foreground mb-1 block">Company Name</label>
-                  <input
-                    type="text"
+                  <select
                     required
                     value={newSupplierName}
                     onChange={(e) => setNewSupplierName(e.target.value)}
-                    placeholder="e.g., CK, Edita, Pepsi"
                     className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:outline-none"
-                  />
+                  >
+                    <option value="">-- Select Supplier from System --</option>
+                    {availableSuppliers.map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="flex-1 w-full">
                   <label className="text-xs font-medium text-muted-foreground mb-1 block">WhatsApp Number (with country code)</label>
