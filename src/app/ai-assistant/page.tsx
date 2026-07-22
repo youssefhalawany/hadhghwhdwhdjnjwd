@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { Send, Bot, User, Sparkles, Loader2, AlertCircle, RefreshCcw } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { useBranch } from "@/context/BranchContext";
 import toast from "react-hot-toast";
 
@@ -109,9 +110,37 @@ export default function AiAssistantPage() {
                 {msg.role === "user" ? <User className="h-5 w-5" /> : <img src="/ibrahim.jpg" alt="Ibrahim" className="h-full w-full object-cover" />}
               </div>
 
-              {/* Bubble */}
               <div className={`max-w-[80%] rounded-2xl px-5 py-3 shadow-sm ${msg.role === "user" ? "bg-emerald-500 text-white rounded-tr-none" : "bg-white dark:bg-slate-800 text-foreground border border-border rounded-tl-none"}`}>
-                <p className="whitespace-pre-wrap text-sm leading-relaxed" dir={/[\u0600-\u06FF]/.test(msg.content) ? 'rtl' : 'ltr'}>{msg.content}</p>
+                {msg.content.trim().startsWith("[CHART]") ? (
+                  <div className="w-full mt-2 min-w-[280px] sm:min-w-[400px]" dir="ltr">
+                    {(() => {
+                      try {
+                        const jsonStr = msg.content.replace("[CHART]", "").trim();
+                        const chartObj = JSON.parse(jsonStr);
+                        return (
+                          <>
+                            {chartObj.title && <h4 className="font-bold mb-4 text-center">{chartObj.title}</h4>}
+                            <div className="h-64 w-full">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={chartObj.data}>
+                                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                                  <XAxis dataKey="name" fontSize={12} />
+                                  <YAxis fontSize={12} />
+                                  <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                                  <Bar dataKey="value" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                              </ResponsiveContainer>
+                            </div>
+                          </>
+                        );
+                      } catch (e) {
+                        return <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</p>;
+                      }
+                    })()}
+                  </div>
+                ) : (
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed" dir={/[\u0600-\u06FF]/.test(msg.content) ? 'rtl' : 'ltr'}>{msg.content}</p>
+                )}
               </div>
             </div>
           ))}

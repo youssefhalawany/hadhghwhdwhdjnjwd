@@ -61,6 +61,21 @@ const getSalesPredictorDeclaration: FunctionDeclaration = {
   }
 };
 
+const getVendorOrderDeclaration: FunctionDeclaration = {
+  name: "get_vendor_order",
+  description: "Generates an automated purchase order for a specific vendor based on recent sales. Use this when the user asks to write an order for a vendor like 'Edita', 'Pepsi', 'Red Bull', etc.",
+  parameters: {
+    type: SchemaType.OBJECT,
+    properties: {
+      vendorName: {
+        type: SchemaType.STRING,
+        description: "The name of the vendor or company to order from."
+      }
+    },
+    required: ["vendorName"]
+  }
+};
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -90,6 +105,12 @@ If the user asks for sales numbers, shortages, or expiring items, USE YOUR TOOLS
 Do not guess numbers. If a tool returns null or empty data, inform the user that the report hasn't been uploaded yet.
 
 When predicting sales using get_sales_predictor, analyze the 30-day data trend, consider if tomorrow is a weekend, factor in Egyptian weather/holiday seasons, and provide a realistic, intelligent estimate.
+
+CHARTING INSTRUCTIONS:
+If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرسملي مبيعات الأسبوع ده" or "Show me a chart"), you MUST respond EXACTLY and ONLY with a JSON payload in this exact format, with NO backticks or extra text around it:
+[CHART]
+{"title": "مبيعات الأسبوع", "data": [{"name": "السبت", "value": 5000}, {"name": "الأحد", "value": 5500}]}
+Do not add any other conversational text when outputting a chart.
 `;
 
     // Initialize the model
@@ -101,7 +122,8 @@ When predicting sales using get_sales_predictor, analyze the 30-day data trend, 
         getHistoricalSalesDeclaration,
         getShiftAuditsDeclaration,
         getExpiriesWatcherDeclaration,
-        getSalesPredictorDeclaration
+        getSalesPredictorDeclaration,
+        getVendorOrderDeclaration
       ] }]
     });
 
@@ -258,6 +280,34 @@ When predicting sales using get_sales_predictor, analyze the 30-day data trend, 
           apiResponse = {
             historical30Days: recentSales,
             instructions: "Use this 30 days of data to compute an average trend. Then, predict tomorrow's sales. Consider tomorrow's day of the week, weekends usually have +15% sales, and any general knowledge of holidays/weather."
+          };
+        }
+        else if (call.name === "get_vendor_order") {
+           const args = (call.args as any) || {};
+           const vendorName = args.vendorName || "";
+           console.log(`AI executing get_vendor_order for branch: ${branchId}, vendor: ${vendorName}`);
+           
+           const q = query(
+            collection(productsDb, "detailed_sales_daily"),
+            where("branchId", "in", [branchId, altBranch]),
+            limit(14)
+          );
+          const snapshot = await getDocs(q);
+          
+          const allCategoriesSales: any = {};
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.categories) {
+              Object.entries(data.categories).forEach(([catName, amount]) => {
+                allCategoriesSales[catName] = (allCategoriesSales[catName] || 0) + (amount as number);
+              });
+            }
+          });
+          
+          apiResponse = {
+            vendorRequested: vendorName,
+            recentSalesByAllCategories: allCategoriesSales,
+            instructions: "The database only tracks sales by high-level category (e.g., 'Packaged Beverages' instead of 'Red Bull' or 'Pepsi'). Based on the user's requested vendor/supplier, identify which category they likely belong to. Then, estimate a realistic, fun purchase order list in Egyptian Arabic (e.g., 'بناءاً على مبيعات المشروبات المعبأة، احنا محتاجين...'). Make up specific item quantities that fit the overall category sales volume."
           };
         }
 

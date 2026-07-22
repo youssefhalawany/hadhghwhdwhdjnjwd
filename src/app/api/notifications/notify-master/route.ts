@@ -52,17 +52,42 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Master FCM token is empty" }, { status: 404 });
     }
 
+    // --- Ibrahim AI Translation ---
+    let ibrahimTitle = title;
+    let ibrahimBody = body;
+    
+    try {
+      const { GoogleGenerativeAI } = await import("@google/generative-ai");
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+      const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash-lite" });
+      const prompt = `You are Ibrahim, the fun Egyptian assistant manager. You received an automated system alert:
+Title: ${title}
+Body: ${body}
+
+Rewrite this alert in a short, urgent, but fun Egyptian Arabic (3ameya) message to send to the boss (يا ريس) on WhatsApp. Keep it under 2 sentences. Include emojis. Output strictly the message text without extra formatting.`;
+      
+      const result = await model.generateContent(prompt);
+      const text = result.response.text().trim();
+      if (text) {
+        ibrahimTitle = "إبراهيم 🚨";
+        ibrahimBody = text;
+      }
+    } catch (aiError) {
+      console.error("AI Translation failed, using fallback:", aiError);
+    }
+    // ------------------------------
+
     // Run Firebase and WhatsApp in parallel with timeouts to ensure neither blocks the other fatally
     const fcmPromise = fcmToken ? getMessaging().send({
       token: fcmToken,
-      notification: { title, body },
+      notification: { title: ibrahimTitle, body: ibrahimBody },
     }) : Promise.resolve(null);
 
     const sendWhatsApp = async () => {
       try {
         const phone = encodeURIComponent("+201011212003");
         const apikey = "3367979";
-        const waText = encodeURIComponent(`*${title}*\n${body}`);
+        const waText = encodeURIComponent(`*${ibrahimTitle}*\n${ibrahimBody}`);
         const callMeBotUrl = `https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${waText}&apikey=${apikey}`;
         
         const controller = new AbortController();
