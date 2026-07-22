@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI, FunctionDeclaration, SchemaType } from "@google/generative-ai";
-import { productsDb } from "@/lib/firebase";
+import { productsDb, db } from "@/lib/firebase";
 import { doc, getDoc, collection, query, where, orderBy, limit, getDocs } from "firebase/firestore";
 
 // Initialize Gemini
@@ -31,6 +31,36 @@ const getHistoricalSalesDeclaration: FunctionDeclaration = {
   }
 };
 
+const getShiftAuditsDeclaration: FunctionDeclaration = {
+  name: "get_shift_audits",
+  description: "Scans the shift_reports database for recent shifts to catch cash or visa shortages and overages. Use this when the user asks about shift performance, cash drawer status, or shortages.",
+  parameters: {
+    type: SchemaType.OBJECT,
+    properties: {},
+    required: []
+  }
+};
+
+const getExpiriesWatcherDeclaration: FunctionDeclaration = {
+  name: "get_expiries_watcher",
+  description: "Scans the expiries database for items that are expiring soon or have already expired but haven't been pulled. Use this when the user asks about expiring items, inventory, or waste.",
+  parameters: {
+    type: SchemaType.OBJECT,
+    properties: {},
+    required: []
+  }
+};
+
+const getSalesPredictorDeclaration: FunctionDeclaration = {
+  name: "get_sales_predictor",
+  description: "Fetches the last 30 days of sales data so you can run a predictive algorithm. Use this when the user asks for sales predictions for tomorrow or future dates.",
+  parameters: {
+    type: SchemaType.OBJECT,
+    properties: {},
+    required: []
+  }
+};
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -55,16 +85,24 @@ ALWAYS mirror the exact language the user speaks to you in. If they speak Egypti
 The user is currently managing the branch with ID: "${branchId}". 
 Today's date is: ${today}.
 
-You have access to live database tools to query sales. 
-If the user asks for sales numbers, USE YOUR TOOLS to fetch the data first before answering. 
-Do not guess numbers. If a tool returns null or empty data, inform the user that the report for that date hasn't been uploaded yet (the manager hasn't posted the Z-Report).
+You have access to live database tools to query sales, shift audits, and expiries. 
+If the user asks for sales numbers, shortages, or expiring items, USE YOUR TOOLS to fetch the data first before answering. 
+Do not guess numbers. If a tool returns null or empty data, inform the user that the report hasn't been uploaded yet.
+
+When predicting sales using get_sales_predictor, analyze the 30-day data trend, consider if tomorrow is a weekend, factor in Egyptian weather/holiday seasons, and provide a realistic, intelligent estimate.
 `;
 
     // Initialize the model
     const model = genAI.getGenerativeModel({ 
       model: "gemini-3.5-flash-lite",
       systemInstruction: systemInstruction,
-      tools: [{ functionDeclarations: [getDailySalesDeclaration, getHistoricalSalesDeclaration] }]
+      tools: [{ functionDeclarations: [
+        getDailySalesDeclaration, 
+        getHistoricalSalesDeclaration,
+        getShiftAuditsDeclaration,
+        getExpiriesWatcherDeclaration,
+        getSalesPredictorDeclaration
+      ] }]
     });
 
     // Convert the history array into the format required by the Gemini ChatSession
@@ -143,6 +181,84 @@ Do not guess numbers. If a tool returns null or empty data, inform the user that
           const recentSales = allSales.slice(0, 7);
           
           apiResponse = recentSales.length > 0 ? recentSales : { error: "No historical data found." };
+        }
+        else if (call.name === "get_shift_audits") {
+          console.log(`AI executing get_shift_audits for branch: ${branchId}`);
+          
+          const q = query(
+            collection(db, "shift_reports"),
+            where("branchId", "in", [branchId, altBranch])
+          );
+          const snapshot = await getDocs(q);
+          const audits: any[] = [];
+          snapshot.forEach(doc => audits.push(doc.data()));
+          
+          // Sort descending by date
+          audits.sort((a, b) => {
+            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return dateB - dateA;
+          });
+          
+          const recentAudits = audits.slice(0, 15).map(data => ({
+             shift: data.cashierDetails?.shift || "Unknown",
+             cashierName: data.cashierDetails?.name || "Unknown",
+             date: data.cashierDetails?.date || data.createdAt,
+             cashVariance: data.managerAudit?.cashVariance || 0,
+             visaVariance: data.managerAudit?.visaVariance || 0,
+             status: data.status
+          }));
+          
+          apiResponse = recentAudits.length > 0 ? recentAudits : { error: "No recent shift audits found." };
+        }
+        else if (call.name === "get_expiries_watcher") {
+          console.log(`AI executing get_expiries_watcher for branch: ${branchId}`);
+          
+          const q = query(collection(db, "expiries"));
+          const snapshot = await getDocs(q);
+          const activeExpiries: any[] = [];
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            // Fallback check for branch/store in memory to avoid index issues
+            const bId = data.branchId || "";
+            const sId = (data.storeId || "").toLowerCase();
+            const matchesBranch = (bId === branchId || bId === altBranch) || (branchId === "ola" && sId.includes("ola")) || (branchId === "alamein4" && sId.includes("alamein"));
+            
+            if (matchesBranch && data.status !== "pulled" && data.status !== "audited" && data.status !== "damaged") {
+               activeExpiries.push({
+                 itemName: data.itemName,
+                 quantity: data.quantity,
+                 expiryDate: data.expiryDate,
+                 status: data.status
+               });
+            }
+          });
+          
+          activeExpiries.sort((a, b) => (a.expiryDate || "").localeCompare(b.expiryDate || ""));
+          apiResponse = activeExpiries.slice(0, 20);
+        }
+        else if (call.name === "get_sales_predictor") {
+           console.log(`AI executing get_sales_predictor for branch: ${branchId}`);
+           
+           const q = query(
+            collection(productsDb, "detailed_sales_daily"),
+            where("branchId", "in", [branchId, altBranch])
+          );
+          const snapshot = await getDocs(q);
+          const allSales: any[] = [];
+          snapshot.forEach(doc => allSales.push(doc.data()));
+          
+          allSales.sort((a, b) => {
+            const dateA = a.date_sold ? new Date(a.date_sold).getTime() : 0;
+            const dateB = b.date_sold ? new Date(b.date_sold).getTime() : 0;
+            return dateB - dateA;
+          });
+          
+          const recentSales = allSales.slice(0, 30);
+          apiResponse = {
+            historical30Days: recentSales,
+            instructions: "Use this 30 days of data to compute an average trend. Then, predict tomorrow's sales. Consider tomorrow's day of the week, weekends usually have +15% sales, and any general knowledge of holidays/weather."
+          };
         }
 
         // Send the database result back to the AI so it can formulate a final answer.

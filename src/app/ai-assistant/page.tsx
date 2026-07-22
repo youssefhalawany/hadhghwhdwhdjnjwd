@@ -74,18 +74,18 @@ export default function AiAssistantPage() {
   };
 
   const QUICK_PROMPTS = [
-    "Summarize yesterday's sales.",
-    "Did we sell any Kinder today?",
-    "Write an end of week report.",
-    "How to handle an angry customer?"
+    "لخصلي مبيعات امبارح",
+    "تتوقع مبيعات بكرة كام؟",
+    "إيه الأخبار في شيفتات امبارح؟",
+    "عندنا حاجة هتنتهي صلاحيتها الأسبوع ده؟"
   ];
 
   return (
     <div className="w-full h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center gap-4 p-4 sm:p-6 shrink-0 border-b border-border bg-card/50 backdrop-blur-sm z-10">
-        <div className="h-12 w-12 bg-indigo-500/10 rounded-xl flex items-center justify-center border border-indigo-500/20">
-          <Bot className="h-6 w-6 text-indigo-500" />
+        <div className="h-12 w-12 rounded-xl flex items-center justify-center overflow-hidden border border-indigo-500/20 shadow-sm">
+          <img src="/ibrahim.jpg" alt="Ibrahim" className="h-full w-full object-cover" />
         </div>
         <div>
           <h1 className="text-2xl font-black text-foreground tracking-tight flex items-center gap-2">
@@ -105,24 +105,24 @@ export default function AiAssistantPage() {
           {messages.map((msg, idx) => (
             <div key={idx} className={`flex gap-4 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
               {/* Avatar */}
-              <div className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center shadow-sm ${msg.role === "user" ? "bg-emerald-500 text-white" : "bg-indigo-600 text-white"}`}>
-                {msg.role === "user" ? <User className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
+              <div className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center shadow-sm overflow-hidden ${msg.role === "user" ? "bg-emerald-500 text-white" : "bg-indigo-600 border border-indigo-500/20"}`}>
+                {msg.role === "user" ? <User className="h-5 w-5" /> : <img src="/ibrahim.jpg" alt="Ibrahim" className="h-full w-full object-cover" />}
               </div>
 
               {/* Bubble */}
               <div className={`max-w-[80%] rounded-2xl px-5 py-3 shadow-sm ${msg.role === "user" ? "bg-emerald-500 text-white rounded-tr-none" : "bg-white dark:bg-slate-800 text-foreground border border-border rounded-tl-none"}`}>
-                <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</p>
+                <p className="whitespace-pre-wrap text-sm leading-relaxed" dir={/[\u0600-\u06FF]/.test(msg.content) ? 'rtl' : 'ltr'}>{msg.content}</p>
               </div>
             </div>
           ))}
           {isLoading && (
             <div className="flex gap-4 flex-row">
-              <div className="shrink-0 h-10 w-10 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-sm">
-                <Bot className="h-5 w-5" />
+              <div className="shrink-0 h-10 w-10 rounded-full bg-indigo-600 border border-indigo-500/20 flex items-center justify-center shadow-sm overflow-hidden">
+                <img src="/ibrahim.jpg" alt="Ibrahim" className="h-full w-full object-cover" />
               </div>
               <div className="max-w-[80%] rounded-2xl px-5 py-3 shadow-sm bg-white dark:bg-slate-800 border border-border rounded-tl-none flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin text-indigo-500" />
-                <span className="text-sm text-muted-foreground font-medium">Thinking...</span>
+                <span className="text-sm text-muted-foreground font-medium">بفكر...</span>
               </div>
             </div>
           )}
@@ -131,8 +131,8 @@ export default function AiAssistantPage() {
 
         {/* Quick Prompts */}
         {messages.length === 1 && (
-          <div className="px-6 pb-2">
-            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Try asking about:</p>
+          <div className="px-6 pb-2" dir="rtl">
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">ممكن تسأل عن:</p>
             <div className="flex flex-wrap gap-2">
               {QUICK_PROMPTS.map((prompt, i) => (
                 <button
@@ -155,7 +155,8 @@ export default function AiAssistantPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask me anything..."
+              dir="auto"
+              placeholder="اسألني أي حاجة..."
               className="w-full bg-white dark:bg-slate-800 border border-border rounded-full pl-6 pr-14 py-3 sm:py-4 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-sm"
               disabled={isLoading}
             />
