@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { collection, addDoc, getDocs, onSnapshot, query, doc, updateDoc, where, orderBy } from "firebase/firestore";
 import { db, productsDb } from "@/lib/firebase";
-import { ShoppingCart, Truck, History, Plus, Phone, FileText, Send, Loader2, Package, Search, PackageX, Edit2, X, RefreshCcw } from "lucide-react";
+import { ShoppingCart, Truck, History, Plus, Phone, FileText, Send, Loader2, Package, Search, PackageX, Edit2, X, RefreshCcw, Eye } from "lucide-react";
 import { useBranch } from "@/context/BranchContext";
 import { toast } from "react-hot-toast";
 import jsPDF from "jspdf";
@@ -32,6 +32,7 @@ export default function SupplierOrdersPage() {
   // Past Orders State
   const [pastOrders, setPastOrders] = useState<any[]>([]);
   const [reorderState, setReorderState] = useState<any[] | null>(null);
+  const [viewingOrder, setViewingOrder] = useState<any>(null);
   
   // Fetch System Suppliers from Products
   useEffect(() => {
@@ -640,14 +641,20 @@ export default function SupplierOrdersPage() {
                         <td className="p-4 text-right">
                           <div className="flex items-center justify-end gap-2">
                             <button 
+                              onClick={() => setViewingOrder(order)}
+                              className="inline-flex items-center gap-2 text-xs font-bold text-indigo-600 hover:text-white border border-indigo-200 hover:bg-indigo-600 hover:border-indigo-600 px-3 py-2 rounded-xl transition-all shadow-sm"
+                            >
+                              <Eye className="h-4 w-4" /> View
+                            </button>
+                            <button 
                               onClick={() => handleReorder(order)}
-                              className="inline-flex items-center gap-2 text-xs font-bold text-green-600 hover:text-white border border-green-200 hover:bg-green-600 hover:border-green-600 px-4 py-2 rounded-xl transition-all shadow-sm"
+                              className="inline-flex items-center gap-2 text-xs font-bold text-green-600 hover:text-white border border-green-200 hover:bg-green-600 hover:border-green-600 px-3 py-2 rounded-xl transition-all shadow-sm"
                             >
                               <RefreshCcw className="h-4 w-4" /> Reorder
                             </button>
                             <button 
                               onClick={() => downloadPastOrderPDF(order)}
-                              className="inline-flex items-center gap-2 text-xs font-bold text-blue-600 hover:text-white border border-blue-200 hover:bg-blue-600 hover:border-blue-600 px-4 py-2 rounded-xl transition-all shadow-sm"
+                              className="inline-flex items-center gap-2 text-xs font-bold text-blue-600 hover:text-white border border-blue-200 hover:bg-blue-600 hover:border-blue-600 px-3 py-2 rounded-xl transition-all shadow-sm"
                             >
                               <FileText className="h-4 w-4" /> Save PDF
                             </button>
@@ -681,18 +688,24 @@ export default function SupplierOrdersPage() {
                         {order.items?.length || 0} Items
                       </span>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
+                      <button 
+                        onClick={() => setViewingOrder(order)}
+                        className="flex-1 min-w-[30%] flex items-center justify-center gap-2 text-sm font-bold text-indigo-600 border border-indigo-200 bg-indigo-50/50 hover:bg-indigo-600 hover:text-white px-3 py-2.5 rounded-xl transition-all shadow-sm"
+                      >
+                        <Eye className="h-4 w-4" /> View
+                      </button>
                       <button 
                         onClick={() => handleReorder(order)}
-                        className="flex-1 flex items-center justify-center gap-2 text-sm font-bold text-green-600 border border-green-200 bg-green-50/50 hover:bg-green-600 hover:text-white px-4 py-2.5 rounded-xl transition-all shadow-sm"
+                        className="flex-1 min-w-[30%] flex items-center justify-center gap-2 text-sm font-bold text-green-600 border border-green-200 bg-green-50/50 hover:bg-green-600 hover:text-white px-3 py-2.5 rounded-xl transition-all shadow-sm"
                       >
                         <RefreshCcw className="h-4 w-4" /> Reorder
                       </button>
                       <button 
                         onClick={() => downloadPastOrderPDF(order)}
-                        className="flex-1 flex items-center justify-center gap-2 text-sm font-bold text-blue-600 border border-blue-200 bg-blue-50/50 hover:bg-blue-600 hover:text-white px-4 py-2.5 rounded-xl transition-all shadow-sm"
+                        className="flex-1 min-w-[30%] flex items-center justify-center gap-2 text-sm font-bold text-blue-600 border border-blue-200 bg-blue-50/50 hover:bg-blue-600 hover:text-white px-3 py-2.5 rounded-xl transition-all shadow-sm"
                       >
-                        <FileText className="h-4 w-4" /> Save PDF
+                        <FileText className="h-4 w-4" /> PDF
                       </button>
                     </div>
                   </div>
@@ -708,6 +721,86 @@ export default function SupplierOrdersPage() {
           </div>
         )}
       </div>
+
+      {/* View Order Modal */}
+      {viewingOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-card w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-border bg-muted/30">
+              <div>
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <Package className="h-5 w-5 text-indigo-600" />
+                  Order Details
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Placed on {new Date(viewingOrder.createdAt).toLocaleDateString()} at {new Date(viewingOrder.createdAt).toLocaleTimeString()}
+                </p>
+              </div>
+              <button 
+                onClick={() => setViewingOrder(null)}
+                className="p-2 rounded-full hover:bg-muted transition-colors"
+              >
+                <X className="h-6 w-6 text-muted-foreground" />
+              </button>
+            </div>
+            
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto flex-1">
+              <div className="mb-6 grid grid-cols-2 gap-4">
+                <div className="bg-background border border-border p-4 rounded-xl">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Supplier</p>
+                  <p className="font-medium">{viewingOrder.supplierName}</p>
+                </div>
+                <div className="bg-background border border-border p-4 rounded-xl">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Branch</p>
+                  <p className="font-medium">{viewingOrder.branchId}</p>
+                </div>
+              </div>
+
+              <h3 className="font-semibold text-lg mb-3">Items Ordered ({viewingOrder.items?.length || 0})</h3>
+              
+              <div className="border border-border rounded-xl overflow-hidden divide-y divide-border bg-background">
+                {viewingOrder.items?.map((item: any, idx: number) => (
+                  <div key={idx} className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors">
+                    <div>
+                      <p className="font-medium">{item.description}</p>
+                      <p className="text-xs font-mono text-muted-foreground mt-1">Barcode: {item.barcode}</p>
+                    </div>
+                    <div className="bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300 px-4 py-1.5 rounded-lg font-bold">
+                      x {item.quantity}
+                    </div>
+                  </div>
+                ))}
+                {!viewingOrder.items?.length && (
+                  <div className="p-8 text-center text-muted-foreground">
+                    No items found in this order.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-border bg-muted/30 flex justify-end gap-3">
+              <button 
+                onClick={() => setViewingOrder(null)}
+                className="px-6 py-2.5 rounded-xl font-medium border border-border hover:bg-muted transition-colors"
+              >
+                Close
+              </button>
+              <button 
+                onClick={() => {
+                  handleReorder(viewingOrder);
+                  setViewingOrder(null);
+                }}
+                className="px-6 py-2.5 rounded-xl font-medium bg-green-600 text-white hover:bg-green-700 flex items-center gap-2 transition-colors shadow-sm"
+              >
+                <RefreshCcw className="h-4 w-4" /> Reorder Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
