@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sun, Moon, Shield, Database, LayoutDashboard, FileText, Printer, ClipboardList, CheckCircle, Search, LogOut, User, Users, Menu, X, Bell, PackageX, Truck, CalendarDays, DollarSign, Activity, Wallet, Tag, Sparkles, Barcode, Briefcase, Clock, PackageMinus, Package, Bot } from "lucide-react";
+import { Sun, Moon, Shield, Database, LayoutDashboard, FileText, Printer, ClipboardList, CheckCircle, Search, LogOut, User, Users, Menu, X, Bell, PackageX, Truck, CalendarDays, DollarSign, Activity, Wallet, Tag, Sparkles, Barcode, Briefcase, Clock, PackageMinus, Package, Bot, ShoppingCart } from "lucide-react";
 import { auth, messaging, dbService, db } from "@/lib/firebase";
 import { getToken } from "firebase/messaging";
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
@@ -349,7 +349,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       name: t("nav.Products"), icon: PackageX, children: [
         { name: t("nav.expiries"), href: "/products/expiries-audit", icon: ClipboardList },
         { name: t("nav.product_lookup"), href: "/admin/product-lookup", icon: Search },
-        { name: t("nav.blind_audit"), href: "/inventory-audit/manager", icon: Shield }
+        { name: t("nav.blind_audit"), href: "/inventory-audit/manager", icon: Shield },
+        { name: language === "ar" ? "طلب من المورد" : "Order with Supplier", href: "/products/supplier-orders", icon: ShoppingCart }
       ]
     },
     {
