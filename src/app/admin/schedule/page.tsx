@@ -5,6 +5,7 @@ import {
   CalendarDays, Settings, Users, CheckCircle, 
   XCircle, Printer, Send, RefreshCw, AlertCircle, BarChart3, Plus 
 } from "lucide-react";
+import { toast } from "react-hot-toast";
 import { useBranch } from "@/context/BranchContext";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, addDoc, updateDoc, doc, onSnapshot, query, where, orderBy, limit } from "firebase/firestore";
@@ -89,21 +90,32 @@ export default function AdminSchedulePage() {
       // Fetch Schedule with cache busting
       const res = await fetch(`/api/schedule?storeId=${storeId}&month=${month}&t=${Date.now()}`, { cache: 'no-store' });
       const data = await res.json();
-      setSchedule(data.schedule);
-
-      if (data.schedule?.rules) {
-        setRules(data.schedule.rules);
+      
+      if (!res.ok) {
+        console.error("API Error fetching schedule:", data.error);
+        toast.error("Failed to fetch schedule: " + (data.error || "Server error"));
+        setSchedule(null);
+      } else {
+        setSchedule(data.schedule);
+        if (data.schedule?.rules) {
+          setRules(data.schedule.rules);
+        }
       }
 
       // Fetch Leave Requests with cache busting
       const leaveRes = await fetch(`/api/schedule/leave-requests?storeId=${storeId}&t=${Date.now()}`, { cache: 'no-store' });
       const leaveData = await leaveRes.json();
-      // Filter for this month
-      const monthRequests = leaveData.requests.filter((r: any) => r.date.startsWith(month));
-      setLeaveRequests(monthRequests);
+      if (!leaveRes.ok) {
+        console.error("API Error fetching leave requests:", leaveData.error);
+      } else {
+        // Filter for this month
+        const monthRequests = leaveData.requests.filter((r: any) => r.date.startsWith(month));
+        setLeaveRequests(monthRequests);
+      }
 
     } catch (e) {
-      console.error(e);
+      console.error("Fetch error:", e);
+      toast.error("Network error fetching schedule");
     }
     setLoading(false);
   };

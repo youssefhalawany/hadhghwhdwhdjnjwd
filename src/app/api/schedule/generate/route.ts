@@ -4,7 +4,6 @@ import { generateSchedule, Employee, LeaveRequest } from '@/lib/schedule-generat
 
 export async function POST(request: Request) {
   try {
-    return NextResponse.json({ success: true, message: "Route handler reached!" });
     const body = await request.json();
     const { storeId, month, rules } = body;
 
