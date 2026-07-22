@@ -147,13 +147,22 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     let unsubscribeShifts: any = null;
     let unsubscribeVoids: any = null;
     let unsubscribeExpiries: any = null;
+    return () => {
+      unsubscribe();
+      window.removeEventListener('click', handleClick);
+      clearInterval(clockTimer);
+    };
+  }, []);
+
+  // Set up Firebase real-time listeners for notifications
+  useEffect(() => {
+    let unsubscribeShifts: any = null;
+    let unsubscribeVoids: any = null;
+    let unsubscribeExpiries: any = null;
     let unsubscribeOos: any = null;
     let unsubscribeSystemNotifs: any = null;
 
     if (user && currentBranch) {
-      // Assuming managers query specific branch or all
-      // We will just do a basic query for 'pending' status for the current branch
-      // If "all", we query without branch filter if they are an admin.
       const shiftQ = currentBranch === "all"
         ? query(collection(db, "shift_reports"), where("status", "in", ["pending", "pending_manager"]), limit(50))
         : query(collection(db, "shift_reports"), where("status", "in", ["pending", "pending_manager"]), where("branchId", "==", currentBranch), limit(50));
@@ -205,11 +214,9 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
         setPendingExpiriesCount(count);
       }, (err) => console.log("Expiries badge err", err));
 
-      // We filter on the server side to only fetch pending or unsettled returns
-      // This prevents massive document reads (fetching all historical returns)
       const returnsQ = query(
         collection(db, "supplier_returns"),
-        where("status", "in", ["pending", "returned"]), // server-side filter
+        where("status", "in", ["pending", "returned"]), 
         limit(50)
       );
 
@@ -251,7 +258,6 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
       unsubscribeSystemNotifs = onSnapshot(notifQ, (snap) => {
         let notifs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
-        // Filter locally to avoid requiring Firestore composite indexes
         if (currentBranch !== "all") {
           notifs = notifs.filter((n: any) => {
             const sId = (n.storeId || n.branchId || "").toLowerCase();
@@ -260,48 +266,18 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
           });
         }
         notifs = notifs.filter((n: any) => n.read === false);
-
         setSystemNotifications(notifs);
       }, (err) => console.log("System Notifs err", err));
     }
 
-    // Global Sound Effects
-    const playClick = () => {
-      try {
-        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(800, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.1);
-        gain.gain.setValueAtTime(0.02, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.1);
-      } catch (e) { }
-    };
-
-    const handleClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (target.closest('button') || target.closest('a') || target.closest('.cursor-pointer')) {
-        playClick();
-      }
-    };
-    window.addEventListener('click', handleClick);
-
     return () => {
-      unsubscribe();
-      window.removeEventListener('click', handleClick);
-      clearInterval(clockTimer);
       if (unsubscribeShifts) unsubscribeShifts();
       if (unsubscribeVoids) unsubscribeVoids();
       if (unsubscribeExpiries) unsubscribeExpiries();
       if (unsubscribeOos) unsubscribeOos();
       if (unsubscribeSystemNotifs) unsubscribeSystemNotifs();
     };
-  }, []);
+  }, [user, currentBranch]);
 
   useEffect(() => {
     // Dynamically inject the correct PWA manifest based on the portal
