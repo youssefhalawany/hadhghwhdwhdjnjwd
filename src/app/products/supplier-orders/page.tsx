@@ -158,7 +158,13 @@ export default function SupplierOrdersPage() {
       console.log("Uploading PDF to Storage...");
       const filename = `order_${supplier.name.replace(/\s/g, '_')}_${Date.now()}.pdf`;
       const storageRef = ref(productsStorage, `supplier_orders/${filename}`);
-      await uploadBytes(storageRef, pdfBlob);
+      
+      // 10 second timeout for the upload to prevent infinite hanging
+      await Promise.race([
+        uploadBytes(storageRef, pdfBlob),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Upload timed out! You must click 'Get Started' under the Storage tab in your anhproducts Firebase Console to enable Storage.")), 10000))
+      ]);
+      
       console.log("Getting download URL...");
       const pdfUrl = await getDownloadURL(storageRef);
 
@@ -383,10 +389,13 @@ export default function SupplierOrdersPage() {
                   <button
                     onClick={generateAndSendOrder}
                     disabled={isGenerating || Object.values(orderItems).filter(v => v > 0).length === 0}
-                    className="flex items-center gap-2 bg-[#25D366] text-white px-6 py-3 rounded-lg font-medium hover:bg-[#128C7E] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    className="bg-[#25D366] text-white px-6 py-3 rounded-lg font-medium hover:bg-[#128C7E] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   >
-                    {isGenerating ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
-                    {isGenerating ? "Generating Order..." : "Send Order via WhatsApp"}
+                    {isGenerating ? (
+                      <span className="flex items-center gap-2"><Loader2 className="h-5 w-5 animate-spin" /> Generating Order...</span>
+                    ) : (
+                      <span className="flex items-center gap-2"><Send className="h-5 w-5" /> Send Order via WhatsApp</span>
+                    )}
                   </button>
                 </div>
               </div>
