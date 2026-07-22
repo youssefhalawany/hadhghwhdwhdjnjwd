@@ -483,6 +483,18 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     );
   }
 
+  const handleClearAllNotifications = async () => {
+    try {
+      const batchPromises = systemNotifications.map(notif => 
+        updateDoc(doc(db, "notifications", notif.id), { read: true })
+      );
+      await Promise.all(batchPromises);
+      setNotificationsOpen(false);
+    } catch (e) {
+      console.error("Failed to clear notifications", e);
+    }
+  };
+
   return (
     <div className="h-[100dvh] w-full flex bg-background text-foreground transition-colors duration-300 overflow-hidden print:overflow-visible print:h-auto">
       <GlobalReminders />
@@ -667,8 +679,18 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                 {notificationsOpen && (
                   <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-900 border border-border rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col">
                     <div className="bg-slate-50 dark:bg-slate-950 border-b border-border p-3 font-bold text-sm text-foreground flex justify-between items-center">
-                      <span>Notifications</span>
-                      <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full">{totalNotifications}</span>
+                      <div className="flex items-center gap-2">
+                        <span>Notifications</span>
+                        <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full">{totalNotifications}</span>
+                      </div>
+                      {systemNotifications.length > 0 && (
+                        <button 
+                          onClick={handleClearAllNotifications}
+                          className="text-[10px] text-red-500 hover:text-red-600 transition-colors bg-red-500/10 hover:bg-red-500/20 px-2 py-1 rounded-md border border-red-500/20"
+                        >
+                          Clear All
+                        </button>
+                      )}
                     </div>
                     <div className="max-h-64 overflow-y-auto custom-scrollbar">
                       {totalNotifications === 0 ? (
