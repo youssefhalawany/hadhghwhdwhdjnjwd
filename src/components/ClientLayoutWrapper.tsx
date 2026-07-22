@@ -332,6 +332,9 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
   const navItems = [
     {
+      name: language === "ar" ? "إبراهيم (مساعد)" : "Ibrahim (AI)", href: "/ai-assistant", icon: Bot
+    },
+    {
       name: t("nav.financials"), icon: FileText, children: [
         { name: t("nav.financial_inputs"), href: "/financials/inputs", icon: Wallet },
         { name: t("nav.reports"), href: "/financial-reports", icon: FileText },
@@ -359,9 +362,6 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
         { name: language === "ar" ? "إدارة العروض" : "Manage Offers", href: "/admin/offers", icon: Tag },
         { name: language === "ar" ? "أكواد الفود" : "Food Codes", href: "/admin/food-codes", icon: Barcode }
       ]
-    },
-    {
-      name: language === "ar" ? "إبراهيم (مساعد)" : "Ibrahim (AI)", href: "/ai-assistant", icon: Bot
     },
     {
       name: t("nav.hr"), icon: Users, children: [

@@ -60,11 +60,11 @@ export async function POST(req: Request) {
       const { GoogleGenerativeAI } = await import("@google/generative-ai");
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
       const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash-lite" });
-      const prompt = `You are Ibrahim, the fun Egyptian assistant manager. You received an automated system alert:
+      const prompt = `You are Ibrahim, the Egyptian assistant manager. You received an automated system alert:
 Title: ${title}
 Body: ${body}
 
-Rewrite this alert in a short, urgent, but fun Egyptian Arabic (3ameya) message to send to the boss (يا ريس) on WhatsApp. Keep it under 2 sentences. Include emojis. Output strictly the message text without extra formatting.`;
+Rewrite this alert in a concise, professional, yet friendly Egyptian Arabic (3ameya) message to send to the manager on WhatsApp. Keep it under 2 sentences. Include emojis. Output strictly the message text without extra formatting.`;
       
       const result = await model.generateContent(prompt);
       const text = result.response.text().trim();

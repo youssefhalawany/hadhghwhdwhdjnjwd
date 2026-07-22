@@ -76,6 +76,21 @@ const getVendorOrderDeclaration: FunctionDeclaration = {
   }
 };
 
+const getProductInfoDeclaration: FunctionDeclaration = {
+  name: "get_product_info",
+  description: "Fetches the barcode, current price, and exact description of a product in English and Arabic. Use this when the user asks 'What is the barcode of...', 'How much is...', or 'Find the product...'",
+  parameters: {
+    type: SchemaType.OBJECT,
+    properties: {
+      searchQuery: {
+        type: SchemaType.STRING,
+        description: "The name of the product to search for, in English or Arabic."
+      }
+    },
+    required: ["searchQuery"]
+  }
+};
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -123,7 +138,8 @@ Do not add any other conversational text when outputting a chart.
         getShiftAuditsDeclaration,
         getExpiriesWatcherDeclaration,
         getSalesPredictorDeclaration,
-        getVendorOrderDeclaration
+        getVendorOrderDeclaration,
+        getProductInfoDeclaration
       ] }]
     });
 
@@ -287,15 +303,15 @@ Do not add any other conversational text when outputting a chart.
            const vendorName = args.vendorName || "";
            console.log(`AI executing get_vendor_order for branch: ${branchId}, vendor: ${vendorName}`);
            
-           const q = query(
+           // Fetch category sales
+           const qSales = query(
             collection(productsDb, "detailed_sales_daily"),
             where("branchId", "in", [branchId, altBranch]),
             limit(14)
           );
-          const snapshot = await getDocs(q);
-          
+          const salesSnap = await getDocs(qSales);
           const allCategoriesSales: any = {};
-          snapshot.forEach(doc => {
+          salesSnap.forEach(doc => {
             const data = doc.data();
             if (data.categories) {
               Object.entries(data.categories).forEach(([catName, amount]) => {
@@ -303,11 +319,68 @@ Do not add any other conversational text when outputting a chart.
               });
             }
           });
+
+          // Fetch products matching vendor
+          const productsSnap = await getDocs(collection(productsDb, "products"));
+          const matchingItems: any[] = [];
+          productsSnap.forEach(doc => {
+            const data = doc.data();
+            if (data.priceHistory && Array.isArray(data.priceHistory)) {
+              const matchesSupplier = data.priceHistory.some((ph: any) => ph.supplier && ph.supplier.toLowerCase().includes(vendorName.toLowerCase()));
+              if (matchesSupplier && matchingItems.length < 50) {
+                matchingItems.push({
+                  barcode: data.barcode,
+                  description: data.description,
+                  price: data.currentPrice
+                });
+              }
+            }
+          });
           
           apiResponse = {
             vendorRequested: vendorName,
             recentSalesByAllCategories: allCategoriesSales,
-            instructions: "The database only tracks sales by high-level category (e.g., 'Packaged Beverages' instead of 'Red Bull' or 'Pepsi'). Based on the user's requested vendor/supplier, identify which category they likely belong to. Then, estimate a realistic, fun purchase order list in Egyptian Arabic (e.g., 'بناءاً على مبيعات المشروبات المعبأة، احنا محتاجين...'). Make up specific item quantities that fit the overall category sales volume."
+            matchingSupplierItems: matchingItems,
+            instructions: "Identify which category the vendor belongs to and use the recent sales volume to gauge order sizes. Crucially, ONLY use the actual items provided in 'matchingSupplierItems' for this vendor. Write a realistic, fun purchase order list in Egyptian Arabic featuring these exact items and estimated quantities based on sales."
+          };
+        }
+        else if (call.name === "get_product_info") {
+          const args = (call.args as any) || {};
+          const searchQuery = (args.searchQuery || "").toLowerCase();
+          console.log(`AI executing get_product_info for query: ${searchQuery}`);
+
+          // We will fetch both products and food_codes and filter in memory since Firebase text search is limited
+          const [productsSnap, foodCodesSnap] = await Promise.all([
+            getDocs(collection(productsDb, "products")),
+            getDocs(collection(productsDb, "food_codes"))
+          ]);
+
+          const foundProducts: any[] = [];
+          
+          productsSnap.forEach(doc => {
+            const data = doc.data();
+            if (data.description && data.description.toLowerCase().includes(searchQuery)) {
+              if (foundProducts.length < 10) foundProducts.push(data);
+            } else if (data.barcode && data.barcode.includes(searchQuery)) {
+              if (foundProducts.length < 10) foundProducts.push(data);
+            }
+          });
+
+          const foundFoodCodes: any[] = [];
+          foodCodesSnap.forEach(doc => {
+            const data = doc.data();
+            if ((data.nameAr && data.nameAr.toLowerCase().includes(searchQuery)) || 
+                (data.nameEn && data.nameEn.toLowerCase().includes(searchQuery)) ||
+                (data.itemCode && data.itemCode.includes(searchQuery))) {
+              if (foundFoodCodes.length < 10) foundFoodCodes.push(data);
+            }
+          });
+
+          apiResponse = {
+            searchQuery,
+            productsMatches: foundProducts.map(p => ({ barcode: p.barcode, description: p.description, price: p.currentPrice })),
+            foodCodesMatches: foundFoodCodes.map(f => ({ code: f.itemCode, nameAr: f.nameAr, nameEn: f.nameEn, category: f.categoryAr })),
+            instructions: "Present the findings to the user. Give them the exact barcode and price in a friendly Egyptian Arabic way."
           };
         }
 
