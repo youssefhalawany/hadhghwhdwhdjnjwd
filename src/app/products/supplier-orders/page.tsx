@@ -55,13 +55,21 @@ export default function SupplierOrdersPage() {
   
   // Fetch Suppliers
   useEffect(() => {
-    const unsub = onSnapshot(collection(productsDb, "suppliers"), (snap) => {
+    if (!currentBranch) return;
+    
+    // We fetch suppliers specific to this branch. 
+    // To support old suppliers that have no branchId, we could fetch all and filter, 
+    // but the user wants strict separation, so we will use client-side filtering 
+    // to ensure we only show the current branch's suppliers, plus globally added ones if necessary.
+    // Actually, strict branch filtering via query:
+    const q = query(collection(productsDb, "suppliers"), where("branchId", "==", currentBranch));
+    const unsub = onSnapshot(q, (snap) => {
       const data: any[] = [];
       snap.forEach(d => data.push({ id: d.id, ...d.data() }));
       setSuppliers(data);
     });
     return () => unsub();
-  }, []);
+  }, [currentBranch]);
 
   // Fetch Past Orders
   useEffect(() => {
@@ -142,6 +150,7 @@ export default function SupplierOrdersPage() {
         await addDoc(collection(productsDb, "suppliers"), {
           name: newSupplierName,
           phone: newSupplierPhone,
+          branchId: currentBranch,
           createdAt: new Date().toISOString()
         });
         toast.success("Supplier added successfully!");
