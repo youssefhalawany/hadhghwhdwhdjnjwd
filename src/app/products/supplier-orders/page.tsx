@@ -280,52 +280,54 @@ export default function SupplierOrdersPage() {
   const filteredSuppliers = suppliers.filter(s => s.name.toLowerCase().includes(searchSupplierTerm.toLowerCase()));
 
   return (
-    <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
+    <div className="p-3 md:p-8 max-w-6xl mx-auto space-y-6 md:space-y-8 animate-in fade-in duration-500">
       {/* Header Section */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-8 shadow-lg text-white">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-6 md:p-8 shadow-lg text-white">
         <div className="absolute top-0 right-0 opacity-10 pointer-events-none">
           <Truck className="w-64 h-64 -mt-10 -mr-10 transform rotate-12" />
         </div>
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight mb-2">Orders & Suppliers Hub</h1>
-            <p className="text-blue-100 max-w-xl">
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-2">Orders & Suppliers Hub</h1>
+            <p className="text-blue-100 max-w-xl text-sm md:text-base">
               Effortlessly manage your supplier directory, order products, and seamlessly communicate via automated AI-translated WhatsApp messages.
             </p>
           </div>
-          <div className="flex items-center bg-white/20 backdrop-blur-md px-4 py-2 rounded-xl text-sm font-medium border border-white/20">
+          <div className="flex w-full md:w-auto items-center justify-center bg-white/20 backdrop-blur-md px-4 py-2.5 rounded-xl text-sm font-medium border border-white/20">
             <ShoppingCart className="w-4 h-4 mr-2" />
             Branch: {currentBranch}
           </div>
         </div>
       </div>
 
-      {/* Modern Tabs */}
-      <div className="flex bg-muted/50 p-1.5 rounded-xl border border-border w-full md:w-max mx-auto shadow-sm">
-        <button
-          onClick={() => setActiveTab("order")}
-          className={`flex-1 md:flex-none px-6 py-2.5 text-sm font-medium rounded-lg flex items-center justify-center gap-2 transition-all duration-200 ${
-            activeTab === "order" ? "bg-background text-primary shadow-sm ring-1 ring-border" : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-          }`}
-        >
-          <ShoppingCart className="h-4 w-4" /> New Order
-        </button>
-        <button
-          onClick={() => setActiveTab("suppliers")}
-          className={`flex-1 md:flex-none px-6 py-2.5 text-sm font-medium rounded-lg flex items-center justify-center gap-2 transition-all duration-200 ${
-            activeTab === "suppliers" ? "bg-background text-primary shadow-sm ring-1 ring-border" : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-          }`}
-        >
-          <Truck className="h-4 w-4" /> Directory
-        </button>
-        <button
-          onClick={() => setActiveTab("history")}
-          className={`flex-1 md:flex-none px-6 py-2.5 text-sm font-medium rounded-lg flex items-center justify-center gap-2 transition-all duration-200 ${
-            activeTab === "history" ? "bg-background text-primary shadow-sm ring-1 ring-border" : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-          }`}
-        >
-          <History className="h-4 w-4" /> Past Orders
-        </button>
+      {/* Modern Tabs - Scrollable on mobile */}
+      <div className="overflow-x-auto hide-scrollbar -mx-3 px-3 md:mx-0 md:px-0">
+        <div className="flex bg-muted/50 p-1.5 rounded-xl border border-border w-max md:w-max md:mx-auto shadow-sm">
+          <button
+            onClick={() => setActiveTab("order")}
+            className={`whitespace-nowrap px-6 py-2.5 text-sm font-medium rounded-lg flex items-center justify-center gap-2 transition-all duration-200 ${
+              activeTab === "order" ? "bg-background text-primary shadow-sm ring-1 ring-border" : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+            }`}
+          >
+            <ShoppingCart className="h-4 w-4" /> New Order
+          </button>
+          <button
+            onClick={() => setActiveTab("suppliers")}
+            className={`whitespace-nowrap px-6 py-2.5 text-sm font-medium rounded-lg flex items-center justify-center gap-2 transition-all duration-200 ${
+              activeTab === "suppliers" ? "bg-background text-primary shadow-sm ring-1 ring-border" : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+            }`}
+          >
+            <Truck className="h-4 w-4" /> Directory
+          </button>
+          <button
+            onClick={() => setActiveTab("history")}
+            className={`whitespace-nowrap px-6 py-2.5 text-sm font-medium rounded-lg flex items-center justify-center gap-2 transition-all duration-200 ${
+              activeTab === "history" ? "bg-background text-primary shadow-sm ring-1 ring-border" : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+            }`}
+          >
+            <History className="h-4 w-4" /> Past Orders
+          </button>
+        </div>
       </div>
 
       {/* Main Content Card */}
@@ -341,7 +343,7 @@ export default function SupplierOrdersPage() {
                 </div>
                 <h2 className="text-xl font-bold">Supplier Directory</h2>
               </div>
-              <div className="flex w-full md:w-auto items-center gap-3">
+              <div className="flex flex-col sm:flex-row w-full md:w-auto items-stretch sm:items-center gap-3">
                 <div className="relative flex-1 md:w-64">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <input 
@@ -359,7 +361,7 @@ export default function SupplierOrdersPage() {
                     setNewSupplierPhone("");
                     setShowAddSupplier(!showAddSupplier);
                   }}
-                  className="flex shrink-0 items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm"
+                  className="flex justify-center shrink-0 items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm"
                 >
                   <Plus className="h-4 w-4" /> Add New
                 </button>
@@ -368,7 +370,7 @@ export default function SupplierOrdersPage() {
 
             {showAddSupplier && (
               <div className="p-1 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20">
-                <form onSubmit={handleAddOrUpdateSupplier} className="bg-card p-6 rounded-xl flex flex-col md:flex-row gap-5 items-end shadow-inner">
+                <form onSubmit={handleAddOrUpdateSupplier} className="bg-card p-4 md:p-6 rounded-xl flex flex-col md:flex-row gap-4 md:gap-5 items-end shadow-inner">
                   <div className="flex-1 w-full">
                     <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Company Name</label>
                     <select
@@ -394,11 +396,11 @@ export default function SupplierOrdersPage() {
                       className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary focus:outline-none"
                     />
                   </div>
-                  <div className="flex w-full md:w-auto gap-2">
-                    <button type="button" onClick={handleCancelEdit} className="flex-1 md:flex-none bg-muted text-foreground px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-muted/80 whitespace-nowrap transition-colors">
+                  <div className="flex flex-col sm:flex-row w-full md:w-auto gap-2">
+                    <button type="button" onClick={handleCancelEdit} className="flex-1 md:flex-none bg-muted text-foreground px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-muted/80 whitespace-nowrap transition-colors text-center">
                       Cancel
                     </button>
-                    <button type="submit" className="flex-1 md:flex-none bg-blue-600 text-white px-8 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 whitespace-nowrap transition-colors shadow-sm">
+                    <button type="submit" className="flex-1 md:flex-none bg-blue-600 text-white px-8 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 whitespace-nowrap transition-colors shadow-sm text-center">
                       {editingSupplier ? "Update Details" : "Save Supplier"}
                     </button>
                   </div>
@@ -413,8 +415,8 @@ export default function SupplierOrdersPage() {
                     <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-lg">
                       {sup.name.charAt(0)}
                     </div>
-                    <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => handleEditSupplier(sup)} className="p-1.5 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors">
+                    <div className="flex space-x-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => handleEditSupplier(sup)} className="p-1.5 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors bg-muted md:bg-transparent">
                         <Edit2 className="h-4 w-4" />
                       </button>
                     </div>
@@ -438,9 +440,9 @@ export default function SupplierOrdersPage() {
 
         {/* ORDER TAB */}
         {activeTab === "order" && (
-          <div className="space-y-8 animate-in slide-in-from-bottom-2 duration-300">
-            <div className="bg-muted/30 border border-border p-5 rounded-2xl flex flex-col md:flex-row items-center gap-4">
-              <div className="p-3 bg-indigo-500/10 rounded-xl">
+          <div className="space-y-6 md:space-y-8 animate-in slide-in-from-bottom-2 duration-300">
+            <div className="bg-muted/30 border border-border p-4 md:p-5 rounded-2xl flex flex-col md:flex-row items-start md:items-center gap-4">
+              <div className="p-3 bg-indigo-500/10 rounded-xl hidden md:block">
                 <ShoppingCart className="h-6 w-6 text-indigo-600" />
               </div>
               <div className="flex-1 w-full">
@@ -481,7 +483,8 @@ export default function SupplierOrdersPage() {
                 
                 {filteredProducts.length > 0 ? (
                   <div className="border border-border rounded-2xl overflow-hidden shadow-sm">
-                    <div className="max-h-[600px] overflow-y-auto">
+                    {/* Desktop Table View */}
+                    <div className="hidden md:block max-h-[600px] overflow-y-auto">
                       <table className="w-full text-left text-sm">
                         <thead className="bg-muted/80 backdrop-blur-md sticky top-0 z-10 border-b border-border">
                           <tr>
@@ -525,16 +528,50 @@ export default function SupplierOrdersPage() {
                         </tbody>
                       </table>
                     </div>
+                    {/* Mobile Card View */}
+                    <div className="block md:hidden max-h-[600px] overflow-y-auto bg-background divide-y divide-border">
+                      {filteredProducts.map(prod => {
+                        const qty = orderItems[prod.barcode] || 0;
+                        return (
+                          <div key={prod.id} className={`p-4 transition-colors ${qty > 0 ? 'bg-indigo-50/50 dark:bg-indigo-900/10' : 'hover:bg-muted/30'}`}>
+                            <div className="font-medium text-base mb-1">{prod.description}</div>
+                            <div className="text-xs font-mono text-muted-foreground flex items-center gap-1 mb-4">
+                              <Package className="h-3 w-3" /> {prod.barcode}
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Order Qty</span>
+                              <div className="flex items-center gap-3">
+                                <button 
+                                  onClick={() => handleUpdateQuantity(prod.barcode, Math.max(0, qty - 1))}
+                                  className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-border transition-colors text-lg"
+                                >-</button>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={qty || ""}
+                                  onChange={(e) => handleUpdateQuantity(prod.barcode, parseInt(e.target.value) || 0)}
+                                  className="w-16 text-center bg-background border border-border rounded-lg px-2 py-2 font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                />
+                                <button 
+                                  onClick={() => handleUpdateQuantity(prod.barcode, qty + 1)}
+                                  className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 flex items-center justify-center hover:bg-indigo-200 transition-colors text-lg"
+                                >+</button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 ) : (
-                  <div className="p-12 text-center border-2 border-dashed border-border rounded-2xl text-muted-foreground">
+                  <div className="p-8 md:p-12 text-center border-2 border-dashed border-border rounded-2xl text-muted-foreground">
                     <PackageX className="h-12 w-12 mx-auto mb-3 opacity-20" />
                     <p className="text-lg font-medium">No products match your search.</p>
                   </div>
                 )}
 
-                <div className="flex flex-col sm:flex-row items-center justify-between p-6 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/10 dark:to-emerald-900/10 rounded-2xl border border-green-200 dark:border-green-900/30 mt-6">
-                  <div className="mb-4 sm:mb-0">
+                <div className="flex flex-col sm:flex-row items-center justify-between p-5 md:p-6 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/10 dark:to-emerald-900/10 rounded-2xl border border-green-200 dark:border-green-900/30 mt-6 sticky bottom-4 shadow-lg md:shadow-none z-20 md:static">
+                  <div className="mb-4 sm:mb-0 text-center sm:text-left">
                     <h3 className="font-bold text-green-800 dark:text-green-400">Ready to place the order?</h3>
                     <p className="text-sm text-green-600 dark:text-green-500">{Object.values(orderItems).filter(v => v > 0).length} items selected</p>
                   </div>
@@ -544,7 +581,7 @@ export default function SupplierOrdersPage() {
                     className="w-full sm:w-auto bg-[#25D366] text-white px-8 py-3.5 rounded-xl font-bold hover:bg-[#128C7E] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-green-500/20 hover:shadow-lg flex items-center justify-center gap-3 text-lg"
                   >
                     {isGenerating ? (
-                      <><Loader2 className="h-6 w-6 animate-spin" /> Translating & Processing...</>
+                      <><Loader2 className="h-6 w-6 animate-spin" /> Processing...</>
                     ) : (
                       <><Send className="h-6 w-6" /> Order via WhatsApp</>
                     )}
@@ -554,10 +591,10 @@ export default function SupplierOrdersPage() {
             )}
             
             {!selectedSupplierId && (
-              <div className="py-24 text-center text-muted-foreground border-2 border-dashed border-border rounded-2xl bg-muted/10">
+              <div className="py-16 md:py-24 text-center text-muted-foreground border-2 border-dashed border-border rounded-2xl bg-muted/10">
                 <Package className="h-16 w-16 mx-auto mb-4 opacity-20" />
                 <p className="text-xl font-medium">No Supplier Selected</p>
-                <p className="text-sm opacity-70 mt-2">Select a supplier from the dropdown above to start an order.</p>
+                <p className="text-sm opacity-70 mt-2 px-4">Select a supplier from the dropdown above to start an order.</p>
               </div>
             )}
           </div>
@@ -574,58 +611,99 @@ export default function SupplierOrdersPage() {
             </div>
 
             <div className="border border-border rounded-2xl overflow-hidden shadow-sm">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-muted/80 backdrop-blur-md">
-                  <tr>
-                    <th className="p-4 font-semibold text-muted-foreground uppercase text-xs tracking-wider">Date & Time</th>
-                    <th className="p-4 font-semibold text-muted-foreground uppercase text-xs tracking-wider">Supplier</th>
-                    <th className="p-4 font-semibold text-muted-foreground uppercase text-xs tracking-wider">Items Ordered</th>
-                    <th className="p-4 font-semibold text-muted-foreground uppercase text-xs tracking-wider text-right">Records</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border bg-background">
-                  {pastOrders.map(order => (
-                    <tr key={order.id} className="hover:bg-muted/30 transition-colors">
-                      <td className="p-4">
-                        <div className="font-medium text-foreground">{new Date(order.createdAt).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div>
-                        <div className="text-xs text-muted-foreground">{new Date(order.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</div>
-                      </td>
-                      <td className="p-4">
-                        <div className="font-semibold">{order.supplierName}</div>
-                      </td>
-                      <td className="p-4">
-                        <span className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 px-3 py-1 rounded-full text-xs font-semibold">
-                          {order.items?.length || 0} Products
-                        </span>
-                      </td>
-                      <td className="p-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button 
-                            onClick={() => handleReorder(order)}
-                            className="inline-flex items-center gap-2 text-xs font-bold text-green-600 hover:text-white border border-green-200 hover:bg-green-600 hover:border-green-600 px-4 py-2 rounded-xl transition-all shadow-sm"
-                          >
-                            <RefreshCcw className="h-4 w-4" /> Reorder
-                          </button>
-                          <button 
-                            onClick={() => downloadPastOrderPDF(order)}
-                            className="inline-flex items-center gap-2 text-xs font-bold text-blue-600 hover:text-white border border-blue-200 hover:bg-blue-600 hover:border-blue-600 px-4 py-2 rounded-xl transition-all shadow-sm"
-                          >
-                            <FileText className="h-4 w-4" /> Save PDF
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {pastOrders.length === 0 && (
+              {/* Desktop Table */}
+              <div className="hidden md:block">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-muted/80 backdrop-blur-md">
                     <tr>
-                      <td colSpan={4} className="p-12 text-center text-muted-foreground">
-                        <History className="h-10 w-10 mx-auto mb-3 opacity-20" />
-                        <p className="text-lg font-medium">No order history found.</p>
-                      </td>
+                      <th className="p-4 font-semibold text-muted-foreground uppercase text-xs tracking-wider">Date & Time</th>
+                      <th className="p-4 font-semibold text-muted-foreground uppercase text-xs tracking-wider">Supplier</th>
+                      <th className="p-4 font-semibold text-muted-foreground uppercase text-xs tracking-wider">Items Ordered</th>
+                      <th className="p-4 font-semibold text-muted-foreground uppercase text-xs tracking-wider text-right">Records</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-border bg-background">
+                    {pastOrders.map(order => (
+                      <tr key={order.id} className="hover:bg-muted/30 transition-colors">
+                        <td className="p-4">
+                          <div className="font-medium text-foreground">{new Date(order.createdAt).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div>
+                          <div className="text-xs text-muted-foreground">{new Date(order.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</div>
+                        </td>
+                        <td className="p-4">
+                          <div className="font-semibold">{order.supplierName}</div>
+                        </td>
+                        <td className="p-4">
+                          <span className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 px-3 py-1 rounded-full text-xs font-semibold">
+                            {order.items?.length || 0} Products
+                          </span>
+                        </td>
+                        <td className="p-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button 
+                              onClick={() => handleReorder(order)}
+                              className="inline-flex items-center gap-2 text-xs font-bold text-green-600 hover:text-white border border-green-200 hover:bg-green-600 hover:border-green-600 px-4 py-2 rounded-xl transition-all shadow-sm"
+                            >
+                              <RefreshCcw className="h-4 w-4" /> Reorder
+                            </button>
+                            <button 
+                              onClick={() => downloadPastOrderPDF(order)}
+                              className="inline-flex items-center gap-2 text-xs font-bold text-blue-600 hover:text-white border border-blue-200 hover:bg-blue-600 hover:border-blue-600 px-4 py-2 rounded-xl transition-all shadow-sm"
+                            >
+                              <FileText className="h-4 w-4" /> Save PDF
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {pastOrders.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="p-12 text-center text-muted-foreground">
+                          <History className="h-10 w-10 mx-auto mb-3 opacity-20" />
+                          <p className="text-lg font-medium">No order history found.</p>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              {/* Mobile Card View */}
+              <div className="block md:hidden bg-background divide-y divide-border">
+                {pastOrders.map(order => (
+                  <div key={order.id} className="p-4 hover:bg-muted/30 transition-colors space-y-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="font-semibold text-base mb-1">{order.supplierName}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {new Date(order.createdAt).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} at {new Date(order.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </div>
+                      <span className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap">
+                        {order.items?.length || 0} Items
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => handleReorder(order)}
+                        className="flex-1 flex items-center justify-center gap-2 text-sm font-bold text-green-600 border border-green-200 bg-green-50/50 hover:bg-green-600 hover:text-white px-4 py-2.5 rounded-xl transition-all shadow-sm"
+                      >
+                        <RefreshCcw className="h-4 w-4" /> Reorder
+                      </button>
+                      <button 
+                        onClick={() => downloadPastOrderPDF(order)}
+                        className="flex-1 flex items-center justify-center gap-2 text-sm font-bold text-blue-600 border border-blue-200 bg-blue-50/50 hover:bg-blue-600 hover:text-white px-4 py-2.5 rounded-xl transition-all shadow-sm"
+                      >
+                        <FileText className="h-4 w-4" /> Save PDF
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {pastOrders.length === 0 && (
+                  <div className="p-8 text-center text-muted-foreground">
+                    <History className="h-10 w-10 mx-auto mb-3 opacity-20" />
+                    <p className="text-lg font-medium">No order history found.</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
