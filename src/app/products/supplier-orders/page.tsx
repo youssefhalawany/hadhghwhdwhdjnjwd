@@ -178,7 +178,7 @@ export default function SupplierOrdersPage() {
         phoneStr = '20' + phoneStr;
       }
       
-      const waLink = `https://wa.me/${phoneStr}?text=${encodedText}`;
+      const waLink = `https://api.whatsapp.com/send?phone=${phoneStr}&text=${encodedText}`;
       
       // Use location.href if window.open is blocked, but window.open usually works if user interaction started the chain.
       // We will try window.open, and if it's blocked, we can fallback, but _blank is best.
