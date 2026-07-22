@@ -18,20 +18,27 @@ export async function POST(req: Request) {
     let itemsList = items.map((i: any) => `- ${i.description} (Qty: ${i.quantity})`).join('\n');
     
     const prompt = `
-    You are an assistant for a Circle K franchise in Egypt.
-    A manager wants to send a WhatsApp order to a supplier.
+    You are the official purchasing manager for a Circle K franchise in Egypt.
+    You need to send an official Purchase Order via WhatsApp to a supplier.
     
     Supplier Name: ${supplierName}
     Branch Name: ${branchName}
+    Date: ${new Date().toLocaleDateString('en-GB')}
     Items to order:
     ${itemsList}
 
-    Please write a polite, professional WhatsApp message in Egyptian Arabic (اللغة العربية).
-    CRITICAL: You MUST translate all the English product names into their standard Arabic equivalents as known in the Egyptian market (e.g. "Coca Cola" -> "كوكاكولا", "Lays" -> "شيبسي ليز", "Dettol Sanitizer" -> "معقم ديتول").
+    Write a HIGHLY PROFESSIONAL and FORMAL business message in Arabic (صيغة رسمية ومهنية جداً).
+    The tone must be extremely respectful, precise, and organized, representing a major corporate brand.
     
-    Format the message beautifully with emojis.
-    Include the Branch Name in the message.
-    List the translated items and their quantities clearly using bullet points.
+    CRITICAL: You MUST translate all the English product names into their standard Arabic equivalents as known in the Egyptian market.
+    
+    Structure the message as follows:
+    1. A formal greeting to the supplier company (${supplierName}).
+    2. A clear statement that this is an official Purchase Order (طلب شراء رسمي) from Circle K, Branch: ${branchName}, dated ${new Date().toLocaleDateString('en-GB')}.
+    3. A cleanly formatted list of the items and their required quantities.
+    4. A polite closing requesting them to confirm receipt of this order and to provide the expected delivery date.
+    
+    Format the text beautifully with professional emojis (like 🏢, 📦, 📋).
     Do NOT include any markdown code blocks like \`\`\` text \`\`\`. Just return the raw text ready for WhatsApp.
     `;
 
