@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { collection, addDoc, getDocs, onSnapshot, query, doc, updateDoc, where, orderBy, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { productsDb, productsStorage } from "@/lib/firebase";
+import { db, productsDb, productsStorage } from "@/lib/firebase";
 import { ShoppingCart, Truck, History, Plus, Phone, FileText, Send, Loader2, Package, Search, PackageX } from "lucide-react";
 import { useBranch } from "@/context/BranchContext";
 import { toast } from "react-hot-toast";
@@ -34,7 +34,7 @@ export default function SupplierOrdersPage() {
   useEffect(() => {
     const fetchSystemSuppliers = async () => {
       try {
-        const snap = await getDocs(collection(productsDb, "products"));
+        const snap = await getDocs(collection(db, "products"));
         const uniqueSuppliers = new Set<string>();
         snap.forEach(doc => {
           const s = doc.data().supplier;
@@ -78,7 +78,7 @@ export default function SupplierOrdersPage() {
     if (selectedSupplierId) {
       const supplier = suppliers.find(s => s.id === selectedSupplierId);
       if (supplier && supplier.name) {
-        const q = query(collection(productsDb, "products"), where("supplier", "==", supplier.name));
+        const q = query(collection(db, "products"), where("supplier", "==", supplier.name));
         getDocs(q).then(snap => {
           const prods: any[] = [];
           snap.forEach(d => prods.push({ id: d.id, ...d.data() }));
