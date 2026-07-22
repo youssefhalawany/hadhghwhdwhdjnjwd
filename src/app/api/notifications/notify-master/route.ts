@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getMessaging } from 'firebase-admin/messaging';
 import { getFirestore } from 'firebase-admin/firestore';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export async function POST(req: Request) {
   try {
@@ -55,25 +56,32 @@ export async function POST(req: Request) {
     // --- Ibrahim AI Translation ---
     let ibrahimTitle = title;
     let ibrahimBody = body;
-    
+
     try {
-      const { GoogleGenerativeAI } = await import("@google/generative-ai");
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
       const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash-lite" });
-      const prompt = `You are Ibrahim, the Egyptian assistant manager. You received an automated system alert:
-Title: ${title}
-Body: ${body}
-
-Rewrite this alert in a concise, professional, yet friendly Egyptian Arabic (3ameya) message to send to the manager on WhatsApp. Keep it under 2 sentences. Include emojis. Output strictly the message text without extra formatting.`;
+      const prompt = `You are Ibrahim, the enthusiastic operations manager assistant (مساعد مدير) for Circle K. 
+      You just received this system notification:
+      Title: ${title}
+      Body: ${body}
       
-      const result = await model.generateContent(prompt);
+      Rewrite this notification in a fun, urgent Egyptian Arabic tone as if you are sending a quick WhatsApp message to your boss (Youssef Elhalawany) to alert him. 
+      Keep it very short (1-2 sentences max), friendly, but highlight the importance of the action.
+      Output ONLY the rewritten message body. Do not include titles, greetings, or hashtags.`;
+      
+      // Vercel serverless functions have a strict 10s-15s timeout on the free tier.
+      // If Gemini takes too long, Vercel kills the entire request and the WhatsApp message is NEVER sent.
+      // We wrap the Gemini call in a 5-second timeout. If it's fast, we get Ibrahim. If slow, we fallback, BUT the WhatsApp message is guaranteed to send!
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Gemini timeout")), 5000));
+      const result = await Promise.race([model.generateContent(prompt), timeoutPromise]) as any;
+      
       const text = result.response.text().trim();
       if (text) {
         ibrahimTitle = "إبراهيم 🚨";
         ibrahimBody = text;
       }
     } catch (aiError) {
-      console.error("AI Translation failed, using fallback:", aiError);
+      console.error("AI Translation failed or timed out, using fallback:", aiError);
     }
     // ------------------------------
 
