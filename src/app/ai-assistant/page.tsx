@@ -81,9 +81,9 @@ export default function AiAssistantPage() {
   ];
 
   return (
-    <div className="p-2 sm:p-4 lg:p-6 w-full h-[calc(100vh-6rem)] sm:h-[calc(100vh-5rem)] flex flex-col">
+    <div className="w-full h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex items-center gap-4 p-4 sm:p-6 shrink-0 border-b border-border bg-card/50 backdrop-blur-sm z-10">
         <div className="h-12 w-12 bg-indigo-500/10 rounded-xl flex items-center justify-center border border-indigo-500/20">
           <Bot className="h-6 w-6 text-indigo-500" />
         </div>
@@ -98,7 +98,7 @@ export default function AiAssistantPage() {
       </div>
 
       {/* Chat Area */}
-      <div className="flex-1 glass-panel rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden bg-slate-50/50 dark:bg-slate-900/50">
+      <div className="flex-1 flex flex-col overflow-hidden bg-slate-50/50 dark:bg-slate-900/50">
         
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">

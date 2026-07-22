@@ -103,8 +103,8 @@ Do not guess numbers. If a tool returns null or empty data, inform the user that
         const altBranch = altBranchMap[branchId] || branchId;
 
         if (call.name === "get_daily_sales") {
-          const args = call.args as any;
-          const { date } = args;
+          const args = (call.args as any) || {};
+          const date = args.date || today; // fallback to today if undefined
           console.log(`AI executing get_daily_sales for branch: ${branchId}, date: ${date}`);
           
           const q = query(
@@ -124,34 +124,37 @@ Do not guess numbers. If a tool returns null or empty data, inform the user that
         else if (call.name === "get_historical_sales") {
           console.log(`AI executing get_historical_sales for branch: ${branchId}`);
           
+          // Fetch all for the branch and sort in memory to avoid Firebase Composite Index requirement
           const q = query(
             collection(productsDb, "detailed_sales_daily"),
-            where("branchId", "in", [branchId, altBranch]),
-            orderBy("date_sold", "desc"),
-            limit(7)
+            where("branchId", "in", [branchId, altBranch])
           );
           const snapshot = await getDocs(q);
-          const recentSales: any[] = [];
-          snapshot.forEach(doc => recentSales.push(doc.data()));
+          const allSales: any[] = [];
+          snapshot.forEach(doc => allSales.push(doc.data()));
+          
+          // Sort descending by date
+          allSales.sort((a, b) => {
+            const dateA = a.date_sold ? new Date(a.date_sold).getTime() : 0;
+            const dateB = b.date_sold ? new Date(b.date_sold).getTime() : 0;
+            return dateB - dateA;
+          });
+          
+          const recentSales = allSales.slice(0, 7);
           
           apiResponse = recentSales.length > 0 ? recentSales : { error: "No historical data found." };
         }
 
         // Send the database result back to the AI so it can formulate a final answer.
-        // We use a regular text message instead of functionResponse to avoid "Role 'function' is not supported" errors on older API versions.
         const followUpMessage = `[SYSTEM: Tool '${call.name}' executed successfully. Here is the data from the database:]\n\n${JSON.stringify(apiResponse, null, 2)}\n\nNow, provide your final answer to the user based on this data.`;
         
         result = await chat.sendMessage(followUpMessage);
 
       } catch (dbError: any) {
         console.error("Firebase Tool Error:", dbError);
-        // If DB fails, tell the AI so it can apologize
-        result = await chat.sendMessage([{
-          functionResponse: {
-            name: call.name,
-            response: { error: "Database query failed due to technical error." }
-          }
-        }]);
+        // If DB fails, tell the AI so it can apologize via text instead of functionResponse
+        const errorMessage = `[SYSTEM: Tool '${call.name}' failed with a technical error. Please apologize to the user and inform them that the database is currently unreachable.]`;
+        result = await chat.sendMessage(errorMessage);
       }
     }
 
