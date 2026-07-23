@@ -380,9 +380,6 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
         { name: t("nav.data_import"), href: "/admin/import-csv", icon: Database }
       ]
     },
-    {
-      name: language === "ar" ? "التوأم الرقمي (3D)" : "Digital Twin (3D)", href: "/digital-twin", icon: Box
-    },
 
 
     { name: "", href: "/cashier", icon: User, isIconOnly: true }
