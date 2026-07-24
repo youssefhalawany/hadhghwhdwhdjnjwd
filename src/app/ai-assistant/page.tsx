@@ -37,13 +37,20 @@ export default function AiAssistantPage() {
     setIsLoading(true);
 
     try {
+      const safeBal = localStorage.getItem(`cached_safe_balance_${currentBranch}`);
+      const bankBal = localStorage.getItem(`cached_bank_balance_${currentBranch}`);
+
       const response = await fetch("/api/chat-assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: text,
           history: messages,
-          branchId: currentBranch
+          branchId: currentBranch,
+          cachedBalances: {
+            safe: safeBal,
+            bank: bankBal
+          }
         }),
       });
 

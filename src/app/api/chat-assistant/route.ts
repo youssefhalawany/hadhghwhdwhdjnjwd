@@ -103,7 +103,7 @@ const getProductInfoDeclaration: FunctionDeclaration = {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { message, history, branchId } = body;
+    const { message, history, branchId, cachedBalances } = body;
 
     if (!message) {
       return NextResponse.json({ success: false, error: "Message is required" }, { status: 400 });
@@ -116,13 +116,18 @@ export async function POST(req: Request) {
     // Determine the current local date to give the AI temporal context
     const today = new Date().toLocaleDateString('en-CA'); // e.g. "2026-07-22"
 
+    let balanceContext = "";
+    if (cachedBalances && cachedBalances.safe) {
+      balanceContext = `\nCRITICAL CONTEXT (ZERO READS REQUIRED): The user's current Safe Balance (Cash available in branch) is EGP ${cachedBalances.safe} and Bank Balance is EGP ${cachedBalances.bank}. If they ask for the safe balance, cash, or bank balance, answer IMMEDIATELY using these numbers. DO NOT run any tools or query the database to calculate these.`;
+    }
+
     // Construct the system prompt
     const systemInstruction = `
 You are Ibrahim, the expert Operations Manager Assistant (مساعد مدير) for Circle K. Your job is to help the franchise owner or manager run their branch efficiently.
 You communicate clearly, professionally, but in a very COOL and FUN Egyptian Arabic dialect (اللغة العامية المصرية). You can call the user "يا ريس" or "يا باشا". 
 ALWAYS mirror the exact language the user speaks to you in. If they speak Egyptian Arabic, reply in pure, fun Egyptian 3ameya. If they speak English, reply in English. If they speak Franco-Arabic (e.g., "ezayak ya ibrahim"), reply in Franco-Arabic. Your default starting persona is a friendly, street-smart Egyptian manager assistant.
 The user is currently managing the branch with ID: "${branchId}". 
-Today's date is: ${today}.
+Today's date is: ${today}.${balanceContext}
 
 You have access to live database tools to query sales, shift audits, and expiries. 
 If the user asks for sales numbers, shortages, or expiring items, USE YOUR TOOLS to fetch the data first before answering. 

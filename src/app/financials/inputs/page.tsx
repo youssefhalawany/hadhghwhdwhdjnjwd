@@ -242,6 +242,11 @@ export default function FinancialInputsOverview() {
         const safeMoney = totalSales - totalCashPayments + depositsToSafe - depositsFromSafe - totalPayrolls - totalLoans - totalOldCreditsCash - totalTaxPaid;
         const bankMoney = totalVisaSales - totalBankPayments - totalBankTaxPaid - totalBankCredits + depositsToBank - depositsFromBank;
 
+        if (typeof window !== "undefined") {
+          localStorage.setItem(`cached_safe_balance_${currentBranch}`, safeMoney.toString());
+          localStorage.setItem(`cached_bank_balance_${currentBranch}`, bankMoney.toString());
+        }
+
         setStats({
           totalSales,
           totalCashPayments,
