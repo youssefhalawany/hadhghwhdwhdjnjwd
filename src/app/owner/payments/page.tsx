@@ -57,6 +57,9 @@ export default function OwnerPaymentsPage() {
       const snap = await getDocs(q);
       const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setPayments(data);
+      if (typeof window !== "undefined") {
+        localStorage.setItem('cached_detailed_payments', JSON.stringify(data.slice(0, 50))); // cache last 50 for zero-read AI
+      }
     } catch (err) {
       console.error(err);
     } finally {

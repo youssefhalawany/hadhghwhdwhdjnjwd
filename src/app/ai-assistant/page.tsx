@@ -102,6 +102,9 @@ export default function AiAssistantPage() {
         depositsInSafe: localStorage.getItem(`cached_deposits_in_safe_${currentBranch}`),
         depositsOutBank: localStorage.getItem(`cached_deposits_out_bank_${currentBranch}`),
         depositsInBank: localStorage.getItem(`cached_deposits_in_bank_${currentBranch}`),
+        detailedPayments: localStorage.getItem('cached_detailed_payments'),
+        detailedDeposits: localStorage.getItem('cached_detailed_deposits'),
+        detailedCredits: localStorage.getItem('cached_detailed_credits'),
       };
 
       const response = await fetch("/api/chat-assistant", {

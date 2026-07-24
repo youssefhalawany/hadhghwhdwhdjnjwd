@@ -47,6 +47,9 @@ export default function OwnerDepositsPage() {
       const snap = await getDocs(q);
       const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setDeposits(data);
+      if (typeof window !== "undefined") {
+        localStorage.setItem('cached_detailed_deposits', JSON.stringify(data.slice(0, 50)));
+      }
     } catch (err) {
       console.error(err);
     } finally {

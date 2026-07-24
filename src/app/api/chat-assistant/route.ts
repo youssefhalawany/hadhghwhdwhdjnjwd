@@ -132,6 +132,16 @@ You already know the following real-time data because you memorized it from the 
 - Bank Deposits In: EGP ${cachedBalances.depositsInBank || '0'}
 - Bank Deposits Out: EGP ${cachedBalances.depositsOutBank || '0'}
 ----------------------------------------`;
+
+      if (cachedBalances.detailedPayments) {
+        balanceContext += `\n\n--- DETAILED SUPPLIER PAYMENTS (ZERO READS) ---\nHere are the most recent supplier payments in detail:\n${cachedBalances.detailedPayments}\n----------------------------------------`;
+      }
+      if (cachedBalances.detailedDeposits) {
+        balanceContext += `\n\n--- DETAILED DEPOSITS (ZERO READS) ---\nHere are the most recent deposits in detail:\n${cachedBalances.detailedDeposits}\n----------------------------------------`;
+      }
+      if (cachedBalances.detailedCredits) {
+        balanceContext += `\n\n--- DETAILED CUSTOMER CREDITS (ZERO READS) ---\nHere are the most recent customer credits in detail:\n${cachedBalances.detailedCredits}\n----------------------------------------`;
+      }
     }
 
     // Construct the system prompt

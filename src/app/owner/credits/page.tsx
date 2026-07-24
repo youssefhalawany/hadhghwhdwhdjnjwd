@@ -41,6 +41,9 @@ export default function OwnerCreditsPage() {
       const snap = await getDocs(q);
       const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setCredits(data);
+      if (typeof window !== "undefined") {
+        localStorage.setItem('cached_detailed_credits', JSON.stringify(data.slice(0, 50)));
+      }
     } catch (err) {
       console.error(err);
     } finally {
