@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Send, Bot, User, Sparkles, Loader2, AlertCircle, RefreshCcw } from "lucide-react";
+import { Send, Bot, User, Sparkles, Loader2, AlertCircle, RefreshCcw, Volume2 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { useBranch } from "@/context/BranchContext";
 import toast from "react-hot-toast";
@@ -127,7 +127,36 @@ export default function AiAssistantPage() {
                 {msg.role === "user" ? <User className="h-5 w-5" /> : <img src="/ibrahim.jpg" alt="Ibrahim" className="h-full w-full object-cover" />}
               </div>
 
-              <div className={`max-w-[80%] rounded-2xl px-5 py-3 shadow-sm ${msg.role === "user" ? "bg-emerald-500 text-white rounded-tr-none" : "bg-white dark:bg-slate-800 text-foreground border border-border rounded-tl-none"}`}>
+              <div className={`max-w-[80%] rounded-2xl px-5 py-3 shadow-sm ${msg.role === "user" ? "bg-emerald-500 text-white rounded-tr-none" : "bg-white dark:bg-slate-800 text-foreground border border-border rounded-tl-none relative group"}`}>
+                {msg.role === "assistant" && (
+                  <button 
+                    onClick={() => {
+                      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+                        window.speechSynthesis.cancel();
+                        // Clean text of markdown before speaking
+                        let cleanText = msg.content.replace(/\\*\\*/g, '').replace(/#/g, '').replace(/\\[CHART\\].*/g, 'في رسم بياني معروض قدامك يا ريس');
+                        const utterance = new SpeechSynthesisUtterance(cleanText);
+                        
+                        // Try to find an Arabic voice, preferably Egyptian
+                        const voices = window.speechSynthesis.getVoices();
+                        const arabicVoices = voices.filter(v => v.lang.includes('ar'));
+                        const egyptianVoice = arabicVoices.find(v => v.lang.includes('ar-EG'));
+                        
+                        utterance.voice = egyptianVoice || arabicVoices[0] || null;
+                        
+                        // Make him sound like a 60 year old man (Deep pitch, slightly slower)
+                        utterance.pitch = 0.6; // Deeper voice
+                        utterance.rate = 0.9;  // Slightly slower, authoritative
+                        
+                        window.speechSynthesis.speak(utterance);
+                      }
+                    }}
+                    className="absolute -left-10 top-2 p-2 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-indigo-200"
+                    title="اسمع بصوت إبراهيم"
+                  >
+                    <Volume2 className="h-4 w-4" />
+                  </button>
+                )}
                 {msg.content.trim().startsWith("[CHART]") ? (
                   <div className="w-full mt-2 min-w-[280px] sm:min-w-[400px]" dir="ltr">
                     {(() => {
