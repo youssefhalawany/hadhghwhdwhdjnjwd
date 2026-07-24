@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Send, Bot, User, Sparkles, Loader2, AlertCircle, RefreshCcw, Volume2 } from "lucide-react";
+import { Send, Bot, User, Sparkles, Loader2, AlertCircle, RefreshCcw, Volume2, Square } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { useBranch } from "@/context/BranchContext";
 import toast from "react-hot-toast";
@@ -18,6 +18,11 @@ export default function AiAssistantPage() {
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  const [speakingIdx, setSpeakingIdx] = useState<number | null>(null);
+  const [loadingAudioIdx, setLoadingAudioIdx] = useState<number | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -130,31 +135,60 @@ export default function AiAssistantPage() {
               <div className={`max-w-[80%] rounded-2xl px-5 py-3 shadow-sm ${msg.role === "user" ? "bg-emerald-500 text-white rounded-tr-none" : "bg-white dark:bg-slate-800 text-foreground border border-border rounded-tl-none relative group"}`}>
                 {msg.role === "assistant" && (
                   <button 
-                    onClick={() => {
-                      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-                        window.speechSynthesis.cancel();
-                        // Clean text of markdown before speaking
+                    onClick={async () => {
+                      if (speakingIdx === index && audioRef.current) {
+                        audioRef.current.pause();
+                        setSpeakingIdx(null);
+                        return;
+                      }
+                      
+                      if (audioRef.current) {
+                        audioRef.current.pause();
+                        setSpeakingIdx(null);
+                      }
+                      
+                      try {
+                        setLoadingAudioIdx(index);
                         let cleanText = msg.content.replace(/\\*\\*/g, '').replace(/#/g, '').replace(/\\[CHART\\].*/g, 'في رسم بياني معروض قدامك يا ريس');
-                        const utterance = new SpeechSynthesisUtterance(cleanText);
                         
-                        // Try to find an Arabic voice, preferably Egyptian
-                        const voices = window.speechSynthesis.getVoices();
-                        const arabicVoices = voices.filter(v => v.lang.includes('ar'));
-                        const egyptianVoice = arabicVoices.find(v => v.lang.includes('ar-EG'));
+                        const res = await fetch("/api/tts", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ text: cleanText })
+                        });
                         
-                        utterance.voice = egyptianVoice || arabicVoices[0] || null;
+                        if (!res.ok) throw new Error("TTS Failed");
                         
-                        // Make him sound like a 60 year old man (Deep pitch, slightly slower)
-                        utterance.pitch = 0.6; // Deeper voice
-                        utterance.rate = 0.9;  // Slightly slower, authoritative
+                        const blob = await res.blob();
+                        const url = URL.createObjectURL(blob);
                         
-                        window.speechSynthesis.speak(utterance);
+                        const audio = new Audio(url);
+                        audioRef.current = audio;
+                        audio.onended = () => {
+                          setSpeakingIdx(null);
+                        };
+                        
+                        setLoadingAudioIdx(null);
+                        setSpeakingIdx(index);
+                        audio.play();
+                      } catch (err) {
+                        console.error(err);
+                        setLoadingAudioIdx(null);
+                        setSpeakingIdx(null);
+                        toast.error("فشل تشغيل الصوت");
                       }
                     }}
                     className="absolute -left-10 top-2 p-2 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-indigo-200"
                     title="اسمع بصوت إبراهيم"
+                    disabled={loadingAudioIdx === index}
                   >
-                    <Volume2 className="h-4 w-4" />
+                    {loadingAudioIdx === index ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : speakingIdx === index ? (
+                      <Square className="h-4 w-4 fill-current" />
+                    ) : (
+                      <Volume2 className="h-4 w-4" />
+                    )}
                   </button>
                 )}
                 {msg.content.trim().startsWith("[CHART]") ? (
