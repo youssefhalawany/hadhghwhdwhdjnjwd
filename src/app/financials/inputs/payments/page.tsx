@@ -61,7 +61,8 @@ import {
   Timestamp,
   limit,
   where,
-  updateDoc
+  updateDoc,
+  onSnapshot
 } from "firebase/firestore";
 import { 
   Plus, 
@@ -178,6 +179,17 @@ export default function PaymentsRedesignPage() {
   const [credits, setCredits] = useState<any[]>([]);
   const [savedPaymentForQR, setSavedPaymentForQR] = useState<any>(null);
 
+  useEffect(() => {
+    if (!savedPaymentForQR) return;
+    const unsub = onSnapshot(doc(db, "cash_payments", savedPaymentForQR.id), (docSnap) => {
+      if (docSnap.exists() && docSnap.data().invoiceUrl) {
+        toast.success("Invoice successfully uploaded via phone!");
+        setSavedPaymentForQR(null);
+      }
+    });
+    return () => unsub();
+  }, [savedPaymentForQR]);
+
   // Modal State
   const [showAddModal, setShowAddModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -262,6 +274,9 @@ export default function PaymentsRedesignPage() {
       const paySnapshot = await getDocs(q1);
       const loadedPayments = paySnapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
       setPayments(loadedPayments);
+      if (typeof window !== "undefined") {
+        localStorage.setItem('cached_detailed_payments', JSON.stringify(loadedPayments.slice(0, 50)));
+      }
 
       // 2. Extract Suppliers from cash_payments
       const uniqueSuppliers = new Set<string>();
@@ -2079,10 +2094,10 @@ export default function PaymentsRedesignPage() {
         )}
       </AnimatePresence>
 
-      {/* QR Handshake Modal */}
+      {/* QR Upload Modal */}
       <AnimatePresence>
         {savedPaymentForQR && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-md">
             <motion.div 
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -2090,52 +2105,29 @@ export default function PaymentsRedesignPage() {
               className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-slate-200 dark:border-slate-800"
             >
               <div className="p-8 text-center flex-1 flex flex-col items-center justify-center">
-                <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <FileText size={32} />
+                <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <ImageIcon size={32} />
                 </div>
-                <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mb-2">Payment Saved!</h2>
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mb-2">Mandatory Upload</h2>
                 <p className="text-slate-500 font-medium mb-8">
-                  EGP {savedPaymentForQR.total.toLocaleString()} has been recorded for {savedPaymentForQR.companyName}.
+                  Please scan this QR code with your phone to upload the signed paper invoice for {savedPaymentForQR.companyName}.
                 </p>
                 
                 <div className="bg-white p-4 rounded-2xl border-4 border-slate-100 inline-block mb-6 shadow-sm">
                   <QRCode 
-                    value={`${typeof window !== 'undefined' ? window.location.origin : 'https://anh-zeta.vercel.app'}/handshake?data=${encodeURIComponent(JSON.stringify({ 
-                      id: savedPaymentForQR.id, 
-                      amount: savedPaymentForQR.total, 
-                      company: savedPaymentForQR.companyName, 
-                      date: savedPaymentForQR.date,
-                      action: "verify_receipt" 
-                    }))}`} 
+                    value={`${typeof window !== 'undefined' ? window.location.origin : 'https://anh-zeta.vercel.app'}/cashier/upload-invoice/${savedPaymentForQR.id}`} 
                     size={200}
                     level="H"
                   />
                 </div>
                 
-                <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
-                  Digital Handshake <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] ml-1 uppercase">Optional</span>
+                <p className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center justify-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-indigo-500" />
+                  Waiting for upload from phone...
                 </p>
-                <p className="text-xs text-slate-500 mt-1 max-w-[250px] mx-auto">
-                  Ask the delivery driver to scan this QR code with their app to digitally verify they received the cash.
+                <p className="text-xs text-slate-500 mt-2 max-w-[250px] mx-auto text-red-500 font-medium">
+                  Do not close this window until the image is uploaded.
                 </p>
-              </div>
-              
-              <div className="p-6 border-t border-slate-100 dark:border-slate-800 flex gap-3">
-                <button 
-                  onClick={() => setSavedPaymentForQR(null)}
-                  className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-colors"
-                >
-                  Skip
-                </button>
-                <button 
-                  onClick={() => {
-                    toast.success("Digital Handshake simulated! (Waiting for driver app integration)");
-                    setSavedPaymentForQR(null);
-                  }}
-                  className="flex-[2] px-4 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl transition-colors shadow-sm"
-                >
-                  Driver Scanned
-                </button>
               </div>
             </motion.div>
           </div>
