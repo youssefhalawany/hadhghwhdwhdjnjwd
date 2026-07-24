@@ -118,7 +118,20 @@ export async function POST(req: Request) {
 
     let balanceContext = "";
     if (cachedBalances && cachedBalances.safe) {
-      balanceContext = `\nCRITICAL CONTEXT (ZERO READS REQUIRED): The user's current Safe Balance (Cash available in branch) is EGP ${cachedBalances.safe} and Bank Balance is EGP ${cachedBalances.bank}. If they ask for the safe balance, cash, or bank balance, answer IMMEDIATELY using these numbers. DO NOT run any tools or query the database to calculate these.`;
+      balanceContext = `
+--- ZERO READS FINANCIAL DATA MEMORY ---
+You already know the following real-time data because you memorized it from the user's dashboard. DO NOT use any tools to fetch these, just answer immediately with these exact numbers if asked:
+- Safe Balance (Cash available in branch): EGP ${cachedBalances.safe || '0'}
+- Bank Balance: EGP ${cachedBalances.bank || '0'}
+- Total Cash Payments to Suppliers: EGP ${cachedBalances.cashPayments || '0'}
+- Total Bank/Visa Payments to Suppliers: EGP ${cachedBalances.bankPayments || '0'}
+- Customer Credits Collected (Debts Paid to us): EGP ${cachedBalances.creditsCollected || '0'}
+- Total Payrolls & Loans pulled from safe: EGP ${cachedBalances.payrollsAndLoans || '0'}
+- Cash Drops (Deposits out of Safe to owner/bank): EGP ${cachedBalances.depositsOutSafe || '0'}
+- Cash Injections (Deposits into Safe from owner): EGP ${cachedBalances.depositsInSafe || '0'}
+- Bank Deposits In: EGP ${cachedBalances.depositsInBank || '0'}
+- Bank Deposits Out: EGP ${cachedBalances.depositsOutBank || '0'}
+----------------------------------------`;
     }
 
     // Construct the system prompt
@@ -352,7 +365,11 @@ Do not add any other conversational text when outputting a chart.
           const matchingItems: any[] = [];
           cache.products.forEach(data => {
             if (data.priceHistory && Array.isArray(data.priceHistory)) {
-              const matchesSupplier = data.priceHistory.some((ph: any) => ph.supplier && ph.supplier.toLowerCase().includes(vendorName.toLowerCase()));
+              const matchesSupplier = data.priceHistory.some((ph: any) => {
+                const supplierStr = (ph.supplier || "").toLowerCase();
+                const vName = vendorName.toLowerCase();
+                return supplierStr.includes(vName) || vName.includes(supplierStr);
+              });
               if (matchesSupplier && matchingItems.length < 50) {
                 matchingItems.push({
                   barcode: data.barcode,

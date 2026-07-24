@@ -245,6 +245,14 @@ export default function FinancialInputsOverview() {
         if (typeof window !== "undefined") {
           localStorage.setItem(`cached_safe_balance_${currentBranch}`, safeMoney.toString());
           localStorage.setItem(`cached_bank_balance_${currentBranch}`, bankMoney.toString());
+          localStorage.setItem(`cached_total_cash_payments_${currentBranch}`, totalCashPayments.toString());
+          localStorage.setItem(`cached_total_bank_payments_${currentBranch}`, totalBankPayments.toString());
+          localStorage.setItem(`cached_total_credits_collected_${currentBranch}`, (totalOldCreditsCash + totalBankCredits).toString());
+          localStorage.setItem(`cached_total_payrolls_loans_${currentBranch}`, (totalPayrolls + totalLoans).toString());
+          localStorage.setItem(`cached_deposits_out_safe_${currentBranch}`, depositsFromSafe.toString());
+          localStorage.setItem(`cached_deposits_in_safe_${currentBranch}`, depositsToSafe.toString());
+          localStorage.setItem(`cached_deposits_out_bank_${currentBranch}`, depositsFromBank.toString());
+          localStorage.setItem(`cached_deposits_in_bank_${currentBranch}`, depositsToBank.toString());
         }
 
         setStats({

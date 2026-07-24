@@ -39,6 +39,19 @@ export default function AiAssistantPage() {
     try {
       const safeBal = localStorage.getItem(`cached_safe_balance_${currentBranch}`);
       const bankBal = localStorage.getItem(`cached_bank_balance_${currentBranch}`);
+      
+      const cachedBalances = {
+        safe: safeBal,
+        bank: bankBal,
+        cashPayments: localStorage.getItem(`cached_total_cash_payments_${currentBranch}`),
+        bankPayments: localStorage.getItem(`cached_total_bank_payments_${currentBranch}`),
+        creditsCollected: localStorage.getItem(`cached_total_credits_collected_${currentBranch}`),
+        payrollsAndLoans: localStorage.getItem(`cached_total_payrolls_loans_${currentBranch}`),
+        depositsOutSafe: localStorage.getItem(`cached_deposits_out_safe_${currentBranch}`),
+        depositsInSafe: localStorage.getItem(`cached_deposits_in_safe_${currentBranch}`),
+        depositsOutBank: localStorage.getItem(`cached_deposits_out_bank_${currentBranch}`),
+        depositsInBank: localStorage.getItem(`cached_deposits_in_bank_${currentBranch}`),
+      };
 
       const response = await fetch("/api/chat-assistant", {
         method: "POST",
@@ -47,10 +60,7 @@ export default function AiAssistantPage() {
           message: text,
           history: messages,
           branchId: currentBranch,
-          cachedBalances: {
-            safe: safeBal,
-            bank: bankBal
-          }
+          cachedBalances: cachedBalances
         }),
       });
 
