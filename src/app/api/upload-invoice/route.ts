@@ -3,39 +3,23 @@ import { adminDb, adminStorage } from "@/lib/firebaseAdmin";
 
 export async function POST(req: Request) {
   try {
-    const formData = await req.formData();
-    const file = formData.get("file") as File;
-    const paymentId = formData.get("paymentId") as string;
+    const { paymentId, invoiceDataUrl } = await req.json();
 
-    if (!file || !paymentId) {
-      return NextResponse.json({ error: "Missing file or paymentId" }, { status: 400 });
+    if (!invoiceDataUrl || !paymentId) {
+      return NextResponse.json({ error: "Missing invoiceDataUrl or paymentId" }, { status: 400 });
     }
 
-    if (!adminDb || !adminStorage) {
+    if (!adminDb) {
       return NextResponse.json({ error: "Firebase Admin not initialized" }, { status: 500 });
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    
-    // Upload to Firebase Storage using the default bucket
-    const bucket = adminStorage.bucket('ckkk-576e7.firebasestorage.app');
-    const fileRef = bucket.file(`invoices/${paymentId}_${Date.now()}`);
-    
-    await fileRef.save(buffer, {
-      metadata: { contentType: file.type }
-    });
-    
-    // Make the file publicly readable
-    await fileRef.makePublic();
-    const invoiceUrl = fileRef.publicUrl();
-
-    // Update Firestore document
+    // Update Firestore document directly with the compressed base64 string
     await adminDb.collection("cash_payments").doc(paymentId).update({
-      invoiceUrl,
+      invoiceUrl: invoiceDataUrl,
       updatedAt: new Date().toISOString()
     });
 
-    return NextResponse.json({ success: true, invoiceUrl });
+    return NextResponse.json({ success: true, invoiceUrl: invoiceDataUrl });
   } catch (error: any) {
     console.error("Upload API error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });

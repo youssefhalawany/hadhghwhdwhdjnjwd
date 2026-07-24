@@ -11,6 +11,7 @@ export default function MobileUploadInvoicePage() {
   const router = useRouter();
   
   const [file, setFile] = useState<File | null>(null);
+  const [compressedDataUrl, setCompressedDataUrl] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -41,28 +42,52 @@ export default function MobileUploadInvoicePage() {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
       setFile(selectedFile);
-      setPreview(URL.createObjectURL(selectedFile));
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const MAX_WIDTH = 800;
+          let scaleSize = 1;
+          if (img.width > MAX_WIDTH) {
+            scaleSize = MAX_WIDTH / img.width;
+          }
+          canvas.width = img.width * scaleSize;
+          canvas.height = img.height * scaleSize;
+          
+          const ctx = canvas.getContext("2d");
+          ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+          
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.6);
+          setPreview(dataUrl);
+          setCompressedDataUrl(dataUrl);
+        };
+        img.src = reader.result as string;
+      };
+      reader.readAsDataURL(selectedFile);
     }
   };
 
   const handleUpload = async () => {
-    if (!file) return;
+    if (!compressedDataUrl) return;
     setUploading(true);
     setProgress(10);
     
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('paymentId', id);
-
-      // We fake a gradual progress bar for UI feel since fetch doesn't natively expose upload progress without XHR
       const progressInterval = setInterval(() => {
         setProgress(p => Math.min(p + 15, 90));
-      }, 500);
+      }, 150);
 
       const res = await fetch('/api/upload-invoice', {
         method: 'POST',
-        body: formData
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          paymentId: id,
+          invoiceDataUrl: compressedDataUrl
+        })
       });
 
       clearInterval(progressInterval);
@@ -149,6 +174,7 @@ export default function MobileUploadInvoicePage() {
                   onClick={() => {
                     setFile(null);
                     setPreview(null);
+                    setCompressedDataUrl(null);
                   }}
                   className="absolute top-4 right-4 p-3 rounded-full bg-black/50 text-white backdrop-blur-md"
                 >
