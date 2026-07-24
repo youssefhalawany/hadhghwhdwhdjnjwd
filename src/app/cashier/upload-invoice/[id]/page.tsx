@@ -2,9 +2,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { db, storage } from '@/lib/firebase';
-import { doc, updateDoc, getDoc } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { toast } from 'sonner';
 import { Camera, CheckCircle, UploadCloud, X, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -25,10 +22,11 @@ export default function MobileUploadInvoicePage() {
   useEffect(() => {
     const fetchPayment = async () => {
       try {
-        const docSnap = await getDoc(doc(db, "cash_payments", id));
-        if (docSnap.exists()) {
-          setPaymentInfo(docSnap.data());
-          if (docSnap.data().invoiceUrl) {
+        const res = await fetch(`/api/upload-invoice?paymentId=${id}`);
+        if (res.ok) {
+          const data = await res.json();
+          setPaymentInfo(data);
+          if (data.invoiceUrl) {
             setSuccess(true);
           }
         }
@@ -50,38 +48,38 @@ export default function MobileUploadInvoicePage() {
   const handleUpload = async () => {
     if (!file) return;
     setUploading(true);
+    setProgress(10);
     
     try {
-      const storageRef = ref(storage, `invoices/${id}_${Date.now()}`);
-      const uploadTask = uploadBytesResumable(storageRef, file);
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('paymentId', id);
 
-      uploadTask.on(
-        'state_changed',
-        (snapshot) => {
-          const p = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-          setProgress(p);
-        },
-        (error) => {
-          console.error(error);
-          toast.error("Upload failed");
-          setUploading(false);
-        },
-        async () => {
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          
-          await updateDoc(doc(db, "cash_payments", id), {
-            invoiceUrl: downloadURL,
-            updatedAt: new Date().toISOString(),
-          });
-          
-          setSuccess(true);
-          toast.success("Uploaded successfully!");
-        }
-      );
-    } catch (err) {
+      // We fake a gradual progress bar for UI feel since fetch doesn't natively expose upload progress without XHR
+      const progressInterval = setInterval(() => {
+        setProgress(p => Math.min(p + 15, 90));
+      }, 500);
+
+      const res = await fetch('/api/upload-invoice', {
+        method: 'POST',
+        body: formData
+      });
+
+      clearInterval(progressInterval);
+      setProgress(100);
+
+      if (res.ok) {
+        setSuccess(true);
+        toast.success("Uploaded successfully!");
+      } else {
+        const { error } = await res.json();
+        throw new Error(error || "Upload failed");
+      }
+    } catch (err: any) {
       console.error(err);
-      toast.error("Error saving document");
+      toast.error(err.message || "Error saving document");
       setUploading(false);
+      setProgress(0);
     }
   };
 

@@ -1,6 +1,7 @@
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getMessaging } from 'firebase-admin/messaging';
+import { getStorage } from 'firebase-admin/storage';
 
 if (!getApps().length) {
   try {
@@ -35,3 +36,4 @@ if (!getApps().length) {
 
 export const adminDb = getApps().length ? getFirestore() : null;
 export const adminMessaging = getApps().length ? getMessaging() : null;
+export const adminStorage = getApps().length ? getStorage() : null;
