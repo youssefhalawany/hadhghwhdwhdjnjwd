@@ -238,7 +238,7 @@ export default function DetailedSalesPage() {
         const parts = standardDate.split("/");
         if (parts.length === 3) standardDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
       }
-      let targetBranchForTotals = currentBranch === "all" ? (extractedData.branchId || extractedData.storeId || "all") as any : currentBranch;
+      const targetBranchForTotals = currentBranch === "all" ? (extractedData.branchId || extractedData.storeId || "all") as any : currentBranch;
       fetchShiftTotals(standardDate, targetBranchForTotals);
     }
   }, [extractedData, currentBranch, fetchShiftTotals]);
@@ -431,7 +431,7 @@ export default function DetailedSalesPage() {
     setIsSaving(true);
     try {
       const savedUserStr = localStorage.getItem("active_cashier_session");
-      let uploaderEmail = savedUserStr ? (JSON.parse(savedUserStr).email || "Unknown") : (localStorage.getItem("circlek_role") || "manager");
+      const uploaderEmail = savedUserStr ? (JSON.parse(savedUserStr).email || "Unknown") : (localStorage.getItem("circlek_role") || "manager");
       let standardDate = extractedData.date_sold || "";
       if (standardDate.includes("/") && !standardDate.includes("to")) {
         const [day, month, year] = standardDate.split("/"); standardDate = `${year}-${month}-${day}`;

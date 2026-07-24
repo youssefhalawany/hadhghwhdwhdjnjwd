@@ -746,15 +746,20 @@ export default function PaymentsRedesignPage() {
         page3.style.left = "-9999px";
       }
 
-      const page4 = document.getElementById("pdf-receipt-page4");
-      if (page4) {
-        page4.style.left = "0";
-        const canvas4 = await html2canvas(page4, { scale: 2, useCORS: true });
-        const imgData4 = canvas4.toDataURL("image/png");
-        const pdfHeight4 = (canvas4.height * pdfWidth) / canvas4.width;
+      let itemsPageIndex = 0;
+      while (true) {
+        const pageItems = document.getElementById(`pdf-receipt-page4-${itemsPageIndex}`);
+        if (!pageItems) break;
+        
+        pageItems.style.left = "0";
+        const canvasItems = await html2canvas(pageItems, { scale: 2, useCORS: true });
+        const imgDataItems = canvasItems.toDataURL("image/png");
+        const pdfHeightItems = (canvasItems.height * pdfWidth) / canvasItems.width;
         pdf.addPage();
-        pdf.addImage(imgData4, "PNG", 0, 0, pdfWidth, pdfHeight4);
-        page4.style.left = "-9999px";
+        pdf.addImage(imgDataItems, "PNG", 0, 0, pdfWidth, pdfHeightItems);
+        pageItems.style.left = "-9999px";
+        
+        itemsPageIndex++;
       }
 
       pdf.autoPrint();
@@ -1737,8 +1742,8 @@ export default function PaymentsRedesignPage() {
             </div>
           )}
 
-          {selectedPaymentForPrint.items && selectedPaymentForPrint.items.length > 0 && (
-            <div id="pdf-receipt-page4" style={{ width: '794px', minHeight: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', padding: '40px' }}>
+          {selectedPaymentForPrint.items && selectedPaymentForPrint.items.length > 0 && Array.from({ length: Math.ceil(selectedPaymentForPrint.items.length / 22) }, (_, i) => selectedPaymentForPrint.items.slice(i * 22, i * 22 + 22)).map((itemsChunk: any[], pageIndex: number, chunks: any[]) => (
+            <div key={`page4-${pageIndex}`} id={`pdf-receipt-page4-${pageIndex}`} style={{ width: '794px', height: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', padding: '40px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #000', paddingBottom: '20px', marginBottom: '30px' }}>
                 <div>
                   <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#000', margin: 0, textTransform: 'uppercase' }}>Products & Items</h1>
@@ -1762,7 +1767,7 @@ export default function PaymentsRedesignPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {selectedPaymentForPrint.items.map((item: any, idx: number) => (
+                    {itemsChunk.map((item: any, idx: number) => (
                       <tr key={idx} style={{ borderBottom: '1px solid #eee' }}>
                         <td style={{ padding: '10px 12px', borderRight: '1px dotted #ccc', fontFamily: 'monospace', fontSize: '12px' }}>{item.barcode || item.code || '-'}</td>
                         <td style={{ padding: '10px 12px', borderRight: '1px dotted #ccc', fontSize: '13px', fontWeight: 'bold', color: '#333' }}>{item.description || item.name || '-'}</td>
@@ -1775,11 +1780,12 @@ export default function PaymentsRedesignPage() {
                 </table>
               </div>
               
-              <div style={{ textAlign: 'center', marginTop: '20px', color: '#999', fontSize: '12px' }}>
-                Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px', color: '#999', fontSize: '12px' }}>
+                <span>Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}</span>
+                <span>Page {pageIndex + 1} of {chunks.length}</span>
               </div>
             </div>
-          )}
+          ))}
         </div>
       )}
 

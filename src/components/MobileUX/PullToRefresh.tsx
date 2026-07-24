@@ -38,7 +38,7 @@ export function PullToRefresh({ onRefresh, children }: PullToRefreshProps) {
     const y = e.touches[0].clientY;
     if (y > startY) {
       // Prevent default scrolling when pulling down
-      e.cancelable && e.preventDefault();
+      if (e.cancelable) e.preventDefault();
       setCurrentY(y);
       
       const dist = y - startY;

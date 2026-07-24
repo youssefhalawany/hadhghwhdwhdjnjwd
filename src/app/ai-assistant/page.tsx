@@ -198,7 +198,7 @@ export default function AiAssistantPage() {
                       
                       try {
                         setLoadingAudioIdx(index);
-                        let cleanText = msg.content.replace(/\\*\\*/g, '').replace(/#/g, '').replace(/\\[CHART\\].*/g, 'في رسم بياني معروض قدامك يا ريس');
+                        const cleanText = msg.content.replace(/\\*\\*/g, '').replace(/#/g, '').replace(/\\[CHART\\].*/g, 'في رسم بياني معروض قدامك يا ريس');
                         
                         const res = await fetch("/api/tts", {
                           method: "POST",

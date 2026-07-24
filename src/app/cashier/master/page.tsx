@@ -373,6 +373,13 @@ const MemoizedLostAndFoundCard = React.memo(({ item, expandedId, setExpandedId }
   );
 });
 
+MemoizedShiftReportCard.displayName = "MemoizedShiftReportCard";
+MemoizedVoidRequestCard.displayName = "MemoizedVoidRequestCard";
+MemoizedExpiryCard.displayName = "MemoizedExpiryCard";
+MemoizedCleaningCard.displayName = "MemoizedCleaningCard";
+MemoizedOutOfStockCard.displayName = "MemoizedOutOfStockCard";
+MemoizedLostAndFoundCard.displayName = "MemoizedLostAndFoundCard";
+
 export default function MasterCashierDashboard() {
   const router = useRouter();
   const [feed, setFeed] = useState<any[]>([]);

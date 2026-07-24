@@ -7,7 +7,7 @@ export async function GET() {
   try {
     const usersSnap = await adminDb.collection("users").get();
     let ibrahimDoc: any = null;
-    let found: any[] = [];
+    const found: any[] = [];
 
     usersSnap.forEach(doc => {
       const data = doc.data();

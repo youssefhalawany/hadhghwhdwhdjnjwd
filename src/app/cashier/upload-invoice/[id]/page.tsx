@@ -166,7 +166,7 @@ export default function MobileUploadInvoicePage() {
         ) : (
           <div className="flex-1 flex flex-col h-full">
             <div className="relative flex-1 rounded-3xl overflow-hidden bg-slate-900 border border-white/10 mb-6">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
+              { }
               <img src={preview} alt="Preview" className="w-full h-full object-contain" />
               
               {!uploading && (

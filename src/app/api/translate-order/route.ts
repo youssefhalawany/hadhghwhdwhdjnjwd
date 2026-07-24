@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash-lite" });
 
     // Construct the prompt
-    let itemsList = items.map((i: any) => `- ${i.description} (Qty: ${i.quantity})`).join('\n');
+    const itemsList = items.map((i: any) => `- ${i.description} (Qty: ${i.quantity})`).join('\n');
     
     const prompt = `
     You are a polite and professional manager of a specific Circle K branch in Egypt (Branch: ${branchName}).

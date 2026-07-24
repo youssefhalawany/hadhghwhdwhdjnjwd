@@ -8,7 +8,7 @@ import { doc, getDoc, collection, query, where, orderBy, limit, getDocs } from "
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 // In-memory cache to save Firebase reads
-let cache = {
+const cache = {
   products: null as any[] | null,
   foodCodes: null as any[] | null,
   lastFetch: 0
@@ -182,7 +182,7 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
     });
 
     // Convert the history array into the format required by the Gemini ChatSession
-    let formattedHistory = (history || []).map((msg: any) => ({
+    const formattedHistory = (history || []).map((msg: any) => ({
       role: msg.role === "assistant" ? "model" : "user",
       parts: [{ text: msg.content }]
     }));
