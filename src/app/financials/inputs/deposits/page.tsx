@@ -92,6 +92,9 @@ export default function DepositsPage() {
       data.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
       setDeposits(data);
+      if (typeof window !== "undefined") {
+        localStorage.setItem('cached_detailed_deposits', JSON.stringify(data.slice(0, 50)));
+      }
       setLoading(false);
     }, (err: any) => {
       console.error(err);

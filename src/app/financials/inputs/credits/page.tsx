@@ -334,6 +334,9 @@ export default function CreditsPage() {
         };
       }) as Credit[];
       setCredits(data);
+      if (typeof window !== "undefined") {
+        localStorage.setItem('cached_detailed_credits', JSON.stringify(data.slice(0, 50)));
+      }
 
       const uniqueSuppliers = new Set<string>();
       data.forEach(c => {
@@ -449,7 +452,11 @@ export default function CreditsPage() {
 
       const docRef = await addDoc(collection(db, "credits"), newCredit);
       const savedCredit = { id: docRef.id, ...newCredit, createdAt: Timestamp.now() } as Credit;
-      setCredits([savedCredit, ...credits]);
+      const updatedCredits = [savedCredit, ...credits];
+      setCredits(updatedCredits);
+      if (typeof window !== "undefined") {
+        localStorage.setItem('cached_detailed_credits', JSON.stringify(updatedCredits.slice(0, 50)));
+      }
 
       toast.success("Credit added successfully!");
       setShowAddModal(false);

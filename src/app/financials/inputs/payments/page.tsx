@@ -81,7 +81,8 @@ import {
   CheckCircle2,
   MessageCircle,
   FileText,
-  PieChart as PieChartIcon
+  PieChart as PieChartIcon,
+  Printer
 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, LineChart, Line, XAxis, YAxis } from 'recharts';
 import html2canvas from "html2canvas";
@@ -237,6 +238,22 @@ export default function PaymentsRedesignPage() {
       setQrCodeData("");
     }
   }, [selectedPaymentForPrint]);
+
+  useEffect(() => {
+    if (selectedPaymentForView?.id) {
+      const unsub = onSnapshot(doc(db, "cash_payments", selectedPaymentForView.id), (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.invoiceUrl && data.invoiceUrl !== selectedPaymentForView.invoiceUrl) {
+            setSelectedPaymentForView((prev: any) => ({ ...prev, ...data }));
+            setPayments((prev) => prev.map(p => p.id === selectedPaymentForView.id ? { ...p, ...data } : p));
+            toast.success("Supplier invoice uploaded via mobile!");
+          }
+        }
+      });
+      return () => unsub();
+    }
+  }, [selectedPaymentForView?.id]);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
@@ -715,6 +732,17 @@ export default function PaymentsRedesignPage() {
         pdf.addPage();
         pdf.addImage(imgData2, "PNG", 0, 0, pdfWidth, pdfHeight2);
         page2.style.left = "-9999px";
+      }
+
+      const page3 = document.getElementById("pdf-receipt-page3");
+      if (page3) {
+        page3.style.left = "0";
+        const canvas3 = await html2canvas(page3, { scale: 2, useCORS: true });
+        const imgData3 = canvas3.toDataURL("image/png");
+        const pdfHeight3 = (canvas3.height * pdfWidth) / canvas3.width;
+        pdf.addPage();
+        pdf.addImage(imgData3, "PNG", 0, 0, pdfWidth, pdfHeight3);
+        page3.style.left = "-9999px";
       }
 
       pdf.autoPrint();
@@ -1669,6 +1697,33 @@ export default function PaymentsRedesignPage() {
               </div>
             </div>
           )}
+
+          {selectedPaymentForPrint.invoiceUrl && (
+            <div id="pdf-receipt-page3" style={{ width: '794px', height: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', padding: '40px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #000', paddingBottom: '20px', marginBottom: '30px' }}>
+                <div>
+                  <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#000', margin: 0, textTransform: 'uppercase' }}>Supplier Invoice</h1>
+                  <p style={{ fontSize: '14px', color: '#666', margin: '5px 0 0' }}>Inv: {selectedPaymentForPrint.invoiceNumber || 'N/A'}</p>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#000', margin: 0 }}>مرفق الفاتورة</h1>
+                  <p style={{ fontSize: '14px', color: '#666', margin: '5px 0 0' }}>{selectedPaymentForPrint.companyName}</p>
+                </div>
+              </div>
+
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed #ccc', borderRadius: '12px', padding: '20px', backgroundColor: '#fafafa' }}>
+                <img 
+                  src={selectedPaymentForPrint.invoiceUrl} 
+                  alt="Supplier Invoice Full" 
+                  style={{ maxHeight: '900px', maxWidth: '100%', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}
+                />
+              </div>
+              
+              <div style={{ textAlign: 'center', marginTop: '20px', color: '#999', fontSize: '12px' }}>
+                Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1798,28 +1853,64 @@ export default function PaymentsRedesignPage() {
                           <p className="text-md font-medium text-slate-700 dark:text-slate-300">{selectedPaymentForView.categoryNote}</p>
                         </div>
                       )}
-                    </div>
-                  )}
+                </div>
+              )}
 
-                  {selectedPaymentForView.bankTransferReceiptUrl && (
-                    <div className="mb-8">
-                      <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 dark:border-slate-800 pb-2">Bank Transfer Receipt</h3>
-                      <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm max-h-64 relative bg-slate-50 dark:bg-slate-900 flex justify-center items-center group">
-                        <img 
-                          src={selectedPaymentForView.bankTransferReceiptUrl} 
-                          alt="Bank Transfer Receipt" 
-                          className="object-contain max-h-64 w-full"
-                        />
-                        <button 
-                          onClick={() => handleViewFullReceipt(selectedPaymentForView.bankTransferReceiptUrl!)}
-                          type="button"
-                          className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold gap-2 w-full h-full"
-                        >
-                          <ImageIcon size={20} /> View Full Receipt
-                        </button>
-                      </div>
-                    </div>
-                  )}
+              {selectedPaymentForView.bankTransferReceiptUrl && (
+                <div className="mb-8">
+                  <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 dark:border-slate-800 pb-2">Bank Transfer Receipt</h3>
+                  <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm max-h-64 relative bg-slate-50 dark:bg-slate-900 flex justify-center items-center group">
+                    <img 
+                      src={selectedPaymentForView.bankTransferReceiptUrl} 
+                      alt="Bank Transfer Receipt" 
+                      className="object-contain max-h-64 w-full"
+                    />
+                    <button 
+                      onClick={() => handleViewFullReceipt(selectedPaymentForView.bankTransferReceiptUrl!)}
+                      type="button"
+                      className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold gap-2 w-full h-full"
+                    >
+                      <ImageIcon size={20} /> View Full Receipt
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {selectedPaymentForView.invoiceUrl && (
+                <div className="mb-8">
+                  <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 dark:border-slate-800 pb-2">Supplier Invoice</h3>
+                  <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm max-h-64 relative bg-slate-50 dark:bg-slate-900 flex justify-center items-center group">
+                    <img 
+                      src={selectedPaymentForView.invoiceUrl} 
+                      alt="Supplier Invoice" 
+                      className="object-contain max-h-64 w-full"
+                    />
+                    <button 
+                      onClick={() => handleViewFullReceipt(selectedPaymentForView.invoiceUrl)}
+                      type="button"
+                      className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold gap-2 w-full h-full"
+                    >
+                      <ImageIcon size={20} /> View Full Invoice
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {!selectedPaymentForView.invoiceUrl && (
+                <div className="mb-8 flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700">
+                  <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 text-center">Missing Supplier Invoice</h3>
+                  <div className="bg-white p-3 rounded-2xl shadow-sm mb-4">
+                    <QRCode 
+                      value={`${typeof window !== 'undefined' ? window.location.origin : 'https://anh-zeta.vercel.app'}/cashier/upload-invoice/${selectedPaymentForView.id}`} 
+                      size={140}
+                      level="H"
+                    />
+                  </div>
+                  <p className="text-sm font-bold text-slate-500 text-center max-w-xs">
+                    Scan this QR code with your phone to quickly upload the missing invoice for this payment.
+                  </p>
+                </div>
+              )}
 
                   <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4">Products / Items ({selectedPaymentForView.items?.length || 0})</h3>
                   <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
@@ -1872,7 +1963,7 @@ export default function PaymentsRedesignPage() {
                       setSelectedPaymentForPrint(selectedPaymentForView);
                       setTimeout(() => generatePDF(), 100);
                    }} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm">
-                      <Download size={18} /> Download PDF
+                      <Printer size={18} /> Print All
                    </button>
                    <button onClick={() => {
                       const text = `🧾 *Payment Receipt*\n*Supplier:* ${selectedPaymentForView.companyName}\n*Amount:* EGP ${Number(selectedPaymentForView.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}\n*Date:* ${selectedPaymentForView.date}\n*Method:* ${selectedPaymentForView.method}\n*ID:* ${selectedPaymentForView.id}`;
