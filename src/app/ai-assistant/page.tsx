@@ -125,8 +125,8 @@ export default function AiAssistantPage() {
         
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
-          {messages.map((msg, idx) => (
-            <div key={idx} className={`flex gap-4 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
+          {messages.map((msg, index) => (
+            <div key={index} className={`flex gap-4 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
               {/* Avatar */}
               <div className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center shadow-sm overflow-hidden ${msg.role === "user" ? "bg-emerald-500 text-white" : "bg-indigo-600 border border-indigo-500/20"}`}>
                 {msg.role === "user" ? <User className="h-5 w-5" /> : <img src="/ibrahim.jpg" alt="Ibrahim" className="h-full w-full object-cover" />}
