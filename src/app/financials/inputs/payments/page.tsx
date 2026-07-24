@@ -3,6 +3,7 @@
 import QRCodeLib from "qrcode";
 
 function numberToArabicWords(num: number): string {
+  num = Math.floor(num);
   if (num === 0) return "صفر";
   
   const ones = ["", "واحد", "اثنان", "ثلاثة", "أربعة", "خمسة", "ستة", "سبعة", "ثمانية", "تسعة", "عشرة", "أحد عشر", "اثنا عشر", "ثلاثة عشر", "أربعة عشر", "خمسة عشر", "ستة عشر", "سبعة عشر", "ثمانية عشر", "تسعة عشر"];
@@ -745,6 +746,17 @@ export default function PaymentsRedesignPage() {
         page3.style.left = "-9999px";
       }
 
+      const page4 = document.getElementById("pdf-receipt-page4");
+      if (page4) {
+        page4.style.left = "0";
+        const canvas4 = await html2canvas(page4, { scale: 2, useCORS: true });
+        const imgData4 = canvas4.toDataURL("image/png");
+        const pdfHeight4 = (canvas4.height * pdfWidth) / canvas4.width;
+        pdf.addPage();
+        pdf.addImage(imgData4, "PNG", 0, 0, pdfWidth, pdfHeight4);
+        page4.style.left = "-9999px";
+      }
+
       pdf.autoPrint();
       window.open(pdf.output("bloburl"), "_blank");
       setSelectedPaymentForPrint(null);
@@ -1439,7 +1451,7 @@ export default function PaymentsRedesignPage() {
                 </div>
                 <div>
                   <h1 style={{ fontSize: '20px', fontWeight: 'bold', color: '#000', margin: 0, textTransform: 'uppercase', letterSpacing: '-0.5px' }}>CIRCLE K EL-ALAMEIN 4</h1>
-                  <p style={{ fontSize: '12px', color: '#333', margin: '2px 0 0', fontWeight: 'bold' }}>PAYMENT VOUCHER</p>
+                  <p style={{ fontSize: '12px', color: '#333', margin: '2px 0 0', fontWeight: 'bold' }}>PAYMENT VOUCHER <span style={{ color: '#ef4444' }}>[COPY / نسخة]</span></p>
                 </div>
               </div>
               <div style={{ textAlign: 'right', display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -1544,17 +1556,17 @@ export default function PaymentsRedesignPage() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', position: 'relative', zIndex: 2 }}>
                   <thead>
                     <tr style={{ backgroundColor: '#f9f9f9', borderBottom: '1px solid #000' }}>
-                      <th style={{ padding: '8px 15px', textAlign: 'left', fontWeight: 'bold', color: '#000', fontSize: '11px', textTransform: 'uppercase', borderRight: '1px dotted #ccc' }}>
-                        <span style={{ letterSpacing: '1px' }}>Invoice Value</span> <span style={{ letterSpacing: '0' }}>/ قيمة الفاتورة</span>
+                      <th style={{ padding: '8px 15px', textAlign: 'left', fontWeight: 'bold', color: '#000', fontSize: '11px', borderRight: '1px dotted #ccc' }}>
+                        <span style={{ letterSpacing: '1px', textTransform: 'uppercase' }}>Invoice Value</span> <span style={{ letterSpacing: '0' }}>/ قيمة الفاتورة</span>
                       </th>
-                      <th style={{ padding: '8px 15px', textAlign: 'left', fontWeight: 'bold', color: '#000', fontSize: '11px', textTransform: 'uppercase', borderRight: '1px dotted #ccc' }}>
-                        <span style={{ letterSpacing: '1px' }}>Tax</span> <span style={{ letterSpacing: '0' }}>/ الضريبة</span>
+                      <th style={{ padding: '8px 15px', textAlign: 'left', fontWeight: 'bold', color: '#000', fontSize: '11px', borderRight: '1px dotted #ccc' }}>
+                        <span style={{ letterSpacing: '1px', textTransform: 'uppercase' }}>Tax</span> <span style={{ letterSpacing: '0' }}>/ الضريبة</span>
                       </th>
-                      <th style={{ padding: '8px 15px', textAlign: 'left', fontWeight: 'bold', color: '#000', fontSize: '11px', textTransform: 'uppercase', borderRight: '1px dotted #ccc' }}>
-                        <span style={{ letterSpacing: '1px' }}>Total</span> <span style={{ letterSpacing: '0' }}>/ الإجمالي</span>
+                      <th style={{ padding: '8px 15px', textAlign: 'left', fontWeight: 'bold', color: '#000', fontSize: '11px', borderRight: '1px dotted #ccc' }}>
+                        <span style={{ letterSpacing: '1px', textTransform: 'uppercase' }}>Total</span> <span style={{ letterSpacing: '0' }}>/ الإجمالي</span>
                       </th>
-                      <th style={{ padding: '8px 15px', textAlign: 'center', fontWeight: 'bold', color: '#000', fontSize: '11px', textTransform: 'uppercase' }}>
-                        <span style={{ letterSpacing: '1px' }}>Taxable</span> <span style={{ letterSpacing: '0' }}>/ خاضع</span>
+                      <th style={{ padding: '8px 15px', textAlign: 'center', fontWeight: 'bold', color: '#000', fontSize: '11px' }}>
+                        <span style={{ letterSpacing: '1px', textTransform: 'uppercase' }}>Taxable</span> <span style={{ letterSpacing: '0' }}>/ خاضع</span>
                       </th>
                     </tr>
                   </thead>
@@ -1607,7 +1619,7 @@ export default function PaymentsRedesignPage() {
                             {selectedPaymentForPrint.supplierNationalId || "[ ID COPY ]"}
                           </div>
                         </div>
-                        <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#000', margin: 0, textTransform: 'uppercase', textAlign: 'center' }}>National ID / الرقم القومي</p>
+                        <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#000', margin: 0, textAlign: 'center' }}><span style={{ textTransform: 'uppercase' }}>National ID</span> / الرقم القومي</p>
                       </div>
                     </>
                   )}
@@ -1717,6 +1729,50 @@ export default function PaymentsRedesignPage() {
                   alt="Supplier Invoice Full" 
                   style={{ maxHeight: '900px', maxWidth: '100%', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}
                 />
+              </div>
+              
+              <div style={{ textAlign: 'center', marginTop: '20px', color: '#999', fontSize: '12px' }}>
+                Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}
+              </div>
+            </div>
+          )}
+
+          {selectedPaymentForPrint.items && selectedPaymentForPrint.items.length > 0 && (
+            <div id="pdf-receipt-page4" style={{ width: '794px', minHeight: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', padding: '40px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #000', paddingBottom: '20px', marginBottom: '30px' }}>
+                <div>
+                  <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#000', margin: 0, textTransform: 'uppercase' }}>Products & Items</h1>
+                  <p style={{ fontSize: '14px', color: '#666', margin: '5px 0 0' }}>Total Items: {selectedPaymentForPrint.items.length}</p>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#000', margin: 0 }}>الأصناف</h1>
+                  <p style={{ fontSize: '14px', color: '#666', margin: '5px 0 0' }}>{selectedPaymentForPrint.companyName}</p>
+                </div>
+              </div>
+
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #ccc' }}>
+                  <thead style={{ backgroundColor: '#f9f9f9' }}>
+                    <tr>
+                      <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #000', borderRight: '1px dotted #ccc', fontSize: '12px', fontWeight: 'bold' }}><span style={{ textTransform: 'uppercase' }}>Barcode</span> / باركود</th>
+                      <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #000', borderRight: '1px dotted #ccc', fontSize: '12px', fontWeight: 'bold' }}><span style={{ textTransform: 'uppercase' }}>Description</span> / البيان</th>
+                      <th style={{ padding: '12px', textAlign: 'center', borderBottom: '2px solid #000', borderRight: '1px dotted #ccc', fontSize: '12px', fontWeight: 'bold' }}><span style={{ textTransform: 'uppercase' }}>Qty</span> / كمية</th>
+                      <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #000', borderRight: '1px dotted #ccc', fontSize: '12px', fontWeight: 'bold' }}><span style={{ textTransform: 'uppercase' }}>Price</span> / سعر</th>
+                      <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #000', fontSize: '12px', fontWeight: 'bold' }}><span style={{ textTransform: 'uppercase' }}>Total</span> / إجمالي</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedPaymentForPrint.items.map((item: any, idx: number) => (
+                      <tr key={idx} style={{ borderBottom: '1px solid #eee' }}>
+                        <td style={{ padding: '10px 12px', borderRight: '1px dotted #ccc', fontFamily: 'monospace', fontSize: '12px' }}>{item.barcode || item.code || '-'}</td>
+                        <td style={{ padding: '10px 12px', borderRight: '1px dotted #ccc', fontSize: '13px', fontWeight: 'bold', color: '#333' }}>{item.description || item.name || '-'}</td>
+                        <td style={{ padding: '10px 12px', borderRight: '1px dotted #ccc', textAlign: 'center', fontSize: '13px', fontWeight: 'bold' }}>{item.quantity}</td>
+                        <td style={{ padding: '10px 12px', borderRight: '1px dotted #ccc', textAlign: 'right', fontFamily: 'monospace', fontSize: '13px' }}>{Number(item.price || item.unitPrice || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                        <td style={{ padding: '10px 12px', textAlign: 'right', fontFamily: 'monospace', fontSize: '13px', fontWeight: 'bold' }}>{Number(item.total || (item.quantity * (item.price || item.unitPrice || 0))).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
               
               <div style={{ textAlign: 'center', marginTop: '20px', color: '#999', fontSize: '12px' }}>
@@ -1953,6 +2009,20 @@ export default function PaymentsRedesignPage() {
                         level="H"
                       />
                     </div>
+                    <button
+                      onClick={() => {
+                        setSelectedPaymentForPrint(selectedPaymentForView);
+                        setTimeout(() => generatePDF(), 100);
+                      }}
+                      className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold flex items-center gap-2 transition-all shadow-sm hover:shadow-md"
+                    >
+                      {generatingPDF ? (
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Printer size={18} />
+                      )}
+                      {generatingPDF ? "Generating PDF..." : "Print All (Copy)"}
+                    </button>
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-widest text-center max-w-[200px]">Scan for Digital Transaction Verification</p>
                   </div>
                 </div>
@@ -1963,7 +2033,12 @@ export default function PaymentsRedesignPage() {
                       setSelectedPaymentForPrint(selectedPaymentForView);
                       setTimeout(() => generatePDF(), 100);
                    }} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm">
-                      <Printer size={18} /> Print All
+                      {generatingPDF ? (
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Printer size={18} />
+                      )}
+                      {generatingPDF ? "Generating PDF..." : "Print All (Copy)"}
                    </button>
                    <button onClick={() => {
                       const text = `🧾 *Payment Receipt*\n*Supplier:* ${selectedPaymentForView.companyName}\n*Amount:* EGP ${Number(selectedPaymentForView.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}\n*Date:* ${selectedPaymentForView.date}\n*Method:* ${selectedPaymentForView.method}\n*ID:* ${selectedPaymentForView.id}`;
