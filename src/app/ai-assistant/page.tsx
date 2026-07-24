@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Send, Bot, User, Sparkles, Loader2, AlertCircle, RefreshCcw, Volume2, Square } from "lucide-react";
+import { Send, Bot, User, Sparkles, Loader2, AlertCircle, RefreshCcw, Volume2, Square, Mic, MicOff } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { useBranch } from "@/context/BranchContext";
 import toast from "react-hot-toast";
@@ -24,6 +24,52 @@ export default function AiAssistantPage() {
   const [loadingAudioIdx, setLoadingAudioIdx] = useState<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'ar-EG';
+        recognition.continuous = false;
+        recognition.interimResults = true;
+        
+        recognition.onstart = () => setIsListening(true);
+        
+        recognition.onresult = (event: any) => {
+          let currentTranscript = "";
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+             currentTranscript += event.results[i][0].transcript;
+          }
+          setInput(currentTranscript);
+        };
+        
+        recognition.onend = () => setIsListening(false);
+        recognition.onerror = (e: any) => {
+          console.error(e);
+          setIsListening(false);
+        };
+        
+        recognitionRef.current = recognition;
+      }
+    }
+  }, []);
+
+  const toggleListen = () => {
+    if (!recognitionRef.current) {
+      toast.error("Your browser does not support voice input.");
+      return;
+    }
+    if (isListening) {
+      recognitionRef.current.stop();
+    } else {
+      setInput("");
+      recognitionRef.current.start();
+    }
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -265,17 +311,28 @@ export default function AiAssistantPage() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               dir="auto"
-              placeholder="اسألني أي حاجة..."
-              className="w-full bg-white dark:bg-slate-800 border border-border rounded-full pl-6 pr-14 py-3 sm:py-4 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-sm"
+              placeholder={isListening ? "بِسمعك يا ريس..." : "اسألني أي حاجة..."}
+              className={`w-full bg-white dark:bg-slate-800 border ${isListening ? 'border-red-500 ring-1 ring-red-500' : 'border-border'} rounded-full pl-6 pr-24 py-3 sm:py-4 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-sm`}
               disabled={isLoading}
             />
-            <button
-              onClick={() => handleSend(input)}
-              disabled={!input.trim() || isLoading}
-              className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 sm:h-10 sm:w-10 bg-indigo-500 text-white rounded-full flex items-center justify-center hover:bg-indigo-600 disabled:opacity-50 disabled:hover:bg-indigo-500 transition-colors shadow-sm"
-            >
-              <Send className="h-4 w-4 sm:h-5 sm:w-5 ml-0.5" />
-            </button>
+            
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+              <button
+                onClick={toggleListen}
+                disabled={isLoading}
+                className={`h-8 w-8 sm:h-10 sm:w-10 rounded-full flex items-center justify-center transition-colors shadow-sm ${isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'}`}
+                title="Voice Input"
+              >
+                {isListening ? <Mic className="h-4 w-4 sm:h-5 sm:w-5" /> : <MicOff className="h-4 w-4 sm:h-5 sm:w-5" />}
+              </button>
+              <button
+                onClick={() => handleSend(input)}
+                disabled={!input.trim() || isLoading}
+                className="h-8 w-8 sm:h-10 sm:w-10 bg-indigo-500 text-white rounded-full flex items-center justify-center hover:bg-indigo-600 disabled:opacity-50 disabled:hover:bg-indigo-500 transition-colors shadow-sm"
+              >
+                <Send className="h-4 w-4 sm:h-5 sm:w-5 ml-0.5" />
+              </button>
+            </div>
           </div>
           <div className="mt-2 text-center">
              <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
