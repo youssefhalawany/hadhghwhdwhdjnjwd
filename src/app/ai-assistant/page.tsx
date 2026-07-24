@@ -268,7 +268,17 @@ export default function AiAssistantPage() {
                     })()}
                   </div>
                 ) : (
-                  <p className="whitespace-pre-wrap text-sm leading-relaxed" dir={/[\u0600-\u06FF]/.test(msg.content) ? 'rtl' : 'ltr'}>{msg.content}</p>
+                  <div 
+                    className="whitespace-pre-wrap text-sm leading-relaxed" 
+                    dir={/[\u0600-\u06FF]/.test(msg.content) ? 'rtl' : 'ltr'}
+                    dangerouslySetInnerHTML={{ 
+                      __html: msg.content
+                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                        .replace(/^- (.*)$/gm, '<li class="ml-4 list-disc">$1</li>')
+                        .replace(/^(\d+)\. (.*)$/gm, '<li class="ml-4 list-decimal">$1. $2</li>') 
+                    }}
+                  />
                 )}
               </div>
             </div>

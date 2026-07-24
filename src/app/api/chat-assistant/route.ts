@@ -162,7 +162,8 @@ CHARTING INSTRUCTIONS:
 If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرسملي مبيعات الأسبوع ده" or "Show me a chart"), you MUST respond EXACTLY and ONLY with a JSON payload in this exact format, with NO backticks or extra text around it:
 [CHART]
 {"title": "مبيعات الأسبوع", "data": [{"name": "السبت", "value": 5000}, {"name": "الأحد", "value": 5500}]}
-Do not add any other conversational text when outputting a chart.
+- When displaying lists, use clean bullet points (•) and natural spacing. DO NOT overuse markdown bolding (**). Keep your formatting incredibly clean, professional, and visually pleasing.
+- Keep your tone 100% natural and conversational. Avoid sounding like an AI reading a script.
 `;
 
     // Initialize the model
