@@ -859,6 +859,23 @@ export default function CreditsPage() {
           page1.style.left = "-9999px";
         }
 
+        const invoiceUrls = selectedCreditForPrint.poUrls && selectedCreditForPrint.poUrls.length > 0 
+          ? selectedCreditForPrint.poUrls 
+          : (selectedCreditForPrint.poUrl ? [selectedCreditForPrint.poUrl] : []);
+
+        for (let i = 0; i < invoiceUrls.length; i++) {
+          const pageInvoice = document.getElementById(`print-credit-invoice-page-${i}`);
+          if (pageInvoice) {
+            pageInvoice.style.left = "0";
+            const canvasInvoice = await html2canvas(pageInvoice, { scale: 2, useCORS: true });
+            const imgDataInvoice = canvasInvoice.toDataURL("image/png");
+            const pdfHeightInvoice = (canvasInvoice.height * pdfWidth) / canvasInvoice.width;
+            pdf.addPage();
+            pdf.addImage(imgDataInvoice, "PNG", 0, 0, pdfWidth, pdfHeightInvoice);
+            pageInvoice.style.left = "-9999px";
+          }
+        }
+
         let itemsPageIndex = 0;
         while (true) {
           const pageItems = document.getElementById(`print-credit-items-page-${itemsPageIndex}`);
@@ -2142,42 +2159,57 @@ export default function CreditsPage() {
                   </div>
                 </div>
 
-            {selectedCreditForView.poUrl && (
-              <div className="mb-8">
-                <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 dark:border-slate-800 pb-2">Supplier Invoice / PO</h3>
-                <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm max-h-64 relative bg-slate-50 dark:bg-slate-900 flex justify-center items-center group">
-                  <img 
-                    src={selectedCreditForView.poUrl} 
-                    alt="Supplier Invoice" 
-                    className="object-contain max-h-64 w-full"
-                  />
-                  <a 
-                    href={selectedCreditForView.poUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold gap-2 w-full h-full"
-                  >
-                    <ImageIcon size={20} /> View Full Invoice
-                  </a>
-                </div>
-              </div>
-            )}
+            {(() => {
+              const urls = selectedCreditForView.poUrls && selectedCreditForView.poUrls.length > 0 
+                ? selectedCreditForView.poUrls 
+                : (selectedCreditForView.poUrl ? [selectedCreditForView.poUrl] : []);
 
-            {!selectedCreditForView.poUrl && (
-              <div className="mb-8 flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700">
-                <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 text-center">Missing Supplier Invoice / PO</h3>
-                <div className="bg-white p-3 rounded-2xl shadow-sm mb-4">
-                  <QRCode 
-                    value={`${typeof window !== 'undefined' ? window.location.origin : 'https://anh-zeta.vercel.app'}/cashier/upload-invoice/${selectedCreditForView.id}?type=credit`} 
-                    size={140}
-                    level="H"
-                  />
+              if (urls.length > 0) {
+                return (
+                  <div className="mb-8">
+                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 dark:border-slate-800 pb-2">Supplier Invoice(s) / PO</h3>
+                    <div className="flex flex-col gap-4">
+                      {urls.map((url: string, index: number) => (
+                        <div key={index} className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm max-h-64 relative bg-slate-50 dark:bg-slate-900 flex justify-center items-center group">
+                          <img 
+                            src={url} 
+                            alt={`Supplier Invoice Page ${index + 1}`} 
+                            className="object-contain max-h-64 w-full"
+                          />
+                          <div className="absolute top-2 left-2 bg-black/60 px-3 py-1 rounded-full text-white text-xs font-bold tracking-wider z-10">
+                            PAGE {index + 1}
+                          </div>
+                          <a 
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold gap-2 w-full h-full z-20"
+                          >
+                            <ImageIcon size={20} /> View Full Page {index + 1}
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="mb-8 flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700">
+                  <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 text-center">Missing Supplier Invoice / PO</h3>
+                  <div className="bg-white p-3 rounded-2xl shadow-sm mb-4">
+                    <QRCode 
+                      value={`${typeof window !== 'undefined' ? window.location.origin : 'https://anh-zeta.vercel.app'}/cashier/upload-invoice/${selectedCreditForView.id}?type=credit`} 
+                      size={140}
+                      level="H"
+                    />
+                  </div>
+                  <p className="text-sm font-bold text-slate-500 text-center max-w-xs">
+                    Scan this QR code with your phone to quickly upload the missing invoice for this credit.
+                  </p>
                 </div>
-                <p className="text-sm font-bold text-slate-500 text-center max-w-xs">
-                  Scan this QR code with your phone to quickly upload the missing invoice for this credit.
-                </p>
-              </div>
-            )}
+              );
+            })()}
 
                 <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4">Products / Items ({selectedCreditForView.items?.length || 0})</h3>
                 <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
@@ -2423,6 +2455,41 @@ export default function CreditsPage() {
         </div>
       </div>
     )}
+
+    {selectedCreditForPrint && (() => {
+      const urls = selectedCreditForPrint.poUrls && selectedCreditForPrint.poUrls.length > 0 
+        ? selectedCreditForPrint.poUrls 
+        : (selectedCreditForPrint.poUrl ? [selectedCreditForPrint.poUrl] : []);
+
+      return urls.map((url: string, index: number) => (
+        <div key={`invoice-page-${index}`} style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+          <div id={`print-credit-invoice-page-${index}`} style={{ width: '794px', height: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', padding: '40px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #000', paddingBottom: '20px', marginBottom: '30px' }}>
+              <div>
+                <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#000', margin: 0, textTransform: 'uppercase' }}>Supplier Invoice {urls.length > 1 ? `(Page ${index + 1})` : ''}</h1>
+                <p style={{ fontSize: '14px', color: '#666', margin: '5px 0 0' }}>Inv: {selectedCreditForPrint.invoiceNumber || 'N/A'}</p>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#000', margin: 0 }}>مرفق الفاتورة</h1>
+                <p style={{ fontSize: '14px', color: '#666', margin: '5px 0 0' }}>{selectedCreditForPrint.companyName}</p>
+              </div>
+            </div>
+
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed #ccc', borderRadius: '12px', padding: '20px', backgroundColor: '#fafafa' }}>
+              <img 
+                src={url} 
+                alt={`Supplier Invoice Full Page ${index + 1}`} 
+                style={{ maxHeight: '900px', maxWidth: '100%', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}
+              />
+            </div>
+            
+            <div style={{ textAlign: 'center', marginTop: '20px', color: '#999', fontSize: '12px' }}>
+              Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}
+            </div>
+          </div>
+        </div>
+      ));
+    })()}
 
     {selectedCreditForPrint && selectedCreditForPrint.items && selectedCreditForPrint.items.length > 0 && Array.from({ length: Math.ceil(selectedCreditForPrint.items.length / 22) }).map((_, pageIndex) => {
       const itemsChunk = selectedCreditForPrint.items!.slice(pageIndex * 22, (pageIndex + 1) * 22);

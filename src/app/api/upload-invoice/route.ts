@@ -3,10 +3,12 @@ import { adminDb, adminStorage } from "@/lib/firebaseAdmin";
 
 export async function POST(req: Request) {
   try {
-    const { paymentId, invoiceDataUrl, type } = await req.json();
+    const { paymentId, invoiceDataUrls, type, invoiceDataUrl } = await req.json();
 
-    if (!invoiceDataUrl || !paymentId) {
-      return NextResponse.json({ error: "Missing invoiceDataUrl or paymentId" }, { status: 400 });
+    const urls = invoiceDataUrls || (invoiceDataUrl ? [invoiceDataUrl] : []);
+
+    if (!urls || urls.length === 0 || !paymentId) {
+      return NextResponse.json({ error: "Missing invoice data or paymentId" }, { status: 400 });
     }
 
     if (!adminDb) {
@@ -14,15 +16,19 @@ export async function POST(req: Request) {
     }
 
     const collectionName = type === "credit" ? "credits" : "cash_payments";
-    const updateField = type === "credit" ? { poUrl: invoiceDataUrl } : { invoiceUrl: invoiceDataUrl };
+    
+    // We update the array fields, but keep the first element in the legacy string field for backward compatibility
+    const updateField = type === "credit" 
+      ? { poUrls: urls, poUrl: urls[0] } 
+      : { invoiceUrls: urls, invoiceUrl: urls[0] };
 
-    // Update Firestore document directly with the compressed base64 string
+    // Update Firestore document directly with the compressed base64 strings
     await adminDb.collection(collectionName).doc(paymentId).update({
       ...updateField,
       updatedAt: new Date().toISOString()
     });
 
-    return NextResponse.json({ success: true, invoiceUrl: invoiceDataUrl });
+    return NextResponse.json({ success: true, invoiceUrls: urls });
   } catch (error: any) {
     console.error("Upload API error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -46,11 +52,11 @@ export async function GET(req: Request) {
     
     if (docSnap.exists) {
       const data = docSnap.data();
-      // Normalize returned data so frontend can just check `invoiceUrl`
-      if (type === "credit" && data?.poUrl) {
-        return NextResponse.json({ ...data, invoiceUrl: data.poUrl });
+      // Normalize returned data so frontend can just check `invoiceUrls`
+      if (type === "credit") {
+        return NextResponse.json({ ...data, invoiceUrls: data?.poUrls || (data?.poUrl ? [data.poUrl] : []) });
       }
-      return NextResponse.json(data);
+      return NextResponse.json({ ...data, invoiceUrls: data?.invoiceUrls || (data?.invoiceUrl ? [data.invoiceUrl] : []) });
     } else {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
