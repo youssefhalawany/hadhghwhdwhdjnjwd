@@ -1,13 +1,16 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import React, { useState, useRef, useEffect, Suspense } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { Camera, CheckCircle, UploadCloud, X, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export default function MobileUploadInvoicePage() {
+function UploadInvoiceContent() {
   const { id } = useParams() as { id: string };
+  const searchParams = useSearchParams();
+  const type = searchParams.get('type') || 'payment';
+  
   const router = useRouter();
   
   const [file, setFile] = useState<File | null>(null);
@@ -23,7 +26,7 @@ export default function MobileUploadInvoicePage() {
   useEffect(() => {
     const fetchPayment = async () => {
       try {
-        const res = await fetch(`/api/upload-invoice?paymentId=${id}`);
+        const res = await fetch(`/api/upload-invoice?paymentId=${id}&type=${type}`);
         if (res.ok) {
           const data = await res.json();
           setPaymentInfo(data);
@@ -36,7 +39,7 @@ export default function MobileUploadInvoicePage() {
       }
     };
     fetchPayment();
-  }, [id]);
+  }, [id, type]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -86,7 +89,8 @@ export default function MobileUploadInvoicePage() {
         },
         body: JSON.stringify({
           paymentId: id,
-          invoiceDataUrl: compressedDataUrl
+          invoiceDataUrl: compressedDataUrl,
+          type: type
         })
       });
 
@@ -204,5 +208,13 @@ export default function MobileUploadInvoicePage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function MobileUploadInvoicePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-center"><Loader2 className="h-8 w-8 animate-spin text-white mb-4" /><p className="text-slate-400 font-medium">Loading...</p></div>}>
+      <UploadInvoiceContent />
+    </Suspense>
   );
 }

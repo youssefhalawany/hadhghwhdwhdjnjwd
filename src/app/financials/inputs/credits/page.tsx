@@ -42,7 +42,9 @@ import {
   CreditCard,
   Building,
   Image as ImageIcon,
-  ClipboardPaste
+  ClipboardPaste,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -50,6 +52,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { DndContext, closestCorners, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, useDroppable } from '@dnd-kit/core';
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import QRCode from "react-qr-code";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, AreaChart, Area, ComposedChart, Line, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Cell } from "recharts";
 import Link from "next/link";
 import jsPDF from "jspdf";
@@ -253,6 +256,7 @@ export default function CreditsPage() {
 
   const [expandedCredits, setExpandedCredits] = useState<Record<string, boolean>>({});
   const [selectedCreditForPrint, setSelectedCreditForPrint] = useState<Credit | null>(null);
+  const [selectedCreditForView, setSelectedCreditForView] = useState<Credit | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
   
   // Skeuomorphic States
@@ -855,6 +859,22 @@ export default function CreditsPage() {
           page1.style.left = "-9999px";
         }
 
+        let itemsPageIndex = 0;
+        while (true) {
+          const pageItems = document.getElementById(`print-credit-items-page-${itemsPageIndex}`);
+          if (!pageItems) break;
+          
+          pageItems.style.left = "0";
+          const canvasItems = await html2canvas(pageItems, { scale: 2, useCORS: true });
+          const imgDataItems = canvasItems.toDataURL("image/png");
+          const pdfHeightItems = (canvasItems.height * pdfWidth) / canvasItems.width;
+          pdf.addPage();
+          pdf.addImage(imgDataItems, "PNG", 0, 0, pdfWidth, pdfHeightItems);
+          pageItems.style.left = "-9999px";
+          
+          itemsPageIndex++;
+        }
+
         pdf.autoPrint();
         window.open(pdf.output("bloburl"), "_blank");
       } catch (error) {
@@ -1360,6 +1380,9 @@ export default function CreditsPage() {
                       
                       {/* Action Dropdown / Buttons */}
                       <div className="flex items-center gap-2">
+                        <button onClick={() => setSelectedCreditForView(credit)} className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors">
+                          <Eye size={20} />
+                        </button>
                         <button onClick={() => handlePrintPdf(credit)} disabled={isPrinting} className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors disabled:opacity-50">
                           <Printer size={20} />
                         </button>
@@ -2007,6 +2030,205 @@ export default function CreditsPage() {
       </AnimatePresence>
     </div>
 
+    {/* View Items Modal - Tear-off Digital Receipt */}
+    <AnimatePresence>
+      {selectedCreditForView && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-md overflow-y-auto">
+          
+          <div className="relative w-full max-w-2xl flex flex-col items-center">
+            {/* Printer Slot Hardware */}
+            <motion.div 
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, transition: { duration: 0.2 } }}
+              className="w-[102%] h-6 bg-slate-800 dark:bg-black rounded-full z-50 relative flex items-center justify-center shadow-2xl border-b-2 border-slate-900"
+              style={{ boxShadow: 'inset 0px -4px 6px rgba(0,0,0,0.4), 0 10px 15px -3px rgba(0,0,0,0.3)' }}
+            >
+              <div className="w-[98%] h-2 bg-black rounded-full" style={{ boxShadow: 'inset 0 4px 4px rgba(0,0,0,0.9)' }} />
+              {/* Printing light indicator */}
+              <motion.div 
+                animate={{ opacity: [0.2, 1, 0.2] }} 
+                transition={{ repeat: Infinity, duration: 0.8 }}
+                className="absolute right-4 w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_5px_#22c55e]" 
+              />
+            </motion.div>
+
+            <motion.div 
+              initial={{ clipPath: 'inset(0% -10% 100% -10%)', y: -20, opacity: 0.8 }}
+              animate={{ clipPath: 'inset(-10% -10% -10% -10%)', y: 0, opacity: 1 }}
+              exit={{ clipPath: 'inset(0% -10% 100% -10%)', y: -20, opacity: 0, transition: { duration: 0.3 } }}
+              transition={{ 
+                duration: 2.2, 
+                ease: "linear", 
+                opacity: { duration: 0.2 } 
+              }}
+              className="relative w-full flex flex-col -mt-2"
+            >
+            
+            {/* Tear-off Top Edge */}
+            <div style={{ height: '16px', backgroundSize: '24px 24px', backgroundImage: 'linear-gradient(-45deg, transparent 12px, #ffffff 0), linear-gradient(45deg, transparent 12px, #ffffff 0)' }} className="w-full absolute -top-[15px] left-0 right-0 z-10 drop-shadow-sm block dark:hidden" />
+            <div style={{ height: '16px', backgroundSize: '24px 24px', backgroundImage: 'linear-gradient(-45deg, transparent 12px, #0f172a 0), linear-gradient(45deg, transparent 12px, #0f172a 0)' }} className="w-full absolute -top-[15px] left-0 right-0 z-10 drop-shadow-sm hidden dark:block" />
+
+            {/* Receipt Body */}
+            <div className="bg-white dark:bg-slate-900 shadow-2xl overflow-hidden flex flex-col relative z-20">
+              
+              <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-start bg-slate-50 dark:bg-slate-800/50">
+                <div>
+                  <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+                    <FileText className="text-blue-500" size={24} /> Credit Receipt
+                  </h2>
+                  <p className="text-sm font-medium text-slate-500 mt-1">
+                    {selectedCreditForView.companyName} • {new Date(selectedCreditForView.createdAt?.toDate ? selectedCreditForView.createdAt.toDate() : selectedCreditForView.createdAt || Date.now()).toLocaleDateString('en-GB')}
+                    {selectedCreditForView.poNumber && ` • PO: ${selectedCreditForView.poNumber}`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {selectedCreditForView.poUrl && (
+                    <a 
+                      href={selectedCreditForView.poUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 mr-2"
+                    >
+                      <ImageIcon size={14} /> View Image
+                    </a>
+                  )}
+                  <button 
+                    onClick={() => setSelectedCreditForView(null)}
+                    className="p-2 text-slate-400 hover:text-slate-600 bg-white dark:bg-slate-800 rounded-full transition-colors shadow-sm"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="p-6 overflow-y-auto max-h-[60vh] space-y-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Company / Supplier</p>
+                    <p className="text-xl font-black text-slate-900 dark:text-white truncate" title={selectedCreditForView.companyName}>{selectedCreditForView.companyName}</p>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Date</p>
+                    <p className="text-xl font-black text-slate-900 dark:text-white">{new Date(selectedCreditForView.createdAt?.toDate ? selectedCreditForView.createdAt.toDate() : selectedCreditForView.createdAt || Date.now()).toLocaleDateString('en-GB')}</p>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Collection Date</p>
+                    <p className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                      {selectedCreditForView.collectionDate || "N/A"}
+                    </p>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Taxable</p>
+                    <p className="text-xl font-black text-slate-900 dark:text-white capitalize flex items-center gap-2">
+                      {selectedCreditForView.isTaxable ? 'Yes' : 'No'}
+                    </p>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Amount Due</p>
+                    <p className="text-xl font-black text-slate-900 dark:text-white">EGP {Number(selectedCreditForView.amountDue).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Tax Amount</p>
+                    <p className="text-xl font-black text-slate-900 dark:text-white">EGP {Number(selectedCreditForView.tax || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Invoice Number</p>
+                    <p className="text-xl font-black text-slate-900 dark:text-white truncate" title={selectedCreditForView.invoiceNumber || "N/A"}>{selectedCreditForView.invoiceNumber || "N/A"}</p>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">PO Number</p>
+                    <p className="text-xl font-black text-slate-900 dark:text-white truncate" title={selectedCreditForView.poNumber || "N/A"}>{selectedCreditForView.poNumber || "N/A"}</p>
+                  </div>
+                </div>
+
+            {selectedCreditForView.poUrl && (
+              <div className="mb-8">
+                <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 dark:border-slate-800 pb-2">Supplier Invoice / PO</h3>
+                <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm max-h-64 relative bg-slate-50 dark:bg-slate-900 flex justify-center items-center group">
+                  <img 
+                    src={selectedCreditForView.poUrl} 
+                    alt="Supplier Invoice" 
+                    className="object-contain max-h-64 w-full"
+                  />
+                  <a 
+                    href={selectedCreditForView.poUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold gap-2 w-full h-full"
+                  >
+                    <ImageIcon size={20} /> View Full Invoice
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {!selectedCreditForView.poUrl && (
+              <div className="mb-8 flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700">
+                <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 text-center">Missing Supplier Invoice / PO</h3>
+                <div className="bg-white p-3 rounded-2xl shadow-sm mb-4">
+                  <QRCode 
+                    value={`${typeof window !== 'undefined' ? window.location.origin : 'https://anh-zeta.vercel.app'}/cashier/upload-invoice/${selectedCreditForView.id}?type=credit`} 
+                    size={140}
+                    level="H"
+                  />
+                </div>
+                <p className="text-sm font-bold text-slate-500 text-center max-w-xs">
+                  Scan this QR code with your phone to quickly upload the missing invoice for this credit.
+                </p>
+              </div>
+            )}
+
+                <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4">Products / Items ({selectedCreditForView.items?.length || 0})</h3>
+                <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                  <table className="w-full text-sm text-left">
+                    <thead className="text-xs text-slate-500 bg-slate-50 dark:bg-slate-800/50 uppercase font-bold">
+                      <tr>
+                        <th className="px-4 py-3">Barcode</th>
+                        <th className="px-4 py-3">Description</th>
+                        <th className="px-4 py-3 text-center">Qty</th>
+                        <th className="px-4 py-3 text-right">Unit Price</th>
+                        <th className="px-4 py-3 text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedCreditForView.items?.map((item: any, idx: number) => (
+                        <tr key={idx} className="border-b border-slate-50 dark:border-slate-800/50 last:border-0 font-medium">
+                          <td className="px-4 py-3 text-slate-500">{item.barcode || item.code || "N/A"}</td>
+                          <td className="px-4 py-3 text-slate-900 dark:text-slate-300">{item.description || item.name || "N/A"}</td>
+                          <td className="px-4 py-3 text-center text-slate-900 dark:text-slate-300">{item.quantity}</td>
+                          <td className="px-4 py-3 text-right text-slate-900 dark:text-slate-300">{Number(item.price || item.unitPrice || 0).toFixed(2)}</td>
+                          <td className="px-4 py-3 text-right font-bold text-slate-900 dark:text-slate-300">{Number(item.total || (item.quantity * (item.price || item.unitPrice || 0))).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+              </div>
+              
+              <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3 mt-auto">
+                 <button onClick={() => {
+                    setSelectedCreditForPrint(selectedCreditForView);
+                    setTimeout(() => handlePrintPdf(selectedCreditForView), 100);
+                 }} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-6 py-3 rounded-xl font-bold transition-all disabled:opacity-50">
+                   {isPrinting ? <Loader2 size={18} className="animate-spin" /> : <Printer size={18} />}
+                   {isPrinting ? "Generating PDF..." : "Print All (Copy)"}
+                 </button>
+              </div>
+
+            </div>
+
+            {/* Tear-off Bottom Edge */}
+            <div style={{ height: '16px', backgroundSize: '24px 24px', backgroundImage: 'linear-gradient(45deg, transparent 12px, #ffffff 0), linear-gradient(-45deg, transparent 12px, #ffffff 0)' }} className="w-full absolute -bottom-[15px] left-0 right-0 z-10 drop-shadow-sm block dark:hidden" />
+            <div style={{ height: '16px', backgroundSize: '24px 24px', backgroundImage: 'linear-gradient(45deg, transparent 12px, #0f172a 0), linear-gradient(-45deg, transparent 12px, #0f172a 0)' }} className="w-full absolute -bottom-[15px] left-0 right-0 z-10 drop-shadow-sm hidden dark:block" />
+
+            </motion.div>
+          </div>
+        </div>
+      )}
+    </AnimatePresence>
+
     {selectedCreditForPrint && (
       <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
         <div id="print-credit-container" style={{ width: '794px', minHeight: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
@@ -2202,7 +2424,71 @@ export default function CreditsPage() {
       </div>
     )}
 
-    {/* Supplier Trust Profile Drawer */}
+    {selectedCreditForPrint && selectedCreditForPrint.items && selectedCreditForPrint.items.length > 0 && Array.from({ length: Math.ceil(selectedCreditForPrint.items.length / 22) }).map((_, pageIndex) => {
+      const itemsChunk = selectedCreditForPrint.items!.slice(pageIndex * 22, (pageIndex + 1) * 22);
+      const totalPages = Math.ceil(selectedCreditForPrint.items!.length / 22) + 1; // +1 for the main page
+      const currentPageNum = pageIndex + 2;
+
+      return (
+        <div key={`items-page-${pageIndex}`} style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+          <div id={`print-credit-items-page-${pageIndex}`} style={{ width: '794px', minHeight: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '20px 30px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #000', position: 'relative', zIndex: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <div style={{ width: '50px', height: '50px', border: '2px solid #000', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ fontSize: '30px', fontWeight: 'bold', color: '#000', lineHeight: 1 }}>K</span>
+                </div>
+                <div>
+                  <h1 style={{ fontSize: '20px', fontWeight: 'bold', color: '#000', margin: 0, textTransform: 'uppercase', letterSpacing: '-0.5px' }}>CIRCLE K EL-ALAMEIN 4</h1>
+                  <p style={{ fontSize: '12px', color: '#333', margin: '2px 0 0', fontWeight: 'bold' }}>CREDIT APPROVAL REPORT (ITEMS)</p>
+                </div>
+              </div>
+              <div style={{ textAlign: 'right', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', borderLeft: '1px solid #ccc', paddingLeft: '10px' }}>
+                  <span style={{ fontSize: '26px', fontWeight: 'bold', color: '#000' }} dir="rtl">ملحق الأصناف</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ padding: '20px 30px', flexGrow: 1 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000', textAlign: 'left', fontSize: '11px', fontFamily: 'monospace' }}>
+                <thead style={{ backgroundColor: '#f0f0f0', borderBottom: '2px solid #000' }}>
+                  <tr>
+                    <th style={{ padding: '8px', borderRight: '1px solid #000', width: '5%' }}>#</th>
+                    <th style={{ padding: '8px', borderRight: '1px solid #000', width: '25%' }}>Barcode</th>
+                    <th style={{ padding: '8px', borderRight: '1px solid #000', width: '40%' }}>Description</th>
+                    <th style={{ padding: '8px', borderRight: '1px solid #000', width: '10%', textAlign: 'center' }}>Qty</th>
+                    <th style={{ padding: '8px', borderRight: '1px solid #000', width: '10%', textAlign: 'right' }}>Price</th>
+                    <th style={{ padding: '8px', width: '10%', textAlign: 'right' }}>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {itemsChunk.map((item: any, idx: number) => {
+                    const globalIdx = pageIndex * 22 + idx + 1;
+                    return (
+                      <tr key={idx} style={{ borderBottom: '1px solid #ccc' }}>
+                        <td style={{ padding: '6px 8px', borderRight: '1px solid #000', textAlign: 'center' }}>{globalIdx}</td>
+                        <td style={{ padding: '6px 8px', borderRight: '1px solid #000' }}>{item.barcode || item.code || "-"}</td>
+                        <td style={{ padding: '6px 8px', borderRight: '1px solid #000', fontWeight: 'bold' }}>{item.description || item.name || "-"}</td>
+                        <td style={{ padding: '6px 8px', borderRight: '1px solid #000', textAlign: 'center' }}>{item.quantity}</td>
+                        <td style={{ padding: '6px 8px', borderRight: '1px solid #000', textAlign: 'right' }}>{Number(item.price || item.unitPrice || 0).toFixed(2)}</td>
+                        <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 'bold' }}>{Number(item.total || (item.quantity * (item.price || item.unitPrice || 0))).toFixed(2)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div style={{ marginTop: 'auto', marginBottom: '20px', marginLeft: '30px', marginRight: '30px', borderTop: '2px solid #000', paddingTop: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <p style={{ fontSize: '8px', color: '#333', fontFamily: 'monospace', margin: 0, letterSpacing: '0.5px', fontWeight: 'bold' }}>
+                CREDIT ID: {selectedCreditForPrint.id} | PRINTED: {new Date().toLocaleString()}
+              </p>
+              <p style={{ fontSize: '10px', fontWeight: 'bold', color: '#000' }}>PAGE {currentPageNum} OF {totalPages}</p>
+            </div>
+          </div>
+        </div>
+      );
+    })}
     <AnimatePresence>
       {selectedSupplierData && (
         <>

@@ -3,7 +3,7 @@ import { adminDb, adminStorage } from "@/lib/firebaseAdmin";
 
 export async function POST(req: Request) {
   try {
-    const { paymentId, invoiceDataUrl } = await req.json();
+    const { paymentId, invoiceDataUrl, type } = await req.json();
 
     if (!invoiceDataUrl || !paymentId) {
       return NextResponse.json({ error: "Missing invoiceDataUrl or paymentId" }, { status: 400 });
@@ -13,9 +13,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Firebase Admin not initialized" }, { status: 500 });
     }
 
+    const collectionName = type === "credit" ? "credits" : "cash_payments";
+    const updateField = type === "credit" ? { poUrl: invoiceDataUrl } : { invoiceUrl: invoiceDataUrl };
+
     // Update Firestore document directly with the compressed base64 string
-    await adminDb.collection("cash_payments").doc(paymentId).update({
-      invoiceUrl: invoiceDataUrl,
+    await adminDb.collection(collectionName).doc(paymentId).update({
+      ...updateField,
       updatedAt: new Date().toISOString()
     });
 
@@ -29,6 +32,7 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const paymentId = searchParams.get("paymentId");
+  const type = searchParams.get("type");
   
   if (!paymentId) return NextResponse.json({ error: "Missing paymentId" }, { status: 400 });
 
@@ -37,9 +41,16 @@ export async function GET(req: Request) {
   }
   
   try {
-    const docSnap = await adminDb.collection("cash_payments").doc(paymentId).get();
+    const collectionName = type === "credit" ? "credits" : "cash_payments";
+    const docSnap = await adminDb.collection(collectionName).doc(paymentId).get();
+    
     if (docSnap.exists) {
-      return NextResponse.json(docSnap.data());
+      const data = docSnap.data();
+      // Normalize returned data so frontend can just check `invoiceUrl`
+      if (type === "credit" && data?.poUrl) {
+        return NextResponse.json({ ...data, invoiceUrl: data.poUrl });
+      }
+      return NextResponse.json(data);
     } else {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
