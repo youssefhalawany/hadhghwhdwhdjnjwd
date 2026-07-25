@@ -5,6 +5,8 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { Camera, CheckCircle, UploadCloud, X, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import ReactCrop, { type Crop, type PixelCrop } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
 
 function UploadInvoiceContent() {
   const { id } = useParams() as { id: string };
@@ -18,6 +20,13 @@ function UploadInvoiceContent() {
   const [progress, setProgress] = useState(0);
   const [success, setSuccess] = useState(false);
   const [paymentInfo, setPaymentInfo] = useState<any>(null);
+
+  // Cropper State
+  const [croppingImageSrc, setCroppingImageSrc] = useState<string | null>(null);
+  const [crop, setCrop] = useState<Crop>();
+  const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
+  const [isEnhancing, setIsEnhancing] = useState(true);
+  const imgRef = useRef<HTMLImageElement>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -42,30 +51,75 @@ function UploadInvoiceContent() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
-      
       const reader = new FileReader();
       reader.onloadend = () => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement("canvas");
-          const MAX_WIDTH = 800;
-          let scaleSize = 1;
-          if (img.width > MAX_WIDTH) {
-            scaleSize = MAX_WIDTH / img.width;
-          }
-          canvas.width = img.width * scaleSize;
-          canvas.height = img.height * scaleSize;
-          
-          const ctx = canvas.getContext("2d");
-          ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-          
-          const dataUrl = canvas.toDataURL("image/jpeg", 0.6);
-          setCompressedDataUrls(prev => [...prev, dataUrl]);
-        };
-        img.src = reader.result as string;
+        setCroppingImageSrc(reader.result as string);
+        // Reset crop state
+        setCrop(undefined);
+        setCompletedCrop(undefined);
       };
       reader.readAsDataURL(selectedFile);
+      // clear input so same file can be selected again
+      e.target.value = '';
     }
+  };
+
+  const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const { width, height } = e.currentTarget;
+    // Default crop: 10% margin from edges
+    const defaultCrop = {
+      unit: '%' as const,
+      x: 5,
+      y: 5,
+      width: 90,
+      height: 90
+    };
+    setCrop(defaultCrop);
+  };
+
+  const handleApplyCrop = () => {
+    if (!completedCrop || !imgRef.current || !croppingImageSrc) return;
+
+    const canvas = document.createElement('canvas');
+    const img = imgRef.current;
+    
+    // Calculate scale factor since image is displayed scaled down
+    const scaleX = img.naturalWidth / img.width;
+    const scaleY = img.naturalHeight / img.height;
+
+    canvas.width = completedCrop.width * scaleX;
+    canvas.height = completedCrop.height * scaleY;
+    const ctx = canvas.getContext('2d');
+    
+    if (!ctx) return;
+
+    // Optional: apply scanner-like enhancement (grayscale + contrast)
+    if (isEnhancing) {
+      ctx.filter = 'grayscale(100%) contrast(150%) brightness(110%)';
+    }
+
+    ctx.drawImage(
+      img,
+      completedCrop.x * scaleX,
+      completedCrop.y * scaleY,
+      completedCrop.width * scaleX,
+      completedCrop.height * scaleY,
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
+    // Compress it
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+    setCompressedDataUrls(prev => [...prev, dataUrl]);
+    
+    // Close cropper
+    setCroppingImageSrc(null);
+  };
+
+  const handleCancelCrop = () => {
+    setCroppingImageSrc(null);
   };
 
   const handleUpload = async () => {
@@ -150,14 +204,53 @@ function UploadInvoiceContent() {
           onChange={handleFileChange}
         />
         
-        {compressedDataUrls.length === 0 ? (
+        {croppingImageSrc ? (
+          <div className="flex-1 flex flex-col h-full bg-slate-900 absolute inset-0 z-50">
+            <div className="p-4 bg-slate-950 flex justify-between items-center border-b border-white/10">
+              <button onClick={handleCancelCrop} className="text-slate-400 hover:text-white px-3 py-1 font-bold">Cancel</button>
+              <h2 className="text-white font-bold text-sm tracking-widest uppercase">Scanner Crop</h2>
+              <button onClick={handleApplyCrop} className="text-indigo-400 hover:text-indigo-300 px-3 py-1 font-bold">Done</button>
+            </div>
+            
+            <div className="bg-slate-900 py-3 px-4 flex justify-center items-center border-b border-white/10 gap-3">
+              <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Enhance Document (B&W)</span>
+              <button 
+                onClick={() => setIsEnhancing(!isEnhancing)}
+                className={`w-12 h-6 rounded-full transition-colors relative ${isEnhancing ? 'bg-emerald-500' : 'bg-slate-700'}`}
+              >
+                <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-all ${isEnhancing ? 'left-7' : 'left-1'}`} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-hidden flex items-center justify-center p-4">
+              <ReactCrop
+                crop={crop}
+                onChange={(c) => setCrop(c)}
+                onComplete={(c) => setCompletedCrop(c)}
+                className="max-h-full max-w-full outline-none"
+              >
+                <img 
+                  ref={imgRef}
+                  src={croppingImageSrc}
+                  onLoad={onImageLoad}
+                  alt="Crop preview"
+                  className="max-h-[70vh] object-contain"
+                  style={{ filter: isEnhancing ? 'grayscale(100%) contrast(150%) brightness(110%)' : 'none' }}
+                />
+              </ReactCrop>
+            </div>
+            <div className="p-4 bg-slate-950 text-center text-xs text-slate-500 pb-8">
+              Drag corners to fit the edges of your document.
+            </div>
+          </div>
+        ) : compressedDataUrls.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center">
             <button 
               onClick={() => fileInputRef.current?.click()}
               className="w-48 h-48 rounded-full bg-indigo-500/10 border-4 border-indigo-500/30 flex flex-col items-center justify-center gap-4 hover:bg-indigo-500/20 active:scale-95 transition-all duration-200"
             >
               <Camera className="h-16 w-16 text-indigo-400" />
-              <span className="text-indigo-300 font-bold tracking-widest uppercase">Take Photo</span>
+              <span className="text-indigo-300 font-bold tracking-widest uppercase">Scan Document</span>
             </button>
             <p className="text-slate-400 text-center mt-8 px-4 leading-relaxed">
               Scan the original paper invoice. Make sure it is clear and well-lit.

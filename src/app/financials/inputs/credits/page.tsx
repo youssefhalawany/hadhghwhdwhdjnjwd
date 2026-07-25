@@ -217,6 +217,26 @@ export default function CreditsPage() {
   const [simulatorCash, setSimulatorCash] = useState<string>("");
   const [selectedSupplierProfile, setSelectedSupplierProfile] = useState<string | null>(null);
 
+  // Bulk Print State
+  const [selectedBulkItems, setSelectedBulkItems] = useState<Set<string>>(new Set());
+  const [isGeneratingBulkPDF, setIsGeneratingBulkPDF] = useState(false);
+  const [bulkCreditsForPrint, setBulkCreditsForPrint] = useState<any[]>([]);
+
+  const handleSelectBulkItem = (id: string) => {
+    const newSet = new Set(selectedBulkItems);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setSelectedBulkItems(newSet);
+  };
+
+  const handleSelectAllBulkItems = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedBulkItems(new Set(filteredCredits.map((c) => c.id)));
+    } else {
+      setSelectedBulkItems(new Set());
+    }
+  };
+
   // Credit Form
   const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -903,6 +923,75 @@ export default function CreditsPage() {
     }, 500);
   };
 
+  const generateBulkPDF = async () => {
+    if (selectedBulkItems.size === 0) return;
+    setIsGeneratingBulkPDF(true);
+    
+    // Gather all selected credits
+    const creditsToPrint = filteredCredits.filter(c => selectedBulkItems.has(c.id));
+    setBulkCreditsForPrint(creditsToPrint);
+    
+    // Give React a moment to render the hidden bulk layout
+    setTimeout(async () => {
+      try {
+        const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        
+        // Render Cover Page
+        const coverPage = document.getElementById("pdf-bulk-cover-credits");
+        if (coverPage) {
+          coverPage.style.left = "0";
+          const canvas = await html2canvas(coverPage, { scale: 2, useCORS: true });
+          const imgData = canvas.toDataURL("image/png");
+          const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+          pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+          coverPage.style.left = "-9999px";
+        }
+        
+        // Render each credit
+        for (let i = 0; i < creditsToPrint.length; i++) {
+          const c = creditsToPrint[i];
+          const pageId = `pdf-bulk-credit-${c.id}`;
+          const page1 = document.getElementById(pageId);
+          if (page1) {
+            page1.style.left = "0";
+            const canvas1 = await html2canvas(page1, { scale: 2, useCORS: true });
+            const imgData1 = canvas1.toDataURL("image/png");
+            const pdfHeight1 = (canvas1.height * pdfWidth) / canvas1.width;
+            pdf.addPage();
+            pdf.addImage(imgData1, "PNG", 0, 0, pdfWidth, pdfHeight1);
+            page1.style.left = "-9999px";
+          }
+          
+          // Render invoices for this credit
+          const invoiceUrls = c.invoiceUrls && c.invoiceUrls.length > 0 ? c.invoiceUrls : (c.invoiceUrl ? [c.invoiceUrl] : []);
+          for (let j = 0; j < invoiceUrls.length; j++) {
+            const invPage = document.getElementById(`pdf-bulk-credit-${c.id}-invoice-${j}`);
+            if (invPage) {
+              invPage.style.left = "0";
+              const canvasInv = await html2canvas(invPage, { scale: 2, useCORS: true });
+              const imgDataInv = canvasInv.toDataURL("image/png");
+              const pdfHeightInv = (canvasInv.height * pdfWidth) / canvasInv.width;
+              pdf.addPage();
+              pdf.addImage(imgDataInv, "PNG", 0, 0, pdfWidth, pdfHeightInv);
+              invPage.style.left = "-9999px";
+            }
+          }
+        }
+        
+        pdf.save(`Bulk_Credits_Report_${new Date().getTime()}.pdf`);
+        toast.success("Bulk PDF generated successfully!");
+      } catch (err) {
+        toast.error("Error generating bulk PDF.");
+        console.error(err);
+      } finally {
+        setIsGeneratingBulkPDF(false);
+        setBulkCreditsForPrint([]); // clear
+        setSelectedBulkItems(new Set()); // clear selection
+      }
+    }, 1000); // 1000ms for react to render
+  };
+
   // Derived Stats
   const stats = useMemo(() => {
     let outstanding = 0;
@@ -1321,6 +1410,47 @@ export default function CreditsPage() {
           </div>
 
         {/* Credits Data View */}
+        {selectedBulkItems.size > 0 && (
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-4 mb-4">
+            <div className="flex items-center gap-3 text-blue-700">
+              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center font-bold">
+                {selectedBulkItems.size}
+              </div>
+              <span className="font-bold text-sm">Credits Selected</span>
+            </div>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setSelectedBulkItems(new Set())}
+                className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
+              >
+                Clear
+              </button>
+              <button 
+                onClick={generateBulkPDF}
+                disabled={isGeneratingBulkPDF}
+                className="px-5 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm transition-colors flex items-center gap-2"
+              >
+                {isGeneratingBulkPDF ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer size={16} />}
+                {isGeneratingBulkPDF ? 'Generating...' : 'Bulk Print PDF'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {viewMode === 'list' && (
+          <div className="flex items-center gap-3 px-2 mb-2">
+            <input 
+              type="checkbox" 
+              className="w-5 h-5 rounded text-blue-600 cursor-pointer"
+              checked={filteredCredits.length > 0 && selectedBulkItems.size === filteredCredits.length}
+              onChange={handleSelectAllBulkItems}
+            />
+            <h2 className="text-sm font-black text-slate-500 uppercase tracking-wider">
+              Select All ({filteredCredits.length})
+            </h2>
+          </div>
+        )}
+
         {viewMode === 'list' ? (
           <div className="space-y-4">
           <AnimatePresence>
@@ -1348,14 +1478,20 @@ export default function CreditsPage() {
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ duration: 0.2, delay: idx * 0.05 }}
                   key={credit.id} 
-                  className="bg-white border border-slate-200/60 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden group"
+                  className={`bg-white border rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden group ${selectedBulkItems.has(credit.id) ? 'border-blue-400 ring-1 ring-blue-400' : 'border-slate-200/60'}`}
                 >
                   {/* Row Summary */}
                   <div className="p-4 md:p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative">
                     
                     {/* Left: Avatar + Details */}
                     <div className="flex items-center gap-4 flex-1">
-                      <div className={`w-12 h-12 rounded-full border flex items-center justify-center font-black text-lg tracking-tight ${avatarColor}`}>
+                      <input 
+                        type="checkbox" 
+                        checked={selectedBulkItems.has(credit.id)}
+                        onChange={() => handleSelectBulkItem(credit.id)}
+                        className="w-5 h-5 rounded text-blue-600 cursor-pointer mr-2 flex-shrink-0"
+                      />
+                      <div className={`w-12 h-12 rounded-full border flex items-center justify-center font-black text-lg tracking-tight flex-shrink-0 ${avatarColor}`}>
                         {initials}
                       </div>
                       <div>
@@ -2634,6 +2770,152 @@ export default function CreditsPage() {
         </>
       )}
     </AnimatePresence>
+
+      {/* Hidden Bulk Print Render Container for Credits */}
+      {bulkCreditsForPrint.length > 0 && (
+        <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+          {/* Cover Page */}
+          <div id="pdf-bulk-cover-credits" style={{ width: '794px', minHeight: '1123px', backgroundColor: '#ffffff', padding: '40px', fontFamily: 'Arial, sans-serif' }}>
+            <div style={{ textAlign: 'center', marginBottom: '40px', borderBottom: '2px solid #000', paddingBottom: '20px' }}>
+              <h1 style={{ fontSize: '32px', fontWeight: 'bold', margin: '0 0 10px 0', textTransform: 'uppercase' }}>BULK CREDITS EXPORT</h1>
+              <p style={{ fontSize: '16px', color: '#666', margin: 0 }}>Generated: {new Date().toLocaleString()}</p>
+            </div>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '40px', padding: '20px', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+              <div>
+                <p style={{ fontSize: '12px', color: '#666', textTransform: 'uppercase', margin: '0 0 5px 0' }}>Total Credits Included</p>
+                <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{bulkCreditsForPrint.length}</p>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <p style={{ fontSize: '12px', color: '#666', textTransform: 'uppercase', margin: '0 0 5px 0' }}>Total Outstanding Due</p>
+                <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0, color: '#eab308' }}>
+                  EGP {bulkCreditsForPrint.reduce((acc, c) => acc + (c.amountDue + c.tax - c.paidAmount), 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                </p>
+              </div>
+            </div>
+
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#f3f4f6', borderBottom: '2px solid #d1d5db' }}>
+                  <th style={{ padding: '10px', textAlign: 'left' }}>#</th>
+                  <th style={{ padding: '10px', textAlign: 'left' }}>Date</th>
+                  <th style={{ padding: '10px', textAlign: 'left' }}>Supplier</th>
+                  <th style={{ padding: '10px', textAlign: 'left' }}>Ref (Inv / PO)</th>
+                  <th style={{ padding: '10px', textAlign: 'right' }}>Status</th>
+                  <th style={{ padding: '10px', textAlign: 'right' }}>Total</th>
+                  <th style={{ padding: '10px', textAlign: 'right' }}>Remaining</th>
+                </tr>
+              </thead>
+              <tbody>
+                {bulkCreditsForPrint.map((c, idx) => {
+                   const total = c.amountDue + c.tax;
+                   const remaining = total - c.paidAmount;
+                   return (
+                  <tr key={c.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                    <td style={{ padding: '10px' }}>{idx + 1}</td>
+                    <td style={{ padding: '10px' }}>{c.date}</td>
+                    <td style={{ padding: '10px', fontWeight: 'bold' }}>{c.companyName}</td>
+                    <td style={{ padding: '10px' }}>{c.invoiceNumber || c.poNumber || '-'}</td>
+                    <td style={{ padding: '10px', textAlign: 'right', textTransform: 'uppercase' }}>{c.status}</td>
+                    <td style={{ padding: '10px', textAlign: 'right', fontWeight: 'bold' }}>
+                      {total.toLocaleString(undefined, {minimumFractionDigits: 2})}
+                    </td>
+                    <td style={{ padding: '10px', textAlign: 'right', fontWeight: 'bold', color: remaining > 0 ? '#dc2626' : '#16a34a' }}>
+                      {remaining.toLocaleString(undefined, {minimumFractionDigits: 2})}
+                    </td>
+                  </tr>
+                )})}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Render individual credits & their invoices */}
+          {bulkCreditsForPrint.map((c) => {
+            const urls = c.invoiceUrls && c.invoiceUrls.length > 0 
+              ? c.invoiceUrls 
+              : (c.invoiceUrl ? [c.invoiceUrl] : []);
+
+            return (
+              <div key={`bulk-cred-${c.id}`}>
+                <div id={`pdf-bulk-credit-${c.id}`} style={{ width: '794px', minHeight: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ position: 'absolute', top: '15px', right: '15px', border: '1px solid #ccc', padding: '5px', fontSize: '10px', fontWeight: 'bold', color: '#666', zIndex: 50, backgroundColor: '#fff' }}>
+                    BULK PRINT: REF {c.id.substring(0, 8)}
+                  </div>
+                  {/* Standard Receipt Header */}
+                  <div style={{ padding: '20px 30px 10px', display: 'flex', justifyItems: 'space-between', alignItems: 'center', borderBottom: '2px solid #000', position: 'relative', zIndex: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                      <div style={{ width: '50px', height: '50px', border: '2px solid #000', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span style={{ fontSize: '30px', fontWeight: 'bold', color: '#000', lineHeight: 1 }}>K</span>
+                      </div>
+                      <div>
+                        <h1 style={{ fontSize: '20px', fontWeight: 'bold', color: '#000', margin: 0, textTransform: 'uppercase', letterSpacing: '-0.5px' }}>CIRCLE K EL-ALAMEIN 4</h1>
+                        <p style={{ fontSize: '12px', color: '#333', margin: '2px 0 0', fontWeight: 'bold' }}>CREDIT INVOICE RECORD</p>
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right', display: 'flex', gap: '10px', alignItems: 'center', marginLeft: 'auto' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', borderLeft: '1px solid #ccc', paddingLeft: '10px' }}>
+                        <span style={{ fontSize: '26px', fontWeight: 'bold', color: '#000' }} dir="rtl">إشعار آجل</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Body ... we will reuse a simplified version of the receipt layout */}
+                  <div style={{ padding: '20px 30px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+                       <div>
+                         <p style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase', margin: '0 0 5px 0' }}>Supplier Name / المورد</p>
+                         <p style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>{c.companyName}</p>
+                       </div>
+                       <div style={{ textAlign: 'right' }}>
+                         <p style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase', margin: '0 0 5px 0' }}>Date / التاريخ</p>
+                         <p style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>{c.date}</p>
+                       </div>
+                    </div>
+                    
+                    <div style={{ backgroundColor: '#f9f9f9', padding: '15px', border: '1px solid #ccc', borderRadius: '8px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between' }}>
+                       <div>
+                         <p style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase', margin: '0 0 5px 0' }}>Invoice Value / القيمة</p>
+                         <p style={{ fontSize: '16px', fontWeight: 'bold', margin: 0, fontFamily: 'monospace' }}>EGP {Number(c.amountDue).toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+                       </div>
+                       <div>
+                         <p style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase', margin: '0 0 5px 0' }}>Tax / الضريبة</p>
+                         <p style={{ fontSize: '16px', fontWeight: 'bold', margin: 0, fontFamily: 'monospace' }}>EGP {Number(c.tax || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+                       </div>
+                       <div style={{ textAlign: 'right' }}>
+                         <p style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase', margin: '0 0 5px 0' }}>Total Due / الإجمالي المستحق</p>
+                         <p style={{ fontSize: '20px', fontWeight: 'bold', margin: 0, color: '#eab308', fontFamily: 'monospace' }}>EGP {(Number(c.amountDue) + Number(c.tax || 0)).toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                {urls.map((url: string, index: number) => (
+                  <div key={`bulk-cred-${c.id}-invoice-${index}`} id={`pdf-bulk-credit-${c.id}-invoice-${index}`} style={{ width: '794px', height: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', padding: '40px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #000', paddingBottom: '20px', marginBottom: '30px' }}>
+                      <div>
+                        <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#000', margin: 0, textTransform: 'uppercase' }}>Supplier Invoice {urls.length > 1 ? `(Page ${index + 1})` : ''}</h1>
+                        <p style={{ fontSize: '14px', color: '#666', margin: '5px 0 0' }}>Inv: {c.invoiceNumber || 'N/A'}</p>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#000', margin: 0 }}>مرفق الفاتورة</h1>
+                        <p style={{ fontSize: '14px', color: '#666', margin: '5px 0 0' }}>{c.companyName}</p>
+                      </div>
+                    </div>
+
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed #ccc', borderRadius: '12px', padding: '20px', backgroundColor: '#fafafa' }}>
+                      <img 
+                        src={url} 
+                        alt={`Supplier Invoice Full Page ${index + 1}`} 
+                        style={{ maxHeight: '900px', maxWidth: '100%', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
     </>
   );
