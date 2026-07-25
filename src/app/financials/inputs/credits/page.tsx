@@ -121,6 +121,11 @@ interface Credit {
   poImageUrl?: string;
   supplierRepName?: string;
   supplierNationalId?: string;
+  invoiceUrl?: string;
+  invoiceUrls?: string[];
+  poUrl?: string;
+  poUrls?: string[];
+  date?: string;
 }
 
 // --- Sortable Item for Kanban Board ---
@@ -879,9 +884,9 @@ export default function CreditsPage() {
           page1.style.left = "-9999px";
         }
 
-        const invoiceUrls = selectedCreditForPrint.poUrls && selectedCreditForPrint.poUrls.length > 0 
+        const invoiceUrls = selectedCreditForPrint?.poUrls && selectedCreditForPrint.poUrls.length > 0 
           ? selectedCreditForPrint.poUrls 
-          : (selectedCreditForPrint.poUrl ? [selectedCreditForPrint.poUrl] : []);
+          : (selectedCreditForPrint?.poUrl ? [selectedCreditForPrint.poUrl] : []);
 
         for (let i = 0; i < invoiceUrls.length; i++) {
           const pageInvoice = document.getElementById(`print-credit-invoice-page-${i}`);

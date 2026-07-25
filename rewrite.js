@@ -1,4 +1,5 @@
-
+const fs = require('fs');
+const content = `
 "use client";
 
 import React, { useState, useRef, useEffect, Suspense, useCallback } from 'react';
@@ -44,7 +45,7 @@ function UploadInvoiceContent() {
   useEffect(() => {
     const fetchPayment = async () => {
       try {
-        const res = await fetch(`/api/upload-invoice?paymentId=${id}&type=${type}`);
+        const res = await fetch(\`/api/upload-invoice?paymentId=\${id}&type=\${type}\`);
         if (res.ok) {
           const data = await res.json();
           setPaymentInfo(data);
@@ -137,10 +138,10 @@ function UploadInvoiceContent() {
     ctx.fillRect(0, canvas.height - 120, canvas.width, 120);
     
     ctx.fillStyle = "#10b981";
-    ctx.font = `bold ${Math.max(24, Math.floor(canvas.height * 0.03))}px monospace`;
+    ctx.font = \`bold \${Math.max(24, Math.floor(canvas.height * 0.03))}px monospace\`;
     const dateStr = new Date().toLocaleString();
-    const locStr = location ? `GPS: ${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}` : `GPS: Location Denied`;
-    const userStr = `Cashier: ${paymentInfo?.createdBy || 'System'} | ID: ${id.substring(0,8)}`;
+    const locStr = location ? \`GPS: \${location.lat.toFixed(6)}, \${location.lng.toFixed(6)}\` : \`GPS: Location Denied\`;
+    const userStr = \`Cashier: \${paymentInfo?.createdBy || 'System'} | ID: \${id.substring(0,8)}\`;
     
     ctx.fillText(dateStr, 30, canvas.height - 80);
     ctx.fillText(locStr, 30, canvas.height - 30);
@@ -322,7 +323,7 @@ function UploadInvoiceContent() {
                     <button
                       key={device.deviceId}
                       onClick={() => startCamera(device.deviceId)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-bold backdrop-blur-md transition-all ${selectedDeviceId === device.deviceId ? 'bg-indigo-500 text-white' : 'bg-black/50 text-slate-300 border border-white/20'}`}
+                      className={\`px-3 py-1.5 rounded-full text-xs font-bold backdrop-blur-md transition-all \${selectedDeviceId === device.deviceId ? 'bg-indigo-500 text-white' : 'bg-black/50 text-slate-300 border border-white/20'}\`}
                     >
                       Lens {idx + 1}
                     </button>
@@ -346,10 +347,10 @@ function UploadInvoiceContent() {
                      borderColor: isAligned ? '#10b981' : '#f59e0b',
                      boxShadow: isAligned ? '0 0 40px rgba(16, 185, 129, 0.4) inset' : '0 0 20px rgba(245, 158, 11, 0.2) inset' 
                    }}>
-                <div className={`w-16 h-16 rounded-full border-4 flex items-center justify-center transition-all duration-500 ${isAligned ? 'border-emerald-500 scale-110' : 'border-amber-500 scale-100'}`}>
+                <div className={\`w-16 h-16 rounded-full border-4 flex items-center justify-center transition-all duration-500 \${isAligned ? 'border-emerald-500 scale-110' : 'border-amber-500 scale-100'}\`}>
                   {isAligned ? <CheckCircle className="w-8 h-8 text-emerald-500" /> : <Maximize className="w-8 h-8 text-amber-500" />}
                 </div>
-                <p className={`mt-4 font-bold text-sm tracking-widest uppercase transition-all duration-500 ${isAligned ? 'text-emerald-400' : 'text-amber-400'}`}>
+                <p className={\`mt-4 font-bold text-sm tracking-widest uppercase transition-all duration-500 \${isAligned ? 'text-emerald-400' : 'text-amber-400'}\`}>
                   {isAligned ? 'Aligned - Ready to Capture' : 'Align Document Edges'}
                 </p>
               </div>
@@ -358,9 +359,9 @@ function UploadInvoiceContent() {
             <div className="h-32 bg-black flex items-center justify-center relative z-20 pb-6">
               <button 
                 onClick={handleCapture}
-                className={`w-20 h-20 rounded-full border-4 flex items-center justify-center transition-all active:scale-95 ${isAligned ? 'bg-emerald-500/20 border-emerald-500' : 'bg-white/10 border-white/50 hover:bg-white/20'}`}
+                className={\`w-20 h-20 rounded-full border-4 flex items-center justify-center transition-all active:scale-95 \${isAligned ? 'bg-emerald-500/20 border-emerald-500' : 'bg-white/10 border-white/50 hover:bg-white/20'}\`}
               >
-                <div className={`w-16 h-16 rounded-full ${isAligned ? 'bg-emerald-500' : 'bg-white'}`} />
+                <div className={\`w-16 h-16 rounded-full \${isAligned ? 'bg-emerald-500' : 'bg-white'}\`} />
               </button>
             </div>
           </div>
@@ -376,9 +377,9 @@ function UploadInvoiceContent() {
               <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Enhance Document (B&W)</span>
               <button 
                 onClick={() => setIsEnhancing(!isEnhancing)}
-                className={`w-12 h-6 rounded-full transition-colors relative ${isEnhancing ? 'bg-emerald-500' : 'bg-slate-700'}`}
+                className={\`w-12 h-6 rounded-full transition-colors relative \${isEnhancing ? 'bg-emerald-500' : 'bg-slate-700'}\`}
               >
-                <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-all ${isEnhancing ? 'left-7' : 'left-1'}`} />
+                <div className={\`w-4 h-4 rounded-full bg-white absolute top-1 transition-all \${isEnhancing ? 'left-7' : 'left-1'}\`} />
               </button>
             </div>
 
@@ -428,7 +429,7 @@ function UploadInvoiceContent() {
             <div className="flex-1 overflow-y-auto pr-2 pb-4 flex flex-col gap-4">
               {compressedDataUrls.map((url, idx) => (
                 <div key={idx} className="relative rounded-2xl overflow-hidden border border-white/10 bg-slate-900 shrink-0" style={{ height: '300px' }}>
-                  <img src={url} alt={`Page ${idx + 1}`} className="w-full h-full object-contain" />
+                  <img src={url} alt={\`Page \${idx + 1}\`} className="w-full h-full object-contain" />
                   <div className="absolute top-3 left-3 bg-black/60 px-3 py-1 rounded-full text-white text-xs font-bold tracking-wider">
                     PAGE {idx + 1}
                   </div>
@@ -487,3 +488,6 @@ export default function MobileUploadInvoicePage() {
     </Suspense>
   );
 }
+`
+fs.writeFileSync('src/app/cashier/upload-invoice/[id]/page.tsx', content);
+console.log('Successfully rewrote upload-invoice/[id]/page.tsx');
