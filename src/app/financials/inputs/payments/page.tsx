@@ -5,11 +5,11 @@ import QRCodeLib from "qrcode";
 function numberToArabicWords(num: number): string {
   num = Math.floor(num);
   if (num === 0) return "صفر";
-  
+
   const ones = ["", "واحد", "اثنان", "ثلاثة", "أربعة", "خمسة", "ستة", "سبعة", "ثمانية", "تسعة", "عشرة", "أحد عشر", "اثنا عشر", "ثلاثة عشر", "أربعة عشر", "خمسة عشر", "ستة عشر", "سبعة عشر", "ثمانية عشر", "تسعة عشر"];
   const tens = ["", "", "عشرون", "ثلاثون", "أربعون", "خمسون", "ستون", "سبعون", "ثمانون", "تسعون"];
   const hundreds = ["", "مائة", "مائتان", "ثلاثمائة", "أربعمائة", "خمسمائة", "ستمائة", "سبعمائة", "ثمانمائة", "تسعمائة"];
-  
+
   function getBelow100(n: number): string {
     if (n < 20) return ones[n];
     const t = Math.floor(n / 10);
@@ -17,7 +17,7 @@ function numberToArabicWords(num: number): string {
     if (o === 0) return tens[t];
     return ones[o] + " و" + tens[t];
   }
-  
+
   function getBelow1000(n: number): string {
     const h = Math.floor(n / 100);
     const rest = n % 100;
@@ -26,36 +26,36 @@ function numberToArabicWords(num: number): string {
     if (rest === 0) return hText;
     return hText + " و" + getBelow100(rest);
   }
-  
+
   const thousands = Math.floor(num / 1000);
   const remainder = num % 1000;
-  
+
   let result = "";
-  
+
   if (thousands > 0) {
     if (thousands === 1) result += "ألف";
     else if (thousands === 2) result += "ألفان";
     else if (thousands >= 3 && thousands <= 10) result += getBelow100(thousands) + " آلاف";
     else result += getBelow1000(thousands) + " ألف";
   }
-  
+
   if (remainder > 0) {
     if (result !== "") result += " و";
     result += getBelow1000(remainder);
   }
-  
+
   return result;
 }
 
 import React, { useState, useEffect, useMemo } from "react";
 import { db, auth, storage } from "@/lib/firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { 
-  collection, 
-  addDoc, 
-  getDocs, 
-  query, 
-  orderBy, 
+import {
+  collection,
+  addDoc,
+  getDocs,
+  query,
+  orderBy,
   serverTimestamp,
   deleteDoc,
   doc,
@@ -65,9 +65,9 @@ import {
   updateDoc,
   onSnapshot
 } from "firebase/firestore";
-import { 
-  Plus, 
-  Download, 
+import {
+  Plus,
+  Download,
   Trash2,
   Search,
   Loader2,
@@ -109,12 +109,12 @@ const compressImage = (file: File, maxWidth: number = 1500, quality: number = 0.
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        
+
         if (width > maxWidth) {
           height = Math.round((height * maxWidth) / width);
           width = maxWidth;
         }
-        
+
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d');
@@ -163,11 +163,11 @@ export default function PaymentsRedesignPage() {
 
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  
+
   // Data state
   const [payments, setPayments] = useState<any[]>([]);
   const [suppliers, setSuppliers] = useState<{ id: string; name: string }[]>([]);
-  
+
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
   const [monthFilter, setMonthFilter] = useState(() => {
@@ -217,7 +217,7 @@ export default function PaymentsRedesignPage() {
   // Modal State
   const [showAddModal, setShowAddModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  
+
   // Form State
   const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [method, setMethod] = useState("cash");
@@ -234,9 +234,9 @@ export default function PaymentsRedesignPage() {
   const [showAddSupplier, setShowAddSupplier] = useState(false);
   const [qrCodeData, setQrCodeData] = useState("");
   const [bankTransferFile, setBankTransferFile] = useState<File | null>(null);
-  
+
   // PO Extraction State
-  const [poItems, setPoItems] = useState<{barcode: string, quantity: number, description: string, unitPrice: number}[]>([]);
+  const [poItems, setPoItems] = useState<{ barcode: string, quantity: number, description: string, unitPrice: number }[]>([]);
   const [isProcessingPo, setIsProcessingPo] = useState(false);
   const [poImageFile, setPoImageFile] = useState<File | null>(null);
   const [selectedPaymentForPoUpload, setSelectedPaymentForPoUpload] = useState<any>(null);
@@ -298,12 +298,12 @@ export default function PaymentsRedesignPage() {
 
   useEffect(() => {
     if (selectedPaymentForPrint) {
-      const urlText = `${typeof window !== 'undefined' ? window.location.origin : 'https://anh-zeta.vercel.app'}/handshake?data=${encodeURIComponent(JSON.stringify({ 
-        id: selectedPaymentForPrint.id, 
-        amount: selectedPaymentForPrint.total, 
-        company: selectedPaymentForPrint.companyName, 
+      const urlText = `${typeof window !== 'undefined' ? window.location.origin : 'https://anh-zeta.vercel.app'}/handshake?data=${encodeURIComponent(JSON.stringify({
+        id: selectedPaymentForPrint.id,
+        amount: selectedPaymentForPrint.total,
+        company: selectedPaymentForPrint.companyName,
         date: selectedPaymentForPrint.date,
-        action: "verify_receipt" 
+        action: "verify_receipt"
       }))}`;
       QRCodeLib.toDataURL(urlText)
         .then((url: string) => setQrCodeData(url))
@@ -371,7 +371,7 @@ export default function PaymentsRedesignPage() {
 
       // 2. Extract Suppliers from cash_payments
       const uniqueSuppliers = new Set<string>();
-      
+
       loadedPayments.forEach(p => {
         if (p.companyName) uniqueSuppliers.add(p.companyName.toUpperCase());
       });
@@ -379,9 +379,9 @@ export default function PaymentsRedesignPage() {
       setSuppliers(Array.from(uniqueSuppliers).sort().map((name, index) => ({ id: `sup_${index}`, name })));
 
       // 3. Fetch Credits to calculate Outstanding Debt
-      const q2 = branchIds.length > 0 
-          ? query(collection(db, "credits"), where("storeId", "in", branchIds), orderBy("createdAt", "desc"))
-          : query(collection(db, "credits"), orderBy("createdAt", "desc"));
+      const q2 = branchIds.length > 0
+        ? query(collection(db, "credits"), where("storeId", "in", branchIds), orderBy("createdAt", "desc"))
+        : query(collection(db, "credits"), orderBy("createdAt", "desc"));
       try {
         const credSnapshot = await getDocs(q2);
         setCredits(credSnapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) })));
@@ -414,7 +414,7 @@ export default function PaymentsRedesignPage() {
   const handleAddSupplier = () => {
     if (!newSupplierName.trim()) return;
     const name = newSupplierName.trim().toUpperCase();
-    
+
     // Just add to local state, it will be persisted to cash_payments when a payment is saved
     const newSupp = { id: `sup_new_${Date.now()}`, name };
     setSuppliers(prev => [...prev, newSupp].sort((a, b) => a.name.localeCompare(b.name)));
@@ -470,7 +470,7 @@ export default function PaymentsRedesignPage() {
       toast.error('Please upload a valid image file.');
       return;
     }
-    
+
     setUploadingPoToOldInvoice(true);
     try {
       const base64Image = await compressImage(file);
@@ -478,50 +478,50 @@ export default function PaymentsRedesignPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image: base64Image })
-        });
-        
-        if (!response.ok) {
-          if (response.status === 429) throw new Error("RATE_LIMIT");
-          throw new Error('Failed to process image');
-        }
-        const data = await response.json();
-        
-        let newItems: any[] = [];
-        if (data.items && Array.isArray(data.items)) {
-          newItems = data.items;
-        }
+      });
 
-        // User requested to skip saving PO images to storage for faster processing
-        const updateData: any = {};
-        if (newItems.length > 0) updateData.items = newItems;
-        if (data.poNumber && !selectedPaymentForPoUpload.poNumber) updateData.poNumber = data.poNumber;
-
-        await updateDoc(doc(db, "cash_payments", selectedPaymentForPoUpload.id), updateData);
-        
-        // Sync products to the secondary Firebase db
-        if (newItems.length > 0) {
-          syncProductsToMaster(newItems, data.date || selectedPaymentForPoUpload.date || new Date().toISOString().split('T')[0], selectedPaymentForPoUpload.companyName);
-        }
-
-        setPayments(prev => prev.map(p => {
-          if (p.id === selectedPaymentForPoUpload.id) {
-            return { ...p, ...updateData };
-          }
-          return p;
-        }));
-
-        toast.success('PO added successfully to old invoice!');
-        setSelectedPaymentForPoUpload(null);
-      } catch (err: any) {
-        console.error(err);
-        if (err.message === 'RATE_LIMIT') {
-          toast.error("Google AI is busy (Rate Limit). Please wait 60 seconds and try again.");
-        } else {
-          toast.error('Error adding PO to old invoice.');
-        }
-      } finally {
-        setUploadingPoToOldInvoice(false);
+      if (!response.ok) {
+        if (response.status === 429) throw new Error("RATE_LIMIT");
+        throw new Error('Failed to process image');
       }
+      const data = await response.json();
+
+      let newItems: any[] = [];
+      if (data.items && Array.isArray(data.items)) {
+        newItems = data.items;
+      }
+
+      // User requested to skip saving PO images to storage for faster processing
+      const updateData: any = {};
+      if (newItems.length > 0) updateData.items = newItems;
+      if (data.poNumber && !selectedPaymentForPoUpload.poNumber) updateData.poNumber = data.poNumber;
+
+      await updateDoc(doc(db, "cash_payments", selectedPaymentForPoUpload.id), updateData);
+
+      // Sync products to the secondary Firebase db
+      if (newItems.length > 0) {
+        syncProductsToMaster(newItems, data.date || selectedPaymentForPoUpload.date || new Date().toISOString().split('T')[0], selectedPaymentForPoUpload.companyName);
+      }
+
+      setPayments(prev => prev.map(p => {
+        if (p.id === selectedPaymentForPoUpload.id) {
+          return { ...p, ...updateData };
+        }
+        return p;
+      }));
+
+      toast.success('PO added successfully to old invoice!');
+      setSelectedPaymentForPoUpload(null);
+    } catch (err: any) {
+      console.error(err);
+      if (err.message === 'RATE_LIMIT') {
+        toast.error("Google AI is busy (Rate Limit). Please wait 60 seconds and try again.");
+      } else {
+        toast.error('Error adding PO to old invoice.');
+      }
+    } finally {
+      setUploadingPoToOldInvoice(false);
+    }
   };
 
   const handleImageUpload = async (file: File) => {
@@ -529,7 +529,7 @@ export default function PaymentsRedesignPage() {
       toast.error('Please upload a valid image file.');
       return;
     }
-    
+
     setIsProcessingPo(true);
     setPoImageFile(file);
     try {
@@ -539,47 +539,47 @@ export default function PaymentsRedesignPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image: base64Image })
       });
-        
-        if (!response.ok) {
-          if (response.status === 429) throw new Error("RATE_LIMIT");
-          throw new Error('Failed to process image');
-        }
-        const data = await response.json();
-        
-        if (data.poNumber) setPoNumber(data.poNumber);
-        if (data.invoiceNumber) setInvoiceNumber(data.invoiceNumber);
-        if (data.date) setDate(data.date);
-        
-        if (data.companyName) {
-           const match = suppliers.find(s => s.name.toLowerCase().includes(data.companyName.toLowerCase()) || data.companyName.toLowerCase().includes(s.name.toLowerCase()));
-           if (match) {
-             setCompanyName(match.name);
-           } else {
-             const name = data.companyName.trim().toUpperCase();
-             const newSupp = { id: `sup_new_${Date.now()}`, name };
-             setSuppliers(prev => [...prev, newSupp].sort((a, b) => a.name.localeCompare(b.name)));
-             setCompanyName(name);
-           }
-        }
-        
-        if (data.amount !== undefined) setAmount(data.amount.toString());
-        if (data.tax !== undefined) setTax(data.tax.toString());
-        
-        if (data.items && Array.isArray(data.items)) {
-          setPoItems(data.items);
-        }
-        
-        toast.success('PO processed successfully!');
-      } catch (err: any) {
-        console.error(err);
-        if (err.message === 'RATE_LIMIT') {
-          toast.error("Google AI is busy (Rate Limit). Please wait 60 seconds and try again.");
-        } else {
-          toast.error('Error processing PO image. Please enter manually.');
-        }
-      } finally {
-        setIsProcessingPo(false);
+
+      if (!response.ok) {
+        if (response.status === 429) throw new Error("RATE_LIMIT");
+        throw new Error('Failed to process image');
       }
+      const data = await response.json();
+
+      if (data.poNumber) setPoNumber(data.poNumber);
+      if (data.invoiceNumber) setInvoiceNumber(data.invoiceNumber);
+      if (data.date) setDate(data.date);
+
+      if (data.companyName) {
+        const match = suppliers.find(s => s.name.toLowerCase().includes(data.companyName.toLowerCase()) || data.companyName.toLowerCase().includes(s.name.toLowerCase()));
+        if (match) {
+          setCompanyName(match.name);
+        } else {
+          const name = data.companyName.trim().toUpperCase();
+          const newSupp = { id: `sup_new_${Date.now()}`, name };
+          setSuppliers(prev => [...prev, newSupp].sort((a, b) => a.name.localeCompare(b.name)));
+          setCompanyName(name);
+        }
+      }
+
+      if (data.amount !== undefined) setAmount(data.amount.toString());
+      if (data.tax !== undefined) setTax(data.tax.toString());
+
+      if (data.items && Array.isArray(data.items)) {
+        setPoItems(data.items);
+      }
+
+      toast.success('PO processed successfully!');
+    } catch (err: any) {
+      console.error(err);
+      if (err.message === 'RATE_LIMIT') {
+        toast.error("Google AI is busy (Rate Limit). Please wait 60 seconds and try again.");
+      } else {
+        toast.error('Error processing PO image. Please enter manually.');
+      }
+    } finally {
+      setIsProcessingPo(false);
+    }
   };
 
   useEffect(() => {
@@ -621,7 +621,7 @@ export default function PaymentsRedesignPage() {
     };
     window.addEventListener('paste', handleGlobalPaste);
     return () => window.removeEventListener('paste', handleGlobalPaste);
-     
+
   }, [showAddModal, category, selectedPaymentForPoUpload, method]);
 
   const handleDrop = (e: React.DragEvent) => {
@@ -630,7 +630,7 @@ export default function PaymentsRedesignPage() {
     const file = e.dataTransfer.files[0];
     if (file) handleImageUpload(file);
   };
-  
+
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
   };
@@ -704,7 +704,7 @@ export default function PaymentsRedesignPage() {
         isTaxable: numTax > 0,
         method,
         poNumber,
-        storeId: branchIds.length > 0 ? branchIds[0] : "eL-alamein-4", 
+        storeId: branchIds.length > 0 ? branchIds[0] : "eL-alamein-4",
         tax: numTax,
         total,
         supplierRepName,
@@ -715,7 +715,7 @@ export default function PaymentsRedesignPage() {
       };
 
       const docRef = await addDoc(collection(db, "cash_payments"), newPayment);
-      
+
       // Sync products to secondary Firebase
       if (poItems.length > 0) {
         syncProductsToMaster(poItems, date, companyName);
@@ -727,7 +727,7 @@ export default function PaymentsRedesignPage() {
       const savedPayment = { id: docRef.id, ...newPayment, createdAt: Timestamp.now() };
       setPayments([savedPayment, ...payments]);
       setShowAddModal(false);
-      
+
       // Reset form
       setInvoiceNumber("");
       setPoNumber("");
@@ -738,7 +738,7 @@ export default function PaymentsRedesignPage() {
       setSupplierNationalId("");
       setPoItems([]);
       setPoImageFile(null);
-      
+
       // Auto Print & QR
       setSelectedPaymentForPrint(savedPayment);
       setSavedPaymentForQR(savedPayment);
@@ -789,7 +789,7 @@ export default function PaymentsRedesignPage() {
       const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const page1 = document.getElementById("pdf-receipt");
-      
+
       if (page1) {
         page1.style.left = "0";
         const canvas1 = await html2canvas(page1, { scale: 2, useCORS: true });
@@ -810,8 +810,8 @@ export default function PaymentsRedesignPage() {
         page2.style.left = "-9999px";
       }
 
-      const invoiceUrls = paymentToPrint.invoiceUrls && paymentToPrint.invoiceUrls.length > 0 
-        ? paymentToPrint.invoiceUrls 
+      const invoiceUrls = paymentToPrint.invoiceUrls && paymentToPrint.invoiceUrls.length > 0
+        ? paymentToPrint.invoiceUrls
         : (paymentToPrint.invoiceUrl ? [paymentToPrint.invoiceUrl] : []);
 
       for (let i = 0; i < invoiceUrls.length; i++) {
@@ -831,7 +831,7 @@ export default function PaymentsRedesignPage() {
       while (true) {
         const pageItems = document.getElementById(`pdf-receipt-page4-${itemsPageIndex}`);
         if (!pageItems) break;
-        
+
         pageItems.style.left = "0";
         const canvasItems = await html2canvas(pageItems, { scale: 2, useCORS: true });
         const imgDataItems = canvasItems.toDataURL("image/png");
@@ -839,7 +839,7 @@ export default function PaymentsRedesignPage() {
         pdf.addPage();
         pdf.addImage(imgDataItems, "PNG", 0, 0, pdfWidth, pdfHeightItems);
         pageItems.style.left = "-9999px";
-        
+
         itemsPageIndex++;
       }
 
@@ -856,17 +856,17 @@ export default function PaymentsRedesignPage() {
   const generateBulkPDF = async () => {
     if (selectedBulkItems.size === 0) return;
     setIsGeneratingBulkPDF(true);
-    
+
     // Gather all selected payments
     const paymentsToPrint = filteredPayments.filter(p => selectedBulkItems.has(p.id));
     setBulkPaymentsForPrint(paymentsToPrint);
-    
+
     // Give React a moment to render the hidden bulk layout
     setTimeout(async () => {
       try {
         const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
         const pdfWidth = pdf.internal.pageSize.getWidth();
-        
+
         // Render Cover Page
         const coverPage = document.getElementById("pdf-bulk-cover");
         if (coverPage) {
@@ -877,7 +877,7 @@ export default function PaymentsRedesignPage() {
           pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
           coverPage.style.left = "-9999px";
         }
-        
+
         // Render each payment
         for (let i = 0; i < paymentsToPrint.length; i++) {
           const p = paymentsToPrint[i];
@@ -892,7 +892,7 @@ export default function PaymentsRedesignPage() {
             pdf.addImage(imgData1, "PNG", 0, 0, pdfWidth, pdfHeight1);
             page1.style.left = "-9999px";
           }
-          
+
           // Render invoices for this payment
           const invoiceUrls = p.invoiceUrls && p.invoiceUrls.length > 0 ? p.invoiceUrls : (p.invoiceUrl ? [p.invoiceUrl] : []);
           for (let j = 0; j < invoiceUrls.length; j++) {
@@ -908,7 +908,7 @@ export default function PaymentsRedesignPage() {
             }
           }
         }
-        
+
         pdf.save(`Bulk_Payments_Report_${new Date().getTime()}.pdf`);
         toast.success("Bulk PDF generated successfully!");
       } catch (err) {
@@ -925,7 +925,7 @@ export default function PaymentsRedesignPage() {
     return payments.filter(p => {
       // Month Filter
       if (monthFilter && p.date && !p.date.startsWith(monthFilter)) return false;
-      
+
       // Search Filter
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
@@ -954,24 +954,24 @@ export default function PaymentsRedesignPage() {
   // Derived Supplier Profile Data
   const supplierProfileData = useMemo(() => {
     if (!selectedSupplierProfile) return null;
-    
+
     // 1. Filter payments for this supplier
     const sPayments = payments.filter(p => p.companyName?.toUpperCase() === selectedSupplierProfile.toUpperCase());
     sPayments.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
-    
+
     // 2. Lifetime Spend
     const lifetimeSpend = sPayments.reduce((sum, p) => sum + (p.total || 0), 0);
-    
+
     // 3. Outstanding Debt (from credits)
     const sCredits = credits.filter(c => c.companyName?.toUpperCase() === selectedSupplierProfile.toUpperCase() && c.status === "open");
     const outstandingDebt = sCredits.reduce((sum, c) => sum + ((parseFloat(c.amountDue) || 0) - (parseFloat(c.paidAmount) || 0)), 0);
-    
+
     // 4. Sparkline Trend (last 6 months)
     const monthlyTotals: Record<string, number> = {};
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5); // include current month + 5 previous
     sixMonthsAgo.setDate(1);
-    
+
     sPayments.forEach(p => {
       if (!p.date) return;
       const d = new Date(p.date);
@@ -980,7 +980,7 @@ export default function PaymentsRedesignPage() {
         monthlyTotals[monthKey] = (monthlyTotals[monthKey] || 0) + (p.total || 0);
       }
     });
-    
+
     const trendData = Object.entries(monthlyTotals)
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([month, total]) => ({ month, total }));
@@ -1007,17 +1007,17 @@ export default function PaymentsRedesignPage() {
       pdf.setFontSize(14);
       pdf.setTextColor(100);
       pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 30);
-      
+
       pdf.setTextColor(0);
       pdf.setFontSize(16);
       pdf.text(`Supplier: ${selectedSupplierProfile}`, 20, 50);
       pdf.text(`Outstanding Debt: EGP ${supplierProfileData.outstandingDebt.toLocaleString()}`, 20, 60);
       pdf.text(`Lifetime Spend: EGP ${supplierProfileData.lifetimeSpend.toLocaleString()}`, 20, 70);
-      
+
       pdf.setFontSize(14);
       pdf.text(`Recent Payments:`, 20, 90);
       pdf.setFontSize(11);
-      
+
       let y = 100;
       supplierProfileData.sPayments.slice(0, 15).forEach((p, i) => {
         pdf.text(`${p.date}   |   EGP ${Number(p.total).toLocaleString()}   |   Inv: ${p.invoiceNumber || 'N/A'}`, 20, y);
@@ -1025,7 +1025,7 @@ export default function PaymentsRedesignPage() {
       });
 
       pdf.save(`SOA_${selectedSupplierProfile}.pdf`);
-      
+
       // Open WhatsApp
       const waText = encodeURIComponent(`Hello ${selectedSupplierProfile} team. Please find our Statement of Account attached (downloaded to my device). Our records show an outstanding debt of EGP ${supplierProfileData.outstandingDebt.toLocaleString()} and a lifetime spend of EGP ${supplierProfileData.lifetimeSpend.toLocaleString()}.`);
       window.open(`https://wa.me/?text=${waText}`, '_blank');
@@ -1046,7 +1046,7 @@ export default function PaymentsRedesignPage() {
 
   return (
     <div className="min-h-screen bg-[#f8fafc] dark:bg-slate-950 pb-20">
-      
+
       <div className="p-6 max-w-7xl mx-auto space-y-6">
 
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -1092,8 +1092,8 @@ export default function PaymentsRedesignPage() {
                         return <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />;
                       })}
                     </Pie>
-                    <RechartsTooltip 
-                      formatter={(value: any) => `EGP ${Number(value).toLocaleString()}`} 
+                    <RechartsTooltip
+                      formatter={(value: any) => `EGP ${Number(value).toLocaleString()}`}
                       contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' }}
                     />
                   </PieChart>
@@ -1105,7 +1105,7 @@ export default function PaymentsRedesignPage() {
               )}
             </div>
           </div>
-          
+
           <div className="lg:col-span-2 grid grid-cols-2 md:grid-cols-3 gap-4">
             {categoryStats["order"] && (
               <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100/50 p-5 rounded-3xl shadow-sm relative overflow-hidden group">
@@ -1113,7 +1113,7 @@ export default function PaymentsRedesignPage() {
                 <div className="flex items-center gap-2 text-blue-600 mb-3">
                   <span className="text-sm font-bold tracking-wide uppercase">Order</span>
                 </div>
-                <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {categoryStats["order"].total.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+                <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {categoryStats["order"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                 <p className="text-xs font-semibold text-blue-600/70 mt-1 relative z-10">{categoryStats["order"].count} payment(s)</p>
               </motion.div>
             )}
@@ -1123,7 +1123,7 @@ export default function PaymentsRedesignPage() {
                 <div className="flex items-center gap-2 text-amber-600 mb-3">
                   <span className="text-sm font-bold tracking-wide uppercase">Utilities</span>
                 </div>
-                <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {categoryStats["utilities"].total.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+                <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {categoryStats["utilities"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                 <p className="text-xs font-semibold text-amber-600/70 mt-1 relative z-10">{categoryStats["utilities"].count} payment(s)</p>
               </motion.div>
             )}
@@ -1133,7 +1133,7 @@ export default function PaymentsRedesignPage() {
                 <div className="flex items-center gap-2 text-purple-600 mb-3">
                   <span className="text-sm font-bold tracking-wide uppercase">Maintenance</span>
                 </div>
-                <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {categoryStats["maintenance"].total.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+                <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {categoryStats["maintenance"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                 <p className="text-xs font-semibold text-purple-600/70 mt-1 relative z-10">{categoryStats["maintenance"].count} payment(s)</p>
               </motion.div>
             )}
@@ -1143,7 +1143,7 @@ export default function PaymentsRedesignPage() {
                 <div className="flex items-center gap-2 text-emerald-600 mb-3">
                   <span className="text-sm font-bold tracking-wide uppercase">Transportation</span>
                 </div>
-                <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {categoryStats["transportation"].total.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+                <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {categoryStats["transportation"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                 <p className="text-xs font-semibold text-emerald-600/70 mt-1 relative z-10">{categoryStats["transportation"].count} payment(s)</p>
               </motion.div>
             )}
@@ -1153,7 +1153,7 @@ export default function PaymentsRedesignPage() {
                 <div className="flex items-center gap-2 text-slate-600 mb-3">
                   <span className="text-sm font-bold tracking-wide uppercase">Other</span>
                 </div>
-                <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {categoryStats["other"].total.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+                <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {categoryStats["other"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                 <p className="text-xs font-semibold text-slate-600/70 mt-1 relative z-10">{categoryStats["other"].count} payment(s)</p>
               </motion.div>
             )}
@@ -1163,8 +1163,8 @@ export default function PaymentsRedesignPage() {
         <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200/80 dark:border-slate-700/80 p-2 rounded-2xl shadow-sm flex flex-col md:flex-row gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder="Search company, invoice, PO number..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -1172,7 +1172,7 @@ export default function PaymentsRedesignPage() {
             />
           </div>
           <div className="h-px md:h-auto md:w-px bg-slate-200 dark:bg-slate-700"></div>
-          <input 
+          <input
             type="month"
             value={monthFilter}
             onChange={(e) => setMonthFilter(e.target.value)}
@@ -1189,13 +1189,13 @@ export default function PaymentsRedesignPage() {
               <span className="font-bold text-sm">Payments Selected</span>
             </div>
             <div className="flex gap-2">
-              <button 
+              <button
                 onClick={() => setSelectedBulkItems(new Set())}
                 className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
               >
                 Clear
               </button>
-              <button 
+              <button
                 onClick={generateBulkPDF}
                 disabled={isGeneratingBulkPDF}
                 className="px-5 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm transition-colors flex items-center gap-2"
@@ -1209,8 +1209,8 @@ export default function PaymentsRedesignPage() {
 
         <div className="flex items-center justify-between pt-2 px-2">
           <div className="flex items-center gap-3">
-            <input 
-              type="checkbox" 
+            <input
+              type="checkbox"
               className="w-5 h-5 rounded text-blue-600 cursor-pointer"
               checked={filteredPayments.length > 0 && selectedBulkItems.size === filteredPayments.length}
               onChange={handleSelectAllBulkItems}
@@ -1226,8 +1226,8 @@ export default function PaymentsRedesignPage() {
             {filteredPayments.map((pay, idx) => {
               const initials = pay.companyName ? pay.companyName.substring(0, 2).toUpperCase() : "NA";
               const colors = [
-                'bg-indigo-100 text-indigo-700 border-indigo-200', 
-                'bg-rose-100 text-rose-700 border-rose-200', 
+                'bg-indigo-100 text-indigo-700 border-indigo-200',
+                'bg-rose-100 text-rose-700 border-rose-200',
                 'bg-emerald-100 text-emerald-700 border-emerald-200',
                 'bg-amber-100 text-amber-700 border-amber-200',
                 'bg-blue-100 text-blue-700 border-blue-200'
@@ -1236,19 +1236,19 @@ export default function PaymentsRedesignPage() {
               const avatarColor = colors[charCode % colors.length];
 
               return (
-                <motion.div 
+                <motion.div
                   layout
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ duration: 0.2, delay: idx * 0.05 }}
-                  key={pay.id} 
+                  key={pay.id}
                   className={`bg-white dark:bg-slate-900 border rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden group ${selectedBulkItems.has(pay.id) ? 'border-blue-400 ring-1 ring-blue-400' : 'border-slate-200/60 dark:border-slate-800'}`}
                 >
                   <div className="p-4 md:p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative">
                     <div className="flex items-center gap-4 flex-1">
-                      <input 
-                        type="checkbox" 
+                      <input
+                        type="checkbox"
                         checked={selectedBulkItems.has(pay.id)}
                         onChange={() => handleSelectBulkItem(pay.id)}
                         className="w-5 h-5 rounded text-blue-600 cursor-pointer mr-2 flex-shrink-0"
@@ -1258,7 +1258,7 @@ export default function PaymentsRedesignPage() {
                       </div>
                       <div>
                         <div className="flex items-center gap-3 mb-1">
-                          <button 
+                          <button
                             onClick={() => setSelectedSupplierProfile(pay.companyName)}
                             className="text-lg font-bold text-slate-900 dark:text-white capitalize tracking-tight hover:text-blue-600 dark:hover:text-blue-400 hover:underline text-left transition-colors flex items-center gap-1 group/name"
                           >
@@ -1277,7 +1277,7 @@ export default function PaymentsRedesignPage() {
                           {(pay.invoiceNumber || pay.poNumber) && (
                             <>
                               <span className="text-slate-300">•</span>
-                              {pay.invoiceNumber && `Inv: ${pay.invoiceNumber}`} 
+                              {pay.invoiceNumber && `Inv: ${pay.invoiceNumber}`}
                               {pay.invoiceNumber && pay.poNumber && " | "}
                               {pay.poNumber && `PO: ${pay.poNumber}`}
                             </>
@@ -1293,17 +1293,17 @@ export default function PaymentsRedesignPage() {
                           {Number(pay.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </p>
                       </div>
-                      
+
                       <div className="flex items-center gap-2">
                         {pay.category === "order" && (!pay.items || pay.items.length === 0) && !pay.poImageUrl && (
-                          <button 
+                          <button
                             onClick={() => setSelectedPaymentForPoUpload(pay)}
                             className="text-xs font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 mr-2"
                           >
                             <Plus size={14} /> Add PO
                           </button>
                         )}
-                        <button 
+                        <button
                           onClick={() => {
                             setSelectedPaymentForView(pay);
                             playPrinterSound();
@@ -1313,7 +1313,7 @@ export default function PaymentsRedesignPage() {
                         >
                           <Eye size={20} />
                         </button>
-                        <button 
+                        <button
                           onClick={() => {
                             setSelectedPaymentForPrint(pay);
                             setTimeout(() => generatePDF(pay), 100);
@@ -1343,30 +1343,30 @@ export default function PaymentsRedesignPage() {
 
       <AnimatePresence>
         {showAddModal && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
           >
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               className="bg-white dark:bg-slate-900 w-full max-w-4xl rounded-3xl shadow-2xl relative my-auto border border-slate-100 dark:border-slate-800"
             >
-              <button 
+              <button
                 onClick={handleCloseModal}
                 className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600 bg-slate-100 rounded-full transition-colors"
               >
                 <X size={20} />
               </button>
-              
+
               <form onSubmit={handleSavePayment} className="p-8">
                 <h2 className="text-2xl font-black text-slate-900 dark:text-white pb-6 tracking-tight">Record Payment</h2>
-                
+
                 {category === 'order' && (
-                  <div 
+                  <div
                     onDrop={handleDrop}
                     onDragOver={handleDragOver}
                     className={`mb-6 border-2 border-dashed rounded-2xl p-6 text-center transition-colors ${isProcessingPo ? 'border-blue-500 bg-blue-50/50' : 'border-slate-300 hover:border-blue-400 bg-slate-50 hover:bg-slate-50/80 dark:bg-slate-800/50 dark:border-slate-700'}`}
@@ -1431,7 +1431,7 @@ export default function PaymentsRedesignPage() {
                           <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Rep Name</label>
                           <input type="text" placeholder="Driver / Representative" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={supplierRepName} onChange={(e) => setSupplierRepName(e.target.value)} />
                         </div>
-                        
+
                         <div>
                           <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Rep National ID</label>
                           <input type="text" placeholder="14-digit ID" maxLength={14} className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={supplierNationalId} onChange={(e) => setSupplierNationalId(e.target.value)} />
@@ -1441,9 +1441,9 @@ export default function PaymentsRedesignPage() {
                           <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
                             <label className="block text-xs font-bold text-blue-600 uppercase tracking-wider mb-2">Bank Transfer Receipt *</label>
                             <div className="flex flex-col gap-2">
-                              <input 
-                                type="file" 
-                                accept="image/*" 
+                              <input
+                                type="file"
+                                accept="image/*"
                                 onChange={(e) => {
                                   if (e.target.files && e.target.files[0]) {
                                     setBankTransferFile(e.target.files[0]);
@@ -1452,16 +1452,16 @@ export default function PaymentsRedesignPage() {
                                 className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200"
                               />
                               {bankTransferFile ? (
-                                <p className="text-xs font-medium text-blue-800 break-all bg-blue-100/50 p-2 rounded-lg border border-blue-200 inline-flex items-center gap-1"><CheckCircle2 size={12}/> {bankTransferFile.name}</p>
+                                <p className="text-xs font-medium text-blue-800 break-all bg-blue-100/50 p-2 rounded-lg border border-blue-200 inline-flex items-center gap-1"><CheckCircle2 size={12} /> {bankTransferFile.name}</p>
                               ) : (
                                 <div className="flex items-center gap-2 mt-1">
                                   <span className="text-[10px] text-blue-500">Or: </span>
-                                  <button 
-                                    type="button" 
+                                  <button
+                                    type="button"
                                     onClick={handlePasteBankReceipt}
                                     className="text-[10px] text-blue-600 bg-blue-100 hover:bg-blue-200 px-2 py-1 rounded flex items-center gap-1 transition-colors border border-blue-200"
                                   >
-                                    <ClipboardPaste size={10}/> Paste from Clipboard
+                                    <ClipboardPaste size={10} /> Paste from Clipboard
                                   </button>
                                   <span className="text-[10px] text-blue-400">(or press Ctrl+V)</span>
                                 </div>
@@ -1569,15 +1569,15 @@ export default function PaymentsRedesignPage() {
                 )}
 
                 <div className="mt-8 pt-6 border-t border-slate-100 flex justify-end gap-3">
-                  <button 
+                  <button
                     type="button"
                     onClick={handleCloseModal}
                     className="px-6 py-3 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors"
                   >
                     Cancel
                   </button>
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     disabled={submitting}
                     className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-8 py-3 rounded-xl font-bold shadow-md shadow-red-500/20 hover:shadow-red-500/40 hover:-translate-y-0.5 transition-all flex items-center gap-2"
                   >
@@ -1592,21 +1592,21 @@ export default function PaymentsRedesignPage() {
 
       <AnimatePresence>
         {showAddSupplier && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
           >
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl p-6 shadow-2xl"
             >
               <h3 className="text-xl font-black text-slate-900 dark:text-white mb-4 tracking-tight">Add New Supplier</h3>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={newSupplierName}
                 onChange={(e) => setNewSupplierName(e.target.value)}
                 placeholder="e.g. COCA COLA EG"
@@ -1614,13 +1614,13 @@ export default function PaymentsRedesignPage() {
                 autoFocus
               />
               <div className="flex gap-3 justify-end">
-                <button 
+                <button
                   onClick={() => setShowAddSupplier(false)}
                   className="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 rounded-xl transition-colors"
                 >
                   Cancel
                 </button>
-                <button 
+                <button
                   onClick={handleAddSupplier}
                   disabled={!newSupplierName.trim()}
                   className="px-5 py-2 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm"
@@ -1637,7 +1637,7 @@ export default function PaymentsRedesignPage() {
       {selectedPaymentForPrint && (
         <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
           <div id="pdf-receipt" style={{ width: '794px', minHeight: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
-            
+
             <div style={{ padding: '20px 30px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #000', position: 'relative', zIndex: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                 <div style={{ width: '50px', height: '50px', border: '2px solid #000', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1766,9 +1766,9 @@ export default function PaymentsRedesignPage() {
                   </thead>
                   <tbody>
                     <tr style={{ backgroundColor: '#fff' }}>
-                      <td style={{ padding: '8px 15px', borderBottom: '1px dotted #ccc', borderRight: '1px dotted #ccc', fontFamily: 'monospace', fontSize: '13px' }}>EGP {Number(selectedPaymentForPrint.amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                      <td style={{ padding: '8px 15px', borderBottom: '1px dotted #ccc', borderRight: '1px dotted #ccc', fontFamily: 'monospace', fontSize: '13px' }}>EGP {Number(selectedPaymentForPrint.tax || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                      <td style={{ padding: '8px 15px', borderBottom: '1px dotted #ccc', borderRight: '1px dotted #ccc', fontFamily: 'monospace', fontSize: '13px', fontWeight: 'bold', backgroundColor: '#f0fdf4' }}>EGP {Number(selectedPaymentForPrint.total).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                      <td style={{ padding: '8px 15px', borderBottom: '1px dotted #ccc', borderRight: '1px dotted #ccc', fontFamily: 'monospace', fontSize: '13px' }}>EGP {Number(selectedPaymentForPrint.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                      <td style={{ padding: '8px 15px', borderBottom: '1px dotted #ccc', borderRight: '1px dotted #ccc', fontFamily: 'monospace', fontSize: '13px' }}>EGP {Number(selectedPaymentForPrint.tax || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                      <td style={{ padding: '8px 15px', borderBottom: '1px dotted #ccc', borderRight: '1px dotted #ccc', fontFamily: 'monospace', fontSize: '13px', fontWeight: 'bold', backgroundColor: '#f0fdf4' }}>EGP {Number(selectedPaymentForPrint.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                       <td style={{ padding: '8px 15px', borderBottom: '1px dotted #ccc', textAlign: 'center', fontSize: '12px' }}>{Number(selectedPaymentForPrint.tax) > 0 ? '(Yes) نعم' : '(No) لا'}</td>
                     </tr>
                   </tbody>
@@ -1782,11 +1782,11 @@ export default function PaymentsRedesignPage() {
             {/* Signatures & Stamp */}
             <div style={{ padding: '0 30px', marginTop: '50px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '20px', backgroundColor: '#fff', border: '2px solid #000', borderRadius: '4px', position: 'relative', zIndex: 10, minHeight: '140px' }}>
-                
+
                 <div style={{ width: '30%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                   <p style={{ fontSize: '9px', color: '#333', fontStyle: 'italic', marginBottom: '20px', lineHeight: 1.4, fontWeight: 'bold' }}>
-                    {selectedPaymentForPrint.method === 'bank_transfer' ? 
-                      "Bank transfers are executed electronically. Manager signature confirms execution." : 
+                    {selectedPaymentForPrint.method === 'bank_transfer' ?
+                      "Bank transfers are executed electronically. Manager signature confirms execution." :
                       "I declare the above info is accurate and I received the funds."}
                   </p>
                   <div>
@@ -1827,14 +1827,14 @@ export default function PaymentsRedesignPage() {
                     </div>
                   )}
                   {/* The specific blue stamp from the Shift Report */}
-                  <div style={{ 
-                    border: '3px solid #000080', 
-                    borderRadius: '4px', 
-                    padding: '10px 15px', 
-                    transform: 'rotate(-2deg)', 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    alignItems: 'center', 
+                  <div style={{
+                    border: '3px solid #000080',
+                    borderRadius: '4px',
+                    padding: '10px 15px',
+                    transform: 'rotate(-2deg)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
                     justifyContent: 'center',
                     fontFamily: '"Arial Black", Impact, "Arial Rounded MT Bold", sans-serif',
                     opacity: 0.85,
@@ -1853,7 +1853,7 @@ export default function PaymentsRedesignPage() {
                 const payMethod = selectedPaymentForPrint.method || 'cash';
                 const stampColor = payMethod === 'cash' ? '#16a34a' : '#ef4444';
                 const stampText = payMethod === 'cash' ? 'PAID IN CASH' : (payMethod === 'visa' ? 'PAID BY VISA' : 'PAID BY BANK');
-                
+
                 return (
                   <div style={{ transform: 'rotate(-5deg)', opacity: 0.85 }}>
                     <div style={{ border: `5px solid ${stampColor}`, borderRadius: '50%', width: '180px', height: '180px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: stampColor, backgroundColor: 'transparent', boxShadow: `inset 0 0 0 2px ${stampColor}33, 0 0 0 2px ${stampColor}33` }}>
@@ -1891,13 +1891,13 @@ export default function PaymentsRedesignPage() {
               </div>
 
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed #ccc', borderRadius: '12px', padding: '20px', backgroundColor: '#fafafa' }}>
-                <img 
-                  src={selectedPaymentForPrint.bankTransferReceiptUrl} 
-                  alt="Bank Transfer Receipt Full" 
+                <img
+                  src={selectedPaymentForPrint.bankTransferReceiptUrl}
+                  alt="Bank Transfer Receipt Full"
                   style={{ maxHeight: '900px', maxWidth: '100%', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}
                 />
               </div>
-              
+
               <div style={{ textAlign: 'center', marginTop: '20px', color: '#999', fontSize: '12px' }}>
                 Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}
               </div>
@@ -1905,8 +1905,8 @@ export default function PaymentsRedesignPage() {
           )}
 
           {(() => {
-            const urls = selectedPaymentForPrint.invoiceUrls && selectedPaymentForPrint.invoiceUrls.length > 0 
-              ? selectedPaymentForPrint.invoiceUrls 
+            const urls = selectedPaymentForPrint.invoiceUrls && selectedPaymentForPrint.invoiceUrls.length > 0
+              ? selectedPaymentForPrint.invoiceUrls
               : (selectedPaymentForPrint.invoiceUrl ? [selectedPaymentForPrint.invoiceUrl] : []);
 
             return urls.map((url: string, index: number) => (
@@ -1923,13 +1923,13 @@ export default function PaymentsRedesignPage() {
                 </div>
 
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed #ccc', borderRadius: '12px', padding: '20px', backgroundColor: '#fafafa' }}>
-                  <img 
-                    src={url} 
-                    alt={`Supplier Invoice Full Page ${index + 1}`} 
+                  <img
+                    src={url}
+                    alt={`Supplier Invoice Full Page ${index + 1}`}
                     style={{ maxHeight: '900px', maxWidth: '100%', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}
                   />
                 </div>
-                
+
                 <div style={{ textAlign: 'center', marginTop: '20px', color: '#999', fontSize: '12px' }}>
                   Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}
                 </div>
@@ -1967,14 +1967,14 @@ export default function PaymentsRedesignPage() {
                         <td style={{ padding: '10px 12px', borderRight: '1px dotted #ccc', fontFamily: 'monospace', fontSize: '12px' }}>{item.barcode || item.code || '-'}</td>
                         <td style={{ padding: '10px 12px', borderRight: '1px dotted #ccc', fontSize: '13px', fontWeight: 'bold', color: '#333' }}>{item.description || item.name || '-'}</td>
                         <td style={{ padding: '10px 12px', borderRight: '1px dotted #ccc', textAlign: 'center', fontSize: '13px', fontWeight: 'bold' }}>{item.quantity}</td>
-                        <td style={{ padding: '10px 12px', borderRight: '1px dotted #ccc', textAlign: 'right', fontFamily: 'monospace', fontSize: '13px' }}>{Number(item.price || item.unitPrice || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                        <td style={{ padding: '10px 12px', textAlign: 'right', fontFamily: 'monospace', fontSize: '13px', fontWeight: 'bold' }}>{Number(item.total || (item.quantity * (item.price || item.unitPrice || 0))).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                        <td style={{ padding: '10px 12px', borderRight: '1px dotted #ccc', textAlign: 'right', fontFamily: 'monospace', fontSize: '13px' }}>{Number(item.price || item.unitPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                        <td style={{ padding: '10px 12px', textAlign: 'right', fontFamily: 'monospace', fontSize: '13px', fontWeight: 'bold' }}>{Number(item.total || (item.quantity * (item.price || item.unitPrice || 0))).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              
+
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px', color: '#999', fontSize: '12px' }}>
                 <span>Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}</span>
                 <span>Page {pageIndex + 1} of {chunks.length}</span>
@@ -1988,10 +1988,10 @@ export default function PaymentsRedesignPage() {
       <AnimatePresence>
         {selectedPaymentForView && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-md overflow-y-auto">
-            
+
             <div className="relative w-full max-w-2xl flex flex-col items-center">
               {/* Printer Slot Hardware */}
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, transition: { duration: 0.2 } }}
@@ -2000,241 +2000,258 @@ export default function PaymentsRedesignPage() {
               >
                 <div className="w-[98%] h-2 bg-black rounded-full" style={{ boxShadow: 'inset 0 4px 4px rgba(0,0,0,0.9)' }} />
                 {/* Printing light indicator */}
-                <motion.div 
-                  animate={{ opacity: [0.2, 1, 0.2] }} 
+                <motion.div
+                  animate={{ opacity: [0.2, 1, 0.2] }}
                   transition={{ repeat: Infinity, duration: 0.8 }}
-                  className="absolute right-4 w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_5px_#22c55e]" 
+                  className="absolute right-4 w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_5px_#22c55e]"
                 />
               </motion.div>
 
-              <motion.div 
+              <motion.div
                 initial={{ clipPath: 'inset(0% -10% 100% -10%)', y: -20, opacity: 0.8 }}
                 animate={{ clipPath: 'inset(-10% -10% -10% -10%)', y: 0, opacity: 1 }}
                 exit={{ clipPath: 'inset(0% -10% 100% -10%)', y: -20, opacity: 0, transition: { duration: 0.3 } }}
-                transition={{ 
-                  duration: 2.2, 
+                transition={{
+                  duration: 2.2,
                   ease: "linear", // Linear gives it that mechanical printer feel
-                  opacity: { duration: 0.2 } 
+                  opacity: { duration: 0.2 }
                 }}
                 className="relative w-full flex flex-col -mt-2"
               >
-              
-              {/* Tear-off Top Edge */}
-              <div style={{ height: '16px', backgroundSize: '24px 24px', backgroundImage: 'linear-gradient(-45deg, transparent 12px, #ffffff 0), linear-gradient(45deg, transparent 12px, #ffffff 0)' }} className="w-full absolute -top-[15px] left-0 right-0 z-10 drop-shadow-sm block dark:hidden" />
-              <div style={{ height: '16px', backgroundSize: '24px 24px', backgroundImage: 'linear-gradient(-45deg, transparent 12px, #0f172a 0), linear-gradient(45deg, transparent 12px, #0f172a 0)' }} className="w-full absolute -top-[15px] left-0 right-0 z-10 drop-shadow-sm hidden dark:block" />
 
-              {/* Receipt Body */}
-              <div className="bg-white dark:bg-slate-900 shadow-2xl overflow-hidden flex flex-col relative z-20">
-                
-                <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-start bg-slate-50 dark:bg-slate-800/50">
-                  <div>
-                    <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-                      <FileText className="text-blue-500" size={24} /> Payment Receipt
-                    </h2>
-                    <p className="text-sm font-medium text-slate-500 mt-1">
-                      {selectedPaymentForView.companyName} • {selectedPaymentForView.date} 
-                      {selectedPaymentForView.poNumber && ` • PO: ${selectedPaymentForView.poNumber}`}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {selectedPaymentForView.poImageUrl && (
-                      <a 
-                        href={selectedPaymentForView.poImageUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 mr-2"
+                {/* Tear-off Top Edge */}
+                <div style={{ height: '16px', backgroundSize: '24px 24px', backgroundImage: 'linear-gradient(-45deg, transparent 12px, #ffffff 0), linear-gradient(45deg, transparent 12px, #ffffff 0)' }} className="w-full absolute -top-[15px] left-0 right-0 z-10 drop-shadow-sm block dark:hidden" />
+                <div style={{ height: '16px', backgroundSize: '24px 24px', backgroundImage: 'linear-gradient(-45deg, transparent 12px, #0f172a 0), linear-gradient(45deg, transparent 12px, #0f172a 0)' }} className="w-full absolute -top-[15px] left-0 right-0 z-10 drop-shadow-sm hidden dark:block" />
+
+                {/* Receipt Body */}
+                <div className="bg-white dark:bg-slate-900 shadow-2xl overflow-hidden flex flex-col relative z-20">
+
+                  <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-start bg-slate-50 dark:bg-slate-800/50">
+                    <div>
+                      <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+                        <FileText className="text-blue-500" size={24} /> Payment Receipt
+                      </h2>
+                      <p className="text-sm font-medium text-slate-500 mt-1">
+                        {selectedPaymentForView.companyName} • {selectedPaymentForView.date}
+                        {selectedPaymentForView.poNumber && ` • PO: ${selectedPaymentForView.poNumber}`}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {selectedPaymentForView.poImageUrl && (
+                        <a
+                          href={selectedPaymentForView.poImageUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 mr-2"
+                        >
+                          <ImageIcon size={14} /> View PO Image
+                        </a>
+                      )}
+                      <button
+                        onClick={() => setSelectedPaymentForView(null)}
+                        className="p-2 text-slate-400 hover:text-slate-600 bg-white dark:bg-slate-800 rounded-full transition-colors shadow-sm"
                       >
-                        <ImageIcon size={14} /> View PO Image
-                      </a>
-                    )}
-                    <button 
-                      onClick={() => setSelectedPaymentForView(null)}
-                      className="p-2 text-slate-400 hover:text-slate-600 bg-white dark:bg-slate-800 rounded-full transition-colors shadow-sm"
-                    >
-                      <X size={20} />
-                    </button>
-                  </div>
-                </div>
-                
-                <div className="p-6 overflow-y-auto max-h-[60vh] space-y-6">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Company / Supplier</p>
-                      <p className="text-xl font-black text-slate-900 dark:text-white truncate" title={selectedPaymentForView.companyName}>{selectedPaymentForView.companyName}</p>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Date</p>
-                      <p className="text-xl font-black text-slate-900 dark:text-white">{selectedPaymentForView.date}</p>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Payment Method</p>
-                      <p className="text-xl font-black text-slate-900 dark:text-white capitalize flex items-center gap-2">
-                        {METHOD_EMOJIS[selectedPaymentForView.method] || "💵"} {selectedPaymentForView.method}
-                      </p>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Category</p>
-                      <p className="text-xl font-black text-slate-900 dark:text-white capitalize flex items-center gap-2">
-                        {CATEGORY_EMOJIS[selectedPaymentForView.category] || "📦"} {selectedPaymentForView.category}
-                      </p>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Amount</p>
-                      <p className="text-xl font-black text-slate-900 dark:text-white">EGP {Number(selectedPaymentForView.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Tax Amount</p>
-                      <p className="text-xl font-black text-slate-900 dark:text-white">EGP {Number(selectedPaymentForView.tax || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Invoice Number</p>
-                      <p className="text-xl font-black text-slate-900 dark:text-white truncate" title={selectedPaymentForView.invoiceNumber || "N/A"}>{selectedPaymentForView.invoiceNumber || "N/A"}</p>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">PO Number</p>
-                      <p className="text-xl font-black text-slate-900 dark:text-white truncate" title={selectedPaymentForView.poNumber || "N/A"}>{selectedPaymentForView.poNumber || "N/A"}</p>
+                        <X size={20} />
+                      </button>
                     </div>
                   </div>
 
-                  {(selectedPaymentForView.supplierRepName || selectedPaymentForView.categoryNote) && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                      {selectedPaymentForView.supplierRepName && (
-                        <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Supplier Representative</p>
-                          <p className="text-md font-bold text-slate-900 dark:text-white">{selectedPaymentForView.supplierRepName} {selectedPaymentForView.supplierNationalId ? `(${selectedPaymentForView.supplierNationalId})` : ""}</p>
-                        </div>
-                      )}
-                      {selectedPaymentForView.categoryNote && (
-                        <div className={`bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl ${!selectedPaymentForView.supplierRepName ? 'col-span-full' : ''}`}>
-                          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Notes</p>
-                          <p className="text-md font-medium text-slate-700 dark:text-slate-300">{selectedPaymentForView.categoryNote}</p>
-                        </div>
-                      )}
-                </div>
-              )}
-
-              {selectedPaymentForView.bankTransferReceiptUrl && (
-                <div className="mb-8">
-                  <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 dark:border-slate-800 pb-2">Bank Transfer Receipt</h3>
-                  <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm max-h-64 relative bg-slate-50 dark:bg-slate-900 flex justify-center items-center group">
-                    <img 
-                      src={selectedPaymentForView.bankTransferReceiptUrl} 
-                      alt="Bank Transfer Receipt" 
-                      className="object-contain max-h-64 w-full"
-                    />
-                    <button 
-                      onClick={() => handleViewFullReceipt(selectedPaymentForView.bankTransferReceiptUrl!)}
-                      type="button"
-                      className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold gap-2 w-full h-full"
-                    >
-                      <ImageIcon size={20} /> View Full Receipt
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {(() => {
-                const urls = selectedPaymentForView.invoiceUrls && selectedPaymentForView.invoiceUrls.length > 0 
-                  ? selectedPaymentForView.invoiceUrls 
-                  : (selectedPaymentForView.invoiceUrl ? [selectedPaymentForView.invoiceUrl] : []);
-
-                if (urls.length > 0) {
-                  return (
-                    <div className="mb-8">
-                      <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 dark:border-slate-800 pb-2">Supplier Invoice(s)</h3>
-                      <div className="flex flex-col gap-4">
-                        {urls.map((url: string, index: number) => (
-                          <div key={index} className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm max-h-64 relative bg-slate-50 dark:bg-slate-900 flex justify-center items-center group">
-                            <img 
-                              src={url} 
-                              alt={`Supplier Invoice Page ${index + 1}`} 
-                              className="object-contain max-h-64 w-full"
-                            />
-                            <div className="absolute top-2 left-2 bg-black/60 px-3 py-1 rounded-full text-white text-xs font-bold tracking-wider z-10">
-                              PAGE {index + 1}
-                            </div>
-                            <button 
-                              onClick={() => handleViewFullReceipt(url)}
-                              type="button"
-                              className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold gap-2 w-full h-full z-20"
-                            >
-                              <ImageIcon size={20} /> View Full Page {index + 1}
-                            </button>
-                          </div>
-                        ))}
+                  <div className="p-6 overflow-y-auto max-h-[60vh] space-y-6">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                      <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Company / Supplier</p>
+                        <p className="text-xl font-black text-slate-900 dark:text-white truncate" title={selectedPaymentForView.companyName}>{selectedPaymentForView.companyName}</p>
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Date</p>
+                        <p className="text-xl font-black text-slate-900 dark:text-white">{selectedPaymentForView.date}</p>
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Payment Method</p>
+                        <p className="text-xl font-black text-slate-900 dark:text-white capitalize flex items-center gap-2">
+                          {METHOD_EMOJIS[selectedPaymentForView.method] || "💵"} {selectedPaymentForView.method}
+                        </p>
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Category</p>
+                        <p className="text-xl font-black text-slate-900 dark:text-white capitalize flex items-center gap-2">
+                          {CATEGORY_EMOJIS[selectedPaymentForView.category] || "📦"} {selectedPaymentForView.category}
+                        </p>
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Amount</p>
+                        <p className="text-xl font-black text-slate-900 dark:text-white">EGP {Number(selectedPaymentForView.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Tax Amount</p>
+                        <p className="text-xl font-black text-slate-900 dark:text-white">EGP {Number(selectedPaymentForView.tax || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Invoice Number</p>
+                        <p className="text-xl font-black text-slate-900 dark:text-white truncate" title={selectedPaymentForView.invoiceNumber || "N/A"}>{selectedPaymentForView.invoiceNumber || "N/A"}</p>
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">PO Number</p>
+                        <p className="text-xl font-black text-slate-900 dark:text-white truncate" title={selectedPaymentForView.poNumber || "N/A"}>{selectedPaymentForView.poNumber || "N/A"}</p>
                       </div>
                     </div>
-                  );
-                }
 
-                return (
-                  <div className="mb-8 flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700">
-                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 text-center">Missing Supplier Invoice</h3>
-                    <div className="bg-white p-3 rounded-2xl shadow-sm mb-4">
-                      <QRCode 
-                        value={`${typeof window !== 'undefined' ? window.location.origin : 'https://anh-zeta.vercel.app'}/cashier/upload-invoice/${selectedPaymentForView.id}`} 
-                        size={140}
-                        level="H"
-                      />
-                    </div>
-                    <p className="text-sm font-bold text-slate-500 text-center max-w-xs">
-                      Scan this QR code with your phone or <span className="text-indigo-500">paste (Ctrl+V) an image</span> to upload the missing invoice.
-                    </p>
-                    {isPasting && (
-                      <p className="text-xs text-indigo-500 font-bold mt-2 animate-pulse">Uploading pasted image...</p>
+                    {(selectedPaymentForView.supplierRepName || selectedPaymentForView.categoryNote) && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                        {selectedPaymentForView.supplierRepName && (
+                          <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Supplier Representative</p>
+                            <p className="text-md font-bold text-slate-900 dark:text-white">{selectedPaymentForView.supplierRepName} {selectedPaymentForView.supplierNationalId ? `(${selectedPaymentForView.supplierNationalId})` : ""}</p>
+                          </div>
+                        )}
+                        {selectedPaymentForView.categoryNote && (
+                          <div className={`bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl ${!selectedPaymentForView.supplierRepName ? 'col-span-full' : ''}`}>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Notes</p>
+                            <p className="text-md font-medium text-slate-700 dark:text-slate-300">{selectedPaymentForView.categoryNote}</p>
+                          </div>
+                        )}
+                      </div>
                     )}
-                  </div>
-                );
-              })()}
 
-                  <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4">Products / Items ({selectedPaymentForView.items?.length || 0})</h3>
-                  <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
-                    <table className="w-full text-sm text-left">
-                      <thead className="text-xs text-slate-500 bg-slate-50 dark:bg-slate-800/50 uppercase font-bold">
-                        <tr>
-                          <th className="px-4 py-3">Barcode</th>
-                          <th className="px-4 py-3">Description</th>
-                          <th className="px-4 py-3 text-center">Qty</th>
-                          <th className="px-4 py-3 text-right">Unit Price</th>
-                          <th className="px-4 py-3 text-right">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedPaymentForView.items?.map((item: any, idx: number) => (
-                          <tr key={idx} className="border-b border-slate-50 dark:border-slate-800/50 last:border-0 font-medium">
-                            <td className="px-4 py-3 text-slate-500">{item.barcode || "N/A"}</td>
-                            <td className="px-4 py-3 text-slate-900 dark:text-slate-300">{item.description || "N/A"}</td>
-                            <td className="px-4 py-3 text-center text-slate-900 dark:text-slate-300">{item.quantity}</td>
-                            <td className="px-4 py-3 text-right text-slate-900 dark:text-slate-300">{Number(item.unitPrice).toFixed(2)}</td>
-                            <td className="px-4 py-3 text-right font-bold text-slate-900 dark:text-slate-300">{(item.quantity * item.unitPrice).toFixed(2)}</td>
+                    {selectedPaymentForView.bankTransferReceiptUrl && (
+                      <div className="mb-8">
+                        <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 dark:border-slate-800 pb-2">Bank Transfer Receipt</h3>
+                        <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm max-h-64 relative bg-slate-50 dark:bg-slate-900 flex justify-center items-center group">
+                          <img
+                            src={selectedPaymentForView.bankTransferReceiptUrl}
+                            alt="Bank Transfer Receipt"
+                            className="object-contain max-h-64 w-full"
+                          />
+                          <button
+                            onClick={() => handleViewFullReceipt(selectedPaymentForView.bankTransferReceiptUrl!)}
+                            type="button"
+                            className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold gap-2 w-full h-full"
+                          >
+                            <ImageIcon size={20} /> View Full Receipt
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {(() => {
+                      const urls = selectedPaymentForView.invoiceUrls && selectedPaymentForView.invoiceUrls.length > 0
+                        ? selectedPaymentForView.invoiceUrls
+                        : (selectedPaymentForView.invoiceUrl ? [selectedPaymentForView.invoiceUrl] : []);
+
+                      if (urls.length > 0) {
+                        return (
+                          <div className="mb-8">
+                            <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 dark:border-slate-800 pb-2">Supplier Invoice(s)</h3>
+                            <div className="flex flex-col gap-4">
+                              {urls.map((url: string, index: number) => (
+                                <div key={index} className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm max-h-64 relative bg-slate-50 dark:bg-slate-900 flex justify-center items-center group">
+                                  <img
+                                    src={url}
+                                    alt={`Supplier Invoice Page ${index + 1}`}
+                                    className="object-contain max-h-64 w-full"
+                                  />
+                                  <div className="absolute top-2 left-2 bg-black/60 px-3 py-1 rounded-full text-white text-xs font-bold tracking-wider z-10">
+                                    PAGE {index + 1}
+                                  </div>
+                                  <button
+                                    onClick={() => handleViewFullReceipt(url)}
+                                    type="button"
+                                    className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold gap-2 w-full h-full z-20"
+                                  >
+                                    <ImageIcon size={20} /> View Full Page {index + 1}
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="mb-8 flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700">
+                          <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 text-center">Missing Supplier Invoice</h3>
+                          <div className="bg-white p-3 rounded-2xl shadow-sm mb-4">
+                            <QRCode
+                              value={`${typeof window !== 'undefined' ? window.location.origin : 'https://anh-zeta.vercel.app'}/cashier/upload-invoice/${selectedPaymentForView.id}`}
+                              size={140}
+                              level="H"
+                            />
+                          </div>
+                          <p className="text-sm font-bold text-slate-500 text-center max-w-xs">
+                            Scan this QR code with your phone or <span className="text-indigo-500">paste (Ctrl+V) an image</span> to upload the missing invoice.
+                          </p>
+                          {isPasting && (
+                            <p className="text-xs text-indigo-500 font-bold mt-2 animate-pulse">Uploading pasted image...</p>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4">Products / Items ({selectedPaymentForView.items?.length || 0})</h3>
+                    <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                      <table className="w-full text-sm text-left">
+                        <thead className="text-xs text-slate-500 bg-slate-50 dark:bg-slate-800/50 uppercase font-bold">
+                          <tr>
+                            <th className="px-4 py-3">Barcode</th>
+                            <th className="px-4 py-3">Description</th>
+                            <th className="px-4 py-3 text-center">Qty</th>
+                            <th className="px-4 py-3 text-right">Unit Price</th>
+                            <th className="px-4 py-3 text-right">Total</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {selectedPaymentForView.items?.map((item: any, idx: number) => (
+                            <tr key={idx} className="border-b border-slate-50 dark:border-slate-800/50 last:border-0 font-medium">
+                              <td className="px-4 py-3 text-slate-500">{item.barcode || "N/A"}</td>
+                              <td className="px-4 py-3 text-slate-900 dark:text-slate-300">{item.description || "N/A"}</td>
+                              <td className="px-4 py-3 text-center text-slate-900 dark:text-slate-300">{item.quantity}</td>
+                              <td className="px-4 py-3 text-right text-slate-900 dark:text-slate-300">{Number(item.unitPrice).toFixed(2)}</td>
+                              <td className="px-4 py-3 text-right font-bold text-slate-900 dark:text-slate-300">{(item.quantity * item.unitPrice).toFixed(2)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Smart QR Code at bottom */}
+                    <div className="flex flex-col items-center justify-center mt-8 pt-8 border-t border-dashed border-slate-300 dark:border-slate-700">
+                      <div className="bg-white p-3 rounded-2xl border-4 border-slate-100 shadow-sm mb-3">
+                        <QRCode
+                          value={`${typeof window !== 'undefined' ? window.location.origin : 'https://anh-zeta.vercel.app'}/handshake?data=${encodeURIComponent(JSON.stringify({
+                            id: selectedPaymentForView.id,
+                            amount: selectedPaymentForView.total,
+                            company: selectedPaymentForView.companyName,
+                            date: selectedPaymentForView.date,
+                            action: "verify_receipt"
+                          }))}`}
+                          size={120}
+                          level="H"
+                        />
+                      </div>
+                      <button
+                        onClick={() => {
+                          setSelectedPaymentForPrint(selectedPaymentForView);
+                          setTimeout(() => generatePDF(selectedPaymentForView), 100);
+                        }}
+                        className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold flex items-center gap-2 transition-all shadow-sm hover:shadow-md"
+                      >
+                        {generatingPDF ? (
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Printer size={18} />
+                        )}
+                        {generatingPDF ? "Generating PDF..." : "Print All (Copy)"}
+                      </button>
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest text-center max-w-[200px]">Scan for Digital Transaction Verification</p>
+                    </div>
                   </div>
 
-                  {/* Smart QR Code at bottom */}
-                  <div className="flex flex-col items-center justify-center mt-8 pt-8 border-t border-dashed border-slate-300 dark:border-slate-700">
-                    <div className="bg-white p-3 rounded-2xl border-4 border-slate-100 shadow-sm mb-3">
-                      <QRCode 
-                        value={`${typeof window !== 'undefined' ? window.location.origin : 'https://anh-zeta.vercel.app'}/handshake?data=${encodeURIComponent(JSON.stringify({ 
-                          id: selectedPaymentForView.id, 
-                          amount: selectedPaymentForView.total, 
-                          company: selectedPaymentForView.companyName, 
-                          date: selectedPaymentForView.date,
-                          action: "verify_receipt" 
-                        }))}`} 
-                        size={120}
-                        level="H"
-                      />
-                    </div>
-                    <button
-                      onClick={() => {
-                        setSelectedPaymentForPrint(selectedPaymentForView);
-                        setTimeout(() => generatePDF(selectedPaymentForView), 100);
-                      }}
-                      className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold flex items-center gap-2 transition-all shadow-sm hover:shadow-md"
-                    >
+                  {/* Action Bar */}
+                  <div className="p-4 bg-slate-50 dark:bg-slate-800/50 flex flex-wrap items-center justify-center gap-3 border-t border-slate-100 dark:border-slate-800">
+                    <button onClick={() => {
+                      setSelectedPaymentForPrint(selectedPaymentForView);
+                      generatePDF(selectedPaymentForView);
+                    }} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm">
                       {generatingPDF ? (
                         <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                       ) : (
@@ -2242,38 +2259,21 @@ export default function PaymentsRedesignPage() {
                       )}
                       {generatingPDF ? "Generating PDF..." : "Print All (Copy)"}
                     </button>
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest text-center max-w-[200px]">Scan for Digital Transaction Verification</p>
-                  </div>
-                </div>
-                
-                {/* Action Bar */}
-                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 flex flex-wrap items-center justify-center gap-3 border-t border-slate-100 dark:border-slate-800">
-                   <button onClick={() => {
-                      setSelectedPaymentForPrint(selectedPaymentForView);
-                      generatePDF(selectedPaymentForView);
-                   }} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm">
-                      {generatingPDF ? (
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <Printer size={18} />
-                      )}
-                      {generatingPDF ? "Generating PDF..." : "Print All (Copy)"}
-                   </button>
-                   <button onClick={async () => {
-                      const text = `Dear ${selectedPaymentForView.companyName} Team,\n\nWe hope this message finds you well.\n\nPlease find the details of our recent payment transaction below:\n\n*🧾 Transaction Details:*\n• *Amount:* EGP ${Number(selectedPaymentForView.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}\n• *Date:* ${selectedPaymentForView.date}\n• *Payment Method:* ${selectedPaymentForView.method.toUpperCase()}\n• *Reference ID:* ${selectedPaymentForView.id}\n\nThank you for your continued partnership.\n\nBest regards,\nAl Nabulsi & Al Helou Management`;
-                      
+                    <button onClick={async () => {
+                      const text = `Dear ANH Management,\n\nPlease review the following payment transaction and its attached invoice.\n\n*🧾 Transaction Details:*\n• *Supplier:* ${selectedPaymentForView.companyName}\n• *Amount:* EGP ${Number(selectedPaymentForView.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}\n• *Date:* ${selectedPaymentForView.date}\n• *Payment Method:* ${selectedPaymentForView.method.toUpperCase()}\n• *Reference ID:* ${selectedPaymentForView.id}`;
+
                       let filesToShare: File[] = [];
                       try {
-                        const urls = selectedPaymentForView.invoiceUrls && selectedPaymentForView.invoiceUrls.length > 0 
-                          ? selectedPaymentForView.invoiceUrls 
+                        const urls = selectedPaymentForView.invoiceUrls && selectedPaymentForView.invoiceUrls.length > 0
+                          ? selectedPaymentForView.invoiceUrls
                           : (selectedPaymentForView.invoiceUrl ? [selectedPaymentForView.invoiceUrl] : []);
-                          
+
                         for (let i = 0; i < urls.length; i++) {
                           const url = urls[i];
                           if (url.startsWith('data:image')) {
                             const res = await fetch(url);
                             const blob = await res.blob();
-                            filesToShare.push(new File([blob], `invoice-${i+1}.png`, { type: blob.type }));
+                            filesToShare.push(new File([blob], `invoice-${i + 1}.png`, { type: blob.type }));
                           }
                         }
                       } catch (e) {
@@ -2281,38 +2281,38 @@ export default function PaymentsRedesignPage() {
                       }
 
                       if (filesToShare.length > 0 && navigator.canShare && navigator.canShare({ files: filesToShare })) {
-                         try {
-                           await navigator.share({
-                             title: 'Payment Receipt',
-                             text: text,
-                             files: filesToShare
-                           });
-                           return; // Successfully shared using native dialog
-                         } catch (e) {
-                           console.log('Share failed or was cancelled', e);
-                         }
+                        try {
+                          await navigator.share({
+                            title: 'Payment Receipt',
+                            text: text,
+                            files: filesToShare
+                          });
+                          return; // Successfully shared using native dialog
+                        } catch (e) {
+                          console.log('Share failed or was cancelled', e);
+                        }
                       }
-                      
+
                       // Fallback: If native share with files is not supported or cancelled
                       // just open whatsapp link with text
                       window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-                   }} className="flex items-center gap-2 bg-[#25D366] hover:bg-[#1DA851] text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm">
+                    }} className="flex items-center gap-2 bg-[#25D366] hover:bg-[#1DA851] text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm">
                       WhatsApp
-                   </button>
-                   <button onClick={() => {
+                    </button>
+                    <button onClick={() => {
                       const subject = `Payment Receipt - ${selectedPaymentForView.companyName}`;
                       const body = `Payment Receipt\nSupplier: ${selectedPaymentForView.companyName}\nAmount: EGP ${Number(selectedPaymentForView.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}\nDate: ${selectedPaymentForView.date}\nMethod: ${selectedPaymentForView.method}\nID: ${selectedPaymentForView.id}`;
                       window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-                   }} className="flex items-center gap-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-white hover:bg-slate-300 dark:hover:bg-slate-600 px-5 py-2.5 rounded-xl font-bold transition-all">
+                    }} className="flex items-center gap-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-white hover:bg-slate-300 dark:hover:bg-slate-600 px-5 py-2.5 rounded-xl font-bold transition-all">
                       Email
-                   </button>
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              {/* Tear-off Bottom Edge */}
-              <div style={{ height: '16px', backgroundSize: '24px 24px', backgroundImage: 'linear-gradient(135deg, transparent 12px, #ffffff 0), linear-gradient(225deg, transparent 12px, #ffffff 0)' }} className="w-full absolute -bottom-[15px] left-0 right-0 z-10 drop-shadow-sm block dark:hidden" />
-              <div style={{ height: '16px', backgroundSize: '24px 24px', backgroundImage: 'linear-gradient(135deg, transparent 12px, #0f172a 0), linear-gradient(225deg, transparent 12px, #0f172a 0)' }} className="w-full absolute -bottom-[15px] left-0 right-0 z-10 drop-shadow-sm hidden dark:block" />
-              
+                {/* Tear-off Bottom Edge */}
+                <div style={{ height: '16px', backgroundSize: '24px 24px', backgroundImage: 'linear-gradient(135deg, transparent 12px, #ffffff 0), linear-gradient(225deg, transparent 12px, #ffffff 0)' }} className="w-full absolute -bottom-[15px] left-0 right-0 z-10 drop-shadow-sm block dark:hidden" />
+                <div style={{ height: '16px', backgroundSize: '24px 24px', backgroundImage: 'linear-gradient(135deg, transparent 12px, #0f172a 0), linear-gradient(225deg, transparent 12px, #0f172a 0)' }} className="w-full absolute -bottom-[15px] left-0 right-0 z-10 drop-shadow-sm hidden dark:block" />
+
               </motion.div>
             </div>
           </div>
@@ -2323,7 +2323,7 @@ export default function PaymentsRedesignPage() {
       <AnimatePresence>
         {selectedPaymentForPoUpload && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
@@ -2331,7 +2331,7 @@ export default function PaymentsRedesignPage() {
             >
               <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
                 <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Add PO to Invoice</h2>
-                <button 
+                <button
                   onClick={() => setSelectedPaymentForPoUpload(null)}
                   className="p-2 text-slate-400 hover:text-slate-600 bg-white dark:bg-slate-800 rounded-full transition-colors shadow-sm"
                   disabled={uploadingPoToOldInvoice}
@@ -2339,16 +2339,16 @@ export default function PaymentsRedesignPage() {
                   <X size={20} />
                 </button>
               </div>
-              
+
               <div className="p-6">
                 <p className="text-sm font-medium text-slate-500 mb-6">
                   Upload a Purchase Order image to extract the products and attach them to this invoice. This will <strong className="text-slate-700 dark:text-slate-300">not</strong> overwrite the existing supplier or total amount.
                 </p>
 
                 <div className="relative border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-8 text-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group cursor-pointer">
-                  <input 
-                    type="file" 
-                    accept="image/*" 
+                  <input
+                    type="file"
+                    accept="image/*"
                     onChange={(e) => e.target.files && handleUploadPoToOldInvoice(e.target.files[0])}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                     disabled={uploadingPoToOldInvoice}
@@ -2369,7 +2369,7 @@ export default function PaymentsRedesignPage() {
                     </>
                   )}
                 </div>
-                
+
                 <div className="mt-4 flex justify-center">
                   <button
                     onClick={handlePastePoImageButtonClick}
@@ -2389,7 +2389,7 @@ export default function PaymentsRedesignPage() {
       <AnimatePresence>
         {selectedSupplierProfile && supplierProfileData && (
           <>
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -2410,7 +2410,7 @@ export default function PaymentsRedesignPage() {
                   </h2>
                   <p className="text-sm font-medium text-slate-500 mt-1">Supplier Profile & Analytics</p>
                 </div>
-                <button 
+                <button
                   onClick={() => setSelectedSupplierProfile(null)}
                   className="p-2 text-slate-400 hover:text-slate-600 bg-white dark:bg-slate-800 rounded-full transition-colors shadow-sm"
                 >
@@ -2435,7 +2435,7 @@ export default function PaymentsRedesignPage() {
 
                 {/* Price Hike Warning */}
                 {supplierProfileData.hasPriceHike && (
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 rounded-r-2xl flex items-start gap-3"
@@ -2461,7 +2461,7 @@ export default function PaymentsRedesignPage() {
                         <LineChart data={supplierProfileData.trendData}>
                           <XAxis dataKey="month" hide />
                           <YAxis hide domain={['auto', 'auto']} />
-                          <RechartsTooltip 
+                          <RechartsTooltip
                             formatter={(value: any) => `EGP ${Number(value).toLocaleString()}`}
                             labelStyle={{ color: '#000' }}
                             contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
@@ -2475,7 +2475,7 @@ export default function PaymentsRedesignPage() {
 
                 {/* Actions */}
                 <div className="flex flex-col gap-3">
-                  <button 
+                  <button
                     onClick={handleGenerateSOA}
                     className="w-full bg-[#25D366] hover:bg-[#1DA851] text-white py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 transition-colors shadow-sm"
                   >
@@ -2517,7 +2517,7 @@ export default function PaymentsRedesignPage() {
       <AnimatePresence>
         {savedPaymentForQR && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-md">
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -2531,15 +2531,15 @@ export default function PaymentsRedesignPage() {
                 <p className="text-slate-500 font-medium mb-8">
                   Please scan this QR code with your phone or <span className="font-bold text-indigo-500">paste an image from your clipboard (Ctrl+V)</span> to upload the signed paper invoice for {savedPaymentForQR.companyName}.
                 </p>
-                
+
                 <div className="bg-white p-4 rounded-2xl border-4 border-slate-100 inline-block mb-6 shadow-sm">
-                  <QRCode 
-                    value={`${typeof window !== 'undefined' ? window.location.origin : 'https://anh-zeta.vercel.app'}/cashier/upload-invoice/${savedPaymentForQR.id}`} 
+                  <QRCode
+                    value={`${typeof window !== 'undefined' ? window.location.origin : 'https://anh-zeta.vercel.app'}/cashier/upload-invoice/${savedPaymentForQR.id}`}
                     size={200}
                     level="H"
                   />
                 </div>
-                
+
                 <p className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center justify-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin text-indigo-500" />
                   {isPasting ? "Uploading pasted image..." : "Waiting for upload from phone..."}
@@ -2562,7 +2562,7 @@ export default function PaymentsRedesignPage() {
               <h1 style={{ fontSize: '32px', fontWeight: 'bold', margin: '0 0 10px 0', textTransform: 'uppercase' }}>BULK PAYMENTS EXPORT</h1>
               <p style={{ fontSize: '16px', color: '#666', margin: 0 }}>Generated: {new Date().toLocaleString()}</p>
             </div>
-            
+
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '40px', padding: '20px', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
               <div>
                 <p style={{ fontSize: '12px', color: '#666', textTransform: 'uppercase', margin: '0 0 5px 0' }}>Total Payments Included</p>
@@ -2571,7 +2571,7 @@ export default function PaymentsRedesignPage() {
               <div style={{ textAlign: 'right' }}>
                 <p style={{ fontSize: '12px', color: '#666', textTransform: 'uppercase', margin: '0 0 5px 0' }}>Total Value</p>
                 <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>
-                  EGP {bulkPaymentsForPrint.reduce((acc, p) => acc + Number(p.amount) + Number(p.tax || 0), 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                  EGP {bulkPaymentsForPrint.reduce((acc, p) => acc + Number(p.amount) + Number(p.tax || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </p>
               </div>
             </div>
@@ -2594,7 +2594,7 @@ export default function PaymentsRedesignPage() {
                     <td style={{ padding: '10px', fontWeight: 'bold' }}>{p.companyName}</td>
                     <td style={{ padding: '10px' }}>{p.invoiceNumber || p.poNumber || '-'}</td>
                     <td style={{ padding: '10px', textAlign: 'right', fontWeight: 'bold' }}>
-                      {(Number(p.amount) + Number(p.tax || 0)).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                      {(Number(p.amount) + Number(p.tax || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </td>
                   </tr>
                 ))}
@@ -2604,8 +2604,8 @@ export default function PaymentsRedesignPage() {
 
           {/* Render individual payments & their invoices */}
           {bulkPaymentsForPrint.map((selectedPaymentForPrint) => {
-            const urls = selectedPaymentForPrint.invoiceUrls && selectedPaymentForPrint.invoiceUrls.length > 0 
-              ? selectedPaymentForPrint.invoiceUrls 
+            const urls = selectedPaymentForPrint.invoiceUrls && selectedPaymentForPrint.invoiceUrls.length > 0
+              ? selectedPaymentForPrint.invoiceUrls
               : (selectedPaymentForPrint.invoiceUrl ? [selectedPaymentForPrint.invoiceUrl] : []);
 
             return (
@@ -2635,29 +2635,29 @@ export default function PaymentsRedesignPage() {
                   {/* Body ... we will reuse a simplified version of the receipt layout */}
                   <div style={{ padding: '20px 30px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-                       <div>
-                         <p style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase', margin: '0 0 5px 0' }}>Supplier Name / المورد</p>
-                         <p style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>{selectedPaymentForPrint.companyName}</p>
-                       </div>
-                       <div style={{ textAlign: 'right' }}>
-                         <p style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase', margin: '0 0 5px 0' }}>Date / التاريخ</p>
-                         <p style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>{selectedPaymentForPrint.date}</p>
-                       </div>
+                      <div>
+                        <p style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase', margin: '0 0 5px 0' }}>Supplier Name / المورد</p>
+                        <p style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>{selectedPaymentForPrint.companyName}</p>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <p style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase', margin: '0 0 5px 0' }}>Date / التاريخ</p>
+                        <p style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>{selectedPaymentForPrint.date}</p>
+                      </div>
                     </div>
-                    
+
                     <div style={{ backgroundColor: '#f9f9f9', padding: '15px', border: '1px solid #ccc', borderRadius: '8px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between' }}>
-                       <div>
-                         <p style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase', margin: '0 0 5px 0' }}>Invoice Value / القيمة</p>
-                         <p style={{ fontSize: '16px', fontWeight: 'bold', margin: 0, fontFamily: 'monospace' }}>EGP {Number(selectedPaymentForPrint.amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
-                       </div>
-                       <div>
-                         <p style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase', margin: '0 0 5px 0' }}>Tax / الضريبة</p>
-                         <p style={{ fontSize: '16px', fontWeight: 'bold', margin: 0, fontFamily: 'monospace' }}>EGP {Number(selectedPaymentForPrint.tax || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
-                       </div>
-                       <div style={{ textAlign: 'right' }}>
-                         <p style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase', margin: '0 0 5px 0' }}>Total / الإجمالي</p>
-                         <p style={{ fontSize: '20px', fontWeight: 'bold', margin: 0, color: '#16a34a', fontFamily: 'monospace' }}>EGP {(Number(selectedPaymentForPrint.amount) + Number(selectedPaymentForPrint.tax || 0)).toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
-                       </div>
+                      <div>
+                        <p style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase', margin: '0 0 5px 0' }}>Invoice Value / القيمة</p>
+                        <p style={{ fontSize: '16px', fontWeight: 'bold', margin: 0, fontFamily: 'monospace' }}>EGP {Number(selectedPaymentForPrint.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                      </div>
+                      <div>
+                        <p style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase', margin: '0 0 5px 0' }}>Tax / الضريبة</p>
+                        <p style={{ fontSize: '16px', fontWeight: 'bold', margin: 0, fontFamily: 'monospace' }}>EGP {Number(selectedPaymentForPrint.tax || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <p style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase', margin: '0 0 5px 0' }}>Total / الإجمالي</p>
+                        <p style={{ fontSize: '20px', fontWeight: 'bold', margin: 0, color: '#16a34a', fontFamily: 'monospace' }}>EGP {(Number(selectedPaymentForPrint.amount) + Number(selectedPaymentForPrint.tax || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -2676,9 +2676,9 @@ export default function PaymentsRedesignPage() {
                     </div>
 
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed #ccc', borderRadius: '12px', padding: '20px', backgroundColor: '#fafafa' }}>
-                      <img 
-                        src={url} 
-                        alt={`Supplier Invoice Full Page ${index + 1}`} 
+                      <img
+                        src={url}
+                        alt={`Supplier Invoice Full Page ${index + 1}`}
                         style={{ maxHeight: '900px', maxWidth: '100%', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}
                       />
                     </div>
