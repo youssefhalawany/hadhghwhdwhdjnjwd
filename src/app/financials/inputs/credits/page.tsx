@@ -283,6 +283,57 @@ export default function CreditsPage() {
   const [selectedCreditForPrint, setSelectedCreditForPrint] = useState<Credit | null>(null);
   const [selectedCreditForView, setSelectedCreditForView] = useState<Credit | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [isPasting, setIsPasting] = useState(false);
+
+  useEffect(() => {
+    const handlePaste = async (e: ClipboardEvent) => {
+      const activeId = selectedCreditForView && (!selectedCreditForView.invoiceUrl && !((selectedCreditForView.invoiceUrls?.length || 0) > 0)) ? selectedCreditForView.id : null;
+      if (!activeId) return;
+
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf("image") !== -1) {
+          const file = items[i].getAsFile();
+          if (!file) continue;
+
+          setIsPasting(true);
+          const reader = new FileReader();
+          reader.onload = async (event) => {
+            const dataUrl = event.target?.result as string;
+            try {
+              const res = await fetch("/api/upload-invoice", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  paymentId: activeId,
+                  invoiceDataUrls: [dataUrl],
+                  type: "credit",
+                }),
+              });
+              if (res.ok) {
+                toast.success("Invoice uploaded from clipboard!");
+              } else {
+                const data = await res.json();
+                toast.error(data.error || "Failed to upload invoice");
+              }
+            } catch (err) {
+              console.error(err);
+              toast.error("Error uploading invoice");
+            } finally {
+              setIsPasting(false);
+            }
+          };
+          reader.readAsDataURL(file);
+          break;
+        }
+      }
+    };
+
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
+  }, [selectedCreditForView]);
   
   // Skeuomorphic States
   const [isCoinDropping, setIsCoinDropping] = useState(false);
@@ -2346,8 +2397,11 @@ export default function CreditsPage() {
                     />
                   </div>
                   <p className="text-sm font-bold text-slate-500 text-center max-w-xs">
-                    Scan this QR code with your phone to quickly upload the missing invoice for this credit.
+                    Scan this QR code with your phone or <span className="text-indigo-500">paste (Ctrl+V) an image</span> to upload the missing invoice.
                   </p>
+                  {isPasting && (
+                    <p className="text-xs text-indigo-500 font-bold mt-2 animate-pulse">Uploading pasted image...</p>
+                  )}
                 </div>
               );
             })()}

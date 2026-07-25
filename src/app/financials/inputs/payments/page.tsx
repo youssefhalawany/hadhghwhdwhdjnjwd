@@ -204,13 +204,15 @@ export default function PaymentsRedesignPage() {
   useEffect(() => {
     if (!savedPaymentForQR) return;
     const unsub = onSnapshot(doc(db, "cash_payments", savedPaymentForQR.id), (docSnap) => {
-      if (docSnap.exists() && docSnap.data().invoiceUrl) {
-        toast.success("Invoice successfully uploaded via phone!");
+      if (docSnap.exists() && (docSnap.data().invoiceUrl || (docSnap.data().invoiceUrls && docSnap.data().invoiceUrls.length > 0))) {
+        toast.success("Invoice successfully uploaded!");
         setSavedPaymentForQR(null);
       }
     });
     return () => unsub();
   }, [savedPaymentForQR]);
+
+
 
   // Modal State
   const [showAddModal, setShowAddModal] = useState(false);
@@ -242,6 +244,57 @@ export default function PaymentsRedesignPage() {
   const [selectedPaymentForPrint, setSelectedPaymentForPrint] = useState<any>(null);
   const [selectedPaymentForView, setSelectedPaymentForView] = useState<any>(null);
   const [generatingPDF, setGeneratingPDF] = useState(false);
+  const [isPasting, setIsPasting] = useState(false);
+
+  useEffect(() => {
+    const handlePaste = async (e: ClipboardEvent) => {
+      const activeId = savedPaymentForQR?.id || (selectedPaymentForView && (!selectedPaymentForView.invoiceUrl && !((selectedPaymentForView.invoiceUrls?.length || 0) > 0)) ? selectedPaymentForView.id : null);
+      if (!activeId) return;
+
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf("image") !== -1) {
+          const file = items[i].getAsFile();
+          if (!file) continue;
+
+          setIsPasting(true);
+          const reader = new FileReader();
+          reader.onload = async (event) => {
+            const dataUrl = event.target?.result as string;
+            try {
+              const res = await fetch("/api/upload-invoice", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  paymentId: activeId,
+                  invoiceDataUrls: [dataUrl],
+                  type: "payment",
+                }),
+              });
+              if (res.ok) {
+                toast.success("Invoice uploaded from clipboard!");
+              } else {
+                const data = await res.json();
+                toast.error(data.error || "Failed to upload invoice");
+              }
+            } catch (err) {
+              console.error(err);
+              toast.error("Error uploading invoice");
+            } finally {
+              setIsPasting(false);
+            }
+          };
+          reader.readAsDataURL(file);
+          break;
+        }
+      }
+    };
+
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
+  }, [savedPaymentForQR, selectedPaymentForView]);
 
   useEffect(() => {
     if (selectedPaymentForPrint) {
@@ -2123,8 +2176,11 @@ export default function PaymentsRedesignPage() {
                       />
                     </div>
                     <p className="text-sm font-bold text-slate-500 text-center max-w-xs">
-                      Scan this QR code with your phone to quickly upload the missing invoice for this payment.
+                      Scan this QR code with your phone or <span className="text-indigo-500">paste (Ctrl+V) an image</span> to upload the missing invoice.
                     </p>
+                    {isPasting && (
+                      <p className="text-xs text-indigo-500 font-bold mt-2 animate-pulse">Uploading pasted image...</p>
+                    )}
                   </div>
                 );
               })()}
@@ -2202,7 +2258,15 @@ export default function PaymentsRedesignPage() {
                       {generatingPDF ? "Generating PDF..." : "Print All (Copy)"}
                    </button>
                    <button onClick={() => {
-                      const text = `🧾 *Payment Receipt*\n*Supplier:* ${selectedPaymentForView.companyName}\n*Amount:* EGP ${Number(selectedPaymentForView.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}\n*Date:* ${selectedPaymentForView.date}\n*Method:* ${selectedPaymentForView.method}\n*ID:* ${selectedPaymentForView.id}`;
+                      let invoiceLinksText = "";
+                      if (selectedPaymentForView.invoiceUrls && selectedPaymentForView.invoiceUrls.length > 0) {
+                        invoiceLinksText = `\n\n*📄 Attached Invoice(s):*\n${selectedPaymentForView.invoiceUrls.map((url: string, i: number) => `Link ${i + 1}: ${url}`).join('\n')}`;
+                      } else if (selectedPaymentForView.invoiceUrl) {
+                        invoiceLinksText = `\n\n*📄 Attached Invoice:*\n${selectedPaymentForView.invoiceUrl}`;
+                      }
+
+                      const text = `Dear ${selectedPaymentForView.companyName} Team,\n\nWe hope this message finds you well.\n\nPlease find the details of our recent payment transaction below:\n\n*🧾 Transaction Details:*\n• *Amount:* EGP ${Number(selectedPaymentForView.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}\n• *Date:* ${selectedPaymentForView.date}\n• *Payment Method:* ${selectedPaymentForView.method.toUpperCase()}\n• *Reference ID:* ${selectedPaymentForView.id}${invoiceLinksText}\n\nThank you for your continued partnership.\n\nBest regards,\nAl Nabulsi & Al Helou Management`;
+                      
                       window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
                    }} className="flex items-center gap-2 bg-[#25D366] hover:bg-[#1DA851] text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm">
                       WhatsApp
@@ -2437,7 +2501,7 @@ export default function PaymentsRedesignPage() {
                 </div>
                 <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mb-2">Mandatory Upload</h2>
                 <p className="text-slate-500 font-medium mb-8">
-                  Please scan this QR code with your phone to upload the signed paper invoice for {savedPaymentForQR.companyName}.
+                  Please scan this QR code with your phone or <span className="font-bold text-indigo-500">paste an image from your clipboard (Ctrl+V)</span> to upload the signed paper invoice for {savedPaymentForQR.companyName}.
                 </p>
                 
                 <div className="bg-white p-4 rounded-2xl border-4 border-slate-100 inline-block mb-6 shadow-sm">
@@ -2450,7 +2514,7 @@ export default function PaymentsRedesignPage() {
                 
                 <p className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center justify-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin text-indigo-500" />
-                  Waiting for upload from phone...
+                  {isPasting ? "Uploading pasted image..." : "Waiting for upload from phone..."}
                 </p>
                 <p className="text-xs text-slate-500 mt-2 max-w-[250px] mx-auto text-red-500 font-medium">
                   Do not close this window until the image is uploaded.
