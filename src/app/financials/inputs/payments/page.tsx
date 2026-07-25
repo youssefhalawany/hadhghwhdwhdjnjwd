@@ -2259,16 +2259,42 @@ export default function PaymentsRedesignPage() {
                       )}
                       {generatingPDF ? "Generating PDF..." : "Print All (Copy)"}
                    </button>
-                   <button onClick={() => {
-                      let invoiceLinksText = "";
-                      if (selectedPaymentForView.invoiceUrls && selectedPaymentForView.invoiceUrls.length > 0) {
-                        invoiceLinksText = `\n\n*📄 Attached Invoice(s):*\n${selectedPaymentForView.invoiceUrls.map((url: string, i: number) => `Link ${i + 1}: ${url}`).join('\n')}`;
-                      } else if (selectedPaymentForView.invoiceUrl) {
-                        invoiceLinksText = `\n\n*📄 Attached Invoice:*\n${selectedPaymentForView.invoiceUrl}`;
+                   <button onClick={async () => {
+                      const text = `Dear ${selectedPaymentForView.companyName} Team,\n\nWe hope this message finds you well.\n\nPlease find the details of our recent payment transaction below:\n\n*🧾 Transaction Details:*\n• *Amount:* EGP ${Number(selectedPaymentForView.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}\n• *Date:* ${selectedPaymentForView.date}\n• *Payment Method:* ${selectedPaymentForView.method.toUpperCase()}\n• *Reference ID:* ${selectedPaymentForView.id}\n\nThank you for your continued partnership.\n\nBest regards,\nAl Nabulsi & Al Helou Management`;
+                      
+                      let filesToShare: File[] = [];
+                      try {
+                        const urls = selectedPaymentForView.invoiceUrls && selectedPaymentForView.invoiceUrls.length > 0 
+                          ? selectedPaymentForView.invoiceUrls 
+                          : (selectedPaymentForView.invoiceUrl ? [selectedPaymentForView.invoiceUrl] : []);
+                          
+                        for (let i = 0; i < urls.length; i++) {
+                          const url = urls[i];
+                          if (url.startsWith('data:image')) {
+                            const res = await fetch(url);
+                            const blob = await res.blob();
+                            filesToShare.push(new File([blob], `invoice-${i+1}.png`, { type: blob.type }));
+                          }
+                        }
+                      } catch (e) {
+                        console.error('Error preparing images for sharing', e);
                       }
 
-                      const text = `Dear ${selectedPaymentForView.companyName} Team,\n\nWe hope this message finds you well.\n\nPlease find the details of our recent payment transaction below:\n\n*🧾 Transaction Details:*\n• *Amount:* EGP ${Number(selectedPaymentForView.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}\n• *Date:* ${selectedPaymentForView.date}\n• *Payment Method:* ${selectedPaymentForView.method.toUpperCase()}\n• *Reference ID:* ${selectedPaymentForView.id}${invoiceLinksText}\n\nThank you for your continued partnership.\n\nBest regards,\nAl Nabulsi & Al Helou Management`;
+                      if (filesToShare.length > 0 && navigator.canShare && navigator.canShare({ files: filesToShare })) {
+                         try {
+                           await navigator.share({
+                             title: 'Payment Receipt',
+                             text: text,
+                             files: filesToShare
+                           });
+                           return; // Successfully shared using native dialog
+                         } catch (e) {
+                           console.log('Share failed or was cancelled', e);
+                         }
+                      }
                       
+                      // Fallback: If native share with files is not supported or cancelled
+                      // just open whatsapp link with text
                       window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
                    }} className="flex items-center gap-2 bg-[#25D366] hover:bg-[#1DA851] text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm">
                       WhatsApp
