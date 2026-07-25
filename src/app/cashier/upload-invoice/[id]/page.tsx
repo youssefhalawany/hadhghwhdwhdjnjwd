@@ -26,7 +26,6 @@ function UploadInvoiceContent() {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
-  const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
   const [isAligned, setIsAligned] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -59,15 +58,7 @@ function UploadInvoiceContent() {
     fetchPayment();
   }, [id, type]);
 
-  // Request GPS
-  useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        (err) => console.log("GPS denied", err)
-      );
-    }
-  }, []);
+
 
   const startCamera = useCallback(async (deviceId?: string) => {
     try {
@@ -132,19 +123,6 @@ function UploadInvoiceContent() {
     if (!ctx) return;
 
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-    ctx.fillRect(0, canvas.height - 120, canvas.width, 120);
-    
-    ctx.fillStyle = "#10b981";
-    ctx.font = `bold ${Math.max(24, Math.floor(canvas.height * 0.03))}px monospace`;
-    const dateStr = new Date().toLocaleString();
-    const locStr = location ? `GPS: ${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}` : `GPS: Location Denied`;
-    const userStr = `Cashier: ${paymentInfo?.createdBy || 'System'} | ID: ${id.substring(0,8)}`;
-    
-    ctx.fillText(dateStr, 30, canvas.height - 80);
-    ctx.fillText(locStr, 30, canvas.height - 30);
-    ctx.fillText(userStr, canvas.width * 0.5, canvas.height - 30);
 
     const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
     
@@ -292,11 +270,6 @@ function UploadInvoiceContent() {
             </p>
           )}
         </div>
-        {location && (
-          <div className="flex items-center gap-2 text-xs font-bold bg-indigo-500/20 text-indigo-300 px-3 py-1.5 rounded-full border border-indigo-500/30 shadow-sm">
-            <MapPin className="w-3 h-3" /> GPS Active
-          </div>
-        )}
       </div>
 
       <div className="flex-1 p-6 flex flex-col relative">
@@ -413,7 +386,7 @@ function UploadInvoiceContent() {
               <span className="text-indigo-300 font-bold tracking-widest uppercase">Start AR Scan</span>
             </button>
             <p className="text-slate-400 text-center mt-8 px-4 leading-relaxed">
-              Launch the live AR scanner to map document edges and automatically embed GPS watermarks.
+              Launch the live AR scanner to map document edges.
             </p>
             
             <button 
