@@ -35,7 +35,7 @@ function UploadInvoiceContent() {
   const [croppingImageSrc, setCroppingImageSrc] = useState<string | null>(null);
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
-  const [isEnhancing, setIsEnhancing] = useState(true);
+  const [isEnhancing, setIsEnhancing] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -124,7 +124,7 @@ function UploadInvoiceContent() {
 
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+    const dataUrl = canvas.toDataURL('image/jpeg', 1.0);
     
     stopCamera();
     setCroppingImageSrc(dataUrl);
@@ -188,7 +188,7 @@ function UploadInvoiceContent() {
       canvas.height
     );
 
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+    const dataUrl = canvas.toDataURL('image/jpeg', 1.0);
     setCompressedDataUrls(prev => [...prev, dataUrl]);
     
     setCroppingImageSrc(null);
