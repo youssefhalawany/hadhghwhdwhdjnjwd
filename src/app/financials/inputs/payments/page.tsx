@@ -742,7 +742,7 @@ export default function PaymentsRedesignPage() {
       // Auto Print & QR
       setSelectedPaymentForPrint(savedPayment);
       setSavedPaymentForQR(savedPayment);
-      setTimeout(() => generatePDF(), 500);
+      setTimeout(() => generatePDF(savedPayment), 500);
 
     } catch (err) {
       console.error(err);
@@ -781,8 +781,10 @@ export default function PaymentsRedesignPage() {
     }
   };
 
-  const generatePDF = async () => {
+  const generatePDF = async (paymentToPrint: any) => {
     setGeneratingPDF(true);
+    // Give more time for the DOM to render and images to load
+    await new Promise(resolve => setTimeout(resolve, 800));
     try {
       const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
       const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -808,16 +810,16 @@ export default function PaymentsRedesignPage() {
         page2.style.left = "-9999px";
       }
 
-      const invoiceUrls = selectedPaymentForPrint.invoiceUrls && selectedPaymentForPrint.invoiceUrls.length > 0 
-        ? selectedPaymentForPrint.invoiceUrls 
-        : (selectedPaymentForPrint.invoiceUrl ? [selectedPaymentForPrint.invoiceUrl] : []);
+      const invoiceUrls = paymentToPrint.invoiceUrls && paymentToPrint.invoiceUrls.length > 0 
+        ? paymentToPrint.invoiceUrls 
+        : (paymentToPrint.invoiceUrl ? [paymentToPrint.invoiceUrl] : []);
 
       for (let i = 0; i < invoiceUrls.length; i++) {
         const pageInvoice = document.getElementById(`pdf-receipt-invoice-page-${i}`);
         if (pageInvoice) {
           pageInvoice.style.left = "0";
-          const canvasInvoice = await html2canvas(pageInvoice, { scale: 2, useCORS: true });
-          const imgDataInvoice = canvasInvoice.toDataURL("image/png");
+          const canvasInvoice = await html2canvas(pageInvoice, { scale: 4, useCORS: true });
+          const imgDataInvoice = canvasInvoice.toDataURL("image/jpeg", 1.0);
           const pdfHeightInvoice = (canvasInvoice.height * pdfWidth) / canvasInvoice.width;
           pdf.addPage();
           pdf.addImage(imgDataInvoice, "PNG", 0, 0, pdfWidth, pdfHeightInvoice);
@@ -897,11 +899,11 @@ export default function PaymentsRedesignPage() {
             const invPage = document.getElementById(`pdf-bulk-payment-${p.id}-invoice-${j}`);
             if (invPage) {
               invPage.style.left = "0";
-              const canvasInv = await html2canvas(invPage, { scale: 2, useCORS: true });
-              const imgDataInv = canvasInv.toDataURL("image/png");
+              const canvasInv = await html2canvas(invPage, { scale: 4, useCORS: true });
+              const imgDataInv = canvasInv.toDataURL("image/jpeg", 1.0);
               const pdfHeightInv = (canvasInv.height * pdfWidth) / canvasInv.width;
               pdf.addPage();
-              pdf.addImage(imgDataInv, "PNG", 0, 0, pdfWidth, pdfHeightInv);
+              pdf.addImage(imgDataInv, "JPEG", 0, 0, pdfWidth, pdfHeightInv);
               invPage.style.left = "-9999px";
             }
           }
@@ -1314,7 +1316,7 @@ export default function PaymentsRedesignPage() {
                         <button 
                           onClick={() => {
                             setSelectedPaymentForPrint(pay);
-                            setTimeout(() => generatePDF(), 100);
+                            setTimeout(() => generatePDF(pay), 100);
                           }}
                           className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl transition-colors"
                         >
@@ -2229,7 +2231,7 @@ export default function PaymentsRedesignPage() {
                     <button
                       onClick={() => {
                         setSelectedPaymentForPrint(selectedPaymentForView);
-                        setTimeout(() => generatePDF(), 100);
+                        setTimeout(() => generatePDF(selectedPaymentForView), 100);
                       }}
                       className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold flex items-center gap-2 transition-all shadow-sm hover:shadow-md"
                     >
@@ -2248,7 +2250,7 @@ export default function PaymentsRedesignPage() {
                 <div className="p-4 bg-slate-50 dark:bg-slate-800/50 flex flex-wrap items-center justify-center gap-3 border-t border-slate-100 dark:border-slate-800">
                    <button onClick={() => {
                       setSelectedPaymentForPrint(selectedPaymentForView);
-                      setTimeout(() => generatePDF(), 100);
+                      generatePDF(selectedPaymentForView);
                    }} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm">
                       {generatingPDF ? (
                         <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
