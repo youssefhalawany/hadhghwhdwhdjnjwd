@@ -84,6 +84,19 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
               window.dispatchEvent(new CustomEvent("circlek_role_changed", { detail: data.role }));
             }
 
+            // Log Sign-In event once per browser session
+            if (typeof window !== "undefined" && !sessionStorage.getItem(`signin_logged_${currentUser.uid}`)) {
+              sessionStorage.setItem(`signin_logged_${currentUser.uid}`, "true");
+              dbService.logAction(
+                currentUser.email || "Unknown",
+                data.displayName || currentUser.displayName || "User",
+                data.role || storedRole,
+                "User Sign-In",
+                "N/A",
+                `Signed in to platform (${data.role || storedRole})`
+              ).catch(() => {});
+            }
+
             // Map storeIds to local BranchIds
             const allowedIds = data.storeIds || [];
             const mappedBranches: { id: BranchId; name: string }[] = [];

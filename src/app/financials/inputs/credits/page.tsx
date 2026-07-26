@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { db, auth, storage } from "@/lib/firebase";
+import { db, auth, storage, dbService } from "@/lib/firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { syncProductsToMaster } from "@/lib/products-sync";
 import {
@@ -531,6 +531,17 @@ export default function CreditsPage() {
       }
 
       const docRef = await addDoc(collection(db, "credits"), newCredit);
+
+      const role = typeof window !== "undefined" ? (localStorage.getItem("circlek_role") || "manager") : "manager";
+      dbService.logAction(
+        auth.currentUser?.email || "Unknown User",
+        auth.currentUser?.displayName || "User",
+        role,
+        "Create Credit Record",
+        "N/A",
+        `Supplier: ${companyName}, Amount: EGP ${totalDue}`
+      ).catch(() => {});
+
       const savedCredit = { id: docRef.id, ...newCredit, createdAt: Timestamp.now() } as Credit;
       const updatedCredits = [savedCredit, ...credits];
       setCredits(updatedCredits);
@@ -570,7 +581,19 @@ export default function CreditsPage() {
   const handleDeleteCredit = async (id: string) => {
     if (!confirm("Are you sure you want to delete this credit?")) return;
     try {
+      const creditItem = credits.find(c => c.id === id);
       await deleteDoc(doc(db, "credits", id));
+
+      const role = typeof window !== "undefined" ? (localStorage.getItem("circlek_role") || "manager") : "manager";
+      dbService.logAction(
+        auth.currentUser?.email || "Unknown User",
+        auth.currentUser?.displayName || "User",
+        role,
+        "Delete Credit Record",
+        `ID: ${id}, Supplier: ${creditItem?.companyName || "N/A"}, Amount: EGP ${creditItem?.totalDue || 0}`,
+        "Deleted"
+      ).catch(() => {});
+
       setCredits(credits.filter(c => c.id !== id));
       toast.success("Credit deleted.");
     } catch (error) {

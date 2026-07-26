@@ -175,6 +175,15 @@ export default function CashierInventoryAudit() {
           timestamp: new Date().toISOString()
         });
       }
+
+      dbService.logAction(
+        user?.email || "Cashier",
+        user?.name || "Cashier",
+        "cashier",
+        "Submit Audit Scan",
+        "N/A",
+        `Product: ${productName} (${bcode}), Qty: ${quantity}`
+      ).catch(() => {});
       
       triggerSuccessOverlay(lang === "ar" ? "تم تسجيل الصنف!" : "Item Scanned!");
       setScanResult("SUCCESS");

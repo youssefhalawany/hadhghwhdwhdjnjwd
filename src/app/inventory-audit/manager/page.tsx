@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { db, dbService } from "@/lib/firebase";
+import { db, auth, dbService } from "@/lib/firebase";
 import { collection, query, where, onSnapshot, getDocs } from "firebase/firestore";
 import { PageTransition } from "@/components/PageTransition";
 import { useLanguage } from "@/context/LanguageContext";
@@ -194,6 +194,16 @@ export default function ManagerInventoryAudit() {
         status: "CLOSED",
         closedAt: new Date().toISOString()
       });
+
+      const role = typeof window !== "undefined" ? (localStorage.getItem("circlek_role") || "manager") : "manager";
+      dbService.logAction(
+        auth.currentUser?.email || "Manager",
+        auth.currentUser?.displayName || "Manager",
+        role,
+        "Close Audit Batch",
+        `Batch: ${activeBatch.title || activeBatch.id}`,
+        "CLOSED"
+      ).catch(() => {});
     } catch (e) {
       console.error("Error closing batch", e);
     }
@@ -210,6 +220,17 @@ export default function ManagerInventoryAudit() {
         finalizedAt: new Date().toISOString(),
         reconciliationData: Object.values(reconciliationData)
       });
+
+      const role = typeof window !== "undefined" ? (localStorage.getItem("circlek_role") || "manager") : "manager";
+      dbService.logAction(
+        auth.currentUser?.email || "Manager",
+        auth.currentUser?.displayName || "Manager",
+        role,
+        "Finalize Audit Batch",
+        `Batch: ${activeBatch.title || activeBatch.id}`,
+        "FINALIZED"
+      ).catch(() => {});
+
       // After finalizing, trigger print
       setTimeout(() => window.print(), 500);
       

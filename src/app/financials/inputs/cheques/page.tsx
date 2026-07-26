@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { db, auth } from "@/lib/firebase";
+import { db, auth, dbService } from "@/lib/firebase";
 import { 
   collection, 
   query, 
@@ -110,6 +110,16 @@ export default function ChequesPage() {
 
       const docRef = await addDoc(collection(db, "cheques"), chequeData);
 
+      const role = typeof window !== "undefined" ? (localStorage.getItem("circlek_role") || "manager") : "manager";
+      dbService.logAction(
+        auth.currentUser?.email || "Unknown User",
+        auth.currentUser?.displayName || "User",
+        role,
+        "Create Cheque Record",
+        "N/A",
+        `Cheque #: ${newCheque.chequeNumber}, Bank: ${newCheque.bankName}, Amount: EGP ${newCheque.amount}`
+      ).catch(() => {});
+
       toast.success("Cheque added successfully!");
       setShowAddModal(false);
       
@@ -177,7 +187,19 @@ export default function ChequesPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this cheque?")) return;
     try {
+      const chq = cheques.find(c => c.id === id);
       await deleteDoc(doc(db, "cheques", id));
+
+      const role = typeof window !== "undefined" ? (localStorage.getItem("circlek_role") || "manager") : "manager";
+      dbService.logAction(
+        auth.currentUser?.email || "Unknown User",
+        auth.currentUser?.displayName || "User",
+        role,
+        "Delete Cheque Record",
+        `ID: ${id}, Cheque #: ${chq?.chequeNumber || "N/A"}, Amount: EGP ${chq?.amount || 0}`,
+        "Deleted"
+      ).catch(() => {});
+
       toast.success("Cheque deleted");
     } catch (err) {
       console.error(err);

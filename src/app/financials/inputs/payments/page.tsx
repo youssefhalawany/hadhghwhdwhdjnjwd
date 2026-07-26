@@ -48,7 +48,7 @@ function numberToArabicWords(num: number): string {
 }
 
 import React, { useState, useEffect, useMemo } from "react";
-import { db, auth, storage } from "@/lib/firebase";
+import { db, auth, storage, dbService } from "@/lib/firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import {
   collection,
@@ -724,6 +724,16 @@ export default function PaymentsRedesignPage() {
 
       const docRef = await addDoc(collection(db, "cash_payments"), newPayment);
 
+      const role = typeof window !== "undefined" ? (localStorage.getItem("circlek_role") || "manager") : "manager";
+      dbService.logAction(
+        auth.currentUser?.email || "Unknown User",
+        auth.currentUser?.displayName || "User",
+        role,
+        "Create Payment Record",
+        "N/A",
+        `Supplier: ${companyName}, Amount: EGP ${amount}`
+      ).catch(() => {});
+
       // Sync products to secondary Firebase
       if (poItems.length > 0) {
         syncProductsToMaster(poItems, date, companyName);
@@ -781,8 +791,20 @@ export default function PaymentsRedesignPage() {
   const handleDelete = async (id: string) => {
     if (!window.confirm("Are you sure you want to delete this payment?")) return;
     try {
+      const paymentItem = payments.find(p => p.id === id);
       await deleteDoc(doc(db, "cash_payments", id));
       setPayments(payments.filter(p => p.id !== id));
+
+      const role = typeof window !== "undefined" ? (localStorage.getItem("circlek_role") || "manager") : "manager";
+      dbService.logAction(
+        auth.currentUser?.email || "Unknown User",
+        auth.currentUser?.displayName || "User",
+        role,
+        "Delete Payment Record",
+        `ID: ${id}, Supplier: ${paymentItem?.companyName || "N/A"}, Amount: EGP ${paymentItem?.total || 0}`,
+        "Deleted"
+      ).catch(() => {});
+
       toast.success("Payment deleted successfully.");
     } catch (err) {
       toast.error("Failed to delete payment.");

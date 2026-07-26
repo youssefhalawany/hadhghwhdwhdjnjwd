@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { db } from "@/lib/firebase";
+import { db, dbService } from "@/lib/firebase";
 import { collection, addDoc, getDocs, getDoc, query, where, updateDoc, doc, serverTimestamp } from "firebase/firestore";
 import { Calculator, Package, Banknote, Calendar, Clock, ArrowRight, ArrowLeft, Lock, User as UserIcon, Globe, WifiOff, RefreshCw, ChevronDown, Shield, ShieldCheck, ShieldAlert, Radar } from "lucide-react";
 import { getOfflineQueue, addToOfflineQueue, removeFromOfflineQueue } from '@/lib/offlineDb';
@@ -606,9 +606,17 @@ export default function CashierShiftReportPage() {
         await updateDoc(doc(db, "shift_reports", existingReportId), updatePayload);
         submittedId = existingReportId;
       } else {
-        // Create new report
         const docRef = await addDoc(collection(db, "shift_reports"), payload);
         submittedId = docRef.id;
+
+        dbService.logAction(
+          c?.email || "Cashier",
+          c?.name || "Cashier",
+          "cashier",
+          "Submit Shift Report",
+          "N/A",
+          `Shift: ${shiftType}, Store: ${c?.branchId || c?.storeId || "alamein4"}, Cash: EGP ${actualCash}`
+        ).catch(() => {});
         
         try {
           await addDoc(collection(db, "notifications"), {

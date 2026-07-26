@@ -76,6 +76,16 @@ export default function ExpensesPage() {
         createdAt: new Date().toISOString()
       });
 
+      const role = typeof window !== "undefined" ? (localStorage.getItem("circlek_role") || "admin") : "admin";
+      dbService.logAction(
+        auth.currentUser?.email || createdBy,
+        auth.currentUser?.displayName || createdBy,
+        role,
+        "Create Expense Record",
+        "N/A",
+        `Category: ${category}, Amount: EGP ${numAmount}, Notes: ${notes}`
+      ).catch(() => {});
+
       setAmount("");
       setSubCategory("");
       setNotes("");
@@ -96,7 +106,19 @@ export default function ExpensesPage() {
         label: "Delete",
         onClick: async () => {
           try {
+            const expItem = expenses.find(e => e.id === id);
             await deleteDoc(doc(db, "expenses", id));
+
+            const role = typeof window !== "undefined" ? (localStorage.getItem("circlek_role") || "admin") : "admin";
+            dbService.logAction(
+              auth.currentUser?.email || "Unknown User",
+              auth.currentUser?.displayName || "User",
+              role,
+              "Delete Expense Record",
+              `ID: ${id}, Category: ${expItem?.category || "N/A"}, Amount: EGP ${expItem?.amount || 0}`,
+              "Deleted"
+            ).catch(() => {});
+
             toast.success("Record deleted");
             vibrateSuccess();
           } catch (error) {

@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { collection, addDoc, getDocs, query, where, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db, dbService } from "@/lib/firebase";
 import { toast } from "sonner";
 import { triggerSuccessOverlay } from "@/components/MobileUX/SuccessOverlay";
 import {  Shield, UploadCloud, ChevronLeft, AlertTriangle, User as UserIcon, Globe, Camera, X, Radar , Package, ArrowLeft } from "lucide-react";
@@ -481,6 +481,15 @@ export default function CashierVoidPage() {
 
     try {
       await addDoc(collection(db, "void_requests"), payload);
+
+      dbService.logAction(
+        cashierEmail || "Cashier",
+        cashierName || "Cashier",
+        "cashier",
+        "Submit Void Request",
+        "N/A",
+        `Type: ${requestType}, Item: ${itemName || "Multiple"}, Reason: ${reason}`
+      ).catch(() => {});
       
       try {
         await addDoc(collection(db, "notifications"), {

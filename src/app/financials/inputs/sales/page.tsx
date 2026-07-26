@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { db } from "@/lib/firebase";
+import { db, auth, dbService } from "@/lib/firebase";
 import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, getAggregateFromServer, sum } from "firebase/firestore";
 import { Banknote, CreditCard, Trash2, Edit, AlertTriangle, X, Sun, Moon, CalendarDays, Loader2, FileText, TrendingUp, Target, Activity } from "lucide-react";
 import { useBranch } from "@/context/BranchContext";
@@ -271,6 +271,17 @@ export default function SalesManagementPage() {
         overShort: Number(editData.overShort) || 0,
         notes: editData.notes,
       });
+
+      const role = typeof window !== "undefined" ? (localStorage.getItem("circlek_role") || "admin") : "admin";
+      dbService.logAction(
+        auth.currentUser?.email || "Unknown User",
+        auth.currentUser?.displayName || "User",
+        role,
+        "Edit Sales Record",
+        `Date: ${selectedSale.date}, Cash: ${selectedSale.cash}`,
+        `Date: ${editData.date}, Cash: ${editData.cash}`
+      ).catch(() => {});
+
       toast.success("Sales record updated successfully!");
       setEditModalOpen(false);
     } catch (err: any) {
@@ -285,6 +296,17 @@ export default function SalesManagementPage() {
     setIsSubmitting(true);
     try {
       await deleteDoc(doc(db, "sales", saleToDelete.id));
+
+      const role = typeof window !== "undefined" ? (localStorage.getItem("circlek_role") || "admin") : "admin";
+      dbService.logAction(
+        auth.currentUser?.email || "Unknown User",
+        auth.currentUser?.displayName || "User",
+        role,
+        "Delete Sales Record",
+        `ID: ${saleToDelete.id}, Cashier: ${saleToDelete.cashierName}, Date: ${saleToDelete.date}`,
+        "Deleted"
+      ).catch(() => {});
+
       toast.success("Sales record deleted.");
       setDeleteModalOpen(false);
       setSaleToDelete(null);
