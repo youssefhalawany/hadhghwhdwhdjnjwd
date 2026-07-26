@@ -54,7 +54,8 @@ service cloud.firestore {
     match /shift_schedules/{doc} {
       allow read: if request.auth != null && (isAdmin() || isManagerFor(resource.data.branchId));
       allow create: if request.auth != null && (isAdminEditor() || isManagerFor(request.resource.data.branchId));
-      allow update, delete: if request.auth != null && (isAdminEditor() || isManagerFor(resource.data.branchId));
+      allow update: if request.auth != null && (isAdminEditor() || isManagerFor(resource.data.branchId));
+      allow delete: if request.auth != null && isAdminEditor();
     }
     // ---------- Financials (admins or store manager) ----------
     // sales
@@ -68,7 +69,8 @@ service cloud.firestore {
         isManager()
       );
       allow create: if request.auth != null && (isAdminEditor() || isManagerFor(request.resource.data.storeId));
-      allow update, delete: if request.auth != null && (isAdminEditor() || isManagerFor(resource.data.storeId));
+      allow update: if request.auth != null && (isAdminEditor() || isManagerFor(resource.data.storeId));
+      allow delete: if request.auth != null && isAdminEditor();
     }
 
     // cash_payments
@@ -82,7 +84,8 @@ service cloud.firestore {
         isManager()
       );
       allow create: if request.auth != null && (isAdminEditor() || isManagerFor(request.resource.data.storeId));
-      allow update, delete: if request.auth != null && (isAdminEditor() || isManagerFor(resource.data.storeId));
+      allow update: if request.auth != null && (isAdminEditor() || isManagerFor(resource.data.storeId));
+      allow delete: if request.auth != null && isAdminEditor();
     }
 
     // credits
@@ -96,7 +99,8 @@ service cloud.firestore {
         isManager()
       );
       allow create: if request.auth != null && (isAdminEditor() || isManagerFor(request.resource.data.storeId));
-      allow update, delete: if request.auth != null && (isAdminEditor() || isManagerFor(resource.data.storeId));
+      allow update: if request.auth != null && (isAdminEditor() || isManagerFor(resource.data.storeId));
+      allow delete: if request.auth != null && isAdminEditor();
     }
 
     // credit_payments
@@ -110,13 +114,15 @@ service cloud.firestore {
         isManager()
       );
       allow create: if request.auth != null && (isAdminEditor() || isManagerFor(request.resource.data.storeId));
-      allow update, delete: if request.auth != null && (isAdminEditor() || isManagerFor(resource.data.storeId));
+      allow update: if request.auth != null && (isAdminEditor() || isManagerFor(resource.data.storeId));
+      allow delete: if request.auth != null && isAdminEditor();
     }
         // credit_payments
     match /creditPayments/{doc} {
       allow read: if request.auth != null && (isAdmin() || isManagerFor(get(/databases/$(database)/documents/credits/$(resource.data.creditId)).data.storeId));
       allow create: if request.auth != null && (isAdminEditor() || isManagerFor(get(/databases/$(database)/documents/credits/$(request.resource.data.creditId)).data.storeId));
-      allow update, delete: if request.auth != null && (isAdminEditor() || isManagerFor(get(/databases/$(database)/documents/credits/$(resource.data.creditId)).data.storeId));
+      allow update: if request.auth != null && (isAdminEditor() || isManagerFor(get(/databases/$(database)/documents/credits/$(resource.data.creditId)).data.storeId));
+      allow delete: if request.auth != null && isAdminEditor();
     }
 
 
@@ -131,7 +137,8 @@ service cloud.firestore {
         isManager()
       );
       allow create: if request.auth != null && (isAdminEditor() || isManagerFor(request.resource.data.storeId));
-      allow update, delete: if request.auth != null && (isAdminEditor() || isManagerFor(resource.data.storeId));
+      allow update: if request.auth != null && (isAdminEditor() || isManagerFor(resource.data.storeId));
+      allow delete: if request.auth != null && isAdminEditor();
     }
 
     // deposits
@@ -145,7 +152,8 @@ service cloud.firestore {
         isManager()
       );
       allow create: if request.auth != null && (isAdminEditor() || isManagerFor(request.resource.data.storeId));
-      allow update, delete: if request.auth != null && (isAdminEditor() || isManagerFor(resource.data.storeId));
+      allow update: if request.auth != null && (isAdminEditor() || isManagerFor(resource.data.storeId));
+      allow delete: if request.auth != null && isAdminEditor();
     }
 
     // ---------- HR (Admins and managers for their stores) ----------
@@ -223,7 +231,8 @@ service cloud.firestore {
         isManager()
       );
       allow create: if request.auth != null && (isAdminEditor() || isManagerFor(request.resource.data.storeId));
-      allow update, delete: if request.auth != null && (isAdminEditor() || isManagerFor(resource.data.storeId));
+      allow update: if request.auth != null && (isAdminEditor() || isManagerFor(resource.data.storeId));
+      allow delete: if request.auth != null && isAdminEditor();
     }
       // opening_money_ins (admins and managers can read)
     match /opening_money_ins/{doc} {
@@ -258,7 +267,8 @@ service cloud.firestore {
     match /tax_tasks/{doc} {
       allow read: if request.auth != null && (isAdmin() || isManagerFor(resource.data.storeId));
       allow create: if request.auth != null && (isAdminEditor() || isManagerFor(request.resource.data.storeId));
-      allow update, delete: if request.auth != null && (isAdminEditor() || isManagerFor(resource.data.storeId));
+      allow update: if request.auth != null && (isAdminEditor() || isManagerFor(resource.data.storeId));
+      allow delete: if request.auth != null && isAdminEditor();
     }
     // ---------- Notice Board (admins publish, everyone reads) ----------
     match /noticeBoard/{doc} {

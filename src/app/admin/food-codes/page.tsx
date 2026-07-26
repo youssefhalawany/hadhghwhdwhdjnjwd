@@ -343,13 +343,15 @@ export default function AdminFoodCodesPage() {
                       >
                         {isActive ? <XCircle size={16} /> : <CheckCircle size={16} />}
                       </button>
-                      <button 
+                      {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
+<button 
                         onClick={() => handleDelete(item.id)}
                         className="p-2 rounded-lg bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 border border-red-200 dark:border-red-500/20 transition-colors"
                         title={isEn ? "Delete" : "حذف"}
                       >
                         <Trash2 size={16} />
                       </button>
+)}
                     </div>
                   </div>
                 </div>

@@ -537,9 +537,11 @@ export default function EndShiftCashPage() {
                                 <button onClick={() => startEditing(r)} className="p-1.5 text-slate-400 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-900/30 rounded-md transition-colors">
                                   <Edit2 className="h-4 w-4" />
                                 </button>
-                                <button onClick={() => handleDelete(r.id)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors">
+                                {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
+<button onClick={() => handleDelete(r.id)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors">
                                   <Trash2 className="h-4 w-4" />
                                 </button>
+)}
                               </div>
                             )}
                           </td>

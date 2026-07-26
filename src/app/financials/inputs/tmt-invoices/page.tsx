@@ -339,12 +339,14 @@ export default function TmtInvoicesPage() {
                     </button>
                   </td>
                   <td className="p-4 text-right">
-                    <button
+                    {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
+<button
                       onClick={() => handleDelete(invoice.id)}
                       className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
                     >
                       <Trash2 size={16} />
                     </button>
+)}
                   </td>
                 </tr>
               ))}

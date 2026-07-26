@@ -516,12 +516,14 @@ export default function AdminAdjustmentsPage() {
                               <Printer className="w-4 h-4" />
                             </button>
                           )}
-                          <button 
+                          {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
+<button 
                             onClick={() => handleDelete(adj.id!)}
                             className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-colors"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
+)}
                         </>
                       )}
                     </td>

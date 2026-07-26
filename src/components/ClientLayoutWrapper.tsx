@@ -78,6 +78,11 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
           if (docSnap.exists()) {
             const data = docSnap.data();
             setUserDoc(data);
+            if (data.role) {
+              setRole(data.role);
+              localStorage.setItem("circlek_role", data.role);
+              window.dispatchEvent(new CustomEvent("circlek_role_changed", { detail: data.role }));
+            }
 
             // Map storeIds to local BranchIds
             const allowedIds = data.storeIds || [];
@@ -383,7 +388,13 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
 
     { name: "", href: "/cashier", icon: User, isIconOnly: true }
-  ];
+  ].filter(item => {
+    const isManager = userDoc?.role === "manager" || role === "manager";
+    if (isManager && (item.name === t("nav.hr") || item.name === t("nav.admin"))) {
+      return false;
+    }
+    return true;
+  });
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

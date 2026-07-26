@@ -399,16 +399,18 @@ export default function SalesManagementPage() {
         </div>
 
         {/* All-Time Stats Box */}
-        <div className="bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-900 dark:to-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-inner flex justify-between items-center gap-4">
-          <div>
-            <h3 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Lifetime Company Sales</h3>
-            <p className="text-lg font-bold text-slate-800 dark:text-slate-200">EGP {formatMoney(allTimeStats.cash + allTimeStats.visa + allTimeStats.overShort)}</p>
+        {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
+          <div className="bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-900 dark:to-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-inner flex justify-between items-center gap-4">
+            <div>
+              <h3 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Lifetime Company Sales</h3>
+              <p className="text-lg font-bold text-slate-800 dark:text-slate-200">EGP {formatMoney(allTimeStats.cash + allTimeStats.visa + allTimeStats.overShort)}</p>
+            </div>
+            <div className="flex gap-4 text-xs font-semibold text-slate-500 dark:text-slate-400">
+              <div>Cash: <span className="text-slate-700 dark:text-slate-300">EGP {formatMoney(allTimeStats.cash)}</span></div>
+              <div>Visa: <span className="text-slate-700 dark:text-slate-300">EGP {formatMoney(allTimeStats.visa)}</span></div>
+            </div>
           </div>
-          <div className="flex gap-4 text-xs font-semibold text-slate-500 dark:text-slate-400">
-            <div>Cash: <span className="text-slate-700 dark:text-slate-300">EGP {formatMoney(allTimeStats.cash)}</span></div>
-            <div>Visa: <span className="text-slate-700 dark:text-slate-300">EGP {formatMoney(allTimeStats.visa)}</span></div>
-          </div>
-        </div>
+        )}
 
         {/* --- SALES INSIGHTS DASHBOARD --- */}
         <div className="space-y-6">
@@ -737,22 +739,24 @@ export default function SalesManagementPage() {
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button 
-                        onClick={() => openEditModal(sale)}
-                        className="p-2 border border-border rounded-full text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-                        title="Edit Record"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      <button 
-                        onClick={() => { setSaleToDelete(sale); setDeleteModalOpen(true); }}
-                        className="p-2 border border-red-200 rounded-full text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                        title="Delete Record"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
+                    {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => openEditModal(sale)}
+                          className="p-2 border border-border rounded-full text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                          title="Edit Record"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                        <button 
+                          onClick={() => { setSaleToDelete(sale); setDeleteModalOpen(true); }}
+                          className="p-2 border border-red-200 rounded-full text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                          title="Delete Record"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted/30 rounded-xl border border-border">
@@ -869,9 +873,11 @@ export default function SalesManagementPage() {
               <p className="text-muted-foreground text-sm mb-6">Are you sure you want to completely delete this sales record? This action cannot be undone.</p>
               <div className="flex gap-3">
                 <button onClick={() => setDeleteModalOpen(false)} className="flex-1 px-4 py-2.5 bg-muted text-foreground rounded-lg font-bold hover:bg-slate-200 dark:hover:bg-slate-800">Cancel</button>
-                <button onClick={handleDelete} disabled={isSubmitting} className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 disabled:opacity-50 flex justify-center items-center gap-2">
+                {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
+<button onClick={handleDelete} disabled={isSubmitting} className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 disabled:opacity-50 flex justify-center items-center gap-2">
                   {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />} Delete
                 </button>
+)}
               </div>
             </div>
           </div>

@@ -317,7 +317,7 @@ export default function ReportBuilderPage() {
               >
                 <ArrowLeftRight className="h-3.5 w-3.5" />
               </button>
-              {selectedTemplate && (
+              {selectedTemplate && !(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
                 <button
                   onClick={handleDelete}
                   className="p-1.5 border border-red-500/30 hover:border-red-500 rounded-lg text-red-500 hover:bg-red-500/10 transition-colors"

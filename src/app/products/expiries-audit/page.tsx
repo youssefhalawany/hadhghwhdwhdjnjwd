@@ -807,13 +807,15 @@ export default function ExpiryAuditPage() {
                             >
                               Edit Record
                             </button>
-                            <button
+                            {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
+<button
                               type="button"
                               onClick={() => handleDeleteExpiry(selectedExpiry.id)}
                               className="flex-1 py-3 border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/30 dark:border-red-900/40 dark:hover:bg-red-900/50 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
                             >
                               <Trash2 className="h-4 w-4" /> Delete Expiry
                             </button>
+)}
                           </div>
                         </>
                       )}

@@ -387,12 +387,14 @@ export default function DepositsPage() {
                         >
                           <Printer size={18} />
                         </button>
-                        <button 
+                        {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
+<button 
                           onClick={() => handleDelete(deposit.id)}
                           className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                         >
                           <Trash2 size={18} />
                         </button>
+)}
                       </div>
                     </td>
                   </tr>

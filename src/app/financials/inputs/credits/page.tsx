@@ -1595,9 +1595,11 @@ export default function CreditsPage() {
                         <button onClick={() => handlePrintPdf(credit)} disabled={isPrinting} className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors disabled:opacity-50">
                           <Printer size={20} />
                         </button>
-                        <button onClick={() => handleDeleteCredit(credit.id)} className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors">
+                        {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
+<button onClick={() => handleDeleteCredit(credit.id)} className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors">
                           <Trash2 size={20} />
                         </button>
+)}
                         <button
                           onClick={() => toggleExpand(credit.id)}
                           className={`p-2.5 rounded-xl transition-colors ${isExpanded ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}

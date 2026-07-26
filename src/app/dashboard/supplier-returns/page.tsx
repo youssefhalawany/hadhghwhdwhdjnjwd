@@ -1170,13 +1170,15 @@ export default function SupplierReturnsDashboard() {
               <div className="p-6 border-b sticky top-0 bg-white/80 backdrop-blur-sm z-10 flex justify-between items-center no-print">
                 <h3 className="text-xl font-bold text-black">{lang === "ar" ? "إيصال المرتجع" : "Return Receipt"}</h3>
                 <div className="space-x-2 flex items-center">
-                  <button 
+                  {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
+<button 
                     onClick={handleDeleteReturn}
                     disabled={processing === "delete"}
                     className="px-4 py-2 bg-red-600 text-white rounded-xl font-bold shadow-md hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center min-w-[120px]"
                   >
                     {processing === "delete" ? "..." : (lang === "ar" ? "حذف الفاتورة" : "Delete Invoice")}
                   </button>
+)}
                   {!printData.isSettled && printData.eventIds && (
                     <button 
                       onClick={() => {

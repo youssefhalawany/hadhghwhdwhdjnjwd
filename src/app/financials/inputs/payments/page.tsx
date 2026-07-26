@@ -366,7 +366,15 @@ export default function PaymentsRedesignPage() {
       const loadedPayments = paySnapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
       setPayments(loadedPayments);
       if (typeof window !== "undefined") {
-        localStorage.setItem('cached_detailed_payments', JSON.stringify(loadedPayments.slice(0, 50)));
+        try {
+          const cleanPayments = loadedPayments.slice(0, 50).map((p: any) => {
+            const { invoiceUrls, invoiceUrl, photoUrls, ...rest } = p;
+            return rest;
+          });
+          localStorage.setItem('cached_detailed_payments', JSON.stringify(cleanPayments));
+        } catch(e) {
+          console.error("Failed to cache payments:", e);
+        }
       }
 
       // 2. Extract Suppliers from cash_payments
@@ -1322,9 +1330,11 @@ export default function PaymentsRedesignPage() {
                         >
                           <Download size={20} />
                         </button>
-                        <button onClick={() => handleDelete(pay.id)} className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-xl transition-colors">
-                          <Trash2 size={20} />
-                        </button>
+                        {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
+                          <button onClick={() => handleDelete(pay.id)} className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-xl transition-colors">
+                            <Trash2 size={20} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>

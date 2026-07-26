@@ -328,9 +328,11 @@ export default function CashierSettingsPage() {
                   <button onClick={() => handleEdit(c)} className="px-3 py-1 text-xs font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 rounded-lg transition-colors border border-blue-200/50 dark:border-blue-905/30">
                     Edit
                   </button>
-                  <button onClick={() => handleDelete(c.id)} className="p-2 text-red-500 hover:bg-red-500/10 dark:hover:bg-red-500/20 rounded-lg transition-colors" title="Remove Cashier">
+                  {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
+<button onClick={() => handleDelete(c.id)} className="p-2 text-red-500 hover:bg-red-500/10 dark:hover:bg-red-500/20 rounded-lg transition-colors" title="Remove Cashier">
                     <Trash2 className="h-5 w-5" />
                   </button>
+)}
                 </div>
               </div>
             ))}

@@ -488,13 +488,15 @@ export default function EmployeesPage() {
                         </div>
                       </div>
                       
-                      <button 
+                      {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
+<button 
                         onClick={() => handleDelete(activeEmp.id)}
                         className="p-3 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-2xl transition border border-transparent hover:border-rose-100 dark:hover:border-rose-900/30"
                         title="Delete Employee"
                       >
                         <Trash2 size={20} />
                       </button>
+)}
                     </div>
 
                     {/* Data Grid */}

@@ -245,9 +245,11 @@ export default function ExpensesPage() {
                       <span className="text-lg font-black text-red-600 dark:text-red-400">
                         -EGP {expense.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
-                      <button onClick={() => handleDelete(expense.id)} className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
+                      {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
+<button onClick={() => handleDelete(expense.id)} className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
                         <Trash2 className="h-4 w-4" />
                       </button>
+)}
                     </div>
                   </div>
                 );

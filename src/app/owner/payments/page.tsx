@@ -58,7 +58,15 @@ export default function OwnerPaymentsPage() {
       const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setPayments(data);
       if (typeof window !== "undefined") {
-        localStorage.setItem('cached_detailed_payments', JSON.stringify(data.slice(0, 50))); // cache last 50 for zero-read AI
+        try {
+          const cleanData = data.slice(0, 50).map((p: any) => {
+            const { invoiceUrls, invoiceUrl, photoUrls, ...rest } = p;
+            return rest;
+          });
+          localStorage.setItem('cached_detailed_payments', JSON.stringify(cleanData));
+        } catch(e) {
+          console.error("Failed to cache payments:", e);
+        }
       }
     } catch (err) {
       console.error(err);
