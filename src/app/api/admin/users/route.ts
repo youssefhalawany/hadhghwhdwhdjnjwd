@@ -12,11 +12,17 @@ async function verifyAdminEditor(req: NextRequest) {
     const userDoc = await getAdminDb().collection("users").doc(decodedToken.uid).get();
     console.log("User doc:", userDoc.data());
     
-    if (userDoc.data()?.role !== "admin_editor") {
-      console.log("Not an admin editor. Role is:", userDoc.data()?.role);
+    const role = userDoc.data()?.role;
+    if (role !== "admin_editor" && role !== "owner") {
+      console.log("Not an admin editor or owner. Role is:", role);
       return null;
     }
-    return decodedToken.uid;
+    return {
+      uid: decodedToken.uid,
+      email: decodedToken.email,
+      displayName: userDoc.data()?.displayName || "Admin",
+      role: role
+    };
   } catch (e) {
     console.error("Auth verification failed", e);
     return null;
@@ -25,8 +31,8 @@ async function verifyAdminEditor(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const adminUid = await verifyAdminEditor(req);
-    if (!adminUid) {
+    const admin = await verifyAdminEditor(req);
+    if (!admin) {
       return NextResponse.json({ error: "Unauthorized. Admin Editor required." }, { status: 403 });
     }
 
@@ -54,7 +60,20 @@ export async function POST(req: NextRequest) {
       isActive: isActive !== false,
       features: features || {},
       createdAt: new Date().toISOString(),
-      createdBy: adminUid
+      createdBy: admin.uid
+    });
+
+    // 3. Log to audit_logs
+    await getAdminDb().collection("audit_logs").add({
+      userEmail: admin.email || "",
+      userName: admin.displayName || "Admin",
+      role: admin.role,
+      action: "Create User",
+      previousValue: "N/A",
+      newValue: `Created user ${email} with role ${role}`,
+      timestamp: new Date().toISOString(),
+      ip: req.headers.get("x-forwarded-for") || "Server",
+      device: req.headers.get("user-agent") || "API Client"
     });
 
     return NextResponse.json({ success: true, uid: userRecord.uid });
@@ -66,8 +85,8 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const adminUid = await verifyAdminEditor(req);
-    if (!adminUid) {
+    const admin = await verifyAdminEditor(req);
+    if (!admin) {
       return NextResponse.json({ error: "Unauthorized. Admin Editor required." }, { status: 403 });
     }
 
@@ -98,9 +117,22 @@ export async function PUT(req: NextRequest) {
     if (isActive !== undefined) firestoreData.isActive = isActive;
     if (features !== undefined) firestoreData.features = features;
     firestoreData.updatedAt = new Date().toISOString();
-    firestoreData.updatedBy = adminUid;
+    firestoreData.updatedBy = admin.uid;
 
     await getAdminDb().collection("users").doc(uid).update(firestoreData);
+
+    // 3. Log to audit_logs
+    await getAdminDb().collection("audit_logs").add({
+      userEmail: admin.email || "",
+      userName: admin.displayName || "Admin",
+      role: admin.role,
+      action: "Update User",
+      previousValue: "N/A",
+      newValue: `Updated user ${email || uid} - changed properties`,
+      timestamp: new Date().toISOString(),
+      ip: req.headers.get("x-forwarded-for") || "Server",
+      device: req.headers.get("user-agent") || "API Client"
+    });
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
