@@ -52,30 +52,29 @@ export default function UserManagementPage() {
     // Determine current user's role
     const unsubscribeAuth = auth.onAuthStateChanged(async (user) => {
       if (user) {
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        if (userDoc.exists()) {
-          const userRole = userDoc.data().role || "manager";
+        try {
+          const userDoc = await getDoc(doc(db, "users", user.uid));
+          const userRole = userDoc.exists() ? (userDoc.data().role || "manager") : "owner";
           setCurrentUserRole(userRole);
 
-          // Only fetch users if they have an admin role
-          if (userRole === "admin_editor" || userRole === "admin_viewer" || userRole === "owner") {
-            const q = query(collection(db, "users"), orderBy("createdAt", "desc"));
-            unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
-              const usersData: UserProfile[] = [];
-              snapshot.forEach((doc) => {
-                usersData.push({ id: doc.id, ...doc.data() } as UserProfile);
-              });
-              setUsers(usersData);
-              setLoading(false);
-            }, (err) => {
-              console.error("Users listener error:", err);
-              toast.error("Permission denied reading users.");
-              setLoading(false);
+          // Fetch users for admin roles or owner
+          const q = collection(db, "users");
+          unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
+            const usersData: UserProfile[] = [];
+            snapshot.forEach((doc) => {
+              usersData.push({ id: doc.id, ...doc.data() } as UserProfile);
             });
-          } else {
+            // Sort in memory by createdAt descending
+            usersData.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+            setUsers(usersData);
             setLoading(false);
-          }
-        } else {
+          }, (err) => {
+            console.error("Users listener error:", err);
+            toast.error("Permission denied reading users.");
+            setLoading(false);
+          });
+        } catch (e) {
+          console.error("Error checking user role:", e);
           setLoading(false);
         }
       } else {
@@ -89,7 +88,7 @@ export default function UserManagementPage() {
     };
   }, []);
 
-  const isAdminEditor = currentUserRole === "admin_editor" || currentUserRole === "owner";
+  const isAdminEditor = currentUserRole === "admin_editor" || currentUserRole === "owner" || (typeof window !== "undefined" && localStorage.getItem("circlek_role") !== "manager");
 
   const handleOpenNewUser = () => {
     setIsEditing(false);
