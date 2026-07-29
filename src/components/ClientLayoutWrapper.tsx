@@ -20,6 +20,7 @@ import { IdleScreensaver } from "./IdleScreensaver";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import { ManagerBottomNav } from "./MobileUX/ManagerBottomNav";
+import { MobileHeader } from "./MobileUX/MobileHeader";
 import { updateAppBadge } from "@/lib/pwaBadges";
 
 export default function ClientLayoutWrapper({ children }: { children: React.ReactNode }) {
@@ -632,6 +633,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 max-h-screen overflow-hidden print:max-h-none print:overflow-visible">
+        {!pathname.startsWith('/cashier') && role !== 'cashier' && <MobileHeader />}
+
         {/* Top Header */}
         {!pathname.startsWith('/cashier') && !pathname.startsWith('/owner') && (
           <header

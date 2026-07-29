@@ -398,17 +398,17 @@ export function ManagerBottomNav({
             </motion.button>
           </div>
 
-          {/* Right Tab 3: Floor Ops */}
+          {/* Right Tab 3: Financials */}
           <button
-            onClick={() => handleNavClick("floor", "/expiries")}
+            onClick={() => handleNavClick("financials", "/financial-reports")}
             className={`flex flex-col items-center justify-center flex-1 py-1 transition-all ${
-              activeTab === "floor" ? "text-white font-extrabold" : "hover:text-slate-200"
+              activeTab === "financials" ? "text-white font-extrabold" : "hover:text-slate-200"
             }`}
           >
-            <div className={`p-1.5 rounded-xl transition-all ${activeTab === "floor" ? "bg-amber-500/20 text-amber-400" : ""}`}>
-              <PackageCheck className="w-5 h-5" />
+            <div className={`p-1.5 rounded-xl transition-all ${activeTab === "financials" ? "bg-emerald-500/20 text-emerald-400" : ""}`}>
+              <TrendingUp className="w-5 h-5" />
             </div>
-            <span className="text-[10px] mt-0.5">{isAr ? "العمليات" : "Floor Ops"}</span>
+            <span className="text-[10px] mt-0.5">{isAr ? "التقارير" : "Financials"}</span>
           </button>
 
           {/* Right Tab 4: AI Assistant */}
