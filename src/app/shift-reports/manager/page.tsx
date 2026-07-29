@@ -16,6 +16,7 @@ const QRCode = dynamic(() => import("react-qr-code"), { ssr: false });
 import { useBranch } from "@/context/BranchContext";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
+import { MobileDataCard } from "@/components/MobileUX/MobileDataCard";
 
 export default function ManagerAuditPage() {
   const { currentBranch } = useBranch();

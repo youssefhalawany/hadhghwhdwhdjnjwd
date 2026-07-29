@@ -19,21 +19,31 @@
   ],
   "shortcuts": [
     {
-      "name": "Shift Audit",
-      "short_name": "Audit",
+      "name": "⚡ Pending Approvals",
+      "short_name": "Approvals",
+      "description": "Review and approve pending cashier shifts & voids",
       "url": "/shift-reports/manager",
       "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Financials",
-      "short_name": "Financials",
-      "url": "/owner",
+      "name": "🚨 Report Stockout",
+      "short_name": "Stockout",
+      "description": "Log instant shelf stockout alerts",
+      "url": "/cashier/out-of-stock",
       "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Inventory",
-      "short_name": "Inventory",
-      "url": "/admin/product-lookup",
+      "name": "📸 Scan Invoice",
+      "short_name": "Scan OCR",
+      "description": "Upload vendor delivery invoice or receipt",
+      "url": "/cashier/upload-invoice/new",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "🎙️ Ask AI Manager",
+      "short_name": "Ask AI",
+      "description": "Retail AI assistant voice & text queries",
+      "url": "/ai-assistant",
       "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
     }
   ]

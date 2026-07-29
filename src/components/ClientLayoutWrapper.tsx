@@ -19,6 +19,8 @@ import GlobalReminders from "./GlobalReminders";
 import { IdleScreensaver } from "./IdleScreensaver";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
+import { ManagerBottomNav } from "./MobileUX/ManagerBottomNav";
+import { updateAppBadge } from "@/lib/pwaBadges";
 
 export default function ClientLayoutWrapper({ children }: { children: React.ReactNode }) {
   const { currentBranch, setBranch, availableBranches, setAvailableBranches } = useBranch();
@@ -330,6 +332,12 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     const isCashierPortal = pathname?.startsWith('/cashier') || pathname?.startsWith('/shift-reports/cashier') || pathname?.startsWith('/voids/cashier') || pathname?.startsWith('/checklists/cashier') || pathname?.startsWith('/owner');
     link.href = isCashierPortal ? '/manifest-cashier.json' : '/manifest-manager.json';
   }, [pathname]);
+
+  // Synchronize OS PWA App Icon Badge count
+  useEffect(() => {
+    const totalPending = pendingShiftCount + pendingVoidCount + pendingExpiriesCount;
+    updateAppBadge(totalPending);
+  }, [pendingShiftCount, pendingVoidCount, pendingExpiriesCount]);
 
   const toggleTheme = () => {
     const nextTheme = theme === "dark" ? "light" : "dark";
@@ -899,6 +907,14 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
       <PwaInstallPrompt />
       <IdleScreensaver pendingTasksCount={pendingShiftCount + pendingVoidCount + pendingExpiriesCount + pendingReturnsCount} />
+
+      {!pathname.startsWith('/cashier') && role !== "cashier" && (
+        <ManagerBottomNav
+          pendingShiftsCount={pendingShiftCount}
+          pendingVoidsCount={pendingVoidCount}
+          pendingExpiriesCount={pendingExpiriesCount}
+        />
+      )}
     </div>
   );
 }
