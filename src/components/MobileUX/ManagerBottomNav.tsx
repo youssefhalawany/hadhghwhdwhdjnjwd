@@ -7,7 +7,7 @@ import {
   LayoutDashboard,
   Zap,
   Plus,
-  PackageCheck,
+  TrendingUp,
   Bot,
   X,
   Wallet,
@@ -19,10 +19,7 @@ import {
   Camera,
   Mic,
   ChevronUp,
-  Wifi,
-  WifiOff,
   AlertTriangle,
-  TrendingUp,
   Users,
   Store
 } from "lucide-react";
@@ -71,9 +68,9 @@ export function ManagerBottomNav({
 
   // Update active tab based on current pathname
   useEffect(() => {
-    if (pathname === "/" || pathname === "/owner") setActiveTab("overview");
+    if (pathname.includes("/financials/inputs")) setActiveTab("overview");
     else if (pathname.includes("/shift-reports/manager") || pathname.includes("/voids/manager")) setActiveTab("approvals");
-    else if (pathname.includes("/expiries") || pathname.includes("/checklists") || pathname.includes("/inventory-audit")) setActiveTab("floor");
+    else if (pathname.includes("/financial-reports")) setActiveTab("financials");
     else if (pathname.includes("/ai-assistant")) setActiveTab("ai");
   }, [pathname]);
 
@@ -109,7 +106,7 @@ export function ManagerBottomNav({
       subtitleEn: "Log vendor payment",
       subtitleAr: "تسجيل مدفوعات الموردين",
       icon: Wallet,
-      color: "bg-emerald-500/15 text-emerald-500 border-emerald-500/20",
+      color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
       path: "/financials/inputs/payments",
     },
     {
@@ -119,7 +116,7 @@ export function ManagerBottomNav({
       subtitleEn: "Log near-expiry shelf items",
       subtitleAr: "تسجيل المنتجات قريبة الانتهاء",
       icon: Clock,
-      color: "bg-amber-500/15 text-amber-500 border-amber-500/20",
+      color: "bg-amber-500/15 text-amber-400 border-amber-500/30",
       path: "/expiries",
     },
     {
@@ -129,7 +126,7 @@ export function ManagerBottomNav({
       subtitleEn: "Reconcile cash & safe drops",
       subtitleAr: "تدقيق السلف واغلاق الخزينة",
       icon: FileCheck2,
-      color: "bg-sky-500/15 text-sky-500 border-sky-500/20",
+      color: "bg-cyan-500/15 text-cyan-400 border-cyan-500/30",
       path: "/shift-reports/manager",
     },
     {
@@ -139,7 +136,7 @@ export function ManagerBottomNav({
       subtitleEn: "Approve POS item returns",
       subtitleAr: "اعتماد مرتجعات ورجوع الاصناف",
       icon: PackageX,
-      color: "bg-rose-500/15 text-rose-500 border-rose-500/20",
+      color: "bg-rose-500/15 text-rose-400 border-rose-500/30",
       path: "/voids/manager",
     },
     {
@@ -149,7 +146,7 @@ export function ManagerBottomNav({
       subtitleEn: "Record vendor credit notes",
       subtitleAr: "إدخال كشوفات الآجل والموردين",
       icon: CreditCard,
-      color: "bg-purple-500/15 text-purple-500 border-purple-500/20",
+      color: "bg-purple-500/15 text-purple-400 border-purple-500/30",
       path: "/financials/inputs/credits",
     },
     {
@@ -159,7 +156,7 @@ export function ManagerBottomNav({
       subtitleEn: "Rapid price & SKU check",
       subtitleAr: "استعلام الأسعار والباركود",
       icon: Search,
-      color: "bg-indigo-500/15 text-indigo-500 border-indigo-500/20",
+      color: "bg-indigo-500/15 text-indigo-400 border-indigo-500/30",
       path: "/cashier/lookup",
     },
     {
@@ -169,7 +166,7 @@ export function ManagerBottomNav({
       subtitleEn: "Camera receipt & PO OCR",
       subtitleAr: "مسح ضوئي للفواتير بالكاميرا",
       icon: Camera,
-      color: "bg-red-500/15 text-red-500 border-red-500/20",
+      color: "bg-red-500/15 text-red-400 border-red-500/30",
       path: "/cashier/upload-invoice/new",
     },
     {
@@ -179,7 +176,7 @@ export function ManagerBottomNav({
       subtitleEn: "Ask floor AI assistant",
       subtitleAr: "استفسار المساعد الذكي",
       icon: Mic,
-      color: "bg-cyan-500/15 text-cyan-500 border-cyan-500/20",
+      color: "bg-teal-500/15 text-teal-400 border-teal-500/30",
       path: "/ai-assistant",
     },
   ];
@@ -197,7 +194,7 @@ export function ManagerBottomNav({
               setFabOpen(false);
               setStatusSheetOpen(false);
             }}
-            className="fixed inset-0 z-40 bg-slate-950/70 backdrop-blur-md md:hidden"
+            className="fixed inset-0 z-40 bg-black/75 backdrop-blur-md md:hidden"
           />
         )}
       </AnimatePresence>
@@ -210,25 +207,25 @@ export function ManagerBottomNav({
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: "100%", opacity: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="fixed bottom-24 left-3 right-3 z-50 p-4 rounded-3xl bg-slate-900/95 border border-slate-800 text-white shadow-2xl backdrop-blur-2xl md:hidden"
+            className="fixed bottom-24 left-3 right-3 z-50 p-4 rounded-3xl bg-[#0B1121] border border-[rgba(34,211,238,0.25)] text-white shadow-2xl backdrop-blur-2xl md:hidden"
             dir={isAr ? "rtl" : "ltr"}
           >
-            <div className="w-12 h-1 bg-slate-700 rounded-full mx-auto mb-3 cursor-pointer" onClick={toggleStatusSheet} />
+            <div className="w-12 h-1 bg-[#1E293B] rounded-full mx-auto mb-3 cursor-pointer" onClick={toggleStatusSheet} />
             
             <div className="flex justify-between items-center mb-4">
               <div>
                 <h3 className="text-sm font-extrabold flex items-center gap-2 text-slate-100">
-                  <Store className="w-4 h-4 text-red-500" />
+                  <Store className="w-4 h-4 text-cyan-400" />
                   {currentBranch === "all" ? (isAr ? "جميع الفروع" : "All Branches") : currentBranch === "ola" ? "Ola El Koronfol" : "El Alamein 4"}
                 </h3>
                 <p className="text-xs text-slate-400">
                   {isAr ? "ملخص النشاط والتنبيهات المباشرة" : "Real-time store metrics & floor alerts"}
                 </p>
               </div>
-              <div className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-800 border border-slate-700">
+              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#0F172A] border border-[rgba(34,211,238,0.2)]">
                 {isOnline ? (
                   <>
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
                     <span className="text-emerald-400">{isAr ? "متصل" : "Online"}</span>
                   </>
                 ) : (
@@ -241,17 +238,17 @@ export function ManagerBottomNav({
             </div>
 
             <div className="grid grid-cols-2 gap-2 mb-3">
-              <div className="p-3 rounded-2xl bg-slate-800/60 border border-slate-700/50">
+              <div className="p-3 rounded-2xl bg-[#0F172A] border border-[rgba(34,211,238,0.15)]">
                 <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider flex items-center gap-1">
                   <TrendingUp className="w-3 h-3 text-emerald-400" /> {isAr ? "مبيعات اليوم" : "Today Sales"}
                 </span>
                 <span className="text-base font-extrabold text-white mt-1 block">Live Sync</span>
               </div>
-              <div className="p-3 rounded-2xl bg-slate-800/60 border border-slate-700/50">
+              <div className="p-3 rounded-2xl bg-[#0F172A] border border-[rgba(34,211,238,0.15)]">
                 <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider flex items-center gap-1">
-                  <Users className="w-3 h-3 text-sky-400" /> {isAr ? "الورديات المعلقة" : "Pending Shifts"}
+                  <Users className="w-3 h-3 text-cyan-400" /> {isAr ? "الورديات المعلقة" : "Pending Shifts"}
                 </span>
-                <span className="text-base font-extrabold text-sky-400 mt-1 block">{pendingShiftsCount} {isAr ? "وردية" : "Shifts"}</span>
+                <span className="text-base font-extrabold text-cyan-400 mt-1 block">{pendingShiftsCount} {isAr ? "وردية" : "Shifts"}</span>
               </div>
             </div>
 
@@ -282,13 +279,13 @@ export function ManagerBottomNav({
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.85, opacity: 0, y: 40 }}
             transition={{ type: "spring", stiffness: 350, damping: 25 }}
-            className="fixed bottom-24 left-3 right-3 z-50 p-4 rounded-3xl bg-slate-900/95 border border-slate-800 text-white shadow-2xl backdrop-blur-2xl md:hidden max-h-[70vh] overflow-y-auto"
+            className="fixed bottom-24 left-3 right-3 z-50 p-4 rounded-3xl bg-[#0B1121] border border-[rgba(34,211,238,0.25)] text-white shadow-2xl backdrop-blur-2xl md:hidden max-h-[70vh] overflow-y-auto"
             dir={isAr ? "rtl" : "ltr"}
           >
-            <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-800">
+            <div className="flex justify-between items-center mb-3 pb-2 border-b border-[#1E293B]">
               <div>
                 <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-red-500 fill-red-500" />
+                  <Zap className="w-4 h-4 text-cyan-400 fill-cyan-400" />
                   {isAr ? "مركز أفعال المدير الميدانية" : "Manager Command Hub"}
                 </h3>
                 <p className="text-[11px] text-slate-400">
@@ -297,7 +294,7 @@ export function ManagerBottomNav({
               </div>
               <button
                 onClick={toggleFab}
-                className="p-1.5 rounded-full bg-slate-800 text-slate-400 hover:text-white"
+                className="p-1.5 rounded-full bg-[#1E293B] text-slate-400 hover:text-white"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -310,13 +307,13 @@ export function ManagerBottomNav({
                   <button
                     key={action.id}
                     onClick={() => handleNavClick(action.id, action.path)}
-                    className="p-3 rounded-2xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 flex items-start gap-3 text-left transition-all active:scale-95 group"
+                    className="p-3 rounded-2xl bg-[#0F172A] hover:bg-[#1E293B] border border-[rgba(34,211,238,0.15)] flex items-start gap-3 text-left transition-all active:scale-95 group"
                   >
                     <div className={`p-2.5 rounded-xl border ${action.color} shrink-0`}>
                       <Icon className="w-5 h-5" />
                     </div>
                     <div className="min-w-0">
-                      <h4 className="text-xs font-extrabold text-slate-100 group-hover:text-white truncate">
+                      <h4 className="text-xs font-extrabold text-slate-100 group-hover:text-cyan-400 truncate">
                         {isAr ? action.titleAr : action.titleEn}
                       </h4>
                       <p className="text-[10px] text-slate-400 truncate mt-0.5">
@@ -331,22 +328,22 @@ export function ManagerBottomNav({
         )}
       </AnimatePresence>
 
-      {/* 4. Floating Glass Island Bottom Navigation Bar */}
+      {/* 4. Cashier App Styled Bottom Navigation Bar */}
       <div
-        className="fixed bottom-3 left-3 right-3 z-50 md:hidden"
+        className="fixed bottom-0 left-0 right-0 z-50 md:hidden pt-4 pb-[calc(14px+env(safe-area-inset-bottom))]"
         dir={isAr ? "rtl" : "ltr"}
       >
-        <div className="relative flex items-center justify-between px-3 py-2 rounded-3xl bg-slate-950/85 border border-slate-800/90 shadow-2xl backdrop-blur-2xl text-slate-400">
+        <div className="relative mx-3 flex items-center justify-between px-3 py-2 rounded-3xl bg-[#0B1121] border border-[rgba(34,211,238,0.2)] shadow-[0_10px_30px_rgba(0,0,0,0.8)] text-slate-400">
           
-          {/* Top Swipe-Up Drawer Trigger Handle Pill */}
+          {/* Top Swipe-Up Drawer Trigger Handle Pill (Fully visible with zero clipping) */}
           <button
             onClick={toggleStatusSheet}
-            className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-[10px] font-bold text-slate-300 flex items-center gap-1 shadow-md"
+            className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-3.5 py-1 rounded-full bg-[#0F172A] border border-[rgba(34,211,238,0.3)] text-[10px] font-extrabold text-cyan-400 flex items-center gap-1.5 shadow-lg shadow-cyan-950/50 z-20 cursor-pointer"
           >
-            <ChevronUp className={`w-3 h-3 transition-transform ${statusSheetOpen ? "rotate-180" : ""}`} />
-            <span>{isAr ? "الحالة المباشرة" : "Live Pulse"}</span>
+            <ChevronUp className={`w-3.5 h-3.5 text-cyan-400 transition-transform ${statusSheetOpen ? "rotate-180" : ""}`} />
+            <span className="leading-none">{isAr ? "الحالة المباشرة" : "Live Pulse"}</span>
             {isOnline ? (
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
             ) : (
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
             )}
@@ -355,73 +352,78 @@ export function ManagerBottomNav({
           {/* Left Tab 1: Overview */}
           <button
             onClick={() => handleNavClick("overview", "/financials/inputs")}
-            className={`flex flex-col items-center justify-center flex-1 py-1 transition-all ${
-              activeTab === "overview" ? "text-white font-extrabold" : "hover:text-slate-200"
+            className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors outline-none cursor-pointer ${
+              activeTab === "overview" ? "text-[#22d3ee] font-extrabold" : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            <div className={`p-1.5 rounded-xl transition-all ${activeTab === "overview" ? "bg-red-500/20 text-red-500" : ""}`}>
-              <LayoutDashboard className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] mt-0.5">{isAr ? "الرئيسية" : "Overview"}</span>
+            <LayoutDashboard className="w-5 h-5" strokeWidth={activeTab === "overview" ? 2.5 : 2} />
+            <span className="text-[10px] font-bold uppercase tracking-wider mt-1">{isAr ? "الرئيسية" : "Overview"}</span>
+            {activeTab === "overview" && (
+              <motion.div layoutId="managerNavIndicator" className="w-6 h-1 rounded-full mt-0.5 bg-[#22d3ee]" />
+            )}
           </button>
 
           {/* Left Tab 2: Approvals */}
           <button
             onClick={() => handleNavClick("approvals", "/shift-reports/manager")}
-            className={`flex flex-col items-center justify-center flex-1 py-1 relative transition-all ${
-              activeTab === "approvals" ? "text-white font-extrabold" : "hover:text-slate-200"
+            className={`flex flex-col items-center justify-center flex-1 py-1 relative transition-colors outline-none cursor-pointer ${
+              activeTab === "approvals" ? "text-[#22d3ee] font-extrabold" : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            <div className={`p-1.5 rounded-xl transition-all ${activeTab === "approvals" ? "bg-sky-500/20 text-sky-400" : ""}`}>
-              <Zap className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] mt-0.5">{isAr ? "الاعتمادات" : "Approvals"}</span>
+            <Zap className="w-5 h-5" strokeWidth={activeTab === "approvals" ? 2.5 : 2} />
+            <span className="text-[10px] font-bold uppercase tracking-wider mt-1">{isAr ? "الاعتمادات" : "Approvals"}</span>
+            {activeTab === "approvals" && (
+              <motion.div layoutId="managerNavIndicator" className="w-6 h-1 rounded-full mt-0.5 bg-[#22d3ee]" />
+            )}
 
             {/* Pulsing Badge */}
             {totalPending > 0 && (
-              <span className="absolute top-1 right-3 px-1.5 py-0.2 rounded-full text-[9px] font-black bg-rose-600 text-white shadow-lg animate-pulse border border-rose-400">
+              <span className="absolute top-0.5 right-3 px-1.5 py-0.2 rounded-full text-[9px] font-black bg-rose-600 text-white shadow-lg animate-pulse border border-rose-400">
                 {totalPending}
               </span>
             )}
           </button>
 
-          {/* Center Elevated FAB (Rotates 45° into X when open) */}
-          <div className="relative -top-5 flex justify-center flex-1">
+          {/* Center Elevated Morphing Action Button (Cyan Glow) */}
+          <div className="relative -top-4 flex justify-center flex-1">
             <motion.button
               onClick={toggleFab}
-              animate={{ rotate: fabOpen ? 45 : 0 }}
-              transition={{ type: "spring", stiffness: 400, damping: 25 }}
-              className="w-13 h-13 rounded-full bg-gradient-to-tr from-red-600 via-red-500 to-rose-500 text-white flex items-center justify-center shadow-lg shadow-red-600/40 border-2 border-slate-900 active:scale-90"
-              style={{ width: "52px", height: "52px" }}
+              whileTap={{ scale: 0.9 }}
+              animate={{ rotate: fabOpen ? 45 : 0, backgroundColor: fabOpen ? "#ef4444" : "#22d3ee" }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              className="w-13 h-13 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(34,211,238,0.4)] border-2 border-white/20 z-50 cursor-pointer outline-none"
+              style={{ width: "50px", height: "50px" }}
             >
-              <Plus className="w-6 h-6 stroke-[3]" />
+              <Plus className="w-6 h-6 stroke-[2.5] text-white" />
             </motion.button>
           </div>
 
           {/* Right Tab 3: Financials */}
           <button
             onClick={() => handleNavClick("financials", "/financial-reports")}
-            className={`flex flex-col items-center justify-center flex-1 py-1 transition-all ${
-              activeTab === "financials" ? "text-white font-extrabold" : "hover:text-slate-200"
+            className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors outline-none cursor-pointer ${
+              activeTab === "financials" ? "text-[#22d3ee] font-extrabold" : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            <div className={`p-1.5 rounded-xl transition-all ${activeTab === "financials" ? "bg-emerald-500/20 text-emerald-400" : ""}`}>
-              <TrendingUp className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] mt-0.5">{isAr ? "التقارير" : "Financials"}</span>
+            <TrendingUp className="w-5 h-5" strokeWidth={activeTab === "financials" ? 2.5 : 2} />
+            <span className="text-[10px] font-bold uppercase tracking-wider mt-1">{isAr ? "التقارير" : "Financials"}</span>
+            {activeTab === "financials" && (
+              <motion.div layoutId="managerNavIndicator" className="w-6 h-1 rounded-full mt-0.5 bg-[#22d3ee]" />
+            )}
           </button>
 
           {/* Right Tab 4: AI Assistant */}
           <button
             onClick={() => handleNavClick("ai", "/ai-assistant")}
-            className={`flex flex-col items-center justify-center flex-1 py-1 transition-all ${
-              activeTab === "ai" ? "text-white font-extrabold" : "hover:text-slate-200"
+            className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors outline-none cursor-pointer ${
+              activeTab === "ai" ? "text-[#22d3ee] font-extrabold" : "hover:text-slate-200"
             }`}
           >
-            <div className={`p-1.5 rounded-xl transition-all ${activeTab === "ai" ? "bg-purple-500/20 text-purple-400" : ""}`}>
-              <Bot className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] mt-0.5">{isAr ? "المساعد" : "Ask AI"}</span>
+            <Bot className="w-5 h-5" strokeWidth={activeTab === "ai" ? 2.5 : 2} />
+            <span className="text-[10px] font-bold uppercase tracking-wider mt-1">{isAr ? "المساعد" : "Ask AI"}</span>
+            {activeTab === "ai" && (
+              <motion.div layoutId="managerNavIndicator" className="w-6 h-1 rounded-full mt-0.5 bg-[#22d3ee]" />
+            )}
           </button>
         </div>
       </div>

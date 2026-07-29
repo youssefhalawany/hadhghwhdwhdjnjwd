@@ -638,7 +638,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
         {/* Top Header */}
         {!pathname.startsWith('/cashier') && !pathname.startsWith('/owner') && (
           <header
-            className="flex-shrink-0 glass-header border-b border-border flex items-center justify-between px-4 sm:px-6 z-40 print:hidden"
+            className="flex-shrink-0 glass-header border-b border-border hidden md:flex items-center justify-between px-4 sm:px-6 z-40 print:hidden"
             style={{
               paddingTop: 'max(1rem, env(safe-area-inset-top))',
               paddingBottom: '1rem',
