@@ -166,21 +166,6 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
 - Keep your tone 100% natural and conversational. Avoid sounding like an AI reading a script.
 `;
 
-    // Initialize the model
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-3.5-flash-lite",
-      systemInstruction: systemInstruction,
-      tools: [{ functionDeclarations: [
-        getDailySalesDeclaration, 
-        getHistoricalSalesDeclaration,
-        getShiftAuditsDeclaration,
-        getExpiriesWatcherDeclaration,
-        getSalesPredictorDeclaration,
-        getVendorOrderDeclaration,
-        getProductInfoDeclaration
-      ] }]
-    });
-
     // Convert the history array into the format required by the Gemini ChatSession
     const formattedHistory = (history || []).map((msg: any) => ({
       role: msg.role === "assistant" ? "model" : "user",
@@ -192,13 +177,47 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
       formattedHistory.shift();
     }
 
-    // Start a chat session with the history
-    const chat = model.startChat({
-      history: formattedHistory
-    });
+    const MODEL_CANDIDATES = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash-lite"];
+    let result: any = null;
+    let activeChat: any = null;
+    let lastError: any = null;
 
-    // Send the new message
-    let result = await chat.sendMessage(message);
+    // Multi-model fallback loop
+    for (const modelName of MODEL_CANDIDATES) {
+      try {
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          systemInstruction: systemInstruction,
+          tools: [{ functionDeclarations: [
+            getDailySalesDeclaration,
+            getHistoricalSalesDeclaration,
+            getShiftAuditsDeclaration,
+            getExpiriesWatcherDeclaration,
+            getSalesPredictorDeclaration,
+            getVendorOrderDeclaration,
+            getProductInfoDeclaration
+          ] }]
+        });
+
+        const chat = model.startChat({ history: formattedHistory });
+        result = await chat.sendMessage(message);
+        if (result) {
+          activeChat = chat;
+          break; // Successfully received response
+        }
+      } catch (err: any) {
+        console.warn(`Model ${modelName} failed/rate limited:`, err.message || err);
+        lastError = err;
+      }
+    }
+
+    if (!result) {
+      // Fallback local response if all models rate limited or failed
+      const safeBal = cachedBalances?.safe ? `EGP ${cachedBalances.safe}` : "غير متوفر حالياً";
+      const bankBal = cachedBalances?.bank ? `EGP ${cachedBalances.bank}` : "غير متوفر حالياً";
+      const fallbackReply = `يا ريس، السيرفر عليه ضغط بسيط دلوقتي من جوجل، بس أنا معاك وجهزتلك خلاصة الخزينة من السيستم مباشرة:\n\n• رصيد الخزينة: ${safeBal}\n• رصيد البنك: ${bankBal}\n\nجرب تسألني تاني كمان ثواني وهكون معاك فوراً يا باشا! 🫡`;
+      return NextResponse.json({ success: true, reply: fallbackReply });
+    }
     
     // Check if the AI decided to call a function
     const functionCalls = result.response.functionCalls();
@@ -447,13 +466,17 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
         // Send the database result back to the AI so it can formulate a final answer.
         const followUpMessage = `[SYSTEM: Tool '${call.name}' executed successfully. Here is the data from the database:]\n\n${JSON.stringify(apiResponse, null, 2)}\n\nNow, provide your final answer to the user based on this data.`;
         
-        result = await chat.sendMessage(followUpMessage);
+        if (activeChat) {
+          result = await activeChat.sendMessage(followUpMessage);
+        }
 
       } catch (dbError: any) {
         console.error("Firebase Tool Error:", dbError);
         // If DB fails, tell the AI so it can apologize via text instead of functionResponse
         const errorMessage = `[SYSTEM: Tool '${call.name}' failed with a technical error. Please apologize to the user and inform them that the database is currently unreachable.]`;
-        result = await chat.sendMessage(errorMessage);
+        if (activeChat) {
+          result = await activeChat.sendMessage(errorMessage);
+        }
       }
     }
 

@@ -123,12 +123,9 @@ export default function AiAssistantPage() {
       if (response.ok && data.success) {
         setMessages(prev => [...prev, { role: "assistant", content: data.reply }]);
       } else {
-        if (data.error && data.error.includes("429")) {
-          setMessages(prev => [...prev, { role: "assistant", content: "I am receiving too many requests right now because we are on the free tier limit. Please wait about 60 seconds and try asking me again!" }]);
-        } else {
-          setMessages(prev => [...prev, { role: "assistant", content: "Sorry, I encountered an error. Please try again." }]);
-          console.error("Chat error:", data.error);
-        }
+        const fallbackMsg = "يا ريس السيرفر عليه ضغط بسيط دلوقتي من السيستم، بس أنا معاك! جرب تسألني تاني كمان ثواني وهرد عليك فوراً يا باشا 🫡";
+        setMessages(prev => [...prev, { role: "assistant", content: fallbackMsg }]);
+        console.error("Chat error:", data.error);
       }
     } catch (error: any) {
       console.error(error);
