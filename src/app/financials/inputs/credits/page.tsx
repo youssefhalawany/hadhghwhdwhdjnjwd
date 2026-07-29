@@ -48,6 +48,8 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import { TiltCard } from "@/components/MobileUX/TiltCard";
+import { PullToRefresh } from "@/components/MobileUX/PullToRefresh";
 import { onAuthStateChanged } from "firebase/auth";
 import { DndContext, closestCorners, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, useDroppable } from '@dnd-kit/core';
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
@@ -539,7 +541,7 @@ export default function CreditsPage() {
         role,
         "Create Credit Record",
         "N/A",
-        `Supplier: ${companyName}, Amount: EGP ${totalDue}`
+        `Supplier: ${companyName}, Amount: EGP ${amountDue}`
       ).catch(() => {});
 
       const savedCredit = { id: docRef.id, ...newCredit, createdAt: Timestamp.now() } as Credit;
@@ -590,7 +592,7 @@ export default function CreditsPage() {
         auth.currentUser?.displayName || "User",
         role,
         "Delete Credit Record",
-        `ID: ${id}, Supplier: ${creditItem?.companyName || "N/A"}, Amount: EGP ${creditItem?.totalDue || 0}`,
+        `ID: ${id}, Supplier: ${creditItem?.companyName || "N/A"}, Amount: EGP ${creditItem?.amountDue || 0}`,
         "Deleted"
       ).catch(() => {});
 

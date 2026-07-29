@@ -354,7 +354,7 @@ export function ManagerBottomNav({
 
           {/* Left Tab 1: Overview */}
           <button
-            onClick={() => handleNavClick("overview", "/owner")}
+            onClick={() => handleNavClick("overview", "/financials/inputs")}
             className={`flex flex-col items-center justify-center flex-1 py-1 transition-all ${
               activeTab === "overview" ? "text-white font-extrabold" : "hover:text-slate-200"
             }`}

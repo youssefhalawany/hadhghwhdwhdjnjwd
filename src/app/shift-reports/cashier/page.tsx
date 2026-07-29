@@ -615,7 +615,7 @@ export default function CashierShiftReportPage() {
           "cashier",
           "Submit Shift Report",
           "N/A",
-          `Shift: ${shiftType}, Store: ${c?.branchId || c?.storeId || "alamein4"}, Cash: EGP ${actualCash}`
+          `Shift: ${payload.shift || "N/A"}, Store: ${c?.branchId || c?.storeId || "alamein4"}, Cash: EGP ${payload.cashierCounts?.cash || 0}`
         ).catch(() => {});
         
         try {

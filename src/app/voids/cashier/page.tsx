@@ -483,12 +483,12 @@ export default function CashierVoidPage() {
       await addDoc(collection(db, "void_requests"), payload);
 
       dbService.logAction(
-        cashierEmail || "Cashier",
+        cashierName || "Cashier",
         cashierName || "Cashier",
         "cashier",
         "Submit Void Request",
         "N/A",
-        `Type: ${requestType}, Item: ${itemName || "Multiple"}, Reason: ${reason}`
+        `Txn: ${transactionNumber}, Amount: EGP ${amount}, Reason: ${reason}`
       ).catch(() => {});
       
       try {

@@ -48,6 +48,8 @@ function numberToArabicWords(num: number): string {
 }
 
 import React, { useState, useEffect, useMemo } from "react";
+import { TiltCard } from "@/components/MobileUX/TiltCard";
+import { PullToRefresh } from "@/components/MobileUX/PullToRefresh";
 import { db, auth, storage, dbService } from "@/lib/firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import {
