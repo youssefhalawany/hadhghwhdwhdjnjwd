@@ -80,6 +80,50 @@ export default function ManagerDocumentsPage() {
       console.debug("Error incrementing printed count:", err);
     }
 
+    // 1. If an uploaded image file exists, print ONLY the image file as it is (full page)
+    if (selectedDoc.fileUrl && (selectedDoc.fileType === "image" || selectedDoc.docType === "custom")) {
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) return;
+
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>${selectedDoc.title}</title>
+            <style>
+              @page { size: auto; margin: 0; }
+              body { 
+                margin: 0; 
+                padding: 0; 
+                display: flex; 
+                align-items: center; 
+                justify-content: center; 
+                min-height: 100vh; 
+                background: #ffffff; 
+              }
+              img { 
+                max-width: 100%; 
+                max-height: 100vh; 
+                object-fit: contain; 
+              }
+            </style>
+          </head>
+          <body>
+            <img src="${selectedDoc.fileUrl}" onload="window.print(); setTimeout(function(){ window.close(); }, 600);" />
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      return;
+    }
+
+    // 2. If a PDF document link exists, open PDF directly in new window for printing
+    if (selectedDoc.fileUrl && selectedDoc.fileType === "pdf") {
+      window.open(selectedDoc.fileUrl, "_blank");
+      return;
+    }
+
+    // 3. For official generated documents (payslip, payment, credit statements)
     const printContent = document.getElementById("official-doc-print-capture");
     if (!printContent) {
       window.print();
@@ -93,9 +137,9 @@ export default function ManagerDocumentsPage() {
       <!DOCTYPE html>
       <html>
         <head>
-          <title>${selectedDoc.title} - Official Document #${selectedDoc.serialNumber}</title>
+          <title>${selectedDoc.title} - #${selectedDoc.serialNumber}</title>
           <style>
-            @page { size: A4 portrait; margin: 0; }
+            @page { size: A4 portrait; margin: 10mm; }
             body { 
               font-family: system-ui, -apple-system, sans-serif; 
               background: #ffffff; 
@@ -106,14 +150,8 @@ export default function ManagerDocumentsPage() {
               print-color-adjust: exact; 
             }
             .print-page { 
-              width: 210mm; 
-              min-height: 297mm; 
-              padding: 15mm; 
+              width: 100%; 
               box-sizing: border-box; 
-              display: flex; 
-              flex-direction: column; 
-              justify-content: space-between; 
-              position: relative; 
               background: white; 
             }
             .print-hide { display: none !important; }
