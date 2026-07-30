@@ -28,7 +28,21 @@ import {
   Boxes,
   PieChart,
   RotateCcw,
-  FileText
+  FileText,
+  Layers,
+  ShieldCheck,
+  HelpCircle,
+  Truck,
+  Calendar,
+  UserCheck,
+  Coins,
+  Bell,
+  Lock,
+  Tag,
+  Utensils,
+  DollarSign,
+  Percent,
+  Sparkles
 } from "lucide-react";
 import { triggerHapticFeedback } from "@/lib/pwaBadges";
 import { useLanguage } from "@/context/LanguageContext";
@@ -57,7 +71,20 @@ export function ManagerBottomNav({
   const [statusSheetOpen, setStatusSheetOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
 
+  // Drawer Search & Category Filters
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [userRole, setUserRole] = useState("manager");
+
   const totalPending = pendingShiftsCount + pendingVoidsCount + pendingExpiriesCount;
+
+  // Fetch current logged user role for strict security scoping
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const role = localStorage.getItem("circlek_role") || "manager";
+      setUserRole(role);
+    }
+  }, []);
 
   // Track online/offline network state for PWA IndexedDB status
   useEffect(() => {
@@ -104,50 +131,130 @@ export function ManagerBottomNav({
     if (fabOpen) setFabOpen(false);
   };
 
-  // Complete List of All 15 Available Manager Tools & Pages
+  // Categories definition
+  const CATEGORIES = [
+    { id: "all", labelEn: "All", labelAr: "الكل", icon: Layers },
+    { id: "financials", labelEn: "Financials", labelAr: "المالية", icon: Banknote },
+    { id: "products", labelEn: "Products", labelAr: "المنتجات", icon: Boxes },
+    { id: "operations", labelEn: "Operations", labelAr: "التشغيل", icon: ClipboardCheck },
+    { id: "hr", labelEn: "HR & Staff", labelAr: "الموارد البشرية", icon: Users },
+    { id: "admin", labelEn: "Admin", labelAr: "الإدارة", icon: ShieldCheck, adminOnly: true },
+  ];
+
+  // Complete List of All 28 Available System Tools & Pages (Role-Secured)
   const QUICK_ACTIONS = [
+    // --- FINANCIALS ---
+    {
+      id: "ai-assistant",
+      category: "financials",
+      titleEn: "Ibrahim (AI)",
+      titleAr: "المساعد المالي ابراهيم",
+      subtitleEn: "Ask floor AI assistant",
+      subtitleAr: "استفسارات المساعد الذكي",
+      icon: Bot,
+      color: "bg-[#22d3ee]/15 text-cyan-300 border-[#22d3ee]/30",
+      path: "/ai-assistant",
+      rolesAllowed: ["admin", "manager", "cashier"],
+    },
+    {
+      id: "financial-inputs",
+      category: "financials",
+      titleEn: "Financial Inputs",
+      titleAr: "مدخلات النظام المالي",
+      subtitleEn: "Inputs overview & live feed",
+      subtitleAr: "لوحة تحكم المدخلات المالية",
+      icon: LayoutDashboard,
+      color: "bg-sky-500/15 text-sky-400 border-sky-500/30",
+      path: "/financials/inputs",
+      rolesAllowed: ["admin", "manager"],
+    },
+    {
+      id: "financial-reports",
+      category: "financials",
+      titleEn: "Financial Reports",
+      titleAr: "التقارير المالية والربحية",
+      subtitleEn: "P&L & sales breakdowns",
+      subtitleAr: "تقارير الأرباح والخسائر والتحليلات",
+      icon: TrendingUp,
+      color: "bg-indigo-500/15 text-indigo-400 border-indigo-500/30",
+      path: "/financial-reports",
+      rolesAllowed: ["admin", "manager"],
+    },
     {
       id: "sales",
-      titleEn: "Sales Input",
-      titleAr: "إدخال المبيعات",
+      category: "financials",
+      titleEn: "Detailed Sales",
+      titleAr: "إدخال وتفاصيل المبيعات",
       subtitleEn: "Daily Cash & Visa sales",
       subtitleAr: "تسجيل مبيعات الكاش والفيزا",
       icon: Banknote,
       color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
       path: "/financials/inputs/sales",
+      rolesAllowed: ["admin", "manager"],
     },
     {
       id: "payments",
-      titleEn: "Payments",
-      titleAr: "المدفوعات",
+      category: "financials",
+      titleEn: "Payments Log",
+      titleAr: "سجل المدفوعات",
       subtitleEn: "Log vendor payment",
       subtitleAr: "تسجيل مدفوعات الموردين",
       icon: Wallet,
       color: "bg-teal-500/15 text-teal-400 border-teal-500/30",
       path: "/financials/inputs/payments",
+      rolesAllowed: ["admin", "manager"],
     },
     {
       id: "credits",
+      category: "financials",
       titleEn: "Credits Input",
-      titleAr: "تسجيل الذمم",
+      titleAr: "تسجيل الذمم والآجل",
       subtitleEn: "Record vendor credit notes",
       subtitleAr: "إدخال كشوفات الآجل والموردين",
       icon: CreditCard,
       color: "bg-purple-500/15 text-purple-400 border-purple-500/30",
       path: "/financials/inputs/credits",
+      rolesAllowed: ["admin", "manager"],
     },
     {
       id: "deposits",
+      category: "financials",
       titleEn: "Deposits Log",
       titleAr: "إيداعات الخزينة والبنك",
       subtitleEn: "Safe & bank deposit vouchers",
       subtitleAr: "سجل التحويلات والإيداعات البنكية",
       icon: Vault,
-      color: "bg-[#22d3ee]/15 text-cyan-400 border-[#22d3ee]/30",
+      color: "bg-cyan-500/15 text-cyan-400 border-cyan-500/30",
       path: "/financials/inputs/deposits",
+      rolesAllowed: ["admin", "manager"],
+    },
+    {
+      id: "out-of-stock",
+      category: "financials",
+      titleEn: "Out of Stock",
+      titleAr: "نواقص الرفوف والمخزن",
+      subtitleEn: "Missing shelf items tracker",
+      subtitleAr: "سجل متابعة الأصناف المفقودة",
+      icon: AlertTriangle,
+      color: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+      path: "/products/out-of-stock",
+      rolesAllowed: ["admin", "manager"],
+    },
+    {
+      id: "voids",
+      category: "financials",
+      titleEn: "Voids & Returns",
+      titleAr: "إلغاءات المبيعات",
+      subtitleEn: "Approve POS item returns",
+      subtitleAr: "اعتماد مرتجعات ورجوع الاصناف",
+      icon: PackageX,
+      color: "bg-rose-500/15 text-rose-400 border-rose-500/30",
+      path: "/voids/manager",
+      rolesAllowed: ["admin", "manager"],
     },
     {
       id: "shift-audit",
+      category: "financials",
       titleEn: "Shift Audit",
       titleAr: "مراجعة الورديات",
       subtitleEn: "Reconcile cash & safe drops",
@@ -155,108 +262,265 @@ export function ManagerBottomNav({
       icon: FileCheck2,
       color: "bg-cyan-500/15 text-cyan-400 border-cyan-500/30",
       path: "/shift-reports/manager",
+      rolesAllowed: ["admin", "manager"],
     },
     {
-      id: "voids",
-      titleEn: "Voids / Returns",
-      titleAr: "إلغاءات المبيعات",
-      subtitleEn: "Approve POS item returns",
-      subtitleAr: "اعتماد مرتجعات ورجوع الاصناف",
-      icon: PackageX,
-      color: "bg-rose-500/15 text-rose-400 border-rose-500/30",
-      path: "/voids/manager",
-    },
-    {
-      id: "checklists",
-      titleEn: "Checklists Audit",
-      titleAr: "قوائم التفتيش المكتملة",
-      subtitleEn: "Review store audit checklists",
-      subtitleAr: "مراجعة قوائم التفتيش والنظافة",
-      icon: ClipboardCheck,
+      id: "margin-strategy",
+      category: "financials",
+      titleEn: "Margin Strategy",
+      titleAr: "استراتيجية الهامش",
+      subtitleEn: "Profit margin analytics",
+      subtitleAr: "تحليلات هامش الربح والأسعار",
+      icon: Percent,
       color: "bg-blue-500/15 text-blue-400 border-blue-500/30",
-      path: "/checklists/manager",
-    },
-    {
-      id: "inventory-audit",
-      titleEn: "Inventory Audit",
-      titleAr: "جرد المخزون",
-      subtitleEn: "Manager stock audit",
-      subtitleAr: "جرد وجدول كميات المخزون",
-      icon: Boxes,
-      color: "bg-amber-500/15 text-amber-400 border-amber-500/30",
-      path: "/inventory-audit/manager",
-    },
-    {
-      id: "expiries",
-      titleEn: "Expiries Log",
-      titleAr: "سجل الصلاحيات",
-      subtitleEn: "Log near-expiry shelf items",
-      subtitleAr: "تسجيل المنتجات قريبة الانتهاء",
-      icon: Clock,
-      color: "bg-orange-500/15 text-orange-400 border-orange-500/30",
-      path: "/expiries",
-    },
-    {
-      id: "reports",
-      titleEn: "Financial Reports",
-      titleAr: "التقارير المالية والربحية",
-      subtitleEn: "P&L & sales breakdowns",
-      subtitleAr: "تقارير الأرباح والخسائر والتحليلات",
-      icon: PieChart,
-      color: "bg-indigo-500/15 text-indigo-400 border-indigo-500/30",
-      path: "/financial-reports",
+      path: "/margin-strategy",
+      rolesAllowed: ["admin", "manager"],
     },
     {
       id: "rtv",
-      titleEn: "Supplier Returns (RTV)",
+      category: "financials",
+      titleEn: "Returns (RTV)",
       titleAr: "إيصال مرتجع موردين",
       subtitleEn: "Generate RTV voucher",
       subtitleAr: "إنشاء إيصالات ارتجاع الموردين",
       icon: RotateCcw,
       color: "bg-rose-600/15 text-rose-300 border-rose-600/30",
       path: "/dashboard/supplier-returns",
+      rolesAllowed: ["admin", "manager"],
     },
+
+    // --- PRODUCTS & INVENTORY ---
     {
-      id: "overview",
-      titleEn: "Inputs Overview",
-      titleAr: "نظرة عامة على المدخلات",
-      subtitleEn: "Dashboard & live activity feed",
-      subtitleAr: "لوحة تحكم النشاط المالي المباشر",
-      icon: LayoutDashboard,
-      color: "bg-sky-500/15 text-sky-400 border-sky-500/30",
-      path: "/financials/inputs",
+      id: "expiries",
+      category: "products",
+      titleEn: "Expiries Audit",
+      titleAr: "سجل الصلاحيات",
+      subtitleEn: "Log near-expiry shelf items",
+      subtitleAr: "تسجيل المنتجات قريبة الانتهاء",
+      icon: Clock,
+      color: "bg-orange-500/15 text-orange-400 border-orange-500/30",
+      path: "/expiries",
+      rolesAllowed: ["admin", "manager", "cashier"],
     },
     {
       id: "lookup",
-      titleEn: "Product Search",
+      category: "products",
+      titleEn: "Product Lookup",
       titleAr: "البحث عن صنف",
       subtitleEn: "Rapid price & SKU check",
       subtitleAr: "استعلام الأسعار والباركود",
       icon: Search,
       color: "bg-violet-500/15 text-violet-400 border-violet-500/30",
       path: "/cashier/lookup",
+      rolesAllowed: ["admin", "manager", "cashier"],
     },
     {
-      id: "scan",
-      titleEn: "Scan Invoice",
-      titleAr: "مسح الفاتورة",
-      subtitleEn: "Camera receipt & PO OCR",
-      subtitleAr: "مسح ضوئي للفواتير بالكاميرا",
-      icon: Camera,
-      color: "bg-red-500/15 text-red-400 border-red-500/30",
-      path: "/cashier/upload-invoice/new",
+      id: "inventory-audit",
+      category: "products",
+      titleEn: "Blind Audit",
+      titleAr: "جرد المخزون العمياء",
+      subtitleEn: "Manager stock audit",
+      subtitleAr: "جرد وجدول كميات المخزون",
+      icon: Boxes,
+      color: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+      path: "/inventory-audit/manager",
+      rolesAllowed: ["admin", "manager"],
     },
     {
-      id: "voice-ai",
-      titleEn: "Voice AI Query",
-      titleAr: "المساعد الصوتي",
-      subtitleEn: "Ask floor AI assistant",
-      subtitleAr: "استفسار المساعد الذكي",
-      icon: Mic,
+      id: "supplier-orders",
+      category: "products",
+      titleEn: "Order with Supplier",
+      titleAr: "طلب طلبية للمورد",
+      subtitleEn: "Create supplier purchase orders",
+      subtitleAr: "إرسال الطلبيات للموردين",
+      icon: Truck,
       color: "bg-emerald-400/15 text-emerald-300 border-emerald-400/30",
-      path: "/ai-assistant",
+      path: "/products/supplier-orders",
+      rolesAllowed: ["admin", "manager"],
+    },
+
+    // --- OPERATIONS ---
+    {
+      id: "checklists",
+      category: "operations",
+      titleEn: "Checklists",
+      titleAr: "قوائم التفتيش والنظافة",
+      subtitleEn: "Review store audit checklists",
+      subtitleAr: "مراجعة قوائم التفتيش المكتملة",
+      icon: ClipboardCheck,
+      color: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+      path: "/checklists/manager",
+      rolesAllowed: ["admin", "manager"],
+    },
+    {
+      id: "cleaning",
+      category: "operations",
+      titleEn: "Cleaning Logs",
+      titleAr: "سجلات النظافة والتعقيم",
+      subtitleEn: "Daily store sanitation log",
+      subtitleAr: "متابعة النظافة والتعقيم",
+      icon: FileText,
+      color: "bg-sky-400/15 text-sky-300 border-sky-400/30",
+      path: "/checklists/cleaning",
+      rolesAllowed: ["admin", "manager", "cashier"],
+    },
+    {
+      id: "lost-found",
+      category: "operations",
+      titleEn: "Lost & Found",
+      titleAr: "المفقودات والمعثور عليها",
+      subtitleEn: "Customer left items tracker",
+      subtitleAr: "سجل الأغراض المفقودة للعملاء",
+      icon: HelpCircle,
+      color: "bg-purple-400/15 text-purple-300 border-purple-400/30",
+      path: "/lost-found",
+      rolesAllowed: ["admin", "manager", "cashier"],
+    },
+    {
+      id: "offers",
+      category: "operations",
+      titleEn: "Manage Offers",
+      titleAr: "إدارة العروض والخصومات",
+      subtitleEn: "Active promotions & discounts",
+      subtitleAr: "عروض المتجر والخصومات النشطة",
+      icon: Tag,
+      color: "bg-rose-400/15 text-rose-300 border-rose-400/30",
+      path: "/offers",
+      rolesAllowed: ["admin", "manager"],
+    },
+    {
+      id: "food-codes",
+      category: "operations",
+      titleEn: "Food Codes",
+      titleAr: "أكواد الوجبات والمشروبات",
+      subtitleEn: "Fresh food SKU codes",
+      subtitleAr: "دليل أكواد المأكولات والمشروبات",
+      icon: Utensils,
+      color: "bg-amber-400/15 text-amber-300 border-amber-400/30",
+      path: "/food-codes",
+      rolesAllowed: ["admin", "manager", "cashier"],
+    },
+
+    // --- HR & STAFF ---
+    {
+      id: "employees",
+      category: "hr",
+      titleEn: "Employees",
+      titleAr: "دليل الموظفين",
+      subtitleEn: "Staff directory & files",
+      subtitleAr: "بيانات الموظفين والملفات",
+      icon: Users,
+      color: "bg-teal-400/15 text-teal-300 border-teal-400/30",
+      path: "/hr/employees",
+      rolesAllowed: ["admin", "manager"],
+    },
+    {
+      id: "cashier-accounts",
+      category: "hr",
+      titleEn: "Cashier Accounts",
+      titleAr: "حسابات الكاشيرية",
+      subtitleEn: "POS credentials & PINs",
+      subtitleAr: "إدارة كشوفات وحسابات الكاشير",
+      icon: UserCheck,
+      color: "bg-indigo-400/15 text-indigo-300 border-indigo-400/30",
+      path: "/hr/cashiers",
+      rolesAllowed: ["admin", "manager"],
+    },
+    {
+      id: "payroll",
+      category: "hr",
+      titleEn: "Payroll System",
+      titleAr: "نظام الرواتب والأجور",
+      subtitleEn: "Monthly salaries & bonuses",
+      subtitleAr: "حساب المرتبات والحوافز",
+      icon: Coins,
+      color: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+      path: "/hr/payroll",
+      rolesAllowed: ["admin", "manager"],
+    },
+    {
+      id: "loans",
+      category: "hr",
+      titleEn: "Adjustments & Loans",
+      titleAr: "السلف والخصومات",
+      subtitleEn: "Employee advance payments",
+      subtitleAr: "سجل السلفيات وخصميات الموظفين",
+      icon: DollarSign,
+      color: "bg-amber-500/15 text-amber-300 border-amber-500/30",
+      path: "/hr/loans",
+      rolesAllowed: ["admin", "manager"],
+    },
+    {
+      id: "scheduler",
+      category: "hr",
+      titleEn: "Smart Scheduler",
+      titleAr: "جدول الورديات الذكي",
+      subtitleEn: "Shift roster & timetables",
+      subtitleAr: "جدولة ساعات العمل والورديات",
+      icon: Calendar,
+      color: "bg-blue-400/15 text-blue-300 border-blue-400/30",
+      path: "/hr/scheduler",
+      rolesAllowed: ["admin", "manager"],
+    },
+
+    // --- ADMIN (Admin Role Only) ---
+    {
+      id: "user-management",
+      category: "admin",
+      titleEn: "User Management",
+      titleAr: "إدارة المستخدمين والصلاحيات",
+      subtitleEn: "Roles & access control",
+      subtitleAr: "إدارة الصلاحيات والمستخدمين",
+      icon: Lock,
+      color: "bg-red-500/15 text-red-400 border-red-500/30",
+      path: "/admin/users",
+      rolesAllowed: ["admin"],
+    },
+    {
+      id: "inventory-predict",
+      category: "admin",
+      titleEn: "Inventory Predict",
+      titleAr: "التنبؤ الذكي بالمخزون",
+      subtitleEn: "AI demand forecasting",
+      subtitleAr: "التنبؤ بطلب واستنزاف الاصناف",
+      icon: Sparkles,
+      color: "bg-purple-500/15 text-purple-400 border-purple-500/30",
+      path: "/admin/inventory-predict",
+      rolesAllowed: ["admin"],
+    },
+    {
+      id: "send-notifications",
+      category: "admin",
+      titleEn: "Send Notifications",
+      titleAr: "إرسال الإشعارات للجميع",
+      subtitleEn: "Broadcast mobile push alerts",
+      subtitleAr: "إرسال تنبيهات فورية للموظفين",
+      icon: Bell,
+      color: "bg-amber-400/15 text-amber-300 border-amber-400/30",
+      path: "/admin/send-notifications",
+      rolesAllowed: ["admin"],
     },
   ];
+
+  // Dynamically filter actions by current user's role, selected category tab, and search query
+  const filteredActions = QUICK_ACTIONS.filter((action) => {
+    // 1. Role Security Check
+    if (action.rolesAllowed && !action.rolesAllowed.includes(userRole)) {
+      return false;
+    }
+    // 2. Category Tab Filter
+    if (selectedCategory !== "all" && action.category !== selectedCategory) {
+      return false;
+    }
+    // 3. Search Query Filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const matchEn = action.titleEn.toLowerCase().includes(q) || action.subtitleEn.toLowerCase().includes(q);
+      const matchAr = action.titleAr.toLowerCase().includes(q) || action.subtitleAr.toLowerCase().includes(q);
+      if (!matchEn && !matchAr) return false;
+    }
+    return true;
+  });
 
   return (
     <>
@@ -348,7 +612,7 @@ export function ManagerBottomNav({
         )}
       </AnimatePresence>
 
-      {/* 3. Center FAB Quick Action Drawer */}
+      {/* 3. Center FAB Quick Action Drawer (Role Secured & Categorized Hub) */}
       <AnimatePresence>
         {fabOpen && (
           <motion.div
@@ -356,17 +620,21 @@ export function ManagerBottomNav({
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.85, opacity: 0, y: 40 }}
             transition={{ type: "spring", stiffness: 350, damping: 25 }}
-            className="fixed bottom-24 left-3 right-3 z-50 p-4 rounded-3xl bg-[#0B1121] border border-[rgba(34,211,238,0.25)] text-white shadow-2xl backdrop-blur-2xl md:hidden max-h-[70vh] overflow-y-auto"
+            className="fixed bottom-24 left-3 right-3 z-50 p-4 rounded-3xl bg-[#0B1121] border border-[rgba(34,211,238,0.25)] text-white shadow-2xl backdrop-blur-2xl md:hidden max-h-[75vh] flex flex-col"
             dir={isAr ? "rtl" : "ltr"}
           >
+            {/* Header & Close Button */}
             <div className="flex justify-between items-center mb-3 pb-2 border-b border-[#1E293B]">
               <div>
                 <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
                   <Zap className="w-4 h-4 text-cyan-400 fill-cyan-400" />
-                  {isAr ? "مركز أفعال المدير الميدانية" : "Manager Command Hub"}
+                  {isAr ? "مركز أفعال النظام الميدانية" : "Portal Command Hub"}
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 uppercase font-black">
+                    {userRole}
+                  </span>
                 </h3>
                 <p className="text-[11px] text-slate-400">
-                  {isAr ? "اختر أداة لإنجاز المهام فوراً" : "Quick floor actions & inputs"}
+                  {isAr ? "جميع الأدوات والصفحات المتاحة لحسابك" : "All authorized portal tools & files"}
                 </p>
               </div>
               <button
@@ -377,29 +645,83 @@ export function ManagerBottomNav({
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5">
-              {QUICK_ACTIONS.map((action) => {
-                const Icon = action.icon;
+            {/* Search Input Bar */}
+            <div className="relative mb-3">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder={isAr ? "ابحث في جميع أدوات وصفحات النظام..." : "Search 28+ portal tools & pages..."}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 rounded-2xl bg-[#0F172A] border border-[rgba(34,211,238,0.2)] text-xs text-white placeholder-slate-400 outline-none focus:border-cyan-400 font-bold"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs font-bold"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {/* Category Filter Pills Bar */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-2.5 mb-3 hide-scrollbar shrink-0">
+              {CATEGORIES.filter(cat => !cat.adminOnly || userRole === "admin").map((cat) => {
+                const Icon = cat.icon;
+                const isActive = selectedCategory === cat.id;
                 return (
                   <button
-                    key={action.id}
-                    onClick={() => handleNavClick(action.id, action.path)}
-                    className="p-3 rounded-2xl bg-[#0F172A] hover:bg-[#1E293B] border border-[rgba(34,211,238,0.15)] flex items-start gap-3 text-left transition-all active:scale-95 group"
+                    key={cat.id}
+                    onClick={() => {
+                      triggerHapticFeedback(8);
+                      setSelectedCategory(cat.id);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-[10px] font-black whitespace-nowrap flex items-center gap-1.5 transition-all shrink-0 ${
+                      isActive
+                        ? "bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/30"
+                        : "bg-[#0F172A] text-slate-400 hover:text-slate-200 border border-[#1E293B]"
+                    }`}
                   >
-                    <div className={`p-2.5 rounded-xl border ${action.color} shrink-0`}>
-                      <Icon className="w-5 h-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="text-xs font-extrabold text-slate-100 group-hover:text-cyan-400 truncate">
-                        {isAr ? action.titleAr : action.titleEn}
-                      </h4>
-                      <p className="text-[10px] text-slate-400 truncate mt-0.5">
-                        {isAr ? action.subtitleAr : action.subtitleEn}
-                      </p>
-                    </div>
+                    <Icon className="w-3 h-3" />
+                    <span>{isAr ? cat.labelAr : cat.labelEn}</span>
                   </button>
                 );
               })}
+            </div>
+
+            {/* Actions Grid (Scrollable) */}
+            <div className="overflow-y-auto pr-1 flex-1 space-y-3 custom-scrollbar">
+              {filteredActions.length === 0 ? (
+                <div className="p-6 text-center text-slate-400 text-xs rounded-2xl bg-[#0F172A] border border-[#1E293B]">
+                  No matching tools found for "{searchQuery}".
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2.5">
+                  {filteredActions.map((action) => {
+                    const Icon = action.icon;
+                    return (
+                      <button
+                        key={action.id}
+                        onClick={() => handleNavClick(action.id, action.path)}
+                        className="p-3 rounded-2xl bg-[#0F172A] hover:bg-[#1E293B] border border-[rgba(34,211,238,0.15)] flex items-start gap-2.5 text-left transition-all active:scale-95 group"
+                      >
+                        <div className={`p-2 rounded-xl border ${action.color} shrink-0`}>
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-xs font-extrabold text-slate-100 group-hover:text-cyan-400 truncate">
+                            {isAr ? action.titleAr : action.titleEn}
+                          </h4>
+                          <p className="text-[9px] text-slate-400 truncate mt-0.5">
+                            {isAr ? action.subtitleAr : action.subtitleEn}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </motion.div>
         )}
