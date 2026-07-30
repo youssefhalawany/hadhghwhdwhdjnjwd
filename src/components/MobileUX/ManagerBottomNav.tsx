@@ -503,15 +503,25 @@ export function ManagerBottomNav({
   ];
 
   // Dynamically filter actions by current user's role, selected category tab, and search query
+  const normRole = (userRole || "manager").toLowerCase();
+
   const filteredActions = QUICK_ACTIONS.filter((action) => {
-    // 1. Role Security Check
-    if (action.rolesAllowed && !action.rolesAllowed.includes(userRole)) {
-      return false;
+    // 1. Role Security Check (Case-insensitive with fallback)
+    if (action.rolesAllowed && action.rolesAllowed.length > 0) {
+      const allowedLower = action.rolesAllowed.map((r) => r.toLowerCase());
+      const isAllowed =
+        normRole === "admin" ||
+        allowedLower.includes(normRole) ||
+        (normRole === "manager" && (allowedLower.includes("manager") || allowedLower.includes("cashier")));
+
+      if (!isAllowed) return false;
     }
+
     // 2. Category Tab Filter
     if (selectedCategory !== "all" && action.category !== selectedCategory) {
       return false;
     }
+
     // 3. Search Query Filter
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -535,7 +545,7 @@ export function ManagerBottomNav({
               setFabOpen(false);
               setStatusSheetOpen(false);
             }}
-            className="fixed inset-0 z-40 bg-black/75 backdrop-blur-md md:hidden"
+            className="fixed inset-0 z-40 bg-black/80 backdrop-blur-md md:hidden"
           />
         )}
       </AnimatePresence>
@@ -620,21 +630,24 @@ export function ManagerBottomNav({
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.85, opacity: 0, y: 40 }}
             transition={{ type: "spring", stiffness: 350, damping: 25 }}
-            className="fixed bottom-24 left-3 right-3 z-50 p-4 rounded-3xl bg-[#0B1121] border border-[rgba(34,211,238,0.25)] text-white shadow-2xl backdrop-blur-2xl md:hidden max-h-[75vh] flex flex-col"
+            className="fixed bottom-24 left-3 right-3 z-50 p-4 rounded-3xl bg-[#0B1121] border border-[rgba(34,211,238,0.3)] text-white shadow-[0_15px_50px_rgba(0,0,0,0.9)] backdrop-blur-2xl md:hidden max-h-[80vh] flex flex-col"
             dir={isAr ? "rtl" : "ltr"}
           >
+            {/* Top Swipe Indicator Pill */}
+            <div className="w-12 h-1 bg-[#1E293B] rounded-full mx-auto mb-3 cursor-pointer shrink-0" onClick={toggleFab} />
+
             {/* Header & Close Button */}
-            <div className="flex justify-between items-center mb-3 pb-2 border-b border-[#1E293B]">
+            <div className="flex justify-between items-center mb-3 pb-2 border-b border-[#1E293B] shrink-0">
               <div>
                 <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
                   <Zap className="w-4 h-4 text-cyan-400 fill-cyan-400" />
                   {isAr ? "مركز أفعال النظام الميدانية" : "Portal Command Hub"}
                   <span className="text-[9px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 uppercase font-black">
-                    {userRole}
+                    {normRole}
                   </span>
                 </h3>
                 <p className="text-[11px] text-slate-400">
-                  {isAr ? "جميع الأدوات والصفحات المتاحة لحسابك" : "All authorized portal tools & files"}
+                  {isAr ? "جميع الأدوات والصفحات المتاحة لحسابك" : "All authorized portal tools & pages"}
                 </p>
               </div>
               <button
@@ -646,14 +659,14 @@ export function ManagerBottomNav({
             </div>
 
             {/* Search Input Bar */}
-            <div className="relative mb-3">
+            <div className="relative mb-3 shrink-0">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
                 placeholder={isAr ? "ابحث في جميع أدوات وصفحات النظام..." : "Search 28+ portal tools & pages..."}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 rounded-2xl bg-[#0F172A] border border-[rgba(34,211,238,0.2)] text-xs text-white placeholder-slate-400 outline-none focus:border-cyan-400 font-bold"
+                className="w-full pl-9 pr-4 py-2.5 rounded-2xl bg-[#0F172A] border border-[rgba(34,211,238,0.2)] text-xs text-white placeholder-slate-400 outline-none focus:border-cyan-400 font-bold"
               />
               {searchQuery && (
                 <button
@@ -667,7 +680,7 @@ export function ManagerBottomNav({
 
             {/* Category Filter Pills Bar */}
             <div className="flex items-center gap-1.5 overflow-x-auto pb-2.5 mb-3 hide-scrollbar shrink-0">
-              {CATEGORIES.filter(cat => !cat.adminOnly || userRole === "admin").map((cat) => {
+              {CATEGORIES.filter(cat => !cat.adminOnly || normRole === "admin").map((cat) => {
                 const Icon = cat.icon;
                 const isActive = selectedCategory === cat.id;
                 return (
@@ -697,7 +710,7 @@ export function ManagerBottomNav({
                   No matching tools found for "{searchQuery}".
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-2 gap-2.5 pb-2">
                   {filteredActions.map((action) => {
                     const Icon = action.icon;
                     return (
@@ -710,10 +723,10 @@ export function ManagerBottomNav({
                           <Icon className="w-4 h-4" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <h4 className="text-xs font-extrabold text-slate-100 group-hover:text-cyan-400 truncate">
+                          <h4 className="text-xs font-black text-slate-100 group-hover:text-cyan-400 truncate tracking-tight">
                             {isAr ? action.titleAr : action.titleEn}
                           </h4>
-                          <p className="text-[9px] text-slate-400 truncate mt-0.5">
+                          <p className="text-[9px] text-slate-400 truncate mt-0.5 font-medium">
                             {isAr ? action.subtitleAr : action.subtitleEn}
                           </p>
                         </div>
