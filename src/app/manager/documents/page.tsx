@@ -123,7 +123,7 @@ export default function ManagerDocumentsPage() {
       return;
     }
 
-    // 3. For official generated documents (payslips, payment vouchers, credit notes)
+    // 3. For official generated documents (payslips, payment vouchers, credit notes, batch packets)
     const printContent = document.getElementById("official-doc-print-capture");
     if (!printContent) {
       window.print();
@@ -139,7 +139,7 @@ export default function ManagerDocumentsPage() {
         <head>
           <title>${selectedDoc.title} - #${selectedDoc.serialNumber}</title>
           <style>
-            @page { size: A4 portrait; margin: 10mm; }
+            @page { size: A4 portrait; margin: 8mm; }
             body { 
               font-family: system-ui, -apple-system, sans-serif; 
               background: #ffffff; 
@@ -155,7 +155,7 @@ export default function ManagerDocumentsPage() {
               background: white; 
             }
             .print-hide { display: none !important; }
-            .page-break { page-break-after: always; break-after: page; }
+            .page-break { page-break-after: always; break-after: page; page-break-inside: avoid; break-inside: avoid; }
           </style>
         </head>
         <body>
@@ -349,11 +349,11 @@ export default function ManagerDocumentsPage() {
                   </div>
                 )}
 
-                {docItem.metadata?.amount > 0 && (
-                  <div className="p-2.5 rounded-2xl bg-slate-50 dark:bg-[#0F172A] border border-slate-200 dark:border-[#1E293B] flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Amount</span>
-                    <span className="text-xs font-black text-cyan-600 dark:text-cyan-400 font-mono">
-                      EGP {Number(docItem.metadata.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                {docItem.metadata?.isBatchPayroll && (
+                  <div className="p-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">Batch Packet</span>
+                    <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono">
+                      {docItem.metadata.allPayrollRecords?.length || 0} Staff Packets (2-Pages Each)
                     </span>
                   </div>
                 )}
@@ -397,7 +397,8 @@ export default function ManagerDocumentsPage() {
                     onClick={handlePrint}
                     className="px-3.5 py-1.5 rounded-xl bg-cyan-500 text-slate-950 text-xs font-black flex items-center gap-1.5 shadow-md shadow-cyan-500/20 hover:opacity-90 active:scale-95 transition-all cursor-pointer"
                   >
-                    <Printer className="w-4 h-4" /> Print 2-Page Packet
+                    <Printer className="w-4 h-4" /> 
+                    {selectedDoc.metadata?.isBatchPayroll ? `Print All (${selectedDoc.metadata.allPayrollRecords?.length || 0} Staff Packets)` : "Print 2-Page Packet"}
                   </button>
                   <button
                     onClick={() => setSelectedDoc(null)}
@@ -414,243 +415,422 @@ export default function ManagerDocumentsPage() {
                 {/* Captured Printable Layout Container */}
                 <div id="official-doc-print-capture" className="space-y-8 text-slate-900">
                   
-                  {/* --- PAGE 1: OFFICIAL PAYSLIP VOUCHER --- */}
-                  <div className="space-y-6">
-                    {/* Executive Letterhead Header */}
-                    <div className="flex items-center justify-between pb-4 border-b-2 border-slate-900">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-red-600 flex items-center justify-center text-white font-black text-lg shadow-md">
-                          K
+                  {/* IF BATCH PAYROLL MODE: MAP OVER ALL EMPLOYEES AND RENDER 2-PAGE PACKETS BACK-TO-BACK */}
+                  {selectedDoc.docType === "payslip" && selectedDoc.metadata?.isBatchPayroll && selectedDoc.metadata?.allPayrollRecords?.length > 0 ? (
+                    selectedDoc.metadata.allPayrollRecords.map((pRec: any, idx: number) => {
+                      const empName = pRec.resolvedName || pRec.employeeName || pRec.staffName || pRec.name || "Employee";
+                      const role = pRec.role || pRec.position || "Store Staff";
+                      const period = pRec.month || pRec.payPeriod || selectedDoc.metadata.month || "2026-06";
+                      const base = Number(pRec.baseSalary || pRec.basicSalary || pRec.standardPay || pRec.salary || 0);
+                      const bonus = Number(pRec.bonuses || pRec.totalAdditions || pRec.overtime || pRec.bonus || 0);
+                      const ded = Number(pRec.deductions || pRec.totalDeductions || pRec.penalty || pRec.loan || 0);
+                      const net = Number(pRec.netPay || pRec.netSalary || pRec.total || (base + bonus - ded));
+
+                      return (
+                        <div key={pRec.id || idx} className="space-y-8 pb-8">
+                          
+                          {/* --- EMPLOYEE PAGE 1: PAYSLIP VOUCHER --- */}
+                          <div className="page-break space-y-6">
+                            <div className="flex items-center justify-between pb-4 border-b-2 border-slate-900">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-red-600 flex items-center justify-center text-white font-black text-lg shadow-md">
+                                  K
+                                </div>
+                                <div>
+                                  <h2 className="text-base font-black text-slate-900 tracking-tight uppercase">
+                                    ANH Portal • Circle K Franchise
+                                  </h2>
+                                  <p className="text-[10px] font-bold text-slate-500 tracking-widest uppercase">
+                                    Commercial Registry (س.ت): 123456 | Tax ID (ب.ض): 123-456-789
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <h2 className="text-base font-black text-slate-900 uppercase">
+                                  Official Payslip Voucher
+                                </h2>
+                                <span className="text-xs font-bold font-mono text-slate-600 block">
+                                  STAFF {idx + 1}/{selectedDoc.metadata.allPayrollRecords.length} • REF: {selectedDoc.serialNumber}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="p-3.5 rounded-xl bg-slate-100 border border-slate-300 text-center">
+                              <h1 className="text-base font-black text-slate-900 tracking-tight uppercase">
+                                {empName} Payroll for Month {period}
+                              </h1>
+                              <p className="text-xs font-semibold text-slate-600 mt-0.5">
+                                Official Employee Payslip & Monthly Salary Statement
+                              </p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-300 text-xs">
+                              <div>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase">Employee Name / اسم الموظف</p>
+                                <p className="font-extrabold text-slate-900 text-sm">{empName}</p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase">Position / المسمى الوظيفي</p>
+                                <p className="font-extrabold text-slate-900 text-sm">{role}</p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase">Pay Period / شهر الراتب</p>
+                                <p className="font-extrabold text-slate-900">{period}</p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase">Store Branch / الفرع</p>
+                                <p className="font-extrabold text-slate-900 capitalize">{selectedDoc.targetBranch || "El Alamein 4"}</p>
+                              </div>
+                            </div>
+
+                            <div className="p-4 rounded-xl bg-slate-900 text-white flex items-center justify-between shadow-md">
+                              <div>
+                                <p className="text-xs font-bold uppercase text-slate-400">Total Net Payable Salary / صافي الراتب المستحق</p>
+                                <p className="text-[11px] text-slate-300 mt-0.5 font-medium">Approved & Disbursed for {period}</p>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-xl font-black text-emerald-400 font-mono">
+                                  EGP {net.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                              </div>
+                            </div>
+
+                            <table className="w-full text-xs border-collapse border border-slate-300">
+                              <thead>
+                                <tr className="bg-slate-200 text-slate-900 font-black">
+                                  <th className="p-2.5 text-left border border-slate-300">Salary Breakdown Item / تفاصيل الراتب</th>
+                                  <th className="p-2.5 text-right border border-slate-300">Amount (EGP)</th>
+                                </tr>
+                              </thead>
+                              <tbody className="font-mono">
+                                <tr>
+                                  <td className="p-2.5 border border-slate-300 font-sans font-bold">Base Monthly Salary / الراتب الأساسي</td>
+                                  <td className="p-2.5 text-right border border-slate-300 font-extrabold text-slate-900">
+                                    EGP {base.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                  </td>
+                                </tr>
+                                <tr>
+                                  <td className="p-2.5 border border-slate-300 font-sans font-bold">Bonuses, Overtime & Allowances / الحوافز والبدلات</td>
+                                  <td className="p-2.5 text-right border border-slate-300 font-extrabold text-emerald-700">
+                                    + EGP {bonus.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                  </td>
+                                </tr>
+                                <tr>
+                                  <td className="p-2.5 border border-slate-300 font-sans font-bold">Deductions, Absences & Advances / الخصومات والسلفيات</td>
+                                  <td className="p-2.5 text-right border border-slate-300 font-extrabold text-rose-700">
+                                    - EGP {ded.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                  </td>
+                                </tr>
+                                <tr className="bg-slate-100 font-black text-sm">
+                                  <td className="p-3 border border-slate-300 font-sans uppercase">TOTAL NET DISBURSED SALARY / صافي المستحق النهائي</td>
+                                  <td className="p-3 text-right border border-slate-300 text-emerald-800">
+                                    EGP {net.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                  </td>
+                                </tr>
+                              </tbody>
+                            </table>
+
+                            <div className="pt-4 border-t-2 border-slate-300 flex items-end justify-between">
+                              <div>
+                                <p className="text-[9px] font-mono text-slate-400">
+                                  SERIAL: {selectedDoc.serialNumber}-{idx + 1} • PAGE 1 OF 2
+                                </p>
+                              </div>
+                              <div className="text-center w-40">
+                                <div className="h-8 border-b border-slate-400 mb-1 flex items-end justify-center">
+                                  <span className="text-[10px] font-black italic text-slate-700">Official Seal Approved</span>
+                                </div>
+                                <p className="text-[9px] font-black text-slate-800 uppercase tracking-wider">Executive Authorization</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* --- EMPLOYEE PAGE 2: RECEIPT & CLEARANCE FORM --- */}
+                          <div className="page-break space-y-6 pt-6 border-t-4 border-dashed border-slate-400">
+                            <div className="flex items-center justify-between pb-4 border-b-2 border-slate-900">
+                              <div>
+                                <h2 className="text-base font-black text-slate-900 tracking-tight uppercase">
+                                  ANH Portal • Circle K Franchise
+                                </h2>
+                                <p className="text-[10px] font-bold text-slate-500 tracking-widest uppercase">
+                                  Official Employee Salary Receipt & Clearance Form (إقرار وتعهد استلام الراتب)
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-xs font-black font-mono text-slate-900 block">
+                                  STAFF {idx + 1}/{selectedDoc.metadata.allPayrollRecords.length} • PAGE 2 OF 2
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="p-6 rounded-2xl bg-slate-50 border-2 border-slate-300 space-y-4">
+                              <h3 className="text-sm font-black text-slate-900 uppercase text-center border-b pb-2">
+                                إقرار وتعهد استلام الراتب والمستحقات الماليّة
+                              </h3>
+                              
+                              <p className="text-xs text-slate-800 leading-relaxed font-medium text-right">
+                                أقر أنا الموظف: <strong className="text-slate-950 font-black underline">{empName}</strong> 
+                                بأنني قد استلمت كامل مستحقاتي المالية عن شهر <strong>{period}</strong> 
+                                بإجمالي صافي راتب قدره: <strong className="text-emerald-800 font-mono font-black text-sm">EGP {net.toLocaleString()}</strong>، 
+                                وليس لي أي مطالبات مالية أخرى عن هذه الفترة تجاه إدارة الشركة.
+                              </p>
+
+                              <div className="grid grid-cols-2 gap-4 pt-6 text-xs font-bold border-t border-slate-300">
+                                <div>
+                                  <p className="text-slate-500 mb-1">اسم الموظف / Employee Name:</p>
+                                  <p className="text-slate-900 font-black">{empName}</p>
+                                </div>
+                                <div>
+                                  <p className="text-slate-500 mb-1">المسمى الوظيفي / Position:</p>
+                                  <p className="text-slate-900 font-black">{role}</p>
+                                </div>
+                                <div className="pt-4">
+                                  <p className="text-slate-500 mb-1">توقيع الموظف / Employee Signature:</p>
+                                  <div className="h-12 border-b-2 border-slate-900"></div>
+                                </div>
+                                <div className="pt-4">
+                                  <p className="text-slate-500 mb-1">توقيع اعتماد المدير / Manager Approval:</p>
+                                  <div className="h-12 border-b-2 border-slate-900"></div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="pt-4 text-center text-[10px] text-slate-400 font-mono">
+                              ANH REPORTS • BATCH DISPATCH STAFF #{idx + 1} • REF #{selectedDoc.serialNumber}
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <h2 className="text-base font-black text-slate-900 tracking-tight uppercase">
-                            ANH Portal • Circle K Franchise
-                          </h2>
-                          <p className="text-[10px] font-bold text-slate-500 tracking-widest uppercase">
-                            Commercial Registry (س.ت): 123456 | Tax ID (ب.ض): 123-456-789
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <h2 className="text-base font-black text-slate-900 uppercase">
-                          {selectedDoc.docType === "payslip" ? "Official Payslip" : "Executive Voucher"}
-                        </h2>
-                        <span className="text-xs font-bold font-mono text-slate-600 block">
-                          REF: {selectedDoc.serialNumber}
-                        </span>
-                        <p className="text-[10px] text-slate-500 font-bold">
-                          Date: {new Date(selectedDoc.createdAt).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Document Title Banner */}
-                    <div className="p-4 rounded-xl bg-slate-100 border border-slate-300 text-center">
-                      <h1 className="text-lg font-black text-slate-900 tracking-tight uppercase">
-                        {selectedDoc.title}
-                      </h1>
-                      <p className="text-xs font-semibold text-slate-600 mt-0.5">
-                        {selectedDoc.subtitle}
-                      </p>
-                    </div>
-
-                    {/* Metadata Table for Payslip */}
-                    {selectedDoc.docType === "payslip" && selectedDoc.metadata && (
-                      <div className="space-y-5">
-                        <div className="grid grid-cols-2 gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-300 text-xs">
-                          <div>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase">Employee Name / اسم الموظف</p>
-                            <p className="font-extrabold text-slate-900 text-sm">{selectedDoc.metadata.employeeName}</p>
+                      );
+                    })
+                  ) : (
+                    /* SINGLE PAYSLIP OR NON-BATCH DOCUMENT RENDERING */
+                    <div className="space-y-6">
+                      <div className="flex items-center justify-between pb-4 border-b-2 border-slate-900">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-red-600 flex items-center justify-center text-white font-black text-lg shadow-md">
+                            K
                           </div>
                           <div>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase">Position / المسمى الوظيفي</p>
-                            <p className="font-extrabold text-slate-900 text-sm">{selectedDoc.metadata.employeeRole || "Store Staff"}</p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase">Pay Period / شهر الراتب</p>
-                            <p className="font-extrabold text-slate-900">{selectedDoc.metadata.month || "2026-06"}</p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase">Store Branch / الفرع</p>
-                            <p className="font-extrabold text-slate-900 capitalize">{selectedDoc.targetBranch || "El Alamein 4"}</p>
-                          </div>
-                        </div>
-
-                        {/* High Visibility Net Pay Box */}
-                        <div className="p-4 rounded-xl bg-slate-900 text-white flex items-center justify-between shadow-md">
-                          <div>
-                            <p className="text-xs font-bold uppercase text-slate-400">Total Net Payable Salary / صافي الراتب المستحق</p>
-                            <p className="text-[11px] text-slate-300 mt-0.5 font-medium">Approved & Disbursed for {selectedDoc.metadata.month}</p>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-xl font-black text-emerald-400 font-mono">
-                              EGP {Number(selectedDoc.metadata.netSalary || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </span>
-                          </div>
-                        </div>
-
-                        <table className="w-full text-xs border-collapse border border-slate-300">
-                          <thead>
-                            <tr className="bg-slate-200 text-slate-900 font-black">
-                              <th className="p-2.5 text-left border border-slate-300">Salary Breakdown Item / تفاصيل الراتب</th>
-                              <th className="p-2.5 text-right border border-slate-300">Amount (EGP)</th>
-                            </tr>
-                          </thead>
-                          <tbody className="font-mono">
-                            <tr>
-                              <td className="p-2.5 border border-slate-300 font-sans font-bold">Base Monthly Salary / الراتب الأساسي</td>
-                              <td className="p-2.5 text-right border border-slate-300 font-extrabold text-slate-900">
-                                EGP {Number(selectedDoc.metadata.baseSalary || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                              </td>
-                            </tr>
-                            <tr>
-                              <td className="p-2.5 border border-slate-300 font-sans font-bold">Bonuses, Overtime & Allowances / الحوافز والبدلات</td>
-                              <td className="p-2.5 text-right border border-slate-300 font-extrabold text-emerald-700">
-                                + EGP {Number(selectedDoc.metadata.bonuses || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                              </td>
-                            </tr>
-                            <tr>
-                              <td className="p-2.5 border border-slate-300 font-sans font-bold">Deductions, Absences & Advances / الخصومات والسلفيات</td>
-                              <td className="p-2.5 text-right border border-slate-300 font-extrabold text-rose-700">
-                                - EGP {Number(selectedDoc.metadata.deductions || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                              </td>
-                            </tr>
-                            <tr className="bg-slate-100 font-black text-sm">
-                              <td className="p-3 border border-slate-300 font-sans uppercase">TOTAL NET DISBURSED SALARY / صافي المستحق النهائي</td>
-                              <td className="p-3 text-right border border-slate-300 text-emerald-800">
-                                EGP {Number(selectedDoc.metadata.netSalary || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-
-                    {/* Metadata Table for Receipts */}
-                    {(selectedDoc.docType === "payment_receipt" || selectedDoc.docType === "credit_receipt") && selectedDoc.metadata && (
-                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
-                        <div className="grid grid-cols-2 gap-3 text-xs">
-                          <div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase">Vendor / Supplier</p>
-                            <p className="font-extrabold text-slate-900">{selectedDoc.metadata.supplierName}</p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase">Invoice / Ref #</p>
-                            <p className="font-mono font-bold text-slate-900">{selectedDoc.metadata.invoiceNumber}</p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase">Payment Method</p>
-                            <p className="font-bold text-slate-900 capitalize">{selectedDoc.metadata.paymentMethod}</p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase">Total Amount</p>
-                            <p className="font-mono font-black text-cyan-800 text-sm">
-                              EGP {Number(selectedDoc.metadata.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            <h2 className="text-base font-black text-slate-900 tracking-tight uppercase">
+                              ANH Portal • Circle K Franchise
+                            </h2>
+                            <p className="text-[10px] font-bold text-slate-500 tracking-widest uppercase">
+                              Commercial Registry (س.ت): 123456 | Tax ID (ب.ض): 123-456-789
                             </p>
                           </div>
                         </div>
-                      </div>
-                    )}
-
-                    {/* Executive Remarks */}
-                    {selectedDoc.note && (
-                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-                        <p className="text-[10px] font-extrabold text-slate-400 uppercase">Remarks & Directives / ملاحظات الإدارة</p>
-                        <p className="text-slate-800 mt-1 font-medium whitespace-pre-wrap">{selectedDoc.note}</p>
-                      </div>
-                    )}
-
-                    {/* Attached Image Embed Preview */}
-                    {selectedDoc.fileUrl && (
-                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-                        <p className="text-[10px] font-extrabold text-slate-400 uppercase flex items-center justify-between">
-                          <span>Attached Document / Image Evidence</span>
-                          <a href={selectedDoc.fileUrl} target="_blank" rel="noreferrer" className="text-blue-600 font-bold underline flex items-center gap-1">
-                            <ExternalLink className="w-3 h-3" /> Open Full Image
-                          </a>
-                        </p>
-                        {selectedDoc.fileType === "image" ? (
-                          <img src={selectedDoc.fileUrl} alt="Attached Evidence" className="max-h-64 object-contain rounded-lg border border-slate-300 mx-auto" />
-                        ) : (
-                          <p className="text-xs text-blue-700 font-mono underline break-all">{selectedDoc.fileUrl}</p>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Executive Signature Block */}
-                    <div className="pt-6 mt-6 border-t-2 border-slate-300 flex items-end justify-between">
-                      <div>
-                        <p className="text-[9px] font-mono text-slate-400 tracking-wider">
-                          SERIAL: {selectedDoc.serialNumber} • STORE COPY (PAGE 1)
-                        </p>
-                        <p className="text-[9px] font-mono text-slate-400">
-                          ISSUED BY: {selectedDoc.senderName} ({selectedDoc.senderEmail})
-                        </p>
-                      </div>
-                      <div className="text-center w-40">
-                        <div className="h-10 border-b border-slate-400 mb-1 flex items-end justify-center">
-                          <span className="text-xs font-black italic text-slate-700">Official Seal Approved</span>
-                        </div>
-                        <p className="text-[10px] font-black text-slate-800 uppercase tracking-wider">Executive Authorization</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* --- PAGE 2: EMPLOYEE RECEIPT & CLEARANCE FORM (FOR PAYSLIPS) --- */}
-                  {selectedDoc.docType === "payslip" && (
-                    <div className="page-break pt-12 space-y-6 border-t-4 border-dashed border-slate-400">
-                      
-                      <div className="flex items-center justify-between pb-4 border-b-2 border-slate-900">
-                        <div>
-                          <h2 className="text-base font-black text-slate-900 tracking-tight uppercase">
-                            ANH Portal • Circle K Franchise
+                        <div className="text-right">
+                          <h2 className="text-base font-black text-slate-900 uppercase">
+                            {selectedDoc.docType === "payslip" ? "Official Payslip" : "Executive Voucher"}
                           </h2>
-                          <p className="text-[10px] font-bold text-slate-500 tracking-widest uppercase">
-                            Official Employee Salary Receipt & Clearance Form (نموذج إقرار استلام الراتب)
+                          <span className="text-xs font-bold font-mono text-slate-600 block">
+                            REF: {selectedDoc.serialNumber}
+                          </span>
+                          <p className="text-[10px] text-slate-500 font-bold">
+                            Date: {new Date(selectedDoc.createdAt).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
                           </p>
                         </div>
-                        <div className="text-right">
-                          <span className="text-xs font-black font-mono text-slate-900 block">
-                            PAGE 2 OF 2 • {selectedDoc.serialNumber}
-                          </span>
-                        </div>
                       </div>
 
-                      <div className="p-6 rounded-2xl bg-slate-50 border-2 border-slate-300 space-y-4">
-                        <h3 className="text-sm font-black text-slate-900 uppercase text-center border-b pb-2">
-                          إقرار وتعهد استلام الراتب والمستحقات الماليّة
-                        </h3>
-                        
-                        <p className="text-xs text-slate-800 leading-relaxed font-medium text-right">
-                          أقر أنا الموظف: <strong className="text-slate-950 font-black underline">{selectedDoc.metadata?.employeeName || "الموظف"}</strong> 
-                          بأنني قد استلمت كامل مستحقاتي المالية عن شهر <strong>{selectedDoc.metadata?.month || "2026-06"}</strong> 
-                          بإجمالي صافي راتب قدره: <strong className="text-emerald-800 font-mono font-black text-sm">EGP {Number(selectedDoc.metadata?.netSalary || 0).toLocaleString()}</strong>، 
-                          وليس لي أي مطالبات مالية أخرى عن هذه الفترة تجاه إدارة الشركة.
+                      <div className="p-4 rounded-xl bg-slate-100 border border-slate-300 text-center">
+                        <h1 className="text-lg font-black text-slate-900 tracking-tight uppercase">
+                          {selectedDoc.title}
+                        </h1>
+                        <p className="text-xs font-semibold text-slate-600 mt-0.5">
+                          {selectedDoc.subtitle}
                         </p>
+                      </div>
 
-                        <div className="grid grid-cols-2 gap-4 pt-6 text-xs font-bold border-t border-slate-300">
-                          <div>
-                            <p className="text-slate-500 mb-1">اسم الموظف / Employee Name:</p>
-                            <p className="text-slate-900 font-black">{selectedDoc.metadata?.employeeName}</p>
+                      {selectedDoc.docType === "payslip" && selectedDoc.metadata && (
+                        <div className="space-y-5">
+                          <div className="grid grid-cols-2 gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-300 text-xs">
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-500 uppercase">Employee Name / اسم الموظف</p>
+                              <p className="font-extrabold text-slate-900 text-sm">{selectedDoc.metadata.employeeName}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-500 uppercase">Position / المسمى الوظيفي</p>
+                              <p className="font-extrabold text-slate-900 text-sm">{selectedDoc.metadata.employeeRole || "Store Staff"}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-500 uppercase">Pay Period / شهر الراتب</p>
+                              <p className="font-extrabold text-slate-900">{selectedDoc.metadata.month || "2026-06"}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-500 uppercase">Store Branch / الفرع</p>
+                              <p className="font-extrabold text-slate-900 capitalize">{selectedDoc.targetBranch || "El Alamein 4"}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-slate-500 mb-1">المسمى الوظيفي / Position:</p>
-                            <p className="text-slate-900 font-black">{selectedDoc.metadata?.employeeRole || "Store Staff"}</p>
+
+                          <div className="p-4 rounded-xl bg-slate-900 text-white flex items-center justify-between shadow-md">
+                            <div>
+                              <p className="text-xs font-bold uppercase text-slate-400">Total Net Payable Salary / صافي الراتب المستحق</p>
+                              <p className="text-[11px] text-slate-300 mt-0.5 font-medium">Approved & Disbursed for {selectedDoc.metadata.month}</p>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-xl font-black text-emerald-400 font-mono">
+                                EGP {Number(selectedDoc.metadata.netSalary || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </span>
+                            </div>
                           </div>
-                          <div className="pt-4">
-                            <p className="text-slate-500 mb-1">توقيع الموظف / Employee Signature:</p>
-                            <div className="h-12 border-b-2 border-slate-900"></div>
+
+                          <table className="w-full text-xs border-collapse border border-slate-300">
+                            <thead>
+                              <tr className="bg-slate-200 text-slate-900 font-black">
+                                <th className="p-2.5 text-left border border-slate-300">Salary Breakdown Item / تفاصيل الراتب</th>
+                                <th className="p-2.5 text-right border border-slate-300">Amount (EGP)</th>
+                              </tr>
+                            </thead>
+                            <tbody className="font-mono">
+                              <tr>
+                                <td className="p-2.5 border border-slate-300 font-sans font-bold">Base Monthly Salary / الراتب الأساسي</td>
+                                <td className="p-2.5 text-right border border-slate-300 font-extrabold text-slate-900">
+                                  EGP {Number(selectedDoc.metadata.baseSalary || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </td>
+                              </tr>
+                              <tr>
+                                <td className="p-2.5 border border-slate-300 font-sans font-bold">Bonuses, Overtime & Allowances / الحوافز والبدلات</td>
+                                <td className="p-2.5 text-right border border-slate-300 font-extrabold text-emerald-700">
+                                  + EGP {Number(selectedDoc.metadata.bonuses || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </td>
+                              </tr>
+                              <tr>
+                                <td className="p-2.5 border border-slate-300 font-sans font-bold">Deductions, Absences & Advances / الخصومات والسلفيات</td>
+                                <td className="p-2.5 text-right border border-slate-300 font-extrabold text-rose-700">
+                                  - EGP {Number(selectedDoc.metadata.deductions || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </td>
+                              </tr>
+                              <tr className="bg-slate-100 font-black text-sm">
+                                <td className="p-3 border border-slate-300 font-sans uppercase">TOTAL NET DISBURSED SALARY / صافي المستحق النهائي</td>
+                                <td className="p-3 text-right border border-slate-300 text-emerald-800">
+                                  EGP {Number(selectedDoc.metadata.netSalary || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+
+                      {(selectedDoc.docType === "payment_receipt" || selectedDoc.docType === "credit_receipt") && selectedDoc.metadata && (
+                        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+                          <div className="grid grid-cols-2 gap-3 text-xs">
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase">Vendor / Supplier</p>
+                              <p className="font-extrabold text-slate-900">{selectedDoc.metadata.supplierName}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase">Invoice / Ref #</p>
+                              <p className="font-mono font-bold text-slate-900">{selectedDoc.metadata.invoiceNumber}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase">Payment Method</p>
+                              <p className="font-bold text-slate-900 capitalize">{selectedDoc.metadata.paymentMethod}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase">Total Amount</p>
+                              <p className="font-mono font-black text-cyan-800 text-sm">
+                                EGP {Number(selectedDoc.metadata.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                              </p>
+                            </div>
                           </div>
-                          <div className="pt-4">
-                            <p className="text-slate-500 mb-1">توقيع اعتماد المدير / Manager Approval:</p>
-                            <div className="h-12 border-b-2 border-slate-900"></div>
+                        </div>
+                      )}
+
+                      {selectedDoc.note && (
+                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                          <p className="text-[10px] font-extrabold text-slate-400 uppercase">Remarks & Directives / ملاحظات الإدارة</p>
+                          <p className="text-slate-800 mt-1 font-medium whitespace-pre-wrap">{selectedDoc.note}</p>
+                        </div>
+                      )}
+
+                      {selectedDoc.fileUrl && (
+                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                          <p className="text-[10px] font-extrabold text-slate-400 uppercase flex items-center justify-between">
+                            <span>Attached Document / Image Evidence</span>
+                            <a href={selectedDoc.fileUrl} target="_blank" rel="noreferrer" className="text-blue-600 font-bold underline flex items-center gap-1">
+                              <ExternalLink className="w-3 h-3" /> Open Full Image
+                            </a>
+                          </p>
+                          {selectedDoc.fileType === "image" ? (
+                            <img src={selectedDoc.fileUrl} alt="Attached Evidence" className="max-h-64 object-contain rounded-lg border border-slate-300 mx-auto" />
+                          ) : (
+                            <p className="text-xs text-blue-700 font-mono underline break-all">{selectedDoc.fileUrl}</p>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="pt-6 mt-6 border-t-2 border-slate-300 flex items-end justify-between">
+                        <div>
+                          <p className="text-[9px] font-mono text-slate-400 tracking-wider">
+                            SERIAL: {selectedDoc.serialNumber} • STORE COPY (PAGE 1)
+                          </p>
+                          <p className="text-[9px] font-mono text-slate-400">
+                            ISSUED BY: {selectedDoc.senderName} ({selectedDoc.senderEmail})
+                          </p>
+                        </div>
+                        <div className="text-center w-40">
+                          <div className="h-10 border-b border-slate-400 mb-1 flex items-end justify-center">
+                            <span className="text-xs font-black italic text-slate-700">Official Seal Approved</span>
                           </div>
+                          <p className="text-[10px] font-black text-slate-800 uppercase tracking-wider">Executive Authorization</p>
                         </div>
                       </div>
 
-                      <div className="pt-4 text-center text-[10px] text-slate-400 font-mono">
-                        ANH REPORTS • OFFICIAL 2-PAGE EXECUTIVE PAYSLIP PACKET • REF #{selectedDoc.serialNumber}
-                      </div>
+                      {selectedDoc.docType === "payslip" && (
+                        <div className="page-break pt-12 space-y-6 border-t-4 border-dashed border-slate-400">
+                          <div className="flex items-center justify-between pb-4 border-b-2 border-slate-900">
+                            <div>
+                              <h2 className="text-base font-black text-slate-900 tracking-tight uppercase">
+                                ANH Portal • Circle K Franchise
+                              </h2>
+                              <p className="text-[10px] font-bold text-slate-500 tracking-widest uppercase">
+                                Official Employee Salary Receipt & Clearance Form (إقرار وتعهد استلام الراتب)
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-xs font-black font-mono text-slate-900 block">
+                                PAGE 2 OF 2 • {selectedDoc.serialNumber}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="p-6 rounded-2xl bg-slate-50 border-2 border-slate-300 space-y-4">
+                            <h3 className="text-sm font-black text-slate-900 uppercase text-center border-b pb-2">
+                              إقرار وتعهد استلام الراتب والمستحقات الماليّة
+                            </h3>
+                            
+                            <p className="text-xs text-slate-800 leading-relaxed font-medium text-right">
+                              أقر أنا الموظف: <strong className="text-slate-950 font-black underline">{selectedDoc.metadata?.employeeName || "الموظف"}</strong> 
+                              بأنني قد استلمت كامل مستحقاتي المالية عن شهر <strong>{selectedDoc.metadata?.month || "2026-06"}</strong> 
+                              بإجمالي صافي راتب قدره: <strong className="text-emerald-800 font-mono font-black text-sm">EGP {Number(selectedDoc.metadata?.netSalary || 0).toLocaleString()}</strong>، 
+                              وليس لي أي مطالبات مالية أخرى عن هذه الفترة تجاه إدارة الشركة.
+                            </p>
+
+                            <div className="grid grid-cols-2 gap-4 pt-6 text-xs font-bold border-t border-slate-300">
+                              <div>
+                                <p className="text-slate-500 mb-1">اسم الموظف / Employee Name:</p>
+                                <p className="text-slate-900 font-black">{selectedDoc.metadata?.employeeName}</p>
+                              </div>
+                              <div>
+                                <p className="text-slate-500 mb-1">المسمى الوظيفي / Position:</p>
+                                <p className="text-slate-900 font-black">{selectedDoc.metadata?.employeeRole || "Store Staff"}</p>
+                              </div>
+                              <div className="pt-4">
+                                <p className="text-slate-500 mb-1">توقيع الموظف / Employee Signature:</p>
+                                <div className="h-12 border-b-2 border-slate-900"></div>
+                              </div>
+                              <div className="pt-4">
+                                <p className="text-slate-500 mb-1">توقيع اعتماد المدير / Manager Approval:</p>
+                                <div className="h-12 border-b-2 border-slate-900"></div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="pt-4 text-center text-[10px] text-slate-400 font-mono">
+                            ANH REPORTS • OFFICIAL 2-PAGE EXECUTIVE PAYSLIP PACKET • REF #{selectedDoc.serialNumber}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 

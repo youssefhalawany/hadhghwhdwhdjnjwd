@@ -18,7 +18,8 @@ import {
   FileCheck2,
   Trash2,
   Search,
-  ListFilter
+  ListFilter,
+  Layers
 } from "lucide-react";
 import { toast } from "sonner";
 import { PageTransition } from "@/components/PageTransition";
@@ -43,6 +44,7 @@ export default function AdminSendDocumentPage() {
   // Selection dropdown state
   const [selectedRecordId, setSelectedRecordId] = useState("");
   const [selectedPayrollRecord, setSelectedPayrollRecord] = useState<any | null>(null);
+  const [isBatchPayroll, setIsBatchPayroll] = useState(false);
 
   // Common Fields
   const [title, setTitle] = useState("Monthly Employee Payslip");
@@ -73,7 +75,6 @@ export default function AdminSendDocumentPage() {
     async function loadData() {
       setFetchingRecords(true);
       try {
-        // Fetch Employees / Users FIRST so we can resolve names
         const usersSnap = await getDocs(query(collection(db, "users"), limit(100)));
         const usersList = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         
@@ -88,13 +89,12 @@ export default function AdminSendDocumentPage() {
         } catch (e) {}
         setExistingEmployees(usersList);
 
-        // Fetch Payroll System Lines & Drafts
         const payrollList: any[] = [];
         try {
-          const linesSnap = await getDocs(query(collection(db, "payroll_lines"), orderBy("createdAt", "desc"), limit(50)));
+          const linesSnap = await getDocs(query(collection(db, "payroll_lines"), orderBy("createdAt", "desc"), limit(100)));
           linesSnap.docs.forEach(d => payrollList.push({ id: d.id, source: "paid", ...d.data() }));
 
-          const draftsSnap = await getDocs(query(collection(db, "payroll_drafts"), limit(50)));
+          const draftsSnap = await getDocs(query(collection(db, "payroll_drafts"), limit(100)));
           draftsSnap.docs.forEach(d => {
             const data = d.data();
             if (!payrollList.some(p => p.id === d.id)) {
@@ -106,11 +106,9 @@ export default function AdminSendDocumentPage() {
         }
         setExistingPayrollLines(payrollList);
 
-        // Fetch Cash Payments
         const paymentsSnap = await getDocs(query(collection(db, "cash_payments"), orderBy("createdAt", "desc"), limit(50)));
         setExistingPayments(paymentsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
-        // Fetch Credits
         const creditsSnap = await getDocs(query(collection(db, "credits"), orderBy("createdAt", "desc"), limit(50)));
         setExistingCredits(creditsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
@@ -144,6 +142,7 @@ export default function AdminSendDocumentPage() {
     setDocType(type);
     setSelectedRecordId("");
     setSelectedPayrollRecord(null);
+    setIsBatchPayroll(false);
 
     if (type === "payslip") {
       setTitle("Monthly Employee Payslip");
@@ -160,11 +159,39 @@ export default function AdminSendDocumentPage() {
     }
   };
 
-  // Handle Select Existing Payroll Entry from Payroll System
+  // Handle Select Existing Payroll Entry OR ALL BATCH PAYROLL
   const handleSelectPayrollLine = (id: string) => {
     setSelectedRecordId(id);
     
-    // Check in existingPayrollLines first
+    // Check if BATCH ALL PAYROLL is selected
+    if (id === "ALL_BATCH_PAYROLL") {
+      triggerHapticFeedback([20, 30, 20]);
+      setIsBatchPayroll(true);
+      setSelectedPayrollRecord(null);
+
+      const totalNet = existingPayrollLines.reduce((acc, curr) => {
+        const base = Number(curr.baseSalary || curr.basicSalary || curr.standardPay || curr.salary || 0);
+        const bonus = Number(curr.bonuses || curr.totalAdditions || curr.overtime || curr.bonus || 0);
+        const ded = Number(curr.deductions || curr.totalDeductions || curr.penalty || curr.loan || 0);
+        return acc + Number(curr.netPay || curr.netSalary || curr.total || (base + bonus - ded));
+      }, 0);
+
+      const payMonth = existingPayrollLines[0]?.month || existingPayrollLines[0]?.payPeriod || month;
+
+      setTitle(`All Staff Monthly Payroll Packet - ${payMonth}`);
+      setSubtitle(`Batch dispatch containing 2-page payslips & clearance forms for all ${existingPayrollLines.length} staff members (Total Net EGP ${totalNet.toLocaleString()})`);
+      setEmployeeName(`All Staff Members (${existingPayrollLines.length} Employees)`);
+      setEmployeeRole("Batch Dispatch");
+      setMonth(payMonth);
+      setBaseSalary("0");
+      setBonuses("0");
+      setDeductions("0");
+
+      toast.success(`Selected ALL ${existingPayrollLines.length} payroll records for batch dispatch!`);
+      return;
+    }
+
+    setIsBatchPayroll(false);
     const line = existingPayrollLines.find(p => p.id === id);
     if (line) {
       triggerHapticFeedback(10);
@@ -184,7 +211,6 @@ export default function AdminSendDocumentPage() {
       setBonuses(String(bonus));
       setDeductions(String(ded));
 
-      // Title & Subtitle formatted with Employee Name & Month
       const generatedTitle = `${name} Payroll for Month ${payMonth}`;
       const generatedSubtitle = `Official Payroll Payslip for Month ${payMonth} (Net EGP ${net.toLocaleString()})`;
 
@@ -194,7 +220,6 @@ export default function AdminSendDocumentPage() {
       return;
     }
 
-    // Fallback check in employee user profiles
     const emp = existingEmployees.find(e => e.id === id);
     if (emp) {
       triggerHapticFeedback(10);
@@ -298,7 +323,7 @@ export default function AdminSendDocumentPage() {
       const serialNumber = `DOC-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
 
       let calculatedNet = 0;
-      if (docType === "payslip") {
+      if (docType === "payslip" && !isBatchPayroll) {
         const base = Number(baseSalary) || 0;
         const add = Number(bonuses) || 0;
         const sub = Number(deductions) || 0;
@@ -325,16 +350,32 @@ export default function AdminSendDocumentPage() {
       };
 
       if (docType === "payslip") {
-        payload.metadata = {
-          employeeName: employeeName.trim() || "Store Manager",
-          employeeRole,
-          month,
-          baseSalary: Number(baseSalary) || 0,
-          bonuses: Number(bonuses) || 0,
-          deductions: Number(deductions) || 0,
-          netSalary: calculatedNet,
-          rawPayrollRecord: selectedPayrollRecord || null
-        };
+        if (isBatchPayroll) {
+          const recordsMapped = existingPayrollLines.map(p => ({
+            ...p,
+            resolvedName: resolveEmpName(p)
+          }));
+          payload.metadata = {
+            isBatchPayroll: true,
+            employeeName: `All Staff Members (${existingPayrollLines.length} Employees)`,
+            employeeRole: "Batch Dispatch",
+            month,
+            count: existingPayrollLines.length,
+            allPayrollRecords: recordsMapped
+          };
+        } else {
+          payload.metadata = {
+            isBatchPayroll: false,
+            employeeName: employeeName.trim() || "Store Manager",
+            employeeRole,
+            month,
+            baseSalary: Number(baseSalary) || 0,
+            bonuses: Number(bonuses) || 0,
+            deductions: Number(deductions) || 0,
+            netSalary: calculatedNet,
+            rawPayrollRecord: selectedPayrollRecord || null
+          };
+        }
       } else if (docType === "payment_receipt" || docType === "credit_receipt") {
         payload.metadata = {
           supplierName: supplierName.trim() || "Vendor",
@@ -370,6 +411,7 @@ export default function AdminSendDocumentPage() {
       handleRemoveFile();
       setSelectedRecordId("");
       setSelectedPayrollRecord(null);
+      setIsBatchPayroll(false);
 
     } catch (err: any) {
       console.error("Failed to send document:", err);
@@ -412,7 +454,7 @@ export default function AdminSendDocumentPage() {
             <DollarSign className="w-5 h-5" />
             <div>
               <p className="text-xs font-black">Payroll Payslip</p>
-              <p className="text-[10px] opacity-75">Pick from Payroll System</p>
+              <p className="text-[10px] opacity-75">Pick Single or All Staff Batch</p>
             </div>
           </button>
 
@@ -470,15 +512,32 @@ export default function AdminSendDocumentPage() {
           
           {docType === "payslip" && (
             <div>
-              <label className="text-xs font-black text-emerald-600 dark:text-emerald-400 block mb-1.5 flex items-center gap-1.5">
-                <ListFilter className="w-4 h-4" /> Pick Existing Payroll Entry from Payroll System (`/admin/payroll`)
+              <label className="text-xs font-black text-emerald-600 dark:text-emerald-400 block mb-1.5 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <ListFilter className="w-4 h-4" /> Pick Entry from Payroll System (`/admin/payroll`)
+                </span>
+                {existingPayrollLines.length > 0 && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                    {existingPayrollLines.length} Entries Ready
+                  </span>
+                )}
               </label>
+
               <select
                 value={selectedRecordId}
                 onChange={(e) => handleSelectPayrollLine(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-[#0F172A] border border-emerald-500/30 text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-emerald-400 cursor-pointer"
               >
-                <option value="">-- Choose Existing Entry from Payroll System --</option>
+                <option value="">-- Choose Entry or Send All Employees Batch --</option>
+                
+                {/* SPECIAL BULK ALL PAYROLL PACKET OPTION */}
+                {existingPayrollLines.length > 0 && (
+                  <option value="ALL_BATCH_PAYROLL" className="font-black text-emerald-600 bg-emerald-100 dark:bg-emerald-950">
+                    📦 ALL EMPLOYEES PAYROLL PACKET ({existingPayrollLines.length} Staff Members - 2 Pages Each)
+                  </option>
+                )}
+
+                <option disabled>── Individual Payroll Lines ──</option>
                 {existingPayrollLines.map((p) => {
                   const empNameResolved = resolveEmpName(p);
                   const net = p.netPay || p.netSalary || p.total || 0;
@@ -601,7 +660,7 @@ export default function AdminSendDocumentPage() {
           </div>
 
           {/* Dynamic Form Fields */}
-          {docType === "payslip" && (
+          {docType === "payslip" && !isBatchPayroll && (
             <div className="p-4 rounded-2xl bg-slate-100 dark:bg-[#0F172A] border border-emerald-500/20 space-y-4">
               <h3 className="text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
                 <DollarSign className="w-4 h-4" /> Employee Salary Breakdown
@@ -672,6 +731,17 @@ export default function AdminSendDocumentPage() {
                   />
                 </div>
               </div>
+            </div>
+          )}
+
+          {docType === "payslip" && isBatchPayroll && (
+            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 space-y-2">
+              <h3 className="text-xs font-black uppercase flex items-center gap-1.5">
+                <Layers className="w-4 h-4" /> Batch Payroll Mode Active ({existingPayrollLines.length} Staff Packets)
+              </h3>
+              <p className="text-xs font-medium">
+                This dispatch will package every staff member's 2-page payslip & clearance form back-to-back into one continuous print stream for the manager.
+              </p>
             </div>
           )}
 
