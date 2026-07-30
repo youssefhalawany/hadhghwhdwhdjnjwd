@@ -330,9 +330,10 @@ export default function DepositsPage() {
         </div>
       )}
 
-      {/* Data Table */}
+      {/* Data Table Container */}
       <div className="bg-card border border-border shadow-sm rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-muted/50 border-b border-border">
@@ -388,13 +389,13 @@ export default function DepositsPage() {
                           <Printer size={18} />
                         </button>
                         {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
-<button 
-                          onClick={() => handleDelete(deposit.id)}
-                          className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-)}
+                          <button 
+                            onClick={() => handleDelete(deposit.id)}
+                            className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -402,6 +403,61 @@ export default function DepositsPage() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Card List View (Strictly md:hidden) */}
+        <div className="md:hidden p-3 space-y-3">
+          {loading ? (
+            <div className="p-8 text-center text-slate-400">
+              <Loader2 className="w-6 h-6 animate-spin mx-auto" />
+            </div>
+          ) : deposits.length === 0 ? (
+            <div className="p-6 text-center text-slate-400 text-xs rounded-xl bg-[#0B1121] border border-[rgba(34,211,238,0.15)]">
+              No deposits recorded for this period.
+            </div>
+          ) : (
+            deposits.map((deposit) => (
+              <div
+                key={deposit.id}
+                className="p-4 rounded-2xl bg-[#0B1121] border border-[rgba(34,211,238,0.15)] shadow-lg space-y-3"
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 text-xs font-extrabold text-cyan-400">
+                      <span>{getEntityName(deposit.from)}</span>
+                      <ArrowRight size={12} className="text-slate-400" />
+                      <span>{getEntityName(deposit.to)}</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 font-mono mt-0.5">{deposit.date}</p>
+                  </div>
+                  <span className="text-base font-black font-mono text-emerald-400">
+                    EGP {formatMoney(deposit.amount)}
+                  </span>
+                </div>
+
+                {deposit.note && (
+                  <p className="text-xs text-slate-300 bg-[#0F172A] p-2 rounded-xl border border-[rgba(34,211,238,0.1)]">
+                    {deposit.note}
+                  </p>
+                )}
+
+                <div className="flex items-center justify-between border-t border-[#1E293B] pt-2">
+                  <span className="text-[10px] text-slate-400">
+                    {deposit.ownerName ? `Owner: ${deposit.ownerName}` : "System Transfer"}
+                  </span>
+                  <button
+                    onClick={() => {
+                      setSelectedDepositForPrint(deposit);
+                      setTimeout(() => generatePDF(), 500);
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 font-extrabold text-xs flex items-center gap-1.5 active:scale-95 transition-transform"
+                  >
+                    <Printer className="w-3.5 h-3.5" /> Voucher
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 
