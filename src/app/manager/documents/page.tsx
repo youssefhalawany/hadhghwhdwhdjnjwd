@@ -57,7 +57,6 @@ export default function ManagerDocumentsPage() {
     playPopSound();
     setSelectedDoc(docData);
 
-    // Mark as read if unread
     if (docData.status === "unread") {
       try {
         await updateDoc(doc(db, "admin_dispatches", docData.id), { status: "read" });
@@ -80,7 +79,6 @@ export default function ManagerDocumentsPage() {
       console.debug("Error incrementing printed count:", err);
     }
 
-    // 1. If an uploaded image file exists, print ONLY the image file as it is (full page)
     if (selectedDoc.fileUrl && (selectedDoc.fileType === "image" || selectedDoc.docType === "custom")) {
       const printWindow = window.open("", "_blank");
       if (!printWindow) return;
@@ -117,13 +115,11 @@ export default function ManagerDocumentsPage() {
       return;
     }
 
-    // 2. If a PDF document link exists, open PDF directly in new window for printing
     if (selectedDoc.fileUrl && selectedDoc.fileType === "pdf") {
       window.open(selectedDoc.fileUrl, "_blank");
       return;
     }
 
-    // 3. For official generated documents (payslip, payment, credit statements)
     const printContent = document.getElementById("official-doc-print-capture");
     if (!printContent) {
       window.print();
@@ -174,11 +170,8 @@ export default function ManagerDocumentsPage() {
   };
 
   const filteredDocs = dispatches.filter((docItem) => {
-    // Branch Filter
     const matchesBranch = docItem.targetBranch === "all" || !docItem.targetBranch || docItem.targetBranch === currentBranch;
-    // Tab Filter
     const matchesTab = activeTab === "all" || docItem.docType === activeTab;
-    // Search Query
     const q = searchQuery.toLowerCase().trim();
     const matchesSearch = !q || 
       (docItem.title || "").toLowerCase().includes(q) ||
@@ -192,18 +185,18 @@ export default function ManagerDocumentsPage() {
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-[#050814] text-slate-100 p-4 md:p-8 max-w-6xl mx-auto space-y-6 pb-28">
+      <div className="min-h-screen bg-slate-50 dark:bg-[#050814] text-slate-900 dark:text-slate-100 p-4 md:p-8 max-w-6xl mx-auto space-y-6 pb-28 transition-colors">
         
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[#1E293B]">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-[#1E293B]">
           <div>
-            <span className="text-[10px] font-black uppercase tracking-widest text-cyan-400 px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 inline-flex items-center gap-1">
-              <ShieldCheck className="w-3 h-3 text-cyan-400" /> Executive Documents & Official Receipts
+            <span className="text-[10px] font-black uppercase tracking-widest text-cyan-600 dark:text-cyan-400 px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 inline-flex items-center gap-1">
+              <ShieldCheck className="w-3 h-3 text-cyan-500 dark:text-cyan-400" /> Executive Documents & Official Receipts
             </span>
-            <h1 className="text-xl md:text-2xl font-black text-white mt-1.5 tracking-tight">
+            <h1 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white mt-1.5 tracking-tight">
               Manager Document Inbox
             </h1>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               Official admin dispatches, employee payslips, vendor receipts, and printable executive records.
             </p>
           </div>
@@ -219,7 +212,7 @@ export default function ManagerDocumentsPage() {
               placeholder={isAr ? "ابحث في المستندات والإيصالات والاسم..." : "Search document title, serial #, employee or supplier..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-[#0B1121] border border-[#1E293B] text-xs font-bold text-white placeholder-slate-400 outline-none focus:border-cyan-400"
+              className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-white dark:bg-[#0B1121] border border-slate-200 dark:border-[#1E293B] text-xs font-bold text-slate-900 dark:text-white placeholder-slate-400 outline-none focus:border-cyan-400 shadow-sm"
             />
           </div>
 
@@ -227,10 +220,10 @@ export default function ManagerDocumentsPage() {
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 hide-scrollbar">
             <button
               onClick={() => setActiveTab("all")}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-black whitespace-nowrap flex items-center gap-1.5 transition-all ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-black whitespace-nowrap flex items-center gap-1.5 transition-all cursor-pointer ${
                 activeTab === "all"
                   ? "bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/30"
-                  : "bg-[#0B1121] text-slate-400 border border-[#1E293B]"
+                  : "bg-white dark:bg-[#0B1121] text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-[#1E293B]"
               }`}
             >
               <Layers className="w-3.5 h-3.5" /> All Dispatches ({dispatches.length})
@@ -238,10 +231,10 @@ export default function ManagerDocumentsPage() {
 
             <button
               onClick={() => setActiveTab("payslip")}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-black whitespace-nowrap flex items-center gap-1.5 transition-all ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-black whitespace-nowrap flex items-center gap-1.5 transition-all cursor-pointer ${
                 activeTab === "payslip"
                   ? "bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/30"
-                  : "bg-[#0B1121] text-slate-400 border border-[#1E293B]"
+                  : "bg-white dark:bg-[#0B1121] text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-[#1E293B]"
               }`}
             >
               <DollarSign className="w-3.5 h-3.5" /> Payslips
@@ -249,10 +242,10 @@ export default function ManagerDocumentsPage() {
 
             <button
               onClick={() => setActiveTab("payment_receipt")}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-black whitespace-nowrap flex items-center gap-1.5 transition-all ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-black whitespace-nowrap flex items-center gap-1.5 transition-all cursor-pointer ${
                 activeTab === "payment_receipt"
                   ? "bg-sky-500 text-slate-950 shadow-md shadow-sky-500/30"
-                  : "bg-[#0B1121] text-slate-400 border border-[#1E293B]"
+                  : "bg-white dark:bg-[#0B1121] text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-[#1E293B]"
               }`}
             >
               <Receipt className="w-3.5 h-3.5" /> Payment Receipts
@@ -260,10 +253,10 @@ export default function ManagerDocumentsPage() {
 
             <button
               onClick={() => setActiveTab("credit_receipt")}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-black whitespace-nowrap flex items-center gap-1.5 transition-all ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-black whitespace-nowrap flex items-center gap-1.5 transition-all cursor-pointer ${
                 activeTab === "credit_receipt"
                   ? "bg-purple-500 text-slate-950 shadow-md shadow-purple-500/30"
-                  : "bg-[#0B1121] text-slate-400 border border-[#1E293B]"
+                  : "bg-white dark:bg-[#0B1121] text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-[#1E293B]"
               }`}
             >
               <CreditCard className="w-3.5 h-3.5" /> Credit Notes
@@ -271,10 +264,10 @@ export default function ManagerDocumentsPage() {
 
             <button
               onClick={() => setActiveTab("custom")}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-black whitespace-nowrap flex items-center gap-1.5 transition-all ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-black whitespace-nowrap flex items-center gap-1.5 transition-all cursor-pointer ${
                 activeTab === "custom"
                   ? "bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30"
-                  : "bg-[#0B1121] text-slate-400 border border-[#1E293B]"
+                  : "bg-white dark:bg-[#0B1121] text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-[#1E293B]"
               }`}
             >
               <FileText className="w-3.5 h-3.5" /> Custom Notices
@@ -282,14 +275,14 @@ export default function ManagerDocumentsPage() {
           </div>
         </div>
 
-        {/* Document Grid (Mobile Cards + Desktop Table) */}
+        {/* Document Grid */}
         {loading ? (
           <div className="p-12 text-center text-slate-400 text-xs">
             <Sparkles className="w-6 h-6 animate-spin text-cyan-400 mx-auto mb-2" />
             Loading Official Documents...
           </div>
         ) : filteredDocs.length === 0 ? (
-          <div className="p-12 text-center text-slate-400 text-xs rounded-3xl bg-[#0B1121] border border-[#1E293B]">
+          <div className="p-12 text-center text-slate-500 dark:text-slate-400 text-xs rounded-3xl bg-white dark:bg-[#0B1121] border border-slate-200 dark:border-[#1E293B] shadow-sm">
             No official documents found for this category.
           </div>
         ) : (
@@ -298,19 +291,19 @@ export default function ManagerDocumentsPage() {
               <div
                 key={docItem.id}
                 onClick={() => handleOpenDoc(docItem)}
-                className="p-4 rounded-3xl bg-[#0B1121] border border-[#1E293B] hover:border-cyan-500/40 shadow-xl space-y-3 relative overflow-hidden group cursor-pointer transition-all active:scale-98"
+                className="p-4 rounded-3xl bg-white dark:bg-[#0B1121] border border-slate-200 dark:border-[#1E293B] hover:border-cyan-500/40 shadow-sm dark:shadow-xl space-y-3 relative overflow-hidden group cursor-pointer transition-all active:scale-98"
               >
                 {/* Header */}
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <div className={`p-2.5 rounded-2xl border shrink-0 ${
                       docItem.docType === "payslip"
-                        ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                        ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
                         : docItem.docType === "payment_receipt"
-                        ? "bg-sky-500/15 text-sky-400 border-sky-500/30"
+                        ? "bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-500/30"
                         : docItem.docType === "credit_receipt"
-                        ? "bg-purple-500/15 text-purple-400 border-purple-500/30"
-                        : "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                        ? "bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30"
+                        : "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30"
                     }`}>
                       {docItem.docType === "payslip" && <DollarSign className="w-5 h-5" />}
                       {docItem.docType === "payment_receipt" && <Receipt className="w-5 h-5" />}
@@ -319,7 +312,7 @@ export default function ManagerDocumentsPage() {
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <h3 className="text-xs font-black text-white group-hover:text-cyan-400 transition-colors truncate">
+                      <h3 className="text-xs font-black text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors truncate">
                         {docItem.title}
                       </h3>
                       <p className="text-[10px] text-slate-400 truncate mt-0.5 font-mono">
@@ -330,46 +323,46 @@ export default function ManagerDocumentsPage() {
 
                   <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase border shrink-0 ${
                     docItem.status === "unread"
-                      ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/30"
-                      : "bg-slate-800 text-slate-400 border-slate-700"
+                      ? "bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border-cyan-500/30"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700"
                   }`}>
                     {docItem.status === "unread" ? "NEW 🆕" : "READ"}
                   </span>
                 </div>
 
                 {/* Subtitle / Metadata preview */}
-                <p className="text-[11px] text-slate-300 line-clamp-2">
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-2">
                   {docItem.subtitle}
                 </p>
 
                 {docItem.metadata?.netSalary > 0 && (
-                  <div className="p-2.5 rounded-2xl bg-[#0F172A] border border-[#1E293B] flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Net Salary</span>
-                    <span className="text-xs font-black text-emerald-400 font-mono">
+                  <div className="p-2.5 rounded-2xl bg-slate-50 dark:bg-[#0F172A] border border-slate-200 dark:border-[#1E293B] flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Net Salary</span>
+                    <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono">
                       EGP {Number(docItem.metadata.netSalary).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                 )}
 
                 {docItem.metadata?.amount > 0 && (
-                  <div className="p-2.5 rounded-2xl bg-[#0F172A] border border-[#1E293B] flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Amount</span>
-                    <span className="text-xs font-black text-cyan-400 font-mono">
+                  <div className="p-2.5 rounded-2xl bg-slate-50 dark:bg-[#0F172A] border border-slate-200 dark:border-[#1E293B] flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Amount</span>
+                    <span className="text-xs font-black text-cyan-600 dark:text-cyan-400 font-mono">
                       EGP {Number(docItem.metadata.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                 )}
 
                 {/* Card Footer */}
-                <div className="flex items-center justify-between pt-2 border-t border-[#1E293B] text-[10px] text-slate-400">
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-[#1E293B] text-[10px] text-slate-400">
                   <span>{new Date(docItem.createdAt).toLocaleDateString()}</span>
                   <div className="flex items-center gap-1.5">
                     {docItem.printedCount > 0 && (
-                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono">
                         🖨️ {docItem.printedCount}x
                       </span>
                     )}
-                    <button className="px-2.5 py-1 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 text-xs font-black flex items-center gap-1">
+                    <button className="px-2.5 py-1 rounded-xl bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 text-xs font-black flex items-center gap-1">
                       <Eye className="w-3 h-3" /> View & Print
                     </button>
                   </div>
@@ -382,28 +375,28 @@ export default function ManagerDocumentsPage() {
         {/* OFFICIAL EXECUTIVE DOCUMENT MODAL */}
         {selectedDoc && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6 bg-black/80 backdrop-blur-md overflow-y-auto">
-            <div className="bg-[#0B1121] border border-[#1E293B] rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl text-slate-100 my-auto flex flex-col max-h-[90vh]">
+            <div className="bg-white dark:bg-[#0B1121] border border-slate-200 dark:border-[#1E293B] rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl text-slate-900 dark:text-slate-100 my-auto flex flex-col max-h-[90vh]">
               
               {/* Modal Controls Bar */}
-              <div className="p-4 border-b border-[#1E293B] flex items-center justify-between bg-[#0F172A]">
+              <div className="p-4 border-b border-slate-200 dark:border-[#1E293B] flex items-center justify-between bg-slate-50 dark:bg-[#0F172A]">
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400 font-bold border border-cyan-500/30">
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 font-bold border border-cyan-500/30">
                     {selectedDoc.serialNumber}
                   </span>
-                  <h3 className="text-sm font-black text-white truncate max-w-xs md:max-w-md">
+                  <h3 className="text-sm font-black text-slate-900 dark:text-white truncate max-w-xs md:max-w-md">
                     {selectedDoc.title}
                   </h3>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={handlePrint}
-                    className="px-3.5 py-1.5 rounded-xl bg-cyan-500 text-slate-950 text-xs font-black flex items-center gap-1.5 shadow-md shadow-cyan-500/20 hover:opacity-90 active:scale-95 transition-all"
+                    className="px-3.5 py-1.5 rounded-xl bg-cyan-500 text-slate-950 text-xs font-black flex items-center gap-1.5 shadow-md shadow-cyan-500/20 hover:opacity-90 active:scale-95 transition-all cursor-pointer"
                   >
                     <Printer className="w-4 h-4" /> Print Document
                   </button>
                   <button
                     onClick={() => setSelectedDoc(null)}
-                    className="p-1.5 rounded-full bg-[#1E293B] text-slate-400 hover:text-white"
+                    className="p-1.5 rounded-full bg-slate-200 dark:bg-[#1E293B] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer"
                   >
                     <X className="w-4 h-4" />
                   </button>

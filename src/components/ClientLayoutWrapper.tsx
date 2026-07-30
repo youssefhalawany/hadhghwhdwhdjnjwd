@@ -435,6 +435,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     },
     {
       name: language === "ar" ? "العمليات" : "Operation", icon: Briefcase, children: [
+        { name: language === "ar" ? "المستندات والإيصالات الرسمية" : "Official Documents", href: "/manager/documents", icon: FileText },
         { name: t("nav.checklists"), href: "/checklists/manager", icon: ClipboardList },
         { name: language === "ar" ? "سجلات النظافة" : "Cleaning Logs", href: "/admin/cleaning", icon: Sparkles },
         { name: language === "ar" ? "المفقودات" : "Lost & Found", href: "/admin/lost-and-found", icon: Package },
@@ -445,7 +446,6 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     {
       name: t("nav.hr"), icon: Users, children: [
         { name: t("nav.employees"), href: "/hr/employees", icon: Users },
-        { name: language === "ar" ? "المستندات والإيصالات الرسمية" : "Official Documents", href: "/manager/documents", icon: FileText },
         { name: t("nav.cashier_accounts"), href: "/settings/cashiers", icon: Users },
         { name: t("nav.payroll_system"), href: "/admin/payroll", icon: DollarSign },
         { name: t("nav.adjustments_loans"), href: "/admin/adjustments", icon: FileText },

@@ -71,19 +71,15 @@ export default function AdminSendDocumentPage() {
     async function loadData() {
       setFetchingRecords(true);
       try {
-        // Fetch Cash Payments
         const paymentsSnap = await getDocs(query(collection(db, "cash_payments"), orderBy("createdAt", "desc"), limit(50)));
         setExistingPayments(paymentsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
-        // Fetch Credits
         const creditsSnap = await getDocs(query(collection(db, "credits"), orderBy("createdAt", "desc"), limit(50)));
         setExistingCredits(creditsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
-        // Fetch Employees / Cashiers / Managers
         const usersSnap = await getDocs(query(collection(db, "users"), limit(50)));
         const usersList = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         
-        // Also fetch from employees if available
         try {
           const empSnap = await getDocs(query(collection(db, "employees"), limit(50)));
           empSnap.docs.forEach(d => {
@@ -95,7 +91,6 @@ export default function AdminSendDocumentPage() {
         } catch (e) {}
 
         setExistingEmployees(usersList);
-
       } catch (err) {
         console.error("Error loading existing records:", err);
       } finally {
@@ -127,7 +122,6 @@ export default function AdminSendDocumentPage() {
     }
   };
 
-  // Handle Select Existing Employee / Payslip
   const handleSelectEmployee = (id: string) => {
     setSelectedRecordId(id);
     const emp = existingEmployees.find(e => e.id === id);
@@ -144,7 +138,6 @@ export default function AdminSendDocumentPage() {
     }
   };
 
-  // Handle Select Existing Payment
   const handleSelectPayment = (id: string) => {
     setSelectedRecordId(id);
     const p = existingPayments.find(item => item.id === id);
@@ -165,7 +158,6 @@ export default function AdminSendDocumentPage() {
     }
   };
 
-  // Handle Select Existing Credit Note
   const handleSelectCredit = (id: string) => {
     setSelectedRecordId(id);
     const c = existingCredits.find(item => item.id === id);
@@ -185,7 +177,6 @@ export default function AdminSendDocumentPage() {
     }
   };
 
-  // Native File Upload Handler (Image or PDF)
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -276,10 +267,8 @@ export default function AdminSendDocumentPage() {
         };
       }
 
-      // Save to admin_dispatches Firestore Collection
       await addDoc(collection(db, "admin_dispatches"), payload);
 
-      // Add to Notifications for real-time alerts
       await addDoc(collection(db, "notifications"), {
         title: `📄 New Official Document: ${title}`,
         body: `${subtitle} (Ref #${serialNumber})`,
@@ -288,7 +277,6 @@ export default function AdminSendDocumentPage() {
         type: "official_document"
       });
 
-      // Trigger Lock Screen Push Notification
       fetch("/api/notifications/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -301,7 +289,6 @@ export default function AdminSendDocumentPage() {
 
       toast.success(`Official document ${serialNumber} sent to Manager!`);
 
-      // Reset
       setNote("");
       handleRemoveFile();
       setSelectedRecordId("");
@@ -316,18 +303,18 @@ export default function AdminSendDocumentPage() {
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-[#050814] text-slate-100 p-4 md:p-8 max-w-4xl mx-auto space-y-6 pb-24">
+      <div className="min-h-screen bg-slate-50 dark:bg-[#050814] text-slate-900 dark:text-slate-100 p-4 md:p-8 max-w-4xl mx-auto space-y-6 pb-24 transition-colors">
         
         {/* Header Title Bar */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[#1E293B]">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-[#1E293B]">
           <div>
-            <span className="text-[10px] font-black uppercase tracking-widest text-cyan-400 px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 inline-flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-cyan-400" /> Executive Dispatch Console
+            <span className="text-[10px] font-black uppercase tracking-widest text-cyan-600 dark:text-cyan-400 px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 inline-flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-cyan-500 dark:text-cyan-400" /> Executive Dispatch Console
             </span>
-            <h1 className="text-xl md:text-2xl font-black text-white mt-1.5 tracking-tight">
+            <h1 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white mt-1.5 tracking-tight">
               Send Official Document to Manager
             </h1>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               Select directly from existing app records or upload custom PDF/Images to send official printable receipts.
             </p>
           </div>
@@ -340,8 +327,8 @@ export default function AdminSendDocumentPage() {
             onClick={() => handleDocTypeChange("payslip")}
             className={`p-3.5 rounded-2xl border text-left flex flex-col gap-1.5 transition-all active:scale-95 cursor-pointer ${
               docType === "payslip"
-                ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400 shadow-lg shadow-emerald-500/10"
-                : "bg-[#0B1121] border-[#1E293B] text-slate-400 hover:text-white"
+                ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 shadow-lg shadow-emerald-500/10"
+                : "bg-white dark:bg-[#0B1121] border-slate-200 dark:border-[#1E293B] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
           >
             <DollarSign className="w-5 h-5" />
@@ -356,8 +343,8 @@ export default function AdminSendDocumentPage() {
             onClick={() => handleDocTypeChange("payment_receipt")}
             className={`p-3.5 rounded-2xl border text-left flex flex-col gap-1.5 transition-all active:scale-95 cursor-pointer ${
               docType === "payment_receipt"
-                ? "bg-cyan-500/15 border-cyan-500/40 text-cyan-400 shadow-lg shadow-cyan-500/10"
-                : "bg-[#0B1121] border-[#1E293B] text-slate-400 hover:text-white"
+                ? "bg-cyan-500/15 border-cyan-500/40 text-cyan-600 dark:text-cyan-400 shadow-lg shadow-cyan-500/10"
+                : "bg-white dark:bg-[#0B1121] border-slate-200 dark:border-[#1E293B] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
           >
             <Receipt className="w-5 h-5" />
@@ -372,8 +359,8 @@ export default function AdminSendDocumentPage() {
             onClick={() => handleDocTypeChange("credit_receipt")}
             className={`p-3.5 rounded-2xl border text-left flex flex-col gap-1.5 transition-all active:scale-95 cursor-pointer ${
               docType === "credit_receipt"
-                ? "bg-purple-500/15 border-purple-500/40 text-purple-400 shadow-lg shadow-purple-500/10"
-                : "bg-[#0B1121] border-[#1E293B] text-slate-400 hover:text-white"
+                ? "bg-purple-500/15 border-purple-500/40 text-purple-600 dark:text-purple-400 shadow-lg shadow-purple-500/10"
+                : "bg-white dark:bg-[#0B1121] border-slate-200 dark:border-[#1E293B] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
           >
             <CreditCard className="w-5 h-5" />
@@ -388,8 +375,8 @@ export default function AdminSendDocumentPage() {
             onClick={() => handleDocTypeChange("custom")}
             className={`p-3.5 rounded-2xl border text-left flex flex-col gap-1.5 transition-all active:scale-95 cursor-pointer ${
               docType === "custom"
-                ? "bg-amber-500/15 border-amber-500/40 text-amber-400 shadow-lg shadow-amber-500/10"
-                : "bg-[#0B1121] border-[#1E293B] text-slate-400 hover:text-white"
+                ? "bg-amber-500/15 border-amber-500/40 text-amber-600 dark:text-amber-400 shadow-lg shadow-amber-500/10"
+                : "bg-white dark:bg-[#0B1121] border-slate-200 dark:border-[#1E293B] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
           >
             <FileText className="w-5 h-5" />
@@ -401,17 +388,17 @@ export default function AdminSendDocumentPage() {
         </div>
 
         {/* SELECT FROM EXISTING APP RECORDS BANNER */}
-        <div className="p-4 rounded-3xl bg-[#0B1121] border border-[#1E293B] shadow-2xl space-y-4">
+        <div className="p-4 rounded-3xl bg-white dark:bg-[#0B1121] border border-slate-200 dark:border-[#1E293B] shadow-xl dark:shadow-2xl space-y-4">
           
           {docType === "payslip" && (
             <div>
-              <label className="text-xs font-black text-emerald-400 block mb-1.5 flex items-center gap-1.5">
+              <label className="text-xs font-black text-emerald-600 dark:text-emerald-400 block mb-1.5 flex items-center gap-1.5">
                 <ListFilter className="w-4 h-4" /> Pick Existing Staff / Employee from App Database
               </label>
               <select
                 value={selectedRecordId}
                 onChange={(e) => handleSelectEmployee(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-[#0F172A] border border-emerald-500/30 text-xs font-bold text-white outline-none focus:border-emerald-400 cursor-pointer"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-[#0F172A] border border-emerald-500/30 text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-emerald-400 cursor-pointer"
               >
                 <option value="">-- Choose Existing Employee --</option>
                 {existingEmployees.map((emp) => (
@@ -425,13 +412,13 @@ export default function AdminSendDocumentPage() {
 
           {docType === "payment_receipt" && (
             <div>
-              <label className="text-xs font-black text-cyan-400 block mb-1.5 flex items-center gap-1.5">
+              <label className="text-xs font-black text-cyan-600 dark:text-cyan-400 block mb-1.5 flex items-center gap-1.5">
                 <ListFilter className="w-4 h-4" /> Pick Existing Payment Log from App Database
               </label>
               <select
                 value={selectedRecordId}
                 onChange={(e) => handleSelectPayment(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-[#0F172A] border border-cyan-500/30 text-xs font-bold text-white outline-none focus:border-cyan-400 cursor-pointer"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-[#0F172A] border border-cyan-500/30 text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-cyan-400 cursor-pointer"
               >
                 <option value="">-- Choose Existing Cash Payment Log --</option>
                 {existingPayments.map((p) => (
@@ -445,13 +432,13 @@ export default function AdminSendDocumentPage() {
 
           {docType === "credit_receipt" && (
             <div>
-              <label className="text-xs font-black text-purple-400 block mb-1.5 flex items-center gap-1.5">
+              <label className="text-xs font-black text-purple-600 dark:text-purple-400 block mb-1.5 flex items-center gap-1.5">
                 <ListFilter className="w-4 h-4" /> Pick Existing Credit Note from App Database
               </label>
               <select
                 value={selectedRecordId}
                 onChange={(e) => handleSelectCredit(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-[#0F172A] border border-purple-500/30 text-xs font-bold text-white outline-none focus:border-purple-400 cursor-pointer"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-[#0F172A] border border-purple-500/30 text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-purple-400 cursor-pointer"
               >
                 <option value="">-- Choose Existing Credit Note --</option>
                 {existingCredits.map((c) => (
@@ -464,15 +451,15 @@ export default function AdminSendDocumentPage() {
           )}
 
           {/* Target Branch Selector */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-[#1E293B]">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-slate-200 dark:border-[#1E293B]">
             <div>
-              <label className="text-xs font-bold text-slate-300 block mb-1.5 flex items-center gap-1.5">
-                <Building className="w-3.5 h-3.5 text-cyan-400" /> Target Branch
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5 flex items-center gap-1.5">
+                <Building className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" /> Target Branch
               </label>
               <select
                 value={targetBranch}
                 onChange={(e) => setTargetBranch(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-[#0F172A] border border-[#1E293B] text-xs font-bold text-white outline-none focus:border-cyan-400 cursor-pointer"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-[#0F172A] border border-slate-300 dark:border-[#1E293B] text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-cyan-400 cursor-pointer"
               >
                 <option value="all">🏢 All Store Branches (Broadcast)</option>
                 <option value="alamein4">El Alamein 4</option>
@@ -481,13 +468,13 @@ export default function AdminSendDocumentPage() {
             </div>
 
             <div>
-              <label className="text-xs font-bold text-slate-300 block mb-1.5 flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-cyan-400" /> Target Manager Account
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5 flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" /> Target Manager Account
               </label>
               <select
                 value={targetManager}
                 onChange={(e) => setTargetManager(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-[#0F172A] border border-[#1E293B] text-xs font-bold text-white outline-none focus:border-cyan-400 cursor-pointer"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-[#0F172A] border border-slate-300 dark:border-[#1E293B] text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-cyan-400 cursor-pointer"
               >
                 <option value="all">👥 All Active Managers</option>
                 <option value="store_manager">Store Manager</option>
@@ -498,101 +485,101 @@ export default function AdminSendDocumentPage() {
         </div>
 
         {/* Compose / Edit Details Form */}
-        <form onSubmit={handleSubmit} className="p-5 md:p-6 rounded-3xl bg-[#0B1121] border border-[#1E293B] shadow-2xl space-y-5">
+        <form onSubmit={handleSubmit} className="p-5 md:p-6 rounded-3xl bg-white dark:bg-[#0B1121] border border-slate-200 dark:border-[#1E293B] shadow-xl dark:shadow-2xl space-y-5">
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-bold text-slate-300 block mb-1.5">Document Title</label>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">Document Title</label>
               <input
                 type="text"
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Monthly Payslip - July 2026"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-[#0F172A] border border-[#1E293B] text-xs font-bold text-white outline-none focus:border-cyan-400"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-[#0F172A] border border-slate-300 dark:border-[#1E293B] text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-cyan-400"
               />
             </div>
             <div>
-              <label className="text-xs font-bold text-slate-300 block mb-1.5">Subtitle / Reference Summary</label>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">Subtitle / Reference Summary</label>
               <input
                 type="text"
                 value={subtitle}
                 onChange={(e) => setSubtitle(e.target.value)}
                 placeholder="e.g. Approved Salary Disbursement"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-[#0F172A] border border-[#1E293B] text-xs font-bold text-white outline-none focus:border-cyan-400"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-[#0F172A] border border-slate-300 dark:border-[#1E293B] text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-cyan-400"
               />
             </div>
           </div>
 
           {/* Dynamic Form Fields */}
           {docType === "payslip" && (
-            <div className="p-4 rounded-2xl bg-[#0F172A] border border-emerald-500/20 space-y-4">
-              <h3 className="text-xs font-black text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+            <div className="p-4 rounded-2xl bg-slate-100 dark:bg-[#0F172A] border border-emerald-500/20 space-y-4">
+              <h3 className="text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
                 <DollarSign className="w-4 h-4" /> Employee Salary Breakdown
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
-                  <label className="text-[11px] font-bold text-slate-300 block mb-1">Employee Name</label>
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">Employee Name</label>
                   <input
                     type="text"
                     value={employeeName}
                     onChange={(e) => setEmployeeName(e.target.value)}
                     placeholder="e.g. Ahmed Mahmoud"
-                    className="w-full px-3 py-2 rounded-xl bg-[#0B1121] border border-[#1E293B] text-xs font-bold text-white outline-none focus:border-emerald-400"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#0B1121] border border-slate-300 dark:border-[#1E293B] text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-emerald-400"
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-bold text-slate-300 block mb-1">Role / Position</label>
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">Role / Position</label>
                   <input
                     type="text"
                     value={employeeRole}
                     onChange={(e) => setEmployeeRole(e.target.value)}
                     placeholder="Store Manager"
-                    className="w-full px-3 py-2 rounded-xl bg-[#0B1121] border border-[#1E293B] text-xs font-bold text-white outline-none focus:border-emerald-400"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#0B1121] border border-slate-300 dark:border-[#1E293B] text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-emerald-400"
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-bold text-slate-300 block mb-1">Pay Period / Month</label>
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">Pay Period / Month</label>
                   <input
                     type="text"
                     value={month}
                     onChange={(e) => setMonth(e.target.value)}
                     placeholder="July 2026"
-                    className="w-full px-3 py-2 rounded-xl bg-[#0B1121] border border-[#1E293B] text-xs font-bold text-white outline-none focus:border-emerald-400"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#0B1121] border border-slate-300 dark:border-[#1E293B] text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-emerald-400"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
-                  <label className="text-[11px] font-bold text-slate-300 block mb-1">Base Salary (EGP)</label>
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">Base Salary (EGP)</label>
                   <input
                     type="number"
                     value={baseSalary}
                     onChange={(e) => setBaseSalary(e.target.value)}
                     placeholder="12000"
-                    className="w-full px-3 py-2 rounded-xl bg-[#0B1121] border border-[#1E293B] text-xs font-bold text-emerald-400 outline-none focus:border-emerald-400 font-mono"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#0B1121] border border-slate-300 dark:border-[#1E293B] text-xs font-bold text-emerald-600 dark:text-emerald-400 outline-none focus:border-emerald-400 font-mono"
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-bold text-slate-300 block mb-1">Bonuses & Allowances (EGP)</label>
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">Bonuses & Allowances (EGP)</label>
                   <input
                     type="number"
                     value={bonuses}
                     onChange={(e) => setBonuses(e.target.value)}
                     placeholder="1500"
-                    className="w-full px-3 py-2 rounded-xl bg-[#0B1121] border border-[#1E293B] text-xs font-bold text-cyan-400 outline-none focus:border-emerald-400 font-mono"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#0B1121] border border-slate-300 dark:border-[#1E293B] text-xs font-bold text-cyan-600 dark:text-cyan-400 outline-none focus:border-emerald-400 font-mono"
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-bold text-slate-300 block mb-1">Deductions / Advances (EGP)</label>
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">Deductions / Advances (EGP)</label>
                   <input
                     type="number"
                     value={deductions}
                     onChange={(e) => setDeductions(e.target.value)}
                     placeholder="500"
-                    className="w-full px-3 py-2 rounded-xl bg-[#0B1121] border border-[#1E293B] text-xs font-bold text-rose-400 outline-none focus:border-emerald-400 font-mono"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#0B1121] border border-slate-300 dark:border-[#1E293B] text-xs font-bold text-rose-600 dark:text-rose-400 outline-none focus:border-emerald-400 font-mono"
                   />
                 </div>
               </div>
@@ -600,53 +587,53 @@ export default function AdminSendDocumentPage() {
           )}
 
           {(docType === "payment_receipt" || docType === "credit_receipt") && (
-            <div className="p-4 rounded-2xl bg-[#0F172A] border border-cyan-500/20 space-y-4">
-              <h3 className="text-xs font-black text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+            <div className="p-4 rounded-2xl bg-slate-100 dark:bg-[#0F172A] border border-cyan-500/20 space-y-4">
+              <h3 className="text-xs font-black text-cyan-600 dark:text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
                 <Receipt className="w-4 h-4" /> Vendor Receipt Details
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
-                  <label className="text-[11px] font-bold text-slate-300 block mb-1">Supplier / Vendor Name</label>
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">Supplier / Vendor Name</label>
                   <input
                     type="text"
                     value={supplierName}
                     onChange={(e) => setSupplierName(e.target.value)}
                     placeholder="e.g. Juhayna Food Industries"
-                    className="w-full px-3 py-2 rounded-xl bg-[#0B1121] border border-[#1E293B] text-xs font-bold text-white outline-none focus:border-cyan-400"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#0B1121] border border-slate-300 dark:border-[#1E293B] text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-cyan-400"
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-bold text-slate-300 block mb-1">Amount (EGP)</label>
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">Amount (EGP)</label>
                   <input
                     type="number"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     placeholder="8500"
-                    className="w-full px-3 py-2 rounded-xl bg-[#0B1121] border border-[#1E293B] text-xs font-bold text-cyan-400 outline-none focus:border-cyan-400 font-mono"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#0B1121] border border-slate-300 dark:border-[#1E293B] text-xs font-bold text-cyan-600 dark:text-cyan-400 outline-none focus:border-cyan-400 font-mono"
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-bold text-slate-300 block mb-1">Invoice / Ref Number</label>
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">Invoice / Ref Number</label>
                   <input
                     type="text"
                     value={invoiceNumber}
                     onChange={(e) => setInvoiceNumber(e.target.value)}
                     placeholder="INV-99201"
-                    className="w-full px-3 py-2 rounded-xl bg-[#0B1121] border border-[#1E293B] text-xs font-bold text-white outline-none focus:border-cyan-400 font-mono"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#0B1121] border border-slate-300 dark:border-[#1E293B] text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-cyan-400 font-mono"
                   />
                 </div>
               </div>
             </div>
           )}
 
-          {/* DIRECT NATIVE FILE UPLOAD SECTION (IMAGE / PDF) */}
-          <div className="p-4 rounded-2xl bg-[#0F172A] border border-amber-500/20 space-y-3">
-            <label className="text-xs font-black text-amber-400 block flex items-center justify-between">
+          {/* DIRECT NATIVE FILE UPLOAD SECTION */}
+          <div className="p-4 rounded-2xl bg-slate-100 dark:bg-[#0F172A] border border-amber-500/20 space-y-3">
+            <label className="text-xs font-black text-amber-600 dark:text-amber-400 block flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <Upload className="w-4 h-4" /> Upload Image / PDF Document File
               </span>
-              <span className="text-[10px] text-slate-400 font-normal">Supports JPG, PNG, PDF (Max 8MB)</span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">Supports JPG, PNG, PDF (Max 8MB)</span>
             </label>
 
             <input
@@ -661,31 +648,31 @@ export default function AdminSendDocumentPage() {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full py-6 rounded-2xl border-2 border-dashed border-[#1E293B] hover:border-amber-500/50 bg-[#0B1121] text-slate-400 hover:text-amber-400 flex flex-col items-center justify-center gap-2 transition-all cursor-pointer group"
+                className="w-full py-6 rounded-2xl border-2 border-dashed border-slate-300 dark:border-[#1E293B] hover:border-amber-500/50 bg-white dark:bg-[#0B1121] text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 flex flex-col items-center justify-center gap-2 transition-all cursor-pointer group"
               >
-                <Upload className="w-6 h-6 text-slate-500 group-hover:text-amber-400 transition-colors" />
+                <Upload className="w-6 h-6 text-slate-400 dark:text-slate-500 group-hover:text-amber-500 transition-colors" />
                 <span className="text-xs font-bold">Tap here to choose Image or PDF from device</span>
               </button>
             ) : (
-              <div className="p-3 rounded-xl bg-[#0B1121] border border-amber-500/30 flex items-center justify-between gap-3">
+              <div className="p-3 rounded-xl bg-white dark:bg-[#0B1121] border border-amber-500/30 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
                   {fileType === "image" ? (
-                    <img src={fileUrl} alt="Upload preview" className="w-12 h-12 object-cover rounded-lg border border-[#1E293B] shrink-0" />
+                    <img src={fileUrl} alt="Upload preview" className="w-12 h-12 object-cover rounded-lg border border-slate-200 dark:border-[#1E293B] shrink-0" />
                   ) : (
-                    <div className="p-2.5 rounded-lg bg-amber-500/20 text-amber-400 shrink-0">
+                    <div className="p-2.5 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0">
                       <FileText className="w-6 h-6" />
                     </div>
                   )}
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-white truncate">{fileName || "Uploaded File"}</p>
-                    <span className="text-[10px] text-amber-400 uppercase font-mono font-bold">{fileType} File Attached</span>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{fileName || "Uploaded File"}</p>
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 uppercase font-mono font-bold">{fileType} File Attached</span>
                   </div>
                 </div>
 
                 <button
                   type="button"
                   onClick={handleRemoveFile}
-                  className="p-2 rounded-xl bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 transition-colors cursor-pointer shrink-0"
+                  className="p-2 rounded-xl bg-rose-500/10 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 transition-colors cursor-pointer shrink-0"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -695,13 +682,13 @@ export default function AdminSendDocumentPage() {
 
           {/* Notes */}
           <div>
-            <label className="text-xs font-bold text-slate-300 block mb-1.5">Executive Instructions / Remarks</label>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">Executive Instructions / Remarks</label>
             <textarea
               rows={3}
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Enter specific instructions or remarks for the manager regarding this document..."
-              className="w-full px-3.5 py-2.5 rounded-xl bg-[#0F172A] border border-[#1E293B] text-xs text-white outline-none focus:border-cyan-400 resize-none font-medium"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-[#0F172A] border border-slate-300 dark:border-[#1E293B] text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-400 resize-none font-medium"
             />
           </div>
 

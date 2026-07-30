@@ -158,7 +158,7 @@ export function ManagerBottomNav({
     },
     {
       id: "official-documents",
-      category: "hr",
+      category: "operations",
       titleEn: "Official Documents",
       titleAr: "المستندات والإيصالات الرسمية",
       subtitleEn: "View payslips & admin receipts",
