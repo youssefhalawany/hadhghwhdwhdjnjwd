@@ -1679,7 +1679,9 @@ export default function PaymentsRedesignPage() {
                 </div>
                 <div>
                   <h1 style={{ fontSize: '20px', fontWeight: 'bold', color: '#000', margin: 0, textTransform: 'uppercase', letterSpacing: '-0.5px' }}>CIRCLE K EL-ALAMEIN 4</h1>
-                  <p style={{ fontSize: '12px', color: '#333', margin: '2px 0 0', fontWeight: 'bold' }}>PAYMENT VOUCHER <span style={{ color: '#ef4444' }}>[COPY / نسخة]</span></p>
+                  <p style={{ fontSize: '12px', color: '#333', margin: '2px 0 0', fontWeight: 'bold' }}>
+                    {selectedPaymentForPrint.method === 'bank_transfer' ? 'BANK TRANSFER VOUCHER' : 'PAYMENT VOUCHER'} <span style={{ color: '#ef4444' }}>[COPY / نسخة]</span>
+                  </p>
                 </div>
               </div>
               <div style={{ textAlign: 'right', display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -1688,7 +1690,9 @@ export default function PaymentsRedesignPage() {
                   <p style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', color: '#000', lineHeight: 1, whiteSpace: 'nowrap' }}>{selectedPaymentForPrint.createdBy?.split('@')[0] || "SYS"}</p>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', borderLeft: '1px solid #ccc', paddingLeft: '10px' }}>
-                  <span style={{ fontSize: '26px', fontWeight: 'bold', color: '#000' }} dir="rtl">إيصال استلام نقدية</span>
+                  <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#000' }} dir="rtl">
+                    {selectedPaymentForPrint.method === 'bank_transfer' ? 'إيصال تحويل بنكي' : 'إيصال استلام نقدية'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -1697,7 +1701,11 @@ export default function PaymentsRedesignPage() {
             <div style={{ padding: '20px 30px 10px', textAlign: 'right' }}>
               <div style={{ padding: '15px', border: '1px dashed #000', borderRadius: '4px', display: 'inline-block', width: '100%', boxSizing: 'border-box' }}>
                 <p style={{ margin: 0, fontSize: '13px', color: '#000', fontWeight: 'bold', lineHeight: '1.6' }} dir="rtl">
-                  أقر أنا الموقع أدناه {selectedPaymentForPrint.supplierRepName ? `(الاسم: ${selectedPaymentForPrint.supplierRepName}) ` : ""}{selectedPaymentForPrint.supplierNationalId ? `(رقم قومي: ${selectedPaymentForPrint.supplierNationalId}) ` : ""}باستلامي كامل قيمة الفاتورة/المطالبة المذكورة أعلاه استلاماً نهائياً وناجزاً لا رجعة فيه. وبموجب هذا الإيصال، أبرئ ذمة شركة سيركل كيه العلمين 4 إبراءً ذمة تاماً ونهائياً وشاملاً كافة المستحقات المالية المتعلقة بهذه الفاتورة، ولا يحق لي، لا حاضراً ولا مستقبلاً، المطالبة بأي مبالغ إضافية أو تعويضات تخصها أمام أي جهة قضائية أو إدارية.
+                  {selectedPaymentForPrint.method === 'bank_transfer' ? (
+                    `تم تنفيذ أمر التحويل البنكي الإلكتروني لحساب الشركة/المورد الموضحة بياناتها أعلاه بقيمة الفاتورة/المطالبة المذكورة. وبموجب هذا الإشعار المعتمد وإشعار التحويل البنكي المرفق في الصفحة التالية، تُعتبر كافة المستحقات المالية المتعلقة بهذه الفاتورة مسددة بالكامل، وتبرأ ذمة شركة سيركل كيه العلمين 4 إبراءً تاماً وشاملاً.`
+                  ) : (
+                    `أقر أنا الموقع أدناه ${selectedPaymentForPrint.supplierRepName ? `(الاسم: ${selectedPaymentForPrint.supplierRepName}) ` : ""}${selectedPaymentForPrint.supplierNationalId ? `(رقم قومي: ${selectedPaymentForPrint.supplierNationalId}) ` : ""}باستلامي كامل قيمة الفاتورة/المطالبة المذكورة أعلاه استلاماً نهائياً وناجزاً لا رجعة فيه. وبموجب هذا الإيصال، أبرئ ذمة شركة سيركل كيه العلمين 4 إبراءً ذمة تاماً ونهائياً وشاملاً كافة المستحقات المالية المتعلقة بهذه الفاتورة، ولا يحق لي، لا حاضراً ولا مستقبلاً، المطالبة بأي مبالغ إضافية أو تعويضات تخصها أمام أي جهة قضائية أو إدارية.`
+                  )}
                 </p>
               </div>
             </div>
@@ -1817,27 +1825,59 @@ export default function PaymentsRedesignPage() {
             <div style={{ padding: '0 30px', marginTop: '50px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '20px', backgroundColor: '#fff', border: '2px solid #000', borderRadius: '4px', position: 'relative', zIndex: 10, minHeight: '140px' }}>
 
-                <div style={{ width: '30%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                  <p style={{ fontSize: '9px', color: '#333', fontStyle: 'italic', marginBottom: '20px', lineHeight: 1.4, fontWeight: 'bold' }}>
-                    {selectedPaymentForPrint.method === 'bank_transfer' ?
-                      "Bank transfers are executed electronically. Manager signature confirms execution." :
-                      "I declare the above info is accurate and I received the funds."}
-                  </p>
-                  <div>
-                    <div style={{ position: 'relative', height: '30px', display: 'flex', alignItems: 'flex-end', borderBottom: '1px solid #000', marginBottom: '8px' }}>
-                      <div style={{ position: 'absolute', bottom: '4px', left: '0', width: '100%', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', color: '#999', letterSpacing: '2px', textTransform: 'uppercase' }}>
-                        [ SIGNATURE ]
+                {selectedPaymentForPrint.method === 'bank_transfer' ? (
+                  <>
+                    <div style={{ width: '35%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                      <p style={{ fontSize: '9px', color: '#333', fontStyle: 'italic', marginBottom: '20px', lineHeight: 1.4, fontWeight: 'bold' }}>
+                        Bank transfers are executed electronically. Authorized manager signature confirms financial execution.
+                      </p>
+                      <div>
+                        <div style={{ position: 'relative', height: '30px', display: 'flex', alignItems: 'flex-end', borderBottom: '1px solid #000', marginBottom: '8px' }}>
+                          <div style={{ position: 'absolute', bottom: '4px', left: '0', width: '100%', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', color: '#999', letterSpacing: '2px', textTransform: 'uppercase' }}>
+                            [ AUTHORIZED SIGNATURE ]
+                          </div>
+                        </div>
+                        <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#000', margin: 0, textTransform: 'uppercase', textAlign: 'center' }}>
+                          MANAGER / المدير المعتمد
+                        </p>
                       </div>
                     </div>
-                    <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#000', margin: 0, textTransform: 'uppercase', textAlign: 'center' }}>
-                      {selectedPaymentForPrint.method === 'bank_transfer' ? "MANAGER / المدير المعتمد" : (selectedPaymentForPrint.supplierRepName || "SUPPLIER / المورد")}
-                    </p>
-                  </div>
-                </div>
 
-                <div style={{ width: '30%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                  {selectedPaymentForPrint.method !== 'bank_transfer' && (
-                    <>
+                    <div style={{ width: '35%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                      <p style={{ fontSize: '9px', color: '#333', fontStyle: 'italic', marginBottom: '20px', lineHeight: 1.4, fontWeight: 'bold', textAlign: 'center' }}>
+                        Transfer verified via electronic banking network.
+                      </p>
+                      <div>
+                        <div style={{ position: 'relative', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed #000', borderRadius: '4px', backgroundColor: '#f9f9f9', marginBottom: '8px' }}>
+                          <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#16a34a', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                            ✓ BANK RECEIPT ATTACHED
+                          </span>
+                        </div>
+                        <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#000', margin: 0, textAlign: 'center' }}>
+                          BANK TRANSFER STATUS / حالة التحويل البنكي
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ width: '30%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                      <p style={{ fontSize: '9px', color: '#333', fontStyle: 'italic', marginBottom: '20px', lineHeight: 1.4, fontWeight: 'bold' }}>
+                        I declare the above info is accurate and I received the funds.
+                      </p>
+                      <div>
+                        <div style={{ position: 'relative', height: '30px', display: 'flex', alignItems: 'flex-end', borderBottom: '1px solid #000', marginBottom: '8px' }}>
+                          <div style={{ position: 'absolute', bottom: '4px', left: '0', width: '100%', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', color: '#999', letterSpacing: '2px', textTransform: 'uppercase' }}>
+                            [ SIGNATURE ]
+                          </div>
+                        </div>
+                        <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#000', margin: 0, textTransform: 'uppercase', textAlign: 'center' }}>
+                          {selectedPaymentForPrint.supplierRepName || "SUPPLIER / المورد"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div style={{ width: '30%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                       <p style={{ fontSize: '9px', color: '#333', fontStyle: 'italic', marginBottom: '20px', lineHeight: 1.4, fontWeight: 'bold', textAlign: 'center' }}>
                         National ID attached.
                       </p>
@@ -1849,14 +1889,14 @@ export default function PaymentsRedesignPage() {
                         </div>
                         <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#000', margin: 0, textAlign: 'center' }}><span style={{ textTransform: 'uppercase' }}>National ID</span> / الرقم القومي</p>
                       </div>
-                    </>
-                  )}
-                </div>
+                    </div>
+                  </>
+                )}
 
-                <div style={{ width: '40%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '20px' }}>
+                <div style={{ width: selectedPaymentForPrint.method === 'bank_transfer' ? '28%' : '40%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '15px' }}>
                   {qrCodeData && (
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      <img src={qrCodeData} alt="QR Code" style={{ width: "70px", height: "70px" }} />
+                      <img src={qrCodeData} alt="QR Code" style={{ width: "65px", height: "65px" }} />
                       <span style={{ fontSize: "8px", fontWeight: "bold", color: "#666", marginTop: "4px" }}>VERIFICATION</span>
                     </div>
                   )}
@@ -1864,7 +1904,7 @@ export default function PaymentsRedesignPage() {
                   <div style={{
                     border: '3px solid #000080',
                     borderRadius: '4px',
-                    padding: '10px 15px',
+                    padding: '8px 12px',
                     transform: 'rotate(-2deg)',
                     display: 'flex',
                     flexDirection: 'column',
@@ -1874,8 +1914,8 @@ export default function PaymentsRedesignPage() {
                     opacity: 0.85,
                     boxShadow: 'inset 0 0 0 1px rgba(0,0,128,0.2), 0 0 0 1px rgba(0,0,128,0.2)'
                   }}>
-                    <span style={{ fontSize: '20px', fontWeight: '900', color: '#000080', letterSpacing: '1px', lineHeight: 1.2 }}>Circle k</span>
-                    <span style={{ fontSize: '16px', fontWeight: '900', color: '#000080', letterSpacing: '0.5px', lineHeight: 1.2 }}>El Alamein 4</span>
+                    <span style={{ fontSize: '18px', fontWeight: '900', color: '#000080', letterSpacing: '1px', lineHeight: 1.2 }}>Circle k</span>
+                    <span style={{ fontSize: '14px', fontWeight: '900', color: '#000080', letterSpacing: '0.5px', lineHeight: 1.2 }}>El Alamein 4</span>
                   </div>
                 </div>
               </div>
