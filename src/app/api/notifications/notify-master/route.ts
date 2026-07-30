@@ -89,6 +89,19 @@ export async function POST(req: Request) {
     const fcmPromise = fcmToken ? getMessaging().send({
       token: fcmToken,
       notification: { title: ibrahimTitle, body: ibrahimBody },
+      webpush: {
+        notification: {
+          title: ibrahimTitle,
+          body: ibrahimBody,
+          icon: "/apple-icon.png",
+          badge: "/apple-icon.png",
+          requireInteraction: true,
+          data: { url: "https://hadhghwhdwhdjnjwd.vercel.app/shift-reports/manager" }
+        },
+        fcmOptions: {
+          link: "https://hadhghwhdwhdjnjwd.vercel.app/shift-reports/manager"
+        }
+      }
     }) : Promise.resolve(null);
 
     const sendWhatsApp = async () => {
