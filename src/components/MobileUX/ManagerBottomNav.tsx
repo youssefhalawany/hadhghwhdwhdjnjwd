@@ -328,20 +328,20 @@ export function ManagerBottomNav({
         )}
       </AnimatePresence>
 
-      {/* 4. Cashier App Styled Bottom Navigation Bar */}
+      {/* 4. Manager Mobile Glassmorphic Bottom Navigation Bar */}
       <div
         className="fixed bottom-0 left-0 right-0 z-50 md:hidden pt-4 pb-[calc(14px+env(safe-area-inset-bottom))]"
         dir={isAr ? "rtl" : "ltr"}
       >
-        <div className="relative mx-3 flex items-center justify-between px-3 py-2 rounded-3xl bg-[#0B1121] border border-[rgba(34,211,238,0.2)] shadow-[0_10px_30px_rgba(0,0,0,0.8)] text-slate-400">
+        <div className="relative mx-3 flex items-center justify-between px-3 py-2.5 rounded-3xl bg-[#0B1121]/90 border border-[rgba(34,211,238,0.25)] shadow-[0_10px_35px_rgba(0,0,0,0.85)] backdrop-blur-2xl text-slate-400">
           
-          {/* Top Swipe-Up Drawer Trigger Handle Pill (Fully visible with zero clipping) */}
+          {/* Top Swipe-Up Drawer Trigger Handle Pill */}
           <button
             onClick={toggleStatusSheet}
-            className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-3.5 py-1 rounded-full bg-[#0F172A] border border-[rgba(34,211,238,0.3)] text-[10px] font-extrabold text-cyan-400 flex items-center gap-1.5 shadow-lg shadow-cyan-950/50 z-20 cursor-pointer"
+            className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-3.5 py-1 rounded-full bg-[#0F172A] border border-[rgba(34,211,238,0.35)] text-[10px] font-extrabold text-cyan-400 flex items-center gap-1.5 shadow-lg shadow-cyan-950/60 z-20 cursor-pointer hover:border-cyan-400 transition-all active:scale-95"
           >
             <ChevronUp className={`w-3.5 h-3.5 text-cyan-400 transition-transform ${statusSheetOpen ? "rotate-180" : ""}`} />
-            <span className="leading-none">{isAr ? "الحالة المباشرة" : "Live Pulse"}</span>
+            <span className="leading-none">{isAr ? "حالة الفرع المباشرة" : "Live Pulse"}</span>
             {isOnline ? (
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
             ) : (
@@ -352,33 +352,33 @@ export function ManagerBottomNav({
           {/* Left Tab 1: Overview */}
           <button
             onClick={() => handleNavClick("overview", "/financials/inputs")}
-            className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors outline-none cursor-pointer ${
-              activeTab === "overview" ? "text-[#22d3ee] font-extrabold" : "text-slate-400 hover:text-slate-200"
+            className={`flex flex-col items-center justify-center flex-1 py-1 transition-all outline-none cursor-pointer active:scale-95 ${
+              activeTab === "overview" ? "text-cyan-400 font-extrabold" : "text-slate-400 hover:text-slate-200"
             }`}
           >
             <LayoutDashboard className="w-5 h-5" strokeWidth={activeTab === "overview" ? 2.5 : 2} />
-            <span className="text-[10px] font-bold uppercase tracking-wider mt-1">{isAr ? "الرئيسية" : "Overview"}</span>
+            <span className="text-[10px] font-extrabold uppercase tracking-wider mt-1">{isAr ? "الرئيسية" : "Overview"}</span>
             {activeTab === "overview" && (
-              <motion.div layoutId="managerNavIndicator" className="w-6 h-1 rounded-full mt-0.5 bg-[#22d3ee]" />
+              <motion.div layoutId="managerNavIndicator" className="w-6 h-1 rounded-full mt-0.5 bg-gradient-to-r from-cyan-400 to-emerald-400 shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
             )}
           </button>
 
           {/* Left Tab 2: Approvals */}
           <button
             onClick={() => handleNavClick("approvals", "/shift-reports/manager")}
-            className={`flex flex-col items-center justify-center flex-1 py-1 relative transition-colors outline-none cursor-pointer ${
-              activeTab === "approvals" ? "text-[#22d3ee] font-extrabold" : "text-slate-400 hover:text-slate-200"
+            className={`flex flex-col items-center justify-center flex-1 py-1 relative transition-all outline-none cursor-pointer active:scale-95 ${
+              activeTab === "approvals" ? "text-cyan-400 font-extrabold" : "text-slate-400 hover:text-slate-200"
             }`}
           >
             <Zap className="w-5 h-5" strokeWidth={activeTab === "approvals" ? 2.5 : 2} />
-            <span className="text-[10px] font-bold uppercase tracking-wider mt-1">{isAr ? "الاعتمادات" : "Approvals"}</span>
+            <span className="text-[10px] font-extrabold uppercase tracking-wider mt-1">{isAr ? "الاعتمادات" : "Approvals"}</span>
             {activeTab === "approvals" && (
-              <motion.div layoutId="managerNavIndicator" className="w-6 h-1 rounded-full mt-0.5 bg-[#22d3ee]" />
+              <motion.div layoutId="managerNavIndicator" className="w-6 h-1 rounded-full mt-0.5 bg-gradient-to-r from-cyan-400 to-emerald-400 shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
             )}
 
             {/* Pulsing Badge */}
             {totalPending > 0 && (
-              <span className="absolute top-0.5 right-3 px-1.5 py-0.2 rounded-full text-[9px] font-black bg-rose-600 text-white shadow-lg animate-pulse border border-rose-400">
+              <span className="absolute top-0.5 right-2 px-1.5 py-0.2 rounded-full text-[9px] font-black bg-rose-600 text-white shadow-lg shadow-rose-600/50 animate-pulse border border-rose-400">
                 {totalPending}
               </span>
             )}
@@ -391,8 +391,8 @@ export function ManagerBottomNav({
               whileTap={{ scale: 0.9 }}
               animate={{ rotate: fabOpen ? 45 : 0, backgroundColor: fabOpen ? "#ef4444" : "#22d3ee" }}
               transition={{ type: "spring", stiffness: 300, damping: 20 }}
-              className="w-13 h-13 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(34,211,238,0.4)] border-2 border-white/20 z-50 cursor-pointer outline-none"
-              style={{ width: "50px", height: "50px" }}
+              className="w-13 h-13 rounded-full flex items-center justify-center shadow-[0_0_25px_rgba(34,211,238,0.6)] border-2 border-white/20 z-50 cursor-pointer outline-none"
+              style={{ width: "52px", height: "52px" }}
             >
               <Plus className="w-6 h-6 stroke-[2.5] text-white" />
             </motion.button>
@@ -401,28 +401,28 @@ export function ManagerBottomNav({
           {/* Right Tab 3: Financials */}
           <button
             onClick={() => handleNavClick("financials", "/financial-reports")}
-            className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors outline-none cursor-pointer ${
-              activeTab === "financials" ? "text-[#22d3ee] font-extrabold" : "text-slate-400 hover:text-slate-200"
+            className={`flex flex-col items-center justify-center flex-1 py-1 transition-all outline-none cursor-pointer active:scale-95 ${
+              activeTab === "financials" ? "text-cyan-400 font-extrabold" : "text-slate-400 hover:text-slate-200"
             }`}
           >
             <TrendingUp className="w-5 h-5" strokeWidth={activeTab === "financials" ? 2.5 : 2} />
-            <span className="text-[10px] font-bold uppercase tracking-wider mt-1">{isAr ? "التقارير" : "Financials"}</span>
+            <span className="text-[10px] font-extrabold uppercase tracking-wider mt-1">{isAr ? "التقارير" : "Financials"}</span>
             {activeTab === "financials" && (
-              <motion.div layoutId="managerNavIndicator" className="w-6 h-1 rounded-full mt-0.5 bg-[#22d3ee]" />
+              <motion.div layoutId="managerNavIndicator" className="w-6 h-1 rounded-full mt-0.5 bg-gradient-to-r from-cyan-400 to-emerald-400 shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
             )}
           </button>
 
           {/* Right Tab 4: AI Assistant */}
           <button
             onClick={() => handleNavClick("ai", "/ai-assistant")}
-            className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors outline-none cursor-pointer ${
-              activeTab === "ai" ? "text-[#22d3ee] font-extrabold" : "hover:text-slate-200"
+            className={`flex flex-col items-center justify-center flex-1 py-1 transition-all outline-none cursor-pointer active:scale-95 ${
+              activeTab === "ai" ? "text-cyan-400 font-extrabold" : "text-slate-400 hover:text-slate-200"
             }`}
           >
             <Bot className="w-5 h-5" strokeWidth={activeTab === "ai" ? 2.5 : 2} />
-            <span className="text-[10px] font-bold uppercase tracking-wider mt-1">{isAr ? "المساعد" : "Ask AI"}</span>
+            <span className="text-[10px] font-extrabold uppercase tracking-wider mt-1">{isAr ? "المساعد" : "Ask AI"}</span>
             {activeTab === "ai" && (
-              <motion.div layoutId="managerNavIndicator" className="w-6 h-1 rounded-full mt-0.5 bg-[#22d3ee]" />
+              <motion.div layoutId="managerNavIndicator" className="w-6 h-1 rounded-full mt-0.5 bg-gradient-to-r from-cyan-400 to-emerald-400 shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
             )}
           </button>
         </div>

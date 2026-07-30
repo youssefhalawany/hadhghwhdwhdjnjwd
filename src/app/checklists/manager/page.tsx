@@ -112,9 +112,10 @@ export default function ManagerChecklistsPage() {
             </div>
           </div>
           
-          <div className="overflow-x-auto">
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-right text-sm">
-              <thead className="bg-slate-100 text-slate-600 font-bold border-b border-slate-200">
+              <thead className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
                 <tr>
                   <th className="px-4 py-3">التاريخ</th>
                   <th className="px-4 py-3">اسم القائمة</th>
@@ -123,7 +124,7 @@ export default function ManagerChecklistsPage() {
                   <th className="px-4 py-3 text-center">إجراء</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {loading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i}>
@@ -152,9 +153,9 @@ export default function ManagerChecklistsPage() {
                       <td className="px-4 py-3">{cl.cashierName}</td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-1 rounded text-xs font-bold ${
-                          (cl.score / cl.totalScore) > 0.8 ? "bg-green-100 text-green-700" :
-                          (cl.score / cl.totalScore) > 0.5 ? "bg-amber-100 text-amber-700" :
-                          "bg-red-100 text-red-700"
+                          (cl.score / cl.totalScore) > 0.8 ? "bg-green-500/15 text-green-400 border border-green-500/30" :
+                          (cl.score / cl.totalScore) > 0.5 ? "bg-amber-500/15 text-amber-400 border border-amber-500/30" :
+                          "bg-red-500/15 text-red-400 border border-red-500/30"
                         }`}>
                           {cl.score} / {cl.totalScore}
                         </span>
@@ -162,7 +163,7 @@ export default function ManagerChecklistsPage() {
                       <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
                         <button 
                           onClick={() => router.push(`/checklists/manager/print/${cl.id}`)}
-                          className="text-red-600 hover:text-red-800 font-bold bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 inline-flex"
+                          className="text-red-400 hover:text-red-300 font-bold bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 inline-flex text-xs"
                         >
                           <Printer className="h-3.5 w-3.5" /> عرض وطباعة
                         </button>
@@ -174,9 +175,9 @@ export default function ManagerChecklistsPage() {
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, height: 0 }}
-                          className="bg-slate-50/50 overflow-hidden"
+                          className="bg-slate-50/50 dark:bg-slate-900/50 overflow-hidden"
                         >
-                          <td colSpan={5} className="p-0 border-b border-slate-100">
+                          <td colSpan={5} className="p-0 border-b border-slate-100 dark:border-slate-800">
                             <motion.div 
                               initial={{ opacity: 0, y: -20 }}
                               animate={{ opacity: 1, y: 0 }}
@@ -204,6 +205,50 @@ export default function ManagerChecklistsPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Card List View (Strictly md:hidden) */}
+          <div className="md:hidden p-3 space-y-3">
+            {loading ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="p-4 rounded-2xl bg-card border border-border space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                  <Skeleton className="h-8 w-full rounded-xl" />
+                </div>
+              ))
+            ) : checklists.length === 0 ? (
+              <div className="p-8 text-center text-slate-500 text-sm">لا توجد قوائم مكتملة بعد</div>
+            ) : checklists.map((cl) => (
+              <div
+                key={cl.id}
+                className="p-4 rounded-2xl bg-[#0B1121] border border-[rgba(34,211,238,0.15)] shadow-lg space-y-3"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h3 className="text-sm font-extrabold text-white">{cl.checklistTitle}</h3>
+                    <p className="text-xs text-slate-400 mt-0.5">الكاشير: {cl.cashierName || "عام"}</p>
+                  </div>
+                  <span className={`px-2.5 py-1 rounded-xl text-xs font-black shrink-0 ${
+                    (cl.score / cl.totalScore) > 0.8 ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" :
+                    (cl.score / cl.totalScore) > 0.5 ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" :
+                    "bg-rose-500/20 text-rose-400 border border-rose-500/30"
+                  }`}>
+                    {cl.score} / {cl.totalScore}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] text-slate-400 border-t border-[#1E293B] pt-2">
+                  <span className="font-mono">{new Date(cl.createdAt).toLocaleString('en-GB')}</span>
+                  <button
+                    onClick={() => router.push(`/checklists/manager/print/${cl.id}`)}
+                    className="px-3 py-1.5 rounded-xl bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 font-extrabold text-xs flex items-center gap-1.5 active:scale-95 transition-transform"
+                  >
+                    <Printer className="w-3.5 h-3.5" /> عرض وطباعة
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </main>

@@ -247,7 +247,82 @@ export default function ManagerVoidsPage() {
           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Review and print customer return logs and receipts.</p>
         </div>
 
-        <div className="bg-card border border-border rounded-xl p-4 sm:p-6 shadow-sm relative z-10">
+        {/* Mobile View Cards (md:hidden) */}
+        <div className="md:hidden space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-xs font-extrabold uppercase text-slate-400 tracking-wider">
+              Pending Voids ({filteredVoids.filter(v => v.status !== "closed_on_system").length})
+            </span>
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="px-3 py-1 text-xs rounded-xl bg-[#0F172A] border border-[rgba(34,211,238,0.2)] text-white outline-none focus:border-cyan-400 w-36"
+            />
+          </div>
+
+          {filteredVoids.length === 0 ? (
+            <div className="p-6 text-center text-slate-400 text-xs rounded-2xl bg-[#0B1121] border border-[rgba(34,211,238,0.15)]">
+              No void requests found.
+            </div>
+          ) : (
+            filteredVoids.map((v) => {
+              const isClosed = v.status === "closed_on_system";
+              const isHighValue = Number(v.amount) > 150;
+
+              return (
+                <div
+                  key={v.id}
+                  className="p-4 rounded-2xl bg-[#0B1121] border border-[rgba(34,211,238,0.15)] shadow-xl space-y-3"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-sm font-black text-cyan-400">{v.transactionNumber}</span>
+                        {isHighValue && (
+                          <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 shadow-sm animate-pulse">
+                            HIGH VALUE
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs font-bold text-slate-200 mt-1">Cashier: {v.cashierName || "N/A"}</p>
+                      <p className="text-[11px] text-slate-400">Customer: {v.customerName || "Walk-in"}</p>
+                    </div>
+
+                    <div className="text-right">
+                      <span className="text-base font-black font-mono text-white block">
+                        {Number(v.amount || 0).toFixed(2)} EGP
+                      </span>
+                      <span className={`inline-block mt-1 text-[10px] font-extrabold px-2 py-0.5 rounded-lg border ${
+                        isClosed 
+                          ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                          : "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                      }`}>
+                        {isClosed ? "Closed" : "Pending"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between border-t border-[#1E293B] pt-2.5">
+                    <span className="text-[10px] font-mono text-slate-400">
+                      {v.preciseTimestamp || (v.createdAt ? new Date(v.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '')}
+                    </span>
+                    <button
+                      onClick={() => setSelectedVoid(v)}
+                      className="px-3.5 py-1.5 rounded-xl bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 font-extrabold text-xs flex items-center gap-1.5 active:scale-95 transition-transform"
+                    >
+                      <Shield className="w-3.5 h-3.5" /> Review Details
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block bg-card border border-border rounded-xl p-4 sm:p-6 shadow-sm relative z-10">
           <DataTable
             columns={[
               {
