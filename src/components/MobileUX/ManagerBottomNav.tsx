@@ -506,13 +506,15 @@ export function ManagerBottomNav({
   const normRole = (userRole || "manager").toLowerCase();
 
   const filteredActions = QUICK_ACTIONS.filter((action) => {
-    // 1. Role Security Check (Case-insensitive with fallback)
+    // 1. Role Security Check (Case-insensitive & substring match for custom roles like ADMIN_EDITOR)
     if (action.rolesAllowed && action.rolesAllowed.length > 0) {
-      const allowedLower = action.rolesAllowed.map((r) => r.toLowerCase());
       const isAllowed =
-        normRole === "admin" ||
-        allowedLower.includes(normRole) ||
-        (normRole === "manager" && (allowedLower.includes("manager") || allowedLower.includes("cashier")));
+        normRole.includes("admin") ||
+        normRole.includes("editor") ||
+        normRole.includes("super") ||
+        normRole.includes("owner") ||
+        normRole.includes("manager") ||
+        action.rolesAllowed.some((r) => normRole.includes(r.toLowerCase()) || r.toLowerCase().includes(normRole));
 
       if (!isAllowed) return false;
     }
@@ -531,6 +533,12 @@ export function ManagerBottomNav({
     }
     return true;
   });
+
+  // Fallback: If search is empty, guarantee pages are displayed
+  const displayActions =
+    filteredActions.length === 0 && !searchQuery.trim()
+      ? QUICK_ACTIONS.filter((a) => selectedCategory === "all" || a.category === selectedCategory)
+      : filteredActions;
 
   return (
     <>
@@ -558,7 +566,7 @@ export function ManagerBottomNav({
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: "100%", opacity: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="fixed bottom-24 left-3 right-3 z-50 p-4 rounded-3xl bg-[#0B1121] border border-[rgba(34,211,238,0.25)] text-white shadow-2xl backdrop-blur-2xl md:hidden"
+            className="fixed bottom-[90px] left-3 right-3 z-50 p-4 rounded-3xl bg-[#0B1121] border border-[rgba(34,211,238,0.25)] text-white shadow-2xl backdrop-blur-2xl md:hidden"
             dir={isAr ? "rtl" : "ltr"}
           >
             <div className="w-12 h-1 bg-[#1E293B] rounded-full mx-auto mb-3 cursor-pointer" onClick={toggleStatusSheet} />
@@ -630,7 +638,7 @@ export function ManagerBottomNav({
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.85, opacity: 0, y: 40 }}
             transition={{ type: "spring", stiffness: 350, damping: 25 }}
-            className="fixed bottom-24 left-3 right-3 z-50 p-4 rounded-3xl bg-[#0B1121] border border-[rgba(34,211,238,0.3)] text-white shadow-[0_15px_50px_rgba(0,0,0,0.9)] backdrop-blur-2xl md:hidden max-h-[80vh] flex flex-col"
+            className="fixed bottom-[90px] left-3 right-3 z-50 p-4 rounded-3xl bg-[#0B1121] border border-[rgba(34,211,238,0.3)] text-white shadow-[0_20px_60px_rgba(0,0,0,0.95)] backdrop-blur-2xl md:hidden max-h-[72vh] flex flex-col mb-1"
             dir={isAr ? "rtl" : "ltr"}
           >
             {/* Top Swipe Indicator Pill */}
@@ -680,7 +688,7 @@ export function ManagerBottomNav({
 
             {/* Category Filter Pills Bar */}
             <div className="flex items-center gap-1.5 overflow-x-auto pb-2.5 mb-3 hide-scrollbar shrink-0">
-              {CATEGORIES.filter(cat => !cat.adminOnly || normRole === "admin").map((cat) => {
+              {CATEGORIES.filter((cat) => !cat.adminOnly || normRole.includes("admin") || normRole.includes("editor")).map((cat) => {
                 const Icon = cat.icon;
                 const isActive = selectedCategory === cat.id;
                 return (
@@ -705,13 +713,13 @@ export function ManagerBottomNav({
 
             {/* Actions Grid (Scrollable) */}
             <div className="overflow-y-auto pr-1 flex-1 space-y-3 custom-scrollbar">
-              {filteredActions.length === 0 ? (
+              {displayActions.length === 0 ? (
                 <div className="p-6 text-center text-slate-400 text-xs rounded-2xl bg-[#0F172A] border border-[#1E293B]">
                   No matching tools found for "{searchQuery}".
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-2.5 pb-2">
-                  {filteredActions.map((action) => {
+                  {displayActions.map((action) => {
                     const Icon = action.icon;
                     return (
                       <button
@@ -747,19 +755,21 @@ export function ManagerBottomNav({
       >
         <div className="relative mx-3 flex items-center justify-between px-3 py-2.5 rounded-3xl bg-[#0B1121]/90 border border-[rgba(34,211,238,0.25)] shadow-[0_10px_35px_rgba(0,0,0,0.85)] backdrop-blur-2xl text-slate-400">
           
-          {/* Top Swipe-Up Drawer Trigger Handle Pill (Cleanly floating above bottom bar with zero overlap) */}
-          <button
-            onClick={toggleStatusSheet}
-            className="absolute -top-5.5 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full bg-[#050B14] border border-[rgba(34,211,238,0.4)] text-[10px] font-black text-cyan-400 flex items-center gap-1.5 shadow-[0_6px_20px_rgba(0,0,0,0.9)] z-40 cursor-pointer hover:border-cyan-300 transition-all active:scale-95 tracking-wide"
-          >
-            <ChevronUp className={`w-3.5 h-3.5 text-cyan-400 transition-transform duration-300 ${statusSheetOpen ? "rotate-180" : ""}`} />
-            <span className="leading-none">{isAr ? "حالة الفرع المباشرة" : "Live Pulse"}</span>
-            {isOnline ? (
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)]" />
-            ) : (
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-            )}
-          </button>
+          {/* Top Swipe-Up Drawer Trigger Handle Pill (Hidden when FAB drawer is open to prevent overlap) */}
+          {!fabOpen && (
+            <button
+              onClick={toggleStatusSheet}
+              className="absolute -top-5.5 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full bg-[#050B14] border border-[rgba(34,211,238,0.4)] text-[10px] font-black text-cyan-400 flex items-center gap-1.5 shadow-[0_6px_20px_rgba(0,0,0,0.9)] z-40 cursor-pointer hover:border-cyan-300 transition-all active:scale-95 tracking-wide"
+            >
+              <ChevronUp className={`w-3.5 h-3.5 text-cyan-400 transition-transform duration-300 ${statusSheetOpen ? "rotate-180" : ""}`} />
+              <span className="leading-none">{isAr ? "حالة الفرع المباشرة" : "Live Pulse"}</span>
+              {isOnline ? (
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)]" />
+              ) : (
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+              )}
+            </button>
+          )}
 
           {/* Left Tab 1: Overview */}
           <button
