@@ -1092,7 +1092,7 @@ export default function ManagerDocumentsPage() {
                         </div>
                       </div>
 
-                      <div style={{ backgroundColor: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: "8px", padding: "14px", marginBottom: "16px", textCenter: "center" }}>
+                      <div style={{ backgroundColor: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: "8px", padding: "14px", marginBottom: "16px", textAlign: "center" }}>
                         <h2 style={{ fontSize: "18px", fontWeight: "900", color: "#0f172a", margin: 0 }}>{selectedDoc.title}</h2>
                         <p style={{ fontSize: "12px", color: "#475569", margin: "4px 0 0 0" }}>{selectedDoc.subtitle}</p>
                       </div>
