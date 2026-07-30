@@ -64,7 +64,7 @@ export function MobileHeader() {
 
   return (
     <header
-      className="sticky top-0 z-40 w-full bg-[#0B1121] border-b border-[rgba(34,211,238,0.15)] px-3 py-2 md:hidden no-print"
+      className="sticky top-0 z-40 w-full bg-[#0B1121] border-b border-[#1E293B] px-3 py-2 md:hidden no-print"
       style={{
         paddingTop: "max(10px, env(safe-area-inset-top))",
       }}
@@ -79,7 +79,7 @@ export function MobileHeader() {
           </div>
           <div>
             <h1 className="text-xs font-black tracking-tight text-white flex items-center gap-1">
-              ANH Portal <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-red-500/20 text-red-400 font-bold border border-red-500/30"></span>
+              ANH Portal
             </h1>
             <p className="text-[10px] text-slate-400 flex items-center gap-1">
               <Clock className="w-2.5 h-2.5 text-slate-400" />
@@ -90,7 +90,7 @@ export function MobileHeader() {
 
         <div className="flex items-center gap-2">
           {/* Online/Offline Status Pill */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#0F172A] border border-[rgba(34,211,238,0.2)] text-[10px] font-bold">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#0F172A] border border-[#1E293B] text-[10px] font-bold">
             <span
               className={`w-1.5 h-1.5 rounded-full ${isOnline ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" : "bg-amber-500 animate-pulse"
                 }`}
@@ -103,7 +103,7 @@ export function MobileHeader() {
           {/* 1-Tap Language Switcher Pill */}
           <button
             onClick={handleLanguageToggle}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#0F172A] hover:bg-[#1E293B] text-cyan-400 border border-[rgba(34,211,238,0.2)] text-[11px] font-extrabold transition-all active:scale-95"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#0F172A] hover:bg-[#1E293B] text-cyan-400 border border-[#1E293B] text-[11px] font-extrabold transition-all active:scale-95"
           >
             <Languages className="w-3.5 h-3.5 text-cyan-400" />
             <span>{language === "en" ? "العربية" : "EN"}</span>
@@ -112,8 +112,8 @@ export function MobileHeader() {
       </div>
 
       {/* Bottom Bar: Horizontal Branch Chip Carousel */}
-      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-        <Store className="w-3.5 h-3.5 text-cyan-400 shrink-0 ml-1" />
+      <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar py-0.5 px-0.5">
+        <Store className="w-3.5 h-3.5 text-cyan-400 shrink-0 mx-0.5" />
         {branches.map((b) => {
           const isActive = currentBranch === b.id;
           return (
@@ -122,7 +122,7 @@ export function MobileHeader() {
               onClick={() => handleBranchSelect(b.id)}
               className={`px-3 py-1 rounded-full text-[11px] font-extrabold whitespace-nowrap transition-all active:scale-95 shrink-0 ${isActive
                 ? "bg-red-600 text-white shadow-md shadow-red-600/30 border border-red-500"
-                : "bg-[#0F172A] text-slate-300 hover:text-white border border-[rgba(34,211,238,0.15)]"
+                : "bg-[#0F172A] text-slate-300 hover:text-white border border-[#1E293B]"
                 }`}
             >
               {isAr ? b.labelAr : b.labelEn}

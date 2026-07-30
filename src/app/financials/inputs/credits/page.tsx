@@ -1545,7 +1545,7 @@ export default function CreditsPage() {
         {/* Mobile Cards Container (Strictly md:hidden) */}
         <div className="md:hidden space-y-3">
           {filteredCredits.length === 0 ? (
-            <div className="p-8 text-center text-slate-400 text-xs rounded-2xl bg-[#0B1121] border border-[rgba(34,211,238,0.15)]">
+            <div className="p-8 text-center text-slate-400 text-xs rounded-2xl bg-[#0B1121] border border-[#1E293B]">
               No credit records found.
             </div>
           ) : (
@@ -1557,18 +1557,18 @@ export default function CreditsPage() {
               return (
                 <div
                   key={credit.id}
-                  className="p-4 rounded-2xl bg-[#0B1121] border border-[rgba(34,211,238,0.15)] shadow-xl space-y-3 relative"
+                  className="p-4 rounded-2xl bg-[#0B1121] border border-[#1E293B] shadow-xl space-y-3 relative overflow-hidden"
                 >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-extrabold text-sm text-white tracking-tight capitalize">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-extrabold text-sm text-white tracking-tight capitalize truncate">
                         {credit.companyName}
                       </h3>
-                      <p className="text-[10px] font-mono text-slate-400 mt-0.5">
+                      <p className="text-[10px] font-mono text-slate-400 mt-0.5 truncate">
                         Date: {credit.date} {credit.invoiceNumber ? `• Inv: ${credit.invoiceNumber}` : ""}
                       </p>
                     </div>
-                    <span className={`text-xs font-black px-2.5 py-1 rounded-full border ${
+                    <span className={`text-xs font-black px-2.5 py-1 rounded-full border shrink-0 ${
                       isPaid
                         ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
                         : remaining < totalDue
@@ -1582,27 +1582,27 @@ export default function CreditsPage() {
                   <div className="grid grid-cols-2 gap-2 bg-[#0F172A] p-2.5 rounded-xl border border-[#1E293B]">
                     <div>
                       <p className="text-[10px] font-bold text-slate-400 uppercase">Total Invoice</p>
-                      <p className="text-sm font-black font-mono text-slate-200">
+                      <p className="text-sm font-black font-mono text-slate-200 truncate">
                         EGP {totalDue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </p>
                     </div>
                     <div>
                       <p className="text-[10px] font-bold text-slate-400 uppercase">Remaining Debt</p>
-                      <p className={`text-sm font-black font-mono ${remaining > 0 ? 'text-orange-400' : 'text-emerald-400'}`}>
+                      <p className={`text-sm font-black font-mono truncate ${remaining > 0 ? 'text-orange-400' : 'text-emerald-400'}`}>
                         EGP {remaining.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-[#1E293B]">
-                    <span className="text-[10px] text-slate-400">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[#1E293B]">
+                    <span className="text-[10px] text-slate-400 shrink-0">
                       {(credit as any).dueDate ? `Due: ${(credit as any).dueDate}` : `Date: ${credit.date}`}
                     </span>
                     <button
                       onClick={() => {
                         setSelectedCreditForView(credit);
                       }}
-                      className="px-3 py-1.5 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 text-xs font-black flex items-center gap-1 active:scale-95 transition-transform"
+                      className="px-2.5 py-1.5 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 text-[11px] font-black flex items-center gap-1 active:scale-95 transition-transform shrink-0"
                     >
                       <Eye className="w-3.5 h-3.5" /> Statement
                     </button>

@@ -753,7 +753,7 @@ export function ManagerBottomNav({
         className="fixed bottom-0 left-0 right-0 z-50 md:hidden pt-4 pb-[calc(14px+env(safe-area-inset-bottom))]"
         dir={isAr ? "rtl" : "ltr"}
       >
-        <div className="relative mx-3 flex items-center justify-between px-3 py-2.5 rounded-3xl bg-[#0B1121]/90 border border-[rgba(34,211,238,0.25)] shadow-[0_10px_35px_rgba(0,0,0,0.85)] backdrop-blur-2xl text-slate-400">
+        <div className="relative mx-3 flex items-center justify-between px-3 py-2.5 rounded-3xl bg-[#0B1121] border border-[#1E293B] shadow-[0_10px_35px_rgba(0,0,0,0.85)] backdrop-blur-2xl text-slate-400">
           
           {/* Top Swipe-Up Drawer Trigger Handle Pill (Hidden when FAB drawer is open to prevent overlap) */}
           {!fabOpen && (

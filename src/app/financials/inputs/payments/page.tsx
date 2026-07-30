@@ -1280,31 +1280,31 @@ export default function PaymentsRedesignPage() {
         {/* Mobile Cards Container (Strictly md:hidden) */}
         <div className="md:hidden space-y-3">
           {filteredPayments.length === 0 ? (
-            <div className="p-8 text-center text-slate-400 text-xs rounded-2xl bg-[#0B1121] border border-[rgba(34,211,238,0.15)]">
+            <div className="p-8 text-center text-slate-400 text-xs rounded-2xl bg-[#0B1121] border border-[#1E293B]">
               No payment logs found for this period.
             </div>
           ) : (
             filteredPayments.map((pay) => (
               <div
                 key={pay.id}
-                className="p-4 rounded-2xl bg-[#0B1121] border border-[rgba(34,211,238,0.15)] shadow-xl space-y-3 relative"
+                className="p-4 rounded-2xl bg-[#0B1121] border border-[#1E293B] shadow-xl space-y-3 relative overflow-hidden"
               >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="font-extrabold text-sm text-white tracking-tight capitalize">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-extrabold text-sm text-white tracking-tight capitalize truncate">
                       {pay.companyName}
                     </h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-cyan-400 border border-cyan-500/20">
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-cyan-400 border border-cyan-500/20 whitespace-nowrap">
                         {CATEGORY_EMOJIS[pay.category]} {pay.category}
                       </span>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-emerald-400 border border-emerald-500/20 capitalize">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-emerald-400 border border-emerald-500/20 capitalize whitespace-nowrap">
                         {METHOD_EMOJIS[pay.method] || "💵"} {pay.method?.replace('_', ' ') || 'cash'}
                       </span>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <span className="text-base font-black font-mono text-rose-400">
+                  <div className="text-right shrink-0">
+                    <span className="text-sm font-black font-mono text-rose-400 block">
                       EGP {Number(pay.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </span>
                     <p className="text-[10px] font-mono text-slate-400 mt-0.5">{pay.date}</p>
@@ -1312,23 +1312,23 @@ export default function PaymentsRedesignPage() {
                 </div>
 
                 {(pay.invoiceNumber || pay.poNumber) && (
-                  <div className="text-xs font-mono text-slate-400 bg-[#0F172A] p-2 rounded-xl border border-[#1E293B] flex items-center justify-between">
-                    {pay.invoiceNumber && <span>Inv: #{pay.invoiceNumber}</span>}
-                    {pay.poNumber && <span>PO: #{pay.poNumber}</span>}
+                  <div className="text-xs font-mono text-slate-400 bg-[#0F172A] p-2 rounded-xl border border-[#1E293B] flex items-center justify-between gap-2">
+                    {pay.invoiceNumber && <span className="truncate">Inv: #{pay.invoiceNumber}</span>}
+                    {pay.poNumber && <span className="truncate">PO: #{pay.poNumber}</span>}
                   </div>
                 )}
 
-                <div className="flex items-center justify-between pt-2 border-t border-[#1E293B]">
-                  <span className="text-[10px] text-slate-400 font-mono">
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[#1E293B]">
+                  <span className="text-[10px] text-slate-400 font-mono shrink-0">
                     ID: {pay.id.substring(0, 10)}...
                   </span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       onClick={() => {
                         setSelectedPaymentForView(pay);
                         playPrinterSound();
                       }}
-                      className="px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-extrabold flex items-center gap-1 active:scale-95 transition-transform"
+                      className="px-2.5 py-1.5 rounded-xl bg-slate-800 text-slate-300 text-[11px] font-extrabold flex items-center gap-1 active:scale-95 transition-transform"
                     >
                       <Eye className="w-3.5 h-3.5 text-cyan-400" /> View
                     </button>
@@ -1337,7 +1337,7 @@ export default function PaymentsRedesignPage() {
                         setSelectedPaymentForPrint(pay);
                         setTimeout(() => generatePDF(pay), 500);
                       }}
-                      className="px-3 py-1.5 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 text-xs font-black flex items-center gap-1 active:scale-95 transition-transform"
+                      className="px-2.5 py-1.5 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 text-[11px] font-black flex items-center gap-1 active:scale-95 transition-transform"
                     >
                       <Printer className="w-3.5 h-3.5" /> Voucher
                     </button>

@@ -47,7 +47,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
-      <body className="min-h-screen w-full overflow-hidden print:overflow-visible print:min-h-0 flex flex-col bg-background text-foreground font-sans transition-colors duration-300">
+      <body className="min-h-screen w-full overflow-hidden print:overflow-visible print:min-h-0 flex flex-col bg-[#050814] text-foreground font-sans transition-colors duration-300">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <BrandProvider>
             <BranchProvider>
