@@ -34,6 +34,7 @@ export default function AdminSendDocumentPage() {
   const [loading, setLoading] = useState(false);
 
   // Existing Records fetched from database
+  const [existingPayrollLines, setExistingPayrollLines] = useState<any[]>([]);
   const [existingPayments, setExistingPayments] = useState<any[]>([]);
   const [existingCredits, setExistingCredits] = useState<any[]>([]);
   const [existingEmployees, setExistingEmployees] = useState<any[]>([]);
@@ -71,12 +72,33 @@ export default function AdminSendDocumentPage() {
     async function loadData() {
       setFetchingRecords(true);
       try {
+        // 1. Fetch Payroll System Lines & Drafts
+        const payrollList: any[] = [];
+        try {
+          const linesSnap = await getDocs(query(collection(db, "payroll_lines"), orderBy("createdAt", "desc"), limit(50)));
+          linesSnap.docs.forEach(d => payrollList.push({ id: d.id, source: "paid", ...d.data() }));
+
+          const draftsSnap = await getDocs(query(collection(db, "payroll_drafts"), limit(50)));
+          draftsSnap.docs.forEach(d => {
+            const data = d.data();
+            if (!payrollList.some(p => p.id === d.id)) {
+              payrollList.push({ id: d.id, source: "draft", ...data });
+            }
+          });
+        } catch (e) {
+          console.debug("Payroll system fetch note:", e);
+        }
+        setExistingPayrollLines(payrollList);
+
+        // 2. Fetch Cash Payments
         const paymentsSnap = await getDocs(query(collection(db, "cash_payments"), orderBy("createdAt", "desc"), limit(50)));
         setExistingPayments(paymentsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
+        // 3. Fetch Credits
         const creditsSnap = await getDocs(query(collection(db, "credits"), orderBy("createdAt", "desc"), limit(50)));
         setExistingCredits(creditsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
+        // 4. Fetch Employees / Users
         const usersSnap = await getDocs(query(collection(db, "users"), limit(50)));
         const usersList = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         
@@ -122,19 +144,47 @@ export default function AdminSendDocumentPage() {
     }
   };
 
-  const handleSelectEmployee = (id: string) => {
+  // Handle Select Existing Payroll Entry from Payroll System
+  const handleSelectPayrollLine = (id: string) => {
     setSelectedRecordId(id);
+    
+    // Check in existingPayrollLines first
+    const line = existingPayrollLines.find(p => p.id === id);
+    if (line) {
+      triggerHapticFeedback(10);
+      const name = line.employeeName || line.name || line.displayName || line.staffName || "Employee";
+      const role = line.role || line.position || "Store Staff";
+      const payMonth = line.month || line.payPeriod || month;
+      const base = Number(line.baseSalary || line.basicSalary || line.salary || 0);
+      const bonus = Number(line.bonuses || line.totalAdditions || line.overtime || 0);
+      const ded = Number(line.deductions || line.totalDeductions || line.penalty || 0);
+      const net = Number(line.netPay || line.netSalary || line.total || (base + bonus - ded));
+
+      setEmployeeName(name);
+      setEmployeeRole(role);
+      setMonth(payMonth);
+      setBaseSalary(String(base));
+      setBonuses(String(bonus));
+      setDeductions(String(ded));
+      setTitle(`Payslip - ${name}`);
+      setSubtitle(`Payroll statement for ${payMonth} (Net EGP ${net.toLocaleString()})`);
+      toast.success(`Loaded Payroll System entry for ${name}!`);
+      return;
+    }
+
+    // Fallback check in employee user profiles
     const emp = existingEmployees.find(e => e.id === id);
     if (emp) {
       triggerHapticFeedback(10);
-      setEmployeeName(emp.displayName || emp.name || emp.email || "Employee");
+      const name = emp.displayName || emp.name || emp.email || "Employee";
+      setEmployeeName(name);
       setEmployeeRole(emp.role || "Store Staff");
       setBaseSalary(String(emp.baseSalary || emp.salary || 10000));
       setBonuses(String(emp.bonuses || 0));
       setDeductions(String(emp.deductions || 0));
-      setTitle(`Payslip - ${emp.displayName || emp.name || "Employee"}`);
+      setTitle(`Payslip - ${name}`);
       setSubtitle(`Salary statement for ${month}`);
-      toast.success(`Populated details for ${emp.displayName || emp.name}`);
+      toast.success(`Populated details for ${name}`);
     }
   };
 
@@ -334,7 +384,7 @@ export default function AdminSendDocumentPage() {
             <DollarSign className="w-5 h-5" />
             <div>
               <p className="text-xs font-black">Payroll Payslip</p>
-              <p className="text-[10px] opacity-75">Pick from Employees</p>
+              <p className="text-[10px] opacity-75">Pick from Payroll System</p>
             </div>
           </button>
 
@@ -393,14 +443,25 @@ export default function AdminSendDocumentPage() {
           {docType === "payslip" && (
             <div>
               <label className="text-xs font-black text-emerald-600 dark:text-emerald-400 block mb-1.5 flex items-center gap-1.5">
-                <ListFilter className="w-4 h-4" /> Pick Existing Staff / Employee from App Database
+                <ListFilter className="w-4 h-4" /> Pick Existing Payroll Entry from Payroll System (`/admin/payroll`)
               </label>
               <select
                 value={selectedRecordId}
-                onChange={(e) => handleSelectEmployee(e.target.value)}
+                onChange={(e) => handleSelectPayrollLine(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-[#0F172A] border border-emerald-500/30 text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-emerald-400 cursor-pointer"
               >
-                <option value="">-- Choose Existing Employee --</option>
+                <option value="">-- Choose Existing Entry from Payroll System --</option>
+                {existingPayrollLines.map((p) => {
+                  const name = p.employeeName || p.name || p.displayName || p.staffName || "Employee";
+                  const net = p.netPay || p.netSalary || p.total || 0;
+                  const period = p.month || p.payPeriod || "Payroll";
+                  return (
+                    <option key={p.id} value={p.id}>
+                      💼 {name} - Net EGP {Number(net).toLocaleString()} ({period} / {p.source === "paid" ? "Paid" : "Draft"})
+                    </option>
+                  );
+                })}
+                {existingEmployees.length > 0 && <option disabled>── Fallback Employee Profiles ──</option>}
                 {existingEmployees.map((emp) => (
                   <option key={emp.id} value={emp.id}>
                     👤 {emp.displayName || emp.name || emp.email} ({emp.role || "Staff"}) - Base EGP {emp.baseSalary || emp.salary || 10000}
