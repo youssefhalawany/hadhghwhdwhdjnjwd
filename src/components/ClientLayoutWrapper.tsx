@@ -21,7 +21,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import { ManagerBottomNav } from "./MobileUX/ManagerBottomNav";
 import { MobileHeader } from "./MobileUX/MobileHeader";
-import { updateAppBadge } from "@/lib/pwaBadges";
+import { updateAppBadge, sendManagerInteractiveNotification, triggerHapticFeedback } from "@/lib/pwaBadges";
+import { playPopSound } from "@/lib/sounds";
 
 export default function ClientLayoutWrapper({ children }: { children: React.ReactNode }) {
   const { currentBranch, setBranch, availableBranches, setAvailableBranches } = useBranch();
@@ -130,9 +131,13 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
       setAuthLoading(false);
 
-      if (currentUser && typeof window !== "undefined" && "Notification" in window) {
+      // Register FCM Push Token for Manager & Device Sessions
+      if (typeof window !== "undefined" && "Notification" in window) {
         try {
-          const permission = await Notification.requestPermission();
+          const permission = Notification.permission === "granted"
+            ? "granted"
+            : await Notification.requestPermission();
+
           if (permission === "granted" && messaging) {
             const messagingInstance = await messaging;
             if (messagingInstance) {
@@ -140,21 +145,35 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                 vapidKey: process.env.NEXT_PUBLIC_VAPID_KEY || "BHiDvLTbQ2DTED8p7X1BQ8Vu811fuu3dmpVfclmA5P7n-DuRltU7kkai9E2_2VkbLpS7Ns5ekNQClP5CsTeWf7M"
               });
               if (token) {
-                console.log("FCM Token:", token);
-                await dbService.setDoc("user_tokens", currentUser.uid, {
+                console.log("FCM Push Token active:", token);
+                const role = localStorage.getItem("circlek_role") || "manager";
+                const userEmail = currentUser?.email || "youssefhalawanyy@gmail.com";
+
+                // Save to master_youssef token doc for Master Alert APIs
+                await dbService.setDoc("user_tokens", "master_youssef", {
                   fcmToken: token,
-                  email: currentUser.email,
+                  email: userEmail,
+                  role: role,
                   updatedAt: new Date().toISOString()
                 });
+
+                if (currentUser?.uid) {
+                  await dbService.setDoc("user_tokens", currentUser.uid, {
+                    fcmToken: token,
+                    email: userEmail,
+                    role: role,
+                    updatedAt: new Date().toISOString()
+                  });
+                }
               }
             }
           }
         } catch (err) {
-          console.error("FCM Token generation failed:", err);
+          console.error("FCM Token generation error:", err);
         }
       }
 
-      // Show welcome toast if just logged in (using sessionStorage to prevent repeats on refresh)
+      // Show welcome toast if just logged in
       if (currentUser && typeof window !== "undefined") {
         const hasSeenWelcome = sessionStorage.getItem("circlek_welcomed");
         if (!hasSeenWelcome) {
@@ -162,6 +181,40 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
           sessionStorage.setItem("circlek_welcomed", "true");
         }
       }
+    });
+
+    // Real-Time Live Notification Listener for Mobile Manager
+    let isFirstLoad = true;
+    const notifQuery = query(collection(db, "notifications"), orderBy("createdAt", "desc"), limit(5));
+    const unsubNotifs = onSnapshot(notifQuery, (snapshot) => {
+      if (isFirstLoad) {
+        isFirstLoad = false;
+        return;
+      }
+
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === "added") {
+          const data = change.doc.data();
+          const notifTitle = data.title || "ANH Portal Alert";
+          const notifBody = data.body || "New activity logged in store.";
+          const notifUrl = data.url || "/shift-reports/manager";
+
+          // Play Sound & Haptics
+          playPopSound();
+          triggerHapticFeedback([100, 50, 100]);
+
+          // Native Web Push Notification
+          sendManagerInteractiveNotification(notifTitle, notifBody, notifUrl);
+
+          // Toast Alert
+          toast.success(`${notifTitle}: ${notifBody}`, { duration: 5000 });
+
+          // Update PWA App Badge
+          updateAppBadge(1);
+        }
+      });
+    }, (err) => {
+      console.debug("Firestore notification listener error:", err);
     });
 
     // Global Sound Effects

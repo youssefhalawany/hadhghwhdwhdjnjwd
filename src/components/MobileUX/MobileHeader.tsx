@@ -4,8 +4,9 @@ import React, { useState, useEffect } from "react";
 import { useBranch, BranchId } from "@/context/BranchContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { triggerHapticFeedback } from "@/lib/pwaBadges";
-import { Store, Languages, Clock } from "lucide-react";
+import { Store, Languages, Clock, Bell } from "lucide-react";
 import { playPopSound } from "@/lib/sounds";
+import { toast } from "sonner";
 
 export function MobileHeader() {
   const { currentBranch, setBranch } = useBranch();
@@ -62,6 +63,27 @@ export function MobileHeader() {
     setLanguage(language === "en" ? "ar" : "en");
   };
 
+  const handleNotificationToggle = async () => {
+    triggerHapticFeedback(12);
+    playPopSound();
+
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      toast.error(isAr ? "الإشعارات غير مدعومة على هذا المتصفح" : "Notifications not supported on this browser");
+      return;
+    }
+
+    if (Notification.permission === "granted") {
+      toast.success(isAr ? "الإشعارات الفورية مفعّلة بنجاح 🔔" : "Push Notifications Active 🔔");
+    } else {
+      const permission = await Notification.requestPermission();
+      if (permission === "granted") {
+        toast.success(isAr ? "تم تفعيل الإشعارات الفورية للموبايل! 🔔" : "Push Notifications Enabled! 🔔");
+      } else {
+        toast.error(isAr ? "تم رفض الإشعارات. يرجى تفعيلها من إعدادات المتصفح" : "Notification permission denied in browser settings.");
+      }
+    }
+  };
+
   return (
     <header
       className="sticky top-0 z-40 w-full bg-[#0B1121] border-b border-[#1E293B] px-3 py-2 md:hidden no-print"
@@ -99,6 +121,15 @@ export function MobileHeader() {
               {isOnline ? (isAr ? "مباشر" : "Online") : (isAr ? "محلي" : "Offline")}
             </span>
           </div>
+
+          {/* 1-Tap Notification Permission Pill */}
+          <button
+            onClick={handleNotificationToggle}
+            className="flex items-center gap-1 p-1.5 rounded-full bg-[#0F172A] hover:bg-[#1E293B] text-amber-400 border border-[#1E293B] transition-all active:scale-95"
+            title="Enable Push Notifications"
+          >
+            <Bell className="w-3.5 h-3.5 text-amber-400 fill-amber-400/20" />
+          </button>
 
           {/* 1-Tap Language Switcher Pill */}
           <button
