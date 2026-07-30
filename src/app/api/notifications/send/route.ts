@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getMessaging } from 'firebase-admin/messaging';
+import { getFirestore } from 'firebase-admin/firestore';
 
 export async function POST(request: Request) {
   try {
@@ -27,16 +28,41 @@ export async function POST(request: Request) {
       }
     }
 
-    const { tokens, title, body } = await request.json();
+    const { tokens: inputTokens, title, body, url = "/financials/inputs" } = await request.json();
 
-    if (!tokens || !Array.isArray(tokens) || tokens.length === 0 || !title || !body) {
+    if (!title || !body) {
       return NextResponse.json(
-        { error: 'Missing tokens array, title, or body' },
+        { error: 'Missing title or body' },
         { status: 400 }
       );
     }
 
-    // Send a message to the devices corresponding to the provided tokens.
+    let targetTokens: string[] = Array.isArray(inputTokens) && inputTokens.length > 0 ? inputTokens : [];
+
+    // If no tokens were explicitly provided, query all registered FCM tokens from user_tokens collection
+    if (targetTokens.length === 0) {
+      try {
+        const adminDb = getFirestore();
+        const tokensSnap = await adminDb.collection('user_tokens').get();
+        tokensSnap.forEach((doc) => {
+          const data = doc.data();
+          if (data.fcmToken && typeof data.fcmToken === 'string') {
+            targetTokens.push(data.fcmToken);
+          }
+        });
+      } catch (err) {
+        console.error("Error fetching user_tokens from Firestore:", err);
+      }
+    }
+
+    // De-duplicate tokens
+    targetTokens = Array.from(new Set(targetTokens));
+
+    if (targetTokens.length === 0) {
+      return NextResponse.json({ success: true, message: 'No device tokens available for broadcast', successCount: 0 });
+    }
+
+    // Send a message to the devices corresponding to targetTokens.
     const message = {
       notification: {
         title: title,
@@ -44,18 +70,20 @@ export async function POST(request: Request) {
       },
       webpush: {
         notification: {
-          icon: '/icon.png', // Assuming we have an icon here or standard red branding
-          badge: '/icon.png',
+          title: title,
+          body: body,
+          icon: '/apple-icon.png',
+          badge: '/apple-icon.png',
           requireInteraction: true,
           data: {
-            url: "https://hadhghwhdwhdjnjwd.vercel.app/cashier"
+            url: url
           }
         },
         fcmOptions: {
-          link: "https://hadhghwhdwhdjnjwd.vercel.app/cashier"
+          link: url
         }
       },
-      tokens: tokens, // Note: tokens array for multicast
+      tokens: targetTokens,
     };
 
     const response = await getMessaging().sendEachForMulticast(message);

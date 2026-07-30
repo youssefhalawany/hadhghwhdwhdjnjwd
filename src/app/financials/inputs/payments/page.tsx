@@ -726,6 +726,37 @@ export default function PaymentsRedesignPage() {
 
       const docRef = await addDoc(collection(db, "cash_payments"), newPayment);
 
+      // Dispatch Manager Push Notification & Firestore Event
+      const notifTitle = "New Payment Recorded 💵";
+      const notifBody = `Payment of EGP ${Number(total).toLocaleString()} logged for ${companyName} (${method?.replace('_', ' ') || 'cash'}).`;
+
+      addDoc(collection(db, "notifications"), {
+        title: notifTitle,
+        body: notifBody,
+        createdAt: new Date().toISOString(),
+        url: "/financials/inputs/payments",
+        type: "payment_created"
+      }).catch(err => console.debug("Notification doc add error:", err));
+
+      fetch("/api/notifications/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: notifTitle,
+          body: notifBody,
+          url: "/financials/inputs/payments"
+        })
+      }).catch(err => console.debug("Push send error:", err));
+
+      fetch("/api/notifications/notify-master", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: notifTitle,
+          body: notifBody
+        })
+      }).catch(err => console.debug("Master notify error:", err));
+
       const role = typeof window !== "undefined" ? (localStorage.getItem("circlek_role") || "manager") : "manager";
       dbService.logAction(
         auth.currentUser?.email || "Unknown User",
@@ -741,7 +772,7 @@ export default function PaymentsRedesignPage() {
         syncProductsToMaster(poItems, date, companyName);
       }
 
-      toast.success("Payment saved!");
+      toast.success("Payment saved & notification sent!");
       handleCloseModal();
       fetchData();
       const savedPayment = { id: docRef.id, ...newPayment, createdAt: Timestamp.now() };

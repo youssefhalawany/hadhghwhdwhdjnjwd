@@ -136,7 +136,38 @@ export default function DepositsPage() {
 
       const docRef = await addDoc(collection(db, "deposits"), depositData);
 
-      toast.success("Deposit added successfully!");
+      // Dispatch Manager Push Notification & Firestore Event
+      const notifTitle = "Safe Deposit Logged 🏦";
+      const notifBody = `Deposit of EGP ${Number(newDeposit.amount).toLocaleString()} transferred from ${newDeposit.from} to ${newDeposit.to}.`;
+
+      addDoc(collection(db, "notifications"), {
+        title: notifTitle,
+        body: notifBody,
+        createdAt: new Date().toISOString(),
+        url: "/financials/inputs/deposits",
+        type: "deposit_created"
+      }).catch(err => console.debug("Notification doc add error:", err));
+
+      fetch("/api/notifications/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: notifTitle,
+          body: notifBody,
+          url: "/financials/inputs/deposits"
+        })
+      }).catch(err => console.debug("Push send error:", err));
+
+      fetch("/api/notifications/notify-master", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: notifTitle,
+          body: notifBody
+        })
+      }).catch(err => console.debug("Master notify error:", err));
+
+      toast.success("Deposit added & notification sent!");
       setShowAddModal(false);
       
       const savedDeposit = { id: docRef.id, ...depositData, createdAt: new Date() };

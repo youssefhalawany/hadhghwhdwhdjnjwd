@@ -534,6 +534,37 @@ export default function CreditsPage() {
 
       const docRef = await addDoc(collection(db, "credits"), newCredit);
 
+      // Dispatch Manager Push Notification & Firestore Event
+      const notifTitle = "New Credit Logged 💳";
+      const notifBody = `Credit statement of EGP ${Number(amountDue).toLocaleString()} logged for ${companyName}.`;
+
+      addDoc(collection(db, "notifications"), {
+        title: notifTitle,
+        body: notifBody,
+        createdAt: new Date().toISOString(),
+        url: "/financials/inputs/credits",
+        type: "credit_created"
+      }).catch(err => console.debug("Notification doc add error:", err));
+
+      fetch("/api/notifications/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: notifTitle,
+          body: notifBody,
+          url: "/financials/inputs/credits"
+        })
+      }).catch(err => console.debug("Push send error:", err));
+
+      fetch("/api/notifications/notify-master", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: notifTitle,
+          body: notifBody
+        })
+      }).catch(err => console.debug("Master notify error:", err));
+
       const role = typeof window !== "undefined" ? (localStorage.getItem("circlek_role") || "manager") : "manager";
       dbService.logAction(
         auth.currentUser?.email || "Unknown User",
@@ -551,7 +582,7 @@ export default function CreditsPage() {
         localStorage.setItem('cached_detailed_credits', JSON.stringify(updatedCredits.slice(0, 50)));
       }
 
-      toast.success("Credit added successfully!");
+      toast.success("Credit added & notification sent!");
       setShowAddModal(false);
 
       // Reset form

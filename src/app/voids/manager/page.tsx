@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Search, Printer, Shield, ShieldAlert, Image as ImageIcon, ArrowLeftRight, Calendar, CheckCircle, ArrowLeft, TrendingUp, X, Clock } from "lucide-react";
 import Barcode from "react-barcode";
@@ -414,9 +414,42 @@ export default function ManagerVoidsPage() {
                 <button
                   onClick={async () => {
                     try {
+                      const newStatus = selectedVoid.status === "closed_on_system" ? "pending" : "closed_on_system";
                       await updateDoc(doc(db, "void_requests", selectedVoid.id), {
-                        status: selectedVoid.status === "closed_on_system" ? "pending" : "closed_on_system"
+                        status: newStatus
                       });
+
+                      // Dispatch Manager Push Notification & Firestore Event
+                      const notifTitle = newStatus === "closed_on_system" ? "Void Return Approved 🚫" : "Void Status Updated 🚫";
+                      const notifBody = `Void Inv #${selectedVoid.invoiceNumber || selectedVoid.id.substring(0,6)} for EGP ${Number(selectedVoid.amount || 0).toLocaleString()} status changed to ${newStatus.replace(/_/g, ' ')}.`;
+
+                      await addDoc(collection(db, "notifications"), {
+                        title: notifTitle,
+                        body: notifBody,
+                        createdAt: new Date().toISOString(),
+                        url: "/voids/manager",
+                        type: "void_updated"
+                      });
+
+                      fetch("/api/notifications/send", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          title: notifTitle,
+                          body: notifBody,
+                          url: "/voids/manager"
+                        })
+                      }).catch(err => console.debug("Push send error:", err));
+
+                      fetch("/api/notifications/notify-master", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          title: notifTitle,
+                          body: notifBody
+                        })
+                      }).catch(err => console.debug("Master notification error:", err));
+
                     } catch (e) {
                       console.error("Failed to update status", e);
                       alert("Failed to update status. Check permissions.");
