@@ -445,6 +445,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     {
       name: t("nav.hr"), icon: Users, children: [
         { name: t("nav.employees"), href: "/hr/employees", icon: Users },
+        { name: language === "ar" ? "المستندات والإيصالات الرسمية" : "Official Documents", href: "/manager/documents", icon: FileText },
         { name: t("nav.cashier_accounts"), href: "/settings/cashiers", icon: Users },
         { name: t("nav.payroll_system"), href: "/admin/payroll", icon: DollarSign },
         { name: t("nav.adjustments_loans"), href: "/admin/adjustments", icon: FileText },
@@ -453,6 +454,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     },
     {
       name: t("nav.admin"), icon: Shield, children: [
+        { name: language === "ar" ? "إرسال مستند رسمي للمدير" : "Dispatch Document to Manager", href: "/admin/send-document", icon: FileText },
         { name: t("nav.user_management"), href: "/admin/users", icon: Shield },
         { name: t("nav.inventory_predict"), href: "/admin/inventory-predict", icon: Database },
         { name: t("nav.send_notifications"), href: "/settings/notifications", icon: Bell },
