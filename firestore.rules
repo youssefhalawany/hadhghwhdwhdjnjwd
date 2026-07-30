@@ -373,6 +373,11 @@ service cloud.firestore {
       allow create, read, update, delete: if true;
     }
     
+    // ---------- Admin Dispatches & Official Documents ----------
+    match /admin_dispatches/{doc} {
+      allow create, read, update, delete: if true;
+    }
+
     // ---------- System Notifications (NEW) ----------
     match /notifications/{doc} {
       allow create, read, update, delete: if true;
