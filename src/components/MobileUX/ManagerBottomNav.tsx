@@ -21,7 +21,14 @@ import {
   ChevronUp,
   AlertTriangle,
   Users,
-  Store
+  Store,
+  Banknote,
+  Vault,
+  ClipboardCheck,
+  Boxes,
+  PieChart,
+  RotateCcw,
+  FileText
 } from "lucide-react";
 import { triggerHapticFeedback } from "@/lib/pwaBadges";
 import { useLanguage } from "@/context/LanguageContext";
@@ -97,8 +104,18 @@ export function ManagerBottomNav({
     if (fabOpen) setFabOpen(false);
   };
 
-  // 8 Tools inside the Quick Action Drawer
+  // Complete List of All 15 Available Manager Tools & Pages
   const QUICK_ACTIONS = [
+    {
+      id: "sales",
+      titleEn: "Sales Input",
+      titleAr: "إدخال المبيعات",
+      subtitleEn: "Daily Cash & Visa sales",
+      subtitleAr: "تسجيل مبيعات الكاش والفيزا",
+      icon: Banknote,
+      color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+      path: "/financials/inputs/sales",
+    },
     {
       id: "payments",
       titleEn: "Payments",
@@ -106,18 +123,28 @@ export function ManagerBottomNav({
       subtitleEn: "Log vendor payment",
       subtitleAr: "تسجيل مدفوعات الموردين",
       icon: Wallet,
-      color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+      color: "bg-teal-500/15 text-teal-400 border-teal-500/30",
       path: "/financials/inputs/payments",
     },
     {
-      id: "expiries",
-      titleEn: "Expiries Log",
-      titleAr: "سجل الصلاحيات",
-      subtitleEn: "Log near-expiry shelf items",
-      subtitleAr: "تسجيل المنتجات قريبة الانتهاء",
-      icon: Clock,
-      color: "bg-amber-500/15 text-amber-400 border-amber-500/30",
-      path: "/expiries",
+      id: "credits",
+      titleEn: "Credits Input",
+      titleAr: "تسجيل الذمم",
+      subtitleEn: "Record vendor credit notes",
+      subtitleAr: "إدخال كشوفات الآجل والموردين",
+      icon: CreditCard,
+      color: "bg-purple-500/15 text-purple-400 border-purple-500/30",
+      path: "/financials/inputs/credits",
+    },
+    {
+      id: "deposits",
+      titleEn: "Deposits Log",
+      titleAr: "إيداعات الخزينة والبنك",
+      subtitleEn: "Safe & bank deposit vouchers",
+      subtitleAr: "سجل التحويلات والإيداعات البنكية",
+      icon: Vault,
+      color: "bg-[#22d3ee]/15 text-cyan-400 border-[#22d3ee]/30",
+      path: "/financials/inputs/deposits",
     },
     {
       id: "shift-audit",
@@ -140,14 +167,64 @@ export function ManagerBottomNav({
       path: "/voids/manager",
     },
     {
-      id: "credits",
-      titleEn: "Credits Input",
-      titleAr: "تسجيل الذمم",
-      subtitleEn: "Record vendor credit notes",
-      subtitleAr: "إدخال كشوفات الآجل والموردين",
-      icon: CreditCard,
-      color: "bg-purple-500/15 text-purple-400 border-purple-500/30",
-      path: "/financials/inputs/credits",
+      id: "checklists",
+      titleEn: "Checklists Audit",
+      titleAr: "قوائم التفتيش المكتملة",
+      subtitleEn: "Review store audit checklists",
+      subtitleAr: "مراجعة قوائم التفتيش والنظافة",
+      icon: ClipboardCheck,
+      color: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+      path: "/checklists/manager",
+    },
+    {
+      id: "inventory-audit",
+      titleEn: "Inventory Audit",
+      titleAr: "جرد المخزون",
+      subtitleEn: "Manager stock audit",
+      subtitleAr: "جرد وجدول كميات المخزون",
+      icon: Boxes,
+      color: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+      path: "/inventory-audit/manager",
+    },
+    {
+      id: "expiries",
+      titleEn: "Expiries Log",
+      titleAr: "سجل الصلاحيات",
+      subtitleEn: "Log near-expiry shelf items",
+      subtitleAr: "تسجيل المنتجات قريبة الانتهاء",
+      icon: Clock,
+      color: "bg-orange-500/15 text-orange-400 border-orange-500/30",
+      path: "/expiries",
+    },
+    {
+      id: "reports",
+      titleEn: "Financial Reports",
+      titleAr: "التقارير المالية والربحية",
+      subtitleEn: "P&L & sales breakdowns",
+      subtitleAr: "تقارير الأرباح والخسائر والتحليلات",
+      icon: PieChart,
+      color: "bg-indigo-500/15 text-indigo-400 border-indigo-500/30",
+      path: "/financial-reports",
+    },
+    {
+      id: "rtv",
+      titleEn: "Supplier Returns (RTV)",
+      titleAr: "إيصال مرتجع موردين",
+      subtitleEn: "Generate RTV voucher",
+      subtitleAr: "إنشاء إيصالات ارتجاع الموردين",
+      icon: RotateCcw,
+      color: "bg-rose-600/15 text-rose-300 border-rose-600/30",
+      path: "/dashboard/supplier-returns",
+    },
+    {
+      id: "overview",
+      titleEn: "Inputs Overview",
+      titleAr: "نظرة عامة على المدخلات",
+      subtitleEn: "Dashboard & live activity feed",
+      subtitleAr: "لوحة تحكم النشاط المالي المباشر",
+      icon: LayoutDashboard,
+      color: "bg-sky-500/15 text-sky-400 border-sky-500/30",
+      path: "/financials/inputs",
     },
     {
       id: "lookup",
@@ -156,7 +233,7 @@ export function ManagerBottomNav({
       subtitleEn: "Rapid price & SKU check",
       subtitleAr: "استعلام الأسعار والباركود",
       icon: Search,
-      color: "bg-indigo-500/15 text-indigo-400 border-indigo-500/30",
+      color: "bg-violet-500/15 text-violet-400 border-violet-500/30",
       path: "/cashier/lookup",
     },
     {
@@ -176,7 +253,7 @@ export function ManagerBottomNav({
       subtitleEn: "Ask floor AI assistant",
       subtitleAr: "استفسار المساعد الذكي",
       icon: Mic,
-      color: "bg-teal-500/15 text-teal-400 border-teal-500/30",
+      color: "bg-emerald-400/15 text-emerald-300 border-emerald-400/30",
       path: "/ai-assistant",
     },
   ];
@@ -335,15 +412,15 @@ export function ManagerBottomNav({
       >
         <div className="relative mx-3 flex items-center justify-between px-3 py-2.5 rounded-3xl bg-[#0B1121]/90 border border-[rgba(34,211,238,0.25)] shadow-[0_10px_35px_rgba(0,0,0,0.85)] backdrop-blur-2xl text-slate-400">
           
-          {/* Top Swipe-Up Drawer Trigger Handle Pill */}
+          {/* Top Swipe-Up Drawer Trigger Handle Pill (Cleanly floating above bottom bar with zero overlap) */}
           <button
             onClick={toggleStatusSheet}
-            className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-3.5 py-1 rounded-full bg-[#0F172A] border border-[rgba(34,211,238,0.35)] text-[10px] font-extrabold text-cyan-400 flex items-center gap-1.5 shadow-lg shadow-cyan-950/60 z-20 cursor-pointer hover:border-cyan-400 transition-all active:scale-95"
+            className="absolute -top-5.5 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full bg-[#050B14] border border-[rgba(34,211,238,0.4)] text-[10px] font-black text-cyan-400 flex items-center gap-1.5 shadow-[0_6px_20px_rgba(0,0,0,0.9)] z-40 cursor-pointer hover:border-cyan-300 transition-all active:scale-95 tracking-wide"
           >
-            <ChevronUp className={`w-3.5 h-3.5 text-cyan-400 transition-transform ${statusSheetOpen ? "rotate-180" : ""}`} />
+            <ChevronUp className={`w-3.5 h-3.5 text-cyan-400 transition-transform duration-300 ${statusSheetOpen ? "rotate-180" : ""}`} />
             <span className="leading-none">{isAr ? "حالة الفرع المباشرة" : "Live Pulse"}</span>
             {isOnline ? (
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)]" />
             ) : (
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
             )}

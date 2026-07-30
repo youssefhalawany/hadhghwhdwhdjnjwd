@@ -79,7 +79,7 @@ export function MobileHeader() {
           </div>
           <div>
             <h1 className="text-xs font-black tracking-tight text-white flex items-center gap-1">
-              ANH Reports <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-red-500/20 text-red-400 font-bold border border-red-500/30">PRO</span>
+              ANH Portal <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-red-500/20 text-red-400 font-bold border border-red-500/30"></span>
             </h1>
             <p className="text-[10px] text-slate-400 flex items-center gap-1">
               <Clock className="w-2.5 h-2.5 text-slate-400" />
@@ -92,9 +92,8 @@ export function MobileHeader() {
           {/* Online/Offline Status Pill */}
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#0F172A] border border-[rgba(34,211,238,0.2)] text-[10px] font-bold">
             <span
-              className={`w-1.5 h-1.5 rounded-full ${
-                isOnline ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" : "bg-amber-500 animate-pulse"
-              }`}
+              className={`w-1.5 h-1.5 rounded-full ${isOnline ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" : "bg-amber-500 animate-pulse"
+                }`}
             />
             <span className={isOnline ? "text-emerald-400" : "text-amber-400"}>
               {isOnline ? (isAr ? "مباشر" : "Online") : (isAr ? "محلي" : "Offline")}
@@ -121,11 +120,10 @@ export function MobileHeader() {
             <button
               key={b.id}
               onClick={() => handleBranchSelect(b.id)}
-              className={`px-3 py-1 rounded-full text-[11px] font-extrabold whitespace-nowrap transition-all active:scale-95 shrink-0 ${
-                isActive
-                  ? "bg-red-600 text-white shadow-md shadow-red-600/30 border border-red-500"
-                  : "bg-[#0F172A] text-slate-300 hover:text-white border border-[rgba(34,211,238,0.15)]"
-              }`}
+              className={`px-3 py-1 rounded-full text-[11px] font-extrabold whitespace-nowrap transition-all active:scale-95 shrink-0 ${isActive
+                ? "bg-red-600 text-white shadow-md shadow-red-600/30 border border-red-500"
+                : "bg-[#0F172A] text-slate-300 hover:text-white border border-[rgba(34,211,238,0.15)]"
+                }`}
             >
               {isAr ? b.labelAr : b.labelEn}
             </button>
