@@ -697,7 +697,65 @@ export default function ManagerAuditPage() {
     <PageTransition>
       <div className="max-w-6xl mx-auto space-y-6">
 
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end border-b border-border pb-4 mb-8 gap-4">
+        {/* Mobile-Only Glassmorphic Header & Navigation Bar (Strictly md:hidden) */}
+        <div className="md:hidden space-y-3 bg-[#0B1121] border border-[rgba(34,211,238,0.2)] p-4 rounded-3xl shadow-xl">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
+                Shift Audit Portal
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 font-extrabold border border-cyan-500/30">
+                  Manager
+                </span>
+              </h1>
+              <p className="text-xs text-slate-400 font-medium">Reconcile cash & approve shift drops</p>
+            </div>
+            <button
+              onClick={() => setEarlyDayModalOpen(true)}
+              className="p-2.5 bg-indigo-600/90 active:scale-95 text-white rounded-2xl text-xs font-black shadow-lg shadow-indigo-900/50 flex items-center gap-1.5"
+            >
+              <Clock className="h-4 w-4" /> Request Early
+            </button>
+          </div>
+
+          {/* Mobile Tabs Switcher */}
+          <div className="flex bg-[#0F172A] p-1 rounded-2xl border border-[rgba(34,211,238,0.15)] text-xs font-black">
+            <button
+              onClick={() => { setActiveTab("pending"); setSelectedReport(null); }}
+              className={`flex-1 py-2 rounded-xl flex items-center justify-center gap-1.5 transition-all ${
+                activeTab === "pending"
+                  ? "bg-cyan-500 text-slate-950 font-black shadow-md shadow-cyan-500/30"
+                  : "text-slate-400 hover:text-white"
+              } ${hasAgedShifts ? 'animate-pulse' : ''}`}
+            >
+              <Clock className="w-3.5 h-3.5" />
+              Pending ({pendingReports.length})
+            </button>
+            <button
+              onClick={() => { setActiveTab("history"); setSelectedReport(null); }}
+              className={`flex-1 py-2 rounded-xl flex items-center justify-center gap-1.5 transition-all ${
+                activeTab === "history"
+                  ? "bg-cyan-500 text-slate-950 font-black shadow-md shadow-cyan-500/30"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <Archive className="w-3.5 h-3.5" />
+              History ({historyReports.length})
+            </button>
+            <button
+              onClick={() => { setActiveTab("performance"); setSelectedReport(null); }}
+              className={`flex-1 py-2 rounded-xl flex items-center justify-center gap-1.5 transition-all ${
+                activeTab === "performance"
+                  ? "bg-cyan-500 text-slate-950 font-black shadow-md shadow-cyan-500/30"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              Leaderboard
+            </button>
+          </div>
+        </div>
+
+        {/* Desktop-Only Header (Strictly hidden md:flex) */}
+        <div className="hidden md:flex flex-col sm:flex-row sm:justify-between sm:items-end border-b border-border pb-4 mb-8 gap-4">
           <div>
             <h1 className="text-3xl font-black text-foreground tracking-tight">Manager Audit Portal</h1>
             <p className="text-sm text-muted-foreground mt-1">Review, approve, and print end-of-shift reports</p>

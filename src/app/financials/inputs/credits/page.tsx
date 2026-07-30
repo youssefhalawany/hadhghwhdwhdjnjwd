@@ -1518,8 +1518,103 @@ export default function CreditsPage() {
           </div>
         )}
 
+        {/* Mobile Summary Cards & Status Filters (Strictly md:hidden) */}
+        <div className="md:hidden space-y-3">
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="p-3 rounded-2xl bg-[#0B1121] border border-orange-500/30">
+              <p className="text-[10px] font-extrabold text-slate-400 uppercase">Outstanding</p>
+              <p className="text-sm font-black font-mono text-orange-400 mt-0.5">
+                EGP {stats.outstanding.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </p>
+            </div>
+            <div className="p-3 rounded-2xl bg-[#0B1121] border border-amber-500/30">
+              <p className="text-[10px] font-extrabold text-slate-400 uppercase">Partial</p>
+              <p className="text-sm font-black font-mono text-amber-400 mt-0.5">
+                EGP {stats.partial.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </p>
+            </div>
+            <div className="p-3 rounded-2xl bg-[#0B1121] border border-rose-500/30">
+              <p className="text-[10px] font-extrabold text-slate-400 uppercase">Overdue</p>
+              <p className="text-sm font-black font-mono text-rose-400 mt-0.5">
+                EGP {stats.overdue.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile Cards Container (Strictly md:hidden) */}
+        <div className="md:hidden space-y-3">
+          {filteredCredits.length === 0 ? (
+            <div className="p-8 text-center text-slate-400 text-xs rounded-2xl bg-[#0B1121] border border-[rgba(34,211,238,0.15)]">
+              No credit records found.
+            </div>
+          ) : (
+            filteredCredits.map((credit) => {
+              const totalDue = credit.amountDue + credit.tax;
+              const remaining = totalDue - credit.paidAmount;
+              const isPaid = remaining <= 0;
+
+              return (
+                <div
+                  key={credit.id}
+                  className="p-4 rounded-2xl bg-[#0B1121] border border-[rgba(34,211,238,0.15)] shadow-xl space-y-3 relative"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-extrabold text-sm text-white tracking-tight capitalize">
+                        {credit.companyName}
+                      </h3>
+                      <p className="text-[10px] font-mono text-slate-400 mt-0.5">
+                        Date: {credit.date} {credit.invoiceNumber ? `• Inv: ${credit.invoiceNumber}` : ""}
+                      </p>
+                    </div>
+                    <span className={`text-xs font-black px-2.5 py-1 rounded-full border ${
+                      isPaid
+                        ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                        : remaining < totalDue
+                        ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                        : "bg-rose-500/20 text-rose-400 border-rose-500/30"
+                    }`}>
+                      {isPaid ? "Paid" : remaining < totalDue ? "Partial" : "Open"}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 bg-[#0F172A] p-2.5 rounded-xl border border-[#1E293B]">
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">Total Invoice</p>
+                      <p className="text-sm font-black font-mono text-slate-200">
+                        EGP {totalDue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">Remaining Debt</p>
+                      <p className={`text-sm font-black font-mono ${remaining > 0 ? 'text-orange-400' : 'text-emerald-400'}`}>
+                        EGP {remaining.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-[#1E293B]">
+                    <span className="text-[10px] text-slate-400">
+                      {(credit as any).dueDate ? `Due: ${(credit as any).dueDate}` : `Date: ${credit.date}`}
+                    </span>
+                    <button
+                      onClick={() => {
+                        setSelectedCreditForView(credit);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 text-xs font-black flex items-center gap-1 active:scale-95 transition-transform"
+                    >
+                      <Eye className="w-3.5 h-3.5" /> Statement
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
         {viewMode === 'list' && (
-          <div className="flex items-center gap-3 px-2 mb-2">
+          <div className="hidden md:flex items-center gap-3 px-2 mb-2">
             <input 
               type="checkbox" 
               className="w-5 h-5 rounded text-blue-600 cursor-pointer"
@@ -1532,10 +1627,12 @@ export default function CreditsPage() {
           </div>
         )}
 
-        {viewMode === 'list' ? (
-          <div className="space-y-4">
-          <AnimatePresence>
-            {filteredCredits.map((credit, idx) => {
+        {/* Desktop Container (Strictly hidden md:block) */}
+        <div className="hidden md:block">
+          {viewMode === 'list' ? (
+            <div className="space-y-4">
+            <AnimatePresence>
+              {filteredCredits.map((credit, idx) => {
               const isExpanded = expandedCredits[credit.id];
               const totalDue = credit.amountDue + credit.tax;
               const remaining = totalDue - credit.paidAmount;
@@ -1829,7 +1926,7 @@ export default function CreditsPage() {
             </DndContext>
           </div>
         )}
-
+        </div>
       </div>
 
       {/* ADD CREDIT MODAL */}

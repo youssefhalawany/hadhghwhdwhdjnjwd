@@ -1239,6 +1239,30 @@ export default function PaymentsRedesignPage() {
           </div>
         )}
 
+        {/* Mobile-Only Summary & Method Filter Pills (Strictly md:hidden) */}
+        <div className="md:hidden space-y-3">
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="p-3 rounded-2xl bg-[#0B1121] border border-emerald-500/30">
+              <p className="text-[10px] font-extrabold text-slate-400 uppercase">Cash Paid</p>
+              <p className="text-sm font-black font-mono text-emerald-400 mt-0.5">
+                EGP {filteredPayments.filter(p => p.method === "cash").reduce((s, p) => s + (Number(p.total) || 0), 0).toLocaleString()}
+              </p>
+            </div>
+            <div className="p-3 rounded-2xl bg-[#0B1121] border border-blue-500/30">
+              <p className="text-[10px] font-extrabold text-slate-400 uppercase">Visa Paid</p>
+              <p className="text-sm font-black font-mono text-blue-400 mt-0.5">
+                EGP {filteredPayments.filter(p => p.method === "visa").reduce((s, p) => s + (Number(p.total) || 0), 0).toLocaleString()}
+              </p>
+            </div>
+            <div className="p-3 rounded-2xl bg-[#0B1121] border border-purple-500/30">
+              <p className="text-[10px] font-extrabold text-slate-400 uppercase">Bank Transfer</p>
+              <p className="text-sm font-black font-mono text-purple-400 mt-0.5">
+                EGP {filteredPayments.filter(p => p.method === "bank_transfer").reduce((s, p) => s + (Number(p.total) || 0), 0).toLocaleString()}
+              </p>
+            </div>
+          </div>
+        </div>
+
         <div className="flex items-center justify-between pt-2 px-2">
           <div className="flex items-center gap-3">
             <input
@@ -1253,7 +1277,79 @@ export default function PaymentsRedesignPage() {
           </div>
         </div>
 
-        <div className="space-y-4">
+        {/* Mobile Cards Container (Strictly md:hidden) */}
+        <div className="md:hidden space-y-3">
+          {filteredPayments.length === 0 ? (
+            <div className="p-8 text-center text-slate-400 text-xs rounded-2xl bg-[#0B1121] border border-[rgba(34,211,238,0.15)]">
+              No payment logs found for this period.
+            </div>
+          ) : (
+            filteredPayments.map((pay) => (
+              <div
+                key={pay.id}
+                className="p-4 rounded-2xl bg-[#0B1121] border border-[rgba(34,211,238,0.15)] shadow-xl space-y-3 relative"
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="font-extrabold text-sm text-white tracking-tight capitalize">
+                      {pay.companyName}
+                    </h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-cyan-400 border border-cyan-500/20">
+                        {CATEGORY_EMOJIS[pay.category]} {pay.category}
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-emerald-400 border border-emerald-500/20 capitalize">
+                        {METHOD_EMOJIS[pay.method] || "💵"} {pay.method?.replace('_', ' ') || 'cash'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-base font-black font-mono text-rose-400">
+                      EGP {Number(pay.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </span>
+                    <p className="text-[10px] font-mono text-slate-400 mt-0.5">{pay.date}</p>
+                  </div>
+                </div>
+
+                {(pay.invoiceNumber || pay.poNumber) && (
+                  <div className="text-xs font-mono text-slate-400 bg-[#0F172A] p-2 rounded-xl border border-[#1E293B] flex items-center justify-between">
+                    {pay.invoiceNumber && <span>Inv: #{pay.invoiceNumber}</span>}
+                    {pay.poNumber && <span>PO: #{pay.poNumber}</span>}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between pt-2 border-t border-[#1E293B]">
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    ID: {pay.id.substring(0, 10)}...
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setSelectedPaymentForView(pay);
+                        playPrinterSound();
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-extrabold flex items-center gap-1 active:scale-95 transition-transform"
+                    >
+                      <Eye className="w-3.5 h-3.5 text-cyan-400" /> View
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedPaymentForPrint(pay);
+                        setTimeout(() => generatePDF(pay), 500);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 text-xs font-black flex items-center gap-1 active:scale-95 transition-transform"
+                    >
+                      <Printer className="w-3.5 h-3.5" /> Voucher
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop Data List (Strictly hidden md:block) */}
+        <div className="hidden md:block space-y-4">
           <AnimatePresence>
             {filteredPayments.map((pay, idx) => {
               const initials = pay.companyName ? pay.companyName.substring(0, 2).toUpperCase() : "NA";
