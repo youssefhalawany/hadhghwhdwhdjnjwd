@@ -42,6 +42,7 @@ export default function AdminSendDocumentPage() {
 
   // Selection dropdown state
   const [selectedRecordId, setSelectedRecordId] = useState("");
+  const [selectedPayrollRecord, setSelectedPayrollRecord] = useState<any | null>(null);
 
   // Common Fields
   const [title, setTitle] = useState("Monthly Employee Payslip");
@@ -72,7 +73,22 @@ export default function AdminSendDocumentPage() {
     async function loadData() {
       setFetchingRecords(true);
       try {
-        // 1. Fetch Payroll System Lines & Drafts
+        // Fetch Employees / Users FIRST so we can resolve names
+        const usersSnap = await getDocs(query(collection(db, "users"), limit(100)));
+        const usersList = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        
+        try {
+          const empSnap = await getDocs(query(collection(db, "employees"), limit(100)));
+          empSnap.docs.forEach(d => {
+            const data = d.data();
+            if (!usersList.some((u: any) => u.name === data.name || u.email === data.email || u.id === d.id)) {
+              usersList.push({ id: d.id, ...data });
+            }
+          });
+        } catch (e) {}
+        setExistingEmployees(usersList);
+
+        // Fetch Payroll System Lines & Drafts
         const payrollList: any[] = [];
         try {
           const linesSnap = await getDocs(query(collection(db, "payroll_lines"), orderBy("createdAt", "desc"), limit(50)));
@@ -90,29 +106,14 @@ export default function AdminSendDocumentPage() {
         }
         setExistingPayrollLines(payrollList);
 
-        // 2. Fetch Cash Payments
+        // Fetch Cash Payments
         const paymentsSnap = await getDocs(query(collection(db, "cash_payments"), orderBy("createdAt", "desc"), limit(50)));
         setExistingPayments(paymentsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
-        // 3. Fetch Credits
+        // Fetch Credits
         const creditsSnap = await getDocs(query(collection(db, "credits"), orderBy("createdAt", "desc"), limit(50)));
         setExistingCredits(creditsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
-        // 4. Fetch Employees / Users
-        const usersSnap = await getDocs(query(collection(db, "users"), limit(50)));
-        const usersList = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        
-        try {
-          const empSnap = await getDocs(query(collection(db, "employees"), limit(50)));
-          empSnap.docs.forEach(d => {
-            const data = d.data();
-            if (!usersList.some((u: any) => u.name === data.name || u.email === data.email)) {
-              usersList.push({ id: d.id, ...data });
-            }
-          });
-        } catch (e) {}
-
-        setExistingEmployees(usersList);
       } catch (err) {
         console.error("Error loading existing records:", err);
       } finally {
@@ -123,11 +124,26 @@ export default function AdminSendDocumentPage() {
     loadData();
   }, []);
 
+  const resolveEmpName = (line: any) => {
+    if (line.employeeName && line.employeeName !== "Employee" && line.employeeName !== "-") return line.employeeName;
+    if (line.staffName && line.staffName !== "Employee" && line.staffName !== "-") return line.staffName;
+    if (line.displayName) return line.displayName;
+    if (line.name && line.name !== "Employee" && line.name !== "-") return line.name;
+
+    const targetId = line.employeeId || line.userId || line.id;
+    if (targetId) {
+      const match = existingEmployees.find(e => e.id === targetId || e.employeeId === targetId || e.uid === targetId);
+      if (match) return match.displayName || match.name || match.email || "Employee";
+    }
+    return line.email || line.userEmail || "Employee";
+  };
+
   const handleDocTypeChange = (type: DocType) => {
     triggerHapticFeedback(8);
     playPopSound();
     setDocType(type);
     setSelectedRecordId("");
+    setSelectedPayrollRecord(null);
 
     if (type === "payslip") {
       setTitle("Monthly Employee Payslip");
@@ -152,12 +168,13 @@ export default function AdminSendDocumentPage() {
     const line = existingPayrollLines.find(p => p.id === id);
     if (line) {
       triggerHapticFeedback(10);
-      const name = line.employeeName || line.name || line.displayName || line.staffName || "Employee";
+      setSelectedPayrollRecord(line);
+      const name = resolveEmpName(line);
       const role = line.role || line.position || "Store Staff";
-      const payMonth = line.month || line.payPeriod || month;
-      const base = Number(line.baseSalary || line.basicSalary || line.salary || 0);
-      const bonus = Number(line.bonuses || line.totalAdditions || line.overtime || 0);
-      const ded = Number(line.deductions || line.totalDeductions || line.penalty || 0);
+      const payMonth = line.month || line.payPeriod || line.period || month;
+      const base = Number(line.baseSalary || line.basicSalary || line.standardPay || line.salary || 0);
+      const bonus = Number(line.bonuses || line.totalAdditions || line.overtime || line.bonus || 0);
+      const ded = Number(line.deductions || line.totalDeductions || line.penalty || line.loan || 0);
       const net = Number(line.netPay || line.netSalary || line.total || (base + bonus - ded));
 
       setEmployeeName(name);
@@ -166,9 +183,14 @@ export default function AdminSendDocumentPage() {
       setBaseSalary(String(base));
       setBonuses(String(bonus));
       setDeductions(String(ded));
-      setTitle(`Payslip - ${name}`);
-      setSubtitle(`Payroll statement for ${payMonth} (Net EGP ${net.toLocaleString()})`);
-      toast.success(`Loaded Payroll System entry for ${name}!`);
+
+      // Title & Subtitle formatted with Employee Name & Month
+      const generatedTitle = `${name} Payroll for Month ${payMonth}`;
+      const generatedSubtitle = `Official Payroll Payslip for Month ${payMonth} (Net EGP ${net.toLocaleString()})`;
+
+      setTitle(generatedTitle);
+      setSubtitle(generatedSubtitle);
+      toast.success(`Loaded Payroll entry for ${name}!`);
       return;
     }
 
@@ -176,14 +198,18 @@ export default function AdminSendDocumentPage() {
     const emp = existingEmployees.find(e => e.id === id);
     if (emp) {
       triggerHapticFeedback(10);
+      setSelectedPayrollRecord(null);
       const name = emp.displayName || emp.name || emp.email || "Employee";
       setEmployeeName(name);
       setEmployeeRole(emp.role || "Store Staff");
       setBaseSalary(String(emp.baseSalary || emp.salary || 10000));
       setBonuses(String(emp.bonuses || 0));
       setDeductions(String(emp.deductions || 0));
-      setTitle(`Payslip - ${name}`);
-      setSubtitle(`Salary statement for ${month}`);
+
+      const generatedTitle = `${name} Payroll for Month ${month}`;
+      const generatedSubtitle = `Salary statement for Month ${month}`;
+      setTitle(generatedTitle);
+      setSubtitle(generatedSubtitle);
       toast.success(`Populated details for ${name}`);
     }
   };
@@ -306,7 +332,8 @@ export default function AdminSendDocumentPage() {
           baseSalary: Number(baseSalary) || 0,
           bonuses: Number(bonuses) || 0,
           deductions: Number(deductions) || 0,
-          netSalary: calculatedNet
+          netSalary: calculatedNet,
+          rawPayrollRecord: selectedPayrollRecord || null
         };
       } else if (docType === "payment_receipt" || docType === "credit_receipt") {
         payload.metadata = {
@@ -342,6 +369,7 @@ export default function AdminSendDocumentPage() {
       setNote("");
       handleRemoveFile();
       setSelectedRecordId("");
+      setSelectedPayrollRecord(null);
 
     } catch (err: any) {
       console.error("Failed to send document:", err);
@@ -452,12 +480,12 @@ export default function AdminSendDocumentPage() {
               >
                 <option value="">-- Choose Existing Entry from Payroll System --</option>
                 {existingPayrollLines.map((p) => {
-                  const name = p.employeeName || p.name || p.displayName || p.staffName || "Employee";
+                  const empNameResolved = resolveEmpName(p);
                   const net = p.netPay || p.netSalary || p.total || 0;
-                  const period = p.month || p.payPeriod || "Payroll";
+                  const period = p.month || p.payPeriod || p.period || "Payroll";
                   return (
                     <option key={p.id} value={p.id}>
-                      💼 {name} - Net EGP {Number(net).toLocaleString()} ({period} / {p.source === "paid" ? "Paid" : "Draft"})
+                      💼 {empNameResolved} - Net EGP {Number(net).toLocaleString()} ({period} / {p.source === "paid" ? "Paid" : "Draft"})
                     </option>
                   );
                 })}
@@ -556,7 +584,7 @@ export default function AdminSendDocumentPage() {
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Monthly Payslip - July 2026"
+                placeholder="e.g. Youssef Elhalawany Payroll for Month June 2026"
                 className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-[#0F172A] border border-slate-300 dark:border-[#1E293B] text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-cyan-400"
               />
             </div>
@@ -566,7 +594,7 @@ export default function AdminSendDocumentPage() {
                 type="text"
                 value={subtitle}
                 onChange={(e) => setSubtitle(e.target.value)}
-                placeholder="e.g. Approved Salary Disbursement"
+                placeholder="e.g. Official Payroll Payslip for Month 2026-06"
                 className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-[#0F172A] border border-slate-300 dark:border-[#1E293B] text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-cyan-400"
               />
             </div>
