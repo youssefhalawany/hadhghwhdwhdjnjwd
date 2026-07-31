@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { db, productsDb } from "@/lib/firebase";
 import { collection, getDocs, query, where, getDoc, doc, setDoc, limit } from "firebase/firestore";
-import { Search, Package, Calendar, AlertTriangle, QrCode, Camera, X, CheckCircle, Edit, PlusCircle, DollarSign, Clock } from "lucide-react";
+import { Search, Package, Calendar, AlertTriangle, QrCode, Camera, X, CheckCircle, Edit, PlusCircle, DollarSign, Clock, TrendingUp, TrendingDown, History } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
@@ -47,121 +47,229 @@ function ProductLookupContent() {
   const [fetchingProducts, setFetchingProducts] = useState(true);
   const [debouncedSearch] = useDebounce(searchTerm, 500);
 
-  // If a search param was passed via URL, immediately look it up on mount
+  // Helper function to normalize strings for grouping
+  const normalizeKey = (str: string) => str ? str.trim().toLowerCase().replace(/[^a-z0-9]/g, "") : "";
+
+  // Helper to build deduplicated price history array with price deltas
+  const compilePriceHistory = (product: any, expiries: any[] = [], returns: any[] = []) => {
+    const rawHistory: any[] = [];
+
+    // 1. Direct price history array in product document
+    if (product?.priceHistory && Array.isArray(product.priceHistory)) {
+      product.priceHistory.forEach((ph: any) => {
+        if (ph.price && Number(ph.price) > 0) {
+          rawHistory.push({
+            price: Number(ph.price),
+            supplier: ph.supplier || product.supplier || "Supplier",
+            date: ph.date || "Recorded",
+            source: "catalog"
+          });
+        }
+      });
+    }
+
+    // 2. Current catalog price
+    const currentP = Number(product?.currentPrice || product?.price || 0);
+    if (currentP > 0) {
+      rawHistory.push({
+        price: currentP,
+        supplier: product?.supplier || "Current Supplier",
+        date: product?.updatedAt ? new Date(product.updatedAt).toLocaleDateString('en-GB') : "Current Catalog",
+        source: "catalog"
+      });
+    }
+
+    // 3. Prices from supplier returns
+    returns.forEach(r => {
+      if (r.price && Number(r.price) > 0) {
+        rawHistory.push({
+          price: Number(r.price),
+          supplier: r.supplier || "Supplier Return",
+          date: r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-GB') : "Return Record",
+          source: "returns"
+        });
+      }
+    });
+
+    // 4. Prices from expiries
+    expiries.forEach(e => {
+      if (e.price && Number(e.price) > 0) {
+        rawHistory.push({
+          price: Number(e.price),
+          supplier: e.supplier || "Expiry Audit",
+          date: e.expiryDate || "Expiry Record",
+          source: "expiries"
+        });
+      }
+    });
+
+    // Deduplicate entries by price + supplier
+    const seen = new Set<string>();
+    const uniqueHistory: any[] = [];
+
+    rawHistory.forEach(item => {
+      const key = `${item.price}_${(item.supplier || "").trim().toLowerCase()}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        uniqueHistory.push(item);
+      }
+    });
+
+    // Sort chronologically ascending to calculate price changes
+    uniqueHistory.sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+
+    // Calculate price deltas
+    const historyWithDeltas = uniqueHistory.map((item, idx) => {
+      const prevPrice = idx > 0 ? uniqueHistory[idx - 1].price : item.price;
+      const delta = item.price - prevPrice;
+      return {
+        ...item,
+        delta: delta,
+        isIncrease: delta > 0,
+        isDecrease: delta < 0
+      };
+    });
+
+    // Return in date descending order for timeline display
+    return historyWithDeltas.reverse();
+  };
+
   useEffect(() => {
     if (initialSearch) {
       performLookup(initialSearch);
     }
   }, [initialSearch]);
 
+  // Main Product Search & Barcode/Name Grouping Engine
   useEffect(() => {
     const fetchSearchProducts = async () => {
       setFetchingProducts(true);
       try {
         const term = debouncedSearch.trim();
-        const productsMap = new Map();
+        const rawItems: any[] = [];
         
         if (!term) {
-           // If no term, just fetch random 100
-           const qProducts = query(collection(productsDb, "products"), limit(100));
+           const qProducts = query(collection(productsDb, "products"), limit(150));
            const snap = await getDocs(qProducts);
            snap.docs.forEach(doc => {
-              const data = doc.data();
-              productsMap.set(data.barcode || doc.id, { id: doc.id, ...data });
+              rawItems.push({ id: doc.id, ...doc.data() });
            });
            
-           // Also fetch some expiries to show
            const snapExpiries = await getDocs(query(collection(db, "expiries"), limit(50)));
            snapExpiries.docs.forEach(doc => {
               const data = doc.data();
-              if (data.barcode && !productsMap.has(data.barcode)) {
-                 productsMap.set(data.barcode, {
-                     id: data.barcode, barcode: data.barcode, 
-                     description: data.itemName || "Unknown Expiry", 
-                     itemName: data.itemName, supplier: data.supplier || data.priceHistory?.[0]?.supplier || "",
-                     isPhantom: true,
-                     expiryDate: data.expiryDate
-                 });
-              } else if (data.barcode && productsMap.has(data.barcode)) {
-                 const existing = productsMap.get(data.barcode);
-                 if (!existing.expiryDate || new Date(data.expiryDate) < new Date(existing.expiryDate)) {
-                    existing.expiryDate = data.expiryDate;
-                 }
-              }
+              rawItems.push({
+                 id: data.barcode || doc.id,
+                 barcode: data.barcode || doc.id,
+                 description: data.itemName || "Unknown Expiry",
+                 itemName: data.itemName,
+                 supplier: data.supplier || "",
+                 isPhantom: true,
+                 expiryDate: data.expiryDate
+              });
            });
-           
-           setAllProducts(Array.from(productsMap.values()));
-           setFetchingProducts(false);
-           return;
-        }
-        
-        // Search by prefix
-        const termLower = term.toLowerCase();
-        const termUpper = term.toUpperCase();
-        const termTitle = term.charAt(0).toUpperCase() + term.slice(1).toLowerCase();
+        } else {
+          const termLower = term.toLowerCase();
+          const termUpper = term.toUpperCase();
+          const termTitle = term.charAt(0).toUpperCase() + term.slice(1).toLowerCase();
 
-        const queries = [
-          getDocs(query(collection(productsDb, "products"), where("description", ">=", termLower), where("description", "<=", termLower + '\uf8ff'), limit(20))),
-          getDocs(query(collection(productsDb, "products"), where("description", ">=", termUpper), where("description", "<=", termUpper + '\uf8ff'), limit(20))),
-          getDocs(query(collection(productsDb, "products"), where("description", ">=", termTitle), where("description", "<=", termTitle + '\uf8ff'), limit(20))),
-          getDocs(query(collection(productsDb, "products"), where("itemName", ">=", termTitle), where("itemName", "<=", termTitle + '\uf8ff'), limit(20))),
-          getDocs(query(collection(db, "expiries"), where("itemName", ">=", termTitle), where("itemName", "<=", termTitle + '\uf8ff'), limit(20))),
-        ];
+          const queries = [
+            getDocs(query(collection(productsDb, "products"), where("description", ">=", termLower), where("description", "<=", termLower + '\uf8ff'), limit(30))),
+            getDocs(query(collection(productsDb, "products"), where("description", ">=", termUpper), where("description", "<=", termUpper + '\uf8ff'), limit(30))),
+            getDocs(query(collection(productsDb, "products"), where("description", ">=", termTitle), where("description", "<=", termTitle + '\uf8ff'), limit(30))),
+            getDocs(query(collection(productsDb, "products"), where("itemName", ">=", termTitle), where("itemName", "<=", termTitle + '\uf8ff'), limit(30))),
+            getDocs(query(collection(db, "expiries"), where("itemName", ">=", termTitle), where("itemName", "<=", termTitle + '\uf8ff'), limit(30))),
+          ];
 
-        const snaps = await Promise.all(queries);
-        
-        snaps.forEach((s, idx) => {
-          s.docs.forEach(doc => {
-            const data = doc.data();
-            const barcode = data.barcode || doc.id;
-            if (!productsMap.has(barcode)) {
-               productsMap.set(barcode, {
-                   id: barcode, barcode: barcode, 
-                   description: data.description || data.itemName || data.name || "Unknown Item", 
-                   itemName: data.itemName, supplier: data.supplier || data.priceHistory?.[0]?.supplier || "",
-                   price: data.currentPrice || data.price,
-                   expiryDate: data.expiryDate,
-                   isPhantom: idx === 4 // if from expiries
-               });
-            } else {
-               const existing = productsMap.get(barcode);
-               if (data.expiryDate && (!existing.expiryDate || new Date(data.expiryDate) < new Date(existing.expiryDate))) {
-                  existing.expiryDate = data.expiryDate;
-               }
-               if (data.supplier && !existing.supplier) {
-                  existing.supplier = data.supplier;
-               }
-            }
+          const snaps = await Promise.all(queries);
+          snaps.forEach((s, idx) => {
+            s.docs.forEach(doc => {
+              const data = doc.data();
+              rawItems.push({
+                 id: data.barcode || doc.id,
+                 barcode: data.barcode || doc.id,
+                 description: data.description || data.itemName || data.name || "Unknown Item",
+                 itemName: data.itemName,
+                 supplier: data.supplier || data.priceHistory?.[0]?.supplier || "",
+                 price: data.currentPrice || data.price,
+                 priceHistory: data.priceHistory || [],
+                 expiryDate: data.expiryDate,
+                 isPhantom: idx === 4
+              });
+            });
           });
-        });
 
-        // Also try direct barcode match
-        const directSnap = await getDoc(doc(productsDb, "products", term));
-        if (directSnap.exists()) {
-           const data = directSnap.data();
-           productsMap.set(term, { id: term, barcode: term, ...data });
+          // Direct barcode lookup
+          const directSnap = await getDoc(doc(productsDb, "products", term));
+          if (directSnap.exists()) {
+             rawItems.push({ id: term, barcode: term, ...directSnap.data() });
+          }
         }
-        const directExpiries = await getDocs(query(collection(db, "expiries"), where("barcode", "==", term), limit(5)));
-        directExpiries.docs.forEach(doc => {
-            const data = doc.data();
-            const barcode = data.barcode || doc.id;
-            if (!productsMap.has(barcode)) {
-               productsMap.set(barcode, {
-                   id: barcode, barcode: barcode, 
-                   description: data.itemName || "Unknown Item", 
-                   itemName: data.itemName, supplier: data.supplier || data.priceHistory?.[0]?.supplier || "",
-                   expiryDate: data.expiryDate,
-                   isPhantom: true
-               });
-            } else {
-               const existing = productsMap.get(barcode);
-               if (data.expiryDate && (!existing.expiryDate || new Date(data.expiryDate) < new Date(existing.expiryDate))) {
-                  existing.expiryDate = data.expiryDate;
-               }
+
+        // STRICT CONSOLIDATION BY BARCODE / NORMALIZED PRODUCT IDENTITY
+        const consolidatedMap = new Map<string, any>();
+
+        rawItems.forEach(item => {
+          const barcodeKey = (item.barcode || item.id || "").trim();
+          const nameKey = normalizeKey(item.description || item.itemName || item.name || "");
+          
+          // Primary grouping key: Barcode (or normalized product name if barcode missing)
+          const groupKey = (barcodeKey && barcodeKey !== "undefined" && barcodeKey !== "null") 
+            ? barcodeKey 
+            : (nameKey || item.id);
+
+          if (!consolidatedMap.has(groupKey)) {
+            const initialPrices: any[] = [];
+            const pVal = Number(item.price || item.currentPrice || 0);
+            if (pVal > 0) initialPrices.push({ price: pVal, supplier: item.supplier, date: "Recorded" });
+
+            if (item.priceHistory && Array.isArray(item.priceHistory)) {
+              item.priceHistory.forEach((ph: any) => initialPrices.push(ph));
             }
+
+            consolidatedMap.set(groupKey, {
+              ...item,
+              groupKey: groupKey,
+              allBarcodes: [barcodeKey || groupKey],
+              collectedPrices: initialPrices
+            });
+          } else {
+            const existing = consolidatedMap.get(groupKey);
+            
+            // Merge barcodes
+            if (barcodeKey && !existing.allBarcodes.includes(barcodeKey)) {
+              existing.allBarcodes.push(barcodeKey);
+            }
+
+            // Merge price history
+            const pVal = Number(item.price || item.currentPrice || 0);
+            if (pVal > 0) {
+              existing.collectedPrices.push({ price: pVal, supplier: item.supplier || existing.supplier, date: "Recorded" });
+            }
+
+            if (item.priceHistory && Array.isArray(item.priceHistory)) {
+              item.priceHistory.forEach((ph: any) => existing.collectedPrices.push(ph));
+            }
+
+            // Update display fields if current item is more complete
+            if (!existing.supplier && item.supplier) existing.supplier = item.supplier;
+            if ((!existing.price || existing.price === 0) && pVal > 0) existing.price = pVal;
+            if (item.expiryDate && (!existing.expiryDate || new Date(item.expiryDate) < new Date(existing.expiryDate))) {
+              existing.expiryDate = item.expiryDate;
+            }
+          }
         });
 
-        setAllProducts(Array.from(productsMap.values()));
+        // Compute price history count for each consolidated product
+        const consolidatedList = Array.from(consolidatedMap.values()).map(prod => {
+          const uniquePrices = new Set(prod.collectedPrices.map((p: any) => p.price));
+          return {
+            ...prod,
+            priceHistoryCount: uniquePrices.size
+          };
+        });
+
+        setAllProducts(consolidatedList);
       } catch (e) {
         console.error("Search failed", e);
       } finally {
@@ -183,7 +291,6 @@ function ProductLookupContent() {
     setIsEditing(false);
 
     try {
-      // 1. First, try to look up by barcode directly in the central `products` collection.
       const productRef = doc(productsDb, "products", term);
       const productSnap = await getDoc(productRef);
 
@@ -192,13 +299,10 @@ function ProductLookupContent() {
       if (productSnap.exists()) {
         foundProduct = { id: productSnap.id, ...productSnap.data() };
       } else {
-        // 2. If not found by ID (barcode), do a pseudo case-insensitive name prefix search
-        // We do not download the whole database anymore to save Firebase Reads!
         const termLower = term.toLowerCase();
         const termUpper = term.toUpperCase();
         const termTitle = term.charAt(0).toUpperCase() + term.slice(1).toLowerCase();
 
-        // 4 targeted queries costing a max of 40 reads instead of 80,000
         const queries = [
           getDocs(query(collection(productsDb, "products"), where("description", ">=", termLower), where("description", "<=", termLower + '\uf8ff'), limit(10))),
           getDocs(query(collection(productsDb, "products"), where("description", ">=", termUpper), where("description", "<=", termUpper + '\uf8ff'), limit(10))),
@@ -215,36 +319,27 @@ function ProductLookupContent() {
         });
 
         if (results.length > 0) {
-          // Prioritize exact match if available, otherwise take the first match
           foundProduct = results.find(p => p.description?.toLowerCase() === termLower || p.itemName?.toLowerCase() === termLower) || results[0];
         }
       }
 
-      // We no longer setProductData here. We wait to see if we can construct a phantom product from history!
-
-      // 3. Look up ALL expiries for this barcode (active and past)
       const searchBarcode = foundProduct?.barcode || term;
-      const expiriesQuery = query(
-        collection(db, "expiries"), 
-        where("barcode", "==", searchBarcode)
-      );
-      const expiriesSnap = await getDocs(expiriesQuery);
+      
+      // Fetch Expiries, Expired Items & Supplier Returns
+      const [expiriesSnap, expiredItemsSnap, returnsSnap] = await Promise.all([
+        getDocs(query(collection(db, "expiries"), where("barcode", "==", searchBarcode))),
+        getDocs(query(collection(db, "expired_items"), where("barcode", "==", searchBarcode))),
+        getDocs(query(collection(db, "supplier_returns"), where("barcode", "==", searchBarcode)))
+      ]);
+
       const matchingExpiries = expiriesSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
-      setExpiriesData(matchingExpiries.sort((a: any, b: any) => (a.expiryDate || "").localeCompare(b.expiryDate || "")));
-
-      // 4. Look up expired_items
-      const expiredItemsQuery = query(collection(db, "expired_items"), where("barcode", "==", searchBarcode));
-      const expiredItemsSnap = await getDocs(expiredItemsQuery);
       const matchingExpiredItems = expiredItemsSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
-      setExpiredItemsData(matchingExpiredItems.sort((a: any, b: any) => (b.createdAt || "").localeCompare(a.createdAt || "")));
-
-      // 5. Look up supplier_returns
-      const returnsQuery = query(collection(db, "supplier_returns"), where("barcode", "==", searchBarcode));
-      const returnsSnap = await getDocs(returnsQuery);
       const matchingReturns = returnsSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+
+      setExpiriesData(matchingExpiries.sort((a: any, b: any) => (a.expiryDate || "").localeCompare(b.expiryDate || "")));
+      setExpiredItemsData(matchingExpiredItems.sort((a: any, b: any) => (b.createdAt || "").localeCompare(a.createdAt || "")));
       setSupplierReturnsData(matchingReturns.sort((a: any, b: any) => (b.createdAt || "").localeCompare(a.createdAt || "")));
 
-      // If not found in central catalog, but we have history data, construct a Phantom Product!
       if (!foundProduct && (matchingExpiries.length > 0 || matchingReturns.length > 0 || matchingExpiredItems.length > 0)) {
          const name = matchingExpiries[0]?.itemName || matchingReturns[0]?.itemName || matchingExpiredItems[0]?.name || "Unknown Item";
          const supplier = matchingReturns[0]?.supplier || matchingExpiries[0]?.supplier || "Unknown Supplier";
@@ -258,7 +353,12 @@ function ProductLookupContent() {
          };
       }
 
-      setProductData(foundProduct || { notFound: true, searchTerm: term });
+      const compiledHistory = compilePriceHistory(foundProduct, matchingExpiries, matchingReturns);
+
+      setProductData({
+        ...(foundProduct || { notFound: true, searchTerm: term }),
+        compiledPriceHistory: compiledHistory
+      });
       setDrawerOpen(true);
 
     } catch (err: any) {
@@ -313,7 +413,7 @@ function ProductLookupContent() {
           <h1 className="text-3xl font-black text-slate-900 dark:text-white flex items-center gap-3">
             <Package className="h-8 w-8 text-blue-600" /> Products
           </h1>
-          <p className="text-slate-500 font-medium mt-2">Manage your inventory and expiries.</p>
+          <p className="text-slate-500 font-medium mt-2">Manage your inventory, barcode groups, and price history.</p>
         </div>
         <button 
           onClick={() => {
@@ -362,19 +462,30 @@ function ProductLookupContent() {
             <div 
               key={p.id || idx}
               onClick={() => performLookup(p.barcode || p.id)}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 cursor-pointer hover:border-blue-400 dark:hover:border-blue-600 hover:shadow-lg transition-all group flex flex-col h-full"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 cursor-pointer hover:border-blue-400 dark:hover:border-blue-600 hover:shadow-lg transition-all group flex flex-col h-full relative overflow-hidden"
             >
               <div className="aspect-video bg-slate-50 dark:bg-slate-800 rounded-xl mb-4 flex items-center justify-center border border-slate-100 dark:border-slate-700 overflow-hidden relative">
                 <Package className="w-10 h-10 text-slate-300 dark:text-slate-600 group-hover:scale-110 transition-transform duration-300" />
+                
+                {/* Price Tag */}
                 {p.price && (
                   <div className="absolute bottom-2 right-2 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-400 px-2 py-1 rounded-md text-[10px] font-black tracking-wider shadow-sm flex items-center gap-1">
                     <DollarSign className="w-3 h-3" /> {p.price} EGP
                   </div>
                 )}
+
+                {/* Price History Badge indicator */}
+                {p.priceHistoryCount > 1 && (
+                  <div className="absolute top-2 left-2 bg-blue-500/10 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider flex items-center gap-1 border border-blue-500/20">
+                    <History className="w-2.5 h-2.5" /> {p.priceHistoryCount} Prices
+                  </div>
+                )}
               </div>
+
               <h4 className="font-bold text-sm text-slate-900 dark:text-white line-clamp-2 leading-tight mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                 {p.description || p.name || p.itemName || "Unnamed Product"}
               </h4>
+
               <div className="mt-auto flex flex-col gap-1 text-[10px] text-slate-500 font-medium">
                 <div className="flex items-center gap-1">
                   <Package className="w-3 h-3 text-slate-400" /> <span className="line-clamp-1">{p.supplier || "Unknown Supplier"}</span>
@@ -385,6 +496,7 @@ function ProductLookupContent() {
                   </div>
                 )}
               </div>
+
               <div className="mt-3 text-xs text-slate-500 flex justify-between items-center border-t border-slate-100 dark:border-slate-800 pt-2">
                 <span className="font-mono text-[10px] truncate max-w-[80%] opacity-60">#{p.barcode || p.id}</span>
               </div>
@@ -398,7 +510,7 @@ function ProductLookupContent() {
         </div>
       )}
 
-      {/* Sliding Drawer for Quick Edit & Expiries */}
+      {/* Sliding Drawer for Quick Edit, Price History & Expiries */}
       <AnimatePresence>
         {drawerOpen && (
           <>
@@ -507,24 +619,33 @@ function ProductLookupContent() {
                       </div>
                     )}
 
-                    {/* HISTORY SECTIONS - Rendered for all, even if not found in catalog */}
+                    {/* PRICE HISTORY TIMELINE & EXPIRE SECTIONS */}
                     {!isEditing && (
                       <div className="space-y-8 pt-6 border-t border-slate-100 dark:border-slate-800">
-                        {/* Price History */}
-                        {!productData.notFound && productData.priceHistory && productData.priceHistory.length > 0 && (
+                        
+                        {/* Compiled Price History Timeline */}
+                        {productData.compiledPriceHistory && productData.compiledPriceHistory.length > 0 && (
                           <div>
                             <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                              <Calendar className="h-4 w-4" /> Price & Supplier History
+                              <History className="h-4 w-4 text-blue-500" /> Price & Supplier History Timeline ({productData.compiledPriceHistory.length})
                             </h4>
                             <div className="space-y-3">
-                              {productData.priceHistory.map((ph: any, idx: number) => (
-                                <div key={idx} className="p-4 rounded-xl border bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                              {productData.compiledPriceHistory.map((ph: any, idx: number) => (
+                                <div key={idx} className="p-4 rounded-xl border bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 flex justify-between items-center shadow-sm">
                                   <div>
-                                    <p className="font-bold text-sm text-slate-900 dark:text-white line-clamp-1">{ph.supplier || "Unknown Supplier"}</p>
+                                    <div className="flex items-center gap-2">
+                                      <p className="font-bold text-sm text-slate-900 dark:text-white line-clamp-1">{ph.supplier || "Supplier"}</p>
+                                      {ph.delta !== 0 && (
+                                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-0.5 ${ph.delta > 0 ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400'}`}>
+                                          {ph.delta > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                                          {ph.delta > 0 ? `+${ph.delta.toFixed(2)} EGP` : `${ph.delta.toFixed(2)} EGP`}
+                                        </span>
+                                      )}
+                                    </div>
                                     <p className="text-xs font-semibold mt-1 opacity-70">Date: {ph.date}</p>
                                   </div>
                                   <div className="text-right whitespace-nowrap ml-4">
-                                    <p className="text-xl font-black text-emerald-600 dark:text-emerald-400">{ph.price} <span className="text-sm">EGP</span></p>
+                                    <p className="text-lg font-black text-emerald-600 dark:text-emerald-400 font-mono">{ph.price} <span className="text-xs">EGP</span></p>
                                   </div>
                                 </div>
                               ))}
