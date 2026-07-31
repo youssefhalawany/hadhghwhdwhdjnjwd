@@ -88,7 +88,7 @@ export function MobileHeader() {
     <header
       className="sticky top-0 z-40 w-full bg-[#0B1121] border-b border-[#1E293B] px-3 py-2 md:hidden no-print transition-all"
       style={{
-        paddingTop: "calc(max(10px, env(safe-area-inset-top)) + 38px)",
+        paddingTop: "max(10px, env(safe-area-inset-top))",
       }}
       dir={isAr ? "rtl" : "ltr"}
     >
