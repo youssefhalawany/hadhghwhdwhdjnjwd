@@ -66,7 +66,7 @@ function UploadInvoiceContent() {
       const constraints: MediaStreamConstraints = {
         video: (deviceId && typeof deviceId === 'string' && deviceId.trim()) 
           ? { deviceId: { exact: deviceId } } 
-          : { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+          : { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
       };
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -124,7 +124,7 @@ function UploadInvoiceContent() {
 
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
       
       stopCamera();
       setCroppingImageSrc(dataUrl);
@@ -184,8 +184,23 @@ function UploadInvoiceContent() {
       const safeW = Math.max(1, Math.round(cropW));
       const safeH = Math.max(1, Math.round(cropH));
 
-      canvas.width = safeW;
-      canvas.height = safeH;
+      // Ultra-fast downscaling for instantaneous mobile processing & tiny upload size
+      const MAX_DIMENSION = 1000;
+      let targetW = safeW;
+      let targetH = safeH;
+
+      if (targetW > MAX_DIMENSION || targetH > MAX_DIMENSION) {
+        if (targetW > targetH) {
+          targetH = Math.round((targetH * MAX_DIMENSION) / targetW);
+          targetW = MAX_DIMENSION;
+        } else {
+          targetW = Math.round((targetW * MAX_DIMENSION) / targetH);
+          targetH = MAX_DIMENSION;
+        }
+      }
+
+      canvas.width = Math.max(1, targetW);
+      canvas.height = Math.max(1, targetH);
       const ctx = canvas.getContext('2d');
       
       if (!ctx) {
@@ -203,13 +218,12 @@ function UploadInvoiceContent() {
           safeH,
           0,
           0,
-          safeW,
-          safeH
+          targetW,
+          targetH
         );
       }
 
       if (isEnhancing) {
-        // Safe filter application with fallback for iOS Safari DOMException
         try {
           ctx.filter = 'grayscale(100%) contrast(140%)';
           if (img) {
@@ -221,14 +235,13 @@ function UploadInvoiceContent() {
               safeH,
               0,
               0,
-              safeW,
-              safeH
+              targetW,
+              targetH
             );
           }
         } catch (e) {
-          // Manual pixel enhancement fallback where ctx.filter is unsupported or throws DOMException
           try {
-            const imageData = ctx.getImageData(0, 0, safeW, safeH);
+            const imageData = ctx.getImageData(0, 0, targetW, targetH);
             const data = imageData.data;
             for (let i = 0; i < data.length; i += 4) {
               let gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
@@ -244,7 +257,7 @@ function UploadInvoiceContent() {
         }
       }
 
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
       setCompressedDataUrls(prev => [...prev, dataUrl]);
     } catch (err) {
       console.error("Error applying crop:", err);
@@ -263,13 +276,9 @@ function UploadInvoiceContent() {
   const handleUpload = async () => {
     if (compressedDataUrls.length === 0) return;
     setUploading(true);
-    setProgress(10);
+    setProgress(30);
     
     try {
-      const progressInterval = setInterval(() => {
-        setProgress(p => Math.min(p + 15, 90));
-      }, 150);
-
       const res = await fetch('/api/upload-invoice', {
         method: 'POST',
         headers: {
@@ -282,7 +291,6 @@ function UploadInvoiceContent() {
         })
       });
 
-      clearInterval(progressInterval);
       setProgress(100);
 
       if (res.ok) {

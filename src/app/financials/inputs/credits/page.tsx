@@ -67,7 +67,7 @@ import { CoinDropWallet } from "@/components/SkeuomorphicUX/CoinDropWallet";
 import { PosReceiptPrinter } from "@/components/SkeuomorphicUX/PosReceiptPrinter";
 import { RubberStamp } from "@/components/SkeuomorphicUX/RubberStamp";
 
-const compressImage = (file: File, maxWidth: number = 1500, quality: number = 0.8): Promise<string> => {
+const compressImage = (file: File, maxWidth: number = 1200, quality: number = 0.75): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);

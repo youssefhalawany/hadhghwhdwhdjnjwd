@@ -101,7 +101,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { syncProductsToMaster } from "@/lib/products-sync";
 import { playPrinterSound } from "@/lib/audioCues";
 
-const compressImage = (file: File, maxWidth: number = 2500, quality: number = 1.0): Promise<string> => {
+const compressImage = (file: File, maxWidth: number = 1200, quality: number = 0.75): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
