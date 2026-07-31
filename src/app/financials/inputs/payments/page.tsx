@@ -1022,14 +1022,24 @@ export default function PaymentsRedesignPage() {
     const sPayments = payments.filter(p => p.companyName?.toUpperCase() === selectedSupplierProfile.toUpperCase());
     sPayments.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
 
-    // 2. Lifetime Spend
-    const lifetimeSpend = sPayments.reduce((sum, p) => sum + (p.total || 0), 0);
+    // 2. Lifetime Spend (Total Amount including Tax Paid)
+    const lifetimeSpend = sPayments.reduce((sum, p) => {
+      const pAmt = Number(p.amount) || 0;
+      const pTax = Number(p.tax) || 0;
+      const pTot = Number(p.total) || 0;
+      const totalWithTax = pTot >= (pAmt + pTax) && pTot > 0 ? pTot : (pAmt + pTax);
+      return sum + totalWithTax;
+    }, 0);
 
-    // 3. Outstanding Debt (from credits)
+    // 3. Outstanding Debt (from credits including tax)
     const sCredits = credits.filter(c => c.companyName?.toUpperCase() === selectedSupplierProfile.toUpperCase() && c.status === "open");
-    const outstandingDebt = sCredits.reduce((sum, c) => sum + ((parseFloat(c.amountDue) || 0) - (parseFloat(c.paidAmount) || 0)), 0);
+    const outstandingDebt = sCredits.reduce((sum, c) => {
+      const due = (parseFloat(c.amountDue) || 0) + (parseFloat(c.tax) || 0);
+      const paid = parseFloat(c.paidAmount) || 0;
+      return sum + Math.max(0, due - paid);
+    }, 0);
 
-    // 4. Sparkline Trend (last 6 months)
+    // 4. Sparkline Trend (last 6 months including tax)
     const monthlyTotals: Record<string, number> = {};
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5); // include current month + 5 previous
@@ -1040,7 +1050,11 @@ export default function PaymentsRedesignPage() {
       const d = new Date(p.date);
       if (d >= sixMonthsAgo) {
         const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        monthlyTotals[monthKey] = (monthlyTotals[monthKey] || 0) + (p.total || 0);
+        const pAmt = Number(p.amount) || 0;
+        const pTax = Number(p.tax) || 0;
+        const pTot = Number(p.total) || 0;
+        const totalWithTax = pTot >= (pAmt + pTax) && pTot > 0 ? pTot : (pAmt + pTax);
+        monthlyTotals[monthKey] = (monthlyTotals[monthKey] || 0) + totalWithTax;
       }
     });
 
@@ -1066,7 +1080,7 @@ export default function PaymentsRedesignPage() {
     try {
       const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
       pdf.setFontSize(22);
-      pdf.text(`Statement of Account`, 20, 20);
+      pdf.text(`Vendor Statement of Account`, 20, 20);
       pdf.setFontSize(14);
       pdf.setTextColor(100);
       pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 30);
@@ -1074,23 +1088,29 @@ export default function PaymentsRedesignPage() {
       pdf.setTextColor(0);
       pdf.setFontSize(16);
       pdf.text(`Supplier: ${selectedSupplierProfile}`, 20, 50);
-      pdf.text(`Outstanding Debt: EGP ${supplierProfileData.outstandingDebt.toLocaleString()}`, 20, 60);
-      pdf.text(`Lifetime Spend: EGP ${supplierProfileData.lifetimeSpend.toLocaleString()}`, 20, 70);
+      pdf.text(`Outstanding Debt: EGP ${supplierProfileData.outstandingDebt.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 20, 60);
+      pdf.text(`Lifetime Spend (Incl. Tax): EGP ${supplierProfileData.lifetimeSpend.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 20, 70);
 
       pdf.setFontSize(14);
-      pdf.text(`Recent Payments:`, 20, 90);
-      pdf.setFontSize(11);
+      pdf.text(`Recent Paid Invoices & Receipts (Total Amount Incl. Tax):`, 20, 90);
+      pdf.setFontSize(10);
 
       let y = 100;
-      supplierProfileData.sPayments.slice(0, 15).forEach((p, i) => {
-        pdf.text(`${p.date}   |   EGP ${Number(p.total).toLocaleString()}   |   Inv: ${p.invoiceNumber || 'N/A'}`, 20, y);
+      supplierProfileData.sPayments.slice(0, 20).forEach((p, i) => {
+        const pAmt = Number(p.amount) || 0;
+        const pTax = Number(p.tax) || 0;
+        const pTot = Number(p.total) || 0;
+        const totalWithTax = pTot >= (pAmt + pTax) && pTot > 0 ? pTot : (pAmt + pTax);
+
+        const lineStr = `${p.date}   |   EGP ${totalWithTax.toLocaleString(undefined, { minimumFractionDigits: 2 })} (Tax: EGP ${pTax.toLocaleString()})   |   Inv: ${p.invoiceNumber || 'N/A'}`;
+        pdf.text(lineStr, 20, y);
         y += 8;
       });
 
       pdf.save(`SOA_${selectedSupplierProfile}.pdf`);
 
       // Open WhatsApp
-      const waText = encodeURIComponent(`Hello ${selectedSupplierProfile} team. Please find our Statement of Account attached (downloaded to my device). Our records show an outstanding debt of EGP ${supplierProfileData.outstandingDebt.toLocaleString()} and a lifetime spend of EGP ${supplierProfileData.lifetimeSpend.toLocaleString()}.`);
+      const waText = encodeURIComponent(`Hello ${selectedSupplierProfile} team. Please find our Statement of Account attached (downloaded to my device). Our records show an outstanding debt of EGP ${supplierProfileData.outstandingDebt.toLocaleString()} and a total spend of EGP ${supplierProfileData.lifetimeSpend.toLocaleString()} (including tax paid).`);
       window.open(`https://wa.me/?text=${waText}`, '_blank');
       toast.success("SOA Generated! Please attach the downloaded PDF in WhatsApp.");
     } catch (err) {
@@ -2689,22 +2709,32 @@ export default function PaymentsRedesignPage() {
                 <div>
                   <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4">Payment History ({supplierProfileData.sPayments.length})</h3>
                   <div className="space-y-3 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 dark:before:via-slate-800 before:to-transparent">
-                    {supplierProfileData.sPayments.slice(0, 15).map((pay, i) => (
-                      <div key={pay.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-                        <div className="flex items-center justify-center w-10 h-10 rounded-full border-4 border-white dark:border-slate-900 bg-slate-100 dark:bg-slate-800 text-slate-500 shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 shadow-sm z-10">
-                          {METHOD_EMOJIS[pay.method] || "💵"}
-                        </div>
-                        <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700 p-4 rounded-2xl shadow-sm">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-xs font-bold text-slate-400">{pay.date}</span>
-                            <span className="text-sm font-black text-slate-900 dark:text-white">EGP {pay.total.toLocaleString()}</span>
+                    {supplierProfileData.sPayments.slice(0, 20).map((pay, i) => {
+                      const pAmt = Number(pay.amount) || 0;
+                      const pTax = Number(pay.tax) || 0;
+                      const pTot = Number(pay.total) || 0;
+                      const totalWithTax = pTot >= (pAmt + pTax) && pTot > 0 ? pTot : (pAmt + pTax);
+
+                      return (
+                        <div key={pay.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                          <div className="flex items-center justify-center w-10 h-10 rounded-full border-4 border-white dark:border-slate-900 bg-slate-100 dark:bg-slate-800 text-slate-500 shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 shadow-sm z-10">
+                            {METHOD_EMOJIS[pay.method] || "💵"}
                           </div>
-                          <p className="text-xs text-slate-500 font-medium truncate">
-                            {pay.invoiceNumber ? `Inv: ${pay.invoiceNumber}` : (pay.categoryNote || "No details")}
-                          </p>
+                          <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700 p-4 rounded-2xl shadow-sm">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs font-bold text-slate-400">{pay.date}</span>
+                              <span className="text-sm font-black text-slate-900 dark:text-white">
+                                EGP {totalWithTax.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-500 font-medium truncate">
+                              {pay.invoiceNumber ? `Inv: ${pay.invoiceNumber}` : (pay.categoryNote || "No details")}
+                              {pTax > 0 && ` • Tax Paid: EGP ${pTax.toLocaleString()}`}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 

@@ -912,7 +912,7 @@ export default function CreditsPage() {
         date: paymentDate,
         description: `Credit Payment`,
         invoiceNumber: selectedCreditForPayment.invoiceNumber,
-        isTaxable: false,
+        isTaxable: Number(selectedCreditForPayment.tax) > 0,
         method: paymentMethod,
         poNumber: selectedCreditForPayment.poNumber,
         poImageUrl: selectedCreditForPayment.poImageUrl || "",
@@ -920,7 +920,7 @@ export default function CreditsPage() {
         supplierNationalId: selectedCreditForPayment.supplierNationalId || "",
         items: selectedCreditForPayment.items || [],
         storeId: branchIds.length > 0 && branchIds[0] !== "all" ? branchIds[0] : "eL-alamein-4",
-        tax: 0,
+        tax: Number(selectedCreditForPayment.tax) || 0,
         total: pAmt,
         creditId: selectedCreditForPayment.id,
         ...(bankTransferReceiptUrl ? { bankTransferReceiptUrl } : {})
