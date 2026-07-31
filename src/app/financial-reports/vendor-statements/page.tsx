@@ -39,8 +39,8 @@ export default function VendorStatementsPage() {
       const creditIdToNormCompany: Record<string, string> = {};
       const companySet = new Set<string>();
 
-      const seenPoKeys = new Set<string>();
-      const allData: any[] = [];
+      const creditItems: any[] = [];
+      const paymentItems: any[] = [];
 
       // 1. Process Credits (Invoices)
       creditsSnap.docs.forEach(doc => {
@@ -80,16 +80,13 @@ export default function VendorStatementsPage() {
         const rawPo = (d.poNumber || d.invoiceNumber || "").trim();
         const cleanPo = rawPo.toLowerCase().replace(/[^a-z0-9]/g, "");
 
-        if (cleanPo && cleanPo !== "-" && cleanPo !== "cashpayment" && cleanPo !== "na") {
-          seenPoKeys.add(`${norm}_${cleanPo}`);
-        }
-
-        allData.push({
+        creditItems.push({
           id: doc.id,
           normalizedCompany: norm,
           originalCompany: companyDisplayNames[norm],
           receiptDate: rDate || new Date().toISOString().substring(0, 10),
           poNumber: rawPo || "-",
+          cleanPoKey: (cleanPo && cleanPo !== "-" && cleanPo !== "cashpayment" && cleanPo !== "na") ? `${norm}_${cleanPo}` : null,
           price: finalInvoicePriceWithTax,
           tax: taxAmt,
           status: "Invoice",
@@ -114,19 +111,6 @@ export default function VendorStatementsPage() {
         if (!companyDisplayNames[norm]) companyDisplayNames[norm] = rawName;
         companySet.add(companyDisplayNames[norm]);
 
-        const rawPo = (d.poNumber || d.invoiceNumber || "").trim();
-        const cleanPo = rawPo.toLowerCase().replace(/[^a-z0-9]/g, "");
-        const poKey = `${norm}_${cleanPo}`;
-
-        // Deduplicate: If this payment is already linked to a credit note OR shares the exact same PO/Invoice # for this supplier, SKIP IT!
-        if (d.creditId || (cleanPo && cleanPo !== "-" && cleanPo !== "cashpayment" && cleanPo !== "na" && seenPoKeys.has(poKey))) {
-          return;
-        }
-
-        if (cleanPo && cleanPo !== "-" && cleanPo !== "cashpayment" && cleanPo !== "na") {
-          seenPoKeys.add(poKey);
-        }
-
         let rDate = d.date || (d.createdAt && typeof d.createdAt.toDate === 'function' ? d.createdAt.toDate().toISOString().substring(0, 10) : "");
         if (typeof d.createdAt === 'string' && !rDate) rDate = d.createdAt.substring(0, 10);
 
@@ -135,12 +119,17 @@ export default function VendorStatementsPage() {
         const pTot = Number(d.total || 0);
         const finalPaymentPriceWithTax = (pTot >= (pAmt + pTax) && pTot > 0) ? pTot : (pAmt + pTax);
 
-        allData.push({
+        const rawPo = (d.poNumber || d.invoiceNumber || "").trim();
+        const cleanPo = rawPo.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+        paymentItems.push({
           id: doc.id,
+          creditId: d.creditId || null,
           normalizedCompany: norm,
           originalCompany: companyDisplayNames[norm],
           receiptDate: rDate || new Date().toISOString().substring(0, 10),
           poNumber: rawPo || "Cash Payment",
+          cleanPoKey: (cleanPo && cleanPo !== "-" && cleanPo !== "cashpayment" && cleanPo !== "na") ? `${norm}_${cleanPo}` : null,
           price: finalPaymentPriceWithTax,
           tax: pTax,
           status: "Payment",
@@ -164,15 +153,6 @@ export default function VendorStatementsPage() {
         const norm = creditIdToNormCompany[d.creditId];
         if (!norm) return;
 
-        const rawPo = (d.poNumber || d.invoiceNumber || "").trim();
-        const cleanPo = rawPo.toLowerCase().replace(/[^a-z0-9]/g, "");
-        const poKey = `${norm}_${cleanPo}`;
-
-        // Deduplicate: If this credit payment is already covered under the same PO key, skip duplicate rendering
-        if (cleanPo && cleanPo !== "-" && cleanPo !== "cashpayment" && cleanPo !== "na" && seenPoKeys.has(poKey)) {
-          return;
-        }
-
         let rDate = d.date || (d.createdAt && typeof d.createdAt.toDate === 'function' ? d.createdAt.toDate().toISOString().substring(0, 10) : "");
         if (typeof d.createdAt === 'string' && !rDate) rDate = d.createdAt.substring(0, 10);
 
@@ -181,18 +161,52 @@ export default function VendorStatementsPage() {
         const pTot = Number(d.total || 0);
         const finalPaymentPriceWithTax = (pTot >= (pAmt + pTax) && pTot > 0) ? pTot : (pAmt + pTax);
 
-        allData.push({
+        const rawPo = (d.poNumber || d.invoiceNumber || "").trim();
+        const cleanPo = rawPo.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+        paymentItems.push({
           id: doc.id,
+          creditId: d.creditId,
           normalizedCompany: norm,
           originalCompany: companyDisplayNames[norm] || "Unknown Supplier",
           receiptDate: rDate || new Date().toISOString().substring(0, 10),
           poNumber: rawPo || `Pmt ref: ${d.creditId.substring(0, 6)}`,
+          cleanPoKey: (cleanPo && cleanPo !== "-" && cleanPo !== "cashpayment" && cleanPo !== "na") ? `${norm}_${cleanPo}` : null,
           price: finalPaymentPriceWithTax,
           tax: pTax,
           status: "Payment",
           isPaid: true,
           source: "credit_payments"
         });
+      });
+
+      // DEDUPLICATION WITH PRIORITIZATION TO PAYMENT RECORD
+      const paymentPoKeySet = new Set<string>();
+      const paidCreditIdSet = new Set<string>();
+
+      paymentItems.forEach(p => {
+        if (p.cleanPoKey) paymentPoKeySet.add(p.cleanPoKey);
+        if (p.creditId) paidCreditIdSet.add(p.creditId);
+      });
+
+      const allData: any[] = [];
+
+      // Add Credit items ONLY if no corresponding Payment exists for the same PO key or credit ID
+      creditItems.forEach(c => {
+        if (c.cleanPoKey && paymentPoKeySet.has(c.cleanPoKey)) {
+          // Skip credit in favor of payment!
+          return;
+        }
+        if (paidCreditIdSet.has(c.id)) {
+          // Skip credit in favor of payment!
+          return;
+        }
+        allData.push(c);
+      });
+
+      // Add all Payment items
+      paymentItems.forEach(p => {
+        allData.push(p);
       });
 
       // Sort globally by date ascending
@@ -263,7 +277,7 @@ export default function VendorStatementsPage() {
               <h1 className="text-xl font-black flex items-center gap-2">
                 <Building2 className="h-5 w-5 text-orange-600" /> Vendor Statements
               </h1>
-              <p className="text-xs text-slate-400">1-Page A4 Statement of Account (Deduplicated)</p>
+              <p className="text-xs text-slate-400">1-Page A4 Statement of Account (Payment Prioritized)</p>
             </div>
           </div>
           
@@ -373,7 +387,7 @@ export default function VendorStatementsPage() {
               <div className="px-6 print:px-3">
                 <div className="grid grid-cols-4 gap-2 text-center">
                   <div className="border border-slate-300 p-2.5 rounded-lg print:border-slate-400">
-                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Total Paid Invoices</p>
+                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Total Invoiced</p>
                     <p className="text-sm sm:text-base font-black font-mono text-black">{formatCurrency(totalPurchased)}</p>
                   </div>
                   <div className="border border-slate-300 p-2.5 rounded-lg print:border-slate-400">
@@ -424,7 +438,7 @@ export default function VendorStatementsPage() {
                           {r.status === "Payment" ? (
                             <span className="border border-black text-black text-[8px] font-black px-1.5 py-0.5 rounded uppercase">PAYMENT</span>
                           ) : (
-                            <span className="border border-emerald-600 text-emerald-800 text-[8px] font-bold px-1.5 py-0.5 rounded uppercase">PAID INVOICE</span>
+                            <span className="border border-amber-600 text-amber-800 text-[8px] font-bold px-1.5 py-0.5 rounded uppercase">INVOICE</span>
                           )}
                         </td>
                         <td className="py-1.5 px-2 font-mono text-slate-600 text-right">
