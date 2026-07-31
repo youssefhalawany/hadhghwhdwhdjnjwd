@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
-import { ArrowLeft, Download, Filter, Building2, Printer } from "lucide-react";
+import { ArrowLeft, Download, Filter, Building2, Printer, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import QRCode from "react-qr-code";
 
@@ -12,6 +12,7 @@ export default function VendorStatementsPage() {
   
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7));
   const [selectedCompany, setSelectedCompany] = useState<string>("ALL");
+  const [paidOnly, setPaidOnly] = useState<boolean>(true); // DEFAULT: Paid invoices only!
   
   const [allReceipts, setAllReceipts] = useState<any[]>([]);
   const [uniqueCompanies, setUniqueCompanies] = useState<string[]>([]);
@@ -72,6 +73,9 @@ export default function VendorStatementsPage() {
           ? totalInvoicePrice 
           : (baseAmt + taxAmt);
 
+        const paidAmt = Number(d.paidAmount || 0);
+        const isPaid = d.status === "paid" || d.isPaid === true || paidAmt > 0;
+
         allData.push({
           id: doc.id,
           normalizedCompany: norm,
@@ -81,6 +85,7 @@ export default function VendorStatementsPage() {
           price: finalInvoicePriceWithTax,
           tax: taxAmt,
           status: "Invoice",
+          isPaid: isPaid,
           source: "credits"
         });
       });
@@ -118,6 +123,7 @@ export default function VendorStatementsPage() {
           price: finalPaymentPriceWithTax,
           tax: pTax,
           status: "Payment",
+          isPaid: true,
           source: "cash_payments"
         });
       });
@@ -154,6 +160,7 @@ export default function VendorStatementsPage() {
           price: finalPaymentPriceWithTax,
           tax: pTax,
           status: "Payment",
+          isPaid: true,
           source: "credit_payments"
         });
       });
@@ -182,9 +189,10 @@ export default function VendorStatementsPage() {
     return allReceipts.filter(r => {
       const matchCompany = !selectedNorm || r.normalizedCompany === selectedNorm;
       const matchMonth = !selectedMonth || (r.receiptDate && r.receiptDate.startsWith(selectedMonth));
-      return matchCompany && matchMonth;
+      const matchPaid = !paidOnly || r.isPaid === true || r.status === "Payment";
+      return matchCompany && matchMonth && matchPaid;
     });
-  }, [allReceipts, selectedCompany, selectedMonth]);
+  }, [allReceipts, selectedCompany, selectedMonth, paidOnly]);
 
   const handlePrint = () => {
     window.print();
@@ -225,18 +233,28 @@ export default function VendorStatementsPage() {
               <h1 className="text-xl font-black flex items-center gap-2">
                 <Building2 className="h-5 w-5 text-orange-600" /> Vendor Statements
               </h1>
-              <p className="text-xs text-slate-400">1-Page A4 Eco-Print Statement of Account</p>
+              <p className="text-xs text-slate-400">1-Page A4 Statement of Account (Paid Invoices Only)</p>
             </div>
           </div>
           
           <div className="flex flex-col sm:flex-row items-center gap-3">
+            
+            {/* Filter Toggle: Paid Invoices Only */}
+            <button
+              onClick={() => setPaidOnly(!paidOnly)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all border ${paidOnly ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-300 dark:border-slate-700'}`}
+            >
+              <CheckCircle2 className={`h-4 w-4 ${paidOnly ? 'text-emerald-600' : 'text-slate-400'}`} />
+              Paid Invoices Only
+            </button>
+
             {/* Vendor Selector Dropdown */}
             <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 w-full sm:w-auto">
               <Filter className="h-4 w-4 text-slate-500 ml-2 shrink-0" />
               <select 
                 value={selectedCompany} 
                 onChange={e => setSelectedCompany(e.target.value)}
-                className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-bold border border-slate-300 dark:border-slate-700 outline-none text-sm cursor-pointer px-3 py-1.5 rounded-lg shadow-sm w-full sm:w-[220px]"
+                className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-bold border border-slate-300 dark:border-slate-700 outline-none text-sm cursor-pointer px-3 py-1.5 rounded-lg shadow-sm w-full sm:w-[200px]"
               >
                 <option value="ALL" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-bold">
                   🏢 All Vendors ({uniqueCompanies.length})
@@ -278,8 +296,8 @@ export default function VendorStatementsPage() {
         ) : filteredReceipts.length === 0 ? (
            <div className="text-center p-16 text-slate-500 font-bold bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 print:hidden">
              <Building2 className="mx-auto h-12 w-12 text-slate-400 mb-3" />
-             <p className="text-lg text-slate-800 dark:text-slate-200">No records found for {displayCompanyTitle}</p>
-             <p className="text-sm text-slate-400 font-normal mt-1">Try selecting a different month or vendor from the top filters.</p>
+             <p className="text-lg text-slate-800 dark:text-slate-200">No paid records found for {displayCompanyTitle}</p>
+             <p className="text-sm text-slate-400 font-normal mt-1">Try selecting a different month or vendor, or toggle "Paid Invoices Only".</p>
            </div>
         ) : (
           <div 
@@ -325,7 +343,7 @@ export default function VendorStatementsPage() {
               <div className="px-6 print:px-3">
                 <div className="grid grid-cols-4 gap-2 text-center">
                   <div className="border border-slate-300 p-2.5 rounded-lg print:border-slate-400">
-                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Total Invoiced</p>
+                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Total Paid Invoices</p>
                     <p className="text-sm sm:text-base font-black font-mono text-black">{formatCurrency(totalPurchased)}</p>
                   </div>
                   <div className="border border-slate-300 p-2.5 rounded-lg print:border-slate-400">
@@ -376,7 +394,7 @@ export default function VendorStatementsPage() {
                           {r.status === "Payment" ? (
                             <span className="border border-black text-black text-[8px] font-black px-1.5 py-0.5 rounded uppercase">PAYMENT</span>
                           ) : (
-                            <span className="border border-slate-400 text-slate-800 text-[8px] font-bold px-1.5 py-0.5 rounded uppercase">INVOICE</span>
+                            <span className="border border-emerald-600 text-emerald-800 text-[8px] font-bold px-1.5 py-0.5 rounded uppercase">PAID INVOICE</span>
                           )}
                         </td>
                         <td className="py-1.5 px-2 font-mono text-slate-600 text-right">
