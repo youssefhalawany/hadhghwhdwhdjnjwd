@@ -74,8 +74,10 @@ export default function ManagerVoidsPage() {
         updatedBy: auth.currentUser?.email || "Manager Operations"
       };
 
+      const reasonToUse = customReason || rejectReason || "Rejected by Manager";
+
       if (newStatus === "rejected") {
-        updatePayload.rejectionReason = customReason || rejectReason || "Rejected by Manager";
+        updatePayload.rejectionReason = reasonToUse;
         updatePayload.rejectedAt = new Date().toISOString();
       } else if (newStatus === "closed_on_system") {
         updatePayload.approvedAt = new Date().toISOString();
@@ -97,14 +99,14 @@ export default function ManagerVoidsPage() {
         ? `❌ Void Rejected - Receipt #${targetVoid.transactionNumber || targetVoid.invoiceNumber || 'N/A'}`
         : `⏳ Void Status Updated`;
 
-      const notifBody = `Void of EGP ${Number(targetVoid.amount || 0).toLocaleString()} for Cashier ${targetVoid.cashierName || 'Cashier'} was ${statusLabel}.${rejectReason ? `\nRejection Reason: "${rejectReason}"` : ''}`;
+      const notifBody = `Void of EGP ${Number(targetVoid.amount || 0).toLocaleString()} for Cashier ${targetVoid.cashierName || 'Cashier'} was ${statusLabel}.${newStatus === "rejected" ? `\nRejection Reason: "${reasonToUse}"` : ''}`;
 
       dispatchNotificationSystem({
         title: notifTitle,
         body: notifBody,
         type: "void",
         url: "/voids/manager",
-        metadata: { status: newStatus, amount: targetVoid.amount, cashierName: targetVoid.cashierName, rejectReason }
+        metadata: { status: newStatus, amount: targetVoid.amount, cashierName: targetVoid.cashierName, rejectReason: reasonToUse }
       });
 
       toast.success(`Void request ${targetVoid.transactionNumber} marked as ${statusLabel}!`);
@@ -507,7 +509,7 @@ export default function ManagerVoidsPage() {
 
               {/* Printable Record Capture Preview */}
               <div className="bg-white rounded-lg p-2 overflow-x-auto print-container-wrapper relative">
-                <div id="void-print-capture" style={{ width: '800px', height: '1131px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', transform: 'scale(0.45)', transformOrigin: 'top left', marginBottom: '-55%' }}>
+                <div id="void-print-capture" style={{ width: '800px', height: '1131px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', transform: 'scale(0.45)', transformOrigin: 'top left', marginBottom: '-55%', padding: '15px' }}>
 
                   {/* Micro-Typography Security Borders */}
                   <div style={{ position: 'absolute', top: '-15mm', left: '-15mm', right: '-15mm', bottom: '-15mm', zIndex: 1, pointerEvents: 'none', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '4px', overflow: 'hidden' }}>
@@ -525,76 +527,178 @@ export default function ManagerVoidsPage() {
                   </div>
 
                   {/* Header Section */}
-                  <div style={{ paddingBottom: '10px', borderBottom: '4px solid #1e293b', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 10 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                      <div style={{ width: '60px', height: '60px', backgroundColor: '#dc2626', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <span style={{ fontSize: '36px', fontWeight: '900', color: '#ffffff', lineHeight: 1 }}>K</span>
+                  <div style={{ paddingBottom: '10px', borderBottom: '4px solid #1e293b', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                      <div style={{ width: '55px', height: '55px', backgroundColor: '#dc2626', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span style={{ fontSize: '32px', fontWeight: '900', color: '#ffffff', lineHeight: 1 }}>K</span>
                       </div>
                       <div>
-                        <h1 style={{ fontSize: '24px', fontWeight: '900', color: '#1e293b', margin: 0, textTransform: 'uppercase', letterSpacing: '-0.5px' }}>OFFICIAL VOID RECORD</h1>
-                        <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0', fontWeight: '600' }}>CIRCLE K ANH PORTAL</p>
+                        <h1 style={{ fontSize: '22px', fontWeight: '900', color: '#1e293b', margin: 0, textTransform: 'uppercase', letterSpacing: '-0.5px' }}>OFFICIAL VOID RECORD</h1>
+                        <p style={{ fontSize: '11px', color: '#64748b', margin: '2px 0 0', fontWeight: '600' }}>CIRCLE K ANH PORTAL VOID</p>
                       </div>
                     </div>
                     <div style={{ textAlign: 'right', display: 'flex', gap: '15px', alignItems: 'center' }}>
-                      <div style={{ border: `3px solid ${selectedVoid.status === "rejected" ? '#ef4444' : '#1e293b'}`, padding: '8px 12px', borderRadius: '8px', backgroundColor: selectedVoid.status === "rejected" ? '#fef2f2' : '#f8fafc' }}>
-                        <p style={{ margin: 0, fontSize: '10px', color: selectedVoid.status === "rejected" ? '#dc2626' : '#475569', textTransform: 'uppercase', fontWeight: '800', textAlign: 'center', marginBottom: '2px' }}>Total Void Amount</p>
-                        <p style={{ margin: 0, fontSize: '20px', fontWeight: '900', color: selectedVoid.status === "rejected" ? '#dc2626' : '#0f172a', fontFamily: '"JetBrains Mono", monospace' }}>EGP {Number(selectedVoid.amount).toFixed(2)}</p>
+                      <div style={{ border: `3px solid ${selectedVoid.status === "rejected" ? '#ef4444' : '#1e293b'}`, padding: '6px 10px', borderRadius: '8px', backgroundColor: selectedVoid.status === "rejected" ? '#fef2f2' : '#f8fafc' }}>
+                        <p style={{ margin: 0, fontSize: '9px', color: selectedVoid.status === "rejected" ? '#dc2626' : '#475569', textTransform: 'uppercase', fontWeight: '800', textAlign: 'center', marginBottom: '2px' }}>Total Void Amount</p>
+                        <p style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: selectedVoid.status === "rejected" ? '#dc2626' : '#0f172a', fontFamily: '"JetBrains Mono", monospace' }}>EGP {Number(selectedVoid.amount || 0).toFixed(2)}</p>
                       </div>
                     </div>
                   </div>
 
                   {/* Transaction Metadata Grid */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '12px', backgroundColor: '#f8fafc', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', position: 'relative', zIndex: 10 }}>
                     <div>
-                      <p style={{ fontSize: '11px', color: '#64748b', margin: '0 0 2px 0' }}>Transaction #</p>
-                      <p style={{ fontSize: '14px', fontWeight: 'bold', color: '#0f172a', margin: 0, fontFamily: 'monospace' }}>{selectedVoid.transactionNumber}</p>
+                      <p style={{ fontSize: '10px', color: '#64748b', margin: '0 0 2px 0' }}>Transaction #</p>
+                      <p style={{ fontSize: '12px', fontWeight: 'bold', color: '#0f172a', margin: 0, fontFamily: 'monospace' }}>{selectedVoid.transactionNumber || 'N/A'}</p>
                     </div>
                     <div>
-                      <p style={{ fontSize: '11px', color: '#64748b', margin: '0 0 2px 0' }}>Status</p>
-                      <p style={{ fontSize: '14px', fontWeight: 'bold', color: selectedVoid.status === 'rejected' ? '#dc2626' : selectedVoid.status === 'closed_on_system' ? '#16a34a' : '#d97706', margin: 0, textTransform: 'uppercase' }}>
+                      <p style={{ fontSize: '10px', color: '#64748b', margin: '0 0 2px 0' }}>Status</p>
+                      <p style={{ fontSize: '12px', fontWeight: 'bold', color: selectedVoid.status === 'rejected' ? '#dc2626' : selectedVoid.status === 'closed_on_system' ? '#16a34a' : '#d97706', margin: 0, textTransform: 'uppercase' }}>
                         {selectedVoid.status === "closed_on_system" ? "APPROVED & CLOSED" : selectedVoid.status === "rejected" ? `REJECTED (${selectedVoid.rejectionReason || "Manager Decision"})` : "PENDING REVIEW"}
                       </p>
                     </div>
                     <div>
-                      <p style={{ fontSize: '11px', color: '#64748b', margin: '0 0 2px 0' }}>Cashier</p>
-                      <p style={{ fontSize: '14px', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>{selectedVoid.cashierName || 'N/A'}</p>
+                      <p style={{ fontSize: '10px', color: '#64748b', margin: '0 0 2px 0' }}>Cashier</p>
+                      <p style={{ fontSize: '12px', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>{selectedVoid.cashierName || 'N/A'}</p>
                     </div>
                     <div>
-                      <p style={{ fontSize: '11px', color: '#64748b', margin: '0 0 2px 0' }}>Customer</p>
-                      <p style={{ fontSize: '14px', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>{selectedVoid.customerName || 'Walk-in'}</p>
+                      <p style={{ fontSize: '10px', color: '#64748b', margin: '0 0 2px 0' }}>Customer</p>
+                      <p style={{ fontSize: '12px', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>{selectedVoid.customerName || 'Walk-in'}</p>
                     </div>
                     <div>
-                      <p style={{ fontSize: '11px', color: '#64748b', margin: '0 0 2px 0' }}>Reason</p>
-                      <p style={{ fontSize: '14px', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>{selectedVoid.reason || 'N/A'}</p>
+                      <p style={{ fontSize: '10px', color: '#64748b', margin: '0 0 2px 0' }}>Reason</p>
+                      <p style={{ fontSize: '12px', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>{selectedVoid.reason || 'N/A'}</p>
                     </div>
                     <div>
-                      <p style={{ fontSize: '11px', color: '#64748b', margin: '0 0 2px 0' }}>Logged Timestamp</p>
-                      <p style={{ fontSize: '12px', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>{selectedVoid.preciseTimestamp || selectedVoid.createdAt}</p>
+                      <p style={{ fontSize: '10px', color: '#64748b', margin: '0 0 2px 0' }}>Logged Timestamp</p>
+                      <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>{selectedVoid.preciseTimestamp || selectedVoid.createdAt}</p>
                     </div>
                   </div>
 
-                  {/* Attached Photos */}
-                  {selectedVoid.attachedPhotos && selectedVoid.attachedPhotos.length > 0 && (
-                    <div style={{ marginTop: '10px' }}>
-                      <p style={{ fontSize: '12px', fontWeight: 'bold', color: '#0f172a', marginBottom: '8px' }}>Attached Proof Image:</p>
-                      <div style={{ display: 'flex', gap: '10px' }}>
-                        {selectedVoid.attachedPhotos.map((photo: string, i: number) => (
-                          <img key={i} src={photo} alt={`Proof ${i}`} style={{ maxHeight: '200px', objectFit: 'contain', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
-                        ))}
+                  {/* Main Content Area: 2 Columns (Left: Items & Summary, Right: Receipt Photo Evidence) */}
+                  <div style={{ display: 'flex', gap: '12px', flex: 1, marginBottom: '12px', position: 'relative', zIndex: 10 }}>
+                    
+                    {/* Left Column: Items List & Financial Summary */}
+                    <div style={{ flex: '0 0 46%', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {selectedVoid.extractedReceipt && selectedVoid.extractedReceipt.items && selectedVoid.extractedReceipt.items.length > 0 ? (
+                        <div style={{ border: '1px solid #cbd5e1', borderRadius: '8px', overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: 'white' }}>
+                          <div style={{ backgroundColor: '#f8fafc', padding: '8px 12px', borderBottom: '2px solid #e2e8f0', fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', color: '#1e293b' }}>
+                            Scanned Items List
+                          </div>
+                          <div style={{ padding: '8px', flex: 1, overflow: 'hidden' }}>
+                            <table style={{ width: '100%', fontSize: '10px', borderCollapse: 'collapse' }}>
+                              <thead>
+                                <tr style={{ borderBottom: '2px solid #cbd5e1', color: '#64748b' }}>
+                                  <th style={{ textAlign: 'left', padding: '4px 2px', fontWeight: '800' }}>Item</th>
+                                  <th style={{ textAlign: 'center', padding: '4px 2px', fontWeight: '800' }}>Qty</th>
+                                  <th style={{ textAlign: 'right', padding: '4px 2px', fontWeight: '800' }}>Price</th>
+                                  <th style={{ textAlign: 'right', padding: '4px 2px', fontWeight: '800' }}>Total</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {selectedVoid.extractedReceipt.items.map((item: any, i: number) => {
+                                  const isReturned = selectedVoid.selectedReturnedItems?.some((s: any) => s.desc === item.description);
+                                  return (
+                                    <tr key={i} style={{ backgroundColor: isReturned ? '#fef2f2' : 'transparent', borderBottom: '1px solid #f1f5f9' }}>
+                                      <td style={{ padding: '4px 2px', fontWeight: isReturned ? '800' : '500', color: isReturned ? '#991b1b' : '#0f172a' }}>{item.description} {isReturned ? '(VOID)' : ''}</td>
+                                      <td style={{ padding: '4px 2px', textAlign: 'center', fontWeight: '600' }}>{item.quantity}</td>
+                                      <td style={{ padding: '4px 2px', textAlign: 'right', color: '#475569' }}>{item.price}</td>
+                                      <td style={{ padding: '4px 2px', textAlign: 'right', fontWeight: '800' }}>{item.total}</td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+
+                            <div style={{ marginTop: '10px', padding: '8px 12px', backgroundColor: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', marginBottom: '4px' }}>
+                                <span style={{ color: '#64748b', fontWeight: '700' }}>Net Amount:</span>
+                                <span style={{ fontWeight: '800' }}>{selectedVoid.extractedReceipt.net_amount || '0'}</span>
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', marginBottom: '6px' }}>
+                                <span style={{ color: '#64748b', fontWeight: '700' }}>Tax:</span>
+                                <span style={{ fontWeight: '800' }}>{selectedVoid.extractedReceipt.tax_amount || '0'}</span>
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #cbd5e1', paddingTop: '6px', fontSize: '12px' }}>
+                                <span style={{ color: '#0f172a', fontWeight: '900' }}>Total Receipt:</span>
+                                <span style={{ fontWeight: '900', color: '#0f172a' }}>{selectedVoid.extractedReceipt.total_amount || '0'} EGP</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ border: '1px solid #cbd5e1', borderRadius: '8px', padding: '12px', backgroundColor: '#f8fafc', fontSize: '11px', color: '#64748b' }}>
+                          <p style={{ margin: 0, fontWeight: 'bold', color: '#0f172a' }}>Void Details</p>
+                          <p style={{ margin: '4px 0 0' }}>Reason: {selectedVoid.reason || 'N/A'}</p>
+                          <p style={{ margin: '2px 0 0' }}>Amount: EGP {Number(selectedVoid.amount || 0).toFixed(2)}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Right Column: Physical Receipt Evidence Photo */}
+                    <div style={{ flex: '0 0 52%', display: 'flex', flexDirection: 'column' }}>
+                      <div style={{ border: '2px solid #cbd5e1', borderRadius: '8px', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', backgroundColor: '#f8fafc' }}>
+                        <div style={{ backgroundColor: '#e2e8f0', padding: '8px 12px', borderBottom: '2px solid #cbd5e1', fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', textAlign: 'center', color: '#1e293b', letterSpacing: '1px' }}>
+                          Physical Receipt Evidence
+                        </div>
+                        <div style={{ flex: 1, padding: '10px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                          {selectedVoid.attachedPhotos && selectedVoid.attachedPhotos.length > 0 ? (
+                            <img src={selectedVoid.attachedPhotos[0]} style={{ width: '100%', height: '100%', maxHeight: '350px', objectFit: 'contain', border: '1px solid #e2e8f0', backgroundColor: 'white', padding: '4px' }} alt="Receipt Evidence" />
+                          ) : (
+                            <div style={{ color: '#94a3b8', fontSize: '14px', fontWeight: '800' }}>No Photo Attached</div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  )}
 
-                  {/* Footer Seal */}
-                  <div style={{ marginTop: 'auto', paddingTop: '15px', borderTop: '2px solid #cbd5e1', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                    <div style={{ fontSize: '10px', color: '#64748b' }}>
-                      <p style={{ margin: 0 }}>OFFICIAL AUDIT REPORT • CIRCLE K FRANCHISE</p>
-                      <p style={{ margin: '2px 0 0' }}>Generated by ANH Reports Operations Portal</p>
+                  </div>
+
+                  {/* Footer Signatures */}
+                  <div style={{ borderTop: '2px solid #1e293b', paddingTop: '10px', marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingBottom: '8px', position: 'relative', zIndex: 10 }}>
+                    <div style={{ width: '25%' }}>
+                      <p style={{ fontSize: '9px', fontWeight: '800', color: '#64748b', margin: '0 0 2px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Cashier Signature</p>
+                      {selectedVoid.cashierSignature ? (
+                        <img src={selectedVoid.cashierSignature} alt="Signature" style={{ display: 'block', maxWidth: '100%', height: '40px', objectFit: 'contain', marginBottom: '2px' }} />
+                      ) : (
+                        <div style={{ height: '40px', marginBottom: '2px' }}></div>
+                      )}
+                      <div style={{ borderBottom: '2px solid #0f172a', width: '100%', marginBottom: '4px' }}></div>
+                      <p style={{ fontSize: '11px', fontWeight: '900', margin: 0, textTransform: 'uppercase', color: '#0f172a' }}>{selectedVoid.cashierName || 'Cashier'}</p>
                     </div>
-                    <div style={{ textAlign: 'center', width: '150px' }}>
-                      <div style={{ height: '35px', borderBottom: '1px solid #94a3b8', marginBottom: '4px' }}></div>
-                      <p style={{ fontSize: '9px', fontWeight: 'bold', color: '#0f172a', margin: 0, textTransform: 'uppercase' }}>Manager Authorization</p>
+
+                    <div style={{ width: '22%', textAlign: 'center' }}>
+                      <Barcode
+                        value={selectedVoid.transactionNumber || '000000'}
+                        width={1.2}
+                        height={35}
+                        fontSize={10}
+                        font="monospace"
+                        margin={0}
+                        background="#ffffff"
+                        displayValue={true}
+                      />
                     </div>
+
+                    <div style={{ width: '25%' }}>
+                      <p style={{ fontSize: '9px', fontWeight: '800', color: '#64748b', margin: '0 0 2px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Manager Authorization</p>
+                      <div style={{ height: '40px', marginBottom: '2px' }}></div>
+                      <div style={{ borderBottom: '2px solid #0f172a', width: '100%', marginBottom: '4px' }}></div>
+                      <p style={{ fontSize: '11px', fontWeight: '900', margin: 0, textTransform: 'uppercase', color: '#0f172a' }}>Signature / Stamp</p>
+                    </div>
+
+                    {/* Official Stamp Box */}
+                    <div style={{ width: '20%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end' }}>
+                      <div style={{ width: '100%', height: '55px', border: '2px dashed #94a3b8', borderRadius: '4px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc' }}>
+                        <span style={{ fontSize: '8px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', textAlign: 'center', letterSpacing: '0.5px' }}>Official Branch<br />Stamp / Seal</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Advanced Digital Forensics Footer */}
+                  <div style={{ borderTop: '1px solid #cbd5e1', paddingTop: '4px', textAlign: 'center', position: 'relative', zIndex: 10 }}>
+                    <p style={{ fontSize: '7px', color: '#475569', fontFamily: 'monospace', margin: 0, letterSpacing: '0.5px', fontWeight: 'bold' }}>
+                      DOCUMENT VOID-{(selectedVoid.id || '0000').substring(0, 10).toUpperCase()} | TXN: {selectedVoid.transactionNumber} | PRINTED: {new Date().toLocaleString('en-GB')} | SYSTEM: ANH PORTAL V2.0
+                    </p>
                   </div>
 
                 </div>
@@ -605,7 +709,7 @@ export default function ManagerVoidsPage() {
 
         {/* REJECTION REASON PROMPT MODAL */}
         {showRejectModal && selectedVoid && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
             <div className="bg-white dark:bg-[#0B1121] border border-slate-200 dark:border-[#1E293B] rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 text-slate-900 dark:text-white">
               
               <div className="flex items-center justify-between">
