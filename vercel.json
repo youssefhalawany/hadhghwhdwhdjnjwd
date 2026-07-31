@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/daily-report",
       "schedule": "15 21 * * *"
+    },
+    {
+      "path": "/api/cron/expiry-radar",
+      "schedule": "0 6 * * *"
     }
   ]
 }
