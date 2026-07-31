@@ -4,6 +4,9 @@ import { doc, updateDoc, getDoc } from "firebase/firestore";
 
 // High-resolution verified product studio photos mapped by product keywords
 const BRAND_IMAGE_MAP: Record<string, string> = {
+  // Pringles (Iconic Pringles Can Photo)
+  pringles: "https://images.unsplash.com/photo-1599490659213-e2b9527bd087?w=500&auto=format&fit=crop&q=80",
+
   // Cigarettes & Tobacco (Marlboro, Merit, L&M, Terea, Heets)
   marlboro: "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?w=500&auto=format&fit=crop&q=80",
   merit: "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?w=500&auto=format&fit=crop&q=80",
@@ -39,7 +42,6 @@ const BRAND_IMAGE_MAP: Record<string, string> = {
   energy: "https://images.unsplash.com/photo-1622543925917-763c34d1a86e?w=500&auto=format&fit=crop&q=80",
 
   // Chips & Crunchy Potato Snacks
-  pringles: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=500&auto=format&fit=crop&q=80",
   crunchos: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=500&auto=format&fit=crop&q=80",
   stix: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=500&auto=format&fit=crop&q=80",
   chipsy: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=500&auto=format&fit=crop&q=80",
@@ -64,6 +66,7 @@ const BRAND_IMAGE_MAP: Record<string, string> = {
 
 // Studio product mockup placeholders by broad product category
 const CATEGORY_FALLBACKS: Record<string, string> = {
+  pringles: "https://images.unsplash.com/photo-1599490659213-e2b9527bd087?w=500&auto=format&fit=crop&q=80",
   tobacco: "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?w=500&auto=format&fit=crop&q=80",
   drink: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=500&auto=format&fit=crop&q=80",
   snack: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=500&auto=format&fit=crop&q=80",
@@ -110,7 +113,9 @@ export async function POST(req: NextRequest) {
 
     // 3. Category Fallback
     if (!imageUrl) {
-      if (cleanName.includes("marlboro") || cleanName.includes("merit") || cleanName.includes("l&m") || cleanName.includes("terea") || cleanName.includes("cigaret") || cleanName.includes("tobacco")) {
+      if (cleanName.includes("pringles")) {
+        imageUrl = CATEGORY_FALLBACKS.pringles;
+      } else if (cleanName.includes("marlboro") || cleanName.includes("merit") || cleanName.includes("l&m") || cleanName.includes("terea") || cleanName.includes("cigaret") || cleanName.includes("tobacco")) {
         imageUrl = CATEGORY_FALLBACKS.tobacco;
       } else if (cleanName.includes("drink") || cleanName.includes("water") || cleanName.includes("tea") || cleanName.includes("coffee") || cleanName.includes("shot") || cleanName.includes("soda")) {
         imageUrl = CATEGORY_FALLBACKS.drink;

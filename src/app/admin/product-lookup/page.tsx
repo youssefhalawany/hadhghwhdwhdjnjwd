@@ -275,6 +275,7 @@ function ProductLookupContent() {
             prod.imageUrl.includes("photo-1558961363-fa8fdf82db35") ||
             prod.imageUrl.includes("photo-1541781774459-bb2af2f05b55") ||
             ((nameLower.includes("marlboro") || nameLower.includes("merit") || nameLower.includes("l&m") || nameLower.includes("terea")) && !prod.imageUrl.includes("photo-1527061011665-3652c757a4d4")) ||
+            (nameLower.includes("pringles") && !prod.imageUrl.includes("photo-1599490659213-e2b9527bd087")) ||
             (nameLower.includes("crunchos") && !prod.imageUrl.includes("photo-1566478989037-eec170784d0b"));
 
           if (needsFetch) {
