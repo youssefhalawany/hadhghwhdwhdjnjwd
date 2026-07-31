@@ -461,6 +461,42 @@ function ProductLookupContent() {
     return allProducts.reduce((acc, p) => acc + (p.priceHistoryCount || 1), 0);
   }, [allProducts]);
 
+  // Immediate Product Image Resolver helper
+  const getProductImage = (p: any) => {
+    const key = p.groupKey || p.barcode || p.id;
+    if (p.imageUrl && !failedImageUrls[key]) {
+      return p.imageUrl;
+    }
+    const name = (p.description || p.itemName || p.name || "").toLowerCase();
+
+    if (name.includes("aquafina") || name.includes("water") || name.includes("hayat")) {
+      return "https://images.unsplash.com/photo-1548839140-29a749e1bc4e?w=500&auto=format&fit=crop&q=80";
+    }
+    if (name.includes("pepsi")) {
+      return "https://images.unsplash.com/photo-1629203851122-3726ecdf080e?w=500&auto=format&fit=crop&q=80";
+    }
+    if (name.includes("coca") || name.includes("coke")) {
+      return "https://images.unsplash.com/photo-1554866585-cd94860890b7?w=500&auto=format&fit=crop&q=80";
+    }
+    if (name.includes("fanta")) {
+      return "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=500&auto=format&fit=crop&q=80";
+    }
+    if (name.includes("marlboro") || name.includes("merit") || name.includes("l&m") || name.includes("terea") || name.includes("heets")) {
+      return "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?w=500&auto=format&fit=crop&q=80";
+    }
+    if (name.includes("pringles")) {
+      return "https://images.unsplash.com/photo-1599490659213-e2b9527bd087?w=500&auto=format&fit=crop&q=80";
+    }
+    if (name.includes("crunchos") || name.includes("stix") || name.includes("chip")) {
+      return "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=500&auto=format&fit=crop&q=80";
+    }
+    if (name.includes("brown") || name.includes("coffee") || name.includes("espres")) {
+      return "https://images.unsplash.com/photo-1517701604599-bb29b565090c?w=500&auto=format&fit=crop&q=80";
+    }
+
+    return null;
+  };
+
   return (
     <div className="min-h-screen bg-slate-50/50 dark:bg-[#070C18] text-slate-900 dark:text-slate-100 p-4 md:p-8 space-y-6 font-sans transition-colors duration-200">
       
@@ -591,7 +627,7 @@ function ProductLookupContent() {
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
           {categoryFilteredProducts.map((p, idx) => {
-            const hasValidImg = p.imageUrl && !failedImageUrls[p.groupKey || p.barcode || p.id];
+            const productImg = getProductImage(p);
 
             return (
               <motion.div
@@ -604,9 +640,9 @@ function ProductLookupContent() {
               >
                 {/* Product Thumbnail Box */}
                 <div className="aspect-square bg-slate-50 dark:bg-slate-950 rounded-xl mb-3.5 flex items-center justify-center border border-slate-100 dark:border-slate-800 overflow-hidden relative">
-                  {hasValidImg ? (
+                  {productImg ? (
                     <img 
-                      src={p.imageUrl} 
+                      src={productImg} 
                       alt={p.description || p.name} 
                       onError={() => {
                         setFailedImageUrls(prev => ({ ...prev, [p.groupKey || p.barcode || p.id]: true }));
