@@ -39,6 +39,7 @@ export default function VendorStatementsPage() {
       const creditIdToNormCompany: Record<string, string> = {};
       const companySet = new Set<string>();
 
+      const seenPoKeys = new Set<string>();
       const allData: any[] = [];
 
       // 1. Process Credits (Invoices)
@@ -76,12 +77,19 @@ export default function VendorStatementsPage() {
         const paidAmt = Number(d.paidAmount || 0);
         const isPaid = d.status === "paid" || d.isPaid === true || paidAmt > 0;
 
+        const rawPo = (d.poNumber || d.invoiceNumber || "").trim();
+        const cleanPo = rawPo.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+        if (cleanPo && cleanPo !== "-" && cleanPo !== "cashpayment" && cleanPo !== "na") {
+          seenPoKeys.add(`${norm}_${cleanPo}`);
+        }
+
         allData.push({
           id: doc.id,
           normalizedCompany: norm,
           originalCompany: companyDisplayNames[norm],
           receiptDate: rDate || new Date().toISOString().substring(0, 10),
-          poNumber: d.poNumber || d.invoiceNumber || "-",
+          poNumber: rawPo || "-",
           price: finalInvoicePriceWithTax,
           tax: taxAmt,
           status: "Invoice",
@@ -106,6 +114,19 @@ export default function VendorStatementsPage() {
         if (!companyDisplayNames[norm]) companyDisplayNames[norm] = rawName;
         companySet.add(companyDisplayNames[norm]);
 
+        const rawPo = (d.poNumber || d.invoiceNumber || "").trim();
+        const cleanPo = rawPo.toLowerCase().replace(/[^a-z0-9]/g, "");
+        const poKey = `${norm}_${cleanPo}`;
+
+        // Deduplicate: If this payment is already linked to a credit note OR shares the exact same PO/Invoice # for this supplier, SKIP IT!
+        if (d.creditId || (cleanPo && cleanPo !== "-" && cleanPo !== "cashpayment" && cleanPo !== "na" && seenPoKeys.has(poKey))) {
+          return;
+        }
+
+        if (cleanPo && cleanPo !== "-" && cleanPo !== "cashpayment" && cleanPo !== "na") {
+          seenPoKeys.add(poKey);
+        }
+
         let rDate = d.date || (d.createdAt && typeof d.createdAt.toDate === 'function' ? d.createdAt.toDate().toISOString().substring(0, 10) : "");
         if (typeof d.createdAt === 'string' && !rDate) rDate = d.createdAt.substring(0, 10);
 
@@ -119,7 +140,7 @@ export default function VendorStatementsPage() {
           normalizedCompany: norm,
           originalCompany: companyDisplayNames[norm],
           receiptDate: rDate || new Date().toISOString().substring(0, 10),
-          poNumber: d.poNumber || d.invoiceNumber || "Cash Payment",
+          poNumber: rawPo || "Cash Payment",
           price: finalPaymentPriceWithTax,
           tax: pTax,
           status: "Payment",
@@ -143,6 +164,15 @@ export default function VendorStatementsPage() {
         const norm = creditIdToNormCompany[d.creditId];
         if (!norm) return;
 
+        const rawPo = (d.poNumber || d.invoiceNumber || "").trim();
+        const cleanPo = rawPo.toLowerCase().replace(/[^a-z0-9]/g, "");
+        const poKey = `${norm}_${cleanPo}`;
+
+        // Deduplicate: If this credit payment is already covered under the same PO key, skip duplicate rendering
+        if (cleanPo && cleanPo !== "-" && cleanPo !== "cashpayment" && cleanPo !== "na" && seenPoKeys.has(poKey)) {
+          return;
+        }
+
         let rDate = d.date || (d.createdAt && typeof d.createdAt.toDate === 'function' ? d.createdAt.toDate().toISOString().substring(0, 10) : "");
         if (typeof d.createdAt === 'string' && !rDate) rDate = d.createdAt.substring(0, 10);
 
@@ -156,7 +186,7 @@ export default function VendorStatementsPage() {
           normalizedCompany: norm,
           originalCompany: companyDisplayNames[norm] || "Unknown Supplier",
           receiptDate: rDate || new Date().toISOString().substring(0, 10),
-          poNumber: `Pmt ref: ${d.creditId.substring(0, 6)}`,
+          poNumber: rawPo || `Pmt ref: ${d.creditId.substring(0, 6)}`,
           price: finalPaymentPriceWithTax,
           tax: pTax,
           status: "Payment",
@@ -233,7 +263,7 @@ export default function VendorStatementsPage() {
               <h1 className="text-xl font-black flex items-center gap-2">
                 <Building2 className="h-5 w-5 text-orange-600" /> Vendor Statements
               </h1>
-              <p className="text-xs text-slate-400">1-Page A4 Statement of Account (Paid Invoices Only)</p>
+              <p className="text-xs text-slate-400">1-Page A4 Statement of Account (Deduplicated)</p>
             </div>
           </div>
           
