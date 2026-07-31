@@ -143,21 +143,21 @@ export function DynamicIsland() {
           <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
         </span>
       ),
-      text: `🟢 Shift Active (${activeShiftName})`,
+      text: `Shift Active (${activeShiftName})`,
       color: "text-emerald-400 font-extrabold",
       action: () => router.push("/shift-reports/manager")
     },
     {
       id: "voids",
       icon: <ShieldAlert className="w-3.5 h-3.5 text-rose-400 shrink-0" />,
-      text: pendingVoidCount > 0 ? `🚨 ${pendingVoidCount} Pending Void${pendingVoidCount > 1 ? 's' : ''}` : "🚨 0 Pending Voids",
+      text: pendingVoidCount > 0 ? `${pendingVoidCount} Pending Void${pendingVoidCount > 1 ? 's' : ''}` : "0 Pending Voids",
       color: pendingVoidCount > 0 ? "text-rose-400 font-extrabold" : "text-slate-300",
       action: () => router.push("/voids/manager")
     },
     {
       id: "expiries",
       icon: <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />,
-      text: expiriesTodayCount > 0 ? `⚠️ ${expiriesTodayCount} Expiries Today` : "⚠️ 0 Expiries Today",
+      text: expiriesTodayCount > 0 ? `${expiriesTodayCount} Expiries Today` : "0 Expiries Today",
       color: expiriesTodayCount > 0 ? "text-amber-400 font-extrabold" : "text-slate-300",
       action: () => router.push("/admin/product-lookup")
     }
@@ -166,7 +166,7 @@ export function DynamicIsland() {
   const currentIndicator = liveIndicators[activeIndicatorIndex];
 
   return (
-    <div className="fixed top-[max(6px,calc(env(safe-area-inset-top,0px)-2px))] left-0 right-0 z-[50] flex justify-center pointer-events-none px-3 print:hidden">
+    <div className="fixed top-2 left-0 right-0 z-[50] flex justify-center pointer-events-none px-3 print:hidden">
       <AnimatePresence mode="wait">
         {/* Priority 1: Transient Flash Notification */}
         {notification ? (
@@ -175,7 +175,7 @@ export function DynamicIsland() {
             initial={{ y: -35, scale: 0.75, opacity: 0, borderRadius: "40px" }}
             animate={{ y: 0, scale: 1, opacity: 1, borderRadius: "24px" }}
             exit={{ y: -20, scale: 0.8, opacity: 0, borderRadius: "40px" }}
-            transition={{ type: "spring", stiffness: 420, damping: 30 }}
+            transition={{ type: "spring", stiffness: 450, damping: 32 }}
             className="bg-black/95 backdrop-blur-3xl border border-white/20 shadow-[0_12px_40px_rgba(0,0,0,0.9)] overflow-hidden pointer-events-auto cursor-pointer flex items-center gap-3 px-4 py-2.5"
             style={{ maxWidth: "340px", width: "100%" }}
             onClick={() => dismissIsland(notification.id)}
@@ -197,20 +197,20 @@ export function DynamicIsland() {
             </div>
           </motion.div>
         ) : (
-          /* Priority 2: Native iPhone Hardware Dynamic Island Embedded Pill */
+          /* Priority 2: Native iPhone Hardware Dynamic Island Pill */
           <motion.div
             layout
-            transition={{ type: "spring", stiffness: 400, damping: 30 }}
+            transition={{ type: "spring", stiffness: 450, damping: 32 }}
             onClick={() => setIsExpanded(!isExpanded)}
             className="bg-black/95 backdrop-blur-3xl border border-white/15 shadow-[0_12px_35px_rgba(0,0,0,0.95)] pointer-events-auto cursor-pointer overflow-hidden flex flex-col"
             style={{
-              borderRadius: isExpanded ? "26px" : "28px",
+              borderRadius: isExpanded ? "26px" : "9999px",
               width: isExpanded ? "100%" : "auto",
-              maxWidth: isExpanded ? "370px" : "300px",
+              maxWidth: isExpanded ? "370px" : "280px",
               padding: isExpanded ? "14px" : "5px 14px"
             }}
           >
-            {/* COLLAPSED PILL VIEW — Embedded in Top Hardware Notch Zone */}
+            {/* COLLAPSED PILL VIEW — Native Apple Dynamic Island Pill Design */}
             {!isExpanded && (
               <div className="flex items-center justify-between gap-2.5 text-xs font-bold text-white whitespace-nowrap">
                 <div className="flex items-center gap-2">
@@ -219,9 +219,9 @@ export function DynamicIsland() {
                     {currentIndicator.text}
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5 pl-2 border-l border-white/15">
+                <div className="flex items-center gap-1 pl-2 border-l border-white/15">
                   <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)] shrink-0" />
-                  <span className="text-[9.5px] font-black text-slate-400 uppercase tracking-wider">LIVE</span>
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">LIVE</span>
                 </div>
               </div>
             )}
