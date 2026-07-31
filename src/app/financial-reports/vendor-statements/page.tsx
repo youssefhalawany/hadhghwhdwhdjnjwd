@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
-import { ArrowLeft, Download, Filter, Building2, Search } from "lucide-react";
+import { ArrowLeft, Download, Filter, Building2, Printer } from "lucide-react";
 import Link from "next/link";
 import QRCode from "react-qr-code";
 
@@ -12,7 +12,6 @@ export default function VendorStatementsPage() {
   
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7));
   const [selectedCompany, setSelectedCompany] = useState<string>("ALL");
-  const [companySearchQuery, setCompanySearchQuery] = useState("");
   
   const [allReceipts, setAllReceipts] = useState<any[]>([]);
   const [uniqueCompanies, setUniqueCompanies] = useState<string[]>([]);
@@ -45,7 +44,7 @@ export default function VendorStatementsPage() {
       creditsSnap.docs.forEach(doc => {
         const d = doc.data();
 
-        // STRICTLY FILTER OUT DELETED & CANCELLED CREDITS
+        // Strictly filter out deleted or cancelled credits
         if (d.status === "deleted" || d.status === "cancelled" || d.deleted === true || d.isDeleted === true || d.isCancelled === true) {
           return;
         }
@@ -90,7 +89,7 @@ export default function VendorStatementsPage() {
       cashSnap.docs.forEach(doc => {
         const d = doc.data();
 
-        // STRICTLY FILTER OUT DELETED & CANCELLED CASH PAYMENTS
+        // Strictly filter out deleted or cancelled cash payments
         if (d.status === "deleted" || d.status === "cancelled" || d.deleted === true || d.isDeleted === true || d.isCancelled === true) {
           return;
         }
@@ -127,7 +126,7 @@ export default function VendorStatementsPage() {
       creditPaymentsSnap.docs.forEach(doc => {
         const d = doc.data();
 
-        // STRICTLY FILTER OUT DELETED & CANCELLED CREDIT PAYMENTS
+        // Strictly filter out deleted or cancelled credit payments
         if (d.status === "deleted" || d.status === "cancelled" || d.deleted === true || d.isDeleted === true || d.isCancelled === true) {
           return;
         }
@@ -206,21 +205,17 @@ export default function VendorStatementsPage() {
     : "";
 
   const displayCompanyTitle = selectedCompany === "ALL" ? "All Vendors Summary" : selectedCompany;
+  const statementId = `SOA-${(selectedCompany || "ALL").replace(/[^a-zA-Z0-9]/g, "").substring(0, 6).toUpperCase()}-${yearStr}${monthStr}`;
 
   const generateQRData = () => {
-    let text = `Vendor: ${displayCompanyTitle}\nPeriod: ${monthName} ${yearStr}\n`;
-    text += `Total Invoiced: EGP ${totalPurchased}\nTotal Paid: EGP ${totalPaid}\nTotal Tax Paid: EGP ${totalTaxPaid}\nBalance Due: EGP ${totalCredit}\n\n`;
-    text += `--- Ledger ---\n`;
-    filteredReceipts.slice(0, 30).forEach(r => {
-      text += `${r.receiptDate} | ${r.originalCompany} | ${r.poNumber || "N/A"} | ${r.status} | EGP ${r.price}\n`;
-    });
+    let text = `Circle K Statement\nRef: ${statementId}\nVendor: ${displayCompanyTitle}\nPeriod: ${monthName} ${yearStr}\nInvoiced: EGP ${totalPurchased}\nPaid: EGP ${totalPaid}\nTax: EGP ${totalTaxPaid}\nBalance: EGP ${totalCredit}`;
     return text;
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950/20 text-slate-900 dark:text-slate-100 pb-20 print:bg-white print:text-black print:pb-0">
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-950/20 text-slate-900 dark:text-slate-100 pb-20 print:bg-white print:text-black print:pb-0 print:m-0">
       
-      {/* Control Bar */}
+      {/* Control Bar (Hidden when printing) */}
       <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50 shadow-sm print:hidden">
         <div className="max-w-5xl mx-auto p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -231,12 +226,12 @@ export default function VendorStatementsPage() {
               <h1 className="text-xl font-black flex items-center gap-2">
                 <Building2 className="h-5 w-5 text-orange-600" /> Vendor Statements
               </h1>
+              <p className="text-xs text-slate-400">Eco-print optimized professional statement of account</p>
             </div>
           </div>
           
           <div className="flex flex-col sm:flex-row items-center gap-3">
-            
-            {/* Vendor Selector Dropdown with Contrast Styling */}
+            {/* Vendor Selector Dropdown */}
             <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 w-full sm:w-auto">
               <Filter className="h-4 w-4 text-slate-500 ml-2 shrink-0" />
               <select 
@@ -267,22 +262,22 @@ export default function VendorStatementsPage() {
               disabled={loading || filteredReceipts.length === 0}
               className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 dark:bg-orange-600 dark:hover:bg-orange-700 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-md transition-colors disabled:opacity-50 w-full sm:w-auto justify-center"
             >
-              <Download className="h-4 w-4" />
+              <Printer className="h-4 w-4" />
               Print Statement
             </button>
           </div>
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto mt-6 px-4">
+      <div className="max-w-4xl mx-auto mt-6 px-2 sm:px-4 print:max-w-none print:m-0 print:p-0">
         
         {loading ? (
-           <div className="flex flex-col items-center justify-center p-20 gap-3">
+           <div className="flex flex-col items-center justify-center p-20 gap-3 print:hidden">
              <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-orange-600"></div>
              <p className="text-sm font-bold text-slate-500">Loading Vendor Ledger Data...</p>
            </div>
         ) : filteredReceipts.length === 0 ? (
-           <div className="text-center p-16 text-slate-500 font-bold bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800">
+           <div className="text-center p-16 text-slate-500 font-bold bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 print:hidden">
              <Building2 className="mx-auto h-12 w-12 text-slate-400 mb-3" />
              <p className="text-lg text-slate-800 dark:text-slate-200">No records found for {displayCompanyTitle}</p>
              <p className="text-sm text-slate-400 font-normal mt-1">Try selecting a different month or vendor from the top filters.</p>
@@ -290,145 +285,183 @@ export default function VendorStatementsPage() {
         ) : (
           <div 
             ref={pdfRef} 
-            className="bg-white text-slate-900 w-full rounded-none sm:rounded-xl shadow-2xl overflow-hidden print:shadow-none print:w-full print:max-w-none print:m-0 print:border-none"
-            style={{ minHeight: '297mm', margin: '0 auto', boxSizing: 'border-box', backgroundColor: '#ffffff' }}
+            className="bg-white text-slate-900 w-full rounded-xl shadow-xl overflow-hidden print:shadow-none print:w-full print:max-w-none print:m-0 print:p-0 print:border-none print:rounded-none"
+            style={{ backgroundColor: '#ffffff', color: '#000000' }}
           >
-            {/* PDF HEADER */}
-            <div className="border-b-4 border-slate-900 p-8 sm:p-10 flex justify-between items-end bg-slate-50">
-              <div>
-                <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight uppercase">Vendor Statement</h1>
-                <p className="text-xl sm:text-2xl font-bold text-orange-600 tracking-wider mt-1 uppercase">{displayCompanyTitle}</p>
-              </div>
-              <div className="text-right">
-                <div className="h-12 w-12 bg-slate-900 text-white rounded-full flex items-center justify-center font-black text-2xl ml-auto mb-2">K</div>
-                <p className="font-bold text-sm text-slate-700">Circle K Retail</p>
-                <p className="text-xs font-semibold text-slate-500">Period: {monthName} {yearStr}</p>
+            {/* ECO-PRINT HIGH-END CORPORATE HEADER */}
+            <div className="p-8 border-b border-slate-300 print:p-4 print:border-b-2 print:border-black">
+              <div className="flex justify-between items-start">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 border-2 border-black flex items-center justify-center font-black text-lg">K</div>
+                    <div>
+                      <h2 className="text-lg font-black tracking-tight uppercase text-black leading-none">Circle K Retail</h2>
+                      <p className="text-[10px] font-bold text-slate-600 tracking-wider uppercase">Stores & Operations Financials</p>
+                    </div>
+                  </div>
+                  <h1 className="text-2xl font-black text-black tracking-tight uppercase mt-6">Statement of Account</h1>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">كشف حساب مورد شامل الضريبة</p>
+                </div>
+
+                <div className="text-right border-l border-slate-200 pl-6 print:border-l print:border-slate-400">
+                  <div className="text-xs font-mono font-bold text-slate-500 uppercase tracking-wider mb-1">Statement No</div>
+                  <div className="text-sm font-mono font-black text-black border border-black px-2 py-0.5 inline-block mb-3">{statementId}</div>
+                  
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-left text-xs">
+                    <span className="font-bold text-slate-500 uppercase">Vendor:</span>
+                    <span className="font-black text-black capitalize truncate max-w-[140px]">{displayCompanyTitle}</span>
+                    
+                    <span className="font-bold text-slate-500 uppercase">Period:</span>
+                    <span className="font-bold text-black">{monthName} {yearStr}</span>
+                    
+                    <span className="font-bold text-slate-500 uppercase">Date:</span>
+                    <span className="font-bold text-black">{new Date().toLocaleDateString('en-GB')}</span>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* SUMMARY CARDS */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-0 border-b border-slate-200 text-center">
-              <div className="p-5 border-r border-b md:border-b-0 border-slate-200">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Invoiced (Incl. Tax)</p>
-                <p className="text-xl font-black text-slate-900">{formatCurrency(totalPurchased)}</p>
-              </div>
-              <div className="p-5 border-r border-b md:border-b-0 border-slate-200">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Paid</p>
-                <p className="text-xl font-black text-emerald-600">{formatCurrency(totalPaid)}</p>
-              </div>
-              <div className="p-5 border-r border-slate-200 bg-slate-50">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Tax Included</p>
-                <p className="text-xl font-black text-cyan-600">{formatCurrency(totalTaxPaid)}</p>
-              </div>
-              <div className="p-5 bg-slate-900 text-white">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Remaining Balance</p>
-                <p className={`text-xl font-black ${totalCredit > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
-                  {formatCurrency(totalCredit)}
-                </p>
+            {/* INK-SAVER OUTLINE SUMMARY CARDS */}
+            <div className="p-8 pb-4 print:p-4">
+              <div className="grid grid-cols-4 gap-3 text-center">
+                <div className="border border-slate-300 p-3 rounded-lg print:border-slate-400">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Total Invoiced (Incl. Tax)</p>
+                  <p className="text-base font-black font-mono text-black">{formatCurrency(totalPurchased)}</p>
+                </div>
+                <div className="border border-slate-300 p-3 rounded-lg print:border-slate-400">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Total Payments</p>
+                  <p className="text-base font-black font-mono text-black">{formatCurrency(totalPaid)}</p>
+                </div>
+                <div className="border border-slate-300 p-3 rounded-lg print:border-slate-400">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Tax Component</p>
+                  <p className="text-base font-black font-mono text-black">{formatCurrency(totalTaxPaid)}</p>
+                </div>
+                <div className="border-2 border-black p-3 rounded-lg bg-white">
+                  <p className="text-[10px] font-black text-black uppercase tracking-wider mb-0.5">Net Balance Due</p>
+                  <p className="text-lg font-black font-mono text-black">{formatCurrency(totalCredit)}</p>
+                </div>
               </div>
             </div>
 
             {/* FINANCIAL TABLE */}
-            <div className="p-6 sm:p-10 space-y-8">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b-2 border-slate-900">
-                      <th className="py-3 px-2 text-xs font-black text-slate-900 uppercase tracking-widest">Date</th>
+            <div className="p-8 py-4 print:p-4">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-y-2 border-black text-xs font-black uppercase text-black tracking-wider">
+                    <th className="py-2.5 px-2">Date</th>
+                    {selectedCompany === "ALL" && (
+                      <th className="py-2.5 px-2">Vendor Name</th>
+                    )}
+                    <th className="py-2.5 px-2">PO / Invoice Ref</th>
+                    <th className="py-2.5 px-2 text-center">Type</th>
+                    <th className="py-2.5 px-2 text-right">Tax Paid</th>
+                    <th className="py-2.5 px-2 text-right">Total (Incl. Tax)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 print:divide-slate-300 text-xs">
+                  {filteredReceipts.map((r, idx) => (
+                    <tr key={r.id || idx} className="hover:bg-slate-50 print:hover:bg-transparent">
+                      <td className="py-2.5 px-2 font-mono font-semibold text-slate-800">
+                        {r.receiptDate}
+                      </td>
                       {selectedCompany === "ALL" && (
-                        <th className="py-3 px-2 text-xs font-black text-slate-900 uppercase tracking-widest">Vendor</th>
+                        <td className="py-2.5 px-2 font-bold text-black capitalize">
+                          {r.originalCompany}
+                        </td>
                       )}
-                      <th className="py-3 px-2 text-xs font-black text-slate-900 uppercase tracking-widest">PO / Invoice #</th>
-                      <th className="py-3 px-2 text-xs font-black text-slate-900 uppercase tracking-widest">Type</th>
-                      <th className="py-3 px-2 text-xs font-black text-slate-900 uppercase tracking-widest text-right">Tax Paid</th>
-                      <th className="py-3 px-2 text-xs font-black text-slate-900 uppercase tracking-widest text-right">Total Amount (Incl. Tax)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredReceipts.map((r, idx) => (
-                      <tr key={r.id || idx} className="border-b border-slate-200 hover:bg-slate-50">
-                        <td className="py-4 px-2 text-sm font-semibold text-slate-700">
-                          {r.receiptDate}
-                        </td>
-                        {selectedCompany === "ALL" && (
-                          <td className="py-4 px-2 text-sm font-bold text-slate-900 capitalize">
-                            {r.originalCompany}
-                          </td>
+                      <td className="py-2.5 px-2 font-mono text-slate-700">
+                        {r.poNumber || "-"}
+                      </td>
+                      <td className="py-2.5 px-2 text-center">
+                        {r.status === "Payment" ? (
+                          <span className="border border-black text-black text-[9px] font-black px-1.5 py-0.5 rounded uppercase">PAYMENT</span>
+                        ) : (
+                          <span className="border border-slate-400 text-slate-800 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase">INVOICE</span>
                         )}
-                        <td className="py-4 px-2 text-sm text-slate-600 font-mono">
-                          {r.poNumber || "-"}
-                        </td>
-                        <td className="py-4 px-2">
-                          {r.status === "Payment" ? (
-                            <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-1 rounded-md uppercase">PAYMENT</span>
-                          ) : (
-                            <span className="text-xs font-bold text-amber-700 bg-amber-100 px-2 py-1 rounded-md uppercase">INVOICE</span>
-                          )}
-                        </td>
-                        <td className="py-4 px-2 text-sm font-mono text-slate-500 text-right">
-                          {r.tax > 0 ? formatCurrency(r.tax) : "EGP 0.00"}
-                        </td>
-                        <td className={`py-4 px-2 text-sm font-black text-right ${r.status === 'Payment' ? 'text-emerald-600' : 'text-slate-900'}`}>
-                          {r.status === "Payment" ? "-" : ""}{formatCurrency(Number(r.price))}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                      </td>
+                      <td className="py-2.5 px-2 font-mono text-slate-600 text-right">
+                        {r.tax > 0 ? formatCurrency(r.tax) : "EGP 0.00"}
+                      </td>
+                      <td className="py-2.5 px-2 font-mono font-black text-right text-black">
+                        {r.status === "Payment" ? "-" : ""}{formatCurrency(Number(r.price))}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
 
-              {/* TOTALS FOOTER */}
-              <div className="flex justify-end mt-8">
-                <div className="w-full sm:w-1/2 bg-slate-50 border border-slate-200 rounded-xl p-6">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-bold text-slate-500">Total Invoiced (Incl. Tax)</span>
-                    <span className="text-sm font-mono font-bold text-slate-900">{formatCurrency(totalPurchased)}</span>
+              {/* OUTLINE TOTALS SUMMARY BOX */}
+              <div className="flex justify-end mt-6">
+                <div className="w-full sm:w-72 border-2 border-black p-4 rounded-lg bg-white space-y-2 text-xs">
+                  <div className="flex justify-between items-center text-slate-700">
+                    <span className="font-semibold uppercase">Total Invoiced:</span>
+                    <span className="font-mono font-bold text-black">{formatCurrency(totalPurchased)}</span>
                   </div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-bold text-slate-500">Total Tax Paid Component</span>
-                    <span className="text-sm font-mono font-bold text-cyan-600">{formatCurrency(totalTaxPaid)}</span>
+                  <div className="flex justify-between items-center text-slate-700">
+                    <span className="font-semibold uppercase">Less Payments:</span>
+                    <span className="font-mono font-bold text-black">-{formatCurrency(totalPaid)}</span>
                   </div>
-                  <div className="flex justify-between items-center mb-4">
-                    <span className="text-sm font-bold text-slate-500">Amount Paid</span>
-                    <span className="text-sm font-mono font-bold text-emerald-600">-{formatCurrency(totalPaid)}</span>
+                  <div className="flex justify-between items-center text-slate-600 border-t border-dashed border-slate-300 pt-1.5">
+                    <span className="font-medium text-[11px] uppercase">Tax Included:</span>
+                    <span className="font-mono font-semibold text-black">{formatCurrency(totalTaxPaid)}</span>
                   </div>
-                  <div className="flex justify-between items-center pt-4 border-t-2 border-slate-900">
-                    <span className="text-base font-black text-slate-900 uppercase">Balance Due</span>
-                    <span className="text-xl font-mono font-black text-slate-900">{formatCurrency(totalCredit)}</span>
+                  <div className="flex justify-between items-center border-t-2 border-black pt-2 text-black">
+                    <span className="font-black uppercase text-sm">Balance Due:</span>
+                    <span className="font-mono font-black text-base">{formatCurrency(totalCredit)}</span>
                   </div>
                 </div>
               </div>
-              
             </div>
 
-            {/* PDF FOOTER & SIGNATURES */}
-            <div className="mt-10 pt-10 border-t-2 border-slate-200 mx-10 pb-10 flex justify-between items-end">
-              
-              {/* QR Code Section */}
-              <div className="w-1/4">
-                <div className="bg-white p-2 border border-slate-200 rounded-lg inline-block shadow-sm">
-                  <QRCode value={generateQRData()} size={80} level="L" />
+            {/* FORMAL SIGNATURES & STAMP SECTION */}
+            <div className="p-8 pt-4 print:p-4 print:mt-4">
+              <div className="border-t-2 border-slate-300 pt-6 flex justify-between items-end print:border-black">
+                {/* QR Code */}
+                <div className="w-1/4">
+                  <div className="bg-white p-1.5 border border-black inline-block">
+                    <QRCode value={generateQRData()} size={70} level="L" />
+                  </div>
+                  <p className="text-[8px] font-bold text-slate-500 uppercase tracking-wider mt-1 text-center w-20">Scan Verification</p>
                 </div>
-                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-2 text-center w-24">Scan for Invoice Details</p>
+
+                <div className="w-1/3 border-t border-black pt-2 text-center">
+                  <p className="text-xs font-bold text-black uppercase">Vendor Representative</p>
+                  <p className="text-[9px] text-slate-500 mt-1">Signature & Official Stamp</p>
+                </div>
+                <div className="w-1/3 border-t border-black pt-2 text-center">
+                  <p className="text-xs font-bold text-black uppercase">Store Management</p>
+                  <p className="text-[9px] text-slate-500 mt-1">Circle K Authorized Approval</p>
+                </div>
               </div>
 
-              <div className="w-1/3 border-t border-slate-400 pt-2 text-center">
-                <p className="text-xs font-bold text-slate-600 uppercase">Vendor Representative</p>
-                <p className="text-[10px] text-slate-400 mt-1">Signature & Stamp</p>
+              <div className="text-center text-[8px] font-mono font-bold text-slate-400 uppercase tracking-widest mt-6">
+                Circle K Operations System • Official Financial Record • Generated {new Date().toLocaleString('en-GB')}
               </div>
-              <div className="w-1/3 border-t border-slate-400 pt-2 text-center">
-                <p className="text-xs font-bold text-slate-600 uppercase">Store Management</p>
-                <p className="text-[10px] text-slate-400 mt-1">Circle K Authorized Signatory</p>
-              </div>
-            </div>
-
-            <div className="text-center text-[9px] font-semibold text-slate-300 uppercase tracking-widest pb-10">
-              Generated by Circle K Automated Financial Systems • {new Date().toLocaleString('en-GB')}
             </div>
 
           </div>
         )}
       </div>
+
+      {/* PRINT MEDIA STYLES */}
+      <style jsx global>{`
+        @media print {
+          body {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          @page {
+            size: A4 portrait;
+            margin: 12mm 10mm;
+          }
+          .print\\:hidden {
+            display: none !important;
+          }
+        }
+      `}</style>
+
     </div>
   );
 }
