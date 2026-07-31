@@ -580,7 +580,7 @@ export default function VendorStatementsPage() {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
-          .print\\:hidden {
+          .print\\:hidden, nav, footer, [class*="bottom-nav"], [class*="BottomNav"], [class*="FAB"], [class*="QuickActions"] {
             display: none !important;
           }
           thead {

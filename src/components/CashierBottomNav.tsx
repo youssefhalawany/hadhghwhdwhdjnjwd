@@ -102,7 +102,7 @@ export function CashierBottomNav({ lang: propLang = "en" }: Props) {
       </AnimatePresence>
 
       <nav 
-        className="fixed bottom-0 left-0 right-0 z-[200] flex items-center justify-around bg-[#0B1121] border-t border-[rgba(34,211,238,0.15)]"
+        className="fixed bottom-0 left-0 right-0 z-[200] flex items-center justify-around bg-[#0B1121] border-t border-[rgba(34,211,238,0.15)] print:hidden"
         style={{
           paddingBottom: "calc(16px + env(safe-area-inset-bottom))",
           paddingTop: 12,

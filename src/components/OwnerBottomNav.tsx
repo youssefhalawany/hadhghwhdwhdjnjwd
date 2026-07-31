@@ -37,8 +37,8 @@ export function OwnerBottomNav() {
   };
 
   return (
-    <div
-      className="fixed bottom-0 left-0 right-0 z-50 flex justify-around items-end bg-[#0B1121]/80 backdrop-blur-2xl border-t border-white/5"
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-50 flex justify-around items-end bg-[#0B1121]/80 backdrop-blur-2xl border-t border-white/5 print:hidden"
       style={{
         paddingTop: 12,
         paddingBottom: "calc(16px + env(safe-area-inset-bottom))",
@@ -97,6 +97,6 @@ export function OwnerBottomNav() {
           </button>
         );
       })}
-    </div>
+    </nav>
   );
 }

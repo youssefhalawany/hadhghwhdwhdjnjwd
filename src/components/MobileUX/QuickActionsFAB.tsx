@@ -39,7 +39,7 @@ export function QuickActionsFAB() {
   ];
 
   return (
-    <div className="fixed bottom-24 right-5 md:bottom-10 md:right-10 z-[100] flex flex-col items-end">
+    <div className="fixed bottom-24 right-5 md:bottom-10 md:right-10 z-[100] flex flex-col items-end print:hidden">
       <AnimatePresence>
         {isOpen && (
           <motion.div 
