@@ -6,7 +6,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export async function POST(req: Request) {
   try {
-    const { title, body } = await req.json();
+    const { title, body, url } = await req.json();
 
     if (!title || !body) {
       return NextResponse.json({ error: "Missing title or body" }, { status: 400 });
@@ -48,55 +48,81 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Master FCM token is empty" }, { status: 404 });
     }
 
-    // --- Ibrahim AI Translation ---
-    let ibrahimTitle = title;
-    let ibrahimBody = body;
+    const targetUrl = url || "https://hadhghwhdwhdjnjwd.vercel.app/shift-reports/manager";
+
+    // --- Ibrahim AI Refinement for Operations ---
+    let finalTitle = title;
+    let finalBody = body;
 
     try {
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
       const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash-lite" });
-      const prompt = `You are Ibrahim, the enthusiastic operations manager assistant (مساعد مدير) for Circle K. 
-      You just received this system notification:
+      const prompt = `You are Ibrahim, the executive operations manager assistant for Circle K Egypt (مساعد مدير المبيعات والعمليات).
+      A system alert occurred:
       Title: ${title}
-      Body: ${body}
+      Details: ${body}
+
+      Rewrite this notification into a crisp, highly detailed, professional alert message.
+      Include essential numbers/names (amounts in EGP, receipt numbers, cashier names, or branch names if mentioned).
+      Make it sound urgent, clear, and professional for the Manager's phone lock screen.
+      Output ONLY the rewritten message body in 1-2 clear sentences. Do not add quotes, titles, or greetings.`;
       
-      Rewrite this notification in a fun, urgent Egyptian Arabic tone as if you are sending a quick WhatsApp message to your boss (Youssef Elhalawany) to alert him. 
-      Keep it very short (1-2 sentences max), friendly, but highlight the importance of the action.
-      Output ONLY the rewritten message body. Do not include titles, greetings, or hashtags.`;
-      
-      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Gemini timeout")), 5000));
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Gemini timeout")), 4000));
       const result = await Promise.race([model.generateContent(prompt), timeoutPromise]) as any;
       
-      const text = result.response.text().trim();
+      const text = result.response?.text()?.trim();
       if (text) {
-        ibrahimTitle = "إبراهيم 🚨";
-        ibrahimBody = text;
+        finalBody = text;
       }
     } catch (aiError) {
-      console.error("AI Translation failed or timed out, using fallback:", aiError);
+      console.log("AI notification format fallback used:", aiError);
     }
-    // ------------------------------
+    // --------------------------------------------
 
-    // Run Firebase and WhatsApp in parallel with timeouts
+    // High Priority Push Message Payload (Lock Screen Display Enabled)
     const fcmPromise = fcmToken ? getMessaging().send({
       token: fcmToken,
-      notification: { title: ibrahimTitle, body: ibrahimBody },
+      notification: { 
+        title: finalTitle, 
+        body: finalBody 
+      },
       data: {
-        title: ibrahimTitle,
-        body: ibrahimBody,
-        url: "https://hadhghwhdwhdjnjwd.vercel.app/shift-reports/manager"
+        title: finalTitle,
+        body: finalBody,
+        url: targetUrl
       },
       webpush: {
+        headers: {
+          Urgency: "high",
+          TTL: "86400"
+        },
         notification: {
-          title: ibrahimTitle,
-          body: ibrahimBody,
+          title: finalTitle,
+          body: finalBody,
           icon: "/icon-manager.png",
           badge: "/icons8-circled-k-50.png",
           requireInteraction: true,
-          data: { url: "https://hadhghwhdwhdjnjwd.vercel.app/shift-reports/manager" }
+          renotify: true,
+          tag: `circlek-alert-${Date.now()}`,
+          data: { url: targetUrl }
         },
         fcmOptions: {
-          link: "https://hadhghwhdwhdjnjwd.vercel.app/shift-reports/manager"
+          link: targetUrl
+        }
+      },
+      apns: {
+        headers: {
+          "apns-priority": "10"
+        },
+        payload: {
+          aps: {
+            alert: {
+              title: finalTitle,
+              body: finalBody
+            },
+            sound: "default",
+            badge: 1
+          }
         }
       }
     }) : Promise.resolve(null);
@@ -105,11 +131,11 @@ export async function POST(req: Request) {
       try {
         const phone = encodeURIComponent("+201011212003");
         const apikey = "3367979";
-        const waText = encodeURIComponent(`*${ibrahimTitle}*\n${ibrahimBody}`);
+        const waText = encodeURIComponent(`*${finalTitle}*\n${finalBody}`);
         const callMeBotUrl = `https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${waText}&apikey=${apikey}`;
         
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 4000); // 4 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
         
         const res = await fetch(callMeBotUrl, {
           method: "GET",

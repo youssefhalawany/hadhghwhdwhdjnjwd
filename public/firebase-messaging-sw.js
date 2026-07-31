@@ -24,10 +24,11 @@ messaging.onBackgroundMessage((payload) => {
     body: notificationBody,
     icon: '/icon-manager.png',
     badge: '/icons8-circled-k-50.png',
-    vibrate: [200, 100, 200],
+    vibrate: [300, 100, 300, 100, 300],
     data: { url: clickUrl },
-    tag: payload.data?.tag || 'circlek-notification',
-    renotify: true
+    tag: payload.data?.tag || `circlek-${Date.now()}`,
+    renotify: true,
+    requireInteraction: true
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);

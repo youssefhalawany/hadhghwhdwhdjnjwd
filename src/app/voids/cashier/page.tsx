@@ -515,12 +515,26 @@ export default function CashierVoidPage() {
       }
       
       try {
+        const notifTitle = `🚨 Void Request Submitted — Receipt #${transactionNumber || 'N/A'}`;
+        const notifBody = `Cashier ${cashierName || 'Cashier'} requested void for Receipt #${transactionNumber || 'N/A'} (EGP ${Number(amount).toLocaleString()}) at ${currentBranch || 'Circle K'}. Reason: ${reason || 'Customer Return'}`;
+
         fetch("/api/notifications/notify-master", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            title: "New Void/Return Request",
-            body: `Cashier: ${cashierName || 'Unknown'}\nAmount: ${amount} EGP`
+            title: notifTitle,
+            body: notifBody,
+            url: "/voids/manager"
+          })
+        }).catch(e => console.error("Notify error", e));
+
+        fetch("/api/notifications/notify-owners", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: notifTitle,
+            message: notifBody,
+            url: "/voids/manager"
           })
         }).catch(e => console.error("Notify error", e));
       } catch (err) {}
