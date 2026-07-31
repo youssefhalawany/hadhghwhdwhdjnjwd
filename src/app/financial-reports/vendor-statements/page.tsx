@@ -37,6 +37,7 @@ export default function VendorStatementsPage() {
       
       const companyDisplayNames: Record<string, string> = {}; 
       const creditIdToNormCompany: Record<string, string> = {};
+      const creditIdToPoNumber: Record<string, string> = {};
       const companySet = new Set<string>();
 
       const creditItems: any[] = [];
@@ -59,6 +60,11 @@ export default function VendorStatementsPage() {
         creditIdToNormCompany[doc.id] = norm;
         companySet.add(companyDisplayNames[norm]);
 
+        const rawPo = (d.poNumber || d.invoiceNumber || "").trim();
+        if (rawPo && rawPo !== "-") {
+          creditIdToPoNumber[doc.id] = rawPo;
+        }
+
         let rDate = d.createdAt && typeof d.createdAt.toDate === 'function' 
           ? d.createdAt.toDate().toISOString().substring(0, 10) 
           : d.date || d.collectionDate || "";
@@ -77,7 +83,6 @@ export default function VendorStatementsPage() {
         const paidAmt = Number(d.paidAmount || 0);
         const isPaid = d.status === "paid" || d.isPaid === true || paidAmt > 0;
 
-        const rawPo = (d.poNumber || d.invoiceNumber || "").trim();
         const cleanPo = rawPo.toLowerCase().replace(/[^a-z0-9]/g, "");
 
         creditItems.push({
@@ -119,7 +124,8 @@ export default function VendorStatementsPage() {
         const pTot = Number(d.total || 0);
         const finalPaymentPriceWithTax = (pTot >= (pAmt + pTax) && pTot > 0) ? pTot : (pAmt + pTax);
 
-        const rawPo = (d.poNumber || d.invoiceNumber || "").trim();
+        const parentPo = d.creditId ? creditIdToPoNumber[d.creditId] : "";
+        const rawPo = (d.poNumber || d.invoiceNumber || parentPo || "").trim();
         const cleanPo = rawPo.toLowerCase().replace(/[^a-z0-9]/g, "");
 
         paymentItems.push({
@@ -161,7 +167,9 @@ export default function VendorStatementsPage() {
         const pTot = Number(d.total || 0);
         const finalPaymentPriceWithTax = (pTot >= (pAmt + pTax) && pTot > 0) ? pTot : (pAmt + pTax);
 
-        const rawPo = (d.poNumber || d.invoiceNumber || "").trim();
+        // Inherit real PO number from parent credit note if payment doesn't explicitly specify it!
+        const parentPo = creditIdToPoNumber[d.creditId] || "";
+        const rawPo = (d.poNumber || d.invoiceNumber || parentPo || "").trim();
         const cleanPo = rawPo.toLowerCase().replace(/[^a-z0-9]/g, "");
 
         paymentItems.push({
@@ -170,7 +178,7 @@ export default function VendorStatementsPage() {
           normalizedCompany: norm,
           originalCompany: companyDisplayNames[norm] || "Unknown Supplier",
           receiptDate: rDate || new Date().toISOString().substring(0, 10),
-          poNumber: rawPo || `Pmt ref: ${d.creditId.substring(0, 6)}`,
+          poNumber: rawPo || "-",
           cleanPoKey: (cleanPo && cleanPo !== "-" && cleanPo !== "cashpayment" && cleanPo !== "na") ? `${norm}_${cleanPo}` : null,
           price: finalPaymentPriceWithTax,
           tax: pTax,
