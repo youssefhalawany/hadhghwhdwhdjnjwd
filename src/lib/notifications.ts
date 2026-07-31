@@ -11,15 +11,14 @@ export interface SystemNotificationPayload {
 
 /**
  * Universal System Notification Dispatcher
- * Sends in-app document to Firestore `notifications` collection,
- * broadcasts FCM system push notification to ALL registered phones/devices (cashier + manager),
- * and dispatches Ibrahim AI WhatsApp & FCM notification!
+ * Stores in-app document in Firestore `notifications` collection
+ * and triggers EXACTLY ONE high-priority push notification (+ WhatsApp) to the manager portal!
  */
 export async function dispatchNotificationSystem(payload: SystemNotificationPayload) {
   const { title, body, type = "system", url = "/", metadata = {} } = payload;
 
   try {
-    // 1. Store in Firestore 'notifications' collection for in-app drawer
+    // 1. Store in Firestore 'notifications' collection for in-app bell drawer
     await addDoc(collection(db, "notifications"), {
       title,
       body,
@@ -35,17 +34,10 @@ export async function dispatchNotificationSystem(payload: SystemNotificationPayl
     console.error("Error creating Firestore notification document:", err);
   }
 
-  // 2. Broadcast System Push Notification to ALL registered phones/devices via FCM Multicast
-  fetch("/api/notifications/send", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ title, body, url }),
-  }).catch(err => console.error("Error broadcasting push notification:", err));
-
-  // 3. Dispatch Ibrahim AI Notification (WhatsApp + Master FCM)
+  // 2. Dispatch SINGLE High-Priority Push Notification via notify-master
   fetch("/api/notifications/notify-master", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ title, body }),
-  }).catch(err => console.error("Error sending Ibrahim notification:", err));
+    body: JSON.stringify({ title, body, url }),
+  }).catch(err => console.error("Error sending push notification:", err));
 }

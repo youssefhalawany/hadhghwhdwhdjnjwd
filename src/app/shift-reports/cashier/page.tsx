@@ -620,32 +620,24 @@ export default function CashierShiftReportPage() {
         ).catch(() => {});
         
         try {
-          await addDoc(collection(db, "notifications"), {
-            type: "shift",
-            message: `${c?.name || "Unknown"} submitted a new Shift Report`,
-            cashierName: c?.name || "Unknown",
-            storeId: c?.branchId || c?.storeId || "alamein4",
-            createdAt: serverTimestamp(),
-            read: false,
-            link: "/shift-reports/manager",
-          });
+          const shiftNumber = c?.shift || payload.shift || "1";
+          const storeName = c?.branchId || c?.storeId || "Circle K";
+          const totalAmt = calculateTotalMoney();
+          const cashAmt = calculateTotalCash();
+          const visaAmt = Number(visa) || 0;
 
-          // Trigger OS Push Notification
-          try {
-            fetch('/api/notify', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                title: 'New Shift Report',
-                body: `${c?.name || "Unknown"} submitted a shift report.`,
-                link: '/shift-reports/manager',
-                storeId: c?.branchId || c?.storeId || "alamein4"
-              })
-            }).catch(() => {});
-          } catch (e) {}
+          const notifTitle = `📊 Shift #${shiftNumber} Audit Submitted — ${c?.name || "Cashier"}`;
+          const notifBody = `${c?.name || "Cashier"} submitted Shift #${shiftNumber} Audit for ${storeName} (Total: EGP ${totalAmt.toLocaleString()} | Cash: EGP ${cashAmt.toLocaleString()} | Visa: EGP ${visaAmt.toLocaleString()}).`;
+
+          dispatchNotificationSystem({
+            title: notifTitle,
+            body: notifBody,
+            type: "shift",
+            url: "/shift-reports/manager",
+            metadata: { cashierName: c?.name, storeId: storeName, totalMoney: totalAmt }
+          });
         } catch (notifyErr: any) {
           console.error("Failed to push notification:", notifyErr);
-          toast.error("Bell Notification failed: " + (notifyErr.message || "Unknown error"));
         }
       }
       
