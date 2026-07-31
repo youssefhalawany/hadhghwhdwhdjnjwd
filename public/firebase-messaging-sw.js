@@ -18,7 +18,11 @@ messaging.onBackgroundMessage((payload) => {
 
   const notificationTitle = payload.notification?.title || payload.data?.title || "Circle K Notification";
   const notificationBody = payload.notification?.body || payload.data?.body || "Tap to view update.";
-  const clickUrl = payload.data?.url || payload.notification?.click_action || '/';
+  const clickUrl = payload.data?.url || payload.notification?.click_action || '/financials/inputs/overview';
+
+  const actions = payload.notification?.actions || [
+    { action: 'open_overview', title: '💸 Safe Balance & Overview' }
+  ];
 
   const notificationOptions = {
     body: notificationBody,
@@ -26,6 +30,7 @@ messaging.onBackgroundMessage((payload) => {
     badge: '/icons8-circled-k-50.png',
     vibrate: [200, 100, 200],
     data: { url: clickUrl },
+    actions: actions,
     tag: payload.data?.tag || `circlek-alert-${Date.now()}`,
     renotify: true,
     requireInteraction: true
@@ -36,7 +41,14 @@ messaging.onBackgroundMessage((payload) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const urlToOpen = event.notification.data?.url || '/';
+  
+  let urlToOpen = event.notification.data?.url || '/financials/inputs/overview';
+
+  if (event.action === 'open_overview') {
+    urlToOpen = '/financials/inputs/overview';
+  } else if (event.action === 'open_deposits') {
+    urlToOpen = '/financials/inputs/deposits';
+  }
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {

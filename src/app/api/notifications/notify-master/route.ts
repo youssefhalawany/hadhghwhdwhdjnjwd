@@ -104,7 +104,13 @@ export async function POST(req: Request) {
           requireInteraction: true,
           renotify: true,
           tag: `circlek-alert-${Date.now()}`,
-          data: { url: targetUrl }
+          data: { url: targetUrl },
+          actions: [
+            {
+              action: "open_overview",
+              title: "💸 Safe Balance & Overview"
+            }
+          ]
         },
         fcmOptions: {
           link: targetUrl
