@@ -16,11 +16,38 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
   
-  const notificationTitle = payload.notification?.title || "New Notification";
+  const notificationTitle = payload.notification?.title || payload.data?.title || "Circle K Notification";
+  const notificationBody = payload.notification?.body || payload.data?.body || "Tap to view update.";
+  const clickUrl = payload.data?.url || payload.notification?.click_action || '/';
+
   const notificationOptions = {
-    body: payload.notification?.body || "Open dashboard to view.",
-    icon: '/icon-192x192.png'
+    body: notificationBody,
+    icon: '/icon-manager.png',
+    badge: '/icons8-circled-k-50.png',
+    vibrate: [200, 100, 200],
+    data: { url: clickUrl },
+    tag: payload.data?.tag || 'circlek-notification',
+    renotify: true
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const urlToOpen = event.notification.data?.url || '/';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          client.navigate(urlToOpen);
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
+  );
 });

@@ -131,9 +131,12 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
       setAuthLoading(false);
 
-      // Register FCM Push Token for Manager & Device Sessions
-      if (typeof window !== "undefined" && "Notification" in window) {
+      // Register FCM Push Token for Manager & Device Sessions (Mobile PWA & Desktop)
+      if (typeof window !== "undefined" && "Notification" in window && "serviceWorker" in navigator) {
         try {
+          const reg = await navigator.serviceWorker.register("/firebase-messaging-sw.js").catch(() => null);
+          if (reg) await navigator.serviceWorker.ready;
+
           const permission = Notification.permission === "granted"
             ? "granted"
             : await Notification.requestPermission();
@@ -141,9 +144,12 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
           if (permission === "granted" && messaging) {
             const messagingInstance = await messaging;
             if (messagingInstance) {
-              const token = await getToken(messagingInstance, {
+              const tokenOptions: any = {
                 vapidKey: process.env.NEXT_PUBLIC_VAPID_KEY || "BHiDvLTbQ2DTED8p7X1BQ8Vu811fuu3dmpVfclmA5P7n-DuRltU7kkai9E2_2VkbLpS7Ns5ekNQClP5CsTeWf7M"
-              });
+              };
+              if (reg) tokenOptions.serviceWorkerRegistration = reg;
+
+              const token = await getToken(messagingInstance, tokenOptions);
               if (token) {
                 console.log("FCM Push Token active:", token);
                 const role = localStorage.getItem("circlek_role") || "manager";
@@ -157,6 +163,14 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                   updatedAt: new Date().toISOString()
                 });
 
+                // Save to manager token doc
+                await dbService.setDoc("user_tokens", "manager", {
+                  fcmToken: token,
+                  email: userEmail,
+                  role: "manager",
+                  updatedAt: new Date().toISOString()
+                });
+
                 if (currentUser?.uid) {
                   await dbService.setDoc("user_tokens", currentUser.uid, {
                     fcmToken: token,
@@ -164,6 +178,11 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                     role: role,
                     updatedAt: new Date().toISOString()
                   });
+
+                  await dbService.updateDoc("users", currentUser.uid, {
+                    fcmToken: token,
+                    fcmTokens: [token]
+                  }).catch(() => {});
                 }
               }
             }

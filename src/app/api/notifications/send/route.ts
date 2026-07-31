@@ -84,12 +84,17 @@ export async function POST(request: Request) {
         title: title,
         body: body,
       },
+      data: {
+        title: title,
+        body: body,
+        url: url
+      },
       webpush: {
         notification: {
           title: title,
           body: body,
-          icon: '/apple-icon.png',
-          badge: '/apple-icon.png',
+          icon: '/icon-manager.png',
+          badge: '/icons8-circled-k-50.png',
           requireInteraction: true,
           data: {
             url: url

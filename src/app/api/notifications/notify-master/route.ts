@@ -12,8 +12,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing title or body" }, { status: 400 });
     }
 
-    // We will run WhatsApp notification later to avoid blocking the Firebase initialization
-
     // Initialize Firebase Admin if not already initialized
     if (!getApps().length) {
       try {
@@ -33,11 +31,8 @@ export async function POST(req: Request) {
         });
       } catch (error: any) {
         console.error('Firebase admin initialization error', error);
-        // We log the error but DO NOT return here, so that we don't crash before attempting FCM
-        // If FCM fails, it will be caught by the outer catch block
       }
     }
-
 
     // Get Master FCM Token
     const adminDb = getFirestore();
@@ -69,9 +64,6 @@ export async function POST(req: Request) {
       Keep it very short (1-2 sentences max), friendly, but highlight the importance of the action.
       Output ONLY the rewritten message body. Do not include titles, greetings, or hashtags.`;
       
-      // Vercel serverless functions have a strict 10s-15s timeout on the free tier.
-      // If Gemini takes too long, Vercel kills the entire request and the WhatsApp message is NEVER sent.
-      // We wrap the Gemini call in a 5-second timeout. If it's fast, we get Ibrahim. If slow, we fallback, BUT the WhatsApp message is guaranteed to send!
       const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Gemini timeout")), 5000));
       const result = await Promise.race([model.generateContent(prompt), timeoutPromise]) as any;
       
@@ -85,16 +77,21 @@ export async function POST(req: Request) {
     }
     // ------------------------------
 
-    // Run Firebase and WhatsApp in parallel with timeouts to ensure neither blocks the other fatally
+    // Run Firebase and WhatsApp in parallel with timeouts
     const fcmPromise = fcmToken ? getMessaging().send({
       token: fcmToken,
       notification: { title: ibrahimTitle, body: ibrahimBody },
+      data: {
+        title: ibrahimTitle,
+        body: ibrahimBody,
+        url: "https://hadhghwhdwhdjnjwd.vercel.app/shift-reports/manager"
+      },
       webpush: {
         notification: {
           title: ibrahimTitle,
           body: ibrahimBody,
-          icon: "/apple-icon.png",
-          badge: "/apple-icon.png",
+          icon: "/icon-manager.png",
+          badge: "/icons8-circled-k-50.png",
           requireInteraction: true,
           data: { url: "https://hadhghwhdwhdjnjwd.vercel.app/shift-reports/manager" }
         },
