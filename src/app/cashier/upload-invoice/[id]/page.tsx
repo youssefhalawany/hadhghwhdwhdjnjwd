@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useRef, useEffect, Suspense, useCallback } from 'react';
@@ -55,10 +54,8 @@ function UploadInvoiceContent() {
         console.error(err);
       }
     };
-    fetchPayment();
+    if (id) fetchPayment();
   }, [id, type]);
-
-
 
   const startCamera = useCallback(async (deviceId?: string) => {
     try {
@@ -67,7 +64,9 @@ function UploadInvoiceContent() {
       }
 
       const constraints: MediaStreamConstraints = {
-        video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
+        video: (deviceId && typeof deviceId === 'string' && deviceId.trim()) 
+          ? { deviceId: { exact: deviceId } } 
+          : { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
       };
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -90,7 +89,7 @@ function UploadInvoiceContent() {
 
     } catch (err) {
       console.error("Camera access failed", err);
-      toast.error("Camera access denied or failed. Falling back to native picker.");
+      toast.error("Camera access denied or failed. Opening file picker.");
       fileInputRef.current?.click();
     }
   }, []);
@@ -116,20 +115,26 @@ function UploadInvoiceContent() {
     if (!videoRef.current) return;
     const video = videoRef.current;
     
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth || 1280;
+      canvas.height = video.videoHeight || 720;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
 
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    const dataUrl = canvas.toDataURL('image/jpeg', 1.0);
-    
-    stopCamera();
-    setCroppingImageSrc(dataUrl);
-    setCrop(undefined);
-    setCompletedCrop(undefined);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+      
+      stopCamera();
+      setCroppingImageSrc(dataUrl);
+      setCrop(undefined);
+      setCompletedCrop(undefined);
+    } catch (e) {
+      console.error("Error capturing frame", e);
+      stopCamera();
+      fileInputRef.current?.click();
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -147,49 +152,106 @@ function UploadInvoiceContent() {
   };
 
   const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    const { width, height } = e.currentTarget;
     setCrop({
       unit: '%',
-      x: 5,
-      y: 5,
-      width: 90,
-      height: 90
+      x: 2,
+      y: 2,
+      width: 96,
+      height: 96
     });
   };
 
   const handleApplyCrop = () => {
-    if (!completedCrop || !imgRef.current || !croppingImageSrc) return;
+    if (!croppingImageSrc) return;
 
-    const canvas = document.createElement('canvas');
-    const img = imgRef.current;
-    
-    const scaleX = img.naturalWidth / img.width;
-    const scaleY = img.naturalHeight / img.height;
+    try {
+      const canvas = document.createElement('canvas');
+      const img = imgRef.current;
+      
+      const naturalW = img?.naturalWidth || 1000;
+      const naturalH = img?.naturalHeight || 1000;
+      const displayW = img?.width || naturalW;
+      const displayH = img?.height || naturalH;
 
-    canvas.width = completedCrop.width * scaleX;
-    canvas.height = completedCrop.height * scaleY;
-    const ctx = canvas.getContext('2d');
-    
-    if (!ctx) return;
+      const scaleX = naturalW / displayW;
+      const scaleY = naturalH / displayH;
 
-    if (isEnhancing) {
-      ctx.filter = 'grayscale(100%) contrast(150%) brightness(110%)';
+      const cropX = (completedCrop && completedCrop.width > 0) ? completedCrop.x * scaleX : 0;
+      const cropY = (completedCrop && completedCrop.height > 0) ? completedCrop.y * scaleY : 0;
+      const cropW = (completedCrop && completedCrop.width > 0) ? completedCrop.width * scaleX : naturalW;
+      const cropH = (completedCrop && completedCrop.height > 0) ? completedCrop.height * scaleY : naturalH;
+
+      const safeW = Math.max(1, Math.round(cropW));
+      const safeH = Math.max(1, Math.round(cropH));
+
+      canvas.width = safeW;
+      canvas.height = safeH;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        setCompressedDataUrls(prev => [...prev, croppingImageSrc]);
+        setCroppingImageSrc(null);
+        return;
+      }
+
+      if (img) {
+        ctx.drawImage(
+          img,
+          Math.max(0, Math.round(cropX)),
+          Math.max(0, Math.round(cropY)),
+          safeW,
+          safeH,
+          0,
+          0,
+          safeW,
+          safeH
+        );
+      }
+
+      if (isEnhancing) {
+        // Safe filter application with fallback for iOS Safari DOMException
+        try {
+          ctx.filter = 'grayscale(100%) contrast(140%)';
+          if (img) {
+            ctx.drawImage(
+              img,
+              Math.max(0, Math.round(cropX)),
+              Math.max(0, Math.round(cropY)),
+              safeW,
+              safeH,
+              0,
+              0,
+              safeW,
+              safeH
+            );
+          }
+        } catch (e) {
+          // Manual pixel enhancement fallback where ctx.filter is unsupported or throws DOMException
+          try {
+            const imageData = ctx.getImageData(0, 0, safeW, safeH);
+            const data = imageData.data;
+            for (let i = 0; i < data.length; i += 4) {
+              let gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+              gray = Math.min(255, Math.max(0, (gray - 128) * 1.3 + 128));
+              data[i] = gray;
+              data[i + 1] = gray;
+              data[i + 2] = gray;
+            }
+            ctx.putImageData(imageData, 0, 0);
+          } catch (err) {
+            console.warn("ImageData enhancement fallback failed", err);
+          }
+        }
+      }
+
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+      setCompressedDataUrls(prev => [...prev, dataUrl]);
+    } catch (err) {
+      console.error("Error applying crop:", err);
+      if (croppingImageSrc) {
+        setCompressedDataUrls(prev => [...prev, croppingImageSrc]);
+      }
     }
-
-    ctx.drawImage(
-      img,
-      completedCrop.x * scaleX,
-      completedCrop.y * scaleY,
-      completedCrop.width * scaleX,
-      completedCrop.height * scaleY,
-      0,
-      0,
-      canvas.width,
-      canvas.height
-    );
-
-    const dataUrl = canvas.toDataURL('image/jpeg', 1.0);
-    setCompressedDataUrls(prev => [...prev, dataUrl]);
     
     setCroppingImageSrc(null);
   };
@@ -227,8 +289,8 @@ function UploadInvoiceContent() {
         setSuccess(true);
         toast.success("Uploaded successfully!");
       } else {
-        const { error } = await res.json();
-        throw new Error(error || "Upload failed");
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Upload failed");
       }
     } catch (err: any) {
       console.error(err);
@@ -248,87 +310,112 @@ function UploadInvoiceContent() {
         >
           <CheckCircle className="h-12 w-12 text-white" />
         </motion.div>
-        <h1 className="text-3xl font-black text-white mb-2">Upload Complete!</h1>
-        <p className="text-slate-400 font-medium mb-8">
-          The invoice has been successfully attached. You can now return to the computer.
+        
+        <h1 className="text-2xl font-bold text-white mb-2">Invoice Document Uploaded!</h1>
+        <p className="text-slate-400 text-sm max-w-xs mb-8">
+          The document has been securely attached to the payment record in the system.
         </p>
-        <p className="text-sm text-slate-500">
-          This window can be closed.
-        </p>
+
+        <button
+          onClick={() => {
+            setSuccess(false);
+            setCompressedDataUrls([]);
+          }}
+          className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold text-sm transition-colors"
+        >
+          Upload Another Page
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col">
-      <div className="p-6 pb-4 border-b border-white/10 bg-slate-900/50 backdrop-blur-md sticky top-0 z-10 flex justify-between items-center">
-        <div>
-          <h1 className="text-xl font-bold text-white tracking-tight">AR Scanner</h1>
-          {paymentInfo && (
-            <p className="text-emerald-400 text-sm mt-1 font-medium">
-              Record: {paymentInfo.companyName || paymentInfo.supplierName || 'Unknown'} • EGP {paymentInfo.total || paymentInfo.amount || 0}
-            </p>
-          )}
+    <div className="min-h-screen bg-slate-950 text-white flex flex-col font-sans select-none">
+      {/* Hidden File Input */}
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        onChange={handleFileChange} 
+        accept="image/*" 
+        capture="environment"
+        className="hidden" 
+      />
+
+      {/* Header */}
+      <div className="p-4 bg-slate-900 border-b border-white/10 flex justify-between items-center z-10 shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-400 font-black flex items-center justify-center text-xs">
+            K
+          </div>
+          <div>
+            <h1 className="text-sm font-bold tracking-wide">Circle K Invoice Capture</h1>
+            <p className="text-[10px] text-slate-400">Ref: #{id ? id.substring(0, 8) : 'NEW'}</p>
+          </div>
         </div>
+
+        {compressedDataUrls.length > 0 && (
+          <span className="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-xs font-bold px-3 py-1 rounded-full">
+            {compressedDataUrls.length} Page{compressedDataUrls.length > 1 ? 's' : ''} Ready
+          </span>
+        )}
       </div>
 
-      <div className="flex-1 p-6 flex flex-col relative">
-        <input 
-          type="file" 
-          accept="image/*" 
-          capture="environment" 
-          className="hidden" 
-          ref={fileInputRef} 
-          onChange={handleFileChange}
-        />
-        
+      {/* Main Content Area */}
+      <div className="flex-1 relative flex flex-col overflow-hidden p-4">
         {isCameraActive ? (
-          <div className="fixed inset-0 z-50 bg-black flex flex-col">
-            <div className="p-4 flex justify-between items-center bg-gradient-to-b from-black/80 to-transparent absolute top-0 left-0 right-0 z-20">
-              <button onClick={stopCamera} className="text-white p-2 bg-black/40 rounded-full backdrop-blur-md">
-                <X className="w-6 h-6" />
+          <div className="flex-1 flex flex-col bg-black rounded-2xl overflow-hidden relative border border-white/10">
+            {/* Top Camera Bar */}
+            <div className="absolute top-4 left-4 right-4 z-20 flex justify-between items-center">
+              <button 
+                onClick={stopCamera}
+                className="p-2 rounded-full bg-black/60 text-white backdrop-blur-md"
+              >
+                <X className="h-5 w-5" />
               </button>
-              
+
               {devices.length > 1 && (
-                <div className="flex gap-2">
-                  {devices.map((device, idx) => (
-                    <button
-                      key={device.deviceId}
-                      onClick={() => startCamera(device.deviceId)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-bold backdrop-blur-md transition-all ${selectedDeviceId === device.deviceId ? 'bg-indigo-500 text-white' : 'bg-black/50 text-slate-300 border border-white/20'}`}
-                    >
-                      Lens {idx + 1}
-                    </button>
-                  ))}
-                </div>
+                <button 
+                  onClick={() => {
+                    const currentIndex = devices.findIndex(d => d.deviceId === selectedDeviceId);
+                    const nextDevice = devices[(currentIndex + 1) % devices.length];
+                    if (nextDevice) startCamera(nextDevice.deviceId);
+                  }}
+                  className="p-2 rounded-full bg-black/60 text-white backdrop-blur-md flex items-center gap-1 text-xs font-bold px-3"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Switch Camera
+                </button>
               )}
             </div>
-            
-            <div className="flex-1 relative overflow-hidden flex items-center justify-center">
+
+            {/* Video Viewport */}
+            <div className="flex-1 relative flex items-center justify-center overflow-hidden">
               <video 
                 ref={videoRef} 
                 autoPlay 
                 playsInline 
-                muted 
-                className="absolute inset-0 w-full h-full object-cover"
+                muted
+                className="w-full h-full object-cover"
               />
               
-              {/* AR Glowing Edge Guide */}
-              <div className="absolute inset-4 sm:inset-12 border-2 border-dashed z-10 flex flex-col items-center justify-center transition-all duration-500"
-                   style={{ 
-                     borderColor: isAligned ? '#10b981' : '#f59e0b',
-                     boxShadow: isAligned ? '0 0 40px rgba(16, 185, 129, 0.4) inset' : '0 0 20px rgba(245, 158, 11, 0.2) inset' 
-                   }}>
-                <div className={`w-16 h-16 rounded-full border-4 flex items-center justify-center transition-all duration-500 ${isAligned ? 'border-emerald-500 scale-110' : 'border-amber-500 scale-100'}`}>
-                  {isAligned ? <CheckCircle className="w-8 h-8 text-emerald-500" /> : <Maximize className="w-8 h-8 text-amber-500" />}
+              {/* AR Overlay Guide Frame */}
+              <div className="absolute inset-8 border-2 border-dashed border-white/40 rounded-2xl pointer-events-none flex flex-col justify-between p-4">
+                <div className="flex justify-between">
+                  <div className="w-6 h-6 border-t-4 border-l-4 border-indigo-400" />
+                  <div className="w-6 h-6 border-t-4 border-r-4 border-indigo-400" />
                 </div>
-                <p className={`mt-4 font-bold text-sm tracking-widest uppercase transition-all duration-500 ${isAligned ? 'text-emerald-400' : 'text-amber-400'}`}>
-                  {isAligned ? 'Aligned - Ready to Capture' : 'Align Document Edges'}
-                </p>
+                <div className="text-center bg-black/60 backdrop-blur-md py-1 px-3 rounded-full text-[11px] font-bold text-indigo-300 self-center uppercase tracking-wider">
+                  Align Invoice Within Frame
+                </div>
+                <div className="flex justify-between">
+                  <div className="w-6 h-6 border-b-4 border-l-4 border-indigo-400" />
+                  <div className="w-6 h-6 border-b-4 border-r-4 border-indigo-400" />
+                </div>
               </div>
             </div>
-            
-            <div className="h-32 bg-black flex items-center justify-center relative z-20 pb-6">
+
+            {/* Shutter Button */}
+            <div className="h-28 bg-black flex items-center justify-center relative z-20 pb-4">
               <button 
                 onClick={handleCapture}
                 className={`w-20 h-20 rounded-full border-4 flex items-center justify-center transition-all active:scale-95 ${isAligned ? 'bg-emerald-500/20 border-emerald-500' : 'bg-white/10 border-white/50 hover:bg-white/20'}`}
@@ -368,7 +455,7 @@ function UploadInvoiceContent() {
                   onLoad={onImageLoad}
                   alt="Crop preview"
                   className="max-h-[70vh] object-contain"
-                  style={{ filter: isEnhancing ? 'grayscale(100%) contrast(150%) brightness(110%)' : 'none' }}
+                  style={{ filter: isEnhancing ? 'grayscale(100%) contrast(140%)' : 'none' }}
                 />
               </ReactCrop>
             </div>
@@ -380,27 +467,27 @@ function UploadInvoiceContent() {
           <div className="flex-1 flex flex-col items-center justify-center">
             <button 
               onClick={() => startCamera()}
-              className="w-48 h-48 rounded-full bg-indigo-500/10 border-4 border-indigo-500/30 flex flex-col items-center justify-center gap-4 hover:bg-indigo-500/20 active:scale-95 transition-all duration-200"
+              className="w-44 h-44 rounded-full bg-indigo-500/10 border-4 border-indigo-500/30 flex flex-col items-center justify-center gap-4 hover:bg-indigo-500/20 active:scale-95 transition-all duration-200"
             >
-              <Focus className="h-16 w-16 text-indigo-400 animate-pulse" />
-              <span className="text-indigo-300 font-bold tracking-widest uppercase">Start AR Scan</span>
+              <Focus className="h-14 w-14 text-indigo-400 animate-pulse" />
+              <span className="text-indigo-300 font-bold text-xs tracking-widest uppercase">Start Live Camera</span>
             </button>
-            <p className="text-slate-400 text-center mt-8 px-4 leading-relaxed">
-              Launch the live AR scanner to map document edges.
+            <p className="text-slate-400 text-center mt-6 px-4 leading-relaxed text-xs">
+              Point your phone camera at the supplier invoice document.
             </p>
             
             <button 
               onClick={() => fileInputRef.current?.click()}
-              className="mt-12 text-sm text-slate-500 underline underline-offset-4 hover:text-slate-300 transition-colors"
+              className="mt-10 text-xs text-slate-400 underline underline-offset-4 hover:text-slate-200 transition-colors"
             >
-              Use standard camera (No AR)
+              Select Image From Gallery / Device
             </button>
           </div>
         ) : (
           <div className="flex-1 flex flex-col h-full overflow-hidden">
             <div className="flex-1 overflow-y-auto pr-2 pb-4 flex flex-col gap-4">
               {compressedDataUrls.map((url, idx) => (
-                <div key={idx} className="relative rounded-2xl overflow-hidden border border-white/10 bg-slate-900 shrink-0" style={{ height: '300px' }}>
+                <div key={idx} className="relative rounded-2xl overflow-hidden border border-white/10 bg-slate-900 shrink-0" style={{ height: '280px' }}>
                   <img src={url} alt={`Page ${idx + 1}`} className="w-full h-full object-contain" />
                   <div className="absolute top-3 left-3 bg-black/60 px-3 py-1 rounded-full text-white text-xs font-bold tracking-wider">
                     PAGE {idx + 1}
@@ -419,10 +506,10 @@ function UploadInvoiceContent() {
               {!uploading && (
                 <button 
                   onClick={() => startCamera()}
-                  className="w-full h-24 rounded-2xl border-2 border-dashed border-indigo-500/50 flex flex-col items-center justify-center gap-2 hover:bg-indigo-500/10 active:scale-[0.98] transition-all shrink-0 mt-2"
+                  className="w-full h-20 rounded-2xl border-2 border-dashed border-indigo-500/50 flex flex-col items-center justify-center gap-1 hover:bg-indigo-500/10 active:scale-[0.98] transition-all shrink-0 mt-2"
                 >
-                  <Camera className="h-6 w-6 text-indigo-400" />
-                  <span className="text-indigo-300 font-bold text-sm tracking-widest uppercase">Scan Next Page</span>
+                  <Camera className="h-5 w-5 text-indigo-400" />
+                  <span className="text-indigo-300 font-bold text-xs tracking-widest uppercase">Scan Next Page</span>
                 </button>
               )}
             </div>
@@ -431,16 +518,16 @@ function UploadInvoiceContent() {
               <button
                 onClick={handleUpload}
                 disabled={uploading || compressedDataUrls.length === 0}
-                className="w-full py-4 rounded-2xl bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700 text-white font-bold text-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                className="w-full py-4 rounded-2xl bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700 text-white font-bold text-base flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
               >
                 {uploading ? (
                   <>
-                    <Loader2 className="h-6 w-6 animate-spin" />
+                    <Loader2 className="h-5 w-5 animate-spin" />
                     Uploading {compressedDataUrls.length} Page{compressedDataUrls.length > 1 ? 's' : ''}... {progress}%
                   </>
                 ) : (
                   <>
-                    <UploadCloud className="h-6 w-6" />
+                    <UploadCloud className="h-5 w-5" />
                     Confirm & Upload {compressedDataUrls.length} Page{compressedDataUrls.length > 1 ? 's' : ''}
                   </>
                 )}
@@ -453,9 +540,13 @@ function UploadInvoiceContent() {
   );
 }
 
-export default function MobileUploadInvoicePage() {
+export default function UploadInvoicePage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-center"><Loader2 className="h-8 w-8 animate-spin text-white mb-4" /><p className="text-slate-400 font-medium">Loading...</p></div>}>
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+      </div>
+    }>
       <UploadInvoiceContent />
     </Suspense>
   );
