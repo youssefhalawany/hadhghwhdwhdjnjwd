@@ -65,7 +65,7 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-const CACHE_NAME = 'circlek-pwa-v4';
+const CACHE_NAME = 'circlek-pwa-v5';
 const OFFLINE_URLS = [
   '/',
   '/manifest-manager.json',
@@ -108,6 +108,54 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
+          }
+          return networkResponse;
+        })
+        .catch(async () => {
+          const cachedPage = await caches.match(event.request);
+          if (cachedPage) return cachedPage;
+
+          const rootPage = await caches.match('/');
+          if (rootPage) return rootPage;
+
+          const shiftPage = await caches.match('/shift-reports/manager');
+          if (shiftPage) return shiftPage;
+
+          return new Response(
+            `<!DOCTYPE html>
+            <html>
+              <head>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+                <style>
+                  body { background: #09090b; color: #fff; font-family: system-ui, -apple-system, sans-serif; text-align: center; padding: 40px 20px; }
+                  .card { background: #18181b; border: 1px solid #27272a; padding: 24px; border-radius: 20px; max-width: 360px; margin: 40px auto; }
+                  h2 { color: #e11937; margin: 0 0 10px 0; font-size: 20px; }
+                  p { color: #a1a1aa; font-size: 14px; margin: 0 0 20px 0; line-height: 1.5; }
+                  button { background: #e11937; color: #fff; border: none; padding: 12px 24px; border-radius: 12px; font-weight: bold; font-size: 14px; cursor: pointer; }
+                </style>
+              </head>
+              <body>
+                <div class="card">
+                  <h2>Circle K Offline</h2>
+                  <p>Open app once with internet connection to cache pages for offline use.</p>
+                  <button onclick="window.location.reload()">Retry Connection</button>
+                </div>
+              </body>
+            </html>`,
+            { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+          );
+        })
+    );
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
@@ -127,38 +175,8 @@ self.addEventListener('fetch', (event) => {
           }
           return networkResponse;
         })
-        .catch(async () => {
-          if (event.request.mode === 'navigate') {
-            const rootCache = await caches.match('/');
-            if (rootCache) return rootCache;
-          }
-          
-          return new Response(
-            `<!DOCTYPE html>
-            <html>
-              <head>
-                <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-                <style>
-                  body { background: #09090b; color: #fff; font-family: system-ui, -apple-system, sans-serif; text-align: center; padding: 40px 20px; }
-                  .card { background: #18181b; border: 1px solid #27272a; padding: 24px; border-radius: 20px; max-width: 360px; margin: 40px auto; }
-                  h2 { color: #e11937; margin: 0 0 10px 0; font-size: 20px; }
-                  p { color: #a1a1aa; font-size: 14px; margin: 0 0 20px 0; line-height: 1.5; }
-                  button { background: #e11937; color: #fff; border: none; padding: 12px 24px; border-radius: 12px; font-weight: bold; font-size: 14px; cursor: pointer; }
-                </style>
-              </head>
-              <body>
-                <div class="card">
-                  <h2>Circle K Offline</h2>
-                  <p>No active network connection detected. Saved offline data is active on your device.</p>
-                  <button onclick="window.location.reload()">Retry Connection</button>
-                </div>
-              </body>
-            </html>`,
-            {
-              status: 200,
-              headers: { 'Content-Type': 'text/html; charset=utf-8' }
-            }
-          );
+        .catch(() => {
+          return new Response('', { status: 404 });
         });
     })
   );

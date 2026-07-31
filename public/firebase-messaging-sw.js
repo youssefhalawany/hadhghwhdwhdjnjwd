@@ -66,8 +66,8 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-// 2. BULLETPROOF PWA OFFLINE CACHING & SAFARI FETCH HANDLER
-const CACHE_NAME = 'circlek-pwa-v4';
+// 2. FULL PWA OFFLINE APP SHELL & ASSET CACHING ENGINE
+const CACHE_NAME = 'circlek-pwa-v5';
 const OFFLINE_URLS = [
   '/',
   '/manifest-manager.json',
@@ -110,20 +110,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      // Return cached asset immediately if available
-      if (cachedResponse) {
-        fetch(event.request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
-          }
-        }).catch(() => {});
-        return cachedResponse;
-      }
-
-      // Try network fetch
-      return fetch(event.request)
+  // Strategy A: Page Navigation Requests (Loading full UI layout offline)
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
         .then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             const responseToCache = networkResponse.clone();
@@ -132,13 +122,15 @@ self.addEventListener('fetch', (event) => {
           return networkResponse;
         })
         .catch(async () => {
-          // Fallback navigation check
-          if (event.request.mode === 'navigate') {
-            const rootCache = await caches.match('/');
-            if (rootCache) return rootCache;
-          }
-          
-          // Guarantee a valid HTML Response to prevent Safari "Response is null" crash
+          const cachedPage = await caches.match(event.request);
+          if (cachedPage) return cachedPage;
+
+          const rootPage = await caches.match('/');
+          if (rootPage) return rootPage;
+
+          const shiftPage = await caches.match('/shift-reports/manager');
+          if (shiftPage) return shiftPage;
+
           return new Response(
             `<!DOCTYPE html>
             <html>
@@ -155,16 +147,40 @@ self.addEventListener('fetch', (event) => {
               <body>
                 <div class="card">
                   <h2>Circle K Offline</h2>
-                  <p>No active network connection detected. Saved offline data is active on your device.</p>
+                  <p>Open app once with internet connection to cache pages for offline use.</p>
                   <button onclick="window.location.reload()">Retry Connection</button>
                 </div>
               </body>
             </html>`,
-            {
-              status: 200,
-              headers: { 'Content-Type': 'text/html; charset=utf-8' }
-            }
+            { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
           );
+        })
+    );
+    return;
+  }
+
+  // Strategy B: Static Assets (_next/static, images, JS, CSS) -> Cache-First
+  event.respondWith(
+    caches.match(event.request).then((cachedResponse) => {
+      if (cachedResponse) {
+        fetch(event.request).then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
+          }
+        }).catch(() => {});
+        return cachedResponse;
+      }
+
+      return fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          return new Response('', { status: 404 });
         });
     })
   );
