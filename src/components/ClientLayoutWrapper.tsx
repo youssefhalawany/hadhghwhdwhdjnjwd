@@ -23,6 +23,7 @@ import { ManagerBottomNav } from "./MobileUX/ManagerBottomNav";
 import { MobileHeader } from "./MobileUX/MobileHeader";
 import { updateAppBadge, sendManagerInteractiveNotification, triggerHapticFeedback } from "@/lib/pwaBadges";
 import { playPopSound } from "@/lib/sounds";
+import { audioChimes } from "@/lib/audio-chimes";
 
 export default function ClientLayoutWrapper({ children }: { children: React.ReactNode }) {
   const { currentBranch, setBranch, availableBranches, setAvailableBranches } = useBranch();
@@ -214,18 +215,17 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       snapshot.docChanges().forEach((change) => {
         if (change.type === "added") {
           const data = change.doc.data();
-          const notifTitle = data.title || "ANH Portal Alert";
-          const notifBody = data.body || "New activity logged in store.";
-          const notifUrl = data.url || "/shift-reports/manager";
+          const notifTitle = data.title || "Circle K Alert";
+          const notifBody = data.body || data.message || "New activity logged in store.";
 
-          // Play Sound & Haptics
-          playPopSound();
+          // Play Category-Specific Audio Chime (Cash Register for Voids, Ascending Chord for Shifts, Coin Drop for Payments, Pulse for Expiries)
+          try {
+            audioChimes.playByType(data.type);
+          } catch (e) {}
+
           triggerHapticFeedback([100, 50, 100]);
 
-          // Native Web Push Notification
-          sendManagerInteractiveNotification(notifTitle, notifBody, notifUrl);
-
-          // Toast Alert
+          // Toast Alert inside Manager Portal
           toast.success(`${notifTitle}: ${notifBody}`, { duration: 5000 });
 
           // Update PWA App Badge

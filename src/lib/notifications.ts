@@ -1,5 +1,6 @@
 import { db } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { audioChimes } from "@/lib/audio-chimes";
 
 export interface SystemNotificationPayload {
   title: string;
@@ -11,11 +12,16 @@ export interface SystemNotificationPayload {
 
 /**
  * Universal System Notification Dispatcher
- * Stores in-app document in Firestore `notifications` collection
- * and triggers EXACTLY ONE high-priority push notification (+ WhatsApp) to the manager portal!
+ * Stores in-app document in Firestore `notifications` collection,
+ * plays distinct Web Audio operational chime, and triggers push notification!
  */
 export async function dispatchNotificationSystem(payload: SystemNotificationPayload) {
   const { title, body, type = "system", url = "/", metadata = {} } = payload;
+
+  // Play distinct audio chime for notification type
+  try {
+    audioChimes.playByType(type);
+  } catch (e) {}
 
   try {
     // 1. Store in Firestore 'notifications' collection for in-app bell drawer
