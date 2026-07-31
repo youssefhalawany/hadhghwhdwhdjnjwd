@@ -15,6 +15,13 @@ const cache = {
 };
 const CACHE_DURATION_MS = 1000 * 60 * 60; // 1 hour
 
+function formatCurr(val: any): string {
+  if (val === null || val === undefined || val === "" || val === "غير متوفر حالياً") return "EGP 0.00";
+  const num = Number(val);
+  if (isNaN(num)) return String(val);
+  return `EGP ${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 const getDailySalesDeclaration: FunctionDeclaration = {
   name: "get_daily_sales",
   description: "Retrieves the detailed daily sales report for a specific date from the POS database. Use this when the user asks for sales totals, category breakdowns, or performance for a specific day.",
@@ -121,16 +128,16 @@ export async function POST(req: Request) {
       balanceContext = `
 --- ZERO READS FINANCIAL DATA MEMORY ---
 You already know the following real-time data because you memorized it from the user's dashboard. DO NOT use any tools to fetch these, just answer immediately with these exact numbers if asked:
-- Safe Balance (Cash available in branch): EGP ${cachedBalances.safe || '0'}
-- Bank Balance: EGP ${cachedBalances.bank || '0'}
-- Total Cash Payments to Suppliers: EGP ${cachedBalances.cashPayments || '0'}
-- Total Bank/Visa Payments to Suppliers: EGP ${cachedBalances.bankPayments || '0'}
-- Customer Credits Collected (Debts Paid to us): EGP ${cachedBalances.creditsCollected || '0'}
-- Total Payrolls & Loans pulled from safe: EGP ${cachedBalances.payrollsAndLoans || '0'}
-- Cash Drops (Deposits out of Safe to owner/bank): EGP ${cachedBalances.depositsOutSafe || '0'}
-- Cash Injections (Deposits into Safe from owner): EGP ${cachedBalances.depositsInSafe || '0'}
-- Bank Deposits In: EGP ${cachedBalances.depositsInBank || '0'}
-- Bank Deposits Out: EGP ${cachedBalances.depositsOutBank || '0'}
+- Safe Balance (Cash available in branch): ${formatCurr(cachedBalances.safe)}
+- Bank Balance: ${formatCurr(cachedBalances.bank)}
+- Total Cash Payments to Suppliers: ${formatCurr(cachedBalances.cashPayments)}
+- Total Bank/Visa Payments to Suppliers: ${formatCurr(cachedBalances.bankPayments)}
+- Customer Credits Collected (Debts Paid to us): ${formatCurr(cachedBalances.creditsCollected)}
+- Total Payrolls & Loans pulled from safe: ${formatCurr(cachedBalances.payrollsAndLoans)}
+- Cash Drops (Deposits out of Safe to owner/bank): ${formatCurr(cachedBalances.depositsOutSafe)}
+- Cash Injections (Deposits into Safe from owner): ${formatCurr(cachedBalances.depositsInSafe)}
+- Bank Deposits In: ${formatCurr(cachedBalances.depositsInBank)}
+- Bank Deposits Out: ${formatCurr(cachedBalances.depositsOutBank)}
 ----------------------------------------`;
 
       if (cachedBalances.detailedPayments) {
@@ -156,6 +163,9 @@ You have access to live database tools to query sales, shift audits, and expirie
 If the user asks for sales numbers, shortages, or expiring items, USE YOUR TOOLS to fetch the data first before answering. 
 Do not guess numbers. If a tool returns null or empty data, inform the user that the report hasn't been uploaded yet.
 
+CRITICAL CURRENCY FORMATTING:
+ALWAYS format all monetary amounts cleanly with exact 2 decimal places and thousands commas (e.g., "EGP 25,252.94", "EGP 699,931.84"). NEVER display unformatted raw numbers like "25252.94000000006".
+
 When predicting sales using get_sales_predictor, analyze the 30-day data trend, consider if tomorrow is a weekend, factor in Egyptian weather/holiday seasons, and provide a realistic, intelligent estimate.
 
 CHARTING INSTRUCTIONS:
@@ -177,7 +187,14 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
       formattedHistory.shift();
     }
 
-    const MODEL_CANDIDATES = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash-lite"];
+    const MODEL_CANDIDATES = [
+      "gemini-2.5-flash", 
+      "gemini-2.0-flash", 
+      "gemini-1.5-flash-latest", 
+      "gemini-2.0-flash-lite", 
+      "gemini-1.5-flash"
+    ];
+    
     let result: any = null;
     let activeChat: any = null;
     let lastError: any = null;
@@ -213,8 +230,8 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
 
     if (!result) {
       // Fallback local response if all models rate limited or failed
-      const safeBal = cachedBalances?.safe ? `EGP ${cachedBalances.safe}` : "غير متوفر حالياً";
-      const bankBal = cachedBalances?.bank ? `EGP ${cachedBalances.bank}` : "غير متوفر حالياً";
+      const safeBal = cachedBalances?.safe ? formatCurr(cachedBalances.safe) : "غير متوفر حالياً";
+      const bankBal = cachedBalances?.bank ? formatCurr(cachedBalances.bank) : "غير متوفر حالياً";
       const fallbackReply = `يا ريس، السيرفر عليه ضغط بسيط دلوقتي من جوجل، بس أنا معاك وجهزتلك خلاصة الخزينة من السيستم مباشرة:\n\n• رصيد الخزينة: ${safeBal}\n• رصيد البنك: ${bankBal}\n\nجرب تسألني تاني كمان ثواني وهكون معاك فوراً يا باشا! 🫡`;
       return NextResponse.json({ success: true, reply: fallbackReply });
     }
@@ -251,13 +268,12 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
           if (!snapshot.empty) {
             apiResponse = snapshot.docs[0].data();
           } else {
-            apiResponse = { error: "No data found for the requested date. This may mean the Z-Report hasn't been posted yet." };
+            apiResponse = { error: "No data found for the requested date. This may mean the Z-Report hasn't been uploaded yet." };
           }
         } 
         else if (call.name === "get_historical_sales") {
           console.log(`AI executing get_historical_sales for branch: ${branchId}`);
           
-          // Fetch limited recent sales across all branches, then filter in memory to save reads and avoid composite index
           const q = query(
             collection(productsDb, "detailed_sales_daily"),
             orderBy("date_sold", "desc"),
@@ -282,7 +298,6 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
           if (!adminDb) {
             apiResponse = { error: "Admin database not initialized." };
           } else {
-            // Fetch recent 50 globally and filter to save reads
             const snapshot = await adminDb.collection("shift_reports")
               .orderBy("createdAt", "desc")
               .limit(50)
@@ -314,12 +329,10 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
           if (!adminDb) {
             apiResponse = { error: "Admin database not initialized." };
           } else {
-            // Limit to 200 to save reads
             const snapshot = await adminDb.collection("expiries").limit(200).get();
             const activeExpiries: any[] = [];
             snapshot.forEach(doc => {
               const data = doc.data();
-              // Fallback check for branch/store in memory to avoid index issues
               const bId = data.branchId || "";
               const sId = (data.storeId || "").toLowerCase();
               const matchesBranch = (bId === branchId || bId === altBranch) || (branchId === "ola" && sId.includes("ola")) || (branchId === "alamein4" && sId.includes("alamein"));
@@ -341,7 +354,6 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
         else if (call.name === "get_sales_predictor") {
            console.log(`AI executing get_sales_predictor for branch: ${branchId}`);
            
-           // Fetch recent 150 globally and filter to save reads
            const q = query(
             collection(productsDb, "detailed_sales_daily"),
             orderBy("date_sold", "desc"),
@@ -367,7 +379,6 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
            const vendorName = args.vendorName || "";
            console.log(`AI executing get_vendor_order for branch: ${branchId}, vendor: ${vendorName}`);
            
-           // Fetch category sales
            const qSales = query(
             collection(productsDb, "detailed_sales_daily"),
             where("branchId", "in", [branchId, altBranch]),
@@ -384,7 +395,6 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
             }
           });
 
-          // Fetch products matching vendor (USING CACHE TO SAVE READS)
           if (!cache.products || Date.now() - cache.lastFetch > CACHE_DURATION_MS) {
              const pSnap = await getDocs(collection(productsDb, "products"));
              cache.products = [];
@@ -422,9 +432,7 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
           const searchQuery = (args.searchQuery || "").toLowerCase();
           console.log(`AI executing get_product_info for query: ${searchQuery}`);
 
-          // Use Cache to save reads
           if (!cache.products || !cache.foodCodes || Date.now() - cache.lastFetch > CACHE_DURATION_MS) {
-             console.log("Cache miss: Fetching products and food codes to save reads in future...");
              const [pSnap, fSnap] = await Promise.all([
                getDocs(collection(productsDb, "products")),
                getDocs(collection(productsDb, "food_codes"))
@@ -463,7 +471,6 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
           };
         }
 
-        // Send the database result back to the AI so it can formulate a final answer.
         const followUpMessage = `[SYSTEM: Tool '${call.name}' executed successfully. Here is the data from the database:]\n\n${JSON.stringify(apiResponse, null, 2)}\n\nNow, provide your final answer to the user based on this data.`;
         
         if (activeChat) {
@@ -472,7 +479,6 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
 
       } catch (dbError: any) {
         console.error("Firebase Tool Error:", dbError);
-        // If DB fails, tell the AI so it can apologize via text instead of functionResponse
         const errorMessage = `[SYSTEM: Tool '${call.name}' failed with a technical error. Please apologize to the user and inform them that the database is currently unreachable.]`;
         if (activeChat) {
           result = await activeChat.sendMessage(errorMessage);
