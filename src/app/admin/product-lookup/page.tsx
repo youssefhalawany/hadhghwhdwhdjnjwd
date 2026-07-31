@@ -464,10 +464,10 @@ function ProductLookupContent() {
   return (
     <div className="min-h-screen bg-slate-50/50 dark:bg-[#070C18] text-slate-900 dark:text-slate-100 p-4 md:p-8 space-y-6 font-sans transition-colors duration-200">
       
-      {/* EXECUTIVE HEADER BANNER — High Contrast Gradient */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 border border-slate-200/20 dark:border-white/10 p-6 md:p-8 shadow-xl text-white">
-        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-cyan-500/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-1/3 -mb-8 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl pointer-events-none" />
+      {/* EXECUTIVE HEADER BANNER — Solid High Contrast Deep Dark Blue */}
+      <div className="relative overflow-hidden rounded-3xl bg-[#0F172A] border border-slate-800 p-6 md:p-8 shadow-xl text-white">
+        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/3 -mb-8 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
@@ -495,7 +495,7 @@ function ProductLookupContent() {
                 setIsEditing(true);
                 setDrawerOpen(true);
               }}
-              className="flex-1 md:flex-initial px-5 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-extrabold text-sm shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95"
+              className="flex-1 md:flex-initial px-5 py-3.5 rounded-2xl bg-cyan-600 hover:bg-cyan-500 text-white font-extrabold text-sm shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95"
             >
               <PlusCircle className="w-5 h-5" /> Add New Product
             </button>
@@ -503,21 +503,21 @@ function ProductLookupContent() {
         </div>
 
         {/* METRICS STATS BAR */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6 pt-6 border-t border-white/15">
-          <div className="bg-white/10 border border-white/15 rounded-2xl p-3.5 backdrop-blur-md">
-            <p className="text-[10px] font-extrabold uppercase text-slate-300 tracking-wider">Total Products in Database</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6 pt-6 border-t border-slate-800">
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5">
+            <p className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Total Products in Database</p>
             <p className="text-2xl font-black text-white font-mono mt-0.5">{allProducts.length}</p>
           </div>
-          <div className="bg-white/10 border border-white/15 rounded-2xl p-3.5 backdrop-blur-md">
-            <p className="text-[10px] font-extrabold uppercase text-slate-300 tracking-wider">Price History Logs</p>
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5">
+            <p className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Price History Logs</p>
             <p className="text-2xl font-black text-emerald-400 font-mono mt-0.5">{totalPricesLogged}</p>
           </div>
-          <div className="bg-white/10 border border-white/15 rounded-2xl p-3.5 backdrop-blur-md">
-            <p className="text-[10px] font-extrabold uppercase text-slate-300 tracking-wider">Filtered Items</p>
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5">
+            <p className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Filtered Items</p>
             <p className="text-2xl font-black text-cyan-300 font-mono mt-0.5">{categoryFilteredProducts.length}</p>
           </div>
-          <div className="bg-white/10 border border-white/15 rounded-2xl p-3.5 backdrop-blur-md">
-            <p className="text-[10px] font-extrabold uppercase text-slate-300 tracking-wider">Scanner Status</p>
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5">
+            <p className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Scanner Status</p>
             <p className="text-xl font-black text-purple-300 font-mono mt-0.5 flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> Ready
             </p>
