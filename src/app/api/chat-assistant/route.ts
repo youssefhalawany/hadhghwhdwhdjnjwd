@@ -24,13 +24,13 @@ function formatCurr(val: any): string {
 
 const getDailySalesDeclaration: FunctionDeclaration = {
   name: "get_daily_sales",
-  description: "Retrieves the detailed daily sales report for a specific date from the POS database. Use this when the user asks for sales totals, category breakdowns, or performance for a specific day.",
+  description: "Retrieves the detailed daily sales report for a specific date from the POS database. Use this when the user asks for sales totals, category breakdowns, or performance for a specific day or yesterday.",
   parameters: {
     type: SchemaType.OBJECT,
     properties: {
       date: {
         type: SchemaType.STRING,
-        description: "The date to query in YYYY-MM-DD format (e.g., '2026-07-21')."
+        description: "The date to query in YYYY-MM-DD format (e.g., '2026-07-30')."
       }
     },
     required: ["date"]
@@ -42,7 +42,7 @@ const getHistoricalSalesDeclaration: FunctionDeclaration = {
   description: "Retrieves the last 7 days of sales reports for trend analysis. Use this when the user asks about recent trends, averages, or how sales are doing over the past week.",
   parameters: {
     type: SchemaType.OBJECT,
-    properties: {}, // No params needed, it just grabs the latest 7 days
+    properties: {},
     required: []
   }
 };
@@ -120,8 +120,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: "GEMINI_API_KEY is not configured" }, { status: 500 });
     }
 
-    // Determine the current local date to give the AI temporal context
-    const today = new Date().toLocaleDateString('en-CA'); // e.g. "2026-07-22"
+    // Determine current local date & yesterday's date
+    const now = new Date();
+    const today = now.toLocaleDateString('en-CA'); // e.g. "2026-07-31"
+    const yesterdayDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const yesterday = yesterdayDate.toLocaleDateString('en-CA'); // e.g. "2026-07-30"
 
     let balanceContext = "";
     if (cachedBalances && cachedBalances.safe) {
@@ -151,22 +154,21 @@ You already know the following real-time data because you memorized it from the 
       }
     }
 
-    // Construct the system prompt
+    // Construct system prompt
     const systemInstruction = `
 You are Ibrahim, the expert Operations Manager Assistant (مساعد مدير) for Circle K. Your job is to help the franchise owner or manager run their branch efficiently.
 You communicate clearly, professionally, but in a very COOL and FUN Egyptian Arabic dialect (اللغة العامية المصرية). You can call the user "يا ريس" or "يا باشا". 
 ALWAYS mirror the exact language the user speaks to you in. If they speak Egyptian Arabic, reply in pure, fun Egyptian 3ameya. If they speak English, reply in English. If they speak Franco-Arabic (e.g., "ezayak ya ibrahim"), reply in Franco-Arabic. Your default starting persona is a friendly, street-smart Egyptian manager assistant.
 The user is currently managing the branch with ID: "${branchId}". 
-Today's date is: ${today}.${balanceContext}
+Today's date is: ${today}.
+Yesterday's date is: ${yesterday}.${balanceContext}
 
 You have access to live database tools to query sales, shift audits, and expiries. 
-If the user asks for sales numbers, shortages, or expiring items, USE YOUR TOOLS to fetch the data first before answering. 
-Do not guess numbers. If a tool returns null or empty data, inform the user that the report hasn't been uploaded yet.
+If the user asks for sales numbers ("مبيعات", "خلاصة مبيعات", "مبيعات امبارح"), shortages, or expiring items, YOU MUST CALL YOUR TOOLS ('get_daily_sales' with date "${yesterday}" for yesterday, or 'get_historical_sales') to fetch the data first before answering. 
+Do not guess numbers. If a tool returns data, summarize sales total, net sales, category breakdowns, and shift performance clearly.
 
 CRITICAL CURRENCY FORMATTING:
 ALWAYS format all monetary amounts cleanly with exact 2 decimal places and thousands commas (e.g., "EGP 25,252.94", "EGP 699,931.84"). NEVER display unformatted raw numbers like "25252.94000000006".
-
-When predicting sales using get_sales_predictor, analyze the 30-day data trend, consider if tomorrow is a weekend, factor in Egyptian weather/holiday seasons, and provide a realistic, intelligent estimate.
 
 CHARTING INSTRUCTIONS:
 If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرسملي مبيعات الأسبوع ده" or "Show me a chart"), you MUST respond EXACTLY and ONLY with a JSON payload in this exact format, with NO backticks or extra text around it:
@@ -176,23 +178,32 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
 - Keep your tone 100% natural and conversational. Avoid sounding like an AI reading a script.
 `;
 
-    // Convert the history array into the format required by the Gemini ChatSession
-    const formattedHistory = (history || []).map((msg: any) => ({
-      role: msg.role === "assistant" ? "model" : "user",
-      parts: [{ text: msg.content }]
-    }));
+    // Sanitize and format chat history to strictly adhere to Gemini's role sequence rules
+    const cleanHistory: any[] = [];
+    (history || []).forEach((msg: any) => {
+      if (!msg || !msg.content || typeof msg.content !== "string" || !msg.content.trim()) return;
+      const role = msg.role === "assistant" || msg.role === "model" ? "model" : "user";
+      
+      if (cleanHistory.length > 0 && cleanHistory[cleanHistory.length - 1].role === role) {
+        cleanHistory[cleanHistory.length - 1].parts[0].text += `\n${msg.content}`;
+      } else {
+        cleanHistory.push({
+          role: role,
+          parts: [{ text: msg.content }]
+        });
+      }
+    });
 
-    // Gemini strictly requires the history array to start with a "user" role.
-    while (formattedHistory.length > 0 && formattedHistory[0].role === "model") {
-      formattedHistory.shift();
+    // Gemini strictly requires the history array to start with a 'user' role.
+    while (cleanHistory.length > 0 && cleanHistory[0].role === "model") {
+      cleanHistory.shift();
     }
 
     const MODEL_CANDIDATES = [
-      "gemini-2.5-flash", 
-      "gemini-2.0-flash", 
-      "gemini-1.5-flash-latest", 
-      "gemini-2.0-flash-lite", 
-      "gemini-1.5-flash"
+      "gemini-1.5-flash",
+      "gemini-1.5-flash-latest",
+      "gemini-1.5-pro",
+      "gemini-2.0-flash-exp"
     ];
     
     let result: any = null;
@@ -216,7 +227,7 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
           ] }]
         });
 
-        const chat = model.startChat({ history: formattedHistory });
+        const chat = model.startChat({ history: cleanHistory });
         result = await chat.sendMessage(message);
         if (result) {
           activeChat = chat;
@@ -254,13 +265,15 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
 
         if (call.name === "get_daily_sales") {
           const args = (call.args as any) || {};
-          const date = args.date || today; // fallback to today if undefined
-          console.log(`AI executing get_daily_sales for branch: ${branchId}, date: ${date}`);
+          let targetDate = args.date || yesterday;
+          if (targetDate === "yesterday" || targetDate === "امبارح") targetDate = yesterday;
+          
+          console.log(`AI executing get_daily_sales for branch: ${branchId}, date: ${targetDate}`);
           
           const q = query(
             collection(productsDb, "detailed_sales_daily"),
             where("branchId", "in", [branchId, altBranch]),
-            where("date_sold", "==", date),
+            where("date_sold", "==", targetDate),
             limit(1)
           );
           const snapshot = await getDocs(q);
@@ -268,7 +281,19 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
           if (!snapshot.empty) {
             apiResponse = snapshot.docs[0].data();
           } else {
-            apiResponse = { error: "No data found for the requested date. This may mean the Z-Report hasn't been uploaded yet." };
+            // Fallback: Fetch latest available daily sales report if requested date has no record
+            const qLatest = query(
+              collection(productsDb, "detailed_sales_daily"),
+              where("branchId", "in", [branchId, altBranch]),
+              orderBy("date_sold", "desc"),
+              limit(1)
+            );
+            const latestSnap = await getDocs(qLatest);
+            if (!latestSnap.empty) {
+              apiResponse = latestSnap.docs[0].data();
+            } else {
+              apiResponse = { error: `No sales report found for date ${targetDate} or branch ${branchId}.` };
+            }
           }
         } 
         else if (call.name === "get_historical_sales") {
@@ -289,7 +314,6 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
           });
           
           const recentSales = allSales.slice(0, 7);
-          
           apiResponse = recentSales.length > 0 ? recentSales : { error: "No historical data found." };
         }
         else if (call.name === "get_shift_audits") {
