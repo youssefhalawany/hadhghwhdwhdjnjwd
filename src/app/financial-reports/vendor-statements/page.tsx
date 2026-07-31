@@ -83,15 +83,12 @@ export default function VendorStatementsPage() {
         const paidAmt = Number(d.paidAmount || 0);
         const isPaid = d.status === "paid" || d.isPaid === true || paidAmt > 0;
 
-        const cleanPo = rawPo.toLowerCase().replace(/[^a-z0-9]/g, "");
-
         creditItems.push({
           id: doc.id,
           normalizedCompany: norm,
           originalCompany: companyDisplayNames[norm],
           receiptDate: rDate || new Date().toISOString().substring(0, 10),
           poNumber: rawPo || "-",
-          cleanPoKey: (cleanPo && cleanPo !== "-" && cleanPo !== "cashpayment" && cleanPo !== "na") ? `${norm}_${cleanPo}` : null,
           price: finalInvoicePriceWithTax,
           tax: taxAmt,
           status: "Invoice",
@@ -126,7 +123,6 @@ export default function VendorStatementsPage() {
 
         const parentPo = d.creditId ? creditIdToPoNumber[d.creditId] : "";
         const rawPo = (d.poNumber || d.invoiceNumber || parentPo || "").trim();
-        const cleanPo = rawPo.toLowerCase().replace(/[^a-z0-9]/g, "");
 
         paymentItems.push({
           id: doc.id,
@@ -135,7 +131,6 @@ export default function VendorStatementsPage() {
           originalCompany: companyDisplayNames[norm],
           receiptDate: rDate || new Date().toISOString().substring(0, 10),
           poNumber: rawPo || "Cash Payment",
-          cleanPoKey: (cleanPo && cleanPo !== "-" && cleanPo !== "cashpayment" && cleanPo !== "na") ? `${norm}_${cleanPo}` : null,
           price: finalPaymentPriceWithTax,
           tax: pTax,
           status: "Payment",
@@ -170,7 +165,6 @@ export default function VendorStatementsPage() {
         // Inherit real PO number from parent credit note if payment doesn't explicitly specify it!
         const parentPo = creditIdToPoNumber[d.creditId] || "";
         const rawPo = (d.poNumber || d.invoiceNumber || parentPo || "").trim();
-        const cleanPo = rawPo.toLowerCase().replace(/[^a-z0-9]/g, "");
 
         paymentItems.push({
           id: doc.id,
@@ -179,7 +173,6 @@ export default function VendorStatementsPage() {
           originalCompany: companyDisplayNames[norm] || "Unknown Supplier",
           receiptDate: rDate || new Date().toISOString().substring(0, 10),
           poNumber: rawPo || "-",
-          cleanPoKey: (cleanPo && cleanPo !== "-" && cleanPo !== "cashpayment" && cleanPo !== "na") ? `${norm}_${cleanPo}` : null,
           price: finalPaymentPriceWithTax,
           tax: pTax,
           status: "Payment",
@@ -188,33 +181,58 @@ export default function VendorStatementsPage() {
         });
       });
 
-      // DEDUPLICATION WITH PRIORITIZATION TO PAYMENT RECORD
-      const paymentPoKeySet = new Set<string>();
-      const paidCreditIdSet = new Set<string>();
+      // STRICT GLOBAL DEDUPLICATION BY VENDOR + PO NUMBER
+      // Combine all credit and payment items, then group by normalized PO key
+      const poGroupMap = new Map<string, any[]>();
+      const standaloneRecords: any[] = [];
 
-      paymentItems.forEach(p => {
-        if (p.cleanPoKey) paymentPoKeySet.add(p.cleanPoKey);
-        if (p.creditId) paidCreditIdSet.add(p.creditId);
+      const allCandidates = [...creditItems, ...paymentItems];
+
+      allCandidates.forEach(item => {
+        let rawPo = (item.poNumber || "").trim();
+        let cleanPo = rawPo.toLowerCase().replace(/[^a-z0-9]/g, "");
+        // Strip common prefixes so 'PO-1004', 'PO 1004', '1004', and 'INV-1004' produce identical key '1004'
+        cleanPo = cleanPo.replace(/^(po|inv|invoice|ref|pmt|pmtref)+/g, "");
+
+        const poKey = (cleanPo && cleanPo !== "-" && cleanPo !== "cashpayment" && cleanPo !== "na" && cleanPo !== "none") 
+          ? `${item.normalizedCompany}_${cleanPo}` 
+          : null;
+
+        if (poKey) {
+          if (!poGroupMap.has(poKey)) {
+            poGroupMap.set(poKey, []);
+          }
+          poGroupMap.get(poKey)!.push({ ...item, cleanPoKey: poKey });
+        } else {
+          standaloneRecords.push(item);
+        }
       });
 
       const allData: any[] = [];
+      const seenPaymentCreditIds = new Set<string>();
 
-      // Add Credit items ONLY if no corresponding Payment exists for the same PO key or credit ID
-      creditItems.forEach(c => {
-        if (c.cleanPoKey && paymentPoKeySet.has(c.cleanPoKey)) {
-          // Skip credit in favor of payment!
-          return;
+      // For every PO key group, pick EXACTLY ONE item:
+      // Prioritize Payment item over Invoice item!
+      poGroupMap.forEach((group) => {
+        // Find if there is any Payment item in this group
+        const paymentItem = group.find(i => i.status === "Payment");
+        if (paymentItem) {
+          allData.push(paymentItem);
+          if (paymentItem.creditId) {
+            seenPaymentCreditIds.add(paymentItem.creditId);
+          }
+        } else {
+          // Otherwise pick the first Invoice item
+          allData.push(group[0]);
         }
-        if (paidCreditIdSet.has(c.id)) {
-          // Skip credit in favor of payment!
-          return;
-        }
-        allData.push(c);
       });
 
-      // Add all Payment items
-      paymentItems.forEach(p => {
-        allData.push(p);
+      // Add standalone records (records without a PO key), ensuring no duplicate credit IDs
+      standaloneRecords.forEach(item => {
+        if (item.source === "credits" && seenPaymentCreditIds.has(item.id)) {
+          return; // Skip credit note if a payment for it was already added
+        }
+        allData.push(item);
       });
 
       // Sort globally by date ascending
