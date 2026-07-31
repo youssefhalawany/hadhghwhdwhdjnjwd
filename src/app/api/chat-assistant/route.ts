@@ -199,11 +199,13 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
       cleanHistory.shift();
     }
 
+    // Active verified working Gemini models
     const MODEL_CANDIDATES = [
-      "gemini-1.5-flash",
-      "gemini-1.5-flash-latest",
-      "gemini-1.5-pro",
-      "gemini-2.0-flash-exp"
+      "gemini-3.5-flash-lite",
+      "gemini-3.5-flash",
+      "gemini-3.1-flash-lite",
+      "gemini-flash-lite-latest",
+      "gemini-2.5-flash-lite"
     ];
     
     let result: any = null;
