@@ -596,6 +596,18 @@ export default function CreditsPage() {
       const creditItem = credits.find(c => c.id === id);
       await deleteDoc(doc(db, "credits", id));
 
+      // Cascade delete child credit_payments and cash_payments
+      try {
+        const [cpSnap, cashSnap] = await Promise.all([
+          getDocs(query(collection(db, "credit_payments"), where("creditId", "==", id))),
+          getDocs(query(collection(db, "cash_payments"), where("creditId", "==", id)))
+        ]);
+        cpSnap.docs.forEach(d => deleteDoc(d.ref).catch(() => {}));
+        cashSnap.docs.forEach(d => deleteDoc(d.ref).catch(() => {}));
+      } catch (e) {
+        console.error("Error cleaning child credit payments:", e);
+      }
+
       const role = typeof window !== "undefined" ? (localStorage.getItem("circlek_role") || "manager") : "manager";
       dbService.logAction(
         auth.currentUser?.email || "Unknown User",
@@ -607,7 +619,7 @@ export default function CreditsPage() {
       ).catch(() => {});
 
       setCredits(credits.filter(c => c.id !== id));
-      toast.success("Credit deleted.");
+      toast.success("Credit & associated payments deleted.");
     } catch (error) {
       console.error("Error deleting credit:", error);
       toast.error("Failed to delete.");

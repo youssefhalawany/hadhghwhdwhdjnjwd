@@ -44,6 +44,12 @@ export default function VendorStatementsPage() {
       // 1. Process Credits (Invoices)
       creditsSnap.docs.forEach(doc => {
         const d = doc.data();
+
+        // STRICTLY FILTER OUT DELETED & CANCELLED CREDITS
+        if (d.status === "deleted" || d.status === "cancelled" || d.deleted === true || d.isDeleted === true || d.isCancelled === true) {
+          return;
+        }
+
         const rawName = (d.companyName || d.supplierName || d.supplier || d.vendor || d.supplierRepName || d.name || "").trim();
         if (!rawName) return;
 
@@ -83,6 +89,12 @@ export default function VendorStatementsPage() {
       // 2. Process Cash Payments
       cashSnap.docs.forEach(doc => {
         const d = doc.data();
+
+        // STRICTLY FILTER OUT DELETED & CANCELLED CASH PAYMENTS
+        if (d.status === "deleted" || d.status === "cancelled" || d.deleted === true || d.isDeleted === true || d.isCancelled === true) {
+          return;
+        }
+
         const rawName = (d.companyName || d.supplierName || d.supplier || d.vendor || d.supplierRepName || d.name || "").trim();
         if (!rawName) return;
 
@@ -114,8 +126,15 @@ export default function VendorStatementsPage() {
       // 3. Process Credit Payments
       creditPaymentsSnap.docs.forEach(doc => {
         const d = doc.data();
+
+        // STRICTLY FILTER OUT DELETED & CANCELLED CREDIT PAYMENTS
+        if (d.status === "deleted" || d.status === "cancelled" || d.deleted === true || d.isDeleted === true || d.isCancelled === true) {
+          return;
+        }
+
         if (!d.creditId) return;
 
+        // If parent credit was deleted, creditIdToNormCompany[d.creditId] will be undefined -> Automatically excluded!
         const norm = creditIdToNormCompany[d.creditId];
         if (!norm) return;
 
@@ -167,13 +186,6 @@ export default function VendorStatementsPage() {
       return matchCompany && matchMonth;
     });
   }, [allReceipts, selectedCompany, selectedMonth]);
-
-  // Filter company dropdown list by search query
-  const searchedCompanies = useMemo(() => {
-    if (!companySearchQuery.trim()) return uniqueCompanies;
-    const q = companySearchQuery.toLowerCase();
-    return uniqueCompanies.filter(c => c.toLowerCase().includes(q));
-  }, [uniqueCompanies, companySearchQuery]);
 
   const handlePrint = () => {
     window.print();
