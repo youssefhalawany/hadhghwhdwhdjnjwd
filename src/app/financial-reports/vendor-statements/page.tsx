@@ -313,7 +313,7 @@ export default function VendorStatementsPage() {
               <h1 className="text-xl font-black flex items-center gap-2">
                 <Building2 className="h-5 w-5 text-orange-600" /> Vendor Statements
               </h1>
-              <p className="text-xs text-slate-400">1-Page A4 Statement of Account (Grouped by Vendor & Payment Method)</p>
+              <p className="text-xs text-slate-400">Statement of Account (Multi-Page Flow Supported)</p>
             </div>
           </div>
           
@@ -360,7 +360,7 @@ export default function VendorStatementsPage() {
               className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 dark:bg-orange-600 dark:hover:bg-orange-700 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-md transition-colors disabled:opacity-50 w-full sm:w-auto justify-center"
             >
               <Printer className="h-4 w-4" />
-              Print 1-Page A4 PDF
+              Print A4 Statement
             </button>
           </div>
         </div>
@@ -382,7 +382,7 @@ export default function VendorStatementsPage() {
         ) : (
           <div 
             ref={pdfRef} 
-            className="bg-white text-slate-900 w-full rounded-xl shadow-xl overflow-hidden print:shadow-none print:w-full print:max-w-none print:m-0 print:p-0 print:border-none print:rounded-none flex flex-col justify-between"
+            className="bg-white text-slate-900 w-full rounded-xl shadow-xl overflow-visible print:shadow-none print:w-full print:max-w-none print:m-0 print:p-0 print:border-none print:rounded-none flex flex-col justify-between"
             style={{ backgroundColor: '#ffffff', color: '#000000', boxSizing: 'border-box' }}
           >
             <div>
@@ -443,8 +443,8 @@ export default function VendorStatementsPage() {
 
               {/* FINANCIAL TABLE WITH PAYMENT METHOD & COMPANY GROUPING */}
               <div className="px-6 py-4 print:px-3 print:py-2">
-                <table className="w-full text-left border-collapse">
-                  <thead>
+                <table className="w-full text-left border-collapse print:w-full">
+                  <thead className="print:table-header-group">
                     <tr className="border-y-2 border-black text-[10px] font-black uppercase text-black tracking-wider">
                       <th className="py-2 px-2">Date</th>
                       {selectedCompany === "ALL" && (
@@ -464,13 +464,13 @@ export default function VendorStatementsPage() {
                       return (
                         <React.Fragment key={r.id || idx}>
                           {isFirstOfCompany && (
-                            <tr className="bg-slate-100 dark:bg-slate-800 print:bg-slate-200 border-t-2 border-b border-black">
+                            <tr className="bg-slate-100 dark:bg-slate-800 print:bg-slate-200 border-t-2 border-b border-black print:break-inside-avoid">
                               <td colSpan={7} className="py-1.5 px-2 font-black text-xs uppercase tracking-wider text-black">
                                 🏢 {r.originalCompany}
                               </td>
                             </tr>
                           )}
-                          <tr className="hover:bg-slate-50 print:hover:bg-transparent">
+                          <tr className="hover:bg-slate-50 print:hover:bg-transparent print:break-inside-avoid">
                             <td className="py-1.5 px-2 font-mono font-semibold text-slate-800">
                               {r.receiptDate}
                             </td>
@@ -509,8 +509,8 @@ export default function VendorStatementsPage() {
               </div>
             </div>
 
-            {/* COMPACT COMBINED FOOTER (TOTALS + SIGNATURES + QR CODE FOR 1-PAGE FIT) */}
-            <div className="p-6 pt-2 print:p-3 print:pt-1 border-t-2 border-slate-300 print:border-black mt-2">
+            {/* COMBINED FOOTER (TOTALS + SIGNATURES + QR CODE - STAYS INTACT ON LAST PAGE) */}
+            <div className="p-6 pt-2 print:p-3 print:pt-1 border-t-2 border-slate-300 print:border-black mt-2 print:break-inside-avoid">
               <div className="flex flex-col sm:flex-row justify-between items-end gap-4">
                 
                 {/* QR Code & System Info */}
@@ -564,26 +564,29 @@ export default function VendorStatementsPage() {
         )}
       </div>
 
-      {/* STRICT 1-PAGE A4 PRINT MEDIA STYLES */}
+      {/* MULTI-PAGE A4 PRINT MEDIA STYLES */}
       <style jsx global>{`
         @media print {
           @page {
             size: A4 portrait;
-            margin: 6mm 8mm;
+            margin: 8mm 10mm;
           }
           html, body {
             background-color: #ffffff !important;
             color: #000000 !important;
-            height: 100% !important;
-            overflow: hidden !important;
+            height: auto !important;
+            min-height: 100% !important;
+            overflow: visible !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
           .print\\:hidden {
             display: none !important;
           }
-          /* Prevent multi-page breaks */
-          table, tr, td, th, div {
+          thead {
+            display: table-header-group !important;
+          }
+          tr {
             page-break-inside: avoid !important;
             break-inside: avoid !important;
           }
