@@ -2,8 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { productsDb } from "@/lib/firebase";
 import { doc, updateDoc, getDoc } from "firebase/firestore";
 
-// High-resolution clean product studio photos mapped by product keywords
+// High-resolution verified product studio photos mapped by product keywords
 const BRAND_IMAGE_MAP: Record<string, string> = {
+  // Cigarettes & Tobacco (Marlboro, Merit, L&M, Terea, Heets)
+  marlboro: "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?w=500&auto=format&fit=crop&q=80",
+  merit: "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?w=500&auto=format&fit=crop&q=80",
+  "l&m": "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?w=500&auto=format&fit=crop&q=80",
+  terea: "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?w=500&auto=format&fit=crop&q=80",
+  heets: "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?w=500&auto=format&fit=crop&q=80",
+  cigarette: "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?w=500&auto=format&fit=crop&q=80",
+  tobacco: "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?w=500&auto=format&fit=crop&q=80",
+
   // Water
   aquafina: "https://images.unsplash.com/photo-1548839140-29a749e1bc4e?w=500&auto=format&fit=crop&q=80",
   water: "https://images.unsplash.com/photo-1548839140-29a749e1bc4e?w=500&auto=format&fit=crop&q=80",
@@ -31,8 +40,8 @@ const BRAND_IMAGE_MAP: Record<string, string> = {
 
   // Chips & Crunchy Potato Snacks
   pringles: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=500&auto=format&fit=crop&q=80",
-  crunchos: "https://images.unsplash.com/photo-1621958046399-56e6d1945a8e?w=500&auto=format&fit=crop&q=80",
-  stix: "https://images.unsplash.com/photo-1621958046399-56e6d1945a8e?w=500&auto=format&fit=crop&q=80",
+  crunchos: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=500&auto=format&fit=crop&q=80",
+  stix: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=500&auto=format&fit=crop&q=80",
   chipsy: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=500&auto=format&fit=crop&q=80",
   chips: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=500&auto=format&fit=crop&q=80",
 
@@ -55,10 +64,10 @@ const BRAND_IMAGE_MAP: Record<string, string> = {
 
 // Studio product mockup placeholders by broad product category
 const CATEGORY_FALLBACKS: Record<string, string> = {
+  tobacco: "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?w=500&auto=format&fit=crop&q=80",
   drink: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=500&auto=format&fit=crop&q=80",
   snack: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=500&auto=format&fit=crop&q=80",
-  food: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=500&auto=format&fit=crop&q=80",
-  default: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=500&auto=format&fit=crop&q=80"
+  default: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=500&auto=format&fit=crop&q=80"
 };
 
 export async function POST(req: NextRequest) {
@@ -99,31 +108,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 3. Fallback to Wikimedia Commons Search API if still empty
-    if (!imageUrl && name) {
-      try {
-        const wikiSearchUrl = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch=${encodeURIComponent(name + " product package")}&gsrlimit=1&prop=imageinfo&iiprop=url&format=json&origin=*`;
-        const wikiRes = await fetch(wikiSearchUrl);
-        if (wikiRes.ok) {
-          const wikiData = await wikiRes.json();
-          const pages = wikiData?.query?.pages;
-          if (pages) {
-            const firstPage = Object.values(pages)[0] as any;
-            if (firstPage?.imageinfo?.[0]?.url) {
-              imageUrl = firstPage.imageinfo[0].url;
-            }
-          }
-        }
-      } catch (err) {
-        console.warn("Wikimedia lookup failed:", err);
-      }
-    }
-
-    // 4. Default Clean Studio Product Mockup (No generic supermarket shelf photos!)
+    // 3. Category Fallback
     if (!imageUrl) {
-      if (cleanName.includes("drink") || cleanName.includes("water") || cleanName.includes("tea") || cleanName.includes("coffee") || cleanName.includes("shot")) {
+      if (cleanName.includes("marlboro") || cleanName.includes("merit") || cleanName.includes("l&m") || cleanName.includes("terea") || cleanName.includes("cigaret") || cleanName.includes("tobacco")) {
+        imageUrl = CATEGORY_FALLBACKS.tobacco;
+      } else if (cleanName.includes("drink") || cleanName.includes("water") || cleanName.includes("tea") || cleanName.includes("coffee") || cleanName.includes("shot") || cleanName.includes("soda")) {
         imageUrl = CATEGORY_FALLBACKS.drink;
-      } else if (cleanName.includes("chip") || cleanName.includes("stix") || cleanName.includes("nut") || cleanName.includes("snack")) {
+      } else if (cleanName.includes("chip") || cleanName.includes("stix") || cleanName.includes("nut") || cleanName.includes("snack") || cleanName.includes("crunch")) {
         imageUrl = CATEGORY_FALLBACKS.snack;
       } else {
         imageUrl = CATEGORY_FALLBACKS.default;

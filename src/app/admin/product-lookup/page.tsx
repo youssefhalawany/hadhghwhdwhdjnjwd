@@ -269,7 +269,15 @@ function ProductLookupContent() {
 
         // Auto-fetch missing product images via AI / OpenFoodFacts / Brand mapping
         consolidatedList.forEach(async (prod) => {
-          if (!prod.imageUrl || prod.imageUrl.includes("photo-1542838132-92c53300491e")) {
+          const nameLower = (prod.description || prod.itemName || prod.name || "").toLowerCase();
+          const needsFetch = !prod.imageUrl || 
+            prod.imageUrl.includes("photo-1542838132-92c53300491e") ||
+            prod.imageUrl.includes("photo-1558961363-fa8fdf82db35") ||
+            prod.imageUrl.includes("photo-1541781774459-bb2af2f05b55") ||
+            ((nameLower.includes("marlboro") || nameLower.includes("merit") || nameLower.includes("l&m") || nameLower.includes("terea")) && !prod.imageUrl.includes("photo-1527061011665-3652c757a4d4")) ||
+            (nameLower.includes("crunchos") && !prod.imageUrl.includes("photo-1566478989037-eec170784d0b"));
+
+          if (needsFetch) {
             try {
               const res = await fetch("/api/products/fetch-image", {
                 method: "POST",
@@ -485,7 +493,14 @@ function ProductLookupContent() {
             >
               <div className="aspect-video bg-slate-50 dark:bg-slate-800 rounded-xl mb-4 flex items-center justify-center border border-slate-100 dark:border-slate-700 overflow-hidden relative">
                 {p.imageUrl ? (
-                  <img src={p.imageUrl} alt={p.description || p.name} className="w-full h-full object-contain p-1 group-hover:scale-105 transition-transform duration-300" />
+                  <img 
+                    src={p.imageUrl} 
+                    alt={p.description || p.name} 
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                    className="w-full h-full object-contain p-1 group-hover:scale-105 transition-transform duration-300" 
+                  />
                 ) : (
                   <Package className="w-10 h-10 text-slate-300 dark:text-slate-600 group-hover:scale-110 transition-transform duration-300" />
                 )}
