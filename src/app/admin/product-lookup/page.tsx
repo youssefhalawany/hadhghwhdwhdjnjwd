@@ -119,8 +119,21 @@ function ProductLookupContent() {
       }
     });
 
-    uniqueHistory.sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+    uniqueHistory.sort((a, b) => {
+      const parseDate = (d: string) => {
+        if (!d) return 0;
+        if (d === "Current Catalog") return 9999999999999;
+        if (d.includes("-")) return new Date(d).getTime() || 0;
+        if (d.includes("/")) {
+          const parts = d.split("/");
+          if (parts.length === 3) return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).getTime() || 0;
+        }
+        return new Date(d).getTime() || 0;
+      };
+      return parseDate(a.date) - parseDate(b.date);
+    });
 
+    // Calculate price deltas
     const historyWithDeltas = uniqueHistory.map((item, idx) => {
       const prevPrice = idx > 0 ? uniqueHistory[idx - 1].price : item.price;
       const delta = item.price - prevPrice;
@@ -132,6 +145,7 @@ function ProductLookupContent() {
       };
     });
 
+    // Return in date descending order for timeline display (latest invoice top!)
     return historyWithDeltas.reverse();
   };
 
@@ -461,37 +475,39 @@ function ProductLookupContent() {
     return allProducts.reduce((acc, p) => acc + (p.priceHistoryCount || 1), 0);
   }, [allProducts]);
 
-  // Immediate Product Image Resolver helper
+  // Immediate Product Image Resolver helper with ultra-reliable hotlink-safe CDN URLs
   const getProductImage = (p: any) => {
     const key = p.groupKey || p.barcode || p.id;
-    if (p.imageUrl && !failedImageUrls[key]) {
-      return p.imageUrl;
-    }
     const name = (p.description || p.itemName || p.name || "").toLowerCase();
 
+    // Direct brand matching first
     if (name.includes("aquafina") || name.includes("water") || name.includes("hayat")) {
-      return "https://images.unsplash.com/photo-1548839140-29a749e1bc4e?w=500&auto=format&fit=crop&q=80";
+      return "https://images.unsplash.com/photo-1548839140-29a749e1bc4e?w=400&auto=format&fit=crop&q=80";
     }
     if (name.includes("pepsi")) {
-      return "https://images.unsplash.com/photo-1629203851122-3726ecdf080e?w=500&auto=format&fit=crop&q=80";
+      return "https://images.unsplash.com/photo-1629203851122-3726ecdf080e?w=400&auto=format&fit=crop&q=80";
     }
     if (name.includes("coca") || name.includes("coke")) {
-      return "https://images.unsplash.com/photo-1554866585-cd94860890b7?w=500&auto=format&fit=crop&q=80";
+      return "https://images.unsplash.com/photo-1554866585-cd94860890b7?w=400&auto=format&fit=crop&q=80";
     }
     if (name.includes("fanta")) {
-      return "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=500&auto=format&fit=crop&q=80";
+      return "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=400&auto=format&fit=crop&q=80";
     }
     if (name.includes("marlboro") || name.includes("merit") || name.includes("l&m") || name.includes("terea") || name.includes("heets")) {
-      return "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?w=500&auto=format&fit=crop&q=80";
+      return "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?w=400&auto=format&fit=crop&q=80";
     }
     if (name.includes("pringles")) {
-      return "https://images.unsplash.com/photo-1599490659213-e2b9527bd087?w=500&auto=format&fit=crop&q=80";
+      return "https://images.unsplash.com/photo-1599490659213-e2b9527bd087?w=400&auto=format&fit=crop&q=80";
     }
     if (name.includes("crunchos") || name.includes("stix") || name.includes("chip")) {
-      return "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=500&auto=format&fit=crop&q=80";
+      return "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=400&auto=format&fit=crop&q=80";
     }
     if (name.includes("brown") || name.includes("coffee") || name.includes("espres")) {
-      return "https://images.unsplash.com/photo-1517701604599-bb29b565090c?w=500&auto=format&fit=crop&q=80";
+      return "https://images.unsplash.com/photo-1517701604599-bb29b565090c?w=400&auto=format&fit=crop&q=80";
+    }
+
+    if (p.imageUrl && !failedImageUrls[key]) {
+      return p.imageUrl;
     }
 
     return null;
