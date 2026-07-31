@@ -19,32 +19,32 @@
   ],
   "shortcuts": [
     {
-      "name": "⚡ Pending Approvals",
-      "short_name": "Approvals",
+      "name": "💸 Safe Cash & Overview",
+      "short_name": "Safe Cash",
+      "description": "View live safe balance and financial inputs",
+      "url": "/financials/inputs/overview",
+      "icons": [{ "src": "/icon-manager.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "🚨 Pending Voids & Approvals",
+      "short_name": "Voids",
       "description": "Review and approve pending cashier shifts & voids",
+      "url": "/voids/manager",
+      "icons": [{ "src": "/icon-manager.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "📊 Shift Audit Reports",
+      "short_name": "Shifts",
+      "description": "View cashier end of shift audit reports",
       "url": "/shift-reports/manager",
-      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/icon-manager.png", "sizes": "192x192" }]
     },
     {
-      "name": "🚨 Report Stockout",
-      "short_name": "Stockout",
-      "description": "Log instant shelf stockout alerts",
-      "url": "/cashier/out-of-stock",
-      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "📸 Scan Invoice",
-      "short_name": "Scan OCR",
-      "description": "Upload vendor delivery invoice or receipt",
-      "url": "/cashier/upload-invoice/new",
-      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "🎙️ Ask AI Manager",
-      "short_name": "Ask AI",
-      "description": "Retail AI assistant voice & text queries",
-      "url": "/ai-assistant",
-      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+      "name": "⏳ 7-Day Expiry Radar",
+      "short_name": "Expiry Radar",
+      "description": "View 7-day product expiry warning radar",
+      "url": "/admin/product-lookup",
+      "icons": [{ "src": "/icon-manager.png", "sizes": "192x192" }]
     }
   ]
 }
