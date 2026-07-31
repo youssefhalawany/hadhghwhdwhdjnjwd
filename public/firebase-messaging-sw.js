@@ -66,8 +66,8 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-// 2. PWA OFFLINE CACHING & NAVIGATION FALLBACK ENGINE
-const CACHE_NAME = 'circlek-pwa-v3';
+// 2. BULLETPROOF PWA OFFLINE CACHING & SAFARI FETCH HANDLER
+const CACHE_NAME = 'circlek-pwa-v4';
 const OFFLINE_URLS = [
   '/',
   '/manifest-manager.json',
@@ -103,7 +103,7 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
 
-  // Skip Firebase backend services
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
   if (url.origin.includes('firestore.googleapis.com') || 
       url.origin.includes('identitytoolkit') || 
       url.protocol === 'chrome-extension:') {
@@ -111,23 +111,61 @@ self.addEventListener('fetch', (event) => {
   }
 
   event.respondWith(
-    fetch(event.request)
-      .then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-        }
-        return networkResponse;
-      })
-      .catch(() => {
-        return caches.match(event.request).then((cachedResponse) => {
-          if (cachedResponse) return cachedResponse;
-          if (event.request.mode === 'navigate') {
-            return caches.match('/') || caches.match('/shift-reports/manager');
+    caches.match(event.request).then((cachedResponse) => {
+      // Return cached asset immediately if available
+      if (cachedResponse) {
+        fetch(event.request).then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
           }
+        }).catch(() => {});
+        return cachedResponse;
+      }
+
+      // Try network fetch
+      return fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
+          }
+          return networkResponse;
+        })
+        .catch(async () => {
+          // Fallback navigation check
+          if (event.request.mode === 'navigate') {
+            const rootCache = await caches.match('/');
+            if (rootCache) return rootCache;
+          }
+          
+          // Guarantee a valid HTML Response to prevent Safari "Response is null" crash
+          return new Response(
+            `<!DOCTYPE html>
+            <html>
+              <head>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+                <style>
+                  body { background: #09090b; color: #fff; font-family: system-ui, -apple-system, sans-serif; text-align: center; padding: 40px 20px; }
+                  .card { background: #18181b; border: 1px solid #27272a; padding: 24px; border-radius: 20px; max-width: 360px; margin: 40px auto; }
+                  h2 { color: #e11937; margin: 0 0 10px 0; font-size: 20px; }
+                  p { color: #a1a1aa; font-size: 14px; margin: 0 0 20px 0; line-height: 1.5; }
+                  button { background: #e11937; color: #fff; border: none; padding: 12px 24px; border-radius: 12px; font-weight: bold; font-size: 14px; cursor: pointer; }
+                </style>
+              </head>
+              <body>
+                <div class="card">
+                  <h2>Circle K Offline</h2>
+                  <p>No active network connection detected. Saved offline data is active on your device.</p>
+                  <button onclick="window.location.reload()">Retry Connection</button>
+                </div>
+              </body>
+            </html>`,
+            {
+              status: 200,
+              headers: { 'Content-Type': 'text/html; charset=utf-8' }
+            }
+          );
         });
-      })
+    })
   );
 });
