@@ -1,18 +1,25 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useMemo, Suspense } from "react";
 import { db, productsDb } from "@/lib/firebase";
 import { collection, getDocs, query, where, getDoc, doc, setDoc, limit } from "firebase/firestore";
-import { Search, Package, Calendar, AlertTriangle, QrCode, Camera, X, CheckCircle, Edit, PlusCircle, DollarSign, Clock, TrendingUp, TrendingDown, History } from "lucide-react";
+import { 
+  Search, Package, Calendar, AlertTriangle, QrCode, Camera, X, CheckCircle, 
+  Edit, PlusCircle, DollarSign, Clock, TrendingUp, TrendingDown, History, 
+  Sparkles, Layers, ShieldCheck, Tag, Filter, RefreshCw
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
 import { CameraScanner } from "@/components/ui/CameraScanner";
 import { useDebounce } from "use-debounce";
 
 export default function ProductLookupPage() {
   return (
-    <Suspense fallback={<div className="flex justify-center p-12"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div></div>}>
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-cyan-500"></div>
+      </div>
+    }>
       <ProductLookupContent />
     </Suspense>
   );
@@ -23,6 +30,7 @@ function ProductLookupContent() {
   const initialSearch = searchParams.get("search") || "";
 
   const [searchTerm, setSearchTerm] = useState(initialSearch);
+  const [activeCategory, setActiveCategory] = useState("all");
   const [loading, setLoading] = useState(false);
   const [productData, setProductData] = useState<any | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -45,16 +53,16 @@ function ProductLookupContent() {
   // All Products State
   const [allProducts, setAllProducts] = useState<any[]>([]);
   const [fetchingProducts, setFetchingProducts] = useState(true);
-  const [debouncedSearch] = useDebounce(searchTerm, 500);
+  const [failedImageUrls, setFailedImageUrls] = useState<Record<string, boolean>>({});
+  const [debouncedSearch] = useDebounce(searchTerm, 400);
 
-  // Helper function to normalize strings for grouping
+  // Normalize keys for string comparisons
   const normalizeKey = (str: string) => str ? str.trim().toLowerCase().replace(/[^a-z0-9]/g, "") : "";
 
-  // Helper to build deduplicated price history array with price deltas
+  // Compile Price History array with deltas
   const compilePriceHistory = (product: any, expiries: any[] = [], returns: any[] = []) => {
     const rawHistory: any[] = [];
 
-    // 1. Direct price history array in product document
     if (product?.priceHistory && Array.isArray(product.priceHistory)) {
       product.priceHistory.forEach((ph: any) => {
         if (ph.price && Number(ph.price) > 0) {
@@ -68,7 +76,6 @@ function ProductLookupContent() {
       });
     }
 
-    // 2. Current catalog price
     const currentP = Number(product?.currentPrice || product?.price || 0);
     if (currentP > 0) {
       rawHistory.push({
@@ -79,7 +86,6 @@ function ProductLookupContent() {
       });
     }
 
-    // 3. Prices from supplier returns
     returns.forEach(r => {
       if (r.price && Number(r.price) > 0) {
         rawHistory.push({
@@ -91,7 +97,6 @@ function ProductLookupContent() {
       }
     });
 
-    // 4. Prices from expiries
     expiries.forEach(e => {
       if (e.price && Number(e.price) > 0) {
         rawHistory.push({
@@ -103,7 +108,6 @@ function ProductLookupContent() {
       }
     });
 
-    // Deduplicate entries by price + supplier
     const seen = new Set<string>();
     const uniqueHistory: any[] = [];
 
@@ -115,10 +119,8 @@ function ProductLookupContent() {
       }
     });
 
-    // Sort chronologically ascending to calculate price changes
     uniqueHistory.sort((a, b) => (a.date || "").localeCompare(b.date || ""));
 
-    // Calculate price deltas
     const historyWithDeltas = uniqueHistory.map((item, idx) => {
       const prevPrice = idx > 0 ? uniqueHistory[idx - 1].price : item.price;
       const delta = item.price - prevPrice;
@@ -130,7 +132,6 @@ function ProductLookupContent() {
       };
     });
 
-    // Return in date descending order for timeline display
     return historyWithDeltas.reverse();
   };
 
@@ -140,7 +141,7 @@ function ProductLookupContent() {
     }
   }, [initialSearch]);
 
-  // Main Product Search & Barcode/Name Grouping Engine
+  // Main Catalog Fetching & Consolidation
   useEffect(() => {
     const fetchSearchProducts = async () => {
       setFetchingProducts(true);
@@ -184,25 +185,19 @@ function ProductLookupContent() {
             });
           });
 
-          // Direct barcode lookup
           const directSnap = await getDoc(doc(productsDb, "products", term));
           if (directSnap.exists()) {
              rawItems.push({ id: term, barcode: term, ...directSnap.data() });
           }
         }
 
-        // STRICT CONSOLIDATION BY NORMALIZED PRODUCT NAME IDENTITY & BARCODE
         const consolidatedMap = new Map<string, any>();
 
         rawItems.forEach(item => {
           const barcodeKey = (item.barcode || item.id || "").trim();
           const rawName = item.description || item.itemName || item.name || "";
           const nameKey = normalizeKey(rawName);
-          
-          // Primary Grouping Key: Normalized product name (e.g. "aquafinawater15l")
-          // Group all items with identical product names into 1 single primary card!
           const groupKey = nameKey || (barcodeKey && barcodeKey !== "undefined" ? barcodeKey : item.id);
-
           const itemPrice = Number(item.currentPrice || item.price || 0);
 
           if (!consolidatedMap.has(groupKey)) {
@@ -225,15 +220,12 @@ function ProductLookupContent() {
           } else {
             const existing = consolidatedMap.get(groupKey);
             
-            // Merge barcodes
             if (barcodeKey && barcodeKey !== "undefined" && barcodeKey !== "null" && !existing.allBarcodes.includes(barcodeKey)) {
               existing.allBarcodes.push(barcodeKey);
             }
 
-            // Merge price history
             if (itemPrice > 0) {
               existing.collectedPrices.push({ price: itemPrice, supplier: item.supplier || existing.supplier, date: item.updatedAt ? new Date(item.updatedAt).toLocaleDateString('en-GB') : "Catalog" });
-              // Keep the latest price as active display price
               existing.price = itemPrice;
               existing.currentPrice = itemPrice;
             }
@@ -244,7 +236,6 @@ function ProductLookupContent() {
               });
             }
 
-            // Update display supplier if missing
             if (!existing.supplier && item.supplier) existing.supplier = item.supplier;
             if (item.expiryDate && (!existing.expiryDate || new Date(item.expiryDate) < new Date(existing.expiryDate))) {
               existing.expiryDate = item.expiryDate;
@@ -252,7 +243,6 @@ function ProductLookupContent() {
           }
         });
 
-        // Compute unique price history count and sort prices for each consolidated product
         const consolidatedList = Array.from(consolidatedMap.values()).map(prod => {
           const uniquePrices = new Set(prod.collectedPrices.map((p: any) => p.price));
           const sortedPrices = [...prod.collectedPrices].filter(p => Number(p.price) > 0);
@@ -267,7 +257,7 @@ function ProductLookupContent() {
 
         setAllProducts(consolidatedList);
 
-        // Auto-fetch missing product images via AI / OpenFoodFacts / Brand mapping
+        // Auto-fetch missing or broken images via AI resolution endpoint
         consolidatedList.forEach(async (prod) => {
           const nameLower = (prod.description || prod.itemName || prod.name || "").toLowerCase();
           const needsFetch = !prod.imageUrl || 
@@ -353,7 +343,6 @@ function ProductLookupContent() {
 
       const searchBarcode = foundProduct?.barcode || term;
       
-      // Fetch Expiries, Expired Items & Supplier Returns gracefully
       const [expiriesSnap, expiredItemsSnap, returnsSnap] = await Promise.all([
         getDocs(query(collection(db, "expiries"), where("barcode", "==", searchBarcode))).catch(() => ({ docs: [] } as any)),
         getDocs(query(collection(db, "expired_items"), where("barcode", "==", searchBarcode))).catch(() => ({ docs: [] } as any)),
@@ -367,19 +356,6 @@ function ProductLookupContent() {
       setExpiriesData(matchingExpiries.sort((a: any, b: any) => (a.expiryDate || "").localeCompare(b.expiryDate || "")));
       setExpiredItemsData(matchingExpiredItems.sort((a: any, b: any) => (b.createdAt || "").localeCompare(a.createdAt || "")));
       setSupplierReturnsData(matchingReturns.sort((a: any, b: any) => (b.createdAt || "").localeCompare(a.createdAt || "")));
-
-      if (!foundProduct && (matchingExpiries.length > 0 || matchingReturns.length > 0 || matchingExpiredItems.length > 0)) {
-         const name = matchingExpiries[0]?.itemName || matchingReturns[0]?.itemName || matchingExpiredItems[0]?.name || "Unknown Item";
-         const supplier = matchingReturns[0]?.supplier || matchingExpiries[0]?.supplier || "Unknown Supplier";
-         foundProduct = {
-             id: searchBarcode,
-             barcode: searchBarcode,
-             description: name,
-             itemName: name,
-             supplier: supplier,
-             isPhantom: true
-         };
-      }
 
       const compiledHistory = compilePriceHistory(foundProduct, matchingExpiries, matchingReturns);
 
@@ -399,162 +375,306 @@ function ProductLookupContent() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    performLookup(searchTerm);
+    if (searchTerm.trim()) {
+      performLookup(searchTerm);
+    }
+  };
+
+  const handleScanResult = (result: string) => {
+    setShowScanner(false);
+    if (scannerTarget === "search") {
+      setSearchTerm(result);
+      performLookup(result);
+    } else {
+      setEditFormData(prev => ({ ...prev, barcode: result }));
+    }
+  };
+
+  const startScanning = (target: "search" | "form") => {
+    setScannerTarget(target);
+    setShowScanner(true);
   };
 
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaveLoading(true);
+
     try {
-      const productRef = doc(productsDb, "products", editFormData.barcode);
-      await setDoc(productRef, {
-        barcode: editFormData.barcode,
+      const barcodeToSave = editFormData.barcode || productData?.barcode || productData?.id;
+      if (!barcodeToSave) throw new Error("No barcode specified");
+
+      const currentPrices = productData?.priceHistory || [];
+      const newPriceEntry = {
+        price: Number(productData?.currentPrice || productData?.price || 0),
+        supplier: editFormData.supplier,
+        date: new Date().toISOString().split('T')[0]
+      };
+
+      const updatedHistory = [newPriceEntry, ...currentPrices];
+
+      const productPayload = {
+        barcode: barcodeToSave,
         description: editFormData.name,
         name: editFormData.name,
-        itemName: editFormData.name, 
         supplier: editFormData.supplier,
+        priceHistory: updatedHistory,
         updatedAt: new Date().toISOString()
-      }, { merge: true });
-      
+      };
+
+      await setDoc(doc(productsDb, "products", barcodeToSave), productPayload, { merge: true });
+
+      setProductData((prev: any) => ({
+        ...prev,
+        description: editFormData.name,
+        name: editFormData.name,
+        supplier: editFormData.supplier,
+        barcode: barcodeToSave,
+        priceHistory: updatedHistory,
+        isPhantom: false
+      }));
+
       setIsEditing(false);
-      performLookup(editFormData.barcode);
-    } catch (err) {
-      console.error("Save failed", err);
-      alert("Failed to save product.");
+    } catch (err: any) {
+      console.error("Failed to save product:", err);
+      alert("Error saving product: " + err.message);
     } finally {
       setSaveLoading(false);
     }
   };
 
-  // Scanner Actions
-  const startScanning = (target: "search" | "form" = "search") => {
-    setScannerTarget(target);
-    setShowScanner(true);
-  };
+  // Live Category Quick Filtering
+  const categoryFilteredProducts = useMemo(() => {
+    if (activeCategory === "all") return allProducts;
+    return allProducts.filter(p => {
+      const name = (p.description || p.itemName || p.name || "").toLowerCase();
+      if (activeCategory === "tobacco") return name.includes("marlboro") || name.includes("merit") || name.includes("l&m") || name.includes("terea") || name.includes("heets") || name.includes("cigaret");
+      if (activeCategory === "beverages") return name.includes("water") || name.includes("aquafina") || name.includes("pepsi") || name.includes("coca") || name.includes("fanta") || name.includes("soda") || name.includes("drink");
+      if (activeCategory === "snacks") return name.includes("chip") || name.includes("stix") || name.includes("pringles") || name.includes("crunchos") || name.includes("nut") || name.includes("cashew") || name.includes("pistachio");
+      if (activeCategory === "coffee") return name.includes("coffee") || name.includes("brown") || name.includes("espres") || name.includes("nescafe");
+      if (activeCategory === "sweets") return name.includes("chocolate") || name.includes("cadbury") || name.includes("wafer") || name.includes("biscuit");
+      return true;
+    });
+  }, [allProducts, activeCategory]);
 
-  const filteredProducts = allProducts;
+  const totalPricesLogged = useMemo(() => {
+    return allProducts.reduce((acc, p) => acc + (p.priceHistoryCount || 1), 0);
+  }, [allProducts]);
 
   return (
-    <div className="space-y-6 relative overflow-hidden">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-white flex items-center gap-3">
-            <Package className="h-8 w-8 text-blue-600" /> Products
-          </h1>
-          <p className="text-slate-500 font-medium mt-2">Manage your inventory, barcode groups, and price history.</p>
+    <div className="min-h-screen bg-[#070C18] text-slate-100 p-4 md:p-8 space-y-6 font-sans">
+      
+      {/* EXECUTIVE HEADER BANNER */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-900/40 via-indigo-900/30 to-purple-900/40 border border-white/10 p-6 md:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-2xl">
+        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/3 -mb-8 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="px-3 py-1 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 text-xs font-black uppercase tracking-widest flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5" /> Circle K Hub
+              </span>
+              <span className="px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-black uppercase tracking-widest">
+                Real-Time Verified
+              </span>
+            </div>
+            <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight flex items-center gap-3">
+              <Package className="w-8 h-8 text-cyan-400" /> Product & Price Catalog
+            </h1>
+            <p className="text-slate-400 text-sm font-medium mt-1 max-w-xl">
+              Consolidated barcode groups, price history timelines, supplier tracking, and live expiry status.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <button
+              onClick={() => {
+                setEditFormData({ name: "", supplier: "", barcode: "" });
+                setProductData({ notFound: true, searchTerm: "" });
+                setIsEditing(true);
+                setDrawerOpen(true);
+              }}
+              className="flex-1 md:flex-initial px-5 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-extrabold text-sm shadow-[0_10px_25px_rgba(6,182,212,0.3)] transition-all flex items-center justify-center gap-2 active:scale-95"
+            >
+              <PlusCircle className="w-5 h-5" /> Add New Product
+            </button>
+          </div>
         </div>
-        <button 
-          onClick={() => {
-            setSearchTerm("");
-            setProductData({ notFound: true, searchTerm: "" });
-            setEditFormData({ name: "", supplier: "", barcode: "" });
-            setIsEditing(true);
-            setDrawerOpen(true);
-          }}
-          className="text-sm font-bold bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-200 text-white dark:text-slate-900 px-6 py-3 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-sm"
-        >
-          <PlusCircle className="h-5 w-5" /> Add Product
-        </button>
+
+        {/* METRICS STATS BAR */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6 pt-6 border-t border-white/10">
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 backdrop-blur-md">
+            <p className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Catalog Items</p>
+            <p className="text-xl font-black text-white font-mono mt-0.5">{allProducts.length}</p>
+          </div>
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 backdrop-blur-md">
+            <p className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Price History Logs</p>
+            <p className="text-xl font-black text-emerald-400 font-mono mt-0.5">{totalPricesLogged}</p>
+          </div>
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 backdrop-blur-md">
+            <p className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Filtered View</p>
+            <p className="text-xl font-black text-cyan-400 font-mono mt-0.5">{categoryFilteredProducts.length}</p>
+          </div>
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 backdrop-blur-md">
+            <p className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Scanner Status</p>
+            <p className="text-xl font-black text-purple-400 font-mono mt-0.5 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> Ready
+            </p>
+          </div>
+        </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 flex gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-          <input 
-            type="text" 
-            value={searchTerm} 
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') performLookup(searchTerm);
-            }}
-            placeholder="Search products by name or barcode..."
-            className="w-full pl-12 pr-4 py-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-colors font-medium text-lg"
-          />
+      {/* SEARCH BAR & QUICK FILTERS */}
+      <div className="space-y-4">
+        <form onSubmit={handleSearch} className="flex items-center gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search product by name, barcode, supplier, or category (e.g. Marlboro, Aquafina, Pepsi)..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-slate-900/90 border border-slate-700/80 focus:border-cyan-500 rounded-2xl pl-12 pr-10 py-4 text-sm font-semibold text-white placeholder-slate-500 outline-none shadow-lg transition-all focus:ring-4 focus:ring-cyan-500/20"
+            />
+            {searchTerm && (
+              <button 
+                type="button" 
+                onClick={() => setSearchTerm("")}
+                className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-full text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => startScanning("search")}
+            className="p-4 bg-slate-800/90 border border-slate-700 hover:border-cyan-500 text-cyan-400 rounded-2xl transition-all shadow-lg hover:bg-slate-800 flex items-center justify-center shrink-0 active:scale-95 group"
+            title="Scan Product Barcode"
+          >
+            <Camera className="w-6 h-6 group-hover:scale-110 transition-transform" />
+          </button>
+        </form>
+
+        {/* CATEGORY QUICK FILTER PILLS */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+          {[
+            { id: "all", label: "All Products" },
+            { id: "tobacco", label: "🚬 Tobacco & Cigarettes" },
+            { id: "beverages", label: "🥤 Beverages & Soda" },
+            { id: "snacks", label: "🍟 Chips & Snacks" },
+            { id: "coffee", label: "☕ Iced Coffee & Drinks" },
+            { id: "sweets", label: "🍫 Chocolates & Sweets" }
+          ].map(cat => (
+            <button
+              key={cat.id}
+              onClick={() => setActiveCategory(cat.id)}
+              className={`px-4 py-2.5 rounded-xl text-xs font-black tracking-tight whitespace-nowrap transition-all border ${
+                activeCategory === cat.id
+                  ? "bg-cyan-500/20 border-cyan-500 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.25)]"
+                  : "bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200"
+              }`}
+            >
+              {cat.label}
+            </button>
+          ))}
         </div>
-        <button 
-          type="button" 
-          onClick={() => startScanning("search")}
-          className="p-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-sm"
-        >
-          <Camera className="h-6 w-6" />
-        </button>
       </div>
 
+      {/* PRODUCT GRID */}
       {fetchingProducts && !loading ? (
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
+        <div className="flex justify-center py-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-400"></div>
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-          {filteredProducts.map((p, idx) => (
-            <div 
-              key={p.id || idx}
-              onClick={() => performLookup(p.barcode || p.id, p)}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 cursor-pointer hover:border-blue-400 dark:hover:border-blue-600 hover:shadow-lg transition-all group flex flex-col h-full relative overflow-hidden"
-            >
-              <div className="aspect-video bg-slate-50 dark:bg-slate-800 rounded-xl mb-4 flex items-center justify-center border border-slate-100 dark:border-slate-700 overflow-hidden relative">
-                {p.imageUrl ? (
-                  <img 
-                    src={p.imageUrl} 
-                    alt={p.description || p.name} 
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                    }}
-                    className="w-full h-full object-contain p-1 group-hover:scale-105 transition-transform duration-300" 
-                  />
-                ) : (
-                  <Package className="w-10 h-10 text-slate-300 dark:text-slate-600 group-hover:scale-110 transition-transform duration-300" />
-                )}
-                
-                {/* Price Tag */}
-                {p.price && (
-                  <div className="absolute bottom-2 right-2 bg-emerald-600 text-white px-2.5 py-1 rounded-lg text-[10px] font-black tracking-wider shadow-md flex items-center gap-1 border border-emerald-500/50">
-                    <DollarSign className="w-3 h-3" /> {p.price} EGP
-                  </div>
-                )}
+          {categoryFilteredProducts.map((p, idx) => {
+            const hasValidImg = p.imageUrl && !failedImageUrls[p.groupKey || p.barcode || p.id];
 
-                {/* Price History Badge indicator */}
-                {p.priceHistoryCount > 1 && (
-                  <div className="absolute top-2 left-2 bg-blue-600 text-white px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider flex items-center gap-1 shadow-sm">
-                    <History className="w-2.5 h-2.5" /> {p.priceHistoryCount} Prices
-                  </div>
-                )}
-              </div>
-
-              <h4 className="font-bold text-sm text-slate-900 dark:text-white line-clamp-2 leading-tight mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                {p.description || p.name || p.itemName || "Unnamed Product"}
-              </h4>
-
-              <div className="mt-auto flex flex-col gap-1 text-[10px] text-slate-500 font-medium">
-                <div className="flex items-center gap-1">
-                  <Package className="w-3 h-3 text-slate-400" /> <span className="line-clamp-1">{p.supplier || "Unknown Supplier"}</span>
-                </div>
-                {p.expiryDate && (
-                  <div className="flex items-center gap-1 text-orange-600 dark:text-orange-400 font-bold">
-                    <Clock className="w-3 h-3" /> Expiry: {p.expiryDate}
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-3 text-xs text-slate-500 flex justify-between items-center border-t border-slate-100 dark:border-slate-800 pt-2">
-                <span className="font-mono text-[10px] truncate max-w-[85%] text-slate-400">
-                  #{p.barcode || p.id}
-                  {p.allBarcodes && p.allBarcodes.length > 1 && (
-                    <span className="ml-1 text-blue-500 font-bold text-[9px]">(+{p.allBarcodes.length - 1} Barcode)</span>
+            return (
+              <motion.div
+                key={p.id || idx}
+                layout
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                onClick={() => performLookup(p.barcode || p.id, p)}
+                className="bg-slate-900/80 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-4 cursor-pointer hover:border-cyan-500/80 hover:shadow-[0_12px_30px_rgba(6,182,212,0.15)] transition-all group flex flex-col h-full relative overflow-hidden active:scale-98"
+              >
+                {/* Product Thumbnail Box */}
+                <div className="aspect-square bg-slate-950/80 rounded-xl mb-3.5 flex items-center justify-center border border-slate-800/80 overflow-hidden relative group-hover:border-slate-700 transition-colors">
+                  {hasValidImg ? (
+                    <img 
+                      src={p.imageUrl} 
+                      alt={p.description || p.name} 
+                      onError={() => {
+                        setFailedImageUrls(prev => ({ ...prev, [p.groupKey || p.barcode || p.id]: true }));
+                      }}
+                      className="w-full h-full object-contain p-2 group-hover:scale-108 transition-transform duration-300" 
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-slate-600 group-hover:text-cyan-400 transition-colors">
+                      <Package className="w-10 h-10 group-hover:scale-110 transition-transform duration-300" />
+                    </div>
                   )}
-                </span>
-              </div>
-            </div>
-          ))}
-          {filteredProducts.length === 0 && (
-            <div className="col-span-full py-12 text-center text-slate-500">
-              No products found matching "{searchTerm}"
+
+                  {/* LATEST PRICE BADGE */}
+                  {p.price && (
+                    <div className="absolute bottom-2 right-2 bg-emerald-500 text-white px-2.5 py-1 rounded-lg text-[11px] font-black tracking-wider shadow-lg flex items-center gap-1 border border-emerald-400/50">
+                      <DollarSign className="w-3 h-3" /> {p.price} EGP
+                    </div>
+                  )}
+
+                  {/* PRICE HISTORY LOGS COUNT */}
+                  {p.priceHistoryCount > 1 && (
+                    <div className="absolute top-2 left-2 bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider flex items-center gap-1 shadow-sm backdrop-blur-md">
+                      <History className="w-2.5 h-2.5" /> {p.priceHistoryCount} Prices
+                    </div>
+                  )}
+                </div>
+
+                {/* PRODUCT TITLE */}
+                <h4 className="font-extrabold text-sm text-slate-100 line-clamp-2 leading-tight mb-2 group-hover:text-cyan-300 transition-colors">
+                  {p.description || p.name || p.itemName || "Unnamed Product"}
+                </h4>
+
+                {/* SUPPLIER & EXPIRY */}
+                <div className="mt-auto flex flex-col gap-1 text-[10px] text-slate-400 font-semibold">
+                  <div className="flex items-center gap-1">
+                    <Package className="w-3 h-3 text-slate-500 shrink-0" /> 
+                    <span className="line-clamp-1">{p.supplier || "Catalog Item"}</span>
+                  </div>
+                  {p.expiryDate && (
+                    <div className="flex items-center gap-1 text-amber-400 font-bold">
+                      <Clock className="w-3 h-3 shrink-0" /> Expiry: {p.expiryDate}
+                    </div>
+                  )}
+                </div>
+
+                {/* BARCODE BADGE FOOTER */}
+                <div className="mt-3 text-xs text-slate-500 flex justify-between items-center border-t border-slate-800/80 pt-2">
+                  <span className="font-mono text-[10px] text-slate-400 truncate max-w-[85%]">
+                    #{p.barcode || p.id}
+                    {p.allBarcodes && p.allBarcodes.length > 1 && (
+                      <span className="ml-1 text-cyan-400 font-bold text-[9px]">(+{p.allBarcodes.length - 1} Barcode)</span>
+                    )}
+                  </span>
+                </div>
+              </motion.div>
+            );
+          })}
+
+          {categoryFilteredProducts.length === 0 && (
+            <div className="col-span-full py-16 text-center text-slate-400 bg-slate-900/40 rounded-3xl border border-slate-800">
+              <Package className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+              <p className="font-bold text-slate-300 text-base">No matching products found</p>
+              <p className="text-xs text-slate-500 mt-1">Try searching with a different barcode or keyword.</p>
             </div>
           )}
         </div>
       )}
 
-      {/* Sliding Drawer for Quick Edit, Price History & Expiries */}
+      {/* EXECUTIVE DETAILS SLIDING DRAWER */}
       <AnimatePresence>
         {drawerOpen && (
           <>
@@ -563,272 +683,180 @@ function ProductLookupContent() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setDrawerOpen(false)}
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+              className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 no-print"
             />
-            <motion.div
+
+            <motion.div 
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 bottom-0 w-full max-w-md bg-white dark:bg-slate-900 z-50 shadow-2xl border-l border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden"
+              transition={{ type: "spring", stiffness: 350, damping: 32 }}
+              className="fixed right-0 top-0 bottom-0 w-full max-w-xl bg-[#0B1121] border-l border-white/10 shadow-2xl z-50 overflow-y-auto no-print p-6 flex flex-col"
             >
-              <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-xl">
-                <h2 className="text-xl font-black text-slate-900 dark:text-white">Product Details</h2>
-                <button onClick={() => setDrawerOpen(false)} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors">
-                  <X className="w-5 h-5 text-slate-500" />
+              <div className="flex justify-between items-center pb-4 border-b border-white/10">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-cyan-400" />
+                  <span className="text-xs font-black uppercase text-slate-400 tracking-widest">
+                    Product Specification
+                  </span>
+                </div>
+                <button 
+                  onClick={() => setDrawerOpen(false)}
+                  className="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
-                {loading ? (
-                  <div className="flex justify-center py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
-                  </div>
-                ) : productData && (
-                  <>
-                    {/* EDIT FORM or DISPLAY */}
-                    {isEditing ? (
-                      <form onSubmit={handleSaveProduct} className="space-y-4">
-                        <div>
-                          <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Barcode</label>
-                          <div className="flex gap-2">
-                            <input 
-                              required type="text" value={editFormData.barcode} onChange={(e) => setEditFormData({...editFormData, barcode: e.target.value})} disabled={!productData.notFound && !!productData.id}
-                              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-sm focus:border-blue-500 outline-none disabled:opacity-50"
-                            />
-                            <button type="button" onClick={() => startScanning("form")} className="p-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-slate-700"><Camera className="h-5 w-5" /></button>
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Product Name</label>
-                          <input required type="text" value={editFormData.name} onChange={(e) => setEditFormData({...editFormData, name: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-sm focus:border-blue-500 outline-none" />
-                        </div>
-                        <div>
-                          <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Supplier</label>
-                          {isAddingSupplier ? (
-                            <div className="flex gap-2">
-                              <input required type="text" placeholder="New supplier..." value={editFormData.supplier} onChange={(e) => setEditFormData({...editFormData, supplier: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-sm focus:border-blue-500 outline-none" />
-                              <button type="button" onClick={() => { setIsAddingSupplier(false); setEditFormData({...editFormData, supplier: ""}); }} className="p-3 bg-red-50 text-red-600 rounded-lg font-bold"><X className="h-4 w-4" /></button>
-                            </div>
-                          ) : (
-                            <div className="flex gap-2">
-                              <select required value={editFormData.supplier} onChange={(e) => setEditFormData({...editFormData, supplier: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-sm focus:border-blue-500 outline-none">
-                                <option value="" disabled>Select supplier</option>
-                                {Array.from(new Set(allProducts.map(p => p.supplier).filter(Boolean))).sort().map(s => <option key={s as string} value={s as string}>{s as string}</option>)}
-                              </select>
-                              <button type="button" onClick={() => { setIsAddingSupplier(true); setEditFormData({...editFormData, supplier: ""}); }} className="p-3 bg-slate-100 dark:bg-slate-800 text-slate-700 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-bold flex gap-1 items-center"><PlusCircle className="h-4 w-4" /> New</button>
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex gap-2 pt-4">
-                          <button type="button" onClick={() => setIsEditing(false)} className="flex-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 py-3 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700">Cancel</button>
-                          <button type="submit" disabled={saveLoading} className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50">{saveLoading ? "Saving..." : "Save Changes"}</button>
-                        </div>
-                      </form>
-                    ) : productData.notFound ? (
-                      <div className="text-center py-8">
-                        <AlertTriangle className="h-12 w-12 text-orange-500 mx-auto mb-4 opacity-50" />
-                        <p className="font-bold text-slate-700 dark:text-slate-300">Product not found.</p>
-                        <p className="text-sm text-slate-500 mt-2">Barcode: <span className="font-mono">{productData.searchTerm}</span></p>
-                        <button onClick={() => { setEditFormData({ name: "", supplier: "", barcode: productData.searchTerm }); setIsEditing(true); }} className="mt-6 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 inline-flex items-center gap-2"><PlusCircle className="h-4 w-4" /> Add This Product</button>
-                      </div>
-                    ) : (
+              {loading ? (
+                <div className="flex justify-center py-20">
+                  <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-cyan-400"></div>
+                </div>
+              ) : productData ? (
+                <div className="space-y-6 pt-4">
+                  
+                  {/* EDIT FORM VIEW */}
+                  {isEditing ? (
+                    <form onSubmit={handleSaveProduct} className="space-y-4 bg-white/5 p-5 rounded-2xl border border-white/10">
+                      <h4 className="font-black text-white text-base mb-2">Edit Product Catalog Entry</h4>
                       <div>
-                        <div className="flex justify-between items-start mb-6 gap-4">
-                          {productData.imageUrl && (
-                            <img src={productData.imageUrl} alt="Product" className="w-20 h-20 object-contain bg-slate-50 dark:bg-slate-800 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 shrink-0 shadow-sm" />
-                          )}
-                          <div className="flex-1">
-                            <p className="text-xs text-slate-500 font-bold uppercase mb-1">Name</p>
-                            <h3 className="text-2xl font-black text-slate-900 dark:text-white leading-tight flex items-center gap-2">
-                              {productData.description || productData.name || productData.itemName}
-                              {productData.isPhantom && (
-                                <span className="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded-md font-bold uppercase tracking-wider">Unregistered</span>
-                              )}
-                            </h3>
-                          </div>
-                          <button onClick={() => { setEditFormData({ name: productData.description || productData.name || productData.itemName || "", supplier: productData.supplier || productData.priceHistory?.[0]?.supplier || "", barcode: productData.barcode || productData.id }); setIsEditing(true); }} className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 p-2 rounded-lg font-bold hover:bg-slate-200 dark:hover:bg-slate-700"><Edit className="h-4 w-4" /></button>
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-                          <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
-                            <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">Registered Barcodes</p>
-                            <div className="flex flex-wrap gap-1">
-                              {productData.allBarcodes && productData.allBarcodes.length > 0 ? (
-                                productData.allBarcodes.map((b: string, i: number) => (
-                                  <span key={i} className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200 bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded">#{b}</span>
-                                ))
-                              ) : (
-                                <p className="font-mono text-sm font-bold text-slate-800 dark:text-slate-200">#{productData.barcode || productData.id}</p>
-                              )}
-                            </div>
-                          </div>
-                          <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
-                            <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">Supplier</p>
-                            <p className="font-bold text-sm text-slate-800 dark:text-slate-200">{productData.supplier || productData.priceHistory?.[0]?.supplier || "N/A"}</p>
-                          </div>
-                          <div className="bg-emerald-500/10 p-4 rounded-xl border border-emerald-500/30 col-span-2 md:col-span-1">
-                            <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-black uppercase mb-1">🏷️ Latest Price</p>
-                            <p className="font-bold text-xl text-emerald-600 dark:text-emerald-400 font-mono">{productData.price ? `${productData.price} EGP` : productData.currentPrice ? `${productData.currentPrice} EGP` : "N/A"}</p>
-                          </div>
+                        <label className="text-xs font-bold text-slate-400 uppercase block mb-1">Barcode</label>
+                        <div className="flex gap-2">
+                          <input 
+                            required type="text" value={editFormData.barcode} onChange={(e) => setEditFormData({...editFormData, barcode: e.target.value})} disabled={!productData.notFound && !!productData.id}
+                            className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white focus:border-cyan-500 outline-none disabled:opacity-50"
+                          />
+                          <button type="button" onClick={() => startScanning("form")} className="p-3 bg-slate-800 text-slate-300 rounded-xl border border-slate-700"><Camera className="h-5 w-5" /></button>
                         </div>
                       </div>
-                    )}
-
-                    {/* PRICE HISTORY TIMELINE & EXPIRE SECTIONS */}
-                    {!isEditing && (
-                      <div className="space-y-8 pt-6 border-t border-slate-100 dark:border-slate-800">
-                        
-                        {/* Compiled Price History Timeline */}
-                        {productData.compiledPriceHistory && productData.compiledPriceHistory.length > 0 && (
-                          <div>
-                            <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                              <History className="h-4 w-4 text-blue-500" /> Price & Supplier History Timeline ({productData.compiledPriceHistory.length})
-                            </h4>
-                            <div className="space-y-3">
-                              {productData.compiledPriceHistory.map((ph: any, idx: number) => (
-                                <div key={idx} className="p-4 rounded-xl border bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 flex justify-between items-center shadow-sm">
-                                  <div>
-                                    <div className="flex items-center gap-2">
-                                      <p className="font-bold text-sm text-slate-900 dark:text-white line-clamp-1">{ph.supplier || "Supplier"}</p>
-                                      {ph.delta !== 0 && (
-                                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-0.5 ${ph.delta > 0 ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400'}`}>
-                                          {ph.delta > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                                          {ph.delta > 0 ? `+${ph.delta.toFixed(2)} EGP` : `${ph.delta.toFixed(2)} EGP`}
-                                        </span>
-                                      )}
-                                    </div>
-                                    <p className="text-xs font-semibold mt-1 opacity-70">Date: {ph.date}</p>
-                                  </div>
-                                  <div className="text-right whitespace-nowrap ml-4">
-                                    <p className="text-lg font-black text-emerald-600 dark:text-emerald-400 font-mono">{ph.price} <span className="text-xs">EGP</span></p>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-400 uppercase block mb-1">Product Description</label>
+                        <input required type="text" value={editFormData.name} onChange={(e) => setEditFormData({...editFormData, name: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white focus:border-cyan-500 outline-none" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-400 uppercase block mb-1">Supplier</label>
+                        {isAddingSupplier ? (
+                          <div className="flex gap-2">
+                            <input required type="text" placeholder="New supplier..." value={editFormData.supplier} onChange={(e) => setEditFormData({...editFormData, supplier: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white focus:border-cyan-500 outline-none" />
+                            <button type="button" onClick={() => { setIsAddingSupplier(false); setEditFormData({...editFormData, supplier: ""}); }} className="p-3 bg-rose-500/20 text-rose-400 rounded-xl font-bold"><X className="h-4 w-4" /></button>
+                          </div>
+                        ) : (
+                          <div className="flex gap-2">
+                            <select required value={editFormData.supplier} onChange={(e) => setEditFormData({...editFormData, supplier: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white focus:border-cyan-500 outline-none">
+                              <option value="" disabled>Select supplier</option>
+                              {Array.from(new Set(allProducts.map(p => p.supplier).filter(Boolean))).sort().map(s => <option key={s as string} value={s as string}>{s as string}</option>)}
+                            </select>
+                            <button type="button" onClick={() => { setIsAddingSupplier(true); setEditFormData({...editFormData, supplier: ""}); }} className="p-3 bg-slate-800 text-slate-300 rounded-xl border border-slate-700 text-sm font-bold flex gap-1 items-center"><PlusCircle className="h-4 w-4" /> New</button>
                           </div>
                         )}
+                      </div>
+                      <div className="flex gap-2 pt-4">
+                        <button type="button" onClick={() => setIsEditing(false)} className="flex-1 bg-slate-800 text-slate-300 py-3 rounded-xl font-bold hover:bg-slate-700">Cancel</button>
+                        <button type="submit" disabled={saveLoading} className="flex-1 bg-cyan-500 text-slate-950 py-3 rounded-xl font-extrabold hover:bg-cyan-400 disabled:opacity-50">{saveLoading ? "Saving..." : "Save Product"}</button>
+                      </div>
+                    </form>
+                  ) : (
+                    /* PRODUCT READ-ONLY DETAILS VIEW */
+                    <div>
+                      <div className="flex justify-between items-start mb-6 gap-4 bg-white/5 p-4 rounded-2xl border border-white/10">
+                        {productData.imageUrl && (
+                          <img src={productData.imageUrl} alt="Product" className="w-20 h-20 object-contain bg-slate-950 p-1.5 rounded-2xl border border-white/10 shrink-0 shadow-sm" />
+                        )}
+                        <div className="flex-1">
+                          <p className="text-[10px] text-cyan-400 font-black uppercase tracking-wider mb-0.5">Product Title</p>
+                          <h3 className="text-xl font-black text-white leading-tight flex items-center gap-2">
+                            {productData.description || productData.name || productData.itemName}
+                          </h3>
+                        </div>
+                        <button 
+                          onClick={() => { 
+                            setEditFormData({ 
+                              name: productData.description || productData.name || productData.itemName || "", 
+                              supplier: productData.supplier || productData.priceHistory?.[0]?.supplier || "", 
+                              barcode: productData.barcode || productData.id 
+                            }); 
+                            setIsEditing(true); 
+                          }} 
+                          className="bg-white/10 text-white p-2.5 rounded-xl font-bold hover:bg-white/20 transition-colors"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                      </div>
 
-                        {/* Expiries */}
-                        <div>
-                          <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                            <Calendar className="h-4 w-4" /> All Expiry Records
-                          </h4>
-                          {expiriesData.length === 0 ? (
-                            <div className="text-center py-6 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
-                              <CheckCircle className="h-8 w-8 text-emerald-500 mx-auto mb-2 opacity-50" />
-                              <p className="font-bold text-sm text-slate-700 dark:text-slate-300">No active expiries tracked.</p>
-                            </div>
-                          ) : (
-                            <div className="space-y-3">
-                              {expiriesData.map((exp, idx) => {
-                                const itemDate = new Date(exp.expiryDate); itemDate.setHours(0,0,0,0);
-                                const today = new Date(); today.setHours(0,0,0,0);
-                                const diffDays = Math.ceil((itemDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                                let bgClass = "bg-slate-50 border-slate-200 dark:bg-slate-800 dark:border-slate-700";
-                                let dateClass = "text-slate-900 dark:text-white";
-                                
-                                if (exp.status === "removed" || exp.status === "resolved") {
-                                  bgClass = "bg-slate-100 border-slate-200 dark:bg-slate-900/50 dark:border-slate-800 opacity-75";
-                                  dateClass = "text-slate-500 line-through";
-                                } else if (diffDays < 0) { 
-                                  bgClass = "bg-red-50 border-red-200 dark:bg-red-900/30 dark:border-red-800 animate-pulse"; 
-                                  dateClass = "text-red-600 font-black"; 
-                                } else if (diffDays <= 7) { 
-                                  bgClass = "bg-orange-50 border-orange-200 dark:bg-orange-950/20 dark:border-orange-900/50"; 
-                                  dateClass = "text-orange-600 font-bold"; 
-                                }
-
-                                return (
-                                  <div key={idx} className={`p-4 rounded-xl border ${bgClass} flex justify-between items-center`}>
-                                    <div>
-                                      <p className={`font-mono text-base ${dateClass}`}>
-                                        {exp.expiryDate} {diffDays < 0 && exp.status !== "removed" && exp.status !== "resolved" && "(!)"}
-                                      </p>
-                                      <p className="text-xs font-semibold mt-1 opacity-70">By: {exp.addedBy} {exp.status !== "active" && `• ${exp.status}`}</p>
-                                    </div>
-                                    <div className="text-right">
-                                      <p className="text-xl font-black">{exp.quantity}</p>
-                                      <p className="text-[10px] font-bold uppercase opacity-60">Qty</p>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
+                      {/* KEY METRICS GRID */}
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+                        <div className="bg-white/5 p-3.5 rounded-2xl border border-white/10">
+                          <p className="text-[10px] text-slate-400 font-extrabold uppercase mb-1">Registered Barcodes</p>
+                          <div className="flex flex-wrap gap-1">
+                            {productData.allBarcodes && productData.allBarcodes.length > 0 ? (
+                              productData.allBarcodes.map((b: string, i: number) => (
+                                <span key={i} className="font-mono text-xs font-bold text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-md border border-cyan-500/20">#{b}</span>
+                              ))
+                            ) : (
+                              <span className="font-mono text-xs font-bold text-cyan-300">#{productData.barcode || productData.id}</span>
+                            )}
+                          </div>
                         </div>
 
-                        {/* Expired Items */}
-                        <div>
-                          <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                            <AlertTriangle className="h-4 w-4" /> Expired Items History
-                          </h4>
-                          {expiredItemsData.length === 0 ? (
-                            <p className="text-sm text-slate-500 font-bold">No expired items recorded.</p>
-                          ) : (
-                            <div className="space-y-3">
-                              {expiredItemsData.map((exp, idx) => (
-                                <div key={idx} className="p-4 rounded-xl border bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                                  <div>
-                                    <p className="font-mono text-sm text-slate-900 dark:text-white">{exp.date ? new Date(exp.date).toLocaleDateString() : 'Unknown Date'}</p>
-                                    <p className="text-xs font-semibold mt-1 opacity-70">By: {exp.createdBy || "System"} • {exp.storeId}</p>
-                                  </div>
-                                  <div className="text-right">
-                                    <p className="text-xl font-black text-red-600 dark:text-red-400">{exp.quantity}</p>
-                                    <p className="text-[10px] font-bold uppercase opacity-60">Qty</p>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
+                        <div className="bg-white/5 p-3.5 rounded-2xl border border-white/10">
+                          <p className="text-[10px] text-slate-400 font-extrabold uppercase mb-1">Supplier</p>
+                          <p className="font-bold text-sm text-white">{productData.supplier || productData.priceHistory?.[0]?.supplier || "Catalog Item"}</p>
                         </div>
 
-                        {/* Supplier Returns */}
-                        <div>
-                          <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                            <Package className="h-4 w-4" /> Supplier Returns History
-                          </h4>
-                          {supplierReturnsData.length === 0 ? (
-                            <p className="text-sm text-slate-500 font-bold">No supplier returns recorded.</p>
-                          ) : (
-                            <div className="space-y-3">
-                              {supplierReturnsData.map((ret, idx) => (
-                                <div key={idx} className="p-4 rounded-xl border bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                                  <div>
-                                    <p className="font-bold text-sm text-slate-900 dark:text-white line-clamp-1">{ret.supplier || "Unknown Supplier"}</p>
-                                    <p className="text-xs font-semibold mt-1 opacity-70">Status: {ret.status} • {ret.branchId || ret.storeId}</p>
-                                  </div>
-                                  <div className="text-right ml-4">
-                                    <p className="text-xl font-black text-blue-600 dark:text-blue-400">{ret.quantity}</p>
-                                    <p className="text-[10px] font-bold uppercase opacity-60">Qty</p>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
+                        <div className="bg-emerald-500/15 p-3.5 rounded-2xl border border-emerald-500/30 col-span-2 md:col-span-1">
+                          <p className="text-[10px] text-emerald-400 font-black uppercase mb-1 flex items-center gap-1">
+                            <DollarSign className="w-3 h-3" /> Latest Price
+                          </p>
+                          <p className="font-black text-xl text-emerald-400 font-mono">
+                            {productData.price ? `${productData.price} EGP` : productData.currentPrice ? `${productData.currentPrice} EGP` : "N/A"}
+                          </p>
                         </div>
                       </div>
-                    )}
-                  </>
-                )}
-              </div>
+
+                      {/* CHRONOLOGICAL PRICE & SUPPLIER HISTORY TIMELINE */}
+                      <div className="space-y-4 pt-4 border-t border-white/10">
+                        <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                          <History className="h-4 w-4 text-cyan-400" /> Compiled Price & Supplier Timeline ({productData.compiledPriceHistory?.length || 0})
+                        </h4>
+
+                        <div className="space-y-2.5">
+                          {productData.compiledPriceHistory?.map((ph: any, idx: number) => (
+                            <div key={idx} className="p-3.5 rounded-2xl border bg-white/5 border-white/10 flex justify-between items-center shadow-sm">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-bold text-sm text-white">{ph.supplier || "Supplier"}</p>
+                                  {ph.delta !== 0 && (
+                                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-0.5 ${
+                                      ph.delta > 0 ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                    }`}>
+                                      {ph.delta > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                                      {ph.delta > 0 ? `+${ph.delta.toFixed(2)} EGP` : `${ph.delta.toFixed(2)} EGP`}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs font-semibold text-slate-400 mt-0.5">Date: {ph.date}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-lg font-black text-emerald-400 font-mono">{ph.price} <span className="text-xs">EGP</span></p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : null}
             </motion.div>
           </>
         )}
       </AnimatePresence>
 
-      {/* Barcode Camera Scanner Modal */}
+      {/* CAMERA SCANNER MODAL */}
       {showScanner && (
-        <CameraScanner 
-          onScan={(decodedText) => {
-            if (scannerTarget === "search") {
-              setSearchTerm(decodedText);
-              performLookup(decodedText);
-            } else {
-              setEditFormData(prev => ({...prev, barcode: decodedText}));
-            }
-            setShowScanner(false);
-          }} 
-          onClose={() => setShowScanner(false)} 
+        <CameraScanner
+          onScan={handleScanResult}
+          onClose={() => setShowScanner(false)}
         />
       )}
     </div>
