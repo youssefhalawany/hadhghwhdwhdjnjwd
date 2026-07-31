@@ -18,11 +18,11 @@ const firebaseConfig = {
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
 let db: Firestore;
-if (getApps().length === 0 || !getApps()[0]) {
+try {
   db = initializeFirestore(app, {
-    localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
   });
-} else {
+} catch (e) {
   db = getFirestore(app);
 }
 export const auth = getAuth(app);
