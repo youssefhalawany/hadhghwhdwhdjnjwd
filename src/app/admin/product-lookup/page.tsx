@@ -154,20 +154,6 @@ function ProductLookupContent() {
            snap.docs.forEach(doc => {
               rawItems.push({ id: doc.id, ...doc.data() });
            });
-           
-           const snapExpiries = await getDocs(query(collection(db, "expiries"), limit(50))).catch(() => ({ docs: [] } as any));
-           snapExpiries.docs.forEach((doc: any) => {
-              const data = doc.data();
-              rawItems.push({
-                 id: data.barcode || doc.id,
-                 barcode: data.barcode || doc.id,
-                 description: data.itemName || "Unknown Expiry",
-                 itemName: data.itemName,
-                 supplier: data.supplier || "",
-                 isPhantom: true,
-                 expiryDate: data.expiryDate
-              });
-           });
         } else {
           const termLower = term.toLowerCase();
           const termUpper = term.toUpperCase();
@@ -178,11 +164,10 @@ function ProductLookupContent() {
             getDocs(query(collection(productsDb, "products"), where("description", ">=", termUpper), where("description", "<=", termUpper + '\uf8ff'), limit(30))).catch(() => ({ docs: [] } as any)),
             getDocs(query(collection(productsDb, "products"), where("description", ">=", termTitle), where("description", "<=", termTitle + '\uf8ff'), limit(30))).catch(() => ({ docs: [] } as any)),
             getDocs(query(collection(productsDb, "products"), where("itemName", ">=", termTitle), where("itemName", "<=", termTitle + '\uf8ff'), limit(30))).catch(() => ({ docs: [] } as any)),
-            getDocs(query(collection(db, "expiries"), where("itemName", ">=", termTitle), where("itemName", "<=", termTitle + '\uf8ff'), limit(30))).catch(() => ({ docs: [] } as any)),
           ];
 
           const snaps = await Promise.all(queries);
-          snaps.forEach((s: any, idx: number) => {
+          snaps.forEach((s: any) => {
             if (!s || !s.docs) return;
             s.docs.forEach((doc: any) => {
               const data = doc.data();
@@ -194,8 +179,7 @@ function ProductLookupContent() {
                  supplier: data.supplier || data.priceHistory?.[0]?.supplier || "",
                  price: data.currentPrice || data.price,
                  priceHistory: data.priceHistory || [],
-                 expiryDate: data.expiryDate,
-                 isPhantom: idx === 4
+                 expiryDate: data.expiryDate
               });
             });
           });
