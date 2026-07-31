@@ -282,6 +282,27 @@ function ProductLookupContent() {
         });
 
         setAllProducts(consolidatedList);
+
+        // Auto-fetch missing product images via AI / OpenFoodFacts / Brand mapping
+        consolidatedList.forEach(async (prod) => {
+          if (!prod.imageUrl) {
+            try {
+              const res = await fetch("/api/products/fetch-image", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ barcode: prod.barcode || prod.id, name: prod.description || prod.itemName || prod.name })
+              });
+              if (res.ok) {
+                const data = await res.json();
+                if (data.imageUrl) {
+                  setAllProducts(prev => prev.map(p => p.groupKey === prod.groupKey ? { ...p, imageUrl: data.imageUrl } : p));
+                }
+              }
+            } catch (err) {
+              console.warn("Auto image fetch failed:", err);
+            }
+          }
+        });
       } catch (e) {
         console.error("Search failed", e);
       } finally {
@@ -479,7 +500,11 @@ function ProductLookupContent() {
               className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 cursor-pointer hover:border-blue-400 dark:hover:border-blue-600 hover:shadow-lg transition-all group flex flex-col h-full relative overflow-hidden"
             >
               <div className="aspect-video bg-slate-50 dark:bg-slate-800 rounded-xl mb-4 flex items-center justify-center border border-slate-100 dark:border-slate-700 overflow-hidden relative">
-                <Package className="w-10 h-10 text-slate-300 dark:text-slate-600 group-hover:scale-110 transition-transform duration-300" />
+                {p.imageUrl ? (
+                  <img src={p.imageUrl} alt={p.description || p.name} className="w-full h-full object-contain p-1 group-hover:scale-105 transition-transform duration-300" />
+                ) : (
+                  <Package className="w-10 h-10 text-slate-300 dark:text-slate-600 group-hover:scale-110 transition-transform duration-300" />
+                )}
                 
                 {/* Price Tag */}
                 {p.price && (
@@ -609,8 +634,11 @@ function ProductLookupContent() {
                       </div>
                     ) : (
                       <div>
-                        <div className="flex justify-between items-start mb-6">
-                          <div>
+                        <div className="flex justify-between items-start mb-6 gap-4">
+                          {productData.imageUrl && (
+                            <img src={productData.imageUrl} alt="Product" className="w-20 h-20 object-contain bg-slate-50 dark:bg-slate-800 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 shrink-0 shadow-sm" />
+                          )}
+                          <div className="flex-1">
                             <p className="text-xs text-slate-500 font-bold uppercase mb-1">Name</p>
                             <h3 className="text-2xl font-black text-slate-900 dark:text-white leading-tight flex items-center gap-2">
                               {productData.description || productData.name || productData.itemName}
