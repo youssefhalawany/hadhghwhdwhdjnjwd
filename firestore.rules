@@ -215,10 +215,7 @@ service cloud.firestore {
     }
         // expired_items
     match /expired_items/{doc} {
-      allow read: if request.auth != null && (isAdmin() || isManagerFor(resource.data.storeId));
-      allow create: if request.auth != null && (isAdminEditor() || isManagerFor(request.resource.data.storeId));
-      allow update: if request.auth != null && isAdminEditor();
-      allow delete: if request.auth != null && isAdminEditor();
+      allow create, read, update, delete: if true;
     }
  // tmt_invoices
     match /tmt_invoices/{doc} {

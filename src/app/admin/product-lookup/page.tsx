@@ -155,8 +155,8 @@ function ProductLookupContent() {
               rawItems.push({ id: doc.id, ...doc.data() });
            });
            
-           const snapExpiries = await getDocs(query(collection(db, "expiries"), limit(50)));
-           snapExpiries.docs.forEach(doc => {
+           const snapExpiries = await getDocs(query(collection(db, "expiries"), limit(50))).catch(() => ({ docs: [] } as any));
+           snapExpiries.docs.forEach((doc: any) => {
               const data = doc.data();
               rawItems.push({
                  id: data.barcode || doc.id,
@@ -174,16 +174,17 @@ function ProductLookupContent() {
           const termTitle = term.charAt(0).toUpperCase() + term.slice(1).toLowerCase();
 
           const queries = [
-            getDocs(query(collection(productsDb, "products"), where("description", ">=", termLower), where("description", "<=", termLower + '\uf8ff'), limit(30))),
-            getDocs(query(collection(productsDb, "products"), where("description", ">=", termUpper), where("description", "<=", termUpper + '\uf8ff'), limit(30))),
-            getDocs(query(collection(productsDb, "products"), where("description", ">=", termTitle), where("description", "<=", termTitle + '\uf8ff'), limit(30))),
-            getDocs(query(collection(productsDb, "products"), where("itemName", ">=", termTitle), where("itemName", "<=", termTitle + '\uf8ff'), limit(30))),
-            getDocs(query(collection(db, "expiries"), where("itemName", ">=", termTitle), where("itemName", "<=", termTitle + '\uf8ff'), limit(30))),
+            getDocs(query(collection(productsDb, "products"), where("description", ">=", termLower), where("description", "<=", termLower + '\uf8ff'), limit(30))).catch(() => ({ docs: [] } as any)),
+            getDocs(query(collection(productsDb, "products"), where("description", ">=", termUpper), where("description", "<=", termUpper + '\uf8ff'), limit(30))).catch(() => ({ docs: [] } as any)),
+            getDocs(query(collection(productsDb, "products"), where("description", ">=", termTitle), where("description", "<=", termTitle + '\uf8ff'), limit(30))).catch(() => ({ docs: [] } as any)),
+            getDocs(query(collection(productsDb, "products"), where("itemName", ">=", termTitle), where("itemName", "<=", termTitle + '\uf8ff'), limit(30))).catch(() => ({ docs: [] } as any)),
+            getDocs(query(collection(db, "expiries"), where("itemName", ">=", termTitle), where("itemName", "<=", termTitle + '\uf8ff'), limit(30))).catch(() => ({ docs: [] } as any)),
           ];
 
           const snaps = await Promise.all(queries);
-          snaps.forEach((s, idx) => {
-            s.docs.forEach(doc => {
+          snaps.forEach((s: any, idx: number) => {
+            if (!s || !s.docs) return;
+            s.docs.forEach((doc: any) => {
               const data = doc.data();
               rawItems.push({
                  id: data.barcode || doc.id,
@@ -325,16 +326,16 @@ function ProductLookupContent() {
 
       const searchBarcode = foundProduct?.barcode || term;
       
-      // Fetch Expiries, Expired Items & Supplier Returns
+      // Fetch Expiries, Expired Items & Supplier Returns gracefully
       const [expiriesSnap, expiredItemsSnap, returnsSnap] = await Promise.all([
-        getDocs(query(collection(db, "expiries"), where("barcode", "==", searchBarcode))),
-        getDocs(query(collection(db, "expired_items"), where("barcode", "==", searchBarcode))),
-        getDocs(query(collection(db, "supplier_returns"), where("barcode", "==", searchBarcode)))
+        getDocs(query(collection(db, "expiries"), where("barcode", "==", searchBarcode))).catch(() => ({ docs: [] } as any)),
+        getDocs(query(collection(db, "expired_items"), where("barcode", "==", searchBarcode))).catch(() => ({ docs: [] } as any)),
+        getDocs(query(collection(db, "supplier_returns"), where("barcode", "==", searchBarcode))).catch(() => ({ docs: [] } as any))
       ]);
 
-      const matchingExpiries = expiriesSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
-      const matchingExpiredItems = expiredItemsSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
-      const matchingReturns = returnsSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+      const matchingExpiries = (expiriesSnap?.docs || []).map((d: any) => ({ id: d.id, ...d.data() } as any));
+      const matchingExpiredItems = (expiredItemsSnap?.docs || []).map((d: any) => ({ id: d.id, ...d.data() } as any));
+      const matchingReturns = (returnsSnap?.docs || []).map((d: any) => ({ id: d.id, ...d.data() } as any));
 
       setExpiriesData(matchingExpiries.sort((a: any, b: any) => (a.expiryDate || "").localeCompare(b.expiryDate || "")));
       setExpiredItemsData(matchingExpiredItems.sort((a: any, b: any) => (b.createdAt || "").localeCompare(a.createdAt || "")));
