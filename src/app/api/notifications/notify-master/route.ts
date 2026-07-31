@@ -102,8 +102,8 @@ export async function POST(req: Request) {
           icon: "/icon-manager.png",
           badge: "/icons8-circled-k-50.png",
           requireInteraction: true,
-          renotify: true,
-          tag: `circlek-alert-${Date.now()}`,
+          renotify: false,
+          tag: "circlek-manager-alert",
           data: { url: targetUrl }
         },
         fcmOptions: {

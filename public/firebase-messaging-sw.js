@@ -16,18 +16,23 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
   
-  const notificationTitle = payload.notification?.title || payload.data?.title || "Circle K Notification";
-  const notificationBody = payload.notification?.body || payload.data?.body || "Tap to view update.";
-  const clickUrl = payload.data?.url || payload.notification?.click_action || '/';
+  // Prevent double display: If FCM SDK payload includes 'notification', browser displays it natively
+  if (payload.notification && payload.notification.title) {
+    return;
+  }
+
+  const notificationTitle = payload.data?.title || "Circle K Notification";
+  const notificationBody = payload.data?.body || "Tap to view update.";
+  const clickUrl = payload.data?.url || '/';
 
   const notificationOptions = {
     body: notificationBody,
     icon: '/icon-manager.png',
     badge: '/icons8-circled-k-50.png',
-    vibrate: [300, 100, 300, 100, 300],
+    vibrate: [300, 100, 300],
     data: { url: clickUrl },
-    tag: payload.data?.tag || `circlek-${Date.now()}`,
-    renotify: true,
+    tag: payload.data?.tag || 'circlek-single-alert',
+    renotify: false,
     requireInteraction: true
   };
 

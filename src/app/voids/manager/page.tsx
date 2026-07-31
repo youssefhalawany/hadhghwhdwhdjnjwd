@@ -115,12 +115,6 @@ export default function ManagerVoidsPage() {
         body: JSON.stringify({ title: notifTitle, body: notifBody, url: "/voids/manager" })
       }).catch(() => {});
 
-      fetch("/api/notifications/notify-owners", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: notifTitle, message: notifBody, url: "/voids/manager" })
-      }).catch(() => {});
-
       toast.success(`Void request ${targetVoid.transactionNumber} marked as ${statusLabel}!`);
 
       // Update local state
