@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle, AlertTriangle, Info, Loader2, Clock, ChevronRight, X, DollarSign, Calendar, ShieldAlert } from "lucide-react";
+import { CheckCircle, AlertTriangle, Info, Loader2, Clock, ChevronRight, X, DollarSign, Calendar, ShieldAlert, Sparkles } from "lucide-react";
 import { playSwooshSound, playSuccessChime } from "@/lib/audioCues";
 import { vibrateSuccess, vibrateError } from "@/lib/haptics";
 import { db } from "@/lib/firebase";
@@ -137,23 +137,28 @@ export function DynamicIsland() {
   const liveIndicators = [
     {
       id: "shift",
-      icon: <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />,
+      icon: (
+        <span className="relative flex h-2.5 w-2.5 items-center justify-center shrink-0">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+        </span>
+      ),
       text: `🟢 Shift Active (${activeShiftName})`,
-      color: "text-emerald-400",
+      color: "text-emerald-400 font-extrabold",
       action: () => router.push("/shift-reports/manager")
     },
     {
       id: "voids",
       icon: <ShieldAlert className="w-3.5 h-3.5 text-rose-400 shrink-0" />,
       text: pendingVoidCount > 0 ? `🚨 ${pendingVoidCount} Pending Void${pendingVoidCount > 1 ? 's' : ''}` : "🚨 0 Pending Voids",
-      color: pendingVoidCount > 0 ? "text-rose-400 font-bold" : "text-slate-300",
+      color: pendingVoidCount > 0 ? "text-rose-400 font-extrabold" : "text-slate-300",
       action: () => router.push("/voids/manager")
     },
     {
       id: "expiries",
-      icon: <Clock className="w-3.5 h-3.5 text-orange-400 shrink-0" />,
+      icon: <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />,
       text: expiriesTodayCount > 0 ? `⚠️ ${expiriesTodayCount} Expiries Today` : "⚠️ 0 Expiries Today",
-      color: expiriesTodayCount > 0 ? "text-orange-400 font-bold" : "text-slate-300",
+      color: expiriesTodayCount > 0 ? "text-amber-400 font-extrabold" : "text-slate-300",
       action: () => router.push("/admin/product-lookup")
     }
   ];
@@ -161,18 +166,18 @@ export function DynamicIsland() {
   const currentIndicator = liveIndicators[activeIndicatorIndex];
 
   return (
-    <div className="fixed top-3 left-0 right-0 z-[999] flex justify-center pointer-events-none px-4 print:hidden">
+    <div className="fixed top-[calc(env(safe-area-inset-top,0px)+6px)] left-0 right-0 z-[9999] flex justify-center pointer-events-none px-3 print:hidden">
       <AnimatePresence mode="wait">
         {/* Priority 1: Transient Flash Notification */}
         {notification ? (
           <motion.div
             key={notification.id}
-            initial={{ y: -40, scale: 0.8, opacity: 0, borderRadius: "50px" }}
+            initial={{ y: -45, scale: 0.75, opacity: 0, borderRadius: "40px" }}
             animate={{ y: 0, scale: 1, opacity: 1, borderRadius: "24px" }}
-            exit={{ y: -20, scale: 0.8, opacity: 0, borderRadius: "50px" }}
-            transition={{ type: "spring", bounce: 0.4, duration: 0.5 }}
-            className="bg-[#0B1121]/95 backdrop-blur-2xl border border-white/10 shadow-2xl overflow-hidden pointer-events-auto cursor-pointer flex items-center gap-3 px-4 py-2.5"
-            style={{ maxWidth: "360px" }}
+            exit={{ y: -20, scale: 0.8, opacity: 0, borderRadius: "40px" }}
+            transition={{ type: "spring", stiffness: 420, damping: 30 }}
+            className="bg-black/95 backdrop-blur-3xl border border-white/20 shadow-[0_12px_40px_rgba(0,0,0,0.9)] overflow-hidden pointer-events-auto cursor-pointer flex items-center gap-3 px-4 py-3"
+            style={{ maxWidth: "360px", width: "100%" }}
             onClick={() => dismissIsland(notification.id)}
           >
             {notification.type === "success" && <CheckCircle className="h-5 w-5 text-emerald-400 shrink-0" />}
@@ -181,107 +186,116 @@ export function DynamicIsland() {
             {notification.type === "info" && <Info className="h-5 w-5 text-cyan-400 shrink-0" />}
 
             <div className="flex flex-col">
-              <span className="text-white font-bold text-xs tracking-tight leading-tight">
+              <span className="text-white font-extrabold text-xs tracking-tight leading-tight">
                 {notification.title}
               </span>
               {notification.message && (
-                <span className="text-slate-400 text-[11px] font-medium mt-0.5 leading-tight line-clamp-1">
+                <span className="text-slate-300 text-[11px] font-medium mt-0.5 leading-tight line-clamp-1">
                   {notification.message}
                 </span>
               )}
             </div>
           </motion.div>
         ) : (
-          /* Priority 2: Persistent Operational Dynamic Island Pill */
+          /* Priority 2: Persistent Operational Native-Style Dynamic Island Pill */
           <motion.div
             layout
-            transition={{ type: "spring", stiffness: 350, damping: 25 }}
+            transition={{ type: "spring", stiffness: 400, damping: 30 }}
             onClick={() => setIsExpanded(!isExpanded)}
-            className="bg-[#0B1121]/90 backdrop-blur-2xl border border-white/10 shadow-2xl pointer-events-auto cursor-pointer overflow-hidden flex flex-col"
+            className="bg-black/95 backdrop-blur-3xl border border-white/15 shadow-[0_16px_40px_rgba(0,0,0,0.95)] pointer-events-auto cursor-pointer overflow-hidden flex flex-col"
             style={{
-              borderRadius: isExpanded ? "24px" : "30px",
+              borderRadius: isExpanded ? "28px" : "32px",
               width: isExpanded ? "100%" : "auto",
-              maxWidth: isExpanded ? "380px" : "320px",
-              padding: isExpanded ? "16px" : "6px 14px"
+              maxWidth: isExpanded ? "380px" : "330px",
+              padding: isExpanded ? "16px" : "7px 16px"
             }}
           >
-            {/* COLLAPSED PILL VIEW */}
+            {/* COLLAPSED PILL VIEW — Seamless Native iPhone Notch Alignment */}
             {!isExpanded && (
               <div className="flex items-center justify-between gap-3 text-xs font-bold text-white whitespace-nowrap">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2.5">
                   {currentIndicator.icon}
-                  <span className={`${currentIndicator.color} text-[11px] font-extrabold tracking-wide`}>
+                  <span className={`${currentIndicator.color} text-[11.5px] font-black tracking-tight`}>
                     {currentIndicator.text}
                   </span>
                 </div>
-                <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0 opacity-60" />
+                <div className="flex items-center gap-1.5 pl-2 border-l border-white/15">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)] shrink-0" />
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Live</span>
+                </div>
               </div>
             )}
 
-            {/* EXPANDED CONTROL DRAWER VIEW */}
+            {/* EXPANDED EXECUTIVE CONTROL DRAWER VIEW */}
             {isExpanded && (
               <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="space-y-3"
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.96 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-3.5"
               >
-                <div className="flex justify-between items-center border-b border-white/10 pb-2">
+                <div className="flex justify-between items-center border-b border-white/10 pb-2.5">
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span className="text-xs font-black uppercase text-white tracking-widest">Circle K Live Control</span>
+                    <span className="relative flex h-2.5 w-2.5 items-center justify-center">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+                    </span>
+                    <span className="text-xs font-black uppercase text-white tracking-widest flex items-center gap-1.5">
+                      Circle K Executive Hub <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    </span>
                   </div>
                   <button 
                     onClick={(e) => { e.stopPropagation(); setIsExpanded(false); }}
-                    className="p-1 hover:bg-white/10 rounded-full text-slate-400 hover:text-white"
+                    className="p-1 hover:bg-white/15 rounded-full text-slate-400 hover:text-white transition-colors"
                   >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 text-xs font-bold">
+                <div className="grid grid-cols-2 gap-2.5 text-xs font-bold">
                   <button 
                     onClick={(e) => { e.stopPropagation(); setIsExpanded(false); router.push("/voids/manager"); }}
-                    className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 flex flex-col items-start gap-1"
+                    className="p-3.5 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-400 hover:bg-rose-500/25 flex flex-col items-start gap-1 transition-all active:scale-95"
                   >
-                    <div className="flex justify-between w-full">
+                    <div className="flex justify-between w-full items-center">
                       <ShieldAlert className="w-4 h-4" />
-                      <span className="font-black text-rose-300">{pendingVoidCount}</span>
+                      <span className="font-black text-rose-300 text-sm">{pendingVoidCount}</span>
                     </div>
-                    <span className="text-[10px] font-extrabold text-white">Pending Voids</span>
+                    <span className="text-[10px] font-black text-white">Pending Voids</span>
                   </button>
 
                   <button 
                     onClick={(e) => { e.stopPropagation(); setIsExpanded(false); router.push("/shift-reports/manager"); }}
-                    className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 flex flex-col items-start gap-1"
+                    className="p-3.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 flex flex-col items-start gap-1 transition-all active:scale-95"
                   >
-                    <div className="flex justify-between w-full">
+                    <div className="flex justify-between w-full items-center">
                       <Clock className="w-4 h-4" />
-                      <ChevronRight className="w-3 h-3 text-slate-400" />
+                      <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
                     </div>
-                    <span className="text-[10px] font-extrabold text-white">Shift Reports</span>
+                    <span className="text-[10px] font-black text-white">Shift Audit Reports</span>
                   </button>
 
                   <button 
                     onClick={(e) => { e.stopPropagation(); setIsExpanded(false); router.push("/admin/product-lookup"); }}
-                    className="p-3 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400 hover:bg-orange-500/20 flex flex-col items-start gap-1"
+                    className="p-3.5 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 hover:bg-amber-500/25 flex flex-col items-start gap-1 transition-all active:scale-95"
                   >
-                    <div className="flex justify-between w-full">
+                    <div className="flex justify-between w-full items-center">
                       <Calendar className="w-4 h-4" />
-                      <span className="font-black text-orange-300">{expiriesTodayCount}</span>
+                      <span className="font-black text-amber-300 text-sm">{expiriesTodayCount}</span>
                     </div>
-                    <span className="text-[10px] font-extrabold text-white">7-Day Expiry Radar</span>
+                    <span className="text-[10px] font-black text-white">7-Day Expiry Radar</span>
                   </button>
 
                   <button 
-                    onClick={(e) => { e.stopPropagation(); setIsExpanded(false); router.push("/financials/inputs/deposits"); }}
-                    className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20 flex flex-col items-start gap-1"
+                    onClick={(e) => { e.stopPropagation(); setIsExpanded(false); router.push("/financials/inputs/overview"); }}
+                    className="p-3.5 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/25 flex flex-col items-start gap-1 transition-all active:scale-95"
                   >
-                    <div className="flex justify-between w-full">
+                    <div className="flex justify-between w-full items-center">
                       <DollarSign className="w-4 h-4" />
-                      <ChevronRight className="w-3 h-3 text-slate-400" />
+                      <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
                     </div>
-                    <span className="text-[10px] font-extrabold text-white">Safe Cash & Deposits</span>
+                    <span className="text-[10px] font-black text-white">Safe Cash & Overview</span>
                   </button>
                 </div>
               </motion.div>
