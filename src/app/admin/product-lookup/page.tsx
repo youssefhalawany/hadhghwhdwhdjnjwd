@@ -269,7 +269,7 @@ function ProductLookupContent() {
 
         // Auto-fetch missing product images via AI / OpenFoodFacts / Brand mapping
         consolidatedList.forEach(async (prod) => {
-          if (!prod.imageUrl) {
+          if (!prod.imageUrl || prod.imageUrl.includes("photo-1542838132-92c53300491e")) {
             try {
               const res = await fetch("/api/products/fetch-image", {
                 method: "POST",
