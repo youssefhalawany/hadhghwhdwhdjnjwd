@@ -82,6 +82,7 @@ export default function VendorStatementsPage() {
 
         const paidAmt = Number(d.paidAmount || 0);
         const isPaid = d.status === "paid" || d.isPaid === true || paidAmt > 0;
+        const pMethod = d.paymentMethod || d.method || d.paymentType || d.type || "Credit / آجل";
 
         creditItems.push({
           id: doc.id,
@@ -92,6 +93,7 @@ export default function VendorStatementsPage() {
           price: finalInvoicePriceWithTax,
           tax: taxAmt,
           status: "Invoice",
+          paymentMethod: pMethod,
           isPaid: isPaid,
           source: "credits"
         });
@@ -123,6 +125,7 @@ export default function VendorStatementsPage() {
 
         const parentPo = d.creditId ? creditIdToPoNumber[d.creditId] : "";
         const rawPo = (d.poNumber || d.invoiceNumber || parentPo || "").trim();
+        const pMethod = d.paymentMethod || d.method || d.paymentType || d.type || "Cash / الخزينة";
 
         paymentItems.push({
           id: doc.id,
@@ -134,6 +137,7 @@ export default function VendorStatementsPage() {
           price: finalPaymentPriceWithTax,
           tax: pTax,
           status: "Payment",
+          paymentMethod: pMethod,
           isPaid: true,
           source: "cash_payments"
         });
@@ -150,7 +154,6 @@ export default function VendorStatementsPage() {
 
         if (!d.creditId) return;
 
-        // If parent credit was deleted, creditIdToNormCompany[d.creditId] will be undefined -> Automatically excluded!
         const norm = creditIdToNormCompany[d.creditId];
         if (!norm) return;
 
@@ -162,9 +165,9 @@ export default function VendorStatementsPage() {
         const pTot = Number(d.total || 0);
         const finalPaymentPriceWithTax = (pTot >= (pAmt + pTax) && pTot > 0) ? pTot : (pAmt + pTax);
 
-        // Inherit real PO number from parent credit note if payment doesn't explicitly specify it!
         const parentPo = creditIdToPoNumber[d.creditId] || "";
         const rawPo = (d.poNumber || d.invoiceNumber || parentPo || "").trim();
+        const pMethod = d.paymentMethod || d.method || d.paymentType || d.type || (d.isVisa ? "Visa / Bank" : "Cash / الخزينة");
 
         paymentItems.push({
           id: doc.id,
@@ -176,13 +179,13 @@ export default function VendorStatementsPage() {
           price: finalPaymentPriceWithTax,
           tax: pTax,
           status: "Payment",
+          paymentMethod: pMethod,
           isPaid: true,
           source: "credit_payments"
         });
       });
 
       // STRICT GLOBAL DEDUPLICATION BY VENDOR + PO NUMBER
-      // Combine all credit and payment items, then group by normalized PO key
       const poGroupMap = new Map<string, any[]>();
       const standaloneRecords: any[] = [];
 
@@ -191,7 +194,6 @@ export default function VendorStatementsPage() {
       allCandidates.forEach(item => {
         let rawPo = (item.poNumber || "").trim();
         let cleanPo = rawPo.toLowerCase().replace(/[^a-z0-9]/g, "");
-        // Strip common prefixes so 'PO-1004', 'PO 1004', '1004', and 'INV-1004' produce identical key '1004'
         cleanPo = cleanPo.replace(/^(po|inv|invoice|ref|pmt|pmtref)+/g, "");
 
         const poKey = (cleanPo && cleanPo !== "-" && cleanPo !== "cashpayment" && cleanPo !== "na" && cleanPo !== "none") 
@@ -211,10 +213,7 @@ export default function VendorStatementsPage() {
       const allData: any[] = [];
       const seenPaymentCreditIds = new Set<string>();
 
-      // For every PO key group, pick EXACTLY ONE item:
-      // Prioritize Payment item over Invoice item!
       poGroupMap.forEach((group) => {
-        // Find if there is any Payment item in this group
         const paymentItem = group.find(i => i.status === "Payment");
         if (paymentItem) {
           allData.push(paymentItem);
@@ -222,15 +221,13 @@ export default function VendorStatementsPage() {
             seenPaymentCreditIds.add(paymentItem.creditId);
           }
         } else {
-          // Otherwise pick the first Invoice item
           allData.push(group[0]);
         }
       });
 
-      // Add standalone records (records without a PO key), ensuring no duplicate credit IDs
       standaloneRecords.forEach(item => {
         if (item.source === "credits" && seenPaymentCreditIds.has(item.id)) {
-          return; // Skip credit note if a payment for it was already added
+          return;
         }
         allData.push(item);
       });
@@ -256,12 +253,25 @@ export default function VendorStatementsPage() {
     const normalizeName = (name: string) => name ? name.trim().toLowerCase().replace(/[-_.\s]/g, "") : "";
     const selectedNorm = selectedCompany === "ALL" ? "" : normalizeName(selectedCompany);
 
-    return allReceipts.filter(r => {
+    const items = allReceipts.filter(r => {
       const matchCompany = !selectedNorm || r.normalizedCompany === selectedNorm;
       const matchMonth = !selectedMonth || (r.receiptDate && r.receiptDate.startsWith(selectedMonth));
       const matchPaid = !paidOnly || r.isPaid === true || r.status === "Payment";
       return matchCompany && matchMonth && matchPaid;
     });
+
+    if (selectedCompany === "ALL") {
+      // Group by company name alphabetically, then by date ascending
+      items.sort((a, b) => {
+        const compCompare = (a.originalCompany || "").localeCompare(b.originalCompany || "");
+        if (compCompare !== 0) return compCompare;
+        return (a.receiptDate || "").localeCompare(b.receiptDate || "");
+      });
+    } else {
+      items.sort((a, b) => (a.receiptDate || "").localeCompare(b.receiptDate || ""));
+    }
+
+    return items;
   }, [allReceipts, selectedCompany, selectedMonth, paidOnly]);
 
   const handlePrint = () => {
@@ -282,7 +292,7 @@ export default function VendorStatementsPage() {
     ? new Date(Number(yearStr), Number(monthStr) - 1).toLocaleString('en-US', { month: 'long' })
     : "";
 
-  const displayCompanyTitle = selectedCompany === "ALL" ? "ALL VENDORS SUMMARY" : selectedCompany;
+  const displayCompanyTitle = selectedCompany === "ALL" ? "ALL VENDORS STATEMENT" : selectedCompany;
   const statementId = `SOA-${(selectedCompany || "ALL").replace(/[^a-zA-Z0-9]/g, "").substring(0, 6).toUpperCase()}-${yearStr}${monthStr}`;
 
   const generateQRData = () => {
@@ -303,7 +313,7 @@ export default function VendorStatementsPage() {
               <h1 className="text-xl font-black flex items-center gap-2">
                 <Building2 className="h-5 w-5 text-orange-600" /> Vendor Statements
               </h1>
-              <p className="text-xs text-slate-400">1-Page A4 Statement of Account (Payment Prioritized)</p>
+              <p className="text-xs text-slate-400">1-Page A4 Statement of Account (Grouped by Vendor & Payment Method)</p>
             </div>
           </div>
           
@@ -356,7 +366,7 @@ export default function VendorStatementsPage() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto mt-6 px-2 sm:px-4 print:max-w-none print:m-0 print:p-0">
+      <div className="max-w-5xl mx-auto mt-6 px-2 sm:px-4 print:max-w-none print:m-0 print:p-0">
         
         {loading ? (
            <div className="flex flex-col items-center justify-center p-20 gap-3 print:hidden">
@@ -431,7 +441,7 @@ export default function VendorStatementsPage() {
                 </div>
               </div>
 
-              {/* FINANCIAL TABLE (COMPACT FIT FOR 1 PAGE) */}
+              {/* FINANCIAL TABLE WITH PAYMENT METHOD & COMPANY GROUPING */}
               <div className="px-6 py-4 print:px-3 print:py-2">
                 <table className="w-full text-left border-collapse">
                   <thead>
@@ -442,39 +452,58 @@ export default function VendorStatementsPage() {
                       )}
                       <th className="py-2 px-2">PO / Invoice Ref</th>
                       <th className="py-2 px-2 text-center">Type</th>
+                      <th className="py-2 px-2 text-center">Payment Method</th>
                       <th className="py-2 px-2 text-right">Tax Paid</th>
                       <th className="py-2 px-2 text-right">Total Amount (Incl. Tax)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 print:divide-slate-300 text-[11px]">
-                    {filteredReceipts.map((r, idx) => (
-                      <tr key={r.id || idx} className="hover:bg-slate-50 print:hover:bg-transparent">
-                        <td className="py-1.5 px-2 font-mono font-semibold text-slate-800">
-                          {r.receiptDate}
-                        </td>
-                        {selectedCompany === "ALL" && (
-                          <td className="py-1.5 px-2 font-bold text-black capitalize truncate max-w-[120px]">
-                            {r.originalCompany}
-                          </td>
-                        )}
-                        <td className="py-1.5 px-2 font-mono text-slate-700">
-                          {r.poNumber || "-"}
-                        </td>
-                        <td className="py-1.5 px-2 text-center">
-                          {r.status === "Payment" ? (
-                            <span className="border border-black text-black text-[8px] font-black px-1.5 py-0.5 rounded uppercase">PAYMENT</span>
-                          ) : (
-                            <span className="border border-amber-600 text-amber-800 text-[8px] font-bold px-1.5 py-0.5 rounded uppercase">INVOICE</span>
+                    {filteredReceipts.map((r, idx) => {
+                      const isFirstOfCompany = selectedCompany === "ALL" && (idx === 0 || filteredReceipts[idx - 1].normalizedCompany !== r.normalizedCompany);
+
+                      return (
+                        <React.Fragment key={r.id || idx}>
+                          {isFirstOfCompany && (
+                            <tr className="bg-slate-100 dark:bg-slate-800 print:bg-slate-200 border-t-2 border-b border-black">
+                              <td colSpan={7} className="py-1.5 px-2 font-black text-xs uppercase tracking-wider text-black">
+                                🏢 {r.originalCompany}
+                              </td>
+                            </tr>
                           )}
-                        </td>
-                        <td className="py-1.5 px-2 font-mono text-slate-600 text-right">
-                          {r.tax > 0 ? formatCurrency(r.tax) : "EGP 0.00"}
-                        </td>
-                        <td className="py-1.5 px-2 font-mono font-black text-right text-black">
-                          {r.status === "Payment" ? "-" : ""}{formatCurrency(Number(r.price))}
-                        </td>
-                      </tr>
-                    ))}
+                          <tr className="hover:bg-slate-50 print:hover:bg-transparent">
+                            <td className="py-1.5 px-2 font-mono font-semibold text-slate-800">
+                              {r.receiptDate}
+                            </td>
+                            {selectedCompany === "ALL" && (
+                              <td className="py-1.5 px-2 font-bold text-black capitalize truncate max-w-[120px]">
+                                {r.originalCompany}
+                              </td>
+                            )}
+                            <td className="py-1.5 px-2 font-mono text-slate-700">
+                              {r.poNumber || "-"}
+                            </td>
+                            <td className="py-1.5 px-2 text-center">
+                              {r.status === "Payment" ? (
+                                <span className="border border-black text-black text-[8px] font-black px-1.5 py-0.5 rounded uppercase">PAYMENT</span>
+                              ) : (
+                                <span className="border border-amber-600 text-amber-800 text-[8px] font-bold px-1.5 py-0.5 rounded uppercase">INVOICE</span>
+                              )}
+                            </td>
+                            <td className="py-1.5 px-2 text-center">
+                              <span className="border border-slate-400 text-slate-800 text-[8px] font-bold px-1.5 py-0.5 rounded uppercase">
+                                {r.paymentMethod || (r.status === "Payment" ? (r.source === "cash_payments" ? "Cash / الخزينة" : "Visa / Bank") : "Credit / آجل")}
+                              </span>
+                            </td>
+                            <td className="py-1.5 px-2 font-mono text-slate-600 text-right">
+                              {r.tax > 0 ? formatCurrency(r.tax) : "EGP 0.00"}
+                            </td>
+                            <td className="py-1.5 px-2 font-mono font-black text-right text-black">
+                              {r.status === "Payment" ? "-" : ""}{formatCurrency(Number(r.price))}
+                            </td>
+                          </tr>
+                        </React.Fragment>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
