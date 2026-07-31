@@ -67,13 +67,21 @@ export default function VendorStatementsPage() {
           rDate = d.createdAt.substring(0, 10);
         }
 
+        const baseAmt = Number(d.amountDue || d.amount || 0);
+        const taxAmt = Number(d.tax || 0);
+        const totalInvoicePrice = Number(d.totalAmount || d.total || (baseAmt + taxAmt));
+        const finalInvoicePriceWithTax = (totalInvoicePrice >= (baseAmt + taxAmt) && totalInvoicePrice > 0) 
+          ? totalInvoicePrice 
+          : (baseAmt + taxAmt);
+
         allData.push({
           id: doc.id,
           normalizedCompany: norm,
           originalCompany: companyDisplayNames[norm],
           receiptDate: rDate || new Date().toISOString().substring(0, 10),
           poNumber: d.poNumber || d.invoiceNumber || "-",
-          price: Number(d.amountDue || d.totalAmount || d.total || d.amount || 0),
+          price: finalInvoicePriceWithTax,
+          tax: taxAmt,
           status: "Invoice",
           source: "credits"
         });
@@ -90,13 +98,19 @@ export default function VendorStatementsPage() {
         let rDate = d.date || (d.createdAt && typeof d.createdAt.toDate === 'function' ? d.createdAt.toDate().toISOString().substring(0, 10) : "");
         if (typeof d.createdAt === 'string' && !rDate) rDate = d.createdAt.substring(0, 10);
 
+        const pAmt = Number(d.amount || 0);
+        const pTax = Number(d.tax || 0);
+        const pTot = Number(d.total || 0);
+        const finalPaymentPriceWithTax = (pTot >= (pAmt + pTax) && pTot > 0) ? pTot : (pAmt + pTax);
+
         allData.push({
           id: doc.id,
           normalizedCompany: norm,
           originalCompany: companyDisplayNames[norm],
           receiptDate: rDate || new Date().toISOString().substring(0, 10),
           poNumber: d.poNumber || d.invoiceNumber || "Cash Payment",
-          price: Number(d.amount || d.total || 0),
+          price: finalPaymentPriceWithTax,
+          tax: pTax,
           status: "Payment",
           source: "cash_payments"
         });
@@ -108,10 +122,15 @@ export default function VendorStatementsPage() {
         if (!d.creditId) return;
 
         const norm = creditIdToNormCompany[d.creditId];
-        if (!norm) return; // Cannot link payment to a vendor without parent credit
+        if (!norm) return;
 
         let rDate = d.date || (d.createdAt && typeof d.createdAt.toDate === 'function' ? d.createdAt.toDate().toISOString().substring(0, 10) : "");
         if (typeof d.createdAt === 'string' && !rDate) rDate = d.createdAt.substring(0, 10);
+
+        const pAmt = Number(d.amount || 0);
+        const pTax = Number(d.tax || 0);
+        const pTot = Number(d.total || 0);
+        const finalPaymentPriceWithTax = (pTot >= (pAmt + pTax) && pTot > 0) ? pTot : (pAmt + pTax);
 
         allData.push({
           id: doc.id,
@@ -119,7 +138,8 @@ export default function VendorStatementsPage() {
           originalCompany: companyDisplayNames[norm],
           receiptDate: rDate || new Date().toISOString().substring(0, 10),
           poNumber: `Pmt ref: ${d.creditId.substring(0, 6)}`,
-          price: Number(d.amount || 0),
+          price: finalPaymentPriceWithTax,
+          tax: pTax,
           status: "Payment",
           source: "credit_payments"
         });
@@ -169,6 +189,7 @@ export default function VendorStatementsPage() {
 
   const totalPurchased = filteredReceipts.filter(r => r.status === "Invoice").reduce((sum, r) => sum + r.price, 0);
   const totalPaid = filteredReceipts.filter(r => r.status === "Payment").reduce((sum, r) => sum + r.price, 0);
+  const totalTaxPaid = filteredReceipts.reduce((sum, r) => sum + (r.tax || 0), 0);
   const totalCredit = totalPurchased - totalPaid;
 
   const [yearStr, monthStr] = selectedMonth.split('-');
@@ -176,10 +197,10 @@ export default function VendorStatementsPage() {
 
   const generateQRData = () => {
     let text = `Vendor: ${selectedCompany}\nPeriod: ${monthName} ${yearStr}\n`;
-    text += `Total Invoiced: EGP ${totalPurchased}\nTotal Paid: EGP ${totalPaid}\nBalance Due: EGP ${totalCredit}\n\n`;
+    text += `Total Invoiced: EGP ${totalPurchased}\nTotal Paid: EGP ${totalPaid}\nTotal Tax Paid: EGP ${totalTaxPaid}\nBalance Due: EGP ${totalCredit}\n\n`;
     text += `--- Ledger ---\n`;
     filteredReceipts.forEach(r => {
-      text += `${r.receiptDate} | ${r.poNumber || "N/A"} | ${r.status} | EGP ${r.price}\n`;
+      text += `${r.receiptDate} | ${r.poNumber || "N/A"} | ${r.status} | EGP ${r.price} (Tax: EGP ${r.tax || 0})\n`;
     });
     return text;
   };
@@ -260,18 +281,22 @@ export default function VendorStatementsPage() {
             </div>
 
             {/* SUMMARY CARDS */}
-            <div className="grid grid-cols-3 gap-0 border-b border-slate-200">
-              <div className="p-6 text-center border-r border-slate-200">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Invoiced</p>
-                <p className="text-2xl font-black text-slate-900">{formatCurrency(totalPurchased)}</p>
+            <div className="grid grid-cols-4 gap-0 border-b border-slate-200 text-center">
+              <div className="p-5 border-r border-slate-200">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Invoiced (Incl. Tax)</p>
+                <p className="text-xl font-black text-slate-900">{formatCurrency(totalPurchased)}</p>
               </div>
-              <div className="p-6 text-center border-r border-slate-200">
+              <div className="p-5 border-r border-slate-200">
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Paid</p>
-                <p className="text-2xl font-black text-emerald-600">{formatCurrency(totalPaid)}</p>
+                <p className="text-xl font-black text-emerald-600">{formatCurrency(totalPaid)}</p>
               </div>
-              <div className="p-6 text-center bg-slate-900 text-white">
+              <div className="p-5 border-r border-slate-200 bg-slate-50">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Tax Included</p>
+                <p className="text-xl font-black text-cyan-600">{formatCurrency(totalTaxPaid)}</p>
+              </div>
+              <div className="p-5 bg-slate-900 text-white">
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Remaining Balance</p>
-                <p className={`text-2xl font-black ${totalCredit > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                <p className={`text-xl font-black ${totalCredit > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
                   {formatCurrency(totalCredit)}
                 </p>
               </div>
@@ -284,9 +309,10 @@ export default function VendorStatementsPage() {
                 <thead>
                   <tr className="border-b-2 border-slate-900">
                     <th className="py-3 px-2 text-xs font-black text-slate-900 uppercase tracking-widest">Date</th>
-                    <th className="py-3 px-2 text-xs font-black text-slate-900 uppercase tracking-widest">PO Number</th>
-                    <th className="py-3 px-2 text-xs font-black text-slate-900 uppercase tracking-widest">Status</th>
-                    <th className="py-3 px-2 text-xs font-black text-slate-900 uppercase tracking-widest text-right">Amount</th>
+                    <th className="py-3 px-2 text-xs font-black text-slate-900 uppercase tracking-widest">PO / Invoice #</th>
+                    <th className="py-3 px-2 text-xs font-black text-slate-900 uppercase tracking-widest">Type</th>
+                    <th className="py-3 px-2 text-xs font-black text-slate-900 uppercase tracking-widest text-right">Tax Paid</th>
+                    <th className="py-3 px-2 text-xs font-black text-slate-900 uppercase tracking-widest text-right">Total Amount (Incl. Tax)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -305,6 +331,9 @@ export default function VendorStatementsPage() {
                           <span className="text-xs font-bold text-amber-700 bg-amber-100 px-2 py-1 rounded-md uppercase">INVOICE</span>
                         )}
                       </td>
+                      <td className="py-4 px-2 text-sm font-mono text-slate-500 text-right">
+                        {r.tax > 0 ? formatCurrency(r.tax) : "EGP 0.00"}
+                      </td>
                       <td className={`py-4 px-2 text-sm font-black text-right ${r.status === 'Payment' ? 'text-emerald-600' : 'text-slate-900'}`}>
                         {r.status === "Payment" ? "-" : ""}{formatCurrency(Number(r.price))}
                       </td>
@@ -317,8 +346,12 @@ export default function VendorStatementsPage() {
               <div className="flex justify-end mt-8">
                 <div className="w-1/2 bg-slate-50 border border-slate-200 rounded-xl p-6">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-bold text-slate-500">Total Amount</span>
+                    <span className="text-sm font-bold text-slate-500">Total Invoiced (Incl. Tax)</span>
                     <span className="text-sm font-mono font-bold text-slate-900">{formatCurrency(totalPurchased)}</span>
+                  </div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-bold text-slate-500">Total Tax Paid Component</span>
+                    <span className="text-sm font-mono font-bold text-cyan-600">{formatCurrency(totalTaxPaid)}</span>
                   </div>
                   <div className="flex justify-between items-center mb-4">
                     <span className="text-sm font-bold text-slate-500">Amount Paid</span>
