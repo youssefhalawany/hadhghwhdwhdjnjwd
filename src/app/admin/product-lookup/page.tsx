@@ -207,65 +207,76 @@ function ProductLookupContent() {
           }
         }
 
-        // STRICT CONSOLIDATION BY BARCODE / NORMALIZED PRODUCT IDENTITY
+        // STRICT CONSOLIDATION BY NORMALIZED PRODUCT NAME IDENTITY & BARCODE
         const consolidatedMap = new Map<string, any>();
 
         rawItems.forEach(item => {
           const barcodeKey = (item.barcode || item.id || "").trim();
-          const nameKey = normalizeKey(item.description || item.itemName || item.name || "");
+          const rawName = item.description || item.itemName || item.name || "";
+          const nameKey = normalizeKey(rawName);
           
-          // Primary grouping key: Barcode (or normalized product name if barcode missing)
-          const groupKey = (barcodeKey && barcodeKey !== "undefined" && barcodeKey !== "null") 
-            ? barcodeKey 
-            : (nameKey || item.id);
+          // Primary Grouping Key: Normalized product name (e.g. "aquafinawater15l")
+          // Group all items with identical product names into 1 single primary card!
+          const groupKey = nameKey || (barcodeKey && barcodeKey !== "undefined" ? barcodeKey : item.id);
+
+          const itemPrice = Number(item.currentPrice || item.price || 0);
 
           if (!consolidatedMap.has(groupKey)) {
             const initialPrices: any[] = [];
-            const pVal = Number(item.price || item.currentPrice || 0);
-            if (pVal > 0) initialPrices.push({ price: pVal, supplier: item.supplier, date: "Recorded" });
+            if (itemPrice > 0) initialPrices.push({ price: itemPrice, supplier: item.supplier, date: item.updatedAt ? new Date(item.updatedAt).toLocaleDateString('en-GB') : "Catalog" });
 
             if (item.priceHistory && Array.isArray(item.priceHistory)) {
-              item.priceHistory.forEach((ph: any) => initialPrices.push(ph));
+              item.priceHistory.forEach((ph: any) => {
+                if (ph.price) initialPrices.push(ph);
+              });
             }
 
             consolidatedMap.set(groupKey, {
               ...item,
               groupKey: groupKey,
-              allBarcodes: [barcodeKey || groupKey],
+              price: itemPrice,
+              allBarcodes: (barcodeKey && barcodeKey !== "undefined" && barcodeKey !== "null") ? [barcodeKey] : [],
               collectedPrices: initialPrices
             });
           } else {
             const existing = consolidatedMap.get(groupKey);
             
             // Merge barcodes
-            if (barcodeKey && !existing.allBarcodes.includes(barcodeKey)) {
+            if (barcodeKey && barcodeKey !== "undefined" && barcodeKey !== "null" && !existing.allBarcodes.includes(barcodeKey)) {
               existing.allBarcodes.push(barcodeKey);
             }
 
             // Merge price history
-            const pVal = Number(item.price || item.currentPrice || 0);
-            if (pVal > 0) {
-              existing.collectedPrices.push({ price: pVal, supplier: item.supplier || existing.supplier, date: "Recorded" });
+            if (itemPrice > 0) {
+              existing.collectedPrices.push({ price: itemPrice, supplier: item.supplier || existing.supplier, date: item.updatedAt ? new Date(item.updatedAt).toLocaleDateString('en-GB') : "Catalog" });
+              // Keep the latest price as active display price
+              existing.price = itemPrice;
+              existing.currentPrice = itemPrice;
             }
 
             if (item.priceHistory && Array.isArray(item.priceHistory)) {
-              item.priceHistory.forEach((ph: any) => existing.collectedPrices.push(ph));
+              item.priceHistory.forEach((ph: any) => {
+                if (ph.price) existing.collectedPrices.push(ph);
+              });
             }
 
-            // Update display fields if current item is more complete
+            // Update display supplier if missing
             if (!existing.supplier && item.supplier) existing.supplier = item.supplier;
-            if ((!existing.price || existing.price === 0) && pVal > 0) existing.price = pVal;
             if (item.expiryDate && (!existing.expiryDate || new Date(item.expiryDate) < new Date(existing.expiryDate))) {
               existing.expiryDate = item.expiryDate;
             }
           }
         });
 
-        // Compute price history count for each consolidated product
+        // Compute unique price history count and sort prices for each consolidated product
         const consolidatedList = Array.from(consolidatedMap.values()).map(prod => {
           const uniquePrices = new Set(prod.collectedPrices.map((p: any) => p.price));
+          const sortedPrices = [...prod.collectedPrices].filter(p => Number(p.price) > 0);
+          const latestPrice = sortedPrices.length > 0 ? sortedPrices[sortedPrices.length - 1].price : prod.price;
+
           return {
             ...prod,
+            price: latestPrice || prod.price,
             priceHistoryCount: uniquePrices.size
           };
         });
@@ -281,7 +292,7 @@ function ProductLookupContent() {
     fetchSearchProducts();
   }, [debouncedSearch]);
 
-  const performLookup = async (rawTerm: string) => {
+  const performLookup = async (rawTerm: string, clickProductObj?: any) => {
     const term = rawTerm.trim();
     if (!term) return;
     setLoading(true);
@@ -292,35 +303,37 @@ function ProductLookupContent() {
     setIsEditing(false);
 
     try {
-      const productRef = doc(productsDb, "products", term);
-      const productSnap = await getDoc(productRef);
+      let foundProduct = clickProductObj || null;
 
-      let foundProduct = null;
+      if (!foundProduct) {
+        const productRef = doc(productsDb, "products", term);
+        const productSnap = await getDoc(productRef);
 
-      if (productSnap.exists()) {
-        foundProduct = { id: productSnap.id, ...productSnap.data() };
-      } else {
-        const termLower = term.toLowerCase();
-        const termUpper = term.toUpperCase();
-        const termTitle = term.charAt(0).toUpperCase() + term.slice(1).toLowerCase();
+        if (productSnap.exists()) {
+          foundProduct = { id: productSnap.id, ...productSnap.data() };
+        } else {
+          const termLower = term.toLowerCase();
+          const termUpper = term.toUpperCase();
+          const termTitle = term.charAt(0).toUpperCase() + term.slice(1).toLowerCase();
 
-        const queries = [
-          getDocs(query(collection(productsDb, "products"), where("description", ">=", termLower), where("description", "<=", termLower + '\uf8ff'), limit(10))),
-          getDocs(query(collection(productsDb, "products"), where("description", ">=", termUpper), where("description", "<=", termUpper + '\uf8ff'), limit(10))),
-          getDocs(query(collection(productsDb, "products"), where("description", ">=", termTitle), where("description", "<=", termTitle + '\uf8ff'), limit(10))),
-          getDocs(query(collection(productsDb, "products"), where("itemName", ">=", termTitle), where("itemName", "<=", termTitle + '\uf8ff'), limit(10)))
-        ];
+          const queries = [
+            getDocs(query(collection(productsDb, "products"), where("description", ">=", termLower), where("description", "<=", termLower + '\uf8ff'), limit(10))),
+            getDocs(query(collection(productsDb, "products"), where("description", ">=", termUpper), where("description", "<=", termUpper + '\uf8ff'), limit(10))),
+            getDocs(query(collection(productsDb, "products"), where("description", ">=", termTitle), where("description", "<=", termTitle + '\uf8ff'), limit(10))),
+            getDocs(query(collection(productsDb, "products"), where("itemName", ">=", termTitle), where("itemName", "<=", termTitle + '\uf8ff'), limit(10)))
+          ];
 
-        const snaps = await Promise.all(queries);
-        const results: any[] = [];
-        snaps.forEach(s => {
-          s.docs.forEach(d => {
-            if (!results.find(r => r.id === d.id)) results.push({ id: d.id, ...d.data() });
+          const snaps = await Promise.all(queries);
+          const results: any[] = [];
+          snaps.forEach(s => {
+            s.docs.forEach(d => {
+              if (!results.find(r => r.id === d.id)) results.push({ id: d.id, ...d.data() });
+            });
           });
-        });
 
-        if (results.length > 0) {
-          foundProduct = results.find(p => p.description?.toLowerCase() === termLower || p.itemName?.toLowerCase() === termLower) || results[0];
+          if (results.length > 0) {
+            foundProduct = results.find(p => p.description?.toLowerCase() === termLower || p.itemName?.toLowerCase() === termLower) || results[0];
+          }
         }
       }
 
@@ -462,7 +475,7 @@ function ProductLookupContent() {
           {filteredProducts.map((p, idx) => (
             <div 
               key={p.id || idx}
-              onClick={() => performLookup(p.barcode || p.id)}
+              onClick={() => performLookup(p.barcode || p.id, p)}
               className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 cursor-pointer hover:border-blue-400 dark:hover:border-blue-600 hover:shadow-lg transition-all group flex flex-col h-full relative overflow-hidden"
             >
               <div className="aspect-video bg-slate-50 dark:bg-slate-800 rounded-xl mb-4 flex items-center justify-center border border-slate-100 dark:border-slate-700 overflow-hidden relative">
@@ -470,14 +483,14 @@ function ProductLookupContent() {
                 
                 {/* Price Tag */}
                 {p.price && (
-                  <div className="absolute bottom-2 right-2 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-400 px-2 py-1 rounded-md text-[10px] font-black tracking-wider shadow-sm flex items-center gap-1">
+                  <div className="absolute bottom-2 right-2 bg-emerald-600 text-white px-2.5 py-1 rounded-lg text-[10px] font-black tracking-wider shadow-md flex items-center gap-1 border border-emerald-500/50">
                     <DollarSign className="w-3 h-3" /> {p.price} EGP
                   </div>
                 )}
 
                 {/* Price History Badge indicator */}
                 {p.priceHistoryCount > 1 && (
-                  <div className="absolute top-2 left-2 bg-blue-500/10 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider flex items-center gap-1 border border-blue-500/20">
+                  <div className="absolute top-2 left-2 bg-blue-600 text-white px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider flex items-center gap-1 shadow-sm">
                     <History className="w-2.5 h-2.5" /> {p.priceHistoryCount} Prices
                   </div>
                 )}
@@ -499,7 +512,12 @@ function ProductLookupContent() {
               </div>
 
               <div className="mt-3 text-xs text-slate-500 flex justify-between items-center border-t border-slate-100 dark:border-slate-800 pt-2">
-                <span className="font-mono text-[10px] truncate max-w-[80%] opacity-60">#{p.barcode || p.id}</span>
+                <span className="font-mono text-[10px] truncate max-w-[85%] text-slate-400">
+                  #{p.barcode || p.id}
+                  {p.allBarcodes && p.allBarcodes.length > 1 && (
+                    <span className="ml-1 text-blue-500 font-bold text-[9px]">(+{p.allBarcodes.length - 1} Barcode)</span>
+                  )}
+                </span>
               </div>
             </div>
           ))}
@@ -605,16 +623,24 @@ function ProductLookupContent() {
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
                           <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
-                            <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">Barcode</p>
-                            <p className="font-mono text-sm font-bold text-slate-800 dark:text-slate-200">{productData.barcode || productData.id}</p>
+                            <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">Registered Barcodes</p>
+                            <div className="flex flex-wrap gap-1">
+                              {productData.allBarcodes && productData.allBarcodes.length > 0 ? (
+                                productData.allBarcodes.map((b: string, i: number) => (
+                                  <span key={i} className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200 bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded">#{b}</span>
+                                ))
+                              ) : (
+                                <p className="font-mono text-sm font-bold text-slate-800 dark:text-slate-200">#{productData.barcode || productData.id}</p>
+                              )}
+                            </div>
                           </div>
                           <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
                             <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">Supplier</p>
                             <p className="font-bold text-sm text-slate-800 dark:text-slate-200">{productData.supplier || productData.priceHistory?.[0]?.supplier || "N/A"}</p>
                           </div>
-                          <div className="bg-emerald-50 dark:bg-emerald-900/10 p-4 rounded-xl border border-emerald-100 dark:border-emerald-800/30 col-span-2 md:col-span-1">
-                            <p className="text-[10px] text-emerald-600 dark:text-emerald-500 font-bold uppercase mb-1">Catalog Price</p>
-                            <p className="font-bold text-lg text-emerald-700 dark:text-emerald-400">{productData.currentPrice ? `${productData.currentPrice} EGP` : productData.price ? `${productData.price} EGP` : "N/A"}</p>
+                          <div className="bg-emerald-500/10 p-4 rounded-xl border border-emerald-500/30 col-span-2 md:col-span-1">
+                            <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-black uppercase mb-1">🏷️ Latest Price</p>
+                            <p className="font-bold text-xl text-emerald-600 dark:text-emerald-400 font-mono">{productData.price ? `${productData.price} EGP` : productData.currentPrice ? `${productData.currentPrice} EGP` : "N/A"}</p>
                           </div>
                         </div>
                       </div>
