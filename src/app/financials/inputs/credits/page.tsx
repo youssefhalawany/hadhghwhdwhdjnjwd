@@ -2228,6 +2228,16 @@ export default function CreditsPage() {
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Amount to Pay *</label>
                     <div className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-black">EGP</span>
+                      <input 
+                        required 
+                        type="number" 
+                        step="0.01" 
+                        min="0.01"
+                        placeholder="0.00" 
+                        className="w-full pl-16 pr-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:bg-white focus:border-indigo-500 transition-all outline-none font-black text-slate-900 text-lg font-mono" 
+                        value={paymentAmount} 
+                        onChange={(e) => setPaymentAmount(e.target.value)} 
+                      />
                     </div>
                   </div>
 
