@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, addDoc } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase";
+import { dispatchNotificationSystem } from "@/lib/notifications";
 import { Search, Printer, Shield, ShieldAlert, Image as ImageIcon, ArrowLeftRight, Calendar, CheckCircle, ArrowLeft, TrendingUp, X, Clock, XCircle, AlertCircle, Filter } from "lucide-react";
 import Barcode from "react-barcode";
 import { useBranch } from "@/context/BranchContext";
@@ -89,40 +90,22 @@ export default function ManagerVoidsPage() {
         ? "REJECTED" 
         : "PENDING REVIEW";
 
+      // Dispatch Universal System Notification
       const notifTitle = newStatus === "closed_on_system" 
-        ? "Void Return Approved 🚫" 
+        ? `✅ Void Approved - Receipt #${targetVoid.transactionNumber || targetVoid.invoiceNumber || 'N/A'}`
         : newStatus === "rejected" 
-        ? "Void Request Rejected ❌" 
-        : "Void Status Updated ⏳";
+        ? `❌ Void Rejected - Receipt #${targetVoid.transactionNumber || targetVoid.invoiceNumber || 'N/A'}`
+        : `⏳ Void Status Updated`;
 
-      const notifBody = `Void Inv #${targetVoid.invoiceNumber || targetVoid.id.substring(0,6)} for EGP ${Number(targetVoid.amount || 0).toLocaleString()} was ${statusLabel}.`;
+      const notifBody = `Void of EGP ${Number(targetVoid.amount || 0).toLocaleString()} for Cashier ${targetVoid.cashierName || 'Cashier'} was ${statusLabel}.${rejectReason ? `\nRejection Reason: "${rejectReason}"` : ''}`;
 
-      await addDoc(collection(db, "notifications"), {
+      dispatchNotificationSystem({
         title: notifTitle,
         body: notifBody,
-        createdAt: new Date().toISOString(),
+        type: "void",
         url: "/voids/manager",
-        type: "void_updated"
+        metadata: { status: newStatus, amount: targetVoid.amount, cashierName: targetVoid.cashierName, rejectReason }
       });
-
-      fetch("/api/notifications/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: notifTitle,
-          body: notifBody,
-          url: "/voids/manager"
-        })
-      }).catch(err => console.debug("Push send error:", err));
-
-      fetch("/api/notifications/notify-master", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: notifTitle,
-          body: notifBody
-        })
-      }).catch(err => console.debug("Master notification error:", err));
 
       toast.success(`Void request ${targetVoid.transactionNumber} marked as ${statusLabel}!`);
 

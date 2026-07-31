@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { db, auth } from "@/lib/firebase";
+import { dispatchNotificationSystem } from "@/lib/notifications";
 import { 
   collection, 
   query, 
@@ -136,36 +137,14 @@ export default function DepositsPage() {
 
       const docRef = await addDoc(collection(db, "deposits"), depositData);
 
-      // Dispatch Manager Push Notification & Firestore Event
-      const notifTitle = "Safe Deposit Logged 🏦";
-      const notifBody = `Deposit of EGP ${Number(newDeposit.amount).toLocaleString()} transferred from ${newDeposit.from} to ${newDeposit.to}.`;
-
-      addDoc(collection(db, "notifications"), {
-        title: notifTitle,
-        body: notifBody,
-        createdAt: new Date().toISOString(),
+      // Dispatch Universal System Notification
+      dispatchNotificationSystem({
+        title: `🏦 Bank / Safe Deposit Logged`,
+        body: `Deposit of EGP ${Number(newDeposit.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })} logged by ${auth.currentUser?.displayName || 'User'}.\nDate: ${newDeposit.date || new Date().toISOString().split('T')[0]}${newDeposit.note ? ` • Note: ${newDeposit.note}` : ''}`,
+        type: "deposit",
         url: "/financials/inputs/deposits",
-        type: "deposit_created"
-      }).catch(err => console.debug("Notification doc add error:", err));
-
-      fetch("/api/notifications/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: notifTitle,
-          body: notifBody,
-          url: "/financials/inputs/deposits"
-        })
-      }).catch(err => console.debug("Push send error:", err));
-
-      fetch("/api/notifications/notify-master", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: notifTitle,
-          body: notifBody
-        })
-      }).catch(err => console.debug("Master notify error:", err));
+        metadata: { amount: newDeposit.amount, date: newDeposit.date, depositor: auth.currentUser?.displayName }
+      });
 
       toast.success("Deposit added & notification sent!");
       setShowAddModal(false);

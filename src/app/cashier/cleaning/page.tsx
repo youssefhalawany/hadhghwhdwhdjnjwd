@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, Sparkles, CheckCircle, Droplets } from "lucide-react";
 import { productsDb, db } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { dispatchNotificationSystem } from "@/lib/notifications";
 import { useLanguage } from "@/context/LanguageContext";
 import { PageWrapper } from "@/components/PageWrapper";
 import { CashierBottomNav } from "@/components/CashierBottomNav";
@@ -95,30 +96,14 @@ export default function CashierCleaningPage() {
 
       await addDoc(collection(productsDb, "cleaning_logs"), payload);
       
-      try {
-        await addDoc(collection(db, "notifications"), {
-          type: "cleaning",
-          message: `${cashierName} submitted a new Cleaning Record`,
-          cashierName,
-          storeId: storeId,
-          createdAt: serverTimestamp(),
-          read: false,
-          link: "/admin/cleaning",
-        });
-      } catch (notifyErr) {
-        console.error("Notification failed:", notifyErr);
-      }
-      
-      try {
-        fetch("/api/notifications/notify-master", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: "New Cleaning Record",
-            body: `Cashier: ${cashierName || 'Unknown'}\nArea: ${payload.areaNameEn}`
-          })
-        }).catch(e => console.error("Notify error", e));
-      } catch (err) {}
+      // Dispatch Universal System Notification
+      dispatchNotificationSystem({
+        title: `🧹 Cleaning Task Completed - ${payload.areaNameEn}`,
+        body: `Completed By: ${cashierName || 'Cashier'} • Area: ${payload.areaNameEn} (${payload.areaNameAr})\nTime: ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`,
+        type: "cleaning",
+        url: "/admin/cleaning",
+        metadata: { cashierName, area: payload.areaNameEn }
+      });
       playSuccessSound();
       setShowSuccess(true);
       setTimeout(() => {

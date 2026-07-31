@@ -9,6 +9,7 @@ import {
   CheckCircle, Clock, Trash2, Package, Globe, Camera, X, QrCode, Search, ShieldCheck
 } from "lucide-react";
 import { CashierBottomNav } from "@/components/CashierBottomNav";
+import { dispatchNotificationSystem } from "@/lib/notifications";
 import { Html5Qrcode } from "html5-qrcode";
 import Barcode from "react-barcode";
 import { vibrateSuccess } from "@/lib/haptics";
@@ -271,30 +272,14 @@ export default function ExpiryTrackerPage() {
     try {
       const docRef = await addDoc(collection(db, "expiries"), newItem);
       
-      try {
-        await addDoc(collection(db, "notifications"), {
-          type: "expiry",
-          message: `${authenticatedUser?.name || "Unknown"} submitted a new Expiry Record`,
-          cashierName: authenticatedUser?.name || "Unknown",
-          storeId: authenticatedUser?.branchId || "Unknown",
-          createdAt: serverTimestamp(),
-          read: false,
-          link: "/dashboard/expiries-audit",
-        });
-      } catch (notifyErr) {
-        console.error("Notification failed:", notifyErr);
-      }
-      
-      try {
-        fetch("/api/notifications/notify-master", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: "New Expiry Item Tracked",
-            body: `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' })}\nLogged By: ${newItem.addedBy}\nItem: ${newItem.itemName}\nQuantity: ${newItem.quantity}\nExpiry Date: ${newItem.expiryDate}\nStatus: ${newItem.status}`
-          })
-        }).catch(e => console.error("Notify error", e));
-      } catch (err) {}
+      // Dispatch Universal System Notification
+      dispatchNotificationSystem({
+        title: `⏰ Product Expiry Logged - ${newItem.itemName}`,
+        body: `Logged By: ${newItem.addedBy || 'Cashier'} • Item: ${newItem.itemName}\nExpiry Date: ${newItem.expiryDate} • Quantity: ${newItem.quantity} • Status: ${newItem.status}`,
+        type: "expiry",
+        url: "/products/expiries-audit",
+        metadata: { itemName: newItem.itemName, expiryDate: newItem.expiryDate, quantity: newItem.quantity }
+      });
 
       setExpiries(prev => [...prev, { id: docRef.id, ...newItem }].sort((a,b) => a.expiryDate.localeCompare(b.expiryDate)));
       setItemName("");

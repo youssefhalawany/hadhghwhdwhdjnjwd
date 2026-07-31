@@ -19,6 +19,7 @@ const SignaturePad = dynamic(() => import("react-signature-canvas"), { ssr: fals
 import { toast } from "sonner";
 import { triggerSuccessOverlay } from "@/components/MobileUX/SuccessOverlay";
 import { SkeletonList } from "@/components/MobileUX/SkeletonLoader";
+import { dispatchNotificationSystem } from "@/lib/notifications";
 
 // Translation Dictionary
 const t = {
@@ -660,15 +661,14 @@ export default function CashierShiftReportPage() {
         }
       }
       
-      // Fire and forget notification
-      fetch("/api/notifications/notify-master", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: "New Shift Report",
-          body: `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' })}\nCashier: ${c?.name || 'Unknown'}\nStore: ${c?.storeId || 'Unknown'}\nShift: ${c?.shift || 'Unknown'}\nTotal Cash: ${calculateTotalCash()} EGP\nVisa: ${visa} EGP\nTotal Submitted: ${calculateTotalMoney()} EGP\nSignature: ${signature ? 'Captured' : 'None'}\n\nView Full Report & Signature:\n${window.location.origin}/shift-reports/view?id=${submittedId}`
-        })
-      }).catch(err => console.error("Notify error", err));
+      // Fire system-wide push and in-app notifications
+      dispatchNotificationSystem({
+        title: `📋 New Shift Report Submitted - ${c?.name || 'Cashier'}`,
+        body: `Store: ${c?.storeId || 'eL-alamein-4'} • Shift: ${c?.shift || 'Standard'}\nTotal Money: EGP ${calculateTotalMoney().toLocaleString()} (Cash: EGP ${calculateTotalCash().toLocaleString()}, Visa: EGP ${visa || 0})`,
+        type: "shift",
+        url: `/shift-reports/view?id=${submittedId}`,
+        metadata: { cashierName: c?.name, storeId: c?.storeId, shiftId: submittedId }
+      });
       
       setIsDroppingSafe(true);
 

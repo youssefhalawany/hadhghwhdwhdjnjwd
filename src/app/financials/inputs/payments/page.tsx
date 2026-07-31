@@ -49,6 +49,7 @@ function numberToArabicWords(num: number): string {
 
 import React, { useState, useEffect, useMemo } from "react";
 import { TiltCard } from "@/components/MobileUX/TiltCard";
+import { dispatchNotificationSystem } from "@/lib/notifications";
 import { PullToRefresh } from "@/components/MobileUX/PullToRefresh";
 import { db, auth, storage, dbService } from "@/lib/firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -726,36 +727,14 @@ export default function PaymentsRedesignPage() {
 
       const docRef = await addDoc(collection(db, "cash_payments"), newPayment);
 
-      // Dispatch Manager Push Notification & Firestore Event
-      const notifTitle = "New Payment Recorded 💵";
-      const notifBody = `Payment of EGP ${Number(total).toLocaleString()} logged for ${companyName} (${method?.replace('_', ' ') || 'cash'}).`;
-
-      addDoc(collection(db, "notifications"), {
-        title: notifTitle,
-        body: notifBody,
-        createdAt: new Date().toISOString(),
+      // Dispatch Universal System Notification
+      dispatchNotificationSystem({
+        title: `💵 Cash Payment Logged - ${companyName}`,
+        body: `Payment of EGP ${Number(total).toLocaleString(undefined, { minimumFractionDigits: 2 })} logged for ${companyName}.\nTax: EGP ${Number(numTax).toLocaleString()} • Method: ${method?.replace('_', ' ').toUpperCase() || 'CASH'}${invoiceNumber ? ` • Inv #: ${invoiceNumber}` : ''}`,
+        type: "payment",
         url: "/financials/inputs/payments",
-        type: "payment_created"
-      }).catch(err => console.debug("Notification doc add error:", err));
-
-      fetch("/api/notifications/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: notifTitle,
-          body: notifBody,
-          url: "/financials/inputs/payments"
-        })
-      }).catch(err => console.debug("Push send error:", err));
-
-      fetch("/api/notifications/notify-master", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: notifTitle,
-          body: notifBody
-        })
-      }).catch(err => console.debug("Master notify error:", err));
+        metadata: { companyName, totalAmount: total, method, invoiceNumber }
+      });
 
       const role = typeof window !== "undefined" ? (localStorage.getItem("circlek_role") || "manager") : "manager";
       dbService.logAction(

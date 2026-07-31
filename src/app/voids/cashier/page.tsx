@@ -13,6 +13,7 @@ import { NumericFormat } from "react-number-format";
 import { useBranch } from "@/context/BranchContext";
 import { PinPad } from "@/components/PinPad";
 import { CashierBottomNav } from "@/components/CashierBottomNav";
+import { dispatchNotificationSystem } from "@/lib/notifications";
 
 const t = {
   en: {
@@ -500,6 +501,14 @@ export default function CashierVoidPage() {
           createdAt: serverTimestamp(),
           read: false,
           link: "/voids/manager",
+        });
+        // Dispatch System-wide notification
+        dispatchNotificationSystem({
+          title: `🚨 Void & Return Requested - Receipt #${transactionNumber || 'N/A'}`,
+          body: `Cashier: ${cashierName || 'Cashier'} • Total: EGP ${Number(amount).toLocaleString()}\nItems: ${selectedItems.map((i: any) => `${i.desc || 'Item'} (x${i.qty || 1})`).join(', ')}\nReason: ${reason || 'Customer Return'}`,
+          type: "void",
+          url: "/voids/manager",
+          metadata: { cashierName, amount, transactionNumber, reason }
         });
       } catch (notifyErr) {
         console.error("Notification failed:", notifyErr);

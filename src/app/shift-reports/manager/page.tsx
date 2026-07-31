@@ -17,6 +17,7 @@ import { useBranch } from "@/context/BranchContext";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MobileDataCard } from "@/components/MobileUX/MobileDataCard";
+import { dispatchNotificationSystem } from "@/lib/notifications";
 
 export default function ManagerAuditPage() {
   const { currentBranch } = useBranch();
@@ -477,15 +478,14 @@ export default function ManagerAuditPage() {
         });
       }
 
-      // Fire and forget notification
-      fetch("/api/notifications/notify-master", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: "New Sales Record (Shift Approved)",
-          body: `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' })}\nApproved By: ${managerName}\nCashier: ${selectedReport?.cashierDetails?.name}\nShift: ${auditShift}\nSystem Cash: ${expectedCash} EGP\nSystem Visa: ${expectedVisa} EGP\nOver/Short: ${calculateCashVariance()} EGP\nCoffee Variance: ${Number(coffeePercent) || 0}%\nNotes: ${finalNotes || 'None'}\n\nView Approved Report:\n${window.location.origin}/shift-reports/view?id=${selectedReport.id}`
-        })
-      }).catch(err => console.error("Notify error", err));
+      // Dispatch System & Ibrahim Notifications
+      dispatchNotificationSystem({
+        title: `✅ Shift Report Approved - ${selectedReport?.cashierDetails?.name || 'Cashier'}`,
+        body: `Approved By: ${managerName || 'Manager'} • Shift: ${auditShift}\nCash: EGP ${expectedCash} • Visa: EGP ${expectedVisa}\nOver/Short: EGP ${calculateCashVariance()}`,
+        type: "shift",
+        url: `/shift-reports/view?id=${selectedReport.id}`,
+        metadata: { cashierName: selectedReport?.cashierDetails?.name, managerName, status: "approved" }
+      });
 
       toast.success("Report Approved & Saved! Sales record created.");
       setActiveTab("history");
@@ -519,6 +519,15 @@ export default function ManagerAuditPage() {
           rejectReason: rejectReason,
           rejectedAt: new Date().toISOString()
         }
+      });
+
+      // Dispatch System & Ibrahim Notifications for Rejection
+      dispatchNotificationSystem({
+        title: `❌ Shift Report Rejected - ${selectedReport?.cashierDetails?.name || 'Cashier'}`,
+        body: `Shift #${selectedReport.id.substring(0, 6)} rejected by ${managerName || 'Manager'}.\nReason: "${rejectReason.trim()}"`,
+        type: "shift",
+        url: `/shift-reports/manager`,
+        metadata: { cashierName: selectedReport?.cashierDetails?.name, rejectReason, status: "rejected" }
       });
 
       toast.success("Report Rejected & sent back to cashier!");

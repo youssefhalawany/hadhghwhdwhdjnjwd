@@ -39,19 +39,35 @@ export async function POST(request: Request) {
 
     let targetTokens: string[] = Array.isArray(inputTokens) && inputTokens.length > 0 ? inputTokens : [];
 
-    // If no tokens were explicitly provided, query all registered FCM tokens from user_tokens collection
+    // If no tokens were explicitly provided, query all registered FCM tokens from user_tokens and users collections
     if (targetTokens.length === 0) {
       try {
         const adminDb = getFirestore();
-        const tokensSnap = await adminDb.collection('user_tokens').get();
+        const [tokensSnap, usersSnap] = await Promise.all([
+          adminDb.collection('user_tokens').get(),
+          adminDb.collection('users').get()
+        ]);
+
         tokensSnap.forEach((doc) => {
           const data = doc.data();
           if (data.fcmToken && typeof data.fcmToken === 'string') {
             targetTokens.push(data.fcmToken);
           }
         });
+
+        usersSnap.forEach((doc) => {
+          const data = doc.data();
+          if (data.fcmToken && typeof data.fcmToken === 'string') {
+            targetTokens.push(data.fcmToken);
+          }
+          if (Array.isArray(data.fcmTokens)) {
+            data.fcmTokens.forEach((t: any) => {
+              if (t && typeof t === 'string') targetTokens.push(t);
+            });
+          }
+        });
       } catch (err) {
-        console.error("Error fetching user_tokens from Firestore:", err);
+        console.error("Error fetching FCM tokens from Firestore:", err);
       }
     }
 
