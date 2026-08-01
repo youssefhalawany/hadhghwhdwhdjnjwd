@@ -41,7 +41,7 @@ export function MobileHeader() {
       );
     };
     updateTime();
-    const interval = setInterval(updateTime, 1000);
+    const interval = setInterval(updateTime, 30000);
     return () => clearInterval(interval);
   }, [isAr]);
 
@@ -73,11 +73,42 @@ export function MobileHeader() {
     }
 
     if (Notification.permission === "granted") {
-      toast.success(isAr ? "الإشعارات الفورية مفعّلة بنجاح 🔔" : "Push Notifications Active 🔔");
+      try {
+        new Notification("🔔 Test Push Notification", {
+          body: "Test notification dispatched successfully from Circle K Portal!",
+          icon: "/icon-manager.png"
+        });
+      } catch (err) {
+        console.warn("Local notification display error:", err);
+      }
+      
+      try {
+        fetch("/api/notifications/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: "🔔 Test Push Notification - Circle K",
+            body: "Test notification dispatched successfully to all devices!",
+            url: "/admin/product-lookup"
+          })
+        });
+      } catch (err) {
+        console.warn("FCM dispatch error:", err);
+      }
+
+      toast.success(isAr ? "تم إرسال إشعار تجريبي بنجاح! 🔔" : "Test Notification Sent! 🔔");
     } else {
       const permission = await Notification.requestPermission();
       if (permission === "granted") {
-        toast.success(isAr ? "تم تفعيل الإشعارات الفورية للموبايل! 🔔" : "Push Notifications Enabled! 🔔");
+        try {
+          new Notification("🔔 Test Push Notification", {
+            body: "Push Notifications Enabled & Verified!",
+            icon: "/icon-manager.png"
+          });
+        } catch (err) {
+          console.warn("Local notification display error:", err);
+        }
+        toast.success(isAr ? "تم تفعيل وتجربة الإشعارات بنجاح! 🔔" : "Push Notifications Enabled & Tested! 🔔");
       } else {
         toast.error(isAr ? "تم رفض الإشعارات. يرجى تفعيلها من إعدادات المتصفح" : "Notification permission denied in browser settings.");
       }

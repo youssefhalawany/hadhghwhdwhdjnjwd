@@ -111,20 +111,26 @@ export default function SalesManagementPage() {
     return () => unsubscribe();
   }, [filterType, filterValue, currentBranch]);
 
-  const nightSales = sales.filter(s => s.shift?.toLowerCase() === "night");
-  const morningSales = sales.filter(s => s.shift?.toLowerCase() === "morning");
+  const { nightSales, morningSales, nightTotals, morningTotals } = useMemo(() => {
+    const night = sales.filter(s => s.shift?.toLowerCase() === "night");
+    const morning = sales.filter(s => s.shift?.toLowerCase() === "morning");
 
-  const calcTotals = (list: any[]) => {
-    return list.reduce((acc, curr) => {
-      acc.cash += Number(curr.cash) || 0;
-      acc.visa += Number(curr.visa) || 0;
-      acc.overShort += Number(curr.overShort) || 0;
-      return acc;
-    }, { cash: 0, visa: 0, overShort: 0 });
-  };
+    const calcTotals = (list: any[]) => {
+      return list.reduce((acc, curr) => {
+        acc.cash += Number(curr.cash) || 0;
+        acc.visa += Number(curr.visa) || 0;
+        acc.overShort += Number(curr.overShort) || 0;
+        return acc;
+      }, { cash: 0, visa: 0, overShort: 0 });
+    };
 
-  const nightTotals = calcTotals(nightSales);
-  const morningTotals = calcTotals(morningSales);
+    return {
+      nightSales: night,
+      morningSales: morning,
+      nightTotals: calcTotals(night),
+      morningTotals: calcTotals(morning)
+    };
+  }, [sales]);
 
   // --- NEW: Data Processing for Insights ---
   const { trendData, radarData, heatmapData, shiftBattle, averageDailySales } = useMemo(() => {

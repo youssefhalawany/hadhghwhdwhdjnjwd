@@ -6,7 +6,7 @@ const withPWA = withPWAInit({
   register: true,
   cacheOnFrontEndNav: true,
   aggressiveFrontEndNavCaching: true,
-  reloadOnOnline: true,
+  reloadOnOnline: false,
   workboxOptions: {
     disableDevLogs: true,
   },
@@ -19,6 +19,9 @@ const nextConfig = {
   reactStrictMode: false,
   typescript: {
     ignoreBuildErrors: true,
+  },
+  experimental: {
+    optimizePackageImports: ["lucide-react", "recharts", "framer-motion", "sonner"],
   },
   turbopack: {},
 };

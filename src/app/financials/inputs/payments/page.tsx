@@ -984,16 +984,22 @@ export default function PaymentsRedesignPage() {
     });
   }, [payments, monthFilter, searchQuery]);
 
-  // Aggregate Category Stats for the top cards
-  const categoryStats = useMemo(() => {
+  // Aggregate Category Stats for the top cards & method totals
+  const { categoryStats, methodTotals } = useMemo(() => {
     const stats: Record<string, { count: number; total: number }> = {};
+    const methods = { cash: 0, visa: 0, bank_transfer: 0 };
     filteredPayments.forEach(p => {
       const cat = p.category || "other";
       if (!stats[cat]) stats[cat] = { count: 0, total: 0 };
       stats[cat].count += 1;
       stats[cat].total += (p.total || 0);
+
+      const m = p.method as keyof typeof methods;
+      if (methods[m] !== undefined) {
+        methods[m] += (Number(p.total) || 0);
+      }
     });
-    return stats;
+    return { categoryStats: stats, methodTotals: methods };
   }, [filteredPayments]);
 
   // Derived Supplier Profile Data
@@ -1282,19 +1288,19 @@ export default function PaymentsRedesignPage() {
             <div className="p-3 rounded-2xl bg-[#0B1121] border border-emerald-500/30">
               <p className="text-[10px] font-extrabold text-slate-400 uppercase">Cash Paid</p>
               <p className="text-sm font-black font-mono text-emerald-400 mt-0.5">
-                EGP {filteredPayments.filter(p => p.method === "cash").reduce((s, p) => s + (Number(p.total) || 0), 0).toLocaleString()}
+                EGP {methodTotals.cash.toLocaleString()}
               </p>
             </div>
             <div className="p-3 rounded-2xl bg-[#0B1121] border border-blue-500/30">
               <p className="text-[10px] font-extrabold text-slate-400 uppercase">Visa Paid</p>
               <p className="text-sm font-black font-mono text-blue-400 mt-0.5">
-                EGP {filteredPayments.filter(p => p.method === "visa").reduce((s, p) => s + (Number(p.total) || 0), 0).toLocaleString()}
+                EGP {methodTotals.visa.toLocaleString()}
               </p>
             </div>
             <div className="p-3 rounded-2xl bg-[#0B1121] border border-purple-500/30">
               <p className="text-[10px] font-extrabold text-slate-400 uppercase">Bank Transfer</p>
               <p className="text-sm font-black font-mono text-purple-400 mt-0.5">
-                EGP {filteredPayments.filter(p => p.method === "bank_transfer").reduce((s, p) => s + (Number(p.total) || 0), 0).toLocaleString()}
+                EGP {methodTotals.bank_transfer.toLocaleString()}
               </p>
             </div>
           </div>
