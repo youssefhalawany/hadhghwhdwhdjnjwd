@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { db, auth } from "@/lib/firebase";
 import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, getDocs, getDoc, updateDoc, where, limit } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
-import { Plus, Check, X, ShieldAlert, DollarSign, Calendar, Save, Trash2, CheckCircle2, Printer, Filter, ChevronRight, Share2, Send, FileText, Layers, Download } from "lucide-react";
+import { Plus, Check, X, ShieldAlert, DollarSign, Calendar, Save, Trash2, CheckCircle2, Printer, Filter, ChevronRight, Share2, Send, FileText, Layers, Download, Pencil, Clock, CreditCard } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBranch, BranchId } from "@/context/BranchContext";
@@ -88,6 +88,7 @@ export default function AdminPayrollPage() {
   const [paidLines, setPaidLines] = useState<PayrollRecord[]>([]);
   
   const [isAdding, setIsAdding] = useState(false);
+  const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<PayrollRecord>>({
     bonus: 0,
     days: 0,
@@ -337,6 +338,31 @@ export default function AdminPayrollPage() {
     return { standardPay, netPay };
   };
 
+  const handleEditDraft = (draft: PayrollRecord) => {
+    const emp = employees.find(e => e.id === draft.employeeId);
+    setSelectedEmp(emp || { id: draft.employeeId, name: draft.employeeId });
+    setEditingDraftId(draft.id || null);
+    setEditForm({
+      employeeId: draft.employeeId,
+      storeId: draft.storeId || emp?.storeId || "",
+      month: draft.month,
+      days: draft.days ?? 30,
+      insurance: draft.insurance ?? (Number(emp?.insurance) || 0),
+      bonus: draft.bonus ?? 0,
+      deductions: draft.deductions ?? 0,
+      loanThisMonth: draft.loanThisMonth ?? 0,
+      overtime: draft.overtime ?? 0,
+      paymentMethod: draft.paymentMethod || "cash",
+      appliedDeductionIds: draft.appliedDeductionIds || [],
+      appliedLoanIds: draft.appliedLoanIds || [],
+      appliedAdjustmentIds: draft.appliedAdjustmentIds || [],
+    });
+    setIsAdding(true);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
   const handleSaveDraft = async () => {
     if (!selectedEmp || !editForm.employeeId) {
       toast.error("Please select an employee");
@@ -347,7 +373,7 @@ export default function AdminPayrollPage() {
 
     const record: PayrollRecord = {
       bonus: Number(editForm.bonus) || 0,
-      createdAt: new Date().toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }),
+      createdAt: editingDraftId ? (editForm.createdAt || new Date().toLocaleString('en-GB', { timeZone: 'Africa/Cairo' })) : new Date().toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }),
       createdBy: currentUserEmail,
       days: Number(editForm.days) || 0,
       deductions: Number(editForm.deductions) || 0,
@@ -366,10 +392,16 @@ export default function AdminPayrollPage() {
     };
 
     try {
-      await addDoc(collection(db, "payroll_drafts"), record);
-      toast.success("Saved as Unpaid Draft");
+      if (editingDraftId) {
+        await updateDoc(doc(db, "payroll_drafts", editingDraftId), record);
+        toast.success("Unpaid Draft updated successfully");
+      } else {
+        await addDoc(collection(db, "payroll_drafts"), record);
+        toast.success("Saved as Unpaid Draft");
+      }
       setIsAdding(false);
       setSelectedEmp(null);
+      setEditingDraftId(null);
     } catch (err: any) {
       toast.error("Failed to save draft: " + err.message);
     }
@@ -486,6 +518,10 @@ export default function AdminPayrollPage() {
 
   const allMonths = Array.from(new Set([...drafts, ...paidLines].map(d => d.month))).sort().reverse();
 
+  const totalPendingPayment = filteredDrafts.reduce((sum, d) => sum + (Number(d.netPay) || 0), 0);
+  const totalPaidPayment = filteredLines.reduce((sum, d) => sum + (Number(d.netPay) || 0), 0);
+  const totalCombinedPayroll = totalPendingPayment + totalPaidPayment;
+
   const { standardPay, netPay } = calcPays();
 
   return (
@@ -505,7 +541,12 @@ export default function AdminPayrollPage() {
         </div>
         {!isAdding && (
           <button 
-            onClick={() => setIsAdding(true)}
+            onClick={() => {
+              setEditingDraftId(null);
+              setSelectedEmp(null);
+              setEditForm({ bonus: 0, days: 0, deductions: 0, insurance: 0, loanThisMonth: 0, overtime: 0, paymentMethod: "cash" });
+              setIsAdding(true);
+            }}
             className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm flex items-center gap-2"
           >
             <Plus className="w-5 h-5" /> {t("admin.payroll.new_payroll")}
@@ -517,9 +558,9 @@ export default function AdminPayrollPage() {
         <div className="bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/50 rounded-2xl p-6 shadow-xl shadow-indigo-100/20 dark:shadow-none animate-in slide-in-from-top-4">
           <div className="flex justify-between items-center mb-6 border-b border-slate-100 dark:border-slate-800 pb-4">
             <h2 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-indigo-500" /> {t("admin.payroll.draft_new")}
+              <Calendar className="w-5 h-5 text-indigo-500" /> {editingDraftId ? "Edit Unpaid Payroll Draft" : t("admin.payroll.draft_new")}
             </h2>
-            <button onClick={() => { setIsAdding(false); setSelectedEmp(null); }} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-500">
+            <button onClick={() => { setIsAdding(false); setSelectedEmp(null); setEditingDraftId(null); }} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-500">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -635,7 +676,7 @@ export default function AdminPayrollPage() {
                       onClick={handleSaveDraft}
                       className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-md"
                     >
-                      <Save className="w-5 h-5" /> Save as Draft (Unpaid)
+                      <Save className="w-5 h-5" /> {editingDraftId ? "Update Draft" : "Save as Draft (Unpaid)"}
                     </button>
                   </div>
                 </div>
@@ -644,6 +685,48 @@ export default function AdminPayrollPage() {
           </div>
         </div>
       )}
+
+      {/* PAYROLL SUMMARY METRICS (DYNAMIC TO BRANCH & PERIOD FILTERS) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 print:hidden">
+        <div className="bg-white dark:bg-slate-900 border border-amber-200/60 dark:border-amber-900/40 p-5 rounded-2xl shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">Total Pending Payment</p>
+            <h3 className="text-2xl font-black text-slate-800 dark:text-white mt-1">
+              EGP {totalPendingPayment.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </h3>
+            <p className="text-xs text-slate-400 mt-1 font-medium">{filteredDrafts.length} unpaid draft payrolls</p>
+          </div>
+          <div className="p-3 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-xl">
+            <Clock className="w-6 h-6" />
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-emerald-200/60 dark:border-emerald-900/40 p-5 rounded-2xl shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Total Paid Payment</p>
+            <h3 className="text-2xl font-black text-slate-800 dark:text-white mt-1">
+              EGP {totalPaidPayment.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </h3>
+            <p className="text-xs text-slate-400 mt-1 font-medium">{filteredLines.length} paid payroll records</p>
+          </div>
+          <div className="p-3 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl">
+            <CheckCircle2 className="w-6 h-6" />
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-indigo-200/60 dark:border-indigo-900/40 p-5 rounded-2xl shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Total Combined Payroll</p>
+            <h3 className="text-2xl font-black text-slate-800 dark:text-white mt-1">
+              EGP {totalCombinedPayroll.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </h3>
+            <p className="text-xs text-slate-400 mt-1 font-medium">{filteredDrafts.length + filteredLines.length} total records in filter</p>
+          </div>
+          <div className="p-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl">
+            <CreditCard className="w-6 h-6" />
+          </div>
+        </div>
+      </div>
 
       {/* FILTER BAR */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl flex flex-col md:flex-row items-center gap-4 shadow-sm print:hidden">
@@ -730,7 +813,7 @@ export default function AdminPayrollPage() {
                   </span>
                 </div>
                 <div className="pt-2 border-t border-slate-200 dark:border-slate-700 text-slate-500">
-                  📄 <strong>Multi-Page Packet Includes:</strong> Executive Summary Table + Per-Employee Separator Pages + 2-Page Payslip & Receipt Packets.
+                  📄 <strong>Multi-Page Packet Includes:</strong> Executive Summary Table + Per-Employee 2-Page Payslip & Receipt Packets.
                 </div>
               </div>
 
@@ -744,7 +827,7 @@ export default function AdminPayrollPage() {
                 >
                   <Printer className="w-6 h-6 text-indigo-400" />
                   <span>Print Unified PDF</span>
-                  <span className="text-[10px] font-normal text-slate-400">Summary + Separators + 2-Page Slips</span>
+                  <span className="text-[10px] font-normal text-slate-400">Executive Summary + 2-Page Slips</span>
                 </button>
 
                 <button
@@ -792,19 +875,36 @@ export default function AdminPayrollPage() {
                         <td className="px-4 py-3 font-mono text-slate-500">{(d.standardPay || 0).toLocaleString()}</td>
                         <td className="px-4 py-3 font-mono font-bold text-indigo-600 dark:text-indigo-400">{(d.netPay || 0).toLocaleString()} EGP</td>
                         <td className="px-4 py-3 text-right">
-                          <div className="flex justify-end gap-2">
+                          <div className="flex justify-end items-center gap-2">
                             <button 
-                              onClick={() => deleteDraft(d.id!)}
-                              className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded print:hidden"
-                              title="Delete Draft"
+                              onClick={() => handleEditDraft(d)}
+                              className="px-2.5 py-1.5 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50 rounded-lg font-bold text-xs flex items-center gap-1 transition-colors print:hidden"
+                              title="Edit Draft"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Pencil className="w-3.5 h-3.5" /> Edit
+                            </button>
+                            <button 
+                              onClick={() => {
+                                setPrintPayslipRecord(d);
+                                setTimeout(() => window.print(), 100);
+                              }}
+                              className="px-2.5 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 rounded-lg font-bold text-xs flex items-center gap-1 transition-colors print:hidden"
+                              title="Print Payslip"
+                            >
+                              <Printer className="w-3.5 h-3.5" /> Print Payslip
                             </button>
                             <button 
                               onClick={() => openMarkPaidModal(d)}
                               className="px-3 py-1.5 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50 rounded-lg font-bold text-xs flex items-center gap-1 transition-colors print:hidden"
                             >
                               <CheckCircle2 className="w-3.5 h-3.5" /> Mark Paid
+                            </button>
+                            <button 
+                              onClick={() => deleteDraft(d.id!)}
+                              className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded print:hidden"
+                              title="Delete Draft"
+                            >
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
                         </td>
@@ -918,7 +1018,7 @@ export default function AdminPayrollPage() {
     )}
 
     {/* PRINTABLE REPORT */}
-    <div className={`hidden ${printPayslipRecord ? 'hidden' : 'print:block'} w-full text-black bg-white`}>
+    <div className={`hidden ${printPayslipRecord || isBatchPrinting ? 'hidden' : 'print:block'} w-full text-black bg-white`}>
       <div className="mb-6 text-center border-b-2 border-black pb-4">
         <h1 className="text-2xl font-black uppercase tracking-widest">Payroll Report</h1>
         <p className="text-sm text-gray-600 mt-1">
@@ -1419,40 +1519,6 @@ export default function AdminPayrollPage() {
 
             return (
               <React.Fragment key={p.id || idx}>
-                {/* SEPARATOR PAGE */}
-                <div style={{ boxSizing: "border-box", width: "210mm", height: "297mm", maxHeight: "297mm", padding: "12mm 15mm 18mm 15mm", margin: "0 auto", position: "relative", overflow: "hidden", pageBreakBefore: "always", breakBefore: "page", pageBreakAfter: "always", breakAfter: "page", pageBreakInside: "avoid", breakInside: "avoid", backgroundColor: "#ffffff", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
-                  <div style={{ border: "4px double #0f172a", width: "100%", height: "100%", borderRadius: "12px", padding: "30px", boxSizing: "border-box", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
-                    <div style={{ fontSize: "13px", fontWeight: "bold", letterSpacing: "3px", color: "#64748b", textTransform: "uppercase", marginBottom: "15px" }}>
-                      {empCompName} — PAYROLL PACKET
-                    </div>
-                    <h1 style={{ fontSize: "32px", fontWeight: "900", color: "#0f172a", margin: "10px 0 25px 0", borderBottom: "3px solid #0f172a", paddingBottom: "15px", width: "100%" }}>
-                      {emp.name || "Employee"}
-                    </h1>
-                    
-                    <div style={{ fontSize: "14px", color: "#334155", lineHeight: "2.2", width: "100%", maxWidth: "460px", margin: "0 auto", textAlign: "left", backgroundColor: "#f8fafc", padding: "20px", borderRadius: "12px", border: "1px solid #cbd5e1" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #e2e8f0", paddingBottom: "8px" }}>
-                        <strong>Employee ID:</strong> <span>{emp.id || "-"}</span>
-                      </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #e2e8f0", paddingBottom: "8px", paddingTop: "8px" }}>
-                        <strong>National ID:</strong> <span>{emp.nationalId || "-"}</span>
-                      </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #e2e8f0", paddingBottom: "8px", paddingTop: "8px" }}>
-                        <strong>Position:</strong> <span>{emp.position || "-"}</span>
-                      </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #e2e8f0", paddingBottom: "8px", paddingTop: "8px" }}>
-                        <strong>Payroll Period:</strong> <span>{p.month}</span>
-                      </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", paddingTop: "8px" }}>
-                        <strong>Net Amount Payable:</strong> <span style={{ color: "#059669", fontWeight: "bold" }}>EGP {(p.netPay || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                      </div>
-                    </div>
-
-                    <div style={{ marginTop: "30px", padding: "14px 20px", backgroundColor: "#0f172a", color: "#ffffff", borderRadius: "8px", fontSize: "13px", fontWeight: "bold" }}>
-                      📑 Document Packet: Page 1 (Detailed Payslip) & Page 2 (Final Receipt & Clearance Form)
-                    </div>
-                  </div>
-                </div>
-
                 {/* PAGE 1: PAYSLIP */}
                 <div style={{ boxSizing: "border-box", width: "210mm", height: "297mm", maxHeight: "297mm", padding: "12mm 15mm 18mm 15mm", margin: "0 auto", position: "relative", overflow: "hidden", pageBreakBefore: "always", breakBefore: "page", pageBreakAfter: "always", breakAfter: "page", pageBreakInside: "avoid", breakInside: "avoid", backgroundColor: "#ffffff" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #0f172a", paddingBottom: "12px", marginBottom: "16px" }}>
