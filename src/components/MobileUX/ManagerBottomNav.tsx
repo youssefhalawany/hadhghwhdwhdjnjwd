@@ -100,13 +100,28 @@ export function ManagerBottomNav({
     };
   }, []);
 
-  // Update active tab based on current pathname
+  // Update active tab based on current pathname & prefetch common routes
   useEffect(() => {
     if (pathname.includes("/financials/inputs")) setActiveTab("overview");
     else if (pathname.includes("/shift-reports/manager") || pathname.includes("/voids/manager")) setActiveTab("approvals");
     else if (pathname.includes("/financial-reports")) setActiveTab("financials");
     else if (pathname.includes("/ai-assistant")) setActiveTab("ai");
-  }, [pathname]);
+
+    const routesToPrefetch = [
+      "/financials/inputs",
+      "/financials/inputs/sales",
+      "/financials/inputs/payments",
+      "/financials/inputs/credits",
+      "/financials/inputs/deposits",
+      "/shift-reports/manager",
+      "/voids/manager",
+      "/financial-reports/vendor-statements",
+      "/ai-assistant"
+    ];
+    routesToPrefetch.forEach(r => {
+      try { router.prefetch(r); } catch(e) {}
+    });
+  }, [pathname, router]);
 
   const handleNavClick = (tabId: string, path: string) => {
     triggerHapticFeedback(12);

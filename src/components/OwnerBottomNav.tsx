@@ -26,7 +26,11 @@ export function OwnerBottomNav() {
     else if (pathname.includes("/owner/payments")) setActiveTab("payments");
     else if (pathname.includes("/owner/credits")) setActiveTab("credits");
     else if (pathname.includes("/owner/deposits")) setActiveTab("deposits");
-  }, [pathname]);
+
+    TABS.forEach(tab => {
+      try { router.prefetch(tab.path); } catch(e) {}
+    });
+  }, [pathname, router]);
 
   const handleNav = (tab: any) => {
     if (activeTab === tab.id) return;

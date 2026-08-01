@@ -68,8 +68,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     // Splash screen timer
     const splashTimer = setTimeout(() => setMinSplashDone(true), 1500);
 
-    // Live Clock timer
-    const clockTimer = setInterval(() => setCurrentDateTime(new Date()), 1000);
+    // Live Clock timer (updates every 30s to minimize rerenders)
+    const clockTimer = setInterval(() => setCurrentDateTime(new Date()), 30000);
     setCurrentDateTime(new Date());
 
     // Firebase Auth Listener
@@ -645,6 +645,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                         <Link
                           key={child.href}
                           href={child.href}
+                          prefetch={true}
                           className={`group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${isChildActive ? "bg-red-500/10 text-red-600 dark:text-red-500" : "text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-foreground"}`}
                         >
                           <child.icon className={`h-4 w-4 ${isChildActive ? 'scale-110 drop-shadow-sm' : 'opacity-70 group-hover:opacity-100'}`} />
@@ -680,6 +681,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                 <Link
                   key={item.href || item.name}
                   href={item.href!}
+                  prefetch={true}
                   className={`group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive ? "bg-red-500/10 text-red-600 dark:text-red-500" : "text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-foreground"}`}
                 >
                   <Icon className={`h-4 w-4 ${isActive ? 'scale-110 drop-shadow-sm' : 'opacity-70 group-hover:opacity-100'}`} />

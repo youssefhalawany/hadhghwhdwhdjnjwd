@@ -35,6 +35,7 @@ export default function FinancialInputsLayout({ children }: { children: React.Re
               <Link
                 key={tab.href}
                 href={tab.href}
+                prefetch={true}
                 className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
                   isActive 
                     ? "bg-slate-900 text-slate-50 dark:bg-slate-100 dark:text-slate-900 shadow-md" 
