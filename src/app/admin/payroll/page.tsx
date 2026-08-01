@@ -11,6 +11,7 @@ import { useBranch, BranchId } from "@/context/BranchContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { motion, useAnimation, useMotionValue, useTransform } from "framer-motion";
 import confetti from "canvas-confetti";
+import { dispatchNotificationSystem } from "@/lib/notifications";
 
 type PayrollRecord = {
   id?: string;
@@ -123,14 +124,77 @@ export default function AdminPayrollPage() {
     return () => window.removeEventListener('afterprint', handleAfterPrint);
   }, []);
 
+  // Auto-print listener when opened from notification URL
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("autoPrintBatch") === "true") {
+        const timer = setTimeout(() => {
+          setIsBatchPrinting(true);
+          toast.info("Preparing Official Batch Booklet for printing...");
+        }, 300);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, []);
+
+  // Instant RAF print trigger (eliminates print lag on desktop & PWA)
   useEffect(() => {
     if (printPayslipRecord || isBatchPrinting) {
-      const timer = setTimeout(() => {
-        window.print();
-      }, 350);
-      return () => clearTimeout(timer);
+      const raf1 = requestAnimationFrame(() => {
+        const raf2 = requestAnimationFrame(() => {
+          window.print();
+        });
+        return () => cancelAnimationFrame(raf2);
+      });
+      return () => cancelAnimationFrame(raf1);
     }
   }, [printPayslipRecord, isBatchPrinting]);
+
+  const handleSendBatchToManager = async () => {
+    if (filteredDrafts.length === 0) {
+      toast.error("No pending drafts to send to manager.");
+      return;
+    }
+
+    const dateString = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    const totalNet = filteredDrafts.reduce((acc, curr) => acc + (curr.netPay || 0), 0);
+    const branchName = currentBranch === "all" ? "All Branches" : availableBranches.find(b => b.id === currentBranch)?.name || currentBranch;
+    const printUrl = `/admin/payroll?autoPrintBatch=true&branch=${encodeURIComponent(currentBranch)}&month=${encodeURIComponent(filterMonth)}`;
+
+    // 1. Dispatch High-Priority System Push Notification to Manager
+    try {
+      await dispatchNotificationSystem({
+        title: "📋 Official Payroll Booklet Dispatched",
+        body: `Official Batch Packet (${filteredDrafts.length} slips, Total EGP ${totalNet.toLocaleString()}) sent for manager review & printing (${branchName}).`,
+        type: "payment",
+        url: printUrl,
+        metadata: {
+          batchCount: filteredDrafts.length,
+          totalNetPay: totalNet,
+          branch: branchName,
+          month: filterMonth
+        }
+      });
+    } catch (err) {
+      console.error("Error dispatching manager notification:", err);
+    }
+
+    // 2. Format WhatsApp Official Document Transmission
+    let message = `*📋 OFFICIAL PAYROLL BOOKLET FOR PRINTING*\n`;
+    message += `*Circle K Franchise HR & Finance System*\n\n`;
+    message += `*Branch:* ${branchName}\n`;
+    message += `*Period:* ${filterMonth === "all" ? "All Months" : filterMonth}\n`;
+    message += `*Total Employees:* ${filteredDrafts.length}\n`;
+    message += `*Total Net Payout:* EGP ${totalNet.toLocaleString(undefined, { minimumFractionDigits: 2 })}\n`;
+    message += `*Date Dispatched:* ${dateString}\n\n`;
+    message += `*Official Print Link (Instant A4 PDF Booklet):*\nhttps://anh-zeta.vercel.app${printUrl}\n\n`;
+    message += `_Please click the link above to open & print the official paper slips for employee signatures._`;
+
+    const encoded = encodeURIComponent(message);
+    window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
+    toast.success("Official Batch Packet dispatched to Manager!");
+  };
 
   const handleBatchWhatsApp = () => {
     if (filteredDrafts.length === 0) {
@@ -763,7 +827,9 @@ export default function AdminPayrollPage() {
         <div className="flex-1"></div>
         <button
           onClick={() => {
-            window.print();
+            requestAnimationFrame(() => {
+              window.print();
+            });
           }}
           className="bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 text-sm transition-colors"
         >
@@ -823,17 +889,29 @@ export default function AdminPayrollPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <button
                   onClick={() => {
                     setShowBatchModal(false);
                     handleTriggerBatchPrint();
                   }}
-                  className="p-4 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-2xl font-bold flex flex-col items-center gap-2 text-sm shadow-lg transition-all"
+                  className="p-3.5 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-2xl font-bold flex flex-col items-center gap-1.5 text-xs shadow-lg transition-all"
                 >
-                  <Printer className="w-6 h-6 text-indigo-400" />
-                  <span>Print Unified PDF</span>
-                  <span className="text-[10px] font-normal text-slate-400">Executive Summary + 2-Page Slips</span>
+                  <Printer className="w-5 h-5 text-indigo-400" />
+                  <span>Print PDF Booklet</span>
+                  <span className="text-[9px] font-normal text-slate-400">Print A4 Slips directly</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setShowBatchModal(false);
+                    handleSendBatchToManager();
+                  }}
+                  className="p-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold flex flex-col items-center gap-1.5 text-xs shadow-lg transition-all border border-indigo-400/30 shadow-indigo-600/20"
+                >
+                  <Send className="w-5 h-5 text-indigo-100 animate-pulse" />
+                  <span>Send to Manager</span>
+                  <span className="text-[9px] font-normal text-indigo-100">Dispatch Push & PDF Link</span>
                 </button>
 
                 <button
@@ -841,11 +919,11 @@ export default function AdminPayrollPage() {
                     setShowBatchModal(false);
                     handleBatchWhatsApp();
                   }}
-                  className="p-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold flex flex-col items-center gap-2 text-sm shadow-lg transition-all"
+                  className="p-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold flex flex-col items-center gap-1.5 text-xs shadow-lg transition-all"
                 >
-                  <Share2 className="w-6 h-6 text-emerald-200" />
-                  <span>Share via WhatsApp</span>
-                  <span className="text-[10px] font-normal text-emerald-100">Send Payout Breakdown Text</span>
+                  <Share2 className="w-5 h-5 text-emerald-200" />
+                  <span>WhatsApp Summary</span>
+                  <span className="text-[9px] font-normal text-emerald-100">Send Text Breakdown</span>
                 </button>
               </div>
             </div>

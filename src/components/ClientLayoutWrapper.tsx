@@ -65,8 +65,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     const storedRole = localStorage.getItem("circlek_role") || "owner";
     setRole(storedRole);
 
-    // Splash screen timer
-    const splashTimer = setTimeout(() => setMinSplashDone(true), 1500);
+    // Fast Splash screen timer (optimized for desktop & PWA speed)
+    const splashTimer = setTimeout(() => setMinSplashDone(true), 300);
 
     // Live Clock timer (updates every 30s to minimize rerenders)
     const clockTimer = setInterval(() => setCurrentDateTime(new Date()), 30000);
