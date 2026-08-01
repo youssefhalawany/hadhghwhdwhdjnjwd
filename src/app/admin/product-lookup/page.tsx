@@ -164,11 +164,33 @@ function ProductLookupContent() {
         const rawItems: any[] = [];
         
         if (!term) {
-           // Read ALL products from productsDb without limit caps
-           const qProducts = collection(productsDb, "products");
-           const snap = await getDocs(qProducts);
-           snap.docs.forEach(doc => {
-              rawItems.push({ id: doc.id, ...doc.data() });
+           // Fetch all products across all database collections in parallel
+           const [pSnap1, pSnap2, expSnap, retSnap] = await Promise.all([
+              getDocs(collection(productsDb, "products")).catch(() => ({ docs: [] } as any)),
+              getDocs(collection(db, "products")).catch(() => ({ docs: [] } as any)),
+              getDocs(collection(db, "expiries")).catch(() => ({ docs: [] } as any)),
+              getDocs(collection(db, "supplier_returns")).catch(() => ({ docs: [] } as any))
+           ]);
+
+           [pSnap1, pSnap2, expSnap, retSnap].forEach(snap => {
+              if (snap && snap.docs) {
+                 snap.docs.forEach((doc: any) => {
+                    const data = doc.data();
+                    const name = data.description || data.itemName || data.name || data.productName;
+                    if (name) {
+                       rawItems.push({
+                          id: data.barcode || doc.id,
+                          barcode: data.barcode || doc.id,
+                          description: name,
+                          itemName: name,
+                          supplier: data.supplier || "",
+                          price: data.currentPrice || data.price || data.unitPrice,
+                          priceHistory: data.priceHistory || [],
+                          expiryDate: data.expiryDate
+                       });
+                    }
+                 });
+              }
            });
         } else {
           const termLower = term.toLowerCase();
@@ -180,6 +202,8 @@ function ProductLookupContent() {
             getDocs(query(collection(productsDb, "products"), where("description", ">=", termUpper), where("description", "<=", termUpper + '\uf8ff'))).catch(() => ({ docs: [] } as any)),
             getDocs(query(collection(productsDb, "products"), where("description", ">=", termTitle), where("description", "<=", termTitle + '\uf8ff'))).catch(() => ({ docs: [] } as any)),
             getDocs(query(collection(productsDb, "products"), where("itemName", ">=", termTitle), where("itemName", "<=", termTitle + '\uf8ff'))).catch(() => ({ docs: [] } as any)),
+            getDocs(query(collection(db, "products"), where("description", ">=", termLower), where("description", "<=", termLower + '\uf8ff'))).catch(() => ({ docs: [] } as any)),
+            getDocs(query(collection(db, "expiries"), where("description", ">=", termLower), where("description", "<=", termLower + '\uf8ff'))).catch(() => ({ docs: [] } as any))
           ];
 
           const snaps = await Promise.all(queries);
@@ -187,16 +211,19 @@ function ProductLookupContent() {
             if (!s || !s.docs) return;
             s.docs.forEach((doc: any) => {
               const data = doc.data();
-              rawItems.push({
-                 id: data.barcode || doc.id,
-                 barcode: data.barcode || doc.id,
-                 description: data.description || data.itemName || data.name || "Unknown Item",
-                 itemName: data.itemName,
-                 supplier: data.supplier || data.priceHistory?.[0]?.supplier || "",
-                 price: data.currentPrice || data.price,
-                 priceHistory: data.priceHistory || [],
-                 expiryDate: data.expiryDate
-              });
+              const name = data.description || data.itemName || data.name || data.productName;
+              if (name) {
+                rawItems.push({
+                   id: data.barcode || doc.id,
+                   barcode: data.barcode || doc.id,
+                   description: name,
+                   itemName: name,
+                   supplier: data.supplier || data.priceHistory?.[0]?.supplier || "",
+                   price: data.currentPrice || data.price || data.unitPrice,
+                   priceHistory: data.priceHistory || [],
+                   expiryDate: data.expiryDate
+                });
+              }
             });
           });
 
