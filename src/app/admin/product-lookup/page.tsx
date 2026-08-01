@@ -475,12 +475,28 @@ function ProductLookupContent() {
     return allProducts.reduce((acc, p) => acc + (p.priceHistoryCount || 1), 0);
   }, [allProducts]);
 
-  // Immediate Product Image Resolver helper with ultra-reliable hotlink-safe CDN URLs
+  // Immediate Product Image Resolver helper with specific variant packshots
   const getProductImage = (p: any) => {
     const key = p.groupKey || p.barcode || p.id;
+
+    if (p.imageUrl && !failedImageUrls[key]) {
+      return p.imageUrl;
+    }
+
     const name = (p.description || p.itemName || p.name || "").toLowerCase();
 
-    // Direct brand matching first
+    // Specific Tobacco Variants
+    if (name.includes("marlboro red") || name.includes("crafted red")) {
+      return "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Marlboro_Red_pack.jpg/400px-Marlboro_Red_pack.jpg";
+    }
+    if (name.includes("marlboro gold") || name.includes("crafted gold") || name.includes("marlboro touch") || name.includes("marlboro white")) {
+      return "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Marlboro_Gold_Pack.jpg/400px-Marlboro_Gold_Pack.jpg";
+    }
+    if (name.includes("marlboro purple")) {
+      return "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?w=400&auto=format&fit=crop&q=80";
+    }
+
+    // Direct brand matching fallback
     if (name.includes("aquafina") || name.includes("water") || name.includes("hayat")) {
       return "https://images.unsplash.com/photo-1548839140-29a749e1bc4e?w=400&auto=format&fit=crop&q=80";
     }
@@ -494,7 +510,7 @@ function ProductLookupContent() {
       return "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=400&auto=format&fit=crop&q=80";
     }
     if (name.includes("marlboro") || name.includes("merit") || name.includes("l&m") || name.includes("terea") || name.includes("heets")) {
-      return "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?w=400&auto=format&fit=crop&q=80";
+      return "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Marlboro_Gold_Pack.jpg/400px-Marlboro_Gold_Pack.jpg";
     }
     if (name.includes("pringles")) {
       return "https://images.unsplash.com/photo-1599490659213-e2b9527bd087?w=400&auto=format&fit=crop&q=80";
@@ -504,10 +520,6 @@ function ProductLookupContent() {
     }
     if (name.includes("brown") || name.includes("coffee") || name.includes("espres")) {
       return "https://images.unsplash.com/photo-1517701604599-bb29b565090c?w=400&auto=format&fit=crop&q=80";
-    }
-
-    if (p.imageUrl && !failedImageUrls[key]) {
-      return p.imageUrl;
     }
 
     return null;
