@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { collection, query, orderBy, onSnapshot, doc, updateDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, getDoc } from "firebase/firestore";
+import { db, auth } from "@/lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import { 
   FileText, 
   Printer, 
@@ -20,8 +21,10 @@ import {
   ShieldCheck,
   Eye,
   Layers,
-  FileCheck2
+  FileCheck2,
+  Trash2
 } from "lucide-react";
+import { toast } from "sonner";
 import { useBranch } from "@/context/BranchContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { PageTransition } from "@/components/PageTransition";
@@ -53,6 +56,29 @@ export default function ManagerDocumentsPage() {
   const [selectedDoc, setSelectedDoc] = useState<any | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"all" | "payslip" | "payment_receipt" | "credit_receipt" | "custom">("all");
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const unsubAuth = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        try {
+          const userDoc = await getDoc(doc(db, "users", user.uid));
+          if (userDoc.exists()) {
+            const role = userDoc.data()?.role;
+            setIsAdmin(Boolean(role === "admin_editor" || role === "owner" || role === "admin" || user.email?.includes("admin")));
+          } else {
+            setIsAdmin(Boolean(user.email?.includes("admin")));
+          }
+        } catch {
+          setIsAdmin(Boolean(user.email?.includes("admin")));
+        }
+      } else {
+        setIsAdmin(false);
+      }
+    });
+
+    return () => unsubAuth();
+  }, []);
 
   useEffect(() => {
     const q = query(collection(db, "admin_dispatches"), orderBy("createdAt", "desc"));
@@ -78,6 +104,21 @@ export default function ManagerDocumentsPage() {
         await updateDoc(doc(db, "admin_dispatches", docData.id), { status: "read" });
       } catch (err) {
         console.debug("Error updating status:", err);
+      }
+    }
+  };
+
+  const handleDeleteDispatch = async (docId: string, title: string) => {
+    if (confirm(`Are you sure you want to delete "${title}"? This action cannot be undone.`)) {
+      try {
+        await deleteDoc(doc(db, "admin_dispatches", docId));
+        toast.success("Document deleted successfully");
+        if (selectedDoc?.id === docId) {
+          setSelectedDoc(null);
+        }
+      } catch (err) {
+        console.error("Error deleting document:", err);
+        toast.error("Failed to delete document");
       }
     }
   };
@@ -383,6 +424,18 @@ export default function ManagerDocumentsPage() {
                         🖨️ {docItem.printedCount}x
                       </span>
                     )}
+                    {isAdmin && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteDispatch(docItem.id, docItem.title);
+                        }}
+                        className="px-2 py-1 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/30 text-xs font-bold flex items-center gap-1 transition-all"
+                        title="Delete Document Dispatch"
+                      >
+                        <Trash2 className="w-3 h-3" /> Delete
+                      </button>
+                    )}
                     <button className="px-2.5 py-1 rounded-xl bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 text-xs font-black flex items-center gap-1">
                       <Eye className="w-3 h-3" /> View & Print
                     </button>
@@ -416,6 +469,15 @@ export default function ManagerDocumentsPage() {
                     <Printer className="w-4 h-4" /> 
                     {selectedDoc.metadata?.isBatchPayroll ? `Print All (${selectedDoc.metadata.allPayrollRecords?.length || 0} Staff Packets)` : "Print Payslip Packet"}
                   </button>
+                  {isAdmin && (
+                    <button
+                      onClick={() => handleDeleteDispatch(selectedDoc.id, selectedDoc.title)}
+                      className="px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/30 text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer"
+                      title="Delete Document"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" /> Delete
+                    </button>
+                  )}
                   <button
                     onClick={() => setSelectedDoc(null)}
                     className="p-1.5 rounded-full bg-slate-200 dark:bg-[#1E293B] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer"
@@ -607,7 +669,7 @@ export default function ManagerDocumentsPage() {
                                   </div>
 
                                   <div style={{ backgroundColor: "#f1f5f9", border: "1px solid #cbd5e1", padding: "12px 16px", marginTop: "16px", display: "flex", justifyContent: "space-between", alignItems: "center", borderRadius: "6px" }}>
-                                    <span style={{ fontSize: "13px", fontWeight: "bold", color: "#0f172a" }}>(Net Pay) صافي الراتب المستحق</span>
+                                    <span style={{ fontSize: "13px", fontWeight: "bold", color: "#0f172a" }}>صافي الراتب المستحق / Net Payable</span>
                                     <span style={{ fontSize: "18px", fontWeight: "900", color: "#0f172a" }}>EGP {netPay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                   </div>
                                   <div style={{ textAlign: "right", fontSize: "12px", marginTop: "6px", color: "#475569", fontWeight: "500" }}>
@@ -750,7 +812,7 @@ export default function ManagerDocumentsPage() {
                                   </div>
 
                                   <div style={{ backgroundColor: "#f1f5f9", border: "1px solid #cbd5e1", padding: "12px 16px", marginTop: "16px", display: "flex", justifyContent: "space-between", alignItems: "center", borderRadius: "6px" }}>
-                                    <span style={{ fontSize: "13px", fontWeight: "bold", color: "#0f172a" }}>(Net Received Amount) المبلغ الصافي المستلم</span>
+                                    <span style={{ fontSize: "13px", fontWeight: "bold", color: "#0f172a" }}>المبلغ الصافي المستلم</span>
                                     <span style={{ fontSize: "18px", fontWeight: "900", color: "#0f172a" }}>EGP {netPay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                   </div>
                                   <div style={{ textAlign: "right", fontSize: "12px", marginTop: "6px", color: "#475569", fontWeight: "500" }}>
@@ -884,7 +946,7 @@ export default function ManagerDocumentsPage() {
                             </div>
 
                             <div style={{ backgroundColor: "#f1f5f9", border: "1px solid #cbd5e1", padding: "12px 16px", marginTop: "16px", display: "flex", justifyContent: "space-between", alignItems: "center", borderRadius: "6px" }}>
-                              <span style={{ fontSize: "13px", fontWeight: "bold", color: "#0f172a" }}>(Net Pay) صافي الراتب المستحق</span>
+                              <span style={{ fontSize: "13px", fontWeight: "bold", color: "#0f172a" }}>صافي الراتب المستحق / Net Payable</span>
                               <span style={{ fontSize: "18px", fontWeight: "900", color: "#0f172a" }}>EGP {netPay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                             <div style={{ textAlign: "right", fontSize: "12px", marginTop: "6px", color: "#475569", fontWeight: "500" }}>
@@ -1027,7 +1089,7 @@ export default function ManagerDocumentsPage() {
                             </div>
 
                             <div style={{ backgroundColor: "#f1f5f9", border: "1px solid #cbd5e1", padding: "12px 16px", marginTop: "16px", display: "flex", justifyContent: "space-between", alignItems: "center", borderRadius: "6px" }}>
-                              <span style={{ fontSize: "13px", fontWeight: "bold", color: "#0f172a" }}>(Net Received Amount) المبلغ الصافي المستلم</span>
+                              <span style={{ fontSize: "13px", fontWeight: "bold", color: "#0f172a" }}>المبلغ الصافي المستلم</span>
                               <span style={{ fontSize: "18px", fontWeight: "900", color: "#0f172a" }}>EGP {netPay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                             <div style={{ textAlign: "right", fontSize: "12px", marginTop: "6px", color: "#475569", fontWeight: "500" }}>

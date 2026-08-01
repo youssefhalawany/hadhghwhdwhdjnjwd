@@ -161,14 +161,37 @@ export default function AdminPayrollPage() {
     const totalNet = filteredDrafts.reduce((acc, curr) => acc + (curr.netPay || 0), 0);
     const branchName = currentBranch === "all" ? "All Branches" : availableBranches.find(b => b.id === currentBranch)?.name || currentBranch;
     const printUrl = `/admin/payroll?autoPrintBatch=true&branch=${encodeURIComponent(currentBranch)}&month=${encodeURIComponent(filterMonth)}`;
+    const serialNumber = `DOC-2026-${Math.floor(10000 + Math.random() * 90000)}`;
 
-    // 1. Dispatch High-Priority System Push Notification to Manager
+    // 1. Create Official Document Record in Firestore 'admin_dispatches' (Shows up in Manager Official Documents Inbox)
+    try {
+      await addDoc(collection(db, "admin_dispatches"), {
+        title: `All Staff Monthly Payroll Packet (${filterMonth === "all" ? "All Months" : filterMonth})`,
+        subtitle: `Batch dispatch containing 2-page payslips & clearance forms for all ${filteredDrafts.length} staff members (Total Net EGP ${totalNet.toLocaleString()})`,
+        serialNumber: serialNumber,
+        docType: "payslip",
+        status: "unread",
+        printedCount: 0,
+        createdAt: new Date().toISOString(),
+        branchId: currentBranch,
+        metadata: {
+          isBatchPayroll: true,
+          netSalary: totalNet,
+          allPayrollRecords: filteredDrafts,
+          printUrl: printUrl
+        }
+      });
+    } catch (err) {
+      console.error("Error creating official dispatch document:", err);
+    }
+
+    // 2. Dispatch High-Priority System Push Notification to Manager
     try {
       await dispatchNotificationSystem({
         title: "📋 Official Payroll Booklet Dispatched",
-        body: `Official Batch Packet (${filteredDrafts.length} slips, Total EGP ${totalNet.toLocaleString()}) sent for manager review & printing (${branchName}).`,
+        body: `Official Batch Packet (${filteredDrafts.length} slips, Total EGP ${totalNet.toLocaleString()}) sent to Official Documents (${branchName}).`,
         type: "payment",
-        url: printUrl,
+        url: "/manager/documents",
         metadata: {
           batchCount: filteredDrafts.length,
           totalNetPay: totalNet,
@@ -180,20 +203,21 @@ export default function AdminPayrollPage() {
       console.error("Error dispatching manager notification:", err);
     }
 
-    // 2. Format WhatsApp Official Document Transmission
+    // 3. Format WhatsApp Official Document Transmission
     let message = `*📋 OFFICIAL PAYROLL BOOKLET FOR PRINTING*\n`;
     message += `*Circle K Franchise HR & Finance System*\n\n`;
     message += `*Branch:* ${branchName}\n`;
     message += `*Period:* ${filterMonth === "all" ? "All Months" : filterMonth}\n`;
     message += `*Total Employees:* ${filteredDrafts.length}\n`;
     message += `*Total Net Payout:* EGP ${totalNet.toLocaleString(undefined, { minimumFractionDigits: 2 })}\n`;
+    message += `*Serial #:* ${serialNumber}\n`;
     message += `*Date Dispatched:* ${dateString}\n\n`;
-    message += `*Official Print Link (Instant A4 PDF Booklet):*\nhttps://anh-zeta.vercel.app${printUrl}\n\n`;
-    message += `_Please click the link above to open & print the official paper slips for employee signatures._`;
+    message += `*Official Documents Inbox Link:*\nhttps://anh-zeta.vercel.app/manager/documents\n\n`;
+    message += `_Saved to Manager Official Documents. Click link to view & print official slips._`;
 
     const encoded = encodeURIComponent(message);
     window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
-    toast.success("Official Batch Packet dispatched to Manager!");
+    toast.success("Saved to Official Documents & Dispatched to Manager!");
   };
 
   const handleBatchWhatsApp = () => {
@@ -1358,7 +1382,7 @@ export default function AdminPayrollPage() {
 
               {/* Ink-Saving Net Pay Banner */}
               <div style={{ border: "2px solid #0f172a", backgroundColor: "#f8fafc", padding: "10px 16px", marginBottom: "14px", display: "flex", justifyContent: "space-between", alignItems: "center", borderRadius: "8px" }}>
-                <span style={{ fontSize: "13px", fontWeight: "bold", color: "#0f172a" }}>(Net Pay) صافي الراتب المستحق</span>
+                <span style={{ fontSize: "13px", fontWeight: "bold", color: "#0f172a" }}>صافي الراتب المستحق / Net Payable</span>
                 <span style={{ fontSize: "18px", fontWeight: "900", color: "#059669" }}>EGP {(p.netPay || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
               <div style={{ textAlign: "right", fontSize: "11px", color: "#475569", fontWeight: "500", marginBottom: "16px" }}>
@@ -1510,7 +1534,7 @@ export default function AdminPayrollPage() {
 
               {/* Net Received Amount Banner */}
               <div style={{ border: "2px solid #0f172a", backgroundColor: "#f8fafc", padding: "10px 16px", marginBottom: "14px", display: "flex", justifyContent: "space-between", alignItems: "center", borderRadius: "8px" }}>
-                <span style={{ fontSize: "13px", fontWeight: "bold", color: "#0f172a" }}>(Net Received Amount) المبلغ الصافي المستلم</span>
+                <span style={{ fontSize: "13px", fontWeight: "bold", color: "#0f172a" }}>المبلغ الصافي المستلم</span>
                 <span style={{ fontSize: "18px", fontWeight: "900", color: "#059669" }}>EGP {(p.netPay || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
               <div style={{ textAlign: "right", fontSize: "11px", color: "#475569", fontWeight: "500", marginBottom: "16px" }}>
@@ -1729,7 +1753,7 @@ export default function AdminPayrollPage() {
 
                   {/* Ink-Saving Net Pay Banner */}
                   <div style={{ border: "1.5px solid #0f172a", backgroundColor: "#f8fafc", padding: "8px 14px", marginTop: "12px", display: "flex", justifyContent: "space-between", alignItems: "center", borderRadius: "6px" }}>
-                    <span style={{ fontSize: "12px", fontWeight: "bold", color: "#0f172a" }}>(Net Pay) صافي الراتب المستحق</span>
+                    <span style={{ fontSize: "12px", fontWeight: "bold", color: "#0f172a" }}>صافي الراتب المستحق / Net Payable</span>
                     <span style={{ fontSize: "16px", fontWeight: "900", color: "#059669" }}>EGP {(p.netPay || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                   <div style={{ textAlign: "right", fontSize: "11px", marginTop: "4px", color: "#475569", fontWeight: "500" }}>
