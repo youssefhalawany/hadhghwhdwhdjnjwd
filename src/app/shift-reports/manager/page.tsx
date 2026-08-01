@@ -167,14 +167,14 @@ export default function ManagerAuditPage() {
         }
       });
 
-      // 2. High Shrink Alerts (Coffee < 30%)
+      // 2. Low Coffee Sales Alerts (Coffee < 30%)
       const lowCoffeeShrink = reports.filter(r => (r.managerAudit?.coffeePercent < 30 && r.managerAudit?.coffeePercent !== undefined && r.managerAudit?.coffeePercent !== null && r.managerAudit?.coffeePercent !== ""));
 
       if (lowCoffeeShrink.length >= 3) {
         anomalies.push({
-          type: "low_coffee_shrink",
+          type: "low_coffee_sales",
           severity: "high",
-          message: `Notice: Cashier ${name} has reported coffee yield below 30% on ${lowCoffeeShrink.length} recent shifts. Good coffee yield should be above 30%. Please review these inventory logs.`
+          message: `Notice: Cashier ${name} has reported coffee sales contribution below 30% on ${lowCoffeeShrink.length} recent shifts. Target coffee sales contribution is above 30%.`
         });
       }
     });
@@ -1483,20 +1483,20 @@ export default function ManagerAuditPage() {
                       </section>
                     )}
 
-                    {/* Shrink & Variance Tracking (For Both Cashiers) */}
+                    {/* Category Sales Contribution % (For Both Cashiers) */}
                     <section>
                       <div className="flex items-center gap-2 mb-4">
                         <Package className="h-5 w-5 text-amber-500" />
-                        <h3 className="text-lg font-bold">{isAr ? "نسب الهالك وعجز المخزون" : "Shrink & Audit Data"}</h3>
+                        <h3 className="text-lg font-bold">{isAr ? "نسب مبيعات الأقسام (نسبة من الإجمالي)" : "Category Sales Contribution %"}</h3>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-amber-50 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-900/30">
                         <div>
-                          <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">{isAr ? "نسبة هالك القهوة %" : "Coffee Shrink %"}</label>
-                          <input type="number" step="0.01" value={coffeePercent} onChange={e => setCoffeePercent(e.target.value)} className="w-full p-2.5 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-amber-500" placeholder="e.g. 2.5" />
+                          <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">{isAr ? "نسبة مبيعات القهوة %" : "Coffee Sales %"}</label>
+                          <input type="number" step="0.01" value={coffeePercent} onChange={e => setCoffeePercent(e.target.value)} className="w-full p-2.5 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-amber-500" placeholder="e.g. 35" />
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">{isAr ? "نسبة هالك السجائر %" : "Cigarette Shrink %"}</label>
-                          <input type="number" step="0.01" value={cigarettePercent} onChange={e => setCigarettePercent(e.target.value)} className="w-full p-2.5 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-amber-500" placeholder="e.g. 1.2" />
+                          <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">{isAr ? "نسبة مبيعات السجائر %" : "Cigarette Sales %"}</label>
+                          <input type="number" step="0.01" value={cigarettePercent} onChange={e => setCigarettePercent(e.target.value)} className="w-full p-2.5 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-amber-500" placeholder="e.g. 40" />
                         </div>
                       </div>
                     </section>
@@ -1936,18 +1936,18 @@ export default function ManagerAuditPage() {
                       </table>
                     </div>
 
-                    {/* Manager Notes & Shrink on Page 1 */}
+                    {/* Manager Notes & Category Sales % on Page 1 */}
                     <div style={{ border: '2px solid #000', marginBottom: '15px', borderRadius: '4px', overflow: 'hidden' }}>
                       <div style={{ backgroundColor: '#f9f9f9', padding: '4px 15px', borderBottom: '1px solid #000', fontWeight: 'bold', color: '#000', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', justifyContent: 'space-between' }}>
-                        <span>3. Manager Comments & Shrink</span>
+                        <span>3. Manager Comments & Category Sales %</span>
                       </div>
                       <div style={{ display: 'flex', borderBottom: '1px solid #000' }}>
                         <div style={{ flex: 1, padding: '6px 15px', borderRight: '1px solid #000', backgroundColor: '#fff' }}>
-                          <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#666', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Coffee Shrink %</span>
+                          <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#666', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Coffee Sales %</span>
                           <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#000' }}>{selectedReport.managerAudit?.coffeePercent || coffeePercent || 0}%</span>
                         </div>
                         <div style={{ flex: 1, padding: '6px 15px', backgroundColor: '#fff' }}>
-                          <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#666', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Cigarette Shrink %</span>
+                          <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#666', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Cigarette Sales %</span>
                           <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#000' }}>{selectedReport.managerAudit?.cigarettePercent || cigarettePercent || 0}%</span>
                         </div>
                       </div>
