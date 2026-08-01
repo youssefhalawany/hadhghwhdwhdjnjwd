@@ -1974,17 +1974,21 @@ export default function CreditsPage() {
               transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
               className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[95vh]"
             >
-              <div className="flex justify-between items-center p-6 border-b border-indigo-100 bg-gradient-to-r from-indigo-50 to-blue-50">
+              <div className="flex justify-between items-center p-6 border-b border-indigo-100 bg-gradient-to-r from-indigo-50 to-blue-50" dir={isAr ? "rtl" : "ltr"}>
                 <div>
-                  <h2 className="text-2xl font-black text-indigo-900 tracking-tight">Record New Credit</h2>
-                  <p className="text-xs font-bold text-indigo-600/70 mt-1 uppercase tracking-wider">Fill in details or upload PO</p>
+                  <h2 className="text-2xl font-black text-indigo-900 tracking-tight">
+                    {isAr ? "تسجيل آجل / مديونية جديدة" : "Record New Credit"}
+                  </h2>
+                  <p className="text-xs font-bold text-indigo-600/70 mt-1 uppercase tracking-wider">
+                    {isAr ? "ادخل البيانات أو اسحب صورة أمر الشراء" : "Fill in details or upload PO"}
+                  </p>
                 </div>
-                <button onClick={() => setShowAddModal(false)} className="p-2 bg-white/60 hover:bg-white text-indigo-400 hover:text-indigo-600 rounded-full transition-all shadow-sm">
+                <button onClick={() => setShowAddModal(false)} className="p-2 bg-white/60 hover:bg-white text-indigo-400 hover:text-indigo-600 rounded-full transition-all shadow-sm cursor-pointer">
                   <X size={20} />
                 </button>
               </div>
 
-              <form onSubmit={handleAddCredit} className="flex flex-col flex-1 min-h-0">
+              <form onSubmit={handleAddCredit} className="flex flex-col flex-1 min-h-0" dir={isAr ? "rtl" : "ltr"}>
                 <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
                   <div 
                   onDrop={handleDrop}
@@ -1996,23 +2000,23 @@ export default function CreditsPage() {
                       <div className="p-3 bg-indigo-100 rounded-full mb-2">
                         <Loader2 className="h-8 w-8 animate-spin" />
                       </div>
-                      <span className="font-black text-lg tracking-tight">Reading Purchase Order...</span>
-                      <span className="text-sm font-medium text-indigo-500/80">Extracting details automatically</span>
+                      <span className="font-black text-lg tracking-tight">{isAr ? "جاري قراءة أمر الشراء بالذكاء الاصطناعي..." : "Reading Purchase Order..."}</span>
+                      <span className="text-sm font-medium text-indigo-500/80">{isAr ? "سيتم استخراج البيانات تلقائياً" : "Extracting details automatically"}</span>
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center gap-3 text-indigo-900/60">
                       <div className="p-4 bg-white shadow-sm rounded-full mb-2 text-indigo-500">
                         <ImageIcon className="h-8 w-8" />
                       </div>
-                      <span className="font-black text-lg text-indigo-900 tracking-tight">Paste or Drop PO Image Here</span>
-                      <span className="text-sm font-medium">We'll automatically extract the details using AI</span>
+                      <span className="font-black text-lg text-indigo-900 tracking-tight">{isAr ? "اسحب صورة امر الشراء أو الفاتورة هنا" : "Paste or Drop PO Image Here"}</span>
+                      <span className="text-sm font-medium">{isAr ? "سيتم استخراج كافة البيانات بالذكاء الاصطناعي" : "We'll automatically extract the details using AI"}</span>
                       <button
                         type="button"
                         onClick={handlePastePoImageButtonClick}
-                        className="mt-3 flex items-center gap-2 px-5 py-2.5 bg-white border border-indigo-100 hover:border-indigo-300 hover:shadow-md text-indigo-700 font-bold rounded-xl transition-all text-sm group"
+                        className="mt-3 flex items-center gap-2 px-5 py-2.5 bg-white border border-indigo-100 hover:border-indigo-300 hover:shadow-md text-indigo-700 font-bold rounded-xl transition-all text-sm group cursor-pointer"
                       >
                         <ClipboardPaste size={16} className="text-indigo-400 group-hover:text-indigo-600 transition-colors" />
-                        Paste from Clipboard
+                        {isAr ? "لصق من الحافظة" : "Paste from Clipboard"}
                       </button>
                     </div>
                   )}
@@ -2021,41 +2025,41 @@ export default function CreditsPage() {
                 <div className="bg-slate-50/50 p-5 rounded-3xl border border-slate-100 mb-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
                     <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Invoice # *</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "رقم الفاتورة * " : "Invoice # *"}</label>
                     <input required type="text" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">PO #</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "رقم أمر الشراء (PO)" : "PO #"}</label>
                     <input type="text" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={poNumber} onChange={(e) => setPoNumber(e.target.value)} />
                   </div>
                   <div>
                     <div className="flex justify-between items-center mb-1">
-                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Company *</label>
-                      <button type="button" onClick={() => setShowAddSupplier(true)} className="text-[10px] text-indigo-600 font-bold hover:underline flex items-center gap-1">
-                        + New Supplier
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">{isAr ? "الشركة / المورد *" : "Company *"}</label>
+                      <button type="button" onClick={() => setShowAddSupplier(true)} className="text-[10px] text-indigo-600 font-bold hover:underline flex items-center gap-1 cursor-pointer">
+                        {isAr ? "+ مورد جديد" : "+ New Supplier"}
                       </button>
                     </div>
                     <select required className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={companyName} onChange={(e) => setCompanyName(e.target.value)}>
-                      <option value="">Select a supplier...</option>
+                      <option value="">{isAr ? "-- اختر المورد --" : "Select a supplier..."}</option>
                       {suppliers.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Amount Due *</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "المبلغ المستحق *" : "Amount Due *"}</label>
                     <div className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">EGP</span>
                       <input required type="number" step="0.01" className="w-full pl-12 pr-4 p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-black text-slate-900" value={amountDue} onChange={(e) => setAmountDue(e.target.value)} />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Tax</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "الضريبة" : "Tax"}</label>
                     <div className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">EGP</span>
                       <input type="number" step="0.01" className="w-full pl-12 pr-4 p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-bold text-slate-900" value={tax} onChange={(e) => setTax(e.target.value)} />
                     </div>
                   </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Collection Date</label>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "تاريخ التحصيل المتوقع" : "Collection Date"}</label>
                       <input required type="date" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={collectionDate} onChange={(e) => setCollectionDate(e.target.value)} />
                       <div className="flex gap-2 mt-2 flex-wrap">
                         {[14, 15, 30, 45].map(days => (
@@ -2067,9 +2071,9 @@ export default function CreditsPage() {
                               d.setDate(d.getDate() + days);
                               setCollectionDate(d.toISOString().split('T')[0]);
                             }}
-                            className="text-[10px] font-bold px-2 py-1 bg-indigo-50 text-indigo-700 rounded hover:bg-indigo-100 transition-colors"
+                            className="text-[10px] font-bold px-2 py-1 bg-indigo-50 text-indigo-700 rounded hover:bg-indigo-100 transition-colors cursor-pointer"
                           >
-                            +{days} Days
+                            +{days} {isAr ? "يوم" : "Days"}
                           </button>
                         ))}
                       </div>
@@ -2079,15 +2083,15 @@ export default function CreditsPage() {
 
                 {poItems && poItems.length > 0 && (
                   <div className="mb-8">
-                    <h4 className="text-sm font-bold text-slate-700 mb-2">Extracted PO Items</h4>
+                    <h4 className="text-sm font-bold text-slate-700 mb-2">{isAr ? "الأصناف المستخرجة" : "Extracted PO Items"}</h4>
                     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                       <div className="max-h-48 overflow-y-auto custom-scrollbar">
-                        <table className="w-full text-left text-sm">
+                        <table className="w-full text-left text-sm" dir={isAr ? "rtl" : "ltr"}>
                           <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
                             <tr>
-                              <th className="p-3 font-bold text-slate-500 uppercase text-[10px] tracking-wider">Description</th>
-                              <th className="p-3 font-bold text-slate-500 uppercase text-[10px] tracking-wider text-center">Qty</th>
-                              <th className="p-3 font-bold text-slate-500 uppercase text-[10px] tracking-wider text-right">Price</th>
+                              <th className="p-3 font-bold text-slate-500 uppercase text-[10px] tracking-wider">{isAr ? "الوصف" : "Description"}</th>
+                              <th className="p-3 font-bold text-slate-500 uppercase text-[10px] tracking-wider text-center">{isAr ? "الكمية" : "Qty"}</th>
+                              <th className="p-3 font-bold text-slate-500 uppercase text-[10px] tracking-wider text-right">{isAr ? "السعر" : "Price"}</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -2111,7 +2115,7 @@ export default function CreditsPage() {
                       <div className="w-6 h-6 rounded-md border-2 border-slate-300 bg-white peer-checked:bg-indigo-500 peer-checked:border-indigo-500 transition-colors"></div>
                       <CheckCircle size={14} className="absolute text-white opacity-0 peer-checked:opacity-100 transition-opacity" />
                     </div>
-                    <span className="text-slate-700 font-bold group-hover:text-slate-900 transition-colors">On Sales Only</span>
+                    <span className="text-slate-700 font-bold group-hover:text-slate-900 transition-colors">{isAr ? "مبيعات فقط" : "On Sales Only"}</span>
                   </label>
                   <label className="flex items-center gap-3 cursor-pointer group">
                     <div className="relative flex items-center justify-center">
@@ -2119,16 +2123,16 @@ export default function CreditsPage() {
                       <div className="w-6 h-6 rounded-md border-2 border-slate-300 bg-white peer-checked:bg-indigo-500 peer-checked:border-indigo-500 transition-colors"></div>
                       <CheckCircle size={14} className="absolute text-white opacity-0 peer-checked:opacity-100 transition-opacity" />
                     </div>
-                    <span className="text-slate-700 font-bold group-hover:text-slate-900 transition-colors">Is Taxable?</span>
+                    <span className="text-slate-700 font-bold group-hover:text-slate-900 transition-colors">{isAr ? "خاضع للضريبة؟" : "Is Taxable?"}</span>
                   </label>
                 </div>
 
                 <div className="mb-8">
                   <div className="flex justify-between items-center mb-2">
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Manager Signature *</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">{isAr ? "توقيع المدير المسؤول *" : "Manager Signature *"}</label>
                     {(managerSignature || hasSigned) && (
                       <button type="button" onClick={() => { sigPadRef.current?.clear(); setHasSigned(false); setManagerSignature(""); }} className="text-[10px] bg-red-50 text-red-600 px-2 py-1 rounded font-bold uppercase hover:bg-red-100 transition-colors">
-                        Clear Signature
+                        {isAr ? "مسح التوقيع" : "Clear Signature"}
                       </button>
                     )}
                   </div>
@@ -2153,10 +2157,10 @@ export default function CreditsPage() {
 
                 </div>
                 <div className="flex justify-end gap-3 p-6 border-t border-slate-100 bg-slate-50 mt-auto">
-                  <button type="button" onClick={() => setShowAddModal(false)} className="px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 hover:text-slate-900 transition-all shadow-sm">Cancel</button>
-                  <button type="submit" disabled={isSubmitting} className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 shadow-md shadow-indigo-600/20 hover:shadow-indigo-600/40 hover:-translate-y-0.5 transition-all">
+                  <button type="button" onClick={() => setShowAddModal(false)} className="px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 hover:text-slate-900 transition-all shadow-sm cursor-pointer">{isAr ? "إلغاء" : "Cancel"}</button>
+                  <button type="submit" disabled={isSubmitting} className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 shadow-md shadow-indigo-600/20 hover:shadow-indigo-600/40 hover:-translate-y-0.5 transition-all cursor-pointer">
                     {isSubmitting && <Loader2 size={18} className="animate-spin" />}
-                    Save Credit
+                    {isAr ? "حفظ الدين" : "Save Credit"}
                   </button>
                 </div>
               </form>

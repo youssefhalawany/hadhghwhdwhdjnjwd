@@ -97,6 +97,7 @@ import { toast } from "sonner";
 import { onAuthStateChanged } from "firebase/auth";
 import Link from "next/link";
 import { useBranch } from "@/context/BranchContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { syncProductsToMaster } from "@/lib/products-sync";
 import { playPrinterSound } from "@/lib/audioCues";
@@ -150,6 +151,8 @@ const METHOD_EMOJIS: Record<string, string> = {
 
 export default function PaymentsRedesignPage() {
   const { currentBranch } = useBranch();
+  const { language } = useLanguage();
+  const isAr = language === "ar";
   const branchIds = useMemo(() => {
     const ids = [];
     if (currentBranch === "all") {
@@ -1113,18 +1116,22 @@ export default function PaymentsRedesignPage() {
 
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Payments Control</h1>
-            <p className="text-sm text-slate-500 font-medium mt-1">Track and manage all corporate outgoings.</p>
+            <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+              {isAr ? "إدارة ومراقبة المدفوعات" : "Payments Control"}
+            </h1>
+            <p className="text-sm text-slate-500 font-medium mt-1">
+              {isAr ? "متابعة وإدارة جميع مدفوعات ومصروفات الشركة والفرع." : "Track and manage all corporate outgoings."}
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <button className="flex items-center gap-2 bg-white/60 dark:bg-slate-800/60 backdrop-blur-md border border-slate-200/60 dark:border-slate-700/60 text-slate-700 dark:text-slate-300 px-4 py-2.5 rounded-xl font-semibold shadow-sm hover:bg-white transition-all">
-              <FileDown size={18} /> Export All
+              <FileDown size={18} /> {isAr ? "تصدير الكل" : "Export All"}
             </button>
             <button
               onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-2 bg-[#ef4444] text-white px-5 py-2.5 rounded-xl font-semibold shadow-md hover:bg-[#dc2626] hover:-translate-y-0.5 transition-all"
+              className="flex items-center gap-2 bg-[#ef4444] text-white px-5 py-2.5 rounded-xl font-semibold shadow-md hover:bg-[#dc2626] hover:-translate-y-0.5 transition-all cursor-pointer"
             >
-              <Plus size={20} /> Record Payment
+              <Plus size={20} /> {isAr ? "تسجيل مدفوعات جديدة" : "Record Payment"}
             </button>
           </div>
         </div>
@@ -1133,7 +1140,7 @@ export default function PaymentsRedesignPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 p-6 rounded-3xl shadow-sm flex flex-col justify-center">
             <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight mb-4 flex items-center gap-2">
-              <PieChartIcon className="text-blue-500" size={20} /> Spending Breakdown
+              <PieChartIcon className="text-blue-500" size={20} /> {isAr ? "توزيع المصروفات" : "Spending Breakdown"}
             </h3>
             <div className="h-64 w-full">
               {Object.keys(categoryStats).length > 0 ? (
@@ -1162,7 +1169,7 @@ export default function PaymentsRedesignPage() {
                 </ResponsiveContainer>
               ) : (
                 <div className="h-full flex items-center justify-center text-slate-400 font-medium text-sm">
-                  No data for this period
+                  {isAr ? "لا توجد بيانات لهذه الفترة" : "No data for this period"}
                 </div>
               )}
             </div>
@@ -1173,50 +1180,50 @@ export default function PaymentsRedesignPage() {
               <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100/50 p-5 rounded-3xl shadow-sm relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-5xl">📦</div>
                 <div className="flex items-center gap-2 text-blue-600 mb-3">
-                  <span className="text-sm font-bold tracking-wide uppercase">Order</span>
+                  <span className="text-sm font-bold tracking-wide uppercase">{isAr ? "طلبات وبضائع" : "Order"}</span>
                 </div>
                 <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {categoryStats["order"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                <p className="text-xs font-semibold text-blue-600/70 mt-1 relative z-10">{categoryStats["order"].count} payment(s)</p>
+                <p className="text-xs font-semibold text-blue-600/70 mt-1 relative z-10">{categoryStats["order"].count} {isAr ? "سند" : "payment(s)"}</p>
               </motion.div>
             )}
             {categoryStats["utilities"] && (
               <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-amber-50 to-yellow-50 border border-amber-100/50 p-5 rounded-3xl shadow-sm relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-5xl">💡</div>
                 <div className="flex items-center gap-2 text-amber-600 mb-3">
-                  <span className="text-sm font-bold tracking-wide uppercase">Utilities</span>
+                  <span className="text-sm font-bold tracking-wide uppercase">{isAr ? "المرافق والخدمات" : "Utilities"}</span>
                 </div>
                 <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {categoryStats["utilities"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                <p className="text-xs font-semibold text-amber-600/70 mt-1 relative z-10">{categoryStats["utilities"].count} payment(s)</p>
+                <p className="text-xs font-semibold text-amber-600/70 mt-1 relative z-10">{categoryStats["utilities"].count} {isAr ? "سند" : "payment(s)"}</p>
               </motion.div>
             )}
             {categoryStats["maintenance"] && (
               <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-purple-50 to-fuchsia-50 border border-purple-100/50 p-5 rounded-3xl shadow-sm relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-5xl">🔧</div>
                 <div className="flex items-center gap-2 text-purple-600 mb-3">
-                  <span className="text-sm font-bold tracking-wide uppercase">Maintenance</span>
+                  <span className="text-sm font-bold tracking-wide uppercase">{isAr ? "الصيانة" : "Maintenance"}</span>
                 </div>
                 <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {categoryStats["maintenance"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                <p className="text-xs font-semibold text-purple-600/70 mt-1 relative z-10">{categoryStats["maintenance"].count} payment(s)</p>
+                <p className="text-xs font-semibold text-purple-600/70 mt-1 relative z-10">{categoryStats["maintenance"].count} {isAr ? "سند" : "payment(s)"}</p>
               </motion.div>
             )}
             {categoryStats["transportation"] && (
               <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-100/50 p-5 rounded-3xl shadow-sm relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-5xl">🚚</div>
                 <div className="flex items-center gap-2 text-emerald-600 mb-3">
-                  <span className="text-sm font-bold tracking-wide uppercase">Transportation</span>
+                  <span className="text-sm font-bold tracking-wide uppercase">{isAr ? "النقل والنولون" : "Transportation"}</span>
                 </div>
                 <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {categoryStats["transportation"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                <p className="text-xs font-semibold text-emerald-600/70 mt-1 relative z-10">{categoryStats["transportation"].count} payment(s)</p>
+                <p className="text-xs font-semibold text-emerald-600/70 mt-1 relative z-10">{categoryStats["transportation"].count} {isAr ? "سند" : "payment(s)"}</p>
               </motion.div>
             )}
             {categoryStats["other"] && (
               <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-slate-50 to-gray-50 border border-slate-100/50 p-5 rounded-3xl shadow-sm relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-5xl">📝</div>
                 <div className="flex items-center gap-2 text-slate-600 mb-3">
-                  <span className="text-sm font-bold tracking-wide uppercase">Other</span>
+                  <span className="text-sm font-bold tracking-wide uppercase">{isAr ? "مصروفات أخرى" : "Other"}</span>
                 </div>
                 <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {categoryStats["other"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                <p className="text-xs font-semibold text-slate-600/70 mt-1 relative z-10">{categoryStats["other"].count} payment(s)</p>
+                <p className="text-xs font-semibold text-slate-600/70 mt-1 relative z-10">{categoryStats["other"].count} {isAr ? "سند" : "payment(s)"}</p>
               </motion.div>
             )}
           </div>
@@ -1227,7 +1234,7 @@ export default function PaymentsRedesignPage() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
             <input
               type="text"
-              placeholder="Search company, invoice, PO number..."
+              placeholder={isAr ? "ابحث باسم الشركة، رقم الفاتورة، أو أمر الشراء..." : "Search company, invoice, PO number..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-12 pr-4 py-3 rounded-xl bg-transparent focus:bg-white hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-none outline-none text-slate-700 dark:text-slate-300 placeholder:text-slate-400 font-medium"
@@ -1522,8 +1529,10 @@ export default function PaymentsRedesignPage() {
                 <X size={20} />
               </button>
 
-              <form onSubmit={handleSavePayment} className="p-8">
-                <h2 className="text-2xl font-black text-slate-900 dark:text-white pb-6 tracking-tight">Record Payment</h2>
+              <form onSubmit={handleSavePayment} className="p-8" dir={isAr ? "rtl" : "ltr"}>
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white pb-6 tracking-tight">
+                  {isAr ? "تسجيل سند صرف / مدفوعات جديدة" : "Record Payment"}
+                </h2>
 
                 {category === 'order' && (
                   <div
@@ -1534,20 +1543,20 @@ export default function PaymentsRedesignPage() {
                     {isProcessingPo ? (
                       <div className="flex flex-col items-center justify-center gap-2 text-blue-600">
                         <Loader2 className="h-8 w-8 animate-spin" />
-                        <span className="font-bold">Reading Purchase Order...</span>
+                        <span className="font-bold">{isAr ? "جاري قراءة أمر الشراء بالذكاء الاصطناعي..." : "Reading Purchase Order..."}</span>
                       </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center gap-2 text-slate-500">
                         <ImageIcon className="h-8 w-8 text-slate-400" />
-                        <span className="font-bold">Paste or Drop PO Image Here</span>
-                        <span className="text-xs">We'll automatically extract the details using AI</span>
+                        <span className="font-bold">{isAr ? "اسحب صورة الفاتورة أو امر الشراء هنا" : "Paste or Drop PO Image Here"}</span>
+                        <span className="text-xs">{isAr ? "سيتم استخراج البيانات والأصناف تلقائياً بالذكاء الاصطناعي" : "We'll automatically extract the details using AI"}</span>
                         <button
                           type="button"
                           onClick={handlePastePoImageButtonClick}
                           className="mt-2 flex items-center gap-2 px-3 py-1.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-bold rounded-lg transition-colors text-xs"
                         >
                           <ClipboardPaste size={14} />
-                          Paste from Clipboard
+                          {isAr ? "لصق من الحافظة" : "Paste from Clipboard"}
                         </button>
                       </div>
                     )}
@@ -1557,49 +1566,51 @@ export default function PaymentsRedesignPage() {
                 <div className="grid md:grid-cols-2 gap-8">
                   <div className="space-y-6">
                     <div>
-                      <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Basic Info</h3>
+                      <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">
+                        {isAr ? "البيانات الأساسية" : "Basic Info"}
+                      </h3>
                       <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Date *</label>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "التاريخ *" : "Date *"}</label>
                             <input type="date" required className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={date} onChange={(e) => setDate(e.target.value)} />
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Method *</label>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "طريقة الدفع *" : "Method *"}</label>
                             <select className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={method} onChange={(e) => setMethod(e.target.value)}>
-                              <option value="cash">Cash</option>
-                              <option value="visa">Visa</option>
-                              <option value="bank_transfer">Bank Transfer</option>
+                              <option value="cash">{isAr ? "كاش (نقداً)" : "Cash"}</option>
+                              <option value="visa">{isAr ? "فيزا (بطاقة)" : "Visa"}</option>
+                              <option value="bank_transfer">{isAr ? "تحويل بنكي" : "Bank Transfer"}</option>
                             </select>
                           </div>
                         </div>
 
                         <div>
                           <div className="flex justify-between items-center mb-1">
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Company / Supplier *</label>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">{isAr ? "الشركة / المورد *" : "Company / Supplier *"}</label>
                             <button type="button" onClick={() => setShowAddSupplier(true)} className="text-[10px] text-blue-600 font-bold hover:underline flex items-center gap-1">
-                              + New Supplier
+                              {isAr ? "+ مورد جديد" : "+ New Supplier"}
                             </button>
                           </div>
                           <select required className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={companyName} onChange={(e) => setCompanyName(e.target.value)}>
-                            <option value="">Select a supplier...</option>
+                            <option value="">{isAr ? "-- اختر المورد --" : "Select a supplier..."}</option>
                             {suppliers.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                           </select>
                         </div>
 
                         <div>
-                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Rep Name</label>
-                          <input type="text" placeholder="Driver / Representative" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={supplierRepName} onChange={(e) => setSupplierRepName(e.target.value)} />
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "اسم مندوب/سائق المورد" : "Rep Name"}</label>
+                          <input type="text" placeholder={isAr ? "السائق / المندوب" : "Driver / Representative"} className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={supplierRepName} onChange={(e) => setSupplierRepName(e.target.value)} />
                         </div>
 
                         <div>
-                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Rep National ID</label>
-                          <input type="text" placeholder="14-digit ID" maxLength={14} className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={supplierNationalId} onChange={(e) => setSupplierNationalId(e.target.value)} />
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "الرقم القومي للمندوب" : "Rep National ID"}</label>
+                          <input type="text" placeholder={isAr ? "الرقم القومي (١٤ رقم)" : "14-digit ID"} maxLength={14} className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={supplierNationalId} onChange={(e) => setSupplierNationalId(e.target.value)} />
                         </div>
 
                         {method === 'bank_transfer' && (
                           <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-                            <label className="block text-xs font-bold text-blue-600 uppercase tracking-wider mb-2">Bank Transfer Receipt *</label>
+                            <label className="block text-xs font-bold text-blue-600 uppercase tracking-wider mb-2">{isAr ? "إيصال التحويل البنكي *" : "Bank Transfer Receipt *"}</label>
                             <div className="flex flex-col gap-2">
                               <input
                                 type="file"
@@ -1615,15 +1626,14 @@ export default function PaymentsRedesignPage() {
                                 <p className="text-xs font-medium text-blue-800 break-all bg-blue-100/50 p-2 rounded-lg border border-blue-200 inline-flex items-center gap-1"><CheckCircle2 size={12} /> {bankTransferFile.name}</p>
                               ) : (
                                 <div className="flex items-center gap-2 mt-1">
-                                  <span className="text-[10px] text-blue-500">Or: </span>
+                                  <span className="text-[10px] text-blue-500">{isAr ? "أو:" : "Or: "}</span>
                                   <button
                                     type="button"
                                     onClick={handlePasteBankReceipt}
                                     className="text-[10px] text-blue-600 bg-blue-100 hover:bg-blue-200 px-2 py-1 rounded flex items-center gap-1 transition-colors border border-blue-200"
                                   >
-                                    <ClipboardPaste size={10} /> Paste from Clipboard
+                                    <ClipboardPaste size={10} /> {isAr ? "لصق من الحافظة" : "Paste from Clipboard"}
                                   </button>
-                                  <span className="text-[10px] text-blue-400">(or press Ctrl+V)</span>
                                 </div>
                               )}
                             </div>
@@ -1635,44 +1645,46 @@ export default function PaymentsRedesignPage() {
 
                   <div className="space-y-6">
                     <div>
-                      <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Financials</h3>
+                      <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">
+                        {isAr ? "البيانات المالية والقيمة" : "Financials"}
+                      </h3>
                       <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Amount (Before Tax) *</label>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "المبلغ (قبل الضريبة) *" : "Amount (Before Tax) *"}</label>
                             <input type="number" required placeholder="0.00" step="0.01" min="0" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-red-500/20 focus:bg-white transition-all outline-none font-bold text-red-600 text-lg" value={amount} onChange={(e) => setAmount(e.target.value)} />
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Tax Amount</label>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "قيمة الضريبة" : "Tax Amount"}</label>
                             <input type="number" placeholder="0.00" step="0.01" min="0" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900 text-lg" value={tax} onChange={(e) => setTax(e.target.value)} />
                           </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Invoice #</label>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "رقم الفاتورة" : "Invoice #"}</label>
                             <input type="text" placeholder="INV-123" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} />
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">PO #</label>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "رقم أمر الشراء (PO)" : "PO #"}</label>
                             <input type="text" placeholder="PO-123" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={poNumber} onChange={(e) => setPoNumber(e.target.value)} />
                           </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Category *</label>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "التصنيف *" : "Category *"}</label>
                             <select className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={category} onChange={(e) => setCategory(e.target.value)}>
-                              <option value="order">Order</option>
-                              <option value="maintenance">Maintenance</option>
-                              <option value="utilities">Utilities</option>
-                              <option value="transportation">Transportation</option>
-                              <option value="other">Other / Misc</option>
+                              <option value="order">{isAr ? "طلبات وبضائع" : "Order"}</option>
+                              <option value="maintenance">{isAr ? "صيانة" : "Maintenance"}</option>
+                              <option value="utilities">{isAr ? "مرافق وخدمات" : "Utilities"}</option>
+                              <option value="transportation">{isAr ? "نقل ونولون" : "Transportation"}</option>
+                              <option value="other">{isAr ? "مصروفات أخرى" : "Other / Misc"}</option>
                             </select>
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Notes</label>
-                            <input type="text" placeholder="Optional details..." className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={categoryNote} onChange={(e) => setCategoryNote(e.target.value)} />
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "ملاحظات" : "Notes"}</label>
+                            <input type="text" placeholder={isAr ? "تفاصيل إضافية..." : "Optional details..."} className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={categoryNote} onChange={(e) => setCategoryNote(e.target.value)} />
                           </div>
                         </div>
 
@@ -1683,16 +1695,18 @@ export default function PaymentsRedesignPage() {
 
                 {poItems.length > 0 && (
                   <div className="mt-8 pt-6 border-t border-slate-100">
-                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4">Extracted Items ({poItems.length})</h3>
+                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4">
+                      {isAr ? `الأصناف المستخرجة (${poItems.length})` : `Extracted Items (${poItems.length})`}
+                    </h3>
                     <div className="overflow-x-auto">
-                      <table className="w-full text-sm text-left">
+                      <table className="w-full text-sm text-left" dir={isAr ? "rtl" : "ltr"}>
                         <thead className="text-xs text-slate-500 bg-slate-50 dark:bg-slate-800/50 uppercase font-bold">
                           <tr>
-                            <th className="px-4 py-3 rounded-l-xl">Barcode</th>
-                            <th className="px-4 py-3">Description</th>
-                            <th className="px-4 py-3 text-center w-24">Qty</th>
-                            <th className="px-4 py-3 text-right w-32">Price</th>
-                            <th className="px-4 py-3 text-right w-24">Total</th>
+                            <th className="px-4 py-3 rounded-l-xl">{isAr ? "الباركود" : "Barcode"}</th>
+                            <th className="px-4 py-3">{isAr ? "الوصف" : "Description"}</th>
+                            <th className="px-4 py-3 text-center w-24">{isAr ? "الكمية" : "Qty"}</th>
+                            <th className="px-4 py-3 text-right w-32">{isAr ? "السعر" : "Price"}</th>
+                            <th className="px-4 py-3 text-right w-24">{isAr ? "الإجمالي" : "Total"}</th>
                             <th className="px-4 py-3 text-center rounded-r-xl w-12"></th>
                           </tr>
                         </thead>
@@ -1721,7 +1735,7 @@ export default function PaymentsRedesignPage() {
                       </table>
                       <div className="mt-3 flex justify-start">
                         <button type="button" onClick={handleAddPoItem} className="text-sm font-bold text-blue-500 hover:text-blue-600 flex items-center gap-1 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors">
-                          + Add Item
+                          {isAr ? "+ إضافة صنف" : "+ Add Item"}
                         </button>
                       </div>
                     </div>
@@ -1732,16 +1746,16 @@ export default function PaymentsRedesignPage() {
                   <button
                     type="button"
                     onClick={handleCloseModal}
-                    className="px-6 py-3 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors"
+                    className="px-6 py-3 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
                   >
-                    Cancel
+                    {isAr ? "إلغاء" : "Cancel"}
                   </button>
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-8 py-3 rounded-xl font-bold shadow-md shadow-red-500/20 hover:shadow-red-500/40 hover:-translate-y-0.5 transition-all flex items-center gap-2"
+                    className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-8 py-3 rounded-xl font-bold shadow-md shadow-red-500/20 hover:shadow-red-500/40 hover:-translate-y-0.5 transition-all flex items-center gap-2 cursor-pointer"
                   >
-                    {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Save & Print Receipt"}
+                    {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : (isAr ? "حفظ وطباعة السند" : "Save & Print Receipt")}
                   </button>
                 </div>
               </form>
