@@ -1153,10 +1153,10 @@ export default function AdminPayrollPage() {
 
       return (
         <div className="hidden print:block w-full text-black bg-white" style={{ fontFamily: "Arial, sans-serif", fontSize: "13px" }}>
-          <style dangerouslySetInnerHTML={{ __html: "@media print { @page { size: A4 portrait; margin: 0mm !important; } body { margin: 0 !important; padding: 0 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } html, body { height: auto !important; min-height: 100% !important; overflow: visible !important; } }" }} />
+          <style dangerouslySetInnerHTML={{ __html: "@media print { @page { size: A4 portrait; margin: 10mm !important; } body { margin: 0 !important; padding: 0 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } html, body { height: auto !important; min-height: 100% !important; overflow: visible !important; } }" }} />
           
           {/* PAGE 1: PAYSLIP */}
-          <div style={{ boxSizing: "border-box", width: "210mm", minHeight: "285mm", padding: "10mm 15mm 15mm 15mm", margin: "0 auto", position: "relative", pageBreakAfter: "always", breakAfter: "page", backgroundColor: "#ffffff" }}>
+          <div style={{ boxSizing: "border-box", width: "100%", maxWidth: "190mm", padding: "0mm", margin: "0 auto", position: "relative", pageBreakAfter: "always", breakAfter: "page", backgroundColor: "#ffffff" }}>
             
             {/* Corporate Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #0f172a", paddingBottom: "12px", marginBottom: "16px" }}>
@@ -1284,7 +1284,7 @@ export default function AdminPayrollPage() {
             </div>
 
             {/* SIGNATURES */}
-            <div style={{ position: "absolute", bottom: "18mm", left: "15mm", right: "15mm", display: "flex", justifyContent: "space-between" }}>
+            <div style={{ marginTop: "24px", display: "flex", justifyContent: "space-between" }}>
               <div style={{ width: "40%" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#475569", marginBottom: "35px" }}>
                   <span>Employee Signature</span><span>توقيع الموظف</span>
@@ -1301,7 +1301,7 @@ export default function AdminPayrollPage() {
           </div>
           
           {/* PAGE 2: SALARY ACKNOWLEDGEMENT RECEIPT */}
-          <div style={{ boxSizing: "border-box", width: "210mm", minHeight: "285mm", padding: "10mm 15mm 15mm 15mm", margin: "0 auto", position: "relative", pageBreakAfter: "always", breakAfter: "page", backgroundColor: "#ffffff" }}>
+          <div style={{ boxSizing: "border-box", width: "100%", maxWidth: "190mm", padding: "0mm", margin: "0 auto", position: "relative", pageBreakAfter: "always", breakAfter: "page", backgroundColor: "#ffffff" }}>
             
             {/* Corporate Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #0f172a", paddingBottom: "12px", marginBottom: "16px" }}>
@@ -1363,42 +1363,42 @@ export default function AdminPayrollPage() {
             </div>
 
             {/* TERMS */}
-            <div style={{ marginTop: "24px", textAlign: "right", direction: "rtl", backgroundColor: "#f8fafc", padding: "14px 18px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-              <h3 style={{ color: "#0f172a", borderBottom: "1px solid #cbd5e1", paddingBottom: "6px", marginBottom: "10px", fontSize: "14px", fontWeight: "bold" }}>
+            <div style={{ marginTop: "20px", textAlign: "right", direction: "rtl", backgroundColor: "#f8fafc", padding: "12px 16px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+              <h3 style={{ color: "#0f172a", borderBottom: "1px solid #cbd5e1", paddingBottom: "6px", marginBottom: "8px", fontSize: "13px", fontWeight: "bold" }}>
                 إقرار استلام ومخالصة نهائية
               </h3>
-              <p style={{ fontSize: "12px", lineHeight: "1.6", color: "#334155", textAlign: "justify" }}>
+              <p style={{ fontSize: "11px", lineHeight: "1.5", color: "#334155", textAlign: "justify" }}>
                 أقر أنا الموقع أدناه، بصفتي موظفاً لدى الشركة المذكورة أعلاه، بأنني قد استلمت كامل الراتب والمستحقات المالية الخاصة بي عن دورة الراتب الموضحة أعلاه (<strong>{p.month}</strong>)، وذلك بعد إجراء كافة الاستقطاعات القانونية والاعتيادية المقررة بموجب قانون العمل المصري وقوانين التأمينات الاجتماعية واللوائح الداخلية للشركة.
               </p>
-              <p style={{ fontSize: "12px", lineHeight: "1.6", color: "#334155", textAlign: "justify", marginTop: "8px" }}>
+              <p style={{ fontSize: "11px", lineHeight: "1.5", color: "#334155", textAlign: "justify", marginTop: "6px" }}>
                 ويُعد توقيعي على هذا الإقرار بمثابة <strong>مخالصة نهائية تامة وكاملة</strong> تبرئ ذمة الشركة من أي مطالبات مالية أو حقوق تخص الراتب الأساسي، البدلات، الحوافز، الأجر الإضافي، أو أي مميزات أخرى عن الفترة المذكورة، ولا يحق لي الرجوع على الشركة مستقبلاً بأي مطالبات تخص هذه الدورة.
               </p>
             </div>
 
             {/* ENGLISH TRANSLATION */}
-            <div style={{ marginTop: "14px", textAlign: "left", direction: "ltr", backgroundColor: "#f8fafc", padding: "14px 18px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-              <h3 style={{ color: "#0f172a", borderBottom: "1px solid #cbd5e1", paddingBottom: "6px", marginBottom: "10px", fontSize: "14px", fontWeight: "bold" }}>
+            <div style={{ marginTop: "12px", textAlign: "left", direction: "ltr", backgroundColor: "#f8fafc", padding: "12px 16px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+              <h3 style={{ color: "#0f172a", borderBottom: "1px solid #cbd5e1", paddingBottom: "6px", marginBottom: "8px", fontSize: "13px", fontWeight: "bold" }}>
                 Final Clearance & Salary Receipt
               </h3>
-              <p style={{ fontSize: "11px", lineHeight: "1.5", color: "#334155", textAlign: "justify" }}>
+              <p style={{ fontSize: "10.5px", lineHeight: "1.4", color: "#334155", textAlign: "justify" }}>
                 I, the undersigned, in my capacity as an employee of the aforementioned company, hereby acknowledge receipt of my full salary and financial dues for the payroll period stated above (<strong>{p.month}</strong>). This is net of all lawful and customary deductions in accordance with Egyptian Labor Law, Social Insurance laws, and company internal regulations.
               </p>
-              <p style={{ fontSize: "11px", lineHeight: "1.5", color: "#334155", textAlign: "justify", marginTop: "6px" }}>
+              <p style={{ fontSize: "10.5px", lineHeight: "1.4", color: "#334155", textAlign: "justify", marginTop: "4px" }}>
                 My signature on this receipt constitutes a <strong>full and final clearance</strong> discharging the Company from any financial claims or rights pertaining to basic salary, allowances, incentives, overtime, or any other benefits for the stated period. I forfeit any right to raise future claims regarding this cycle.
               </p>
             </div>
 
             {/* SIGNATURES BOX */}
-            <div style={{ position: "absolute", bottom: "18mm", left: "15mm", right: "15mm", display: "flex", justifyContent: "space-between", border: "1px solid #cbd5e1", borderRadius: "8px", padding: "14px", backgroundColor: "#f8fafc" }}>
+            <div style={{ marginTop: "20px", display: "flex", justifyContent: "space-between", border: "1px solid #cbd5e1", borderRadius: "8px", padding: "12px 14px", backgroundColor: "#f8fafc" }}>
               <div style={{ width: "45%" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#475569", fontWeight: "bold", marginBottom: "35px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#475569", fontWeight: "bold", marginBottom: "30px" }}>
                   <span>Employee Signature</span>
                   <span>توقيع الموظف (المُقر)</span>
                 </div>
                 <div style={{ borderBottom: "1px solid #94a3b8" }}></div>
               </div>
               <div style={{ width: "45%" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#475569", fontWeight: "bold", marginBottom: "35px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#475569", fontWeight: "bold", marginBottom: "30px" }}>
                   <span>Authorized Manager</span>
                   <span>توقيع المدير المختص</span>
                 </div>
@@ -1422,10 +1422,10 @@ export default function AdminPayrollPage() {
 
       return (
         <div className="hidden print:block w-full text-black bg-white" style={{ fontFamily: "Arial, sans-serif", fontSize: "13px" }}>
-          <style dangerouslySetInnerHTML={{ __html: "@media print { @page { size: A4 portrait; margin: 0mm !important; } body { margin: 0 !important; padding: 0 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } html, body { height: auto !important; min-height: 100% !important; overflow: visible !important; } }" }} />
+          <style dangerouslySetInnerHTML={{ __html: "@media print { @page { size: A4 portrait; margin: 10mm !important; } body { margin: 0 !important; padding: 0 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } html, body { height: auto !important; min-height: 100% !important; overflow: visible !important; } }" }} />
           
           {/* PAGE 1: EXECUTIVE SUMMARY TABLE */}
-          <div style={{ boxSizing: "border-box", width: "210mm", minHeight: "285mm", padding: "10mm 15mm 15mm 15mm", margin: "0 auto", position: "relative", pageBreakAfter: "always", breakAfter: "page", backgroundColor: "#ffffff" }}>
+          <div style={{ boxSizing: "border-box", width: "100%", maxWidth: "190mm", padding: "0mm", margin: "0 auto", position: "relative", pageBreakAfter: "always", breakAfter: "page", backgroundColor: "#ffffff" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #0f172a", paddingBottom: "12px", marginBottom: "16px" }}>
               <div>
                 <h1 style={{ fontSize: "22px", fontWeight: "900", color: "#0f172a", margin: 0, textTransform: "uppercase", letterSpacing: "1px" }}>{companyName}</h1>
@@ -1491,7 +1491,7 @@ export default function AdminPayrollPage() {
             </table>
 
             {/* SIGNATURES */}
-            <div style={{ position: "absolute", bottom: "18mm", left: "15mm", right: "15mm", display: "flex", justifyContent: "space-between", border: "1px solid #cbd5e1", borderRadius: "8px", padding: "14px", backgroundColor: "#f8fafc" }}>
+            <div style={{ marginTop: "24px", display: "flex", justifyContent: "space-between", border: "1px solid #cbd5e1", borderRadius: "8px", padding: "12px", backgroundColor: "#f8fafc" }}>
               <div style={{ width: "45%" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#475569", fontWeight: "bold", marginBottom: "35px" }}>
                   <span>Prepared By (Financial Controller)</span>
@@ -1520,7 +1520,7 @@ export default function AdminPayrollPage() {
             return (
               <React.Fragment key={p.id || idx}>
                 {/* PAGE 1: PAYSLIP */}
-                <div style={{ boxSizing: "border-box", width: "210mm", minHeight: "285mm", padding: "10mm 15mm 15mm 15mm", margin: "0 auto", position: "relative", pageBreakAfter: "always", breakAfter: "page", backgroundColor: "#ffffff" }}>
+                <div style={{ boxSizing: "border-box", width: "100%", maxWidth: "190mm", padding: "0mm", margin: "0 auto", position: "relative", pageBreakAfter: "always", breakAfter: "page", backgroundColor: "#ffffff" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #0f172a", paddingBottom: "12px", marginBottom: "16px" }}>
                     <div>
                       <h1 style={{ fontSize: "22px", fontWeight: "900", color: "#0f172a", margin: 0, textTransform: "uppercase", letterSpacing: "1px" }}>{empCompName}</h1>
@@ -1646,7 +1646,7 @@ export default function AdminPayrollPage() {
                   </div>
 
                   {/* SIGNATURES */}
-                  <div style={{ position: "absolute", bottom: "18mm", left: "15mm", right: "15mm", display: "flex", justifyContent: "space-between" }}>
+                  <div style={{ marginTop: "24px", display: "flex", justifyContent: "space-between" }}>
                     <div style={{ width: "40%" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#475569", marginBottom: "35px" }}>
                         <span>Employee Signature</span><span>توقيع الموظف</span>
@@ -1663,7 +1663,7 @@ export default function AdminPayrollPage() {
                 </div>
 
                 {/* PAGE 2: SALARY ACKNOWLEDGEMENT RECEIPT */}
-                <div style={{ boxSizing: "border-box", width: "210mm", minHeight: "285mm", padding: "10mm 15mm 15mm 15mm", margin: "0 auto", position: "relative", pageBreakAfter: "always", breakAfter: "page", backgroundColor: "#ffffff" }}>
+                <div style={{ boxSizing: "border-box", width: "100%", maxWidth: "190mm", padding: "0mm", margin: "0 auto", position: "relative", pageBreakAfter: "always", breakAfter: "page", backgroundColor: "#ffffff" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #0f172a", paddingBottom: "12px", marginBottom: "16px" }}>
                     <div>
                       <h1 style={{ fontSize: "22px", fontWeight: "900", color: "#0f172a", margin: 0, textTransform: "uppercase", letterSpacing: "1px" }}>{empCompName}</h1>
@@ -1723,41 +1723,41 @@ export default function AdminPayrollPage() {
                   </div>
 
                   {/* TERMS */}
-                  <div style={{ marginTop: "24px", textAlign: "right", direction: "rtl", backgroundColor: "#f8fafc", padding: "14px 18px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-                    <h3 style={{ color: "#0f172a", borderBottom: "1px solid #cbd5e1", paddingBottom: "6px", marginBottom: "10px", fontSize: "14px", fontWeight: "bold" }}>
+                  <div style={{ marginTop: "20px", textAlign: "right", direction: "rtl", backgroundColor: "#f8fafc", padding: "12px 16px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                    <h3 style={{ color: "#0f172a", borderBottom: "1px solid #cbd5e1", paddingBottom: "6px", marginBottom: "8px", fontSize: "13px", fontWeight: "bold" }}>
                       إقرار استلام ومخالصة نهائية
                     </h3>
-                    <p style={{ fontSize: "12px", lineHeight: "1.6", color: "#334155", textAlign: "justify" }}>
+                    <p style={{ fontSize: "11px", lineHeight: "1.5", color: "#334155", textAlign: "justify" }}>
                       أقر أنا الموقع أدناه، بصفتي موظفاً لدى الشركة المذكورة أعلاه، بأنني قد استلمت كامل الراتب والمستحقات المالية الخاصة بي عن دورة الراتب الموضحة أعلاه (<strong>{p.month}</strong>)، وذلك بعد إجراء كافة الاستقطاعات القانونية والاعتيادية المقررة بموجب قانون العمل المصري وقوانين التأمينات الاجتماعية واللوائح الداخلية للشركة.
                     </p>
-                    <p style={{ fontSize: "12px", lineHeight: "1.6", color: "#334155", textAlign: "justify", marginTop: "8px" }}>
+                    <p style={{ fontSize: "11px", lineHeight: "1.5", color: "#334155", textAlign: "justify", marginTop: "6px" }}>
                       ويُعد توقيعي على هذا الإقرار بمثابة <strong>مخالصة نهائية تامة وكاملة</strong> تبرئ ذمة الشركة من أي مطالبات مالية أو حقوق تخص الراتب الأساسي، البدلات، الحوافز، الأجر الإضافي، أو أي مميزات أخرى عن الفترة المذكورة، ولا يحق لي الرجوع على الشركة مستقبلاً بأي مطالبات تخص هذه الدورة.
                     </p>
                   </div>
 
                   {/* ENGLISH TRANSLATION */}
-                  <div style={{ marginTop: "14px", textAlign: "left", direction: "ltr", backgroundColor: "#f8fafc", padding: "14px 18px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-                    <h3 style={{ color: "#0f172a", borderBottom: "1px solid #cbd5e1", paddingBottom: "6px", marginBottom: "10px", fontSize: "14px", fontWeight: "bold" }}>
+                  <div style={{ marginTop: "12px", textAlign: "left", direction: "ltr", backgroundColor: "#f8fafc", padding: "12px 16px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                    <h3 style={{ color: "#0f172a", borderBottom: "1px solid #cbd5e1", paddingBottom: "6px", marginBottom: "8px", fontSize: "13px", fontWeight: "bold" }}>
                       Final Clearance & Salary Receipt
                     </h3>
-                    <p style={{ fontSize: "11px", lineHeight: "1.5", color: "#334155", textAlign: "justify" }}>
+                    <p style={{ fontSize: "10.5px", lineHeight: "1.4", color: "#334155", textAlign: "justify" }}>
                       I, the undersigned, in my capacity as an employee of the aforementioned company, hereby acknowledge receipt of my full salary and financial dues for the payroll period stated above (<strong>{p.month}</strong>). This is net of all lawful and customary deductions in accordance with Egyptian Labor Law, Social Insurance laws, and company internal regulations.
                     </p>
-                    <p style={{ fontSize: "11px", lineHeight: "1.5", color: "#334155", textAlign: "justify", marginTop: "6px" }}>
+                    <p style={{ fontSize: "10.5px", lineHeight: "1.4", color: "#334155", textAlign: "justify", marginTop: "4px" }}>
                       My signature on this receipt constitutes a <strong>full and final clearance</strong> discharging the Company from any financial claims regarding this cycle.
                     </p>
                   </div>
 
                   {/* SIGNATURES BOX */}
-                  <div style={{ position: "absolute", bottom: "30px", left: "20px", right: "20px", display: "flex", justifyContent: "space-between", border: "1px solid #cbd5e1", borderRadius: "8px", padding: "20px", backgroundColor: "#f8fafc" }}>
+                  <div style={{ marginTop: "20px", display: "flex", justifyContent: "space-between", border: "1px solid #cbd5e1", borderRadius: "8px", padding: "12px 14px", backgroundColor: "#f8fafc" }}>
                     <div style={{ width: "45%" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "#475569", fontWeight: "bold", marginBottom: "50px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#475569", fontWeight: "bold", marginBottom: "30px" }}>
                         <span>Employee Signature</span><span>توقيع الموظف (المُقر)</span>
                       </div>
                       <div style={{ borderBottom: "1px solid #94a3b8" }}></div>
                     </div>
                     <div style={{ width: "45%" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "#475569", fontWeight: "bold", marginBottom: "50px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#475569", fontWeight: "bold", marginBottom: "30px" }}>
                         <span>Authorized Manager</span><span>توقيع المدير المختص</span>
                       </div>
                       <div style={{ borderBottom: "1px solid #94a3b8" }}></div>
