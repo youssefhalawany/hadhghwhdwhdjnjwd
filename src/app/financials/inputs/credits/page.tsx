@@ -2196,22 +2196,22 @@ export default function CreditsPage() {
                   <PosReceiptPrinter isPrinting={isReceiptPrinting} />
                 </div>
               )}
-              <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50/50">
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight">Make Payment</h2>
-                <button onClick={() => setShowPaymentModal(false)} className="p-2 hover:bg-slate-200 text-slate-400 hover:text-slate-600 rounded-full transition-colors">
+              <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50/50" dir={isAr ? "rtl" : "ltr"}>
+                <h2 className="text-2xl font-black text-slate-900 tracking-tight">{isAr ? "تحصيل مديونية / آجل" : "Make Payment"}</h2>
+                <button onClick={() => setShowPaymentModal(false)} className="p-2 hover:bg-slate-200 text-slate-400 hover:text-slate-600 rounded-full transition-colors cursor-pointer">
                   <X size={20} />
                 </button>
               </div>
 
-              <form onSubmit={handleProcessPayment} className="flex flex-col flex-1 min-h-0">
+              <form onSubmit={handleProcessPayment} className="flex flex-col flex-1 min-h-0" dir={isAr ? "rtl" : "ltr"}>
                 <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
                   <div className="bg-gradient-to-br from-indigo-50 to-blue-50 p-5 rounded-2xl border border-indigo-100/50 mb-6 shadow-inner">
-                  <p className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-1">Paying For</p>
+                  <p className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-1">{isAr ? "تحصيل لحساب" : "Paying For"}</p>
                   <p className="text-lg text-indigo-900 font-black tracking-tight">{selectedCreditForPayment.companyName}</p>
-                  <p className="text-sm font-medium text-indigo-600/80 mb-4 flex items-center gap-1"><FileText size={14}/> Inv: {selectedCreditForPayment.invoiceNumber}</p>
+                  <p className="text-sm font-medium text-indigo-600/80 mb-4 flex items-center gap-1"><FileText size={14}/> {isAr ? "فاتورة رقم:" : "Inv:"} {selectedCreditForPayment.invoiceNumber}</p>
                   
                   <div className="bg-white/60 p-3 rounded-xl border border-indigo-100/50 flex justify-between items-center backdrop-blur-sm">
-                    <span className="text-sm font-bold text-indigo-900/60 uppercase tracking-wide">Remaining Balance</span>
+                    <span className="text-sm font-bold text-indigo-900/60 uppercase tracking-wide">{isAr ? "المبلغ المتبقي" : "Remaining Balance"}</span>
                     <span className="text-2xl font-black text-indigo-600 font-mono tracking-tight">EGP {((selectedCreditForPayment.amountDue + selectedCreditForPayment.tax) - selectedCreditForPayment.paidAmount).toLocaleString()}</span>
                   </div>
                 </div>
@@ -2219,24 +2219,24 @@ export default function CreditsPage() {
                 <div className="space-y-4 mb-8">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Date *</label>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "التاريخ *" : "Date *"}</label>
                       <input required type="date" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-bold text-slate-900" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Time *</label>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "الوقت *" : "Time *"}</label>
                       <input required type="time" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-bold text-slate-900" value={paymentTime} onChange={(e) => setPaymentTime(e.target.value)} />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Payment Method *</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "طريقة التحصيل *" : "Payment Method *"}</label>
                     <select className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-bold text-slate-900 appearance-none cursor-pointer" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
-                      <option value="cash">💵 Cash / نقدي</option>
-                      <option value="bank_transfer">🏦 Bank Transfer / تحويل بنكي</option>
-                      <option value="visa">💳 Visa / فيزا</option>
+                      <option value="cash">{isAr ? "💵 كاش (نقداً)" : "💵 Cash / نقدي"}</option>
+                      <option value="bank_transfer">{isAr ? "🏦 تحويل بنكي" : "🏦 Bank Transfer / تحويل بنكي"}</option>
+                      <option value="visa">{isAr ? "💳 فيزا (بطاقة)" : "💳 Visa / فيزا"}</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Amount to Pay *</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "المبلغ المحصل *" : "Amount to Pay *"}</label>
                     <div className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-black">EGP</span>
                       <input 
@@ -2254,7 +2254,7 @@ export default function CreditsPage() {
 
                   {paymentMethod === 'bank_transfer' && (
                     <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 mb-8 mt-2">
-                      <label className="block text-xs font-bold text-blue-600 uppercase tracking-wider mb-2">Bank Transfer Receipt *</label>
+                      <label className="block text-xs font-bold text-blue-600 uppercase tracking-wider mb-2">{isAr ? "إيصال التحويل البنكي *" : "Bank Transfer Receipt *"}</label>
                       <div className="flex flex-col gap-2">
                         <input 
                           type="file" 
@@ -2270,15 +2270,14 @@ export default function CreditsPage() {
                           <p className="text-xs font-medium text-blue-800 break-all bg-blue-100/50 p-2 rounded-lg border border-blue-200 inline-flex items-center gap-1"><CheckCircle2 size={12}/> {bankTransferFile.name}</p>
                         ) : (
                           <div className="flex items-center gap-2 mt-1">
-                            <span className="text-[10px] text-blue-500">Or: </span>
+                            <span className="text-[10px] text-blue-500">{isAr ? "أو:" : "Or: "}</span>
                             <button 
                               type="button" 
                               onClick={handlePasteBankReceipt}
-                              className="text-[10px] text-blue-600 bg-blue-100 hover:bg-blue-200 px-2 py-1 rounded flex items-center gap-1 transition-colors border border-blue-200"
+                              className="text-[10px] text-blue-600 bg-blue-100 hover:bg-blue-200 px-2 py-1 rounded flex items-center gap-1 transition-colors border border-blue-200 cursor-pointer"
                             >
-                              <ClipboardPaste size={10}/> Paste from Clipboard
+                              <ClipboardPaste size={10}/> {isAr ? "لصق من الحافظة" : "Paste from Clipboard"}
                             </button>
-                            <span className="text-[10px] text-blue-400">(or press Ctrl+V)</span>
                           </div>
                         )}
                       </div>
@@ -2288,10 +2287,10 @@ export default function CreditsPage() {
 
                 </div>
                 <div className="flex justify-end gap-3 p-6 border-t border-slate-100 bg-slate-50 mt-auto">
-                  <button type="button" onClick={() => setShowPaymentModal(false)} className="px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 hover:text-slate-900 transition-all shadow-sm">Cancel</button>
-                  <button type="submit" disabled={isSubmitting} className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 shadow-md shadow-indigo-600/20 hover:shadow-indigo-600/40 hover:-translate-y-0.5 transition-all">
+                  <button type="button" onClick={() => setShowPaymentModal(false)} className="px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 hover:text-slate-900 transition-all shadow-sm cursor-pointer">{isAr ? "إلغاء" : "Cancel"}</button>
+                  <button type="submit" disabled={isSubmitting} className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 shadow-md shadow-indigo-600/20 hover:shadow-indigo-600/40 hover:-translate-y-0.5 transition-all cursor-pointer">
                     {isSubmitting && <Loader2 size={18} className="animate-spin" />}
-                    Confirm Payment
+                    {isAr ? "تأكيد التحصيل" : "Confirm Payment"}
                   </button>
                 </div>
               </form>
@@ -2313,29 +2312,30 @@ export default function CreditsPage() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl border border-slate-100 flex flex-col max-h-[95vh] overflow-y-auto custom-scrollbar"
+              dir={isAr ? "rtl" : "ltr"}
             >
-              <h3 className="text-xl font-black text-slate-900 mb-4 tracking-tight">Add New Supplier</h3>
+              <h3 className="text-xl font-black text-slate-900 mb-4 tracking-tight">{isAr ? "إضافة مورد جديد" : "Add New Supplier"}</h3>
               <input 
                 type="text" 
                 value={newSupplierName}
                 onChange={(e) => setNewSupplierName(e.target.value)}
-                placeholder="e.g. COCA COLA EG"
+                placeholder={isAr ? "مثال: كوكاكولا مصر" : "e.g. COCA COLA EG"}
                 className="w-full border-none bg-slate-50 focus:ring-2 focus:ring-indigo-500/20 rounded-xl p-3 text-slate-900 font-medium mb-6 outline-none"
                 autoFocus
               />
               <div className="flex gap-3 justify-end">
                 <button 
                   onClick={() => setShowAddSupplier(false)}
-                  className="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 rounded-xl transition-colors"
+                  className="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
                 >
-                  Cancel
+                  {isAr ? "إلغاء" : "Cancel"}
                 </button>
                 <button 
                   onClick={handleAddSupplier}
                   disabled={!newSupplierName.trim()}
-                  className="px-5 py-2 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-sm"
+                  className="px-5 py-2 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-sm cursor-pointer"
                 >
-                  Save Supplier
+                  {isAr ? "حفظ المورد" : "Save Supplier"}
                 </button>
               </div>
             </motion.div>
@@ -2356,12 +2356,13 @@ export default function CreditsPage() {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[95vh]"
+              dir={isAr ? "rtl" : "ltr"}
             >
               <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50/50">
-                <h2 className="text-xl font-black text-slate-900 tracking-tight">Add PO to Credit</h2>
+                <h2 className="text-xl font-black text-slate-900 tracking-tight">{isAr ? "إضافة أمر شراء للدين" : "Add PO to Credit"}</h2>
                 <button 
                   onClick={() => setSelectedCreditForPoUpload(null)} 
-                  className="p-2 hover:bg-slate-200 text-slate-400 hover:text-slate-600 rounded-full transition-colors"
+                  className="p-2 hover:bg-slate-200 text-slate-400 hover:text-slate-600 rounded-full transition-colors cursor-pointer"
                 >
                   <X size={20} />
                 </button>
@@ -2369,7 +2370,9 @@ export default function CreditsPage() {
 
               <div className="p-6 overflow-y-auto custom-scrollbar flex-1 min-h-0">
                 <p className="text-sm text-slate-500 mb-6 font-medium">
-                  Upload, drag-and-drop, or paste a purchase order image. We'll automatically extract the products and sync them with the catalog. This will not overwrite any existing information except the products list and the PO Number/Invoice Number if they are missing.
+                  {isAr 
+                    ? "قم برفع أو سحب أو لصق صورة أمر الشراء. سيتم استخراج الأصناف وتحديثها تلقائياً بالذكاء الاصطناعي." 
+                    : "Upload, drag-and-drop, or paste a purchase order image. We'll automatically extract the products and sync them with the catalog."}
                 </p>
 
                 <div 
@@ -2380,21 +2383,21 @@ export default function CreditsPage() {
                   {uploadingPoToOldCredit ? (
                     <div className="flex flex-col items-center justify-center gap-3 text-indigo-600">
                       <Loader2 className="h-10 w-10 animate-spin" />
-                      <span className="font-bold text-lg">Processing Document...</span>
-                      <span className="text-sm text-indigo-400">Extracting details and syncing items...</span>
+                      <span className="font-bold text-lg">{isAr ? "جاري معالجة المستند..." : "Processing Document..."}</span>
+                      <span className="text-sm text-indigo-400">{isAr ? "استخراج الأصناف ومطابقتها..." : "Extracting details and syncing items..."}</span>
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center gap-3 text-slate-500">
                       <ImageIcon className="h-12 w-12 text-slate-400" />
-                      <span className="font-bold text-lg">Paste or Drop PO Image Here</span>
-                      <span className="text-sm">Cmd+V / Ctrl+V to paste directly</span>
+                      <span className="font-bold text-lg">{isAr ? "اسحب صورة امر الشراء هنا" : "Paste or Drop PO Image Here"}</span>
+                      <span className="text-sm">{isAr ? "اضغط Ctrl+V / Cmd+V للصق مباشرة" : "Cmd+V / Ctrl+V to paste directly"}</span>
                       <button
                         type="button"
                         onClick={handlePastePoImageButtonClick}
-                        className="mt-4 flex items-center gap-2 px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-colors text-sm"
+                        className="mt-4 flex items-center gap-2 px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-colors text-sm cursor-pointer"
                       >
                         <ClipboardPaste size={18} />
-                        Paste from Clipboard
+                        {isAr ? "لصق من الحافظة" : "Paste from Clipboard"}
                       </button>
                     </div>
                   )}
@@ -2446,15 +2449,15 @@ export default function CreditsPage() {
             <div style={{ height: '16px', backgroundSize: '24px 24px', backgroundImage: 'linear-gradient(-45deg, transparent 12px, #0f172a 0), linear-gradient(45deg, transparent 12px, #0f172a 0)' }} className="w-full absolute -top-[15px] left-0 right-0 z-10 drop-shadow-sm hidden dark:block" />
 
             {/* Receipt Body */}
-            <div className="bg-white dark:bg-slate-900 shadow-2xl overflow-hidden flex flex-col relative z-20">
+            <div className="bg-white dark:bg-slate-900 shadow-2xl overflow-hidden flex flex-col relative z-20" dir={isAr ? "rtl" : "ltr"}>
               
               <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-start bg-slate-50 dark:bg-slate-800/50">
                 <div>
                   <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-                    <FileText className="text-blue-500" size={24} /> Credit Receipt
+                    <FileText className="text-blue-500" size={24} /> {isAr ? "إيصال الآجل والمديونية" : "Credit Receipt"}
                   </h2>
                   <p className="text-sm font-medium text-slate-500 mt-1">
-                    {selectedCreditForView.companyName} • {new Date(selectedCreditForView.createdAt?.toDate ? selectedCreditForView.createdAt.toDate() : selectedCreditForView.createdAt || Date.now()).toLocaleDateString('en-GB')}
+                    {selectedCreditForView.companyName} • {new Date(selectedCreditForView.createdAt?.toDate ? selectedCreditForView.createdAt.toDate() : selectedCreditForView.createdAt || Date.now()).toLocaleDateString(isAr ? 'ar-EG' : 'en-GB')}
                     {selectedCreditForView.poNumber && ` • PO: ${selectedCreditForView.poNumber}`}
                   </p>
                 </div>
@@ -2466,12 +2469,12 @@ export default function CreditsPage() {
                       rel="noopener noreferrer"
                       className="text-xs font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 mr-2"
                     >
-                      <ImageIcon size={14} /> View Image
+                      <ImageIcon size={14} /> {isAr ? "عرض الصورة" : "View Image"}
                     </a>
                   )}
                   <button 
                     onClick={() => setSelectedCreditForView(null)}
-                    className="p-2 text-slate-400 hover:text-slate-600 bg-white dark:bg-slate-800 rounded-full transition-colors shadow-sm"
+                    className="p-2 text-slate-400 hover:text-slate-600 bg-white dark:bg-slate-800 rounded-full transition-colors shadow-sm cursor-pointer"
                   >
                     <X size={20} />
                   </button>
@@ -2481,40 +2484,40 @@ export default function CreditsPage() {
               <div className="p-6 overflow-y-auto max-h-[60vh] space-y-6">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                   <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Company / Supplier</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "الشركة / المورد" : "Company / Supplier"}</p>
                     <p className="text-xl font-black text-slate-900 dark:text-white truncate" title={selectedCreditForView.companyName}>{selectedCreditForView.companyName}</p>
                   </div>
                   <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Date</p>
-                    <p className="text-xl font-black text-slate-900 dark:text-white">{new Date(selectedCreditForView.createdAt?.toDate ? selectedCreditForView.createdAt.toDate() : selectedCreditForView.createdAt || Date.now()).toLocaleDateString('en-GB')}</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "التاريخ" : "Date"}</p>
+                    <p className="text-xl font-black text-slate-900 dark:text-white">{new Date(selectedCreditForView.createdAt?.toDate ? selectedCreditForView.createdAt.toDate() : selectedCreditForView.createdAt || Date.now()).toLocaleDateString(isAr ? 'ar-EG' : 'en-GB')}</p>
                   </div>
                   <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Collection Date</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "تاريخ التحصيل المتوقع" : "Collection Date"}</p>
                     <p className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-                      {selectedCreditForView.collectionDate || "N/A"}
+                      {selectedCreditForView.collectionDate || (isAr ? "غير متاح" : "N/A")}
                     </p>
                   </div>
                   <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Taxable</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "خاضع للضريبة" : "Taxable"}</p>
                     <p className="text-xl font-black text-slate-900 dark:text-white capitalize flex items-center gap-2">
-                      {selectedCreditForView.isTaxable ? 'Yes' : 'No'}
+                      {selectedCreditForView.isTaxable ? (isAr ? "نعم" : "Yes") : (isAr ? "لا" : "No")}
                     </p>
                   </div>
                   <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Amount Due</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "إجمالي المبلغ المستحق" : "Total Amount Due"}</p>
                     <p className="text-xl font-black text-slate-900 dark:text-white">EGP {Number(selectedCreditForView.amountDue).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                   </div>
                   <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Tax Amount</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "قيمة الضريبة" : "Tax Amount"}</p>
                     <p className="text-xl font-black text-slate-900 dark:text-white">EGP {Number(selectedCreditForView.tax || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                   </div>
                   <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Invoice Number</p>
-                    <p className="text-xl font-black text-slate-900 dark:text-white truncate" title={selectedCreditForView.invoiceNumber || "N/A"}>{selectedCreditForView.invoiceNumber || "N/A"}</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "رقم الفاتورة" : "Invoice Number"}</p>
+                    <p className="text-xl font-black text-slate-900 dark:text-white truncate" title={selectedCreditForView.invoiceNumber || (isAr ? "غير متاح" : "N/A")}>{selectedCreditForView.invoiceNumber || (isAr ? "غير متاح" : "N/A")}</p>
                   </div>
                   <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">PO Number</p>
-                    <p className="text-xl font-black text-slate-900 dark:text-white truncate" title={selectedCreditForView.poNumber || "N/A"}>{selectedCreditForView.poNumber || "N/A"}</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "رقم أمر الشراء (PO)" : "PO Number"}</p>
+                    <p className="text-xl font-black text-slate-900 dark:text-white truncate" title={selectedCreditForView.poNumber || (isAr ? "غير متاح" : "N/A")}>{selectedCreditForView.poNumber || (isAr ? "غير متاح" : "N/A")}</p>
                   </div>
                 </div>
 
@@ -2526,7 +2529,7 @@ export default function CreditsPage() {
               if (urls.length > 0) {
                 return (
                   <div className="mb-8">
-                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 dark:border-slate-800 pb-2">Supplier Invoice(s) / PO</h3>
+                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 dark:border-slate-800 pb-2">{isAr ? "مرفقات فواتير / أمر شراء المورد" : "Supplier Invoice(s) / PO"}</h3>
                     <div className="flex flex-col gap-4">
                       {urls.map((url: string, index: number) => (
                         <div key={index} className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm max-h-64 relative bg-slate-50 dark:bg-slate-900 flex justify-center items-center group">
@@ -2536,15 +2539,15 @@ export default function CreditsPage() {
                             className="object-contain max-h-64 w-full"
                           />
                           <div className="absolute top-2 left-2 bg-black/60 px-3 py-1 rounded-full text-white text-xs font-bold tracking-wider z-10">
-                            PAGE {index + 1}
+                            {isAr ? `صفحة ${index + 1}` : `PAGE ${index + 1}`}
                           </div>
                           <a 
                             href={url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold gap-2 w-full h-full z-20"
+                            className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold gap-2 w-full h-full z-20 cursor-pointer"
                           >
-                            <ImageIcon size={20} /> View Full Page {index + 1}
+                            <ImageIcon size={20} /> {isAr ? `عرض الصفحة ${index + 1} كاملة` : `View Full Page ${index + 1}`}
                           </a>
                         </div>
                       ))}
@@ -2555,7 +2558,7 @@ export default function CreditsPage() {
 
               return (
                 <div className="mb-8 flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700">
-                  <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 text-center">Missing Supplier Invoice / PO</h3>
+                  <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 text-center">{isAr ? "فاتورة المورد / أمر الشراء غير مرفق" : "Missing Supplier Invoice / PO"}</h3>
                   <div className="bg-white p-3 rounded-2xl shadow-sm mb-4">
                     <QRCode 
                       value={`${typeof window !== 'undefined' ? window.location.origin : 'https://anh-zeta.vercel.app'}/cashier/upload-invoice/${selectedCreditForView.id}?type=credit`} 
@@ -2564,32 +2567,32 @@ export default function CreditsPage() {
                     />
                   </div>
                   <p className="text-sm font-bold text-slate-500 text-center max-w-xs">
-                    Scan this QR code with your phone or <span className="text-indigo-500">paste (Ctrl+V) an image</span> to upload the missing invoice.
+                    {isAr ? "امسح كود QR بهاتفك أو قم بلصق صورة الفاتورة (Ctrl+V) لرفعها مباشرة." : "Scan this QR code with your phone or paste (Ctrl+V) an image to upload the missing invoice."}
                   </p>
                   {isPasting && (
-                    <p className="text-xs text-indigo-500 font-bold mt-2 animate-pulse">Uploading pasted image...</p>
+                    <p className="text-xs text-indigo-500 font-bold mt-2 animate-pulse">{isAr ? "جاري رفع الصورة الملصقة..." : "Uploading pasted image..."}</p>
                   )}
                 </div>
               );
             })()}
 
-                <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4">Products / Items ({selectedCreditForView.items?.length || 0})</h3>
+                <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4">{isAr ? `الأصناف والمحتويات (${selectedCreditForView.items?.length || 0})` : `Products / Items (${selectedCreditForView.items?.length || 0})`}</h3>
                 <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
                   <table className="w-full text-sm text-left">
                     <thead className="text-xs text-slate-500 bg-slate-50 dark:bg-slate-800/50 uppercase font-bold">
                       <tr>
-                        <th className="px-4 py-3">Barcode</th>
-                        <th className="px-4 py-3">Description</th>
-                        <th className="px-4 py-3 text-center">Qty</th>
-                        <th className="px-4 py-3 text-right">Unit Price</th>
-                        <th className="px-4 py-3 text-right">Total</th>
+                        <th className="px-4 py-3">{isAr ? "الباركود" : "Barcode"}</th>
+                        <th className="px-4 py-3">{isAr ? "الوصف" : "Description"}</th>
+                        <th className="px-4 py-3 text-center">{isAr ? "الكمية" : "Qty"}</th>
+                        <th className="px-4 py-3 text-right">{isAr ? "سعر الوحدة" : "Unit Price"}</th>
+                        <th className="px-4 py-3 text-right">{isAr ? "الإجمالي" : "Total"}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {selectedCreditForView.items?.map((item: any, idx: number) => (
                         <tr key={idx} className="border-b border-slate-50 dark:border-slate-800/50 last:border-0 font-medium">
-                          <td className="px-4 py-3 text-slate-500">{item.barcode || item.code || "N/A"}</td>
-                          <td className="px-4 py-3 text-slate-900 dark:text-slate-300">{item.description || item.name || "N/A"}</td>
+                          <td className="px-4 py-3 text-slate-500">{item.barcode || item.code || (isAr ? "غير متاح" : "N/A")}</td>
+                          <td className="px-4 py-3 text-slate-900 dark:text-slate-300">{item.description || item.name || (isAr ? "غير متاح" : "N/A")}</td>
                           <td className="px-4 py-3 text-center text-slate-900 dark:text-slate-300">{item.quantity}</td>
                           <td className="px-4 py-3 text-right text-slate-900 dark:text-slate-300">{Number(item.price || item.unitPrice || 0).toFixed(2)}</td>
                           <td className="px-4 py-3 text-right font-bold text-slate-900 dark:text-slate-300">{Number(item.total || (item.quantity * (item.price || item.unitPrice || 0))).toFixed(2)}</td>
@@ -2605,9 +2608,9 @@ export default function CreditsPage() {
                  <button onClick={() => {
                     setSelectedCreditForPrint(selectedCreditForView);
                     setTimeout(() => handlePrintPdf(selectedCreditForView), 100);
-                 }} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-6 py-3 rounded-xl font-bold transition-all disabled:opacity-50">
+                 }} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-6 py-3 rounded-xl font-bold transition-all disabled:opacity-50 cursor-pointer">
                    {isPrinting ? <Loader2 size={18} className="animate-spin" /> : <Printer size={18} />}
-                   {isPrinting ? "Generating PDF..." : "Print All (Copy)"}
+                   {isPrinting ? (isAr ? "جاري إنشاء PDF..." : "Generating PDF...") : (isAr ? "طباعة نسخة كاملة" : "Print All (Copy)")}
                  </button>
               </div>
 

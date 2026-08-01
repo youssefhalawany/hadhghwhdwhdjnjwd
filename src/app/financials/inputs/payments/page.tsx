@@ -2238,12 +2238,12 @@ export default function PaymentsRedesignPage() {
                 <div style={{ height: '16px', backgroundSize: '24px 24px', backgroundImage: 'linear-gradient(-45deg, transparent 12px, #0f172a 0), linear-gradient(45deg, transparent 12px, #0f172a 0)' }} className="w-full absolute -top-[15px] left-0 right-0 z-10 drop-shadow-sm hidden dark:block" />
 
                 {/* Receipt Body */}
-                <div className="bg-white dark:bg-slate-900 shadow-2xl overflow-hidden flex flex-col relative z-20">
+                <div className="bg-white dark:bg-slate-900 shadow-2xl overflow-hidden flex flex-col relative z-20" dir={isAr ? "rtl" : "ltr"}>
 
                   <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-start bg-slate-50 dark:bg-slate-800/50">
                     <div>
                       <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-                        <FileText className="text-blue-500" size={24} /> Payment Receipt
+                        <FileText className="text-blue-500" size={24} /> {isAr ? "إيصال سند صرف" : "Payment Receipt"}
                       </h2>
                       <p className="text-sm font-medium text-slate-500 mt-1">
                         {selectedPaymentForView.companyName} • {selectedPaymentForView.date}
@@ -2258,12 +2258,12 @@ export default function PaymentsRedesignPage() {
                           rel="noopener noreferrer"
                           className="text-xs font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 mr-2"
                         >
-                          <ImageIcon size={14} /> View PO Image
+                          <ImageIcon size={14} /> {isAr ? "عرض صورة امر الشراء" : "View PO Image"}
                         </a>
                       )}
                       <button
                         onClick={() => setSelectedPaymentForView(null)}
-                        className="p-2 text-slate-400 hover:text-slate-600 bg-white dark:bg-slate-800 rounded-full transition-colors shadow-sm"
+                        className="p-2 text-slate-400 hover:text-slate-600 bg-white dark:bg-slate-800 rounded-full transition-colors shadow-sm cursor-pointer"
                       >
                         <X size={20} />
                       </button>
@@ -2273,40 +2273,40 @@ export default function PaymentsRedesignPage() {
                   <div className="p-6 overflow-y-auto max-h-[60vh] space-y-6">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                       <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Company / Supplier</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "الشركة / المورد" : "Company / Supplier"}</p>
                         <p className="text-xl font-black text-slate-900 dark:text-white truncate" title={selectedPaymentForView.companyName}>{selectedPaymentForView.companyName}</p>
                       </div>
                       <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Date</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "التاريخ" : "Date"}</p>
                         <p className="text-xl font-black text-slate-900 dark:text-white">{selectedPaymentForView.date}</p>
                       </div>
                       <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Payment Method</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "طريقة الدفع" : "Payment Method"}</p>
                         <p className="text-xl font-black text-slate-900 dark:text-white capitalize flex items-center gap-2">
-                          {METHOD_EMOJIS[selectedPaymentForView.method] || "💵"} {selectedPaymentForView.method}
+                          {METHOD_EMOJIS[selectedPaymentForView.method] || "💵"} {selectedPaymentForView.method === 'cash' ? (isAr ? "كاش (نقداً)" : "Cash") : selectedPaymentForView.method === 'visa' ? (isAr ? "فيزا" : "Visa") : (isAr ? "تحويل بنكي" : "Bank Transfer")}
                         </p>
                       </div>
                       <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Category</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "التصنيف" : "Category"}</p>
                         <p className="text-xl font-black text-slate-900 dark:text-white capitalize flex items-center gap-2">
-                          {CATEGORY_EMOJIS[selectedPaymentForView.category] || "📦"} {selectedPaymentForView.category}
+                          {CATEGORY_EMOJIS[selectedPaymentForView.category] || "📦"} {selectedPaymentForView.category === 'order' ? (isAr ? "طلبات وبضائع" : "Order") : selectedPaymentForView.category === 'utilities' ? (isAr ? "المرافق والخدمات" : "Utilities") : selectedPaymentForView.category === 'maintenance' ? (isAr ? "الصيانة" : "Maintenance") : selectedPaymentForView.category === 'transportation' ? (isAr ? "النقل والنولون" : "Transportation") : (isAr ? "مصروفات أخرى" : "Other")}
                         </p>
                       </div>
                       <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Amount</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "المبلغ الإجمالي" : "Total Amount"}</p>
                         <p className="text-xl font-black text-slate-900 dark:text-white">EGP {Number(selectedPaymentForView.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                       </div>
                       <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Tax Amount</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "قيمة الضريبة" : "Tax Amount"}</p>
                         <p className="text-xl font-black text-slate-900 dark:text-white">EGP {Number(selectedPaymentForView.tax || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                       </div>
                       <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Invoice Number</p>
-                        <p className="text-xl font-black text-slate-900 dark:text-white truncate" title={selectedPaymentForView.invoiceNumber || "N/A"}>{selectedPaymentForView.invoiceNumber || "N/A"}</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "رقم الفاتورة" : "Invoice Number"}</p>
+                        <p className="text-xl font-black text-slate-900 dark:text-white truncate" title={selectedPaymentForView.invoiceNumber || (isAr ? "غير متاح" : "N/A")}>{selectedPaymentForView.invoiceNumber || (isAr ? "غير متاح" : "N/A")}</p>
                       </div>
                       <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">PO Number</p>
-                        <p className="text-xl font-black text-slate-900 dark:text-white truncate" title={selectedPaymentForView.poNumber || "N/A"}>{selectedPaymentForView.poNumber || "N/A"}</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "رقم أمر الشراء (PO)" : "PO Number"}</p>
+                        <p className="text-xl font-black text-slate-900 dark:text-white truncate" title={selectedPaymentForView.poNumber || (isAr ? "غير متاح" : "N/A")}>{selectedPaymentForView.poNumber || (isAr ? "غير متاح" : "N/A")}</p>
                       </div>
                     </div>
 
@@ -2314,13 +2314,13 @@ export default function PaymentsRedesignPage() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                         {selectedPaymentForView.supplierRepName && (
                           <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Supplier Representative</p>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "اسم مندوب/سائق المورد" : "Supplier Representative"}</p>
                             <p className="text-md font-bold text-slate-900 dark:text-white">{selectedPaymentForView.supplierRepName} {selectedPaymentForView.supplierNationalId ? `(${selectedPaymentForView.supplierNationalId})` : ""}</p>
                           </div>
                         )}
                         {selectedPaymentForView.categoryNote && (
                           <div className={`bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl ${!selectedPaymentForView.supplierRepName ? 'col-span-full' : ''}`}>
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Notes</p>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "ملاحظات" : "Notes"}</p>
                             <p className="text-md font-medium text-slate-700 dark:text-slate-300">{selectedPaymentForView.categoryNote}</p>
                           </div>
                         )}
@@ -2329,7 +2329,7 @@ export default function PaymentsRedesignPage() {
 
                     {selectedPaymentForView.bankTransferReceiptUrl && (
                       <div className="mb-8">
-                        <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 dark:border-slate-800 pb-2">Bank Transfer Receipt</h3>
+                        <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 dark:border-slate-800 pb-2">{isAr ? "إيصال التحويل البنكي" : "Bank Transfer Receipt"}</h3>
                         <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm max-h-64 relative bg-slate-50 dark:bg-slate-900 flex justify-center items-center group">
                           <img
                             src={selectedPaymentForView.bankTransferReceiptUrl}
@@ -2339,9 +2339,9 @@ export default function PaymentsRedesignPage() {
                           <button
                             onClick={() => handleViewFullReceipt(selectedPaymentForView.bankTransferReceiptUrl!)}
                             type="button"
-                            className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold gap-2 w-full h-full"
+                            className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold gap-2 w-full h-full cursor-pointer"
                           >
-                            <ImageIcon size={20} /> View Full Receipt
+                            <ImageIcon size={20} /> {isAr ? "عرض الإيصال بالكامل" : "View Full Receipt"}
                           </button>
                         </div>
                       </div>
@@ -2355,7 +2355,7 @@ export default function PaymentsRedesignPage() {
                       if (urls.length > 0) {
                         return (
                           <div className="mb-8">
-                            <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 dark:border-slate-800 pb-2">Supplier Invoice(s)</h3>
+                            <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 dark:border-slate-800 pb-2">{isAr ? "مرفقات فواتير المورد" : "Supplier Invoice(s)"}</h3>
                             <div className="flex flex-col gap-4">
                               {urls.map((url: string, index: number) => (
                                 <div key={index} className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm max-h-64 relative bg-slate-50 dark:bg-slate-900 flex justify-center items-center group">
@@ -2365,14 +2365,14 @@ export default function PaymentsRedesignPage() {
                                     className="object-contain max-h-64 w-full"
                                   />
                                   <div className="absolute top-2 left-2 bg-black/60 px-3 py-1 rounded-full text-white text-xs font-bold tracking-wider z-10">
-                                    PAGE {index + 1}
+                                    {isAr ? `صفحة ${index + 1}` : `PAGE ${index + 1}`}
                                   </div>
                                   <button
                                     onClick={() => handleViewFullReceipt(url)}
                                     type="button"
-                                    className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold gap-2 w-full h-full z-20"
+                                    className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold gap-2 w-full h-full z-20 cursor-pointer"
                                   >
-                                    <ImageIcon size={20} /> View Full Page {index + 1}
+                                    <ImageIcon size={20} /> {isAr ? `عرض الصفحة ${index + 1} كاملة` : `View Full Page ${index + 1}`}
                                   </button>
                                 </div>
                               ))}
@@ -2383,7 +2383,7 @@ export default function PaymentsRedesignPage() {
 
                       return (
                         <div className="mb-8 flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700">
-                          <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 text-center">Missing Supplier Invoice</h3>
+                          <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 text-center">{isAr ? "فاتورة المورد غير مرفقة" : "Missing Supplier Invoice"}</h3>
                           <div className="bg-white p-3 rounded-2xl shadow-sm mb-4">
                             <QRCode
                               value={`${typeof window !== 'undefined' ? window.location.origin : 'https://anh-zeta.vercel.app'}/cashier/upload-invoice/${selectedPaymentForView.id}`}
@@ -2392,32 +2392,32 @@ export default function PaymentsRedesignPage() {
                             />
                           </div>
                           <p className="text-sm font-bold text-slate-500 text-center max-w-xs">
-                            Scan this QR code with your phone or <span className="text-indigo-500">paste (Ctrl+V) an image</span> to upload the missing invoice.
+                            {isAr ? "امسح كود QR بهاتفك أو قم بلصق صورة الفاتورة (Ctrl+V) لرفعها مباشرة." : "Scan this QR code with your phone or paste (Ctrl+V) an image to upload the missing invoice."}
                           </p>
                           {isPasting && (
-                            <p className="text-xs text-indigo-500 font-bold mt-2 animate-pulse">Uploading pasted image...</p>
+                            <p className="text-xs text-indigo-500 font-bold mt-2 animate-pulse">{isAr ? "جاري رفع الصورة الملصقة..." : "Uploading pasted image..."}</p>
                           )}
                         </div>
                       );
                     })()}
 
-                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4">Products / Items ({selectedPaymentForView.items?.length || 0})</h3>
+                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4">{isAr ? `الأصناف والمحتويات (${selectedPaymentForView.items?.length || 0})` : `Products / Items (${selectedPaymentForView.items?.length || 0})`}</h3>
                     <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
                       <table className="w-full text-sm text-left">
                         <thead className="text-xs text-slate-500 bg-slate-50 dark:bg-slate-800/50 uppercase font-bold">
                           <tr>
-                            <th className="px-4 py-3">Barcode</th>
-                            <th className="px-4 py-3">Description</th>
-                            <th className="px-4 py-3 text-center">Qty</th>
-                            <th className="px-4 py-3 text-right">Unit Price</th>
-                            <th className="px-4 py-3 text-right">Total</th>
+                            <th className="px-4 py-3">{isAr ? "الباركود" : "Barcode"}</th>
+                            <th className="px-4 py-3">{isAr ? "الوصف" : "Description"}</th>
+                            <th className="px-4 py-3 text-center">{isAr ? "الكمية" : "Qty"}</th>
+                            <th className="px-4 py-3 text-right">{isAr ? "سعر الوحدة" : "Unit Price"}</th>
+                            <th className="px-4 py-3 text-right">{isAr ? "الإجمالي" : "Total"}</th>
                           </tr>
                         </thead>
                         <tbody>
                           {selectedPaymentForView.items?.map((item: any, idx: number) => (
                             <tr key={idx} className="border-b border-slate-50 dark:border-slate-800/50 last:border-0 font-medium">
-                              <td className="px-4 py-3 text-slate-500">{item.barcode || "N/A"}</td>
-                              <td className="px-4 py-3 text-slate-900 dark:text-slate-300">{item.description || "N/A"}</td>
+                              <td className="px-4 py-3 text-slate-500">{item.barcode || (isAr ? "غير متاح" : "N/A")}</td>
+                              <td className="px-4 py-3 text-slate-900 dark:text-slate-300">{item.description || (isAr ? "غير متاح" : "N/A")}</td>
                               <td className="px-4 py-3 text-center text-slate-900 dark:text-slate-300">{item.quantity}</td>
                               <td className="px-4 py-3 text-right text-slate-900 dark:text-slate-300">{Number(item.unitPrice).toFixed(2)}</td>
                               <td className="px-4 py-3 text-right font-bold text-slate-900 dark:text-slate-300">{(item.quantity * item.unitPrice).toFixed(2)}</td>
@@ -2447,16 +2447,18 @@ export default function PaymentsRedesignPage() {
                           setSelectedPaymentForPrint(selectedPaymentForView);
                           setTimeout(() => generatePDF(selectedPaymentForView), 100);
                         }}
-                        className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold flex items-center gap-2 transition-all shadow-sm hover:shadow-md"
+                        className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold flex items-center gap-2 transition-all shadow-sm hover:shadow-md cursor-pointer"
                       >
                         {generatingPDF ? (
                           <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                         ) : (
                           <Printer size={18} />
                         )}
-                        {generatingPDF ? "Generating PDF..." : "Print All (Copy)"}
+                        {generatingPDF ? (isAr ? "جاري إنشاء PDF..." : "Generating PDF...") : (isAr ? "طباعة نسخة كاملة" : "Print All (Copy)")}
                       </button>
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest text-center max-w-[200px]">Scan for Digital Transaction Verification</p>
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest text-center max-w-[200px] mt-2">
+                        {isAr ? "امسح كود QR للمطابقة والتدقيق المالي الرقمي" : "Scan for Digital Transaction Verification"}
+                      </p>
                     </div>
                   </div>
 
@@ -2465,13 +2467,13 @@ export default function PaymentsRedesignPage() {
                     <button onClick={() => {
                       setSelectedPaymentForPrint(selectedPaymentForView);
                       generatePDF(selectedPaymentForView);
-                    }} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm">
+                    }} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm cursor-pointer">
                       {generatingPDF ? (
                         <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                       ) : (
                         <Printer size={18} />
                       )}
-                      {generatingPDF ? "Generating PDF..." : "Print All (Copy)"}
+                      {generatingPDF ? (isAr ? "جاري إنشاء PDF..." : "Generating PDF...") : (isAr ? "طباعة نسخة كاملة" : "Print All (Copy)")}
                     </button>
                     <button onClick={async () => {
                       const text = `Dear ANH Management,\n\nPlease review the following payment transaction and its attached invoice.\n\n*🧾 Transaction Details:*\n• *Supplier:* ${selectedPaymentForView.companyName}\n• *Amount:* EGP ${Number(selectedPaymentForView.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}\n• *Date:* ${selectedPaymentForView.date}\n• *Payment Method:* ${selectedPaymentForView.method.toUpperCase()}\n• *Reference ID:* ${selectedPaymentForView.id}`;
@@ -2501,24 +2503,22 @@ export default function PaymentsRedesignPage() {
                             text: text,
                             files: filesToShare
                           });
-                          return; // Successfully shared using native dialog
+                          return;
                         } catch (e) {
                           console.log('Share failed or was cancelled', e);
                         }
                       }
 
-                      // Fallback: If native share with files is not supported or cancelled
-                      // just open whatsapp link with text
                       window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-                    }} className="flex items-center gap-2 bg-[#25D366] hover:bg-[#1DA851] text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm">
-                      WhatsApp
+                    }} className="flex items-center gap-2 bg-[#25D366] hover:bg-[#1DA851] text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm cursor-pointer">
+                      {isAr ? "واتساب" : "WhatsApp"}
                     </button>
                     <button onClick={() => {
                       const subject = `Payment Receipt - ${selectedPaymentForView.companyName}`;
                       const body = `Payment Receipt\nSupplier: ${selectedPaymentForView.companyName}\nAmount: EGP ${Number(selectedPaymentForView.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}\nDate: ${selectedPaymentForView.date}\nMethod: ${selectedPaymentForView.method}\nID: ${selectedPaymentForView.id}`;
                       window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-                    }} className="flex items-center gap-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-white hover:bg-slate-300 dark:hover:bg-slate-600 px-5 py-2.5 rounded-xl font-bold transition-all">
-                      Email
+                    }} className="flex items-center gap-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-white hover:bg-slate-300 dark:hover:bg-slate-600 px-5 py-2.5 rounded-xl font-bold transition-all cursor-pointer">
+                      {isAr ? "البريد الإلكتروني" : "Email"}
                     </button>
                   </div>
                 </div>
