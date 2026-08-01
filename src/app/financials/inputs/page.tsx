@@ -13,7 +13,8 @@ import { motion } from "framer-motion";
 
 export default function FinancialInputsOverview() {
   const { currentBranch } = useBranch();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const isAr = language === "ar";
   
   const [stats, setStats] = useState({
     safeMoney: 0,
@@ -57,9 +58,9 @@ export default function FinancialInputsOverview() {
   }, []);
 
   const getShiftName = (hour: number) => {
-    if (hour >= 6 && hour < 14) return "Morning";
-    if (hour >= 14 && hour < 22) return "Evening";
-    return "Night";
+    if (hour >= 6 && hour < 14) return isAr ? "الصباحية" : "Morning";
+    if (hour >= 14 && hour < 22) return isAr ? "المسائية" : "Evening";
+    return isAr ? "الليلية" : "Night";
   };
 
 
@@ -345,23 +346,25 @@ export default function FinancialInputsOverview() {
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-600 dark:text-cyan-400 text-xs font-bold uppercase tracking-widest mb-4">
-              <Activity className="w-4 h-4" /> Command Center
+              <Activity className="w-4 h-4" /> {isAr ? "مركز التحكم" : "Command Center"}
             </div>
             <h1 className="text-4xl sm:text-5xl font-black text-slate-900 dark:text-white tracking-tight mb-2">
-              Good {currentTime.getHours() < 12 ? 'morning' : currentTime.getHours() < 18 ? 'afternoon' : 'evening'}, <span className="text-cyan-600 dark:text-cyan-400">{userName}</span>.
+              {currentTime.getHours() < 12 ? (isAr ? "صباح الخير" : "Good morning") : currentTime.getHours() < 18 ? (isAr ? "مساء الخير" : "Good afternoon") : (isAr ? "مساء الخير" : "Good evening")}، <span className="text-cyan-600 dark:text-cyan-400">{userName}</span>.
             </h1>
             <p className="text-slate-600 dark:text-slate-400 text-lg flex items-center gap-2">
-              Here is the real-time snapshot of your franchise operations.
+              {isAr ? "إليك نظرة عامة لحظية ومباشرة على عمليات ومبيعات الفرع الخاص بك." : "Here is the real-time snapshot of your franchise operations."}
             </p>
           </div>
 
           <div className="flex flex-col items-end bg-slate-50/80 dark:bg-[#151E32]/80 backdrop-blur-md border border-slate-200 dark:border-slate-700/50 p-4 rounded-2xl">
             <div className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter font-mono">
-              {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              {currentTime.toLocaleTimeString(isAr ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </div>
             <div className="flex items-center gap-2 mt-1">
               <Clock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Active Shift: {getShiftName(currentTime.getHours())}</span>
+              <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
+                {isAr ? "الوردية النشطة:" : "Active Shift:"} {getShiftName(currentTime.getHours())}
+              </span>
             </div>
           </div>
         </div>
@@ -376,11 +379,11 @@ export default function FinancialInputsOverview() {
                 <DollarSign className="h-6 w-6 text-emerald-600 dark:text-emerald-500" />
               </div>
               <span className="text-xs font-bold px-2 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 rounded-full flex items-center gap-1">
-                <TrendingUp className="h-3 w-3" /> Live
+                <TrendingUp className="h-3 w-3" /> {isAr ? "مباشر" : "Live"}
               </span>
             </div>
-            <p className="text-xs font-bold text-emerald-600/70 dark:text-emerald-500/70 uppercase tracking-widest mb-1">Today's Sales</p>
-            <h3 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">{kpis?.totalSales?.toLocaleString()} <span className="text-base font-bold text-emerald-600/50 dark:text-emerald-500/50">EGP</span></h3>
+            <p className="text-xs font-bold text-emerald-600/70 dark:text-emerald-500/70 uppercase tracking-widest mb-1">{isAr ? "مبيعات اليوم" : "Today's Sales"}</p>
+            <h3 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">{kpis?.totalSales?.toLocaleString()} <span className="text-base font-bold text-emerald-600/50 dark:text-emerald-500/50">{isAr ? "ج.م" : "EGP"}</span></h3>
           </motion.div>
 
           {/* Card 2: Shortage */}
@@ -390,9 +393,9 @@ export default function FinancialInputsOverview() {
                 <Wallet className={`h-6 w-6 ${Number(kpis?.totalShortage) < -100 ? 'text-red-600 dark:text-red-500' : 'text-emerald-600 dark:text-emerald-500'}`} />
               </div>
             </div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Net Shortage</p>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">{isAr ? "صافي العجز" : "Net Shortage"}</p>
             <h3 className={`text-4xl font-black tracking-tighter ${Number(kpis?.totalShortage) < -100 ? 'text-red-500 dark:text-red-400 drop-shadow-sm dark:drop-shadow-[0_0_10px_rgba(248,113,113,0.5)]' : 'text-slate-900 dark:text-white'}`}>
-              {kpis?.totalShortage?.toLocaleString()} <span className="text-base font-bold text-slate-400 dark:text-slate-600">EGP</span>
+              {kpis?.totalShortage?.toLocaleString()} <span className="text-base font-bold text-slate-400 dark:text-slate-600">{isAr ? "ج.م" : "EGP"}</span>
             </h3>
           </motion.div>
 
@@ -403,8 +406,8 @@ export default function FinancialInputsOverview() {
                 <ShieldAlert className="h-6 w-6 text-amber-600 dark:text-amber-500" />
               </div>
             </div>
-            <p className="text-xs font-bold text-amber-600/70 dark:text-amber-500/70 uppercase tracking-widest mb-1">Voids Today</p>
-            <h3 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter drop-shadow-sm dark:drop-shadow-[0_0_8px_rgba(245,158,11,0.3)]">{kpis?.totalVoids?.toLocaleString()} <span className="text-base font-bold text-amber-600/50 dark:text-amber-500/50">EGP</span></h3>
+            <p className="text-xs font-bold text-amber-600/70 dark:text-amber-500/70 uppercase tracking-widest mb-1">{isAr ? "إلغاءات اليوم" : "Voids Today"}</p>
+            <h3 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter drop-shadow-sm dark:drop-shadow-[0_0_8px_rgba(245,158,11,0.3)]">{kpis?.totalVoids?.toLocaleString()} <span className="text-base font-bold text-amber-600/50 dark:text-amber-500/50">{isAr ? "ج.م" : "EGP"}</span></h3>
           </motion.div>
 
           {/* Card 4: Expiries */}
@@ -414,8 +417,8 @@ export default function FinancialInputsOverview() {
                 <Package className="h-6 w-6 text-blue-600 dark:text-blue-500" />
               </div>
             </div>
-            <p className="text-xs font-bold text-blue-600/70 dark:text-blue-500/70 uppercase tracking-widest mb-1">Expiring Tomorrow</p>
-            <h3 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter drop-shadow-sm dark:drop-shadow-[0_0_8px_rgba(59,130,246,0.3)]">{kpis?.expiringTomorrow} <span className="text-base font-bold text-blue-600/50 dark:text-blue-500/50">Items</span></h3>
+            <p className="text-xs font-bold text-blue-600/70 dark:text-blue-500/70 uppercase tracking-widest mb-1">{isAr ? "ينتهي غداً" : "Expiring Tomorrow"}</p>
+            <h3 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter drop-shadow-sm dark:drop-shadow-[0_0_8px_rgba(59,130,246,0.3)]">{kpis?.expiringTomorrow} <span className="text-base font-bold text-blue-600/50 dark:text-blue-500/50">{isAr ? "صنف" : "Items"}</span></h3>
           </motion.div>
         </div>
 
@@ -425,7 +428,7 @@ export default function FinancialInputsOverview() {
           {/* 7-Day Trend Chart & Heatmap */}
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 }} className="xl:col-span-2 bg-white/60 dark:bg-[#0A101D]/60 backdrop-blur-md p-6 sm:p-8 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-[0_0_20px_rgba(0,0,0,0.5)]">
             <h3 className="text-lg font-bold mb-6 flex items-center gap-2 text-slate-900 dark:text-white">
-              <TrendingUp className="h-5 w-5 text-slate-500 dark:text-muted-foreground" /> 7-Day Revenue Trend
+              <TrendingUp className="h-5 w-5 text-slate-500 dark:text-muted-foreground" /> {isAr ? "مؤشر الإيرادات لـ ٧ أيام" : "7-Day Revenue Trend"}
             </h3>
             <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -440,11 +443,11 @@ export default function FinancialInputsOverview() {
                   <Legend />
                   {currentBranch === 'all' ? (
                     <>
-                      <Line type="monotone" dataKey="alamein4" name="El Alamein 4" stroke="#ef4444" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                      <Line type="monotone" dataKey="ola" name="Ola Koronfol" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                      <Line type="monotone" dataKey="alamein4" name={isAr ? "العلمين ٤" : "El Alamein 4"} stroke="#ef4444" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                      <Line type="monotone" dataKey="ola" name={isAr ? "علا قرنفل" : "Ola Koronfol"} stroke="#3b82f6" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
                     </>
                   ) : (
-                    <Line type="monotone" dataKey="total" name={`${currentBranch === 'ola' ? 'Ola Koronfol' : 'El Alamein 4'} Revenue`} stroke="#10b981" strokeWidth={4} dot={{ r: 5 }} activeDot={{ r: 8 }} />
+                    <Line type="monotone" dataKey="total" name={currentBranch === 'ola' ? (isAr ? "إيراد علا قرنفل" : "Ola Koronfol Revenue") : (isAr ? "إيراد العلمين ٤" : "El Alamein 4 Revenue")} stroke="#10b981" strokeWidth={4} dot={{ r: 5 }} activeDot={{ r: 8 }} />
                   )}
                 </LineChart>
               </ResponsiveContainer>
@@ -457,7 +460,7 @@ export default function FinancialInputsOverview() {
             {/* Needs Attention */}
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.6 }} className="bg-white/60 dark:bg-[#0A101D]/60 backdrop-blur-md border border-slate-200 dark:border-red-500/20 rounded-[2rem] p-6 flex-grow shadow-sm dark:shadow-[0_0_20px_rgba(239,68,68,0.05)]">
               <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-red-600 dark:text-red-500">
-                <AlertTriangle className="h-5 w-5" /> Needs Attention
+                <AlertTriangle className="h-5 w-5" /> {isAr ? "يحتاج إلى انتباه" : "Needs Attention"}
               </h3>
               
               <div className="space-y-3">
@@ -470,7 +473,7 @@ export default function FinancialInputsOverview() {
                 ) : (
                   <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 flex flex-col items-center justify-center text-center h-32">
                     <CheckCircle className="h-8 w-8 text-emerald-600 dark:text-emerald-500 mb-2" />
-                    <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-500">All caught up! No active alerts.</p>
+                    <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-500">{isAr ? "ممتاز! لا توجد تنبيهات عاجلة." : "All caught up! No active alerts."}</p>
                   </div>
                 )}
               </div>
@@ -482,7 +485,7 @@ export default function FinancialInputsOverview() {
         {/* Live Activity Feed Heatmap style */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }} className="bg-white/60 dark:bg-[#0A101D]/60 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-[2rem] p-6 sm:p-8 shadow-sm dark:shadow-[0_0_20px_rgba(0,0,0,0.5)]">
           <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-slate-900 dark:text-white">
-            <Activity className="h-5 w-5 text-slate-500 dark:text-muted-foreground" /> Live Activity Feed
+            <Activity className="h-5 w-5 text-slate-500 dark:text-muted-foreground" /> {isAr ? "سجل النشاط المباشر" : "Live Activity Feed"}
           </h3>
           <div className="space-y-4">
             {feed && feed.length > 0 ? (
@@ -492,14 +495,14 @@ export default function FinancialInputsOverview() {
                   <div>
                     <p className="text-sm font-medium text-slate-900 dark:text-foreground">{notif.message}</p>
                     <p className="text-xs text-slate-500 dark:text-muted-foreground mt-1">
-                      {notif.createdAt?.toDate ? notif.createdAt.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Just now'} 
+                      {notif.createdAt?.toDate ? notif.createdAt.toDate().toLocaleTimeString(isAr ? 'ar-EG' : [], {hour: '2-digit', minute:'2-digit'}) : (isAr ? 'الآن' : 'Just now')} 
                       &nbsp;&bull;&nbsp; {notif.storeId}
                     </p>
                   </div>
                 </div>
               ))
             ) : (
-              <p className="text-sm text-slate-500">No recent activity.</p>
+              <p className="text-sm text-slate-500">{isAr ? "لا توجد أنشطة حديثة." : "No recent activity."}</p>
             )}
           </div>
         </motion.div>

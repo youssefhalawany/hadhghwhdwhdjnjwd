@@ -62,6 +62,7 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import dynamic from "next/dynamic";
 import { useBranch } from "@/context/BranchContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { AnalogOdometer } from "@/components/SkeuomorphicUX/AnalogOdometer";
 import { CoinDropWallet } from "@/components/SkeuomorphicUX/CoinDropWallet";
 import { PosReceiptPrinter } from "@/components/SkeuomorphicUX/PosReceiptPrinter";
@@ -194,6 +195,8 @@ function DroppableColumn({ id, title, credits, onSelect }: { id: string, title: 
 
 export default function CreditsPage() {
   const { currentBranch } = useBranch();
+  const { language } = useLanguage();
+  const isAr = language === "ar";
   const branchIds = useMemo(() => {
     const ids = [];
     if (currentBranch === "all") {
@@ -1307,18 +1310,22 @@ export default function CreditsPage() {
           {/* Header & Actions */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
-              <h1 className="text-3xl font-black text-slate-900 tracking-tight">Credits Management</h1>
-              <p className="text-sm text-slate-500 font-medium mt-1">Track, manage, and collect outstanding corporate credits.</p>
+              <h1 className="text-3xl font-black text-slate-900 tracking-tight">
+                {isAr ? "إدارة الآجل والديون" : "Credits Management"}
+              </h1>
+              <p className="text-sm text-slate-500 font-medium mt-1">
+                {isAr ? "متابعة وإدارة وتحصيل مديونيات وآجل العملاء والفرع." : "Track, manage, and collect outstanding corporate credits."}
+              </p>
             </div>
             <div className="flex items-center gap-3">
               <button className="flex items-center gap-2 bg-white/60 backdrop-blur-md border border-slate-200/60 text-slate-700 px-4 py-2.5 rounded-xl font-semibold shadow-sm hover:bg-white hover:border-slate-300 transition-all">
-                <FileDown size={18} /> Export
+                <FileDown size={18} /> {isAr ? "تصدير" : "Export"}
               </button>
               <button
                 onClick={() => setShowAddModal(true)}
-                className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-semibold shadow-md shadow-indigo-600/20 hover:bg-indigo-700 hover:shadow-indigo-600/40 hover:-translate-y-0.5 transition-all"
+                className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-semibold shadow-md shadow-indigo-600/20 hover:bg-indigo-700 hover:shadow-indigo-600/40 hover:-translate-y-0.5 transition-all cursor-pointer"
               >
-                <Plus size={20} /> Add Credit
+                <Plus size={20} /> {isAr ? "إضافة دين جديد" : "Add Credit"}
               </button>
             </div>
           </div>
@@ -1330,7 +1337,7 @@ export default function CreditsPage() {
             <div className="bg-white dark:bg-slate-900 border border-slate-200/60 p-6 rounded-3xl shadow-sm lg:col-span-1">
               <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-6">
                 <AlertCircle size={20} className="text-rose-500" />
-                Credit Aging
+                {isAr ? "أعمار الديون والآجل" : "Credit Aging"}
               </h3>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">

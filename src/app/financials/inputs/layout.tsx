@@ -6,30 +6,34 @@ import { usePathname } from "next/navigation";
 import { Wallet, DollarSign, FileText, CreditCard, FileCheck, Receipt } from "lucide-react";
 import { PageTransition } from "@/components/PageTransition";
 
+import { useLanguage } from "@/context/LanguageContext";
+
 export default function FinancialInputsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { language } = useLanguage();
+  const isAr = language === "ar";
 
   const tabs = [
-    { name: "Overview", href: "/financials/inputs", icon: Wallet },
-    { name: "Sales", href: "/financials/inputs/sales", icon: DollarSign },
-    { name: "Payments", href: "/financials/inputs/payments", icon: CreditCard },
-    { name: "Credits", href: "/financials/inputs/credits", icon: FileText },
-    { name: "Cheques", href: "/financials/inputs/cheques", icon: FileCheck },
-    { name: "Deposits", href: "/financials/inputs/deposits", icon: Wallet },
-    { name: "TMT Invoices", href: "/financials/inputs/tmt-invoices", icon: Receipt },
-    { name: "Safe Report", href: "/financials/inputs/safe-report", icon: FileText }
+    { name: isAr ? "نظرة عامة" : "Overview", href: "/financials/inputs", icon: Wallet },
+    { name: isAr ? "المبيعات" : "Sales", href: "/financials/inputs/sales", icon: DollarSign },
+    { name: isAr ? "المدفوعات" : "Payments", href: "/financials/inputs/payments", icon: CreditCard },
+    { name: isAr ? "الأجل والديون" : "Credits", href: "/financials/inputs/credits", icon: FileText },
+    { name: isAr ? "الشيكات" : "Cheques", href: "/financials/inputs/cheques", icon: FileCheck },
+    { name: isAr ? "الإيداعات" : "Deposits", href: "/financials/inputs/deposits", icon: Wallet },
+    { name: isAr ? "فواتير TMT" : "TMT Invoices", href: "/financials/inputs/tmt-invoices", icon: Receipt },
+    { name: isAr ? "تقرير الخزنة" : "Safe Report", href: "/financials/inputs/safe-report", icon: FileText }
   ];
 
   return (
     <PageTransition>
-      <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-6 pb-32">
+      <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-6 pb-32" dir={isAr ? "rtl" : "ltr"}>
         <div className="bg-card border border-border shadow-sm rounded-2xl p-2 flex flex-wrap md:flex-nowrap gap-2">
           {tabs.map(tab => {
             const isActive = pathname === tab.href;
             const Icon = tab.icon;
             return (
               <Link
-                key={tab.name}
+                key={tab.href}
                 href={tab.href}
                 className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
                   isActive 

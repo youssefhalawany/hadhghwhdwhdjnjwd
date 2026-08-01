@@ -435,8 +435,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       name: t("nav.financials"), icon: FileText, children: [
         { name: t("nav.financial_inputs"), href: "/financials/inputs", icon: Wallet },
         { name: t("nav.reports"), href: "/financial-reports", icon: FileText },
-        { name: "Detailed Sales", href: "/financials/detailed-sales", icon: Activity },
-        { name: "Month Summary", href: "/financial-reports/month-summary", icon: CalendarDays },
+        { name: language === "ar" ? "تفاصيل المبيعات" : "Detailed Sales", href: "/financials/detailed-sales", icon: Activity },
+        { name: language === "ar" ? "ملخص الشهر" : "Month Summary", href: "/financial-reports/month-summary", icon: CalendarDays },
         { name: language === "ar" ? "سجل النواقص" : "Out of Stock", href: "/financials/out-of-stock", icon: PackageMinus },
         { name: t("nav.voids_returns"), href: "/voids/manager", icon: Shield },
         { name: t("nav.shift_audit"), href: "/shift-reports/manager", icon: Shield },
@@ -445,7 +445,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     },
     { name: t("nav.returns"), href: "/dashboard/supplier-returns", icon: Truck },
     {
-      name: t("nav.Products"), icon: PackageX, children: [
+      name: language === "ar" ? "المنتجات" : "Products", icon: PackageX, children: [
         { name: t("nav.expiries"), href: "/products/expiries-audit", icon: ClipboardList },
         { name: t("nav.product_lookup"), href: "/admin/product-lookup", icon: Search },
         { name: t("nav.blind_audit"), href: "/inventory-audit/manager", icon: Shield },
