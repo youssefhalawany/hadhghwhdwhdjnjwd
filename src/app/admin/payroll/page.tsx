@@ -1018,124 +1018,170 @@ export default function AdminPayrollPage() {
     )}
 
     {/* PRINTABLE REPORT */}
-    <div className={`hidden ${printPayslipRecord || isBatchPrinting ? 'hidden' : 'print:block'} w-full text-black bg-white`}>
-      <div className="mb-6 text-center border-b-2 border-black pb-4">
-        <h1 className="text-2xl font-black uppercase tracking-widest">Payroll Report</h1>
-        <p className="text-sm text-gray-600 mt-1">
-          Branch: {filterBranch === 'all' ? 'All Branches' : availableBranches.find(b => b.id === filterBranch)?.name || filterBranch} | 
-          Month: {filterMonth === 'all' ? 'All Months' : filterMonth}
-        </p>
-        <p className="text-xs text-gray-500 mt-1">Generated: {currentDate}</p>
-      </div>
+    <div className={`hidden ${printPayslipRecord || isBatchPrinting ? 'hidden' : 'print:block'} w-full text-black bg-white`} style={{ fontFamily: "Arial, sans-serif", fontSize: "11px" }}>
+      <div style={{ boxSizing: "border-box", width: "100%", maxWidth: "190mm", margin: "0 auto", position: "relative", backgroundColor: "#ffffff" }}>
+        
+        {/* Corporate Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #0f172a", paddingBottom: "8px", marginBottom: "12px" }}>
+          <div>
+            <h1 style={{ fontSize: "20px", fontWeight: "900", color: "#0f172a", margin: 0, textTransform: "uppercase", letterSpacing: "1px" }}>
+              {filterBranch === 'all' ? 'Circle K Franchise - All Branches' : availableBranches.find(b => b.id === filterBranch)?.name || 'Circle K Franchise'}
+            </h1>
+            <p style={{ margin: "2px 0 0 0", color: "#64748b", fontSize: "10px" }}>Commercial Registry (س.ت): 123456 | Tax ID (ب.ض): 123-456-789</p>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <h2 style={{ fontSize: "16px", fontWeight: "bold", color: "#0f172a", margin: 0 }}>Executive Payroll Report</h2>
+            <h3 style={{ fontSize: "12px", fontWeight: "normal", color: "#475569", margin: "1px 0 0 0" }}>تقرير مسير المرتبات الشامل</h3>
+          </div>
+        </div>
 
-      {filteredDrafts.length > 0 && (
-        <div className="mb-8">
-          <h2 className="text-lg font-bold mb-3 uppercase border-b border-gray-300 pb-1">Unpaid Drafts</h2>
-          <table className="w-full text-xs text-left border-collapse">
-            <thead>
-              <tr className="border-b-2 border-black">
-                <th className="py-2">Employee</th>
-                <th className="py-2">Branch</th>
-                <th className="py-2">Month</th>
-                <th className="py-2 text-center">Days</th>
-                <th className="py-2 text-right">Standard</th>
-                <th className="py-2 text-right">Overtime</th>
-                <th className="py-2 text-right">Bonus</th>
-                <th className="py-2 text-right text-red-600">Deductions</th>
-                <th className="py-2 text-right text-red-600">Loans</th>
-                <th className="py-2 text-right text-red-600">Insurance</th>
-                <th className="py-2 text-right font-bold">Net Pay</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredDrafts.map((d, i) => {
-                const emp = employees.find(e => e.id === d.employeeId);
-                const bName = availableBranches.find(b => b.id === (emp?.branchId || d.storeId))?.name || d.storeId || "-";
-                return (
-                  <tr key={d.id || i}>
-                    <td className="py-2 font-semibold">{emp?.name || d.employeeId}</td>
-                    <td className="py-2">{bName}</td>
-                    <td className="py-2">{d.month}</td>
-                    <td className="py-2 text-center">{d.days}</td>
-                    <td className="py-2 text-right">{(d.standardPay || 0).toLocaleString()}</td>
-                    <td className="py-2 text-right">{(d.overtime || 0).toLocaleString()}</td>
-                    <td className="py-2 text-right">{(d.bonus || 0).toLocaleString()}</td>
-                    <td className="py-2 text-right text-red-600">{(d.deductions || 0).toLocaleString()}</td>
-                    <td className="py-2 text-right text-red-600">{(d.loanThisMonth || 0).toLocaleString()}</td>
-                    <td className="py-2 text-right text-red-600">{(d.insurance || 0).toLocaleString()}</td>
-                    <td className="py-2 text-right font-bold">{(d.netPay || 0).toLocaleString()}</td>
-                  </tr>
-                );
-              })}
-              <tr className="border-t-2 border-black font-bold">
-                <td colSpan={10} className="py-3 text-right uppercase">Total Pending (Unpaid):</td>
-                <td className="py-3 text-right">{filteredDrafts.reduce((sum, d) => sum + (Number(d.netPay) || 0), 0).toLocaleString()} EGP</td>
-              </tr>
-            </tbody>
-          </table>
+        {/* Ink-Saving KPI Cards */}
+        <div style={{ display: "flex", gap: "10px", marginBottom: "14px" }}>
+          <div style={{ flex: 1, border: "1px solid #cbd5e1", borderRadius: "6px", padding: "8px 12px", backgroundColor: "#f8fafc" }}>
+            <span style={{ fontSize: "9.5px", color: "#64748b", textTransform: "uppercase", fontWeight: "bold", display: "block" }}>Filter Period / Month</span>
+            <strong style={{ fontSize: "12px", color: "#0f172a" }}>{filterMonth === 'all' ? 'All Months' : filterMonth}</strong>
+          </div>
+          <div style={{ flex: 1, border: "1px solid #cbd5e1", borderRadius: "6px", padding: "8px 12px", backgroundColor: "#f8fafc" }}>
+            <span style={{ fontSize: "9.5px", color: "#64748b", textTransform: "uppercase", fontWeight: "bold", display: "block" }}>Total Pending (Unpaid)</span>
+            <strong style={{ fontSize: "13px", color: "#d97706" }}>EGP {totalPendingPayment.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong>
+          </div>
+          <div style={{ flex: 1, border: "1px solid #cbd5e1", borderRadius: "6px", padding: "8px 12px", backgroundColor: "#f8fafc" }}>
+            <span style={{ fontSize: "9.5px", color: "#64748b", textTransform: "uppercase", fontWeight: "bold", display: "block" }}>Total Settled (Paid)</span>
+            <strong style={{ fontSize: "13px", color: "#059669" }}>EGP {totalPaidPayment.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong>
+          </div>
         </div>
-      )}
 
-      {filteredLines.length > 0 && (
-        <div className="mb-8">
-          <h2 className="text-lg font-bold mb-3 uppercase border-b border-gray-300 pb-1">Paid Payroll History</h2>
-          <table className="w-full text-xs text-left border-collapse">
-            <thead>
-              <tr className="border-b-2 border-black">
-                <th className="py-2">Employee</th>
-                <th className="py-2">Branch</th>
-                <th className="py-2">Month</th>
-                <th className="py-2 text-center">Days</th>
-                <th className="py-2 text-right">Standard</th>
-                <th className="py-2 text-right">Overtime</th>
-                <th className="py-2 text-right">Bonus</th>
-                <th className="py-2 text-right text-red-600">Deductions</th>
-                <th className="py-2 text-right text-red-600">Loans</th>
-                <th className="py-2 text-right text-red-600">Insurance</th>
-                <th className="py-2 text-right font-bold">Net Pay</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredLines.map((d, i) => {
-                const emp = employees.find(e => e.id === d.employeeId);
-                const bName = availableBranches.find(b => b.id === (emp?.branchId || d.storeId))?.name || d.storeId || "-";
-                return (
-                  <tr key={d.id || i}>
-                    <td className="py-2 font-semibold">{emp?.name || d.employeeId}</td>
-                    <td className="py-2">{bName}</td>
-                    <td className="py-2">{d.month}</td>
-                    <td className="py-2 text-center">{d.days}</td>
-                    <td className="py-2 text-right">{(d.standardPay || 0).toLocaleString()}</td>
-                    <td className="py-2 text-right">{(d.overtime || 0).toLocaleString()}</td>
-                    <td className="py-2 text-right">{(d.bonus || 0).toLocaleString()}</td>
-                    <td className="py-2 text-right text-red-600">{(d.deductions || 0).toLocaleString()}</td>
-                    <td className="py-2 text-right text-red-600">{(d.loanThisMonth || 0).toLocaleString()}</td>
-                    <td className="py-2 text-right text-red-600">{(d.insurance || 0).toLocaleString()}</td>
-                    <td className="py-2 text-right font-bold">{(d.netPay || 0).toLocaleString()}</td>
-                  </tr>
-                );
-              })}
-              <tr className="border-t-2 border-black font-bold">
-                <td colSpan={10} className="py-3 text-right uppercase">Total Paid:</td>
-                <td className="py-3 text-right">{filteredLines.reduce((sum, d) => sum + (Number(d.netPay) || 0), 0).toLocaleString()} EGP</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      )}
-      
-      {filteredDrafts.length === 0 && filteredLines.length === 0 && (
-        <div className="text-center py-10 text-gray-500 italic border border-gray-200">
-          No records found for the selected filters.
-        </div>
-      )}
+        {/* UNPAID DRAFTS TABLE */}
+        {filteredDrafts.length > 0 && (
+          <div style={{ marginBottom: "16px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", color: "#0f172a", fontWeight: "bold", borderBottom: "1.5px solid #0f172a", paddingBottom: "2px", marginBottom: "6px", textTransform: "uppercase", fontSize: "11px" }}>
+              <span>Pending Drafts (Unpaid)</span><span>مسودات غير مدفوعة ({filteredDrafts.length})</span>
+            </div>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px" }}>
+              <thead>
+                <tr style={{ backgroundColor: "#f8fafc", color: "#475569", borderBottom: "1px solid #cbd5e1", textAlign: "left" }}>
+                  <th style={{ padding: "5px 6px" }}>Employee</th>
+                  <th style={{ padding: "5px 6px" }}>Branch</th>
+                  <th style={{ padding: "5px 6px" }}>Month</th>
+                  <th style={{ padding: "5px 6px", textAlign: "center" }}>Days</th>
+                  <th style={{ padding: "5px 6px", textAlign: "right" }}>Basic</th>
+                  <th style={{ padding: "5px 6px", textAlign: "right" }}>Overtime</th>
+                  <th style={{ padding: "5px 6px", textAlign: "right" }}>Bonus</th>
+                  <th style={{ padding: "5px 6px", textAlign: "right", color: "#dc2626" }}>Deds</th>
+                  <th style={{ padding: "5px 6px", textAlign: "right", color: "#dc2626" }}>Loans</th>
+                  <th style={{ padding: "5px 6px", textAlign: "right", color: "#dc2626" }}>Insur</th>
+                  <th style={{ padding: "5px 6px", textAlign: "right", fontWeight: "bold" }}>Net Pay</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredDrafts.map((d, i) => {
+                  const emp = employees.find(e => e.id === d.employeeId);
+                  const bName = availableBranches.find(b => b.id === (emp?.branchId || d.storeId))?.name || d.storeId || "-";
+                  return (
+                    <tr key={d.id || i} style={{ borderBottom: "1px solid #e2e8f0", backgroundColor: i % 2 === 0 ? "#ffffff" : "#f8fafc" }}>
+                      <td style={{ padding: "5px 6px", fontWeight: "bold", color: "#0f172a" }}>{emp?.name || d.employeeId}</td>
+                      <td style={{ padding: "5px 6px" }}>{bName}</td>
+                      <td style={{ padding: "5px 6px" }}>{d.month}</td>
+                      <td style={{ padding: "5px 6px", textAlign: "center" }}>{d.days}</td>
+                      <td style={{ padding: "5px 6px", textAlign: "right" }}>{(d.standardPay || 0).toLocaleString()}</td>
+                      <td style={{ padding: "5px 6px", textAlign: "right" }}>{(d.overtime || 0).toLocaleString()}</td>
+                      <td style={{ padding: "5px 6px", textAlign: "right" }}>{(d.bonus || 0).toLocaleString()}</td>
+                      <td style={{ padding: "5px 6px", textAlign: "right", color: "#dc2626" }}>{(d.deductions || 0).toLocaleString()}</td>
+                      <td style={{ padding: "5px 6px", textAlign: "right", color: "#dc2626" }}>{(d.loanThisMonth || 0).toLocaleString()}</td>
+                      <td style={{ padding: "5px 6px", textAlign: "right", color: "#dc2626" }}>{(d.insurance || 0).toLocaleString()}</td>
+                      <td style={{ padding: "5px 6px", textAlign: "right", fontWeight: "bold", color: "#d97706" }}>EGP {(d.netPay || 0).toLocaleString()}</td>
+                    </tr>
+                  );
+                })}
+                <tr style={{ backgroundColor: "#e2e8f0", fontWeight: "bold", borderTop: "1.5px solid #0f172a" }}>
+                  <td colSpan={10} style={{ padding: "6px 8px", textAlign: "right" }}>SUBTOTAL PENDING:</td>
+                  <td style={{ padding: "6px 8px", textAlign: "right", color: "#d97706" }}>EGP {totalPendingPayment.toLocaleString()}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
 
-      <div className="mt-12 flex justify-between items-end border-t border-gray-300 pt-8">
-        <div className="w-48 border-t-2 border-black pt-2 text-center text-sm font-bold">
-          Prepared By
+        {/* PAID HISTORY TABLE */}
+        {filteredLines.length > 0 && (
+          <div style={{ marginBottom: "16px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", color: "#0f172a", fontWeight: "bold", borderBottom: "1.5px solid #0f172a", paddingBottom: "2px", marginBottom: "6px", textTransform: "uppercase", fontSize: "11px" }}>
+              <span>Paid Payroll History</span><span>سجل المرتبات المدفوعة ({filteredLines.length})</span>
+            </div>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px" }}>
+              <thead>
+                <tr style={{ backgroundColor: "#f8fafc", color: "#475569", borderBottom: "1px solid #cbd5e1", textAlign: "left" }}>
+                  <th style={{ padding: "5px 6px" }}>Employee</th>
+                  <th style={{ padding: "5px 6px" }}>Branch</th>
+                  <th style={{ padding: "5px 6px" }}>Month</th>
+                  <th style={{ padding: "5px 6px", textAlign: "center" }}>Days</th>
+                  <th style={{ padding: "5px 6px", textAlign: "right" }}>Basic</th>
+                  <th style={{ padding: "5px 6px", textAlign: "right" }}>Overtime</th>
+                  <th style={{ padding: "5px 6px", textAlign: "right" }}>Bonus</th>
+                  <th style={{ padding: "5px 6px", textAlign: "right", color: "#dc2626" }}>Deds</th>
+                  <th style={{ padding: "5px 6px", textAlign: "right", color: "#dc2626" }}>Loans</th>
+                  <th style={{ padding: "5px 6px", textAlign: "right", color: "#dc2626" }}>Insur</th>
+                  <th style={{ padding: "5px 6px", textAlign: "right", fontWeight: "bold" }}>Net Pay</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredLines.map((d, i) => {
+                  const emp = employees.find(e => e.id === d.employeeId);
+                  const bName = availableBranches.find(b => b.id === (emp?.branchId || d.storeId))?.name || d.storeId || "-";
+                  return (
+                    <tr key={d.id || i} style={{ borderBottom: "1px solid #e2e8f0", backgroundColor: i % 2 === 0 ? "#ffffff" : "#f8fafc" }}>
+                      <td style={{ padding: "5px 6px", fontWeight: "bold", color: "#0f172a" }}>{emp?.name || d.employeeId}</td>
+                      <td style={{ padding: "5px 6px" }}>{bName}</td>
+                      <td style={{ padding: "5px 6px" }}>{d.month}</td>
+                      <td style={{ padding: "5px 6px", textAlign: "center" }}>{d.days}</td>
+                      <td style={{ padding: "5px 6px", textAlign: "right" }}>{(d.standardPay || 0).toLocaleString()}</td>
+                      <td style={{ padding: "5px 6px", textAlign: "right" }}>{(d.overtime || 0).toLocaleString()}</td>
+                      <td style={{ padding: "5px 6px", textAlign: "right" }}>{(d.bonus || 0).toLocaleString()}</td>
+                      <td style={{ padding: "5px 6px", textAlign: "right", color: "#dc2626" }}>{(d.deductions || 0).toLocaleString()}</td>
+                      <td style={{ padding: "5px 6px", textAlign: "right", color: "#dc2626" }}>{(d.loanThisMonth || 0).toLocaleString()}</td>
+                      <td style={{ padding: "5px 6px", textAlign: "right", color: "#dc2626" }}>{(d.insurance || 0).toLocaleString()}</td>
+                      <td style={{ padding: "5px 6px", textAlign: "right", fontWeight: "bold", color: "#059669" }}>EGP {(d.netPay || 0).toLocaleString()}</td>
+                    </tr>
+                  );
+                })}
+                <tr style={{ backgroundColor: "#e2e8f0", fontWeight: "bold", borderTop: "1.5px solid #0f172a" }}>
+                  <td colSpan={10} style={{ padding: "6px 8px", textAlign: "right" }}>SUBTOTAL SETTLED:</td>
+                  <td style={{ padding: "6px 8px", textAlign: "right", color: "#059669" }}>EGP {totalPaidPayment.toLocaleString()}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {filteredDrafts.length === 0 && filteredLines.length === 0 && (
+          <div style={{ textAlign: "center", padding: "30px 10px", color: "#64748b", fontStyle: "italic", border: "1px solid #cbd5e1", borderRadius: "6px", margin: "16px 0" }}>
+            No records found for the selected filters.
+          </div>
+        )}
+
+        {/* COMBINED GRAND TOTAL BOX */}
+        <div style={{ border: "1.5px solid #0f172a", borderRadius: "6px", backgroundColor: "#f8fafc", padding: "10px 14px", marginTop: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <span style={{ fontSize: "11px", fontWeight: "bold", color: "#0f172a", display: "block" }}>COMBINED GRAND TOTAL / الإجمالي الكلي للراتب</span>
+            <span style={{ fontSize: "9.5px", color: "#64748b" }}>Includes {filteredDrafts.length} Unpaid Drafts + {filteredLines.length} Paid Records</span>
+          </div>
+          <span style={{ fontSize: "16px", fontWeight: "900", color: "#0f172a" }}>EGP {totalCombinedPayroll.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
-        <div className="w-48 border-t-2 border-black pt-2 text-center text-sm font-bold">
-          Approved By
+
+        {/* SIGNATURES */}
+        <div style={{ marginTop: "20px", display: "flex", justifyContent: "space-between", border: "1px solid #cbd5e1", borderRadius: "6px", padding: "10px 14px", backgroundColor: "#ffffff" }}>
+          <div style={{ width: "45%" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "#475569", fontWeight: "bold", marginBottom: "25px" }}>
+              <span>Prepared By (Financial Controller)</span><span>إعداد المحاسب المسؤول</span>
+            </div>
+            <div style={{ borderBottom: "1px solid #94a3b8" }}></div>
+          </div>
+          <div style={{ width: "45%" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "#475569", fontWeight: "bold", marginBottom: "25px" }}>
+              <span>Approved By (General Manager)</span><span>اعتماد المدير العام</span>
+            </div>
+            <div style={{ borderBottom: "1px solid #94a3b8" }}></div>
+          </div>
         </div>
       </div>
     </div>
@@ -1208,9 +1254,10 @@ export default function AdminPayrollPage() {
               </div>
             </div>
 
-            <div style={{ backgroundColor: "#0f172a", color: "#ffffff", border: "1px solid #0f172a", padding: "8px 14px", marginTop: "12px", display: "flex", justifyContent: "space-between", alignItems: "center", borderRadius: "6px" }}>
-              <span style={{ fontSize: "12px", fontWeight: "bold" }}>(Net Pay) صافي الراتب المستحق</span>
-              <span style={{ fontSize: "16px", fontWeight: "900", color: "#34d399" }}>EGP {(p.netPay || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            {/* Ink-Saving Net Pay Banner */}
+            <div style={{ border: "1.5px solid #0f172a", backgroundColor: "#f8fafc", padding: "8px 14px", marginTop: "12px", display: "flex", justifyContent: "space-between", alignItems: "center", borderRadius: "6px" }}>
+              <span style={{ fontSize: "12px", fontWeight: "bold", color: "#0f172a" }}>(Net Pay) صافي الراتب المستحق</span>
+              <span style={{ fontSize: "16px", fontWeight: "900", color: "#059669" }}>EGP {(p.netPay || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
             <div style={{ textAlign: "right", fontSize: "11px", marginTop: "4px", color: "#475569", fontWeight: "500" }}>
               فقط وقدره: {netPayWords} لا غير
@@ -1341,9 +1388,10 @@ export default function AdminPayrollPage() {
               </div>
             </div>
 
-            <div style={{ backgroundColor: "#0f172a", color: "#ffffff", border: "1px solid #0f172a", padding: "8px 14px", marginTop: "12px", display: "flex", justifyContent: "space-between", alignItems: "center", borderRadius: "6px" }}>
-              <span style={{ fontSize: "12px", fontWeight: "bold" }}>(Net Received Amount) المبلغ الصافي المستلم</span>
-              <span style={{ fontSize: "16px", fontWeight: "900", color: "#34d399" }}>EGP {(p.netPay || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            {/* Ink-Saving Net Received Banner */}
+            <div style={{ border: "1.5px solid #0f172a", backgroundColor: "#f8fafc", padding: "8px 14px", marginTop: "12px", display: "flex", justifyContent: "space-between", alignItems: "center", borderRadius: "6px" }}>
+              <span style={{ fontSize: "12px", fontWeight: "bold", color: "#0f172a" }}>(Net Received Amount) المبلغ الصافي المستلم</span>
+              <span style={{ fontSize: "16px", fontWeight: "900", color: "#059669" }}>EGP {(p.netPay || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
             <div style={{ textAlign: "right", fontSize: "11px", marginTop: "4px", color: "#475569", fontWeight: "500" }}>
               فقط وقدره: {netPayWords} لا غير
@@ -1547,9 +1595,10 @@ export default function AdminPayrollPage() {
                     </div>
                   </div>
 
-                  <div style={{ backgroundColor: "#0f172a", color: "#ffffff", border: "1px solid #0f172a", padding: "8px 14px", marginTop: "12px", display: "flex", justifyContent: "space-between", alignItems: "center", borderRadius: "6px" }}>
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>(Net Pay) صافي الراتب المستحق</span>
-                    <span style={{ fontSize: "16px", fontWeight: "900", color: "#34d399" }}>EGP {(p.netPay || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  {/* Ink-Saving Net Pay Banner */}
+                  <div style={{ border: "1.5px solid #0f172a", backgroundColor: "#f8fafc", padding: "8px 14px", marginTop: "12px", display: "flex", justifyContent: "space-between", alignItems: "center", borderRadius: "6px" }}>
+                    <span style={{ fontSize: "12px", fontWeight: "bold", color: "#0f172a" }}>(Net Pay) صافي الراتب المستحق</span>
+                    <span style={{ fontSize: "16px", fontWeight: "900", color: "#059669" }}>EGP {(p.netPay || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                   <div style={{ textAlign: "right", fontSize: "11px", marginTop: "4px", color: "#475569", fontWeight: "500" }}>
                     فقط وقدره: {netPayWords} لا غير
@@ -1678,9 +1727,10 @@ export default function AdminPayrollPage() {
                     </div>
                   </div>
 
-                  <div style={{ backgroundColor: "#0f172a", color: "#ffffff", border: "1px solid #0f172a", padding: "8px 14px", marginTop: "12px", display: "flex", justifyContent: "space-between", alignItems: "center", borderRadius: "6px" }}>
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>(Net Received Amount) المبلغ الصافي المستلم</span>
-                    <span style={{ fontSize: "16px", fontWeight: "900", color: "#34d399" }}>EGP {(p.netPay || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  {/* Ink-Saving Net Received Banner */}
+                  <div style={{ border: "1.5px solid #0f172a", backgroundColor: "#f8fafc", padding: "8px 14px", marginTop: "12px", display: "flex", justifyContent: "space-between", alignItems: "center", borderRadius: "6px" }}>
+                    <span style={{ fontSize: "12px", fontWeight: "bold", color: "#0f172a" }}>(Net Received Amount) المبلغ الصافي المستلم</span>
+                    <span style={{ fontSize: "16px", fontWeight: "900", color: "#059669" }}>EGP {(p.netPay || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                   <div style={{ textAlign: "right", fontSize: "11px", marginTop: "4px", color: "#475569", fontWeight: "500" }}>
                     فقط وقدره: {netPayWords} لا غير
