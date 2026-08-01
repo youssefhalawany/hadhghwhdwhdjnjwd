@@ -31,6 +31,19 @@ import { PageTransition } from "@/components/PageTransition";
 import { triggerHapticFeedback } from "@/lib/pwaBadges";
 import { playPopSound, playPrinterSound } from "@/lib/sounds";
 
+const getBranchCompanyName = (storeId?: string, empBranchId?: string) => {
+  const rawId = (storeId || empBranchId || "").toLowerCase();
+  
+  if (rawId.includes("alamein") || rawId.includes("elalamein") || rawId === "store_1" || rawId === "1") {
+    return "Circle K - El Alamein 4";
+  }
+  if (rawId.includes("koronfol") || rawId.includes("ola") || rawId === "store_2" || rawId === "2") {
+    return "Circle K - Ola El Koronfol";
+  }
+
+  return "Circle K - El Alamein 4";
+};
+
 const numberToEnglishWords = (num: number): string => {
   if (!num || num === 0) return "zero Egyptian pounds";
   const a = ['', 'one ', 'two ', 'three ', 'four ', 'five ', 'six ', 'seven ', 'eight ', 'nine ', 'ten ', 'eleven ', 'twelve ', 'thirteen ', 'fourteen ', 'fifteen ', 'sixteen ', 'seventeen ', 'eighteen ', 'nineteen '];
@@ -498,7 +511,7 @@ export default function ManagerDocumentsPage() {
                     (() => {
                       const dateString = new Date(selectedDoc.createdAt).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
                       const records = selectedDoc.metadata.allPayrollRecords;
-                      const companyName = "Circle K Franchise";
+                      const companyName = getBranchCompanyName(selectedDoc.branchId);
                       const totalBatchGross = records.reduce((acc: number, curr: any) => acc + Number(curr.standardPay || curr.baseSalary || curr.salary || 0) + Number(curr.overtime || 0) + Number(curr.bonus || curr.bonuses || 0), 0);
                       const totalBatchDeds = records.reduce((acc: number, curr: any) => acc + Number(curr.deductions || 0) + Number(curr.insurance || 0) + Number(curr.loanThisMonth || curr.loan || 0), 0);
                       const totalBatchNet = records.reduce((acc: number, curr: any) => acc + Number(curr.netPay || curr.netSalary || 0), 0);
@@ -507,14 +520,17 @@ export default function ManagerDocumentsPage() {
                         <>
                           {/* PAGE 1: EXECUTIVE BATCH SUMMARY TABLE */}
                           <div style={{ boxSizing: "border-box", width: "210mm", height: "297mm", maxHeight: "297mm", padding: "12mm 15mm 18mm 15mm", margin: "0 auto", position: "relative", overflow: "hidden", pageBreakAfter: "always", breakAfter: "page", pageBreakInside: "avoid", breakInside: "avoid", backgroundColor: "#ffffff" }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #0f172a", paddingBottom: "12px", marginBottom: "16px" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2.5px solid #0f172a", paddingBottom: "10px", marginBottom: "14px" }}>
                               <div>
-                                <h1 style={{ fontSize: "22px", fontWeight: "900", color: "#0f172a", margin: 0, textTransform: "uppercase", letterSpacing: "1px" }}>{companyName}</h1>
-                                <p style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "11px" }}>Commercial Registry (س.ت): 123456 | Tax ID (ب.ض): 123-456-789</p>
+                                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                  <div style={{ backgroundColor: "#e61c38", color: "#ffffff", fontWeight: "900", fontSize: "14px", width: "24px", height: "24px", borderRadius: "50%", display: "flex", alignItems: "center", justifyItems: "center", justifyContent: "center" }}>K</div>
+                                  <h1 style={{ fontSize: "21px", fontWeight: "900", color: "#0f172a", margin: 0, textTransform: "uppercase", letterSpacing: "1px" }}>{companyName}</h1>
+                                </div>
+                                <p style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "10px" }}>Commercial Registry (س.ت): 123456 | Tax ID (ب.ض): 123-456-789 | Authorized Franchise Portal</p>
                               </div>
                               <div style={{ textAlign: "right" }}>
                                 <h2 style={{ fontSize: "18px", fontWeight: "bold", color: "#0f172a", margin: 0 }}>Pending Payroll Summary</h2>
-                                <h3 style={{ fontSize: "14px", fontWeight: "normal", color: "#475569", margin: "2px 0 0 0" }}>جدول مسير المستحقات غير المدفوعة</h3>
+                                <h3 style={{ fontSize: "12px", fontWeight: "normal", color: "#475569", margin: "2px 0 0 0" }}>جدول مسير المستحقات غير المدفوعة</h3>
                               </div>
                             </div>
 
@@ -613,19 +629,23 @@ export default function ManagerDocumentsPage() {
 
                             const netPay = Number(p.netPay || p.netSalary || (gross - totalDeds));
                             const netPayWords = numberToEnglishWords(netPay);
+                            const empCompName = getBranchCompanyName(p.storeId || selectedDoc.branchId, p.branchId);
 
                             return (
                               <React.Fragment key={p.id || idx}>
                                 {/* PAGE 1: PAYSLIP */}
                                 <div style={{ boxSizing: "border-box", width: "210mm", height: "297mm", maxHeight: "297mm", padding: "12mm 15mm 18mm 15mm", margin: "0 auto", position: "relative", overflow: "hidden", pageBreakAfter: "always", breakAfter: "page", pageBreakInside: "avoid", breakInside: "avoid", backgroundColor: "#ffffff" }}>
-                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #0f172a", paddingBottom: "12px", marginBottom: "16px" }}>
+                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2.5px solid #0f172a", paddingBottom: "10px", marginBottom: "14px" }}>
                                     <div>
-                                      <h1 style={{ fontSize: "22px", fontWeight: "900", color: "#0f172a", margin: 0, textTransform: "uppercase", letterSpacing: "1px" }}>Circle K Franchise</h1>
-                                      <p style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "11px" }}>Commercial Registry (س.ت): 123456 | Tax ID (ب.ض): 123-456-789</p>
+                                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                        <div style={{ backgroundColor: "#e61c38", color: "#ffffff", fontWeight: "900", fontSize: "14px", width: "24px", height: "24px", borderRadius: "50%", display: "flex", alignItems: "center", justifyItems: "center", justifyContent: "center" }}>K</div>
+                                        <h1 style={{ fontSize: "21px", fontWeight: "900", color: "#0f172a", margin: 0, textTransform: "uppercase", letterSpacing: "1px" }}>{empCompName}</h1>
+                                      </div>
+                                      <p style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "10px" }}>Commercial Registry (س.ت): 123456 | Tax ID (ب.ض): 123-456-789 | Authorized Franchise Portal</p>
                                     </div>
                                     <div style={{ textAlign: "right" }}>
                                       <h2 style={{ fontSize: "18px", fontWeight: "bold", color: "#0f172a", margin: 0 }}>Payslip</h2>
-                                      <h3 style={{ fontSize: "14px", fontWeight: "normal", color: "#475569", margin: "2px 0 0 0" }}>كشف راتب شهري</h3>
+                                      <h3 style={{ fontSize: "12px", fontWeight: "normal", color: "#475569", margin: "2px 0 0 0" }}>كشف راتب شهري معتمد</h3>
                                     </div>
                                   </div>
                                   
@@ -761,14 +781,17 @@ export default function ManagerDocumentsPage() {
                                 
                                 {/* PAGE 2: SALARY ACKNOWLEDGEMENT RECEIPT */}
                                 <div style={{ boxSizing: "border-box", width: "210mm", height: "297mm", maxHeight: "297mm", padding: "12mm 15mm 18mm 15mm", margin: "0 auto", position: "relative", overflow: "hidden", pageBreakBefore: "always", breakBefore: "page", pageBreakAfter: "always", breakAfter: "page", pageBreakInside: "avoid", breakInside: "avoid", backgroundColor: "#ffffff" }}>
-                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #0f172a", paddingBottom: "12px", marginBottom: "16px" }}>
+                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2.5px solid #0f172a", paddingBottom: "10px", marginBottom: "14px" }}>
                                     <div>
-                                      <h1 style={{ fontSize: "22px", fontWeight: "900", color: "#0f172a", margin: 0, textTransform: "uppercase", letterSpacing: "1px" }}>Circle K Franchise</h1>
-                                      <p style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "11px" }}>Commercial Registry (س.ت): 123456 | Tax ID (ب.ض): 123-456-789</p>
+                                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                        <div style={{ backgroundColor: "#e61c38", color: "#ffffff", fontWeight: "900", fontSize: "14px", width: "24px", height: "24px", borderRadius: "50%", display: "flex", alignItems: "center", justifyItems: "center", justifyContent: "center" }}>K</div>
+                                        <h1 style={{ fontSize: "21px", fontWeight: "900", color: "#0f172a", margin: 0, textTransform: "uppercase", letterSpacing: "1px" }}>{empCompName}</h1>
+                                      </div>
+                                      <p style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "10px" }}>Commercial Registry (س.ت): 123456 | Tax ID (ب.ض): 123-456-789 | Authorized Franchise Portal</p>
                                     </div>
                                     <div style={{ textAlign: "right" }}>
                                       <h2 style={{ fontSize: "18px", fontWeight: "bold", color: "#0f172a", margin: 0 }}>Salary Receipt</h2>
-                                      <h3 style={{ fontSize: "14px", fontWeight: "normal", color: "#475569", margin: "2px 0 0 0" }}>إقرار استلام راتب ومخالصة نهائية</h3>
+                                      <h3 style={{ fontSize: "12px", fontWeight: "normal", color: "#475569", margin: "2px 0 0 0" }}>إقرار استلام راتب ومخالصة نهائية معتمدة</h3>
                                     </div>
                                   </div>
                                   
@@ -890,19 +913,23 @@ export default function ManagerDocumentsPage() {
 
                       const netPay = Number(m.netSalary || raw.netPay || (gross - totalDeds));
                       const netPayWords = numberToEnglishWords(netPay);
+                      const empCompName = getBranchCompanyName(raw.storeId || selectedDoc.branchId, raw.branchId);
 
                       return (
                         <>
                           {/* PAGE 1: PAYSLIP */}
                           <div style={{ boxSizing: "border-box", width: "210mm", height: "297mm", maxHeight: "297mm", padding: "12mm 15mm 18mm 15mm", margin: "0 auto", position: "relative", overflow: "hidden", pageBreakAfter: "always", breakAfter: "page", pageBreakInside: "avoid", breakInside: "avoid", backgroundColor: "#ffffff" }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #0f172a", paddingBottom: "12px", marginBottom: "16px" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2.5px solid #0f172a", paddingBottom: "10px", marginBottom: "14px" }}>
                               <div>
-                                <h1 style={{ fontSize: "22px", fontWeight: "900", color: "#0f172a", margin: 0, textTransform: "uppercase", letterSpacing: "1px" }}>Circle K Franchise</h1>
-                                <p style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "11px" }}>Commercial Registry (س.ت): 123456 | Tax ID (ب.ض): 123-456-789</p>
+                                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                  <div style={{ backgroundColor: "#e61c38", color: "#ffffff", fontWeight: "900", fontSize: "14px", width: "24px", height: "24px", borderRadius: "50%", display: "flex", alignItems: "center", justifyItems: "center", justifyContent: "center" }}>K</div>
+                                  <h1 style={{ fontSize: "21px", fontWeight: "900", color: "#0f172a", margin: 0, textTransform: "uppercase", letterSpacing: "1px" }}>{empCompName}</h1>
+                                </div>
+                                <p style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "10px" }}>Commercial Registry (س.ت): 123456 | Tax ID (ب.ض): 123-456-789 | Authorized Franchise Portal</p>
                               </div>
                               <div style={{ textAlign: "right" }}>
                                 <h2 style={{ fontSize: "18px", fontWeight: "bold", color: "#0f172a", margin: 0 }}>Payslip</h2>
-                                <h3 style={{ fontSize: "14px", fontWeight: "normal", color: "#475569", margin: "2px 0 0 0" }}>كشف راتب شهري</h3>
+                                <h3 style={{ fontSize: "12px", fontWeight: "normal", color: "#475569", margin: "2px 0 0 0" }}>كشف راتب شهري معتمد</h3>
                               </div>
                             </div>
                             
@@ -1038,14 +1065,17 @@ export default function ManagerDocumentsPage() {
                           
                           {/* PAGE 2: SALARY ACKNOWLEDGEMENT RECEIPT */}
                           <div style={{ boxSizing: "border-box", width: "210mm", height: "297mm", maxHeight: "297mm", padding: "12mm 15mm 18mm 15mm", margin: "0 auto", position: "relative", overflow: "hidden", pageBreakBefore: "always", breakBefore: "page", pageBreakAfter: "always", breakAfter: "page", pageBreakInside: "avoid", breakInside: "avoid", backgroundColor: "#ffffff" }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #0f172a", paddingBottom: "12px", marginBottom: "16px" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2.5px solid #0f172a", paddingBottom: "10px", marginBottom: "14px" }}>
                               <div>
-                                <h1 style={{ fontSize: "22px", fontWeight: "900", color: "#0f172a", margin: 0, textTransform: "uppercase", letterSpacing: "1px" }}>Circle K Franchise</h1>
-                                <p style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "11px" }}>Commercial Registry (س.ت): 123456 | Tax ID (ب.ض): 123-456-789</p>
+                                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                  <div style={{ backgroundColor: "#e61c38", color: "#ffffff", fontWeight: "900", fontSize: "14px", width: "24px", height: "24px", borderRadius: "50%", display: "flex", alignItems: "center", justifyItems: "center", justifyContent: "center" }}>K</div>
+                                  <h1 style={{ fontSize: "21px", fontWeight: "900", color: "#0f172a", margin: 0, textTransform: "uppercase", letterSpacing: "1px" }}>{empCompName}</h1>
+                                </div>
+                                <p style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "10px" }}>Commercial Registry (س.ت): 123456 | Tax ID (ب.ض): 123-456-789 | Authorized Franchise Portal</p>
                               </div>
                               <div style={{ textAlign: "right" }}>
                                 <h2 style={{ fontSize: "18px", fontWeight: "bold", color: "#0f172a", margin: 0 }}>Salary Receipt</h2>
-                                <h3 style={{ fontSize: "14px", fontWeight: "normal", color: "#475569", margin: "2px 0 0 0" }}>إقرار استلام راتب ومخالصة نهائية</h3>
+                                <h3 style={{ fontSize: "12px", fontWeight: "normal", color: "#475569", margin: "2px 0 0 0" }}>إقرار استلام راتب ومخالصة نهائية معتمدة</h3>
                               </div>
                             </div>
                             

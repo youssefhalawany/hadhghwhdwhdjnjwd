@@ -34,21 +34,44 @@ export async function POST(req: Request) {
       }
     }
 
-    // Get Master FCM Token
+    // 1. Collect all registered FCM device tokens across collections
     const adminDb = getFirestore();
-    const masterDoc = await adminDb.collection("user_tokens").doc("master_youssef").get();
-    
-    if (!masterDoc.exists) {
-      return NextResponse.json({ error: "Master token not found" }, { status: 404 });
+    const tokensSet = new Set<string>();
+
+    try {
+      const userTokensSnap = await adminDb.collection("user_tokens").get();
+      userTokensSnap.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.fcmToken && typeof data.fcmToken === 'string' && data.fcmToken.trim().length > 10) {
+          tokensSet.add(data.fcmToken.trim());
+        }
+        if (Array.isArray(data.fcmTokens)) {
+          data.fcmTokens.forEach((t: string) => {
+            if (t && typeof t === 'string' && t.trim().length > 10) tokensSet.add(t.trim());
+          });
+        }
+      });
+    } catch (e) {
+      console.error("Error fetching user_tokens:", e);
     }
 
-    const { fcmToken } = masterDoc.data() as any;
-
-    if (!fcmToken) {
-      return NextResponse.json({ error: "Master FCM token is empty" }, { status: 404 });
+    try {
+      const fcmTokensSnap = await adminDb.collection("fcm_tokens").get();
+      fcmTokensSnap.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.token && typeof data.token === 'string' && data.token.trim().length > 10) {
+          tokensSet.add(data.token.trim());
+        }
+        if (data.fcmToken && typeof data.fcmToken === 'string' && data.fcmToken.trim().length > 10) {
+          tokensSet.add(data.fcmToken.trim());
+        }
+      });
+    } catch (e) {
+      console.error("Error fetching fcm_tokens:", e);
     }
 
-    const targetUrl = url || "https://hadhghwhdwhdjnjwd.vercel.app/shift-reports/manager";
+    const allTokens = Array.from(tokensSet);
+    const targetUrl = url || "https://anh-zeta.vercel.app/manager/documents";
 
     // --- Ibrahim AI Refinement for Operations ---
     let finalTitle = title;
@@ -79,9 +102,9 @@ export async function POST(req: Request) {
     }
     // --------------------------------------------
 
-    // High Priority Push Message Payload (Lock Screen Display Enabled)
-    const fcmPromise = fcmToken ? getMessaging().send({
-      token: fcmToken,
+    // High Priority Push Message Multicast (Sent to ALL registered devices for lock screen display)
+    const fcmPromise = allTokens.length > 0 ? getMessaging().sendEachForMulticast({
+      tokens: allTokens,
       notification: { 
         title: finalTitle, 
         body: finalBody 
@@ -104,13 +127,7 @@ export async function POST(req: Request) {
           requireInteraction: true,
           renotify: true,
           tag: `circlek-alert-${Date.now()}`,
-          data: { url: targetUrl },
-          actions: [
-            {
-              action: "open_overview",
-              title: "💸 Safe Balance & Overview"
-            }
-          ]
+          data: { url: targetUrl }
         },
         fcmOptions: {
           link: targetUrl
