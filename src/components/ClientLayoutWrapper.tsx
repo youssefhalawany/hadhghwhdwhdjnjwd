@@ -25,6 +25,8 @@ import { updateAppBadge, sendManagerInteractiveNotification, triggerHapticFeedba
 import { playPopSound } from "@/lib/sounds";
 import { audioChimes } from "@/lib/audio-chimes";
 
+import WelcomeModal from "./WelcomeModal";
+
 export default function ClientLayoutWrapper({ children }: { children: React.ReactNode }) {
   const { currentBranch, setBranch, availableBranches, setAvailableBranches } = useBranch();
   const { language, setLanguage, t } = useLanguage();
@@ -48,7 +50,14 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   const [hasAgedShifts, setHasAgedShifts] = useState(false);
   const [currentDateTime, setCurrentDateTime] = useState<Date | null>(null);
   const [systemNotifications, setSystemNotifications] = useState<any[]>([]);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const pathname = usePathname();
+
+  useEffect(() => {
+    const handleOpenWelcome = () => setShowWelcomeModal(true);
+    window.addEventListener("open_welcome_modal", handleOpenWelcome);
+    return () => window.removeEventListener("open_welcome_modal", handleOpenWelcome);
+  }, []);
 
   // Initialize theme, role, and mock status from localStorage
   useEffect(() => {
@@ -77,6 +86,9 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       setUser(currentUser);
 
       if (currentUser) {
+        if (!localStorage.getItem("has_seen_welcome_anh_v2")) {
+          setShowWelcomeModal(true);
+        }
         // Fetch user document
         try {
           const docSnap = await getDoc(doc(db, "users", currentUser.uid));
@@ -974,6 +986,12 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
               <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
                 <p>© 2026 Circle K Franchise ANH Group. All rights reserved.</p>
                 <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => setShowWelcomeModal(true)}
+                    className="hover:text-cyan-400 font-bold transition-colors cursor-pointer"
+                  >
+                    ✨ Welcome Screen
+                  </button>
                   <span className="flex items-center gap-1">
                     <CheckCircle className="h-3 w-3 text-green-500" /> Created by Youssef Elhalawany
                   </span>
@@ -983,6 +1001,16 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
           )}
         </main>
       </div>
+
+      <WelcomeModal
+        isOpen={showWelcomeModal}
+        onClose={() => {
+          localStorage.setItem("has_seen_welcome_anh_v2", "true");
+          setShowWelcomeModal(false);
+        }}
+        userName={userDoc?.displayName || userDoc?.name || user?.displayName || (user?.email ? user.email.split("@")[0] : "Mr. Youssef Halawany")}
+        userRole={userDoc?.role || role || "Executive Administrator"}
+      />
 
       <PwaInstallPrompt />
       <IdleScreensaver pendingTasksCount={pendingShiftCount + pendingVoidCount + pendingExpiriesCount + pendingReturnsCount} />
