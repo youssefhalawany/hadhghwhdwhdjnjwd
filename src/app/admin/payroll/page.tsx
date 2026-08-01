@@ -123,6 +123,15 @@ export default function AdminPayrollPage() {
     return () => window.removeEventListener('afterprint', handleAfterPrint);
   }, []);
 
+  useEffect(() => {
+    if (printPayslipRecord || isBatchPrinting) {
+      const timer = setTimeout(() => {
+        window.print();
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [printPayslipRecord, isBatchPrinting]);
+
   const handleBatchWhatsApp = () => {
     if (filteredDrafts.length === 0) {
       toast.error("No pending drafts to share.");
@@ -157,9 +166,6 @@ export default function AdminPayrollPage() {
     }
     setPrintPayslipRecord(null);
     setIsBatchPrinting(true);
-    setTimeout(() => {
-      window.print();
-    }, 300);
   };
 
   const numberToEnglishWords = (num: number): string => {
@@ -884,10 +890,7 @@ export default function AdminPayrollPage() {
                               <Pencil className="w-3.5 h-3.5" /> Edit
                             </button>
                             <button 
-                              onClick={() => {
-                                setPrintPayslipRecord(d);
-                                setTimeout(() => window.print(), 100);
-                              }}
+                              onClick={() => setPrintPayslipRecord(d)}
                               className="px-2.5 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 rounded-lg font-bold text-xs flex items-center gap-1 transition-colors print:hidden"
                               title="Print Payslip"
                             >
@@ -954,10 +957,7 @@ export default function AdminPayrollPage() {
                       <td className="px-4 py-3 text-xs text-slate-500">{String(d.createdBy || "")}</td>
                       <td className="px-4 py-3 text-right">
                         <button
-                          onClick={() => {
-                            setPrintPayslipRecord(d);
-                            setTimeout(() => window.print(), 100);
-                          }}
+                          onClick={() => setPrintPayslipRecord(d)}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 hover:text-indigo-600 transition-colors shadow-sm"
                         >
                           <Printer className="w-3.5 h-3.5" />
@@ -1153,10 +1153,10 @@ export default function AdminPayrollPage() {
 
       return (
         <div className="hidden print:block w-full text-black bg-white" style={{ fontFamily: "Arial, sans-serif", fontSize: "13px" }}>
-          <style dangerouslySetInnerHTML={{ __html: "@media print { @page { size: A4 portrait; margin: 0mm !important; } body { margin: 0 !important; padding: 0 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } html, body { height: 100%; overflow: visible; } }" }} />
+          <style dangerouslySetInnerHTML={{ __html: "@media print { @page { size: A4 portrait; margin: 0mm !important; } body { margin: 0 !important; padding: 0 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } html, body { height: auto !important; min-height: 100% !important; overflow: visible !important; } }" }} />
           
           {/* PAGE 1: PAYSLIP */}
-          <div style={{ boxSizing: "border-box", width: "210mm", height: "297mm", maxHeight: "297mm", padding: "12mm 15mm 18mm 15mm", margin: "0 auto", position: "relative", overflow: "hidden", pageBreakAfter: "always", breakAfter: "page", pageBreakInside: "avoid", breakInside: "avoid", backgroundColor: "#ffffff" }}>
+          <div style={{ boxSizing: "border-box", width: "210mm", minHeight: "285mm", padding: "10mm 15mm 15mm 15mm", margin: "0 auto", position: "relative", pageBreakAfter: "always", breakAfter: "page", backgroundColor: "#ffffff" }}>
             
             {/* Corporate Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #0f172a", paddingBottom: "12px", marginBottom: "16px" }}>
@@ -1301,7 +1301,7 @@ export default function AdminPayrollPage() {
           </div>
           
           {/* PAGE 2: SALARY ACKNOWLEDGEMENT RECEIPT */}
-          <div style={{ boxSizing: "border-box", width: "210mm", height: "297mm", maxHeight: "297mm", padding: "12mm 15mm 18mm 15mm", margin: "0 auto", position: "relative", overflow: "hidden", pageBreakBefore: "always", breakBefore: "page", pageBreakAfter: "always", breakAfter: "page", pageBreakInside: "avoid", breakInside: "avoid", backgroundColor: "#ffffff" }}>
+          <div style={{ boxSizing: "border-box", width: "210mm", minHeight: "285mm", padding: "10mm 15mm 15mm 15mm", margin: "0 auto", position: "relative", pageBreakAfter: "always", breakAfter: "page", backgroundColor: "#ffffff" }}>
             
             {/* Corporate Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #0f172a", paddingBottom: "12px", marginBottom: "16px" }}>
@@ -1422,10 +1422,10 @@ export default function AdminPayrollPage() {
 
       return (
         <div className="hidden print:block w-full text-black bg-white" style={{ fontFamily: "Arial, sans-serif", fontSize: "13px" }}>
-          <style dangerouslySetInnerHTML={{ __html: "@media print { @page { size: A4 portrait; margin: 0mm !important; } body { margin: 0 !important; padding: 0 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } html, body { height: 100%; overflow: visible; } }" }} />
+          <style dangerouslySetInnerHTML={{ __html: "@media print { @page { size: A4 portrait; margin: 0mm !important; } body { margin: 0 !important; padding: 0 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } html, body { height: auto !important; min-height: 100% !important; overflow: visible !important; } }" }} />
           
           {/* PAGE 1: EXECUTIVE SUMMARY TABLE */}
-          <div style={{ boxSizing: "border-box", width: "210mm", height: "297mm", maxHeight: "297mm", padding: "12mm 15mm 18mm 15mm", margin: "0 auto", position: "relative", overflow: "hidden", pageBreakAfter: "always", breakAfter: "page", pageBreakInside: "avoid", breakInside: "avoid", backgroundColor: "#ffffff" }}>
+          <div style={{ boxSizing: "border-box", width: "210mm", minHeight: "285mm", padding: "10mm 15mm 15mm 15mm", margin: "0 auto", position: "relative", pageBreakAfter: "always", breakAfter: "page", backgroundColor: "#ffffff" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #0f172a", paddingBottom: "12px", marginBottom: "16px" }}>
               <div>
                 <h1 style={{ fontSize: "22px", fontWeight: "900", color: "#0f172a", margin: 0, textTransform: "uppercase", letterSpacing: "1px" }}>{companyName}</h1>
@@ -1520,7 +1520,7 @@ export default function AdminPayrollPage() {
             return (
               <React.Fragment key={p.id || idx}>
                 {/* PAGE 1: PAYSLIP */}
-                <div style={{ boxSizing: "border-box", width: "210mm", height: "297mm", maxHeight: "297mm", padding: "12mm 15mm 18mm 15mm", margin: "0 auto", position: "relative", overflow: "hidden", pageBreakBefore: "always", breakBefore: "page", pageBreakAfter: "always", breakAfter: "page", pageBreakInside: "avoid", breakInside: "avoid", backgroundColor: "#ffffff" }}>
+                <div style={{ boxSizing: "border-box", width: "210mm", minHeight: "285mm", padding: "10mm 15mm 15mm 15mm", margin: "0 auto", position: "relative", pageBreakAfter: "always", breakAfter: "page", backgroundColor: "#ffffff" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #0f172a", paddingBottom: "12px", marginBottom: "16px" }}>
                     <div>
                       <h1 style={{ fontSize: "22px", fontWeight: "900", color: "#0f172a", margin: 0, textTransform: "uppercase", letterSpacing: "1px" }}>{empCompName}</h1>
@@ -1663,7 +1663,7 @@ export default function AdminPayrollPage() {
                 </div>
 
                 {/* PAGE 2: SALARY ACKNOWLEDGEMENT RECEIPT */}
-                <div style={{ boxSizing: "border-box", width: "210mm", height: "297mm", maxHeight: "297mm", padding: "12mm 15mm 18mm 15mm", margin: "0 auto", position: "relative", overflow: "hidden", pageBreakBefore: "always", breakBefore: "page", pageBreakAfter: "always", breakAfter: "page", pageBreakInside: "avoid", breakInside: "avoid", backgroundColor: "#ffffff" }}>
+                <div style={{ boxSizing: "border-box", width: "210mm", minHeight: "285mm", padding: "10mm 15mm 15mm 15mm", margin: "0 auto", position: "relative", pageBreakAfter: "always", breakAfter: "page", backgroundColor: "#ffffff" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #0f172a", paddingBottom: "12px", marginBottom: "16px" }}>
                     <div>
                       <h1 style={{ fontSize: "22px", fontWeight: "900", color: "#0f172a", margin: 0, textTransform: "uppercase", letterSpacing: "1px" }}>{empCompName}</h1>
