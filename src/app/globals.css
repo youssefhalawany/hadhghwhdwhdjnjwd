@@ -138,61 +138,72 @@ body {
   z-index: 50;
 }
 
-/* Page break and layout controls for print */
+/* Universal Print Reset & Page Break Engine */
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm !important;
+  }
+
+  /* Unclip all parent layout wrappers so browser can paginate freely */
+  html, body, main, div, section, article {
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    position: static !important;
+    float: none !important;
+    transform: none !important;
+    filter: none !important;
+    backdrop-filter: none !important;
+  }
+
   body {
     background: #ffffff !important;
     color: #000000 !important;
-    font-size: 11pt !important;
+    font-family: Arial, sans-serif !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
-  
-  header, footer, nav, .no-print, .theme-switcher, .role-selector, button {
+
+  header, footer, nav, .no-print, .theme-switcher, .role-selector, .print\:hidden {
     display: none !important;
   }
 
-  .print-container {
+  .pay-page {
+    display: block !important;
+    box-sizing: border-box !important;
     width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    box-shadow: none !important;
-    border: none !important;
-    background: transparent !important;
+    max-width: 190mm !important;
+    margin: 0 auto !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    background-color: #ffffff !important;
   }
 
-  .print-page-break {
-    page-break-before: always;
+  .pay-page-last {
+    display: block !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 190mm !important;
+    margin: 0 auto !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    background-color: #ffffff !important;
   }
 
-  /* Repeat table headers across pages */
   thead {
     display: table-header-group;
   }
 
   tr {
     page-break-inside: avoid;
-  }
-
-  /* Repeated Print Header & Footer */
-  .print-header {
-    display: block !important;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 40px;
-    border-bottom: 1.5px solid #000;
-  }
-
-  .print-footer {
-    display: block !important;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 30px;
-    border-top: 1px solid #ccc;
-    font-size: 8pt;
-    text-align: center;
   }
 }
 

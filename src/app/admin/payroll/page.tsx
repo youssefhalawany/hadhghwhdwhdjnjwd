@@ -1153,7 +1153,6 @@ export default function AdminPayrollPage() {
 
       return (
         <div className="hidden print:block w-full text-black bg-white" style={{ fontFamily: "Arial, sans-serif", fontSize: "12px" }}>
-          <style dangerouslySetInnerHTML={{ __html: "@media print { @page { size: A4 portrait; margin: 10mm !important; } body { margin: 0 !important; padding: 0 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } html, body { height: auto !important; min-height: 100% !important; overflow: visible !important; } .pay-page { page-break-after: always !important; break-after: page !important; page-break-inside: avoid !important; break-inside: avoid !important; } .pay-page-last { page-break-inside: avoid !important; break-inside: avoid !important; } }" }} />
           
           {/* PAGE 1: PAYSLIP */}
           <div className="pay-page" style={{ boxSizing: "border-box", width: "100%", maxWidth: "190mm", margin: "0 auto", position: "relative", backgroundColor: "#ffffff" }}>
@@ -1400,7 +1399,6 @@ export default function AdminPayrollPage() {
 
       return (
         <div className="hidden print:block w-full text-black bg-white" style={{ fontFamily: "Arial, sans-serif", fontSize: "12px" }}>
-          <style dangerouslySetInnerHTML={{ __html: "@media print { @page { size: A4 portrait; margin: 10mm !important; } body { margin: 0 !important; padding: 0 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } html, body { height: auto !important; min-height: 100% !important; overflow: visible !important; } .pay-page { page-break-after: always !important; break-after: page !important; page-break-inside: avoid !important; break-inside: avoid !important; } .pay-page-last { page-break-inside: avoid !important; break-inside: avoid !important; } }" }} />
           
           {/* PAGE 1: EXECUTIVE SUMMARY TABLE */}
           <div className="pay-page" style={{ boxSizing: "border-box", width: "100%", maxWidth: "190mm", margin: "0 auto", position: "relative", backgroundColor: "#ffffff" }}>
