@@ -475,60 +475,110 @@ function ProductLookupContent() {
     return allProducts.reduce((acc, p) => acc + (p.priceHistoryCount || 1), 0);
   }, [allProducts]);
 
-  // Immediate Product Image Resolver helper with specific variant packshots
-  const getProductImage = (p: any) => {
+  // Immediate Zero-CORS Product Visualizer Badge Icon Component
+  const renderProductVisualizer = (p: any) => {
     const key = p.groupKey || p.barcode || p.id;
-    const name = (p.description || p.itemName || p.name || "").toLowerCase();
+    const n = (p.description || p.itemName || p.name || "").toLowerCase();
 
     // 1. Water (Aquafina, Hayat, Mineral Water)
-    if (name.includes("aquafina") || name.includes("water") || name.includes("hayat")) {
-      return "https://images.unsplash.com/photo-1548839140-29a749e1bc4e?w=400&auto=format&fit=crop&q=80";
+    if (n.includes("aquafina") || n.includes("water") || n.includes("hayat")) {
+      return (
+        <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-cyan-400/20 via-blue-500/20 to-indigo-600/30 rounded-xl p-2 text-cyan-300 relative overflow-hidden group-hover:scale-105 transition-transform border border-cyan-500/30">
+          <span className="text-[9px] font-black uppercase tracking-wider text-cyan-400 mb-1">Mineral Water</span>
+          <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 border border-cyan-400/50 flex items-center justify-center text-cyan-300 text-2xl shadow-lg font-black">
+            💧
+          </div>
+          <span className="text-[10px] font-extrabold text-cyan-200 mt-1.5 truncate max-w-full">Pure Aqua</span>
+        </div>
+      );
     }
 
     // 2. Soda & Carbonated Beverages (Pepsi, Coke, Fanta, Sprite)
-    if (name.includes("pepsi")) {
-      return "https://images.unsplash.com/photo-1629203851122-3726ecdf080e?w=400&auto=format&fit=crop&q=80";
-    }
-    if (name.includes("coca") || name.includes("coke")) {
-      return "https://images.unsplash.com/photo-1554866585-cd94860890b7?w=400&auto=format&fit=crop&q=80";
-    }
-    if (name.includes("fanta")) {
-      return "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=400&auto=format&fit=crop&q=80";
+    if (n.includes("pepsi") || n.includes("coca") || n.includes("coke") || n.includes("fanta") || n.includes("sprite") || n.includes("soda")) {
+      const isPepsi = n.includes("pepsi");
+      const isCoke = n.includes("coca") || n.includes("coke");
+      const isFanta = n.includes("fanta");
+
+      const bgGradient = isPepsi 
+        ? "from-blue-600 to-indigo-950" 
+        : isCoke 
+        ? "from-red-600 to-rose-950" 
+        : isFanta 
+        ? "from-amber-500 to-orange-950" 
+        : "from-emerald-600 to-teal-950";
+
+      return (
+        <div className={`w-full h-full flex flex-col items-center justify-center bg-gradient-to-br ${bgGradient} rounded-xl p-2 relative overflow-hidden group-hover:scale-105 transition-transform shadow-md border border-white/20`}>
+          <span className="text-[9px] font-black uppercase tracking-widest text-white/90 mb-1">Cold Soda</span>
+          <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-2xl shadow-inner font-black">
+            🥤
+          </div>
+          <span className="text-[10px] font-black text-white mt-1.5 uppercase tracking-tight">{isPepsi ? "Pepsi" : isCoke ? "Coca-Cola" : isFanta ? "Fanta" : "Soft Drink"}</span>
+        </div>
+      );
     }
 
-    // 3. Tobacco & Cigarettes Specific Variants
-    if (name.includes("marlboro red") || name.includes("crafted red")) {
-      return "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Marlboro_Red_pack.jpg/400px-Marlboro_Red_pack.jpg";
-    }
-    if (name.includes("marlboro gold") || name.includes("crafted gold") || name.includes("marlboro touch") || name.includes("marlboro white")) {
-      return "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Marlboro_Gold_Pack.jpg/400px-Marlboro_Gold_Pack.jpg";
-    }
-    if (name.includes("marlboro purple")) {
-      return "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?w=400&auto=format&fit=crop&q=80";
-    }
-    if (name.includes("marlboro") || name.includes("merit") || name.includes("l&m") || name.includes("terea") || name.includes("heets") || name.includes("cigaret")) {
-      return "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Marlboro_Gold_Pack.jpg/400px-Marlboro_Gold_Pack.jpg";
+    // 3. Tobacco & Cigarettes (Marlboro, Merit, L&M, Terea)
+    if (n.includes("marlboro") || n.includes("merit") || n.includes("l&m") || n.includes("terea") || n.includes("heets") || n.includes("cigaret")) {
+      const isRed = n.includes("red");
+      const isPurple = n.includes("purple");
+
+      const accentColor = isRed ? "from-red-700 via-rose-900 to-slate-950" : isPurple ? "from-purple-700 via-indigo-900 to-slate-950" : "from-amber-500 via-yellow-700 to-slate-950";
+
+      return (
+        <div className={`w-full h-full flex flex-col items-center justify-center bg-gradient-to-b ${accentColor} rounded-xl p-2 text-white relative overflow-hidden group-hover:scale-105 transition-transform shadow-md border border-white/20`}>
+          <span className="text-[9px] font-black uppercase tracking-widest text-amber-200 mb-1">Cigarette Pack</span>
+          <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-2xl shadow-inner font-black">
+            🚬
+          </div>
+          <span className="text-[10px] font-black text-white mt-1.5 uppercase tracking-tight line-clamp-1">{isRed ? "Marlboro Red" : isPurple ? "Purple Mix" : "Marlboro Gold"}</span>
+        </div>
+      );
     }
 
-    // 4. Chips & Snacks
-    if (name.includes("pringles")) {
-      return "https://images.unsplash.com/photo-1599490659213-e2b9527bd087?w=400&auto=format&fit=crop&q=80";
-    }
-    if (name.includes("crunchos") || name.includes("stix") || name.includes("chip")) {
-      return "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=400&auto=format&fit=crop&q=80";
-    }
-
-    // 5. Coffee
-    if (name.includes("brown") || name.includes("coffee") || name.includes("espres")) {
-      return "https://images.unsplash.com/photo-1517701604599-bb29b565090c?w=400&auto=format&fit=crop&q=80";
-    }
-
-    // 6. Custom Document Image (if valid & not a legacy generic Unsplash placeholder)
-    if (p.imageUrl && !failedImageUrls[key] && !p.imageUrl.includes("photo-1542838132") && !p.imageUrl.includes("photo-1558961363") && !p.imageUrl.includes("photo-1541781774459")) {
-      return p.imageUrl;
+    // 4. Chips & Snacks (Pringles, Crunchos, Chipsy)
+    if (n.includes("pringles") || n.includes("crunchos") || n.includes("stix") || n.includes("chip") || n.includes("snack") || n.includes("nut")) {
+      return (
+        <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-amber-500 via-orange-600 to-red-700 text-white rounded-xl p-2 relative overflow-hidden group-hover:scale-105 transition-transform shadow-md border border-white/20">
+          <span className="text-[9px] font-black uppercase tracking-widest text-yellow-100 mb-1">{n.includes("pringles") ? "Pringles Can" : "Crunchy Snack"}</span>
+          <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-2xl shadow-inner font-black">
+            🍿
+          </div>
+          <span className="text-[10px] font-black text-white mt-1.5 uppercase tracking-tight">{n.includes("pringles") ? "Pringles" : "Snacks"}</span>
+        </div>
+      );
     }
 
-    return null;
+    // 5. Coffee (Mr Brown, Nescafe, Espresso)
+    if (n.includes("brown") || n.includes("coffee") || n.includes("espres") || n.includes("nescafe")) {
+      return (
+        <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-amber-900 via-amber-950 to-stone-950 text-amber-100 rounded-xl p-2 relative overflow-hidden group-hover:scale-105 transition-transform shadow-md border border-amber-500/30">
+          <span className="text-[9px] font-black uppercase tracking-widest text-amber-300 mb-1">Iced Coffee</span>
+          <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-2xl shadow-inner font-black">
+            ☕
+          </div>
+          <span className="text-[10px] font-black text-amber-200 mt-1.5 uppercase tracking-tight">Mr. Brown</span>
+        </div>
+      );
+    }
+
+    // Custom non-Unsplash URL stored on doc if valid
+    if (p.imageUrl && !failedImageUrls[key] && !p.imageUrl.includes("unsplash.com")) {
+      return (
+        <img 
+          src={p.imageUrl} 
+          alt={p.description || p.name} 
+          onError={() => setFailedImageUrls(prev => ({ ...prev, [key]: true }))}
+          className="w-full h-full object-contain p-2 group-hover:scale-108 transition-transform duration-300" 
+        />
+      );
+    }
+
+    return (
+      <div className="flex flex-col items-center justify-center text-slate-400 dark:text-slate-600 group-hover:text-cyan-500 transition-colors">
+        <Package className="w-10 h-10 group-hover:scale-110 transition-transform duration-300" />
+      </div>
+    );
   };
 
   return (
@@ -661,8 +711,6 @@ function ProductLookupContent() {
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
           {categoryFilteredProducts.map((p, idx) => {
-            const productImg = getProductImage(p);
-
             return (
               <motion.div
                 key={p.id || idx}
@@ -674,20 +722,7 @@ function ProductLookupContent() {
               >
                 {/* Product Thumbnail Box */}
                 <div className="aspect-square bg-slate-50 dark:bg-slate-950 rounded-xl mb-3.5 flex items-center justify-center border border-slate-100 dark:border-slate-800 overflow-hidden relative">
-                  {productImg ? (
-                    <img 
-                      src={productImg} 
-                      alt={p.description || p.name} 
-                      onError={() => {
-                        setFailedImageUrls(prev => ({ ...prev, [p.groupKey || p.barcode || p.id]: true }));
-                      }}
-                      className="w-full h-full object-contain p-2 group-hover:scale-108 transition-transform duration-300" 
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center justify-center text-slate-400 dark:text-slate-600 group-hover:text-cyan-500 transition-colors">
-                      <Package className="w-10 h-10 group-hover:scale-110 transition-transform duration-300" />
-                    </div>
-                  )}
+                  {renderProductVisualizer(p)}
 
                   {/* LATEST PRICE BADGE */}
                   {p.price && (
