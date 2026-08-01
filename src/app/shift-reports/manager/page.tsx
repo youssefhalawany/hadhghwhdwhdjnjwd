@@ -14,6 +14,7 @@ const SignaturePad = dynamic(() => import("react-signature-canvas"), { ssr: fals
 const QRCode = dynamic(() => import("react-qr-code"), { ssr: false });
 
 import { useBranch } from "@/context/BranchContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MobileDataCard } from "@/components/MobileUX/MobileDataCard";
@@ -21,6 +22,8 @@ import { dispatchNotificationSystem } from "@/lib/notifications";
 
 export default function ManagerAuditPage() {
   const { currentBranch } = useBranch();
+  const { language } = useLanguage();
+  const isAr = language === "ar";
   const [activeTab, setActiveTab] = useState<"pending" | "history" | "performance">("pending");
   const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
   const [dismissedAnomalies, setDismissedAnomalies] = useState<string[]>([]);
@@ -707,22 +710,24 @@ export default function ManagerAuditPage() {
       <div className="max-w-6xl mx-auto space-y-6">
 
         {/* Mobile-Only Glassmorphic Header & Navigation Bar (Strictly md:hidden) */}
-        <div className="md:hidden space-y-3 bg-[#0B1121] border border-[rgba(34,211,238,0.2)] p-4 rounded-3xl shadow-xl">
+        <div className="md:hidden space-y-3 bg-[#0B1121] border border-[rgba(34,211,238,0.2)] p-4 rounded-3xl shadow-xl" dir={isAr ? "rtl" : "ltr"}>
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
-                Shift Audit Portal
+                {isAr ? "تدقيق الورديات" : "Shift Audit Portal"}
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 font-extrabold border border-cyan-500/30">
-                  Manager
+                  {isAr ? "المدير" : "Manager"}
                 </span>
               </h1>
-              <p className="text-xs text-slate-400 font-medium">Reconcile cash & approve shift drops</p>
+              <p className="text-xs text-slate-400 font-medium">
+                {isAr ? "مطابقة النقدية والفيزا واعتما د التوريدات" : "Reconcile cash & approve shift drops"}
+              </p>
             </div>
             <button
               onClick={() => setEarlyDayModalOpen(true)}
-              className="p-2.5 bg-indigo-600/90 active:scale-95 text-white rounded-2xl text-xs font-black shadow-lg shadow-indigo-900/50 flex items-center gap-1.5"
+              className="p-2.5 bg-indigo-600/90 active:scale-95 text-white rounded-2xl text-xs font-black shadow-lg shadow-indigo-900/50 flex items-center gap-1.5 shrink-0"
             >
-              <Clock className="h-4 w-4" /> Request Early
+              <Clock className="h-4 w-4" /> {isAr ? "تقفيل مبكر" : "Request Early"}
             </button>
           </div>
 
@@ -737,7 +742,7 @@ export default function ManagerAuditPage() {
               } ${hasAgedShifts ? 'animate-pulse' : ''}`}
             >
               <Clock className="w-3.5 h-3.5" />
-              Pending ({pendingReports.length})
+              {isAr ? `معلقة (${pendingReports.length})` : `Pending (${pendingReports.length})`}
             </button>
             <button
               onClick={() => { setActiveTab("history"); setSelectedReport(null); }}
@@ -748,7 +753,7 @@ export default function ManagerAuditPage() {
               }`}
             >
               <Archive className="w-3.5 h-3.5" />
-              History ({historyReports.length})
+              {isAr ? `السجل (${historyReports.length})` : `History (${historyReports.length})`}
             </button>
             <button
               onClick={() => { setActiveTab("performance"); setSelectedReport(null); }}
@@ -758,16 +763,20 @@ export default function ManagerAuditPage() {
                   : "text-slate-400 hover:text-white"
               }`}
             >
-              Leaderboard
+              {isAr ? "التقييم" : "Leaderboard"}
             </button>
           </div>
         </div>
 
         {/* Desktop-Only Header (Strictly hidden md:flex) */}
-        <div className="hidden md:flex flex-col sm:flex-row sm:justify-between sm:items-end border-b border-border pb-4 mb-8 gap-4">
+        <div className="hidden md:flex flex-col sm:flex-row sm:justify-between sm:items-end border-b border-border pb-4 mb-8 gap-4" dir={isAr ? "rtl" : "ltr"}>
           <div>
-            <h1 className="text-3xl font-black text-foreground tracking-tight">Manager Audit Portal</h1>
-            <p className="text-sm text-muted-foreground mt-1">Review, approve, and print end-of-shift reports</p>
+            <h1 className="text-3xl font-black text-foreground tracking-tight">
+              {isAr ? "بوابة تدقيق ور ديات الكاشير" : "Manager Audit Portal"}
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              {isAr ? "مراجعة وتدقيق وإعتماد وتقفيل ورديات الكاشير وتوريدات الخزينة" : "Review, approve, and print end-of-shift reports"}
+            </p>
           </div>
 
           {/* TAB SWITCHER AND ACTION */}
@@ -776,7 +785,7 @@ export default function ManagerAuditPage() {
               onClick={() => setEarlyDayModalOpen(true)}
               className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold transition-all shadow-md whitespace-nowrap cursor-pointer"
             >
-              <Clock className="h-4 w-4" /> Request Early Day
+              <Clock className="h-4 w-4" /> {isAr ? "طلب تقفيل وردية مبكر" : "Request Early Day"}
             </button>
 
             <div className="flex bg-muted/50 p-1 rounded-xl border border-border">
@@ -784,7 +793,7 @@ export default function ManagerAuditPage() {
                 onClick={() => { setActiveTab("pending"); setSelectedReport(null); }}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "pending" ? "bg-card shadow text-red-500 border border-border" : "text-muted-foreground hover:text-foreground"} ${hasAgedShifts ? 'animate-pulse' : ''}`}
               >
-                <Clock className="h-4 w-4" /> Pending ({pendingReports.filter((r: any) => {
+                <Clock className="h-4 w-4" /> {isAr ? "قيد التدقيق" : "Pending"} ({pendingReports.filter((r: any) => {
                   if (currentBranch === "all") return true;
                   if (r.branchId) return r.branchId === currentBranch;
                   const store = (r.cashierDetails?.storeId || "").toLowerCase();
@@ -797,7 +806,7 @@ export default function ManagerAuditPage() {
                 onClick={() => { setActiveTab("history"); setSelectedReport(null); }}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "history" ? "bg-card shadow text-foreground border border-border" : "text-muted-foreground hover:text-foreground"}`}
               >
-                <Archive className="h-4 w-4" /> Audit History ({historyReports.filter((r: any) => {
+                <Archive className="h-4 w-4" /> {isAr ? "سجل الورديات المدققة" : "Audit History"} ({historyReports.filter((r: any) => {
                   if (currentBranch === "all") return true;
                   if (r.branchId) return r.branchId === currentBranch;
                   const store = (r.cashierDetails?.storeId || "").toLowerCase();
@@ -810,7 +819,7 @@ export default function ManagerAuditPage() {
                 onClick={() => { setActiveTab("performance"); setSelectedReport(null); }}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "performance" ? "bg-card shadow text-blue-600 border border-border" : "text-muted-foreground hover:text-foreground"}`}
               >
-                Performance
+                {isAr ? "لوحة المتصدرين والتقييم" : "Performance"}
               </button>
             </div>
           </div>
@@ -847,21 +856,23 @@ export default function ManagerAuditPage() {
 
         {activeTab === "performance" ? (
           <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
-            <div className="bg-slate-900 rounded-2xl p-6 text-white shadow-lg border border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="bg-slate-900 rounded-2xl p-6 text-white shadow-lg border border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4" dir={isAr ? "rtl" : "ltr"}>
               <div>
-                <h2 className="text-2xl font-black mb-1">Cashier Intelligence</h2>
-                <p className="text-slate-400 text-sm">Aggregated performance and variance metrics from the last 50 processed shifts.</p>
+                <h2 className="text-2xl font-black mb-1">{isAr ? "تحليلات وتقييم أداء الكاشيرية" : "Cashier Intelligence"}</h2>
+                <p className="text-slate-400 text-sm">
+                  {isAr ? "إحصائيات تجميعية لأداء الكاشير والفروقات لآخر ٥٠ وردية." : "Aggregated performance and variance metrics from the last 50 processed shifts."}
+                </p>
               </div>
               <div className="bg-slate-800/50 px-4 py-2 rounded-lg border border-slate-700">
-                <span className="text-sm font-bold text-slate-300">Total Active Cashiers: </span>
+                <span className="text-sm font-bold text-slate-300">{isAr ? "عدد الكاشيرية النشطين: " : "Total Active Cashiers: "}</span>
                 <span className="text-lg font-black text-white">{cashierLeaderboard.length}</span>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" dir={isAr ? "rtl" : "ltr"}>
               {cashierLeaderboard.length === 0 ? (
                 <div className="col-span-full glass-panel p-10 text-center text-muted-foreground font-medium rounded-2xl">
-                  No shift data available to calculate performance.
+                  {isAr ? "لا توجد بيانات ور ديات كافية لحساب التقييم حالياً." : "No shift data available to calculate performance."}
                 </div>
               ) : (
                 cashierLeaderboard.map((cashier, idx) => {
@@ -883,13 +894,13 @@ export default function ManagerAuditPage() {
                       {/* Rank & Badges */}
                       {idx < 3 && (
                         <div className="absolute top-0 left-0 bg-gradient-to-r from-yellow-400 to-amber-600 text-yellow-950 text-[10px] font-black px-3 py-1 rounded-br-xl uppercase tracking-wider z-20 shadow-lg">
-                          Rank #{idx + 1}
+                          {isAr ? `المركز #${idx + 1}` : `Rank #${idx + 1}`}
                         </div>
                       )}
                       
                       {cashier.cashVariance === 0 && cashier.shifts > 0 && (
                         <div className="absolute top-4 right-4 z-20 flex items-center gap-1 bg-gradient-to-r from-amber-300 to-yellow-500 text-amber-950 text-[10px] font-black px-2.5 py-1 rounded-full shadow-[0_0_15px_rgba(251,191,36,0.6)] border border-yellow-200/50">
-                          <Sparkles className="h-3 w-3" /> FLAWLESS
+                          <Sparkles className="h-3 w-3" /> {isAr ? "وردية مثالية" : "FLAWLESS"}
                         </div>
                       )}
 
@@ -900,14 +911,14 @@ export default function ManagerAuditPage() {
                           <div className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full bg-slate-800/50 border border-slate-700/50">
                             <Activity className={`h-3 w-3 ${accuracyRating > 99 ? 'text-emerald-400' : accuracyRating > 95 ? 'text-amber-400' : 'text-red-400'}`} />
                             <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
-                              Accuracy: {accuracyRating.toFixed(1)}%
+                              {isAr ? `نسبة الدقة: ${accuracyRating.toFixed(1)}%` : `Accuracy: ${accuracyRating.toFixed(1)}%`}
                             </span>
                           </div>
                         </div>
 
                         {/* Main Stat */}
                         <div className="text-center mb-6">
-                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Total Handled</p>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">{isAr ? "إجمالي التوريد" : "Total Handled"}</p>
                           <div className="text-3xl font-black text-white font-mono drop-shadow-md">
                             EGP {cashier.totalDeclared.toLocaleString()}
                           </div>
@@ -916,13 +927,13 @@ export default function ManagerAuditPage() {
                         {/* Variances */}
                         <div className="grid grid-cols-2 gap-3 mb-6 flex-grow">
                           <div className="bg-slate-900/50 backdrop-blur-md p-4 rounded-xl border border-slate-700/50 flex flex-col items-center justify-center">
-                            <p className="text-[10px] text-slate-500 uppercase font-bold mb-2">Cash Variance</p>
+                            <p className="text-[10px] text-slate-500 uppercase font-bold mb-2">{isAr ? "عجز/زيادة الكاش" : "Cash Variance"}</p>
                             <span className={`inline-block text-lg font-black ${isCashShort ? "text-red-500" : isCashOver ? "text-emerald-500" : "text-slate-400"}`}>
                               {isCashShort ? "-" : isCashOver ? "+" : ""}EGP {Math.abs(cashier.cashVariance).toLocaleString()}
                             </span>
                           </div>
                           <div className="bg-slate-900/50 backdrop-blur-md p-4 rounded-xl border border-slate-700/50 flex flex-col items-center justify-center">
-                            <p className="text-[10px] text-slate-500 uppercase font-bold mb-2">Visa Variance</p>
+                            <p className="text-[10px] text-slate-500 uppercase font-bold mb-2">{isAr ? "عجز/زيادة الفيزا" : "Visa Variance"}</p>
                             <span className={`inline-block text-lg font-black ${isVisaShort ? "text-red-500" : isVisaOver ? "text-emerald-500" : "text-slate-400"}`}>
                               {isVisaShort ? "-" : isVisaOver ? "+" : ""}EGP {Math.abs(cashier.visaVariance).toLocaleString()}
                             </span>
@@ -931,15 +942,15 @@ export default function ManagerAuditPage() {
 
                         {/* Footer Stats */}
                         <div className="flex justify-between items-center pt-4 border-t border-slate-800 text-xs text-slate-400 font-medium">
-                          <div className="flex flex-col items-center gap-1" title="Days Active">
+                          <div className="flex flex-col items-center gap-1" title={isAr ? "أيام العمل" : "Days Active"}>
                             <Calendar className="h-4 w-4 text-slate-500" />
-                            <span>{cashier.daysActive}d</span>
+                            <span>{cashier.daysActive}{isAr ? " يوم" : "d"}</span>
                           </div>
-                          <div className="flex flex-col items-center gap-1" title="Total Shifts">
+                          <div className="flex flex-col items-center gap-1" title={isAr ? "عدد الورديات" : "Total Shifts"}>
                             <Briefcase className="h-4 w-4 text-slate-500" />
-                            <span>{cashier.shifts}</span>
+                            <span>{cashier.shifts} {isAr ? "وردية" : ""}</span>
                           </div>
-                          <div className="flex flex-col items-center gap-1" title="Average Revenue per Shift">
+                          <div className="flex flex-col items-center gap-1" title={isAr ? "متوسط إيراد الوردية" : "Average Revenue per Shift"}>
                             <Banknote className="h-4 w-4 text-slate-500" />
                             <span>EGP {Math.round(cashier.avgPerShift).toLocaleString()}</span>
                           </div>
@@ -952,7 +963,7 @@ export default function ManagerAuditPage() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8" dir={isAr ? "rtl" : "ltr"}>
 
             {/* LEFT COLUMN: LIST */}
             <div className="lg:col-span-1 space-y-4 max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar">
@@ -963,7 +974,7 @@ export default function ManagerAuditPage() {
                     <input
                       ref={searchInputRef}
                       type="text"
-                      placeholder="Search by Barcode or Cashier Name..."
+                      placeholder={isAr ? "ابحث باسم الكاشير أو رقم الوردية..." : "Search by Barcode or Cashier Name..."}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="w-full p-3 pl-10 pr-32 rounded-xl border border-border bg-muted/50 focus:bg-background outline-none focus:ring-2 focus:ring-red-500 text-sm transition-all"
@@ -976,9 +987,9 @@ export default function ManagerAuditPage() {
                         setShowdownSelection([]);
                         setSelectedReport(null);
                       }}
-                      className={`absolute right-1 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${showdownMode ? 'bg-red-500 text-white shadow-[0_0_15px_rgba(239,68,68,0.5)]' : 'bg-slate-200 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'}`}
+                      className={`absolute ${isAr ? 'left-1' : 'right-1'} top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${showdownMode ? 'bg-red-500 text-white shadow-[0_0_15px_rgba(239,68,68,0.5)]' : 'bg-slate-200 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'}`}
                     >
-                      {showdownMode ? 'Cancel' : 'Compare ⚔️'}
+                      {showdownMode ? (isAr ? 'إلغاء' : 'Cancel') : (isAr ? 'مقارنة الورديات ⚔️' : 'Compare ⚔️')}
                     </button>
                   </div>
                 </div>
@@ -1001,12 +1012,12 @@ export default function ManagerAuditPage() {
                       
                       <div className="relative z-10 flex-1">
                         <h4 className="text-white font-bold text-sm tracking-wide">
-                          {radar.type === 'early' ? 'Awaiting Early Drop' : 'Awaiting Re-submission'}
+                          {radar.type === 'early' ? (isAr ? 'في انتظار التوريد المبكر' : 'Awaiting Early Drop') : (isAr ? 'في انتظار إعادة التوريد' : 'Awaiting Re-submission')}
                         </h4>
                         <p className="text-emerald-400 text-xs font-medium">
                           {radar.type === 'early' 
-                            ? `Waiting for cashier to submit early day report...` 
-                            : `Waiting for ${radar.cashierDetails?.name || 'cashier'} to fix rejected shift...`}
+                            ? (isAr ? 'في انتظار إرسال الكاشير لتقرير التقفيل المبكر...' : `Waiting for cashier to submit early day report...`)
+                            : (isAr ? `في انتظار ${radar.cashierDetails?.name || 'الكاشير'} لتعديل الوردية المرفوضة...` : `Waiting for ${radar.cashierDetails?.name || 'cashier'} to fix rejected shift...`)}
                         </p>
                       </div>
                     </div>
@@ -1017,7 +1028,7 @@ export default function ManagerAuditPage() {
               {reportsList.length === 0 ? (
                 <div className="glass-panel p-8 text-center rounded-2xl">
                   <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
-                  <p className="font-bold text-foreground">{activeTab === "pending" ? "All caught up!" : "No history found."}</p>
+                  <p className="font-bold text-foreground">{activeTab === "pending" ? (isAr ? "تم تدقيق جميع الورديات!" : "All caught up!") : (isAr ? "لا يوجد سجل ورديات سابق." : "No history found.")}</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -1045,7 +1056,7 @@ export default function ManagerAuditPage() {
                                 } else if (showdownSelection.length < 2) {
                                   setShowdownSelection([...showdownSelection, report]);
                                 } else {
-                                  toast.error("You can only compare 2 shifts at a time!");
+                                  toast.error(isAr ? "يمكنك مقارنة ورديتين فقط في المرة الواحدة!" : "You can only compare 2 shifts at a time!");
                                 }
                               } else {
                                 handleSelectReport(report);
@@ -1077,23 +1088,25 @@ export default function ManagerAuditPage() {
                                 }`}>
                                  <div className="flex flex-col">
                                    <span className="font-black tracking-tight text-lg">{report?.cashierDetails?.name}</span>
-                                   <span className="text-xs opacity-80 font-medium">Store: {report?.cashierDetails?.storeId}</span>
+                                   <span className="text-xs opacity-80 font-medium">{isAr ? "الفرع: " : "Store: "}{report?.cashierDetails?.storeId}</span>
                                  </div>
                                  <div className="flex flex-col items-end">
                                    <span className="font-bold text-sm">{report?.cashierDetails?.date}</span>
-                                   <span className="text-[10px] font-black uppercase tracking-wider opacity-80">{report?.cashierDetails?.shift} Shift</span>
+                                   <span className="text-[10px] font-black uppercase tracking-wider opacity-80">
+                                     {report?.cashierDetails?.shift === "Morning" ? (isAr ? "الوردية الصباحية" : "Morning Shift") : report?.cashierDetails?.shift === "Night" ? (isAr ? "الوردية الليلية" : "Night Shift") : (isAr ? "الوردية المسائية" : "Noon Shift")}
+                                   </span>
                                  </div>
                                </div>
 
                                {/* Pass Body */}
                                <div className={`px-5 py-5 flex justify-between items-center bg-white dark:bg-slate-950`}>
                                  <div className="flex flex-col">
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Handled</span>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{isAr ? "إجمالي التوريد" : "Total Handled"}</span>
                                     <span className="text-xl font-black text-slate-900 dark:text-white">EGP {report?.cashierCounts?.total?.toLocaleString()}</span>
                                  </div>
                                  {report.managerAudit && (
                                    <div className="flex flex-col items-end">
-                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Variance</span>
+                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{isAr ? "الفروقات" : "Variance"}</span>
                                      <span className={`text-lg font-black ${report.managerAudit.overShort < 0 ? 'text-red-500' : report.managerAudit.overShort > 0 ? 'text-emerald-500' : 'text-slate-500'}`}>
                                         {report.managerAudit.overShort < 0 ? '-' : report.managerAudit.overShort > 0 ? '+' : ''}EGP {Math.abs(report.managerAudit.overShort)}
                                      </span>
@@ -1108,7 +1121,7 @@ export default function ManagerAuditPage() {
                                   <div className="absolute -right-2 -top-2 w-4 h-4 rounded-full bg-background border-l border-b border-transparent" />
 
                                   <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest">
-                                    <CheckCircle className="h-3 w-3" /> Approved
+                                    <CheckCircle className="h-3 w-3" /> {isAr ? "معتمدة" : "Approved"}
                                   </div>
                                   <div className={`opacity-60 flex items-center ${selectedReport?.id === report.id ? 'text-white' : 'text-slate-500'}`}>
                                     <BarcodeIcon className="w-12 h-6" strokeWidth={1} />
@@ -1132,20 +1145,22 @@ export default function ManagerAuditPage() {
                       >
                         <div className="flex justify-between items-start mb-2">
                           <span className="font-bold text-foreground text-sm">{report?.cashierDetails?.date}</span>
-                          <span className="text-xs font-bold px-2 py-1 bg-red-500/10 rounded-md text-red-500 border border-red-200/20 dark:border-red-950/30">{report?.cashierDetails?.shift}</span>
+                          <span className="text-xs font-bold px-2 py-1 bg-red-500/10 rounded-md text-red-500 border border-red-200/20 dark:border-red-950/30">
+                            {report?.cashierDetails?.shift === "Morning" ? (isAr ? "صباحية" : "Morning") : report?.cashierDetails?.shift === "Night" ? (isAr ? "ليلية" : "Night") : (isAr ? "مسائية" : "Evening")}
+                          </span>
                         </div>
                         <div className="font-semibold text-lg text-foreground mb-1">
                           {report?.cashierDetails?.name}
                           {report?.isEarlyDay && (
                             <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-700 text-[10px] font-bold uppercase tracking-wider">
-                              <Clock className="h-3 w-3" /> Early Day
+                              <Clock className="h-3 w-3" /> {isAr ? "تقفيل مبكر" : "Early Day"}
                             </span>
                           )}
                         </div>
-                        <div className="text-xs text-muted-foreground font-mono mb-3">Store: {report?.cashierDetails?.storeId}</div>
+                        <div className="text-xs text-muted-foreground font-mono mb-3">{isAr ? "الفرع: " : "Store: "}{report?.cashierDetails?.storeId}</div>
 
                         <div className="flex justify-between items-center pt-3 border-t border-red-100 dark:border-red-900/30">
-                          <span className="text-xs font-bold text-muted-foreground uppercase">Declared Total</span>
+                          <span className="text-xs font-bold text-muted-foreground uppercase">{isAr ? "إجمالي التوريد المصرح" : "Declared Total"}</span>
                           <span className="font-bold text-red-600 dark:text-red-400">EGP {report?.cashierCounts?.total?.toLocaleString()}</span>
                         </div>
                       </button>
@@ -1163,9 +1178,11 @@ export default function ManagerAuditPage() {
                   
                   <div className="p-8 border-b border-slate-800 bg-black/40 backdrop-blur-xl relative z-10 text-center">
                     <h2 className="text-3xl font-black uppercase tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-orange-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]">
-                      Shift Showdown 🥊
+                      {isAr ? "مقارنة تحليلات الورديات 🥊" : "Shift Showdown 🥊"}
                     </h2>
-                    <p className="text-slate-400 mt-2 text-sm font-medium">Select exactly 2 shifts from the history list to generate a comparative analysis.</p>
+                    <p className="text-slate-400 mt-2 text-sm font-medium">
+                      {isAr ? "اختر ورديتين من القائمة لعرض تحليل مقارن بينهما." : "Select exactly 2 shifts from the history list to generate a comparative analysis."}
+                    </p>
                   </div>
                   
                   <div className="flex-grow flex flex-col items-center justify-center p-8 relative z-10">
@@ -1174,13 +1191,13 @@ export default function ManagerAuditPage() {
                         <div className="inline-flex items-center justify-center h-24 w-24 rounded-full border-2 border-dashed border-red-500/50 bg-red-500/10 mb-4">
                           <span className="text-4xl font-black text-red-500">{showdownSelection.length}/2</span>
                         </div>
-                        <p className="text-slate-500 font-bold uppercase tracking-wider">Awaiting Selection...</p>
+                        <p className="text-slate-500 font-bold uppercase tracking-wider">{isAr ? "في انتظار الاختيار..." : "Awaiting Selection..."}</p>
                       </div>
                     ) : (
                       <div className="w-full h-full flex flex-col items-center">
                         <div className="flex justify-between w-full max-w-lg mb-8 px-8">
                           <div className="text-center">
-                            <span className="inline-block px-3 py-1 bg-red-500 text-white text-[10px] font-black uppercase rounded-full mb-2 border border-red-400">Shift A</span>
+                            <span className="inline-block px-3 py-1 bg-red-500 text-white text-[10px] font-black uppercase rounded-full mb-2 border border-red-400">{isAr ? "الوردية أ" : "Shift A"}</span>
                             <h4 className="font-bold text-lg">{showdownSelection[0].cashierDetails.name}</h4>
                             <p className="text-xs text-slate-400">{showdownSelection[0].cashierDetails.date} ({showdownSelection[0].cashierDetails.shift})</p>
                           </div>
@@ -1188,7 +1205,7 @@ export default function ManagerAuditPage() {
                             <span className="text-2xl font-black italic text-slate-700">VS</span>
                           </div>
                           <div className="text-center">
-                            <span className="inline-block px-3 py-1 bg-blue-500 text-white text-[10px] font-black uppercase rounded-full mb-2 border border-blue-400">Shift B</span>
+                            <span className="inline-block px-3 py-1 bg-blue-500 text-white text-[10px] font-black uppercase rounded-full mb-2 border border-blue-400">{isAr ? "الوردية ب" : "Shift B"}</span>
                             <h4 className="font-bold text-lg">{showdownSelection[1].cashierDetails.name}</h4>
                             <p className="text-xs text-slate-400">{showdownSelection[1].cashierDetails.date} ({showdownSelection[1].cashierDetails.shift})</p>
                           </div>
@@ -1212,11 +1229,11 @@ export default function ManagerAuditPage() {
                           const visaAccB = 100;
 
                           const data = [
-                            { subject: 'Volume', A: volA, B: volB, fullMark: 100 },
-                            { subject: 'Cash Acc', A: cashAccA, B: cashAccB, fullMark: 100 },
-                            { subject: 'Visa Acc', A: visaAccA, B: visaAccB, fullMark: 100 },
-                            { subject: 'Punctuality', A: A.isEarlyDay ? 80 : 100, B: B.isEarlyDay ? 80 : 100, fullMark: 100 },
-                            { subject: 'Checklist', A: 100, B: 100, fullMark: 100 }, // Placeholder for future checklist features
+                            { subject: isAr ? 'المبيعات' : 'Volume', A: volA, B: volB, fullMark: 100 },
+                            { subject: isAr ? 'دقة الكاش' : 'Cash Acc', A: cashAccA, B: cashAccB, fullMark: 100 },
+                            { subject: isAr ? 'دقة الفيزا' : 'Visa Acc', A: visaAccA, B: visaAccB, fullMark: 100 },
+                            { subject: isAr ? 'الانضباط' : 'Punctuality', A: A.isEarlyDay ? 80 : 100, B: B.isEarlyDay ? 80 : 100, fullMark: 100 },
+                            { subject: isAr ? 'المخزون' : 'Checklist', A: 100, B: 100, fullMark: 100 },
                           ];
 
                           return (
@@ -1227,8 +1244,8 @@ export default function ManagerAuditPage() {
                                     <PolarGrid stroke="#334155" />
                                     <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 'bold' }} />
                                     <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                                    <Radar name="Shift A" dataKey="A" stroke="#ef4444" fill="#ef4444" fillOpacity={0.5} />
-                                    <Radar name="Shift B" dataKey="B" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.5} />
+                                    <Radar name={isAr ? "الوردية أ" : "Shift A"} dataKey="A" stroke="#ef4444" fill="#ef4444" fillOpacity={0.5} />
+                                    <Radar name={isAr ? "الوردية ب" : "Shift B"} dataKey="B" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.5} />
                                     <Legend wrapperStyle={{ paddingTop: '20px' }} />
                                     <RechartsTooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px' }} />
                                   </RadarChart>
@@ -1244,7 +1261,9 @@ export default function ManagerAuditPage() {
               ) : !selectedReport ? (
                 <div className="glass-panel h-full min-h-[500px] flex flex-col items-center justify-center text-center rounded-2xl border border-border bg-muted/20">
                   <FileText className="h-16 w-16 text-muted-foreground/30 mb-4" />
-                  <p className="text-lg font-bold text-muted-foreground">Select a report to view/audit</p>
+                  <p className="text-lg font-bold text-muted-foreground">
+                    {isAr ? "اختر وردية من القائمة للتدقيق والمراجعة" : "Select a report to view/audit"}
+                  </p>
                 </div>
               ) : (
                 <div className="glass-panel rounded-2xl border border-border overflow-hidden">
@@ -1256,7 +1275,7 @@ export default function ManagerAuditPage() {
                           {selectedReport?.cashierDetails?.name}
                           {selectedReport?.isEarlyDay && (
                             <span className="ml-2 align-middle inline-flex items-center gap-1 px-2 py-1 rounded-md bg-indigo-500/20 text-indigo-300 text-xs font-bold uppercase tracking-wider border border-indigo-500/30">
-                              <Clock className="h-3.5 w-3.5" /> Early Day
+                              <Clock className="h-3.5 w-3.5" /> {isAr ? "تقفيل مبكر" : "Early Day"}
                             </span>
                           )}
                         </h2>
@@ -1269,35 +1288,37 @@ export default function ManagerAuditPage() {
                               onChange={(e) => setAuditShift(e.target.value)}
                               className="bg-slate-800 border border-slate-600 text-white rounded px-2 py-0.5 outline-none font-bold text-xs focus:border-red-500 transition-colors"
                             >
-                              <option value="Morning">Morning Shift</option>
-                              <option value="Noon">Noon Shift</option>
-                              <option value="Night">Night Shift</option>
+                              <option value="Morning">{isAr ? "الوردية الصباحية" : "Morning Shift"}</option>
+                              <option value="Noon">{isAr ? "الوردية المسائية" : "Noon Shift"}</option>
+                              <option value="Night">{isAr ? "الوردية الليلية" : "Night Shift"}</option>
                             </select>
                           ) : (
-                            <span>{selectedReport?.cashierDetails?.shift} Shift</span>
+                            <span>{selectedReport?.cashierDetails?.shift === "Morning" ? (isAr ? "الوردية الصباحية" : "Morning Shift") : selectedReport?.cashierDetails?.shift === "Night" ? (isAr ? "الوردية الليلية" : "Night Shift") : (isAr ? "الوردية المسائية" : "Noon Shift")}</span>
                           )}
                           <span className="text-slate-600">•</span>
                           <span>{selectedReport?.cashierDetails?.storeId}</span>
                         </p>
                         <p className="text-slate-500 text-xs mt-1 font-semibold text-blue-600">
-                          {selectedReport.cashierRole === 2 ? 'Cashier 2 (Money Only)' : 'Cashier 1 (Full Register)'}
+                          {selectedReport.cashierRole === 2 
+                            ? (isAr ? "كاشير ثانٍ (تسليم نقدية فقط)" : "Cashier 2 (Money Only)") 
+                            : (isAr ? "كاشير أول (جرد وتوريد كامل)" : "Cashier 1 (Full Register)")}
                         </p>
-                        <p className="text-slate-400 text-xs mt-1">Submitted: {formatTimeMinus2Hours(selectedReport.createdAt)}</p>
+                        <p className="text-slate-400 text-xs mt-1">{isAr ? "وقت الإرسال: " : "Submitted: "}{formatTimeMinus2Hours(selectedReport.createdAt)}</p>
                         {activeTab === "history" && (
                           <span className="inline-block mt-3 px-2 py-1 bg-green-500/20 text-green-400 text-xs font-bold rounded border border-green-500/30">
-                            <CheckCircle className="inline h-3 w-3 mr-1" /> Approved by {selectedReport.managerAudit?.managerName}
+                            <CheckCircle className="inline h-3 w-3 mr-1" /> {isAr ? `معتمدة بواسطة ${selectedReport.managerAudit?.managerName}` : `Approved by ${selectedReport.managerAudit?.managerName}`}
                           </span>
                         )}
                       </div>
                       <div className="text-right flex flex-col items-end">
-                        <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Declared Total</p>
+                        <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">{isAr ? "إجمالي التوريد" : "Declared Total"}</p>
                         <p className="text-2xl font-black text-green-400">EGP {activeTab === "pending" ? ((Number(cashierOverrideCash) || 0) + (Number(cashierOverrideVisa) || 0)).toLocaleString() : selectedReport?.cashierCounts?.total?.toLocaleString()}</p>
                         {(activeTab === "history" || activeTab === "pending") && (
                           <div className="mt-4 text-right bg-slate-800/90 border border-slate-700 px-3 py-2 rounded-xl shadow-inner min-w-[180px]">
-                            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1 border-b border-slate-700 pb-1">Historical Context</p>
+                            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1 border-b border-slate-700 pb-1">{isAr ? "السجل التاريخي" : "Historical Context"}</p>
 
                             <div className="flex justify-between items-center text-xs mb-1">
-                              <span className="text-slate-400 font-medium mr-3">Cash Avg (5sh):</span>
+                              <span className="text-slate-400 font-medium mr-3">{isAr ? "متوسط الكاش (٥ و):" : "Cash Avg (5sh):"}</span>
                               <span className={`font-black ${getCashierCashDelta(selectedReport.cashierDetails?.name) < 0 ? 'text-red-400' : getCashierCashDelta(selectedReport.cashierDetails?.name) > 0 ? 'text-emerald-400' : 'text-slate-300'}`}>
                                 {getCashierCashDelta(selectedReport.cashierDetails?.name) < 0 ? '-' : getCashierCashDelta(selectedReport.cashierDetails?.name) > 0 ? '+' : ''}
                                 EGP {Math.abs(getCashierCashDelta(selectedReport.cashierDetails?.name))}
@@ -1305,7 +1326,7 @@ export default function ManagerAuditPage() {
                             </div>
 
                             <div className="flex justify-between items-center text-xs">
-                              <span className="text-slate-400 font-medium mr-3">Visa Avg (5sh):</span>
+                              <span className="text-slate-400 font-medium mr-3">{isAr ? "متوسط الفيزا (٥ و):" : "Visa Avg (5sh):"}</span>
                               <span className={`font-black ${getCashierVisaDelta(selectedReport.cashierDetails?.name) < 0 ? 'text-red-400' : getCashierVisaDelta(selectedReport.cashierDetails?.name) > 0 ? 'text-emerald-400' : 'text-slate-300'}`}>
                                 {getCashierVisaDelta(selectedReport.cashierDetails?.name) < 0 ? '-' : getCashierVisaDelta(selectedReport.cashierDetails?.name) > 0 ? '+' : ''}
                                 EGP {Math.abs(getCashierVisaDelta(selectedReport.cashierDetails?.name))}
@@ -1323,24 +1344,26 @@ export default function ManagerAuditPage() {
                     <section>
                       <div className="flex items-center gap-2 mb-4">
                         <Banknote className="h-5 w-5 text-red-500" />
-                        <h3 className="text-lg font-bold">Financial Audit (Over/Short)</h3>
+                        <h3 className="text-lg font-bold">{isAr ? "التدقيق المالي (العجز والزيادة)" : "Financial Audit (Over/Short)"}</h3>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-3 p-4 bg-muted/30 rounded-xl border border-border relative">
-                          <div className="absolute -top-3 left-4 bg-background px-2 text-[10px] font-bold text-muted-foreground uppercase border border-border rounded-full">Cashier's Physical Count</div>
+                          <div className="absolute -top-3 left-4 bg-background px-2 text-[10px] font-bold text-muted-foreground uppercase border border-border rounded-full">
+                            {isAr ? "الجرد الفعلي للكاشير" : "Cashier's Physical Count"}
+                          </div>
                           <div className="flex justify-between items-center gap-2 p-2 bg-card rounded border border-border">
-                            <span className="text-sm font-semibold">Cash</span>
+                            <span className="text-sm font-semibold">{isAr ? "النقدية (كاش)" : "Cash"}</span>
                             {activeTab === "pending" ? (
-                              <input type="number" value={cashierOverrideCash} onChange={e => setCashierOverrideCash(e.target.value)} className="w-28 p-1 text-right font-mono border border-border bg-background rounded outline-none focus:ring-1 focus:ring-blue-500 text-sm" placeholder="Override" />
+                              <input type="number" value={cashierOverrideCash} onChange={e => setCashierOverrideCash(e.target.value)} className="w-28 p-1 text-right font-mono border border-border bg-background rounded outline-none focus:ring-1 focus:ring-blue-500 text-sm" placeholder={isAr ? "تعديل" : "Override"} />
                             ) : (
                               <span className="font-mono font-bold">EGP {selectedReport?.cashierCounts?.cash?.toLocaleString()}</span>
                             )}
                           </div>
                           <div className="flex justify-between items-center gap-2 p-2 bg-card rounded border border-border">
-                            <span className="text-sm font-semibold">Visa</span>
+                            <span className="text-sm font-semibold">{isAr ? "الفيزا" : "Visa"}</span>
                             {activeTab === "pending" ? (
-                              <input type="number" value={cashierOverrideVisa} onChange={e => setCashierOverrideVisa(e.target.value)} className="w-28 p-1 text-right font-mono border border-border bg-background rounded outline-none focus:ring-1 focus:ring-blue-500 text-sm" placeholder="Override" />
+                              <input type="number" value={cashierOverrideVisa} onChange={e => setCashierOverrideVisa(e.target.value)} className="w-28 p-1 text-right font-mono border border-border bg-background rounded outline-none focus:ring-1 focus:ring-blue-500 text-sm" placeholder={isAr ? "تعديل" : "Override"} />
                             ) : (
                               <span className="font-mono font-bold">EGP {selectedReport?.cashierCounts?.visa?.toLocaleString()}</span>
                             )}
@@ -1349,13 +1372,15 @@ export default function ManagerAuditPage() {
 
                         {/* Manager Input (System Expected) */}
                         <div className="space-y-3 p-4 bg-red-500/5 dark:bg-red-950/10 rounded-xl border border-red-200/50 dark:border-red-900/30 relative">
-                          <div className="absolute -top-3 left-4 bg-red-100 dark:bg-red-950/80 px-2 text-[10px] font-bold text-red-800 dark:text-red-300 uppercase border border-red-200/50 dark:border-red-900/40 rounded-full">POS Expected Totals</div>
+                          <div className="absolute -top-3 left-4 bg-red-100 dark:bg-red-950/80 px-2 text-[10px] font-bold text-red-800 dark:text-red-300 uppercase border border-red-200/50 dark:border-red-900/40 rounded-full">
+                            {isAr ? "المبيعات المتوقعة من السيستم" : "POS Expected Totals"}
+                          </div>
                           <div className="flex justify-between items-center gap-2">
-                            <span className="text-sm font-semibold text-red-900">Cash</span>
+                            <span className="text-sm font-semibold text-red-900">{isAr ? "الكاش المتوقع" : "Cash"}</span>
                             <input type="number" value={expectedCash} onChange={e => setExpectedCash(e.target.value)} className="w-32 p-1.5 text-right font-mono border rounded outline-none focus:ring-2 focus:ring-red-500" placeholder="0.00" />
                           </div>
                           <div className="flex justify-between items-center gap-2">
-                            <span className="text-sm font-semibold text-red-900">Visa</span>
+                            <span className="text-sm font-semibold text-red-900">{isAr ? "الفيزا المتوقعة" : "Visa"}</span>
                             <input type="number" value={expectedVisa} onChange={e => setExpectedVisa(e.target.value)} className="w-32 p-1.5 text-right font-mono border rounded outline-none focus:ring-2 focus:ring-red-500" placeholder="0.00" />
                           </div>
                         </div>
@@ -1364,7 +1389,7 @@ export default function ManagerAuditPage() {
                       {/* Variance Result */}
                       <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="p-4 rounded-xl border flex justify-between items-center bg-slate-50 border-slate-200">
-                          <span className="font-bold text-slate-700">Cash Variance</span>
+                          <span className="font-bold text-slate-700">{isAr ? "عجز / زيادة النقدية" : "Cash Variance"}</span>
                           {(() => {
                             const variance = calculateCashVariance();
                             const isZero = variance === 0;
@@ -1377,7 +1402,7 @@ export default function ManagerAuditPage() {
                           })()}
                         </div>
                         <div className="p-4 rounded-xl border flex justify-between items-center bg-slate-50 border-slate-200">
-                          <span className="font-bold text-slate-700">Visa Variance</span>
+                          <span className="font-bold text-slate-700">{isAr ? "عجز / زيادة الفيزا" : "Visa Variance"}</span>
                           {(() => {
                             const variance = calculateVisaVariance();
                             const isZero = variance === 0;
@@ -1397,25 +1422,25 @@ export default function ManagerAuditPage() {
                       <section>
                         <div className="flex items-center gap-2 mb-4">
                           <Package className="h-5 w-5 text-amber-500" />
-                          <h3 className="text-lg font-bold">Inventory Review</h3>
+                          <h3 className="text-lg font-bold">{isAr ? "جرد وإعادة مراجعة المخزون" : "Inventory Review"}</h3>
                         </div>
 
                         <div className="overflow-x-auto rounded-xl border border-border">
                           <table className="w-full text-sm text-left">
                             <thead className="bg-muted text-muted-foreground uppercase text-xs">
                               <tr>
-                                <th className="p-3 font-bold">Item</th>
-                                <th className="p-3">Start</th>
-                                <th className="p-3">Delivery</th>
-                                <th className="p-3 text-right">End Count</th>
-                                <th className="p-3 font-bold text-right">Calculated Sold</th>
+                                <th className="p-3 font-bold">{isAr ? "الصنف" : "Item"}</th>
+                                <th className="p-3">{isAr ? "أول الوردية" : "Start"}</th>
+                                <th className="p-3">{isAr ? "المستلم" : "Delivery"}</th>
+                                <th className="p-3 text-right">{isAr ? "آخر الوردية" : "End Count"}</th>
+                                <th className="p-3 font-bold text-right">{isAr ? "المباع المحسوب" : "Calculated Sold"}</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-border bg-card">
                               {/* Backward compatibility for old reports */}
                               {selectedReport.inventoryCounts?.cigarettes && (
                                 <tr>
-                                  <td className="p-3 font-bold">Cigarettes (Old Format)</td>
+                                  <td className="p-3 font-bold">{isAr ? "السجائر (الشكل القديم)" : "Cigarettes (Old Format)"}</td>
                                   <td className="p-3">{selectedReport.inventoryCounts?.cigarettes?.start || 0}</td>
                                   <td className="p-3">{selectedReport.inventoryCounts?.cigarettes?.delivery || 0}</td>
                                   <td className="p-3 text-right">{selectedReport.inventoryCounts?.cigarettes?.end || 0}</td>
@@ -1446,7 +1471,7 @@ export default function ManagerAuditPage() {
                               })}
 
                               <tr>
-                                <td className="p-3 font-bold">Lighters (ولاعات)</td>
+                                <td className="p-3 font-bold">{isAr ? "ولاعات" : "Lighters (ولاعات)"}</td>
                                 <td className="p-3">{selectedReport.inventoryCounts?.lighters?.start || 0}</td>
                                 <td className="p-3">{selectedReport.inventoryCounts?.lighters?.delivery || 0}</td>
                                 <td className="p-3 text-right">{selectedReport.inventoryCounts?.lighters?.end || 0}</td>
@@ -1462,15 +1487,15 @@ export default function ManagerAuditPage() {
                     <section>
                       <div className="flex items-center gap-2 mb-4">
                         <Package className="h-5 w-5 text-amber-500" />
-                        <h3 className="text-lg font-bold">Shrink & Audit Data</h3>
+                        <h3 className="text-lg font-bold">{isAr ? "نسب الهالك وعجز المخزون" : "Shrink & Audit Data"}</h3>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-amber-50 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-900/30">
                         <div>
-                          <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Coffee Shrink %</label>
+                          <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">{isAr ? "نسبة هالك القهوة %" : "Coffee Shrink %"}</label>
                           <input type="number" step="0.01" value={coffeePercent} onChange={e => setCoffeePercent(e.target.value)} className="w-full p-2.5 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-amber-500" placeholder="e.g. 2.5" />
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Cigarette Shrink %</label>
+                          <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">{isAr ? "نسبة هالك السجائر %" : "Cigarette Shrink %"}</label>
                           <input type="number" step="0.01" value={cigarettePercent} onChange={e => setCigarettePercent(e.target.value)} className="w-full p-2.5 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-amber-500" placeholder="e.g. 1.2" />
                         </div>
                       </div>
@@ -1480,21 +1505,21 @@ export default function ManagerAuditPage() {
                     <section className="mt-8">
                       <div className="flex items-center gap-2 mb-4">
                         <Lock className="h-5 w-5 text-slate-500" />
-                        <h3 className="text-lg font-bold">Manager Audit Notes</h3>
+                        <h3 className="text-lg font-bold">{isAr ? "توقيع وملاحظات المدير المسؤول" : "Manager Audit Notes"}</h3>
                       </div>
 
                       <div className="space-y-4">
                         <div>
-                          <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Auditing Manager Name</label>
-                          <input type="text" value={managerName} onChange={e => setManagerName(e.target.value)} className="w-full p-3 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-slate-500" placeholder="Enter your full name" />
+                          <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">{isAr ? "اسم المدير المدقق *" : "Auditing Manager Name"}</label>
+                          <input type="text" value={managerName} onChange={e => setManagerName(e.target.value)} className="w-full p-3 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-slate-500" placeholder={isAr ? "أدخل اسمك بالكامل..." : "Enter your full name"} />
                         </div>
                         
                         <div>
                           <div className="flex justify-between items-center mb-1">
-                            <label className="block text-xs font-bold text-muted-foreground uppercase">Manager Signature *</label>
+                            <label className="block text-xs font-bold text-muted-foreground uppercase">{isAr ? "توقيع المدير المدقق *" : "Manager Signature *"}</label>
                             {(managerSignature || hasSigned) && (
                               <button type="button" onClick={() => { sigPadRef.current?.clear(); setHasSigned(false); setManagerSignature(""); }} className="text-xs text-red-500 font-bold uppercase hover:underline">
-                                Clear Signature
+                                {isAr ? "مسح التوقيع" : "Clear Signature"}
                               </button>
                             )}
                           </div>
@@ -1519,14 +1544,14 @@ export default function ManagerAuditPage() {
                         
                         {selectedReport.managerAudit?.rejectReason && (
                           <div className="bg-red-50 p-3 rounded-lg border border-red-200">
-                            <label className="block text-[10px] font-bold text-red-800 uppercase tracking-wider mb-1">Previous Rejection Reason</label>
+                            <label className="block text-[10px] font-bold text-red-800 uppercase tracking-wider mb-1">{isAr ? "سبب الرفض السابق" : "Previous Rejection Reason"}</label>
                             <p className="text-red-600 text-sm italic font-medium">"{selectedReport.managerAudit.rejectReason}"</p>
                             {selectedReport.previousSubmission && (
                               <div className="mt-2 pt-2 border-t border-red-200">
-                                <p className="text-[10px] font-bold text-red-800 uppercase">Original Incorrect Submission:</p>
+                                <p className="text-[10px] font-bold text-red-800 uppercase">{isAr ? "التوريد الأصلي قبل التعديل:" : "Original Incorrect Submission:"}</p>
                                 <p className="text-xs text-red-700 font-mono mt-0.5">
-                                  Cash: EGP {selectedReport.previousSubmission.cash} | Visa: EGP {selectedReport.previousSubmission.visa}
-                                  {selectedReport.cashierRole === 1 && ` | Cigarettes End: ${selectedReport.previousSubmission.cigEnd} | Lighters End: ${selectedReport.previousSubmission.lightEnd}`}
+                                  {isAr ? "كاش: " : "Cash: "}EGP {selectedReport.previousSubmission.cash} | {isAr ? "فيزا: " : "Visa: "}EGP {selectedReport.previousSubmission.visa}
+                                  {selectedReport.cashierRole === 1 && ` | ${isAr ? "آخر السجائر: " : "Cigarettes End: "}${selectedReport.previousSubmission.cigEnd} | ${isAr ? "آخر الولاعات: " : "Lighters End: "}${selectedReport.previousSubmission.lightEnd}`}
                                 </p>
                               </div>
                             )}
@@ -1535,14 +1560,14 @@ export default function ManagerAuditPage() {
                         {selectedReport.cashierWriteUp && (
                           <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
                             <label className="block text-[10px] font-bold text-purple-800 uppercase tracking-wider mb-1 flex items-center gap-1">
-                              <ShieldAlert className="w-3 h-3" /> Cashier's Investigation Write-Up
+                              <ShieldAlert className="w-3 h-3" /> {isAr ? "إفادة وملاحظات الكاشير" : "Cashier's Investigation Write-Up"}
                             </label>
                             <p className="text-purple-900 text-sm font-medium whitespace-pre-wrap">"{selectedReport.cashierWriteUp}"</p>
                           </div>
                         )}
                         <div>
-                          <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Audit Comments (Optional)</label>
-                          <textarea value={comments} onChange={e => setComments(e.target.value)} rows={3} className="w-full p-3 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-slate-500" placeholder="Notes regarding variances, issues, etc." />
+                          <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">{isAr ? "ملاحظات وتعليقات التدقيق (اختياري)" : "Audit Comments (Optional)"}</label>
+                          <textarea value={comments} onChange={e => setComments(e.target.value)} rows={3} className="w-full p-3 rounded-lg border border-border bg-background outline-none focus:ring-2 focus:ring-slate-500" placeholder={isAr ? "أي ملاحظات بخصوص العجز أو التعديلات..." : "Notes regarding variances, issues, etc."} />
                         </div>
                       </div>
                     </section>
@@ -1555,16 +1580,16 @@ export default function ManagerAuditPage() {
                             <button
                               onClick={triggerReject}
                               disabled={submitting}
-                              className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-bold rounded-lg shadow-sm transition-all"
+                              className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-bold rounded-lg shadow-sm transition-all cursor-pointer"
                             >
-                              {submitting ? "Rejecting..." : "Reject Report"}
+                              {submitting ? (isAr ? "جاري الرفض..." : "Rejecting...") : (isAr ? "إرجاع للتعديل" : "Reject Report")}
                             </button>
                             <button
                               onClick={triggerDispute}
                               disabled={submitting}
-                              className="px-6 py-2.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold rounded-lg shadow-sm transition-all flex items-center justify-center gap-2"
+                              className="px-6 py-2.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold rounded-lg shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
                             >
-                              <ShieldAlert className="w-5 h-5" /> Flag for Investigation
+                              <ShieldAlert className="w-5 h-5" /> {isAr ? "إحالة للتحقيق" : "Flag for Investigation"}
                             </button>
                             <button
                               type="button"
@@ -1572,7 +1597,7 @@ export default function ManagerAuditPage() {
                               disabled={submitting}
                               className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-lg shadow-xl shadow-slate-900/20 disabled:opacity-50 transition-all flex items-center justify-center gap-2 cursor-pointer"
                             >
-                              {submitting ? "Saving..." : <><CheckCircle className="h-5 w-5" /> Approve</>}
+                              {submitting ? (isAr ? "جاري الحفظ..." : "Saving...") : <><CheckCircle className="h-5 w-5" /> {isAr ? "اعتماد التقرير" : "Approve"}</>}
                             </button>
                           </div>
                           <button
@@ -1581,7 +1606,7 @@ export default function ManagerAuditPage() {
                             disabled={submitting}
                             className="w-full py-3 border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 mt-2 cursor-pointer"
                           >
-                            <Trash2 className="h-4 w-4" /> Permanently Delete Report
+                            <Trash2 className="h-4 w-4" /> {isAr ? "حذف التقرير نهائياً" : "Permanently Delete Report"}
                           </button>
                         </>
                       ) : (
@@ -1592,7 +1617,7 @@ export default function ManagerAuditPage() {
                             disabled={submitting}
                             className="w-full py-4 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold text-sm transition-all cursor-pointer"
                           >
-                            {submitting ? "Saving..." : "Update Audit Notes"}
+                            {submitting ? (isAr ? "جاري الحفظ..." : "Saving...") : (isAr ? "تحديث ملاحظات التدقيق" : "Update Audit Notes")}
                           </button>
                           <button
                             type="button"
@@ -1600,7 +1625,7 @@ export default function ManagerAuditPage() {
                             disabled={generatingPDF}
                             className="w-full py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-sm shadow-xl shadow-red-500/20 disabled:opacity-50 transition-all flex items-center justify-center gap-2 cursor-pointer"
                           >
-                            {generatingPDF ? "Generating PDF..." : <><Printer className="h-5 w-5" /> Print A4 Sign-Off Sheet</>}
+                            {generatingPDF ? (isAr ? "جاري طباعة التقرير..." : "Generating PDF...") : <><Printer className="h-5 w-5" /> {isAr ? "طباعة التقرير الرسمي A4" : "Print A4 Sign-Off Sheet"}</>}
                           </button>
                           <button
                             type="button"
@@ -1608,7 +1633,7 @@ export default function ManagerAuditPage() {
                             disabled={submitting}
                             className="w-full py-3 border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 mt-2 cursor-pointer"
                           >
-                            <Trash2 className="h-4 w-4" /> Permanently Delete Report
+                            <Trash2 className="h-4 w-4" /> {isAr ? "حذف التقرير نهائياً" : "Permanently Delete Report"}
                           </button>
                         </>
                       )}
@@ -2074,12 +2099,14 @@ export default function ManagerAuditPage() {
 
         {/* Reject Modal */}
         {rejectModalOpen && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4" dir={isAr ? "rtl" : "ltr"}>
             <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl p-6 shadow-2xl">
-              <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Reject Shift Report</h3>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">
+                {isAr ? "رفض وإرجاع تقرير الوردية" : "Reject Shift Report"}
+              </h3>
               <textarea
                 className="w-full border border-slate-300 dark:border-slate-700 bg-transparent rounded-lg p-3 text-slate-800 dark:text-white outline-none focus:border-red-500 mb-4 min-h-[100px]"
-                placeholder="Enter reason for rejection (this will be shown to the cashier)"
+                placeholder={isAr ? "ادخل سبب الرفض والتعديل المطلوبة (سيتم إظهارها للكاشير)..." : "Enter reason for rejection (this will be shown to the cashier)"}
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
               />
@@ -2088,13 +2115,13 @@ export default function ManagerAuditPage() {
                   onClick={() => setRejectModalOpen(false)}
                   className="px-4 py-2 font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                 >
-                  Cancel
+                  {isAr ? "إلغاء" : "Cancel"}
                 </button>
                 <button
                   onClick={confirmReject}
                   className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg"
                 >
-                  Confirm Reject
+                  {isAr ? "تأكيد الرفض والإرجاع" : "Confirm Reject"}
                 </button>
               </div>
             </div>
@@ -2103,20 +2130,24 @@ export default function ManagerAuditPage() {
 
         {/* Dispute Modal */}
         {disputeModalOpen && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in" dir={isAr ? "rtl" : "ltr"}>
             <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl p-6 shadow-2xl border-2 border-purple-500">
               <div className="flex items-center gap-3 mb-4">
                 <div className="bg-purple-100 dark:bg-purple-900/30 p-2 rounded-full text-purple-600">
                   <ShieldAlert className="h-6 w-6" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white">Flag for Investigation</h3>
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white">
+                  {isAr ? "إحالة الوردية للتحقيق" : "Flag for Investigation"}
+                </h3>
               </div>
               <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 font-medium">
-                This will lock the report and require the cashier to write a formal explanation (Write-Up) and sign it before the shift can be closed.
+                {isAr 
+                  ? "سيتم قفل هذا التقرير وإلزام الكاشير بكتابة إفادة رسمية وتوقيعها قبل إغلاق الوردية." 
+                  : "This will lock the report and require the cashier to write a formal explanation (Write-Up) and sign it before the shift can be closed."}
               </p>
               <textarea
                 className="w-full border-2 border-purple-200 dark:border-purple-800/50 bg-purple-50 dark:bg-purple-900/10 rounded-lg p-3 text-slate-800 dark:text-white outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200 mb-4 min-h-[100px] font-medium"
-                placeholder="Detail the issue (e.g. Major cash shortage of EGP 500, missing stock, etc.)"
+                placeholder={isAr ? "اكتب تفاصيل المشكلة (مثال: عجز كاش ٥٠٠ جنيه، نقص بضاعة...)" : "Detail the issue (e.g. Major cash shortage of EGP 500, missing stock, etc.)"}
                 value={disputeReason}
                 onChange={(e) => setDisputeReason(e.target.value)}
               />
@@ -2125,13 +2156,13 @@ export default function ManagerAuditPage() {
                   onClick={() => setDisputeModalOpen(false)}
                   className="px-4 py-2 font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                 >
-                  Cancel
+                  {isAr ? "إلغاء" : "Cancel"}
                 </button>
                 <button
                   onClick={confirmDispute}
                   className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg shadow-md"
                 >
-                  Flag Report
+                  {isAr ? "تأكيد الإحالة للتحقيق" : "Flag Report"}
                 </button>
               </div>
             </div>
@@ -2140,16 +2171,18 @@ export default function ManagerAuditPage() {
 
         {/* Delete Modal */}
         {deleteModalOpen && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4" dir={isAr ? "rtl" : "ltr"}>
             <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl p-6 shadow-2xl border border-red-500/20">
-              <h3 className="text-lg font-bold text-red-600 mb-2">CRITICAL WARNING</h3>
+              <h3 className="text-lg font-bold text-red-600 mb-2">{isAr ? "تحذير هام ومباشر" : "CRITICAL WARNING"}</h3>
               <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                You are about to permanently delete this shift report. This action cannot be undone and will erase all data associated with this shift.
+                {isAr 
+                  ? "أنت على وشك حذف هذا التقرير نهائياً من السيستم. لا يمكن التراجع عن هذا الإجراء وسيتم مسح جميع بيانات الوردية." 
+                  : "You are about to permanently delete this shift report. This action cannot be undone and will erase all data associated with this shift."}
               </p>
               <input
                 type="password"
                 className="w-full border border-slate-300 dark:border-slate-700 bg-transparent rounded-lg p-3 text-slate-800 dark:text-white outline-none focus:border-red-500 mb-4 text-center font-bold tracking-[0.5em]"
-                placeholder="Enter 4-digit Manager PIN"
+                placeholder={isAr ? "رمز PIN للمدير (٤ أرقام)" : "Enter 4-digit Manager PIN"}
                 value={deletePin}
                 onChange={(e) => setDeletePin(e.target.value)}
                 maxLength={4}
@@ -2159,13 +2192,13 @@ export default function ManagerAuditPage() {
                   onClick={() => setDeleteModalOpen(false)}
                   className="px-4 py-2 font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                 >
-                  Cancel
+                  {isAr ? "إلغاء" : "Cancel"}
                 </button>
                 <button
                   onClick={confirmDelete}
                   className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg"
                 >
-                  Permanently Delete
+                  {isAr ? "تأكيد الحذف النهائي" : "Permanently Delete"}
                 </button>
               </div>
             </div>
@@ -2173,23 +2206,27 @@ export default function ManagerAuditPage() {
         )}
         {/* EARLY DAY MODAL */}
         {earlyDayModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" dir={isAr ? "rtl" : "ltr"}>
             <div className="bg-card w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-border">
               <div className="p-6">
                 <h3 className="text-xl font-black text-foreground mb-2 flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-indigo-500" /> Request Early Day Drop
+                  <Clock className="h-5 w-5 text-indigo-500" /> {isAr ? "طلب تقفيل وردية مبكر" : "Request Early Day Drop"}
                 </h3>
-                <p className="text-sm text-muted-foreground mb-6">Select a cashier to force an early day report fill on their next login or refresh.</p>
+                <p className="text-sm text-muted-foreground mb-6">
+                  {isAr 
+                    ? "اختر الكاشير لإلزامه بتقديم تقرير تقفيل الوردية فور تسجيل دخوله." 
+                    : "Select a cashier to force an early day report fill on their next login or refresh."}
+                </p>
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">Select Cashier</label>
+                    <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">{isAr ? "اختر الكاشير" : "Select Cashier"}</label>
                     <select
                       value={selectedCashierForEarlyDay}
                       onChange={(e) => setSelectedCashierForEarlyDay(e.target.value)}
                       className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
                     >
-                      <option value="">-- Choose a Cashier --</option>
+                      <option value="">{isAr ? "-- اختر كاشير --" : "-- Choose a Cashier --"}</option>
                       {cashiersList.filter((c: any) => {
                         if (currentBranch === "all") return true;
                         if (c.branchId) return c.branchId === currentBranch;
@@ -2206,7 +2243,7 @@ export default function ManagerAuditPage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">Target Date</label>
+                      <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">{isAr ? "التاريخ المستهدف" : "Target Date"}</label>
                       <input
                         type="date"
                         value={earlyDayTargetDate}
@@ -2215,15 +2252,15 @@ export default function ManagerAuditPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">Target Shift</label>
+                      <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">{isAr ? "الوردية المستهدفة" : "Target Shift"}</label>
                       <select
                         value={earlyDayTargetShift}
                         onChange={(e) => setEarlyDayTargetShift(e.target.value)}
                         className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
                       >
-                        <option value="Morning">Morning</option>
-                        <option value="Evening">Evening</option>
-                        <option value="Night">Night</option>
+                        <option value="Morning">{isAr ? "الصباحية" : "Morning"}</option>
+                        <option value="Evening">{isAr ? "المسائية" : "Evening"}</option>
+                        <option value="Night">{isAr ? "الليلية" : "Night"}</option>
                       </select>
                     </div>
                   </div>
@@ -2234,14 +2271,14 @@ export default function ManagerAuditPage() {
                     onClick={() => setEarlyDayModalOpen(false)}
                     className="px-4 py-2 rounded-lg font-bold text-muted-foreground hover:bg-muted transition-colors cursor-pointer"
                   >
-                    Cancel
+                    {isAr ? "إلغاء" : "Cancel"}
                   </button>
                   <button
                     onClick={handleRequestEarlyDay}
                     disabled={requestingEarlyDay || !selectedCashierForEarlyDay}
                     className="px-6 py-2 rounded-lg font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md disabled:opacity-50 transition-all cursor-pointer"
                   >
-                    {requestingEarlyDay ? "Sending..." : "Send Request"}
+                    {requestingEarlyDay ? (isAr ? "جاري الإرسال..." : "Sending...") : (isAr ? "إرسال الطلب" : "Send Request")}
                   </button>
                 </div>
               </div>
