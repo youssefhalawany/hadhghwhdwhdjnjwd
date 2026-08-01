@@ -22,9 +22,11 @@ import {
   Eye,
   Layers,
   FileCheck2,
-  Trash2
+  Trash2,
+  BellRing
 } from "lucide-react";
 import { toast } from "sonner";
+import { dispatchNotificationSystem } from "@/lib/notifications";
 import { useBranch } from "@/context/BranchContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { PageTransition } from "@/components/PageTransition";
@@ -133,6 +135,26 @@ export default function ManagerDocumentsPage() {
         console.error("Error deleting document:", err);
         toast.error("Failed to delete document");
       }
+    }
+  };
+
+  const [sendingTest, setSendingTest] = useState(false);
+
+  const handleSendTestNotification = async () => {
+    setSendingTest(true);
+    triggerHapticFeedback([20, 30, 20]);
+    try {
+      await dispatchNotificationSystem({
+        title: "🔔 Circle K Executive Test Alert",
+        body: "Operational push notification test broadcast! Received on all registered mobile phones & computers.",
+        type: "system",
+        url: "/manager/documents"
+      });
+      toast.success("Test notification broadcasted to all registered devices!");
+    } catch (err: any) {
+      toast.error("Failed to send test notification: " + (err as Error).message);
+    } finally {
+      setSendingTest(false);
     }
   };
 
@@ -275,6 +297,15 @@ export default function ManagerDocumentsPage() {
               Official admin dispatches, employee payslips, vendor receipts, and printable executive records.
             </p>
           </div>
+
+          <button
+            onClick={handleSendTestNotification}
+            disabled={sendingTest}
+            className="px-4 py-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 text-xs font-black flex items-center gap-2 shadow-lg shadow-cyan-500/20 hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 cursor-pointer self-start md:self-auto shrink-0"
+          >
+            <BellRing className={`w-4 h-4 ${sendingTest ? "animate-spin" : ""}`} />
+            {sendingTest ? "Broadcasting..." : "Send Test Notification"}
+          </button>
         </div>
 
         {/* Filter Controls & Search */}
