@@ -1156,7 +1156,7 @@ export default function AdminPayrollPage() {
           <style dangerouslySetInnerHTML={{ __html: "@media print { @page { size: A4 portrait; margin: 10mm !important; } body { margin: 0 !important; padding: 0 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } html, body { height: auto !important; min-height: 100% !important; overflow: visible !important; } }" }} />
           
           {/* PAGE 1: PAYSLIP */}
-          <div style={{ boxSizing: "border-box", width: "100%", maxWidth: "190mm", margin: "0 auto", position: "relative", pageBreakBefore: "always", breakBefore: "page", pageBreakAfter: "always", breakAfter: "page", pageBreakInside: "avoid", breakInside: "avoid", backgroundColor: "#ffffff" }}>
+          <div style={{ boxSizing: "border-box", width: "100%", maxWidth: "190mm", margin: "0 auto", position: "relative", pageBreakAfter: "always", breakAfter: "page", pageBreakInside: "avoid", breakInside: "avoid", backgroundColor: "#ffffff" }}>
             
             {/* Corporate Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #0f172a", paddingBottom: "8px", marginBottom: "12px" }}>
@@ -1301,7 +1301,7 @@ export default function AdminPayrollPage() {
           </div>
           
           {/* PAGE 2: SALARY ACKNOWLEDGEMENT RECEIPT */}
-          <div style={{ boxSizing: "border-box", width: "100%", maxWidth: "190mm", margin: "0 auto", position: "relative", pageBreakBefore: "always", breakBefore: "page", pageBreakAfter: "always", breakAfter: "page", pageBreakInside: "avoid", breakInside: "avoid", backgroundColor: "#ffffff" }}>
+          <div style={{ boxSizing: "border-box", width: "100%", maxWidth: "190mm", margin: "0 auto", position: "relative", pageBreakBefore: "always", breakBefore: "page", pageBreakInside: "avoid", breakInside: "avoid", backgroundColor: "#ffffff" }}>
             
             {/* Corporate Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #0f172a", paddingBottom: "8px", marginBottom: "12px" }}>
@@ -1403,7 +1403,7 @@ export default function AdminPayrollPage() {
           <style dangerouslySetInnerHTML={{ __html: "@media print { @page { size: A4 portrait; margin: 10mm !important; } body { margin: 0 !important; padding: 0 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } html, body { height: auto !important; min-height: 100% !important; overflow: visible !important; } }" }} />
           
           {/* PAGE 1: EXECUTIVE SUMMARY TABLE */}
-          <div style={{ boxSizing: "border-box", width: "100%", maxWidth: "190mm", margin: "0 auto", position: "relative", pageBreakBefore: "always", breakBefore: "page", pageBreakAfter: "always", breakAfter: "page", pageBreakInside: "avoid", breakInside: "avoid", backgroundColor: "#ffffff" }}>
+          <div style={{ boxSizing: "border-box", width: "100%", maxWidth: "190mm", margin: "0 auto", position: "relative", pageBreakAfter: "always", breakAfter: "page", pageBreakInside: "avoid", breakInside: "avoid", backgroundColor: "#ffffff" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #0f172a", paddingBottom: "8px", marginBottom: "12px" }}>
               <div>
                 <h1 style={{ fontSize: "20px", fontWeight: "900", color: "#0f172a", margin: 0, textTransform: "uppercase", letterSpacing: "1px" }}>{companyName}</h1>
