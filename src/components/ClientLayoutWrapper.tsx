@@ -53,10 +53,90 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const pathname = usePathname();
 
+  const [pushPermissionNeeded, setPushPermissionNeeded] = useState(false);
+
+  const registerFcmPushToken = async (currentUserObj?: any) => {
+    if (typeof window === "undefined" || !("Notification" in window) || !("serviceWorker" in navigator)) {
+      return;
+    }
+
+    try {
+      const reg = await navigator.serviceWorker.register("/firebase-messaging-sw.js").catch(() => null);
+      if (reg) await navigator.serviceWorker.ready;
+
+      let perm = Notification.permission;
+      if (perm !== "granted") {
+        setPushPermissionNeeded(true);
+        perm = await Notification.requestPermission();
+      }
+
+      if (perm === "granted") {
+        setPushPermissionNeeded(false);
+        if (messaging) {
+          const messagingInstance = await messaging;
+          if (messagingInstance) {
+            const tokenOptions: any = {
+              vapidKey: process.env.NEXT_PUBLIC_VAPID_KEY || "BHiDvLTbQ2DTED8p7X1BQ8Vu811fuu3dmpVfclmA5P7n-DuRltU7kkai9E2_2VkbLpS7Ns5ekNQClP5CsTeWf7M"
+            };
+            if (reg) tokenOptions.serviceWorkerRegistration = reg;
+
+            const token = await getToken(messagingInstance, tokenOptions);
+            if (token) {
+              console.log("Manager FCM Push Token active:", token);
+              const activeRole = localStorage.getItem("circlek_role") || "manager";
+              const emailStr = currentUserObj?.email || user?.email || "youssefhalawanyy@gmail.com";
+
+              await dbService.setDoc("user_tokens", "master_youssef", {
+                fcmToken: token,
+                email: emailStr,
+                role: activeRole,
+                updatedAt: new Date().toISOString()
+              });
+
+              await dbService.setDoc("user_tokens", "manager", {
+                fcmToken: token,
+                email: emailStr,
+                role: "manager",
+                updatedAt: new Date().toISOString()
+              });
+
+              const uid = currentUserObj?.uid || user?.uid;
+              if (uid) {
+                await dbService.setDoc("user_tokens", uid, {
+                  fcmToken: token,
+                  email: emailStr,
+                  role: activeRole,
+                  updatedAt: new Date().toISOString()
+                });
+
+                await dbService.updateDoc("users", uid, {
+                  fcmToken: token,
+                  fcmTokens: [token]
+                }).catch(() => {});
+              }
+
+              toast.success("🔔 Lock screen push notifications active for this device!");
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error("FCM Token generation error:", err);
+    }
+  };
+
   useEffect(() => {
     const handleOpenWelcome = () => setShowWelcomeModal(true);
     window.addEventListener("open_welcome_modal", handleOpenWelcome);
     return () => window.removeEventListener("open_welcome_modal", handleOpenWelcome);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      if (Notification.permission !== "granted") {
+        setPushPermissionNeeded(true);
+      }
+    }
   }, []);
 
   // Initialize theme, role, and mock status from localStorage
@@ -140,79 +220,20 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
         } catch (err) {
           console.error("Failed to fetch user doc:", err);
         }
-      }
 
-      setAuthLoading(false);
+        // Proactively register FCM Push token for Manager
+        registerFcmPushToken(currentUser);
 
-      // Register FCM Push Token for Manager & Device Sessions (Mobile PWA & Desktop)
-      if (typeof window !== "undefined" && "Notification" in window && "serviceWorker" in navigator) {
-        try {
-          const reg = await navigator.serviceWorker.register("/firebase-messaging-sw.js").catch(() => null);
-          if (reg) await navigator.serviceWorker.ready;
-
-          const permission = Notification.permission === "granted"
-            ? "granted"
-            : await Notification.requestPermission();
-
-          if (permission === "granted" && messaging) {
-            const messagingInstance = await messaging;
-            if (messagingInstance) {
-              const tokenOptions: any = {
-                vapidKey: process.env.NEXT_PUBLIC_VAPID_KEY || "BHiDvLTbQ2DTED8p7X1BQ8Vu811fuu3dmpVfclmA5P7n-DuRltU7kkai9E2_2VkbLpS7Ns5ekNQClP5CsTeWf7M"
-              };
-              if (reg) tokenOptions.serviceWorkerRegistration = reg;
-
-              const token = await getToken(messagingInstance, tokenOptions);
-              if (token) {
-                console.log("FCM Push Token active:", token);
-                const role = localStorage.getItem("circlek_role") || "manager";
-                const userEmail = currentUser?.email || "youssefhalawanyy@gmail.com";
-
-                // Save to master_youssef token doc for Master Alert APIs
-                await dbService.setDoc("user_tokens", "master_youssef", {
-                  fcmToken: token,
-                  email: userEmail,
-                  role: role,
-                  updatedAt: new Date().toISOString()
-                });
-
-                // Save to manager token doc
-                await dbService.setDoc("user_tokens", "manager", {
-                  fcmToken: token,
-                  email: userEmail,
-                  role: "manager",
-                  updatedAt: new Date().toISOString()
-                });
-
-                if (currentUser?.uid) {
-                  await dbService.setDoc("user_tokens", currentUser.uid, {
-                    fcmToken: token,
-                    email: userEmail,
-                    role: role,
-                    updatedAt: new Date().toISOString()
-                  });
-
-                  await dbService.updateDoc("users", currentUser.uid, {
-                    fcmToken: token,
-                    fcmTokens: [token]
-                  }).catch(() => {});
-                }
-              }
-            }
+        // Show welcome toast if just logged in
+        if (typeof window !== "undefined") {
+          const hasSeenWelcome = sessionStorage.getItem("circlek_welcomed");
+          if (!hasSeenWelcome) {
+            toast.success(`Welcome back, ${currentUser.displayName || currentUser.email?.split('@')[0]}! 👋`, { duration: 4000 });
+            sessionStorage.setItem("circlek_welcomed", "true");
           }
-        } catch (err) {
-          console.error("FCM Token generation error:", err);
         }
       }
-
-      // Show welcome toast if just logged in
-      if (currentUser && typeof window !== "undefined") {
-        const hasSeenWelcome = sessionStorage.getItem("circlek_welcomed");
-        if (!hasSeenWelcome) {
-          toast.success(`Welcome back, ${currentUser.displayName || currentUser.email?.split('@')[0]}! 👋`, { duration: 4000 });
-          sessionStorage.setItem("circlek_welcomed", "true");
-        }
-      }
+      setAuthLoading(false);
     });
 
     // Real-Time Live Notification Listener for Mobile Manager
@@ -969,6 +990,22 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                 <LogOut className="h-4 w-4" /> {t("nav.sign_out")}
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Push Notification Authorization Banner for Manager Phone / Device */}
+        {pushPermissionNeeded && (
+          <div className="bg-gradient-to-r from-amber-500 via-red-600 to-cyan-500 text-slate-950 text-xs font-black px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 shadow-lg no-print z-50">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping" />
+              <span>Enable Lock Screen Push Notifications on this Manager Phone / PWA Device!</span>
+            </div>
+            <button
+              onClick={() => registerFcmPushToken(user)}
+              className="px-3.5 py-1 rounded-xl bg-slate-950 text-white text-[11px] font-black uppercase tracking-wider shadow hover:bg-slate-900 active:scale-95 transition-all cursor-pointer"
+            >
+              Enable Push Notifications 🔔
+            </button>
           </div>
         )}
 

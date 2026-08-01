@@ -56,18 +56,20 @@ export async function POST(req: Request) {
     }
 
     try {
-      const fcmTokensSnap = await adminDb.collection("fcm_tokens").get();
-      fcmTokensSnap.forEach(docSnap => {
+      const usersSnap = await adminDb.collection("users").get();
+      usersSnap.forEach(docSnap => {
         const data = docSnap.data();
-        if (data.token && typeof data.token === 'string' && data.token.trim().length > 10) {
-          tokensSet.add(data.token.trim());
-        }
         if (data.fcmToken && typeof data.fcmToken === 'string' && data.fcmToken.trim().length > 10) {
           tokensSet.add(data.fcmToken.trim());
         }
+        if (Array.isArray(data.fcmTokens)) {
+          data.fcmTokens.forEach((t: string) => {
+            if (t && typeof t === 'string' && t.trim().length > 10) tokensSet.add(t.trim());
+          });
+        }
       });
     } catch (e) {
-      console.error("Error fetching fcm_tokens:", e);
+      console.error("Error fetching users tokens:", e);
     }
 
     const allTokens = Array.from(tokensSet);
