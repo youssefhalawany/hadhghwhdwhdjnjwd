@@ -797,14 +797,21 @@ export default function EmployeesPage() {
           `}
         </style>
 
-        {selectedEmployee && (
+        {selectedEmployee && (() => {
+          const sid = (selectedEmployee.storeId || "").toLowerCase();
+          const isOla = sid.includes("ola") || sid.includes("koronfol") || sid.includes("anh") || currentBranch === "ola";
+          const companyTitleAr = isOla ? "شركة اي ان اتش للتجارة والخدمات البترولية" : "الشركة المصرية للتجارة";
+          const companySubtitleEn = isOla ? "ANH Trading & Petroleum Services" : "Circle K Franchise - Egypt";
+          const companyPartyName = isOla ? "شركة اي ان اتش للتجارة والخدمات البترولية (ANH)" : "الشركة المصرية للتجارة (El Masreya for Trade - Circle K)";
+
+          return (
           <div className="content-wrapper" style={{ maxWidth: "800px", margin: "0 auto", color: "#000", fontFamily: "'Cairo', 'Tajawal', system-ui, sans-serif" }}>
             
             {/* Header / Letterhead */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "3px solid #000", paddingBottom: "10px", marginBottom: "20px" }}>
               <div style={{ textAlign: "right" }}>
-                <h1 style={{ fontSize: "22px", fontWeight: "900", margin: 0, color: "#000" }}>الشركة المصرية للتجارة</h1>
-                <h2 style={{ fontSize: "14px", margin: "3px 0 0 0", color: "#333", fontWeight: "600", textTransform: "uppercase", letterSpacing: "1px" }}>Circle K Franchise - Egypt</h2>
+                <h1 style={{ fontSize: "22px", fontWeight: "900", margin: 0, color: "#000" }}>{companyTitleAr}</h1>
+                <h2 style={{ fontSize: "14px", margin: "3px 0 0 0", color: "#333", fontWeight: "600", textTransform: "uppercase", letterSpacing: "1px" }}>{companySubtitleEn}</h2>
               </div>
               <div style={{ textAlign: "left", fontSize: "13px", lineHeight: "1.4" }}>
                 <div><span style={{ fontWeight: "bold" }}>التاريخ:</span> {new Date(selectedEmployee.startDate || Date.now()).toLocaleDateString('ar-EG')}</div>
@@ -830,7 +837,7 @@ export default function EmployeesPage() {
                   <tbody>
                     <tr>
                       <td style={{ fontWeight: "bold", padding: "4px 0", width: "120px", verticalAlign: "top" }}>اسم الشركة:</td>
-                      <td style={{ padding: "4px 0" }}>الشركة المصرية للتجارة (El Masreya for Trade - Circle K)</td>
+                      <td style={{ padding: "4px 0" }}>{companyPartyName}</td>
                     </tr>
                     <tr>
                       <td style={{ fontWeight: "bold", padding: "4px 0", verticalAlign: "top" }}>المقر الرئيسي:</td>
@@ -966,7 +973,7 @@ export default function EmployeesPage() {
                     <h4 style={{ fontWeight: "bold", fontSize: "16px", margin: "0 0 20px 0", color: "#000", borderBottom: "2px solid #000", display: "inline-block", paddingBottom: "5px" }}>الطرف الأول (صاحب العمل)</h4>
                     <div style={{ display: "flex", marginBottom: "15px", fontSize: "15px" }}>
                       <span style={{ fontWeight: "bold", width: "70px" }}>الاسم:</span> 
-                      <div style={{ flex: 1, borderBottom: "1px dotted #000", fontWeight: "bold" }}>الشركة المصرية للتجارة</div>
+                      <div style={{ flex: 1, borderBottom: "1px dotted #000", fontWeight: "bold" }}>{companyTitleAr}</div>
                     </div>
                     <div style={{ display: "flex", marginBottom: "15px", fontSize: "15px" }}>
                       <span style={{ fontWeight: "bold", width: "70px" }}>الصفة:</span> 
@@ -1062,7 +1069,8 @@ export default function EmployeesPage() {
             )}
             
           </div>
-        )}
+          );
+        })()}
       </div>
     </>
   );
