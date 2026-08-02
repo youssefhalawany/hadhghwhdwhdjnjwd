@@ -312,13 +312,16 @@ export default function ManagerAuditPage() {
       setLoading(false);
     });
 
-    // 2. Fetch History (Approved) - limit to 30 to improve render and reload speed
-    const qHistory = query(collection(db, "shift_reports"), orderBy("createdAt", "desc"), limit(30));
+    // 2. Fetch History (Approved) - fetch 300 to filter 30 history items FOR THE ACTIVE BRANCH ALONE
+    const qHistory = query(collection(db, "shift_reports"), orderBy("createdAt", "desc"), limit(300));
     const unsubHistory = onSnapshot(qHistory, (snapshot) => {
       const reports = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
-      // Filter locally to avoid composite index requirement
-      const approvedReports = reports.filter((r: any) => r.status === "approved");
-      setHistoryReports(approvedReports);
+      let approved = reports.filter((r: any) => r.status === "approved");
+      if (currentBranch !== "all") {
+        approved = approved.filter((r: any) => getReportBranch(r) === currentBranch);
+      }
+      const branch30History = approved.slice(0, 30);
+      setHistoryReports(branch30History);
     });
 
     // 3. Fetch Live Drop Radars (Early Drops & Rejected Shifts)
@@ -801,27 +804,13 @@ export default function ManagerAuditPage() {
                 onClick={() => { setActiveTab("pending"); setSelectedReport(null); }}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "pending" ? "bg-card shadow text-red-500 border border-border" : "text-muted-foreground hover:text-foreground"} ${hasAgedShifts ? 'animate-pulse' : ''}`}
               >
-                <Clock className="h-4 w-4" /> {isAr ? "قيد التدقيق" : "Pending"} ({pendingReports.filter((r: any) => {
-                  if (currentBranch === "all") return true;
-                  if (r.branchId) return r.branchId === currentBranch;
-                  const store = (r.cashierDetails?.storeId || "").toLowerCase();
-                  if (currentBranch === "alamein4") return store.includes("alamein") || (!store.includes("alamein") && !store.includes("ola"));
-                  if (currentBranch === "ola") return store.includes("ola");
-                  return true;
-                }).length})
+                <Clock className="h-4 w-4" /> {isAr ? "قيد التدقيق" : "Pending"} ({pendingReports.length})
               </button>
               <button
                 onClick={() => { setActiveTab("history"); setSelectedReport(null); }}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "history" ? "bg-card shadow text-foreground border border-border" : "text-muted-foreground hover:text-foreground"}`}
               >
-                <Archive className="h-4 w-4" /> {isAr ? "سجل الورديات المدققة" : "Audit History"} ({historyReports.filter((r: any) => {
-                  if (currentBranch === "all") return true;
-                  if (r.branchId) return r.branchId === currentBranch;
-                  const store = (r.cashierDetails?.storeId || "").toLowerCase();
-                  if (currentBranch === "alamein4") return store.includes("alamein") || (!store.includes("alamein") && !store.includes("ola"));
-                  if (currentBranch === "ola") return store.includes("ola");
-                  return true;
-                }).length})
+                <Archive className="h-4 w-4" /> {isAr ? "سجل الورديات المدققة" : "Audit History"} ({historyReports.length})
               </button>
               <button
                 onClick={() => { setActiveTab("performance"); setSelectedReport(null); }}
