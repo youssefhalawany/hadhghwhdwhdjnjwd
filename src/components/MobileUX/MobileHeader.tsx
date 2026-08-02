@@ -21,8 +21,14 @@ export function MobileHeader() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      setUserRole(localStorage.getItem("circlek_role") || "manager");
+      const storedRole = localStorage.getItem("circlek_role") || "manager";
+      setUserRole(storedRole);
     }
+    const handleRoleChanged = (e: CustomEvent) => {
+      if (e.detail) setUserRole(e.detail);
+    };
+    window.addEventListener("circlek_role_changed", handleRoleChanged as any);
+    return () => window.removeEventListener("circlek_role_changed", handleRoleChanged as any);
   }, []);
 
   useEffect(() => {
@@ -56,14 +62,23 @@ export function MobileHeader() {
 
   // Format branches dynamically according to user authorization
   const displayBranches = React.useMemo(() => {
-    if (availableBranches && availableBranches.length > 0) {
-      if (userRole === "manager") {
+    const activeRole = userRole || (typeof window !== "undefined" ? localStorage.getItem("circlek_role") : "manager") || "manager";
+    const isManager = activeRole === "manager";
+
+    if (isManager) {
+      if (availableBranches && availableBranches.length > 0) {
         return availableBranches.map(b => ({
           id: b.id,
           labelEn: b.name,
           labelAr: b.id === "alamein4" ? "العلمين 4" : b.id === "ola" ? "علا القرنفلي" : b.name
         }));
       }
+      return [
+        { id: "alamein4" as BranchId, labelEn: "El Alamein 4", labelAr: "العلمين 4" }
+      ];
+    }
+
+    if (availableBranches && availableBranches.length > 0) {
       return [
         { id: "all" as BranchId, labelEn: "All Branches", labelAr: "جميع الفروع" },
         ...availableBranches.map(b => ({

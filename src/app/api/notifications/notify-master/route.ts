@@ -39,13 +39,21 @@ export async function POST(req: Request) {
       const role = (data.role || "").toLowerCase();
       if (role === "owner" || role === "admin" || role === "master") return true;
       
-      const notifNorm = notifBranchId.toLowerCase().includes("ola") ? "ola" : "alamein4";
-      const storeIds: string[] = Array.isArray(data.storeIds) ? data.storeIds : [];
+      const notifNorm = (notifBranchId.toLowerCase().includes("ola") || notifBranchId.toLowerCase().includes("koronfol")) ? "ola" : "alamein4";
       const userBranchId = (data.branchId || data.storeId || "").toLowerCase();
+      const userStoreIds: string[] = Array.isArray(data.storeIds) ? data.storeIds.map((s: any) => String(s).toLowerCase()) : [];
 
-      const userNorm = userBranchId.includes("ola") || storeIds.some(s => s.toLowerCase().includes("ola") || s.toLowerCase().includes("koronfol")) ? "ola" : "alamein4";
-      
-      return userNorm === notifNorm;
+      if (!userBranchId && userStoreIds.length === 0) {
+        return false;
+      }
+
+      const matchesOla = userBranchId.includes("ola") || userBranchId.includes("koronfol") || userStoreIds.some(s => s.includes("ola") || s.includes("koronfol"));
+      const matchesAlamein = userBranchId.includes("alamein") || userBranchId.includes("4") || userStoreIds.some(s => s.includes("alamein") || s.includes("4"));
+
+      if (notifNorm === "ola") return matchesOla;
+      if (notifNorm === "alamein4") return matchesAlamein;
+
+      return false;
     };
 
     // 1. Collect all registered FCM device tokens across collections matching branchId
