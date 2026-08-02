@@ -619,59 +619,109 @@ export default function ManagerAuditPage() {
       const page2 = document.getElementById("pdf-page-2");
 
       if (!page1) {
+        toast.error(isAr ? "عفواً، تعذر العثور على نموذج التقرير" : "Report template element not found");
         setGeneratingPDF(false);
         return;
       }
 
-      // Dynamically import jsPDF and html2canvas so bundle remains lightweight
-      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
-        import("jspdf"),
-        import("html2canvas")
-      ]);
+      // Create a hidden iframe for instant native vector printing
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      iframe.style.visibility = 'hidden';
+      document.body.appendChild(iframe);
 
-      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const contentWindow = iframe.contentWindow;
+      const contentDocument = iframe.contentDocument || (contentWindow ? contentWindow.document : null);
 
-      // Temporarily bring hidden print container into position for accurate html2canvas capture
-      const container = page1.parentElement;
-      const originalLeft = container ? container.style.left : "-9999px";
-      if (container) {
-        container.style.left = "0";
-        container.style.top = "0";
-        container.style.zIndex = "-9999";
-      }
+      if (contentDocument) {
+        // Collect existing stylesheets
+        const styleNodes = document.querySelectorAll("style, link[rel='stylesheet']");
+        const stylesHtml = Array.from(styleNodes).map(node => node.outerHTML).join('');
 
-      // PAGE 1: Financial Audit
-      const canvas1 = await html2canvas(page1, { scale: 2, useCORS: true, logging: false });
-      const imgData1 = canvas1.toDataURL("image/png");
-      const pdfHeight1 = (canvas1.height * pdfWidth) / canvas1.width;
-      pdf.addImage(imgData1, "PNG", 0, 0, pdfWidth, pdfHeight1);
+        contentDocument.open();
+        contentDocument.write(`
+          <!DOCTYPE html>
+          <html class="light" style="color-scheme: light !important; background-color: #ffffff !important;">
+            <head>
+              <title>Shift Report - ${selectedReport.cashierDetails?.name || 'Cashier'}</title>
+              ${stylesHtml}
+              <style>
+                :root {
+                  color-scheme: light !important;
+                }
+                html, body {
+                  background-color: #ffffff !important;
+                  background: #ffffff !important;
+                  color: #000000 !important;
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  width: 100% !important;
+                  height: auto !important;
+                  font-family: Arial, sans-serif !important;
+                  -webkit-print-color-adjust: exact !important;
+                  print-color-adjust: exact !important;
+                }
+                /* Force all dark mode overrides to stay strictly white background with dark text */
+                .dark, [class*="dark:"] {
+                  background-color: transparent !important;
+                  color: inherit !important;
+                }
+                @page {
+                  size: A4 portrait;
+                  margin: 0;
+                }
+                .page-break {
+                  page-break-before: always !important;
+                  break-before: page !important;
+                }
+                .print-wrapper {
+                  width: 794px;
+                  margin: 0 auto;
+                  background-color: #ffffff !important;
+                  color: #000000 !important;
+                }
+                #pdf-page-1, #pdf-page-2 {
+                  background-color: #ffffff !important;
+                  color: #000000 !important;
+                  box-sizing: border-box !important;
+                }
+              </style>
+            </head>
+            <body style="background-color: #ffffff !important; color: #000000 !important;">
+              <div class="print-wrapper">
+                ${page1.outerHTML}
+                ${(page2 && selectedReport.cashierRole === 1) ? '<div class="page-break"></div>' + page2.outerHTML : ''}
+              </div>
+            </body>
+          </html>
+        `);
+        contentDocument.close();
 
-      // PAGE 2: Inventory Audit (Only for Cashier 1)
-      if (page2 && selectedReport.cashierRole === 1) {
-        pdf.addPage();
-        const canvas2 = await html2canvas(page2, { scale: 2, useCORS: true, logging: false });
-        const imgData2 = canvas2.toDataURL("image/png");
-        const pdfHeight2 = (canvas2.height * pdfWidth) / canvas2.width;
-        pdf.addImage(imgData2, "PNG", 0, 0, pdfWidth, pdfHeight2);
-      }
-
-      // Restore hidden container position
-      if (container) {
-        container.style.left = originalLeft;
-        container.style.zIndex = "";
-      }
-
-      pdf.autoPrint();
-      const blobUrl = pdf.output("bloburl");
-      const win = window.open(blobUrl, "_blank");
-      if (!win) {
-        pdf.save(`Shift_SignOff_${selectedReport.cashierDetails?.name || 'Report'}.pdf`);
+        // Allow 250ms for images and barcodes to layout before triggering browser print dialog
+        setTimeout(() => {
+          try {
+            contentWindow?.focus();
+            contentWindow?.print();
+          } catch (err) {
+            console.error("Print trigger error:", err);
+          } finally {
+            if (document.body.contains(iframe)) {
+              document.body.removeChild(iframe);
+            }
+            setGeneratingPDF(false);
+          }
+        }, 250);
+      } else {
+        setGeneratingPDF(false);
       }
     } catch (error) {
-      console.error("PDF Generate Error:", error);
-      toast.error(isAr ? "فشل في إنشاء تقرير PDF" : "Failed to generate PDF Report.");
-    } finally {
+      console.error("PDF Generation Error:", error);
+      toast.error(isAr ? "فشل في طباعة التقرير" : "Failed to trigger report print");
       setGeneratingPDF(false);
     }
   };
