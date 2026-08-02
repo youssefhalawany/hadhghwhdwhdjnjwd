@@ -16,6 +16,8 @@ import { CommandBar } from "@/components/CommandBar";
 const inter = Inter({
   variable: "--font-sans",
   subsets: ["latin"],
+  display: "swap",
+  preload: true,
 });
 
 export const metadata: Metadata = {

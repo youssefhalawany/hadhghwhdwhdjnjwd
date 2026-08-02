@@ -339,6 +339,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
     return () => {
       unsubscribe();
+      if (typeof unsubNotifs === "function") unsubNotifs();
+      clearTimeout(splashTimer);
       window.removeEventListener('click', handleClick);
       clearInterval(clockTimer);
     };
