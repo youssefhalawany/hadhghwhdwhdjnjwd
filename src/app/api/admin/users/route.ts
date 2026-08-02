@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
     try {
       await getAdminDb().collection("users").doc(userUid).set({
         email,
-        displayName: displayName || "",
+        displayName: displayName || email.split("@")[0],
         role,
         storeIds: storeIds || [],
         isActive: isActive !== false,
@@ -119,6 +119,18 @@ export async function POST(req: NextRequest) {
         createdAt: new Date().toISOString(),
         createdBy: admin.uid
       }, { merge: true });
+
+      // Clean up legacy emailKey document if it existed (e.g. mahmoud_ck_com)
+      if (email) {
+        const emailKey = email.toLowerCase().replace(/[@.]/g, "_");
+        if (emailKey !== userUid) {
+          const legacyRef = getAdminDb().collection("users").doc(emailKey);
+          const legacySnap = await legacyRef.get();
+          if (legacySnap.exists) {
+            await legacyRef.delete().catch(() => {});
+          }
+        }
+      }
     } catch (fsErr) {
       console.error("Firestore user doc create failed:", fsErr);
     }
@@ -184,7 +196,19 @@ export async function PUT(req: NextRequest) {
       firestoreData.updatedAt = new Date().toISOString();
       firestoreData.updatedBy = admin.uid;
 
-      await getAdminDb().collection("users").doc(uid).update(firestoreData);
+      await getAdminDb().collection("users").doc(uid).set(firestoreData, { merge: true });
+
+      // Clean up legacy emailKey document if updating by UID
+      if (email) {
+        const emailKey = email.toLowerCase().replace(/[@.]/g, "_");
+        if (emailKey !== uid) {
+          const legacyRef = getAdminDb().collection("users").doc(emailKey);
+          const legacySnap = await legacyRef.get();
+          if (legacySnap.exists) {
+            await legacyRef.delete().catch(() => {});
+          }
+        }
+      }
     } catch (fsErr) {
       console.error("Firestore user doc update failed:", fsErr);
     }

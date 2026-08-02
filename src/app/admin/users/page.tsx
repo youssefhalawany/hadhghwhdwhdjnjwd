@@ -267,6 +267,10 @@ export default function UserManagementPage() {
           createdAt: new Date().toISOString()
         }, { merge: true });
 
+        if (createdUid && createdUid !== emailKey) {
+          await deleteDoc(doc(db, "users", emailKey)).catch(() => {});
+        }
+
         if (createdViaApi) {
           toast.success("User created in Firebase Auth & Database! 🎉");
         } else {
