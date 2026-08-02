@@ -624,135 +624,75 @@ export default function ManagerAuditPage() {
         return;
       }
 
-      // Create a hidden iframe for instant native vector printing
-      const iframe = document.createElement('iframe');
-      iframe.style.position = 'fixed';
-      iframe.style.right = '0';
-      iframe.style.bottom = '0';
-      iframe.style.width = '0';
-      iframe.style.height = '0';
-      iframe.style.border = '0';
-      iframe.style.visibility = 'hidden';
-      document.body.appendChild(iframe);
+      // Dynamically import jsPDF and html2canvas
+      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+        import("jspdf"),
+        import("html2canvas")
+      ]);
 
-      const contentWindow = iframe.contentWindow;
-      const contentDocument = iframe.contentDocument || (contentWindow ? contentWindow.document : null);
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pdfWidth = pdf.internal.pageSize.getWidth();
 
-      if (contentDocument) {
-        // Collect existing stylesheets
-        const styleNodes = document.querySelectorAll("style, link[rel='stylesheet']");
-        const stylesHtml = Array.from(styleNodes).map(node => node.outerHTML).join('');
+      // Bring hidden printable container into rendering viewport (left: 0, top: 0)
+      const container = page1.parentElement;
+      const originalLeft = container ? container.style.left : "-9999px";
+      const originalZIndex = container ? container.style.zIndex : "";
 
-        contentDocument.open();
-        contentDocument.write(`
-          <!DOCTYPE html>
-          <html class="light">
-            <head>
-              <title>Shift Report - ${selectedReport.cashierDetails?.name || 'Cashier'}</title>
-              ${stylesHtml}
-              <style>
-                @media print {
-                  @page {
-                    size: A4 portrait;
-                    margin: 0mm;
-                  }
-                  html, body {
-                    width: 210mm !important;
-                    max-width: 210mm !important;
-                    margin: 0 auto !important;
-                    padding: 0 !important;
-                    overflow: hidden !important;
-                    background-color: #ffffff !important;
-                    color: #000000 !important;
-                    -webkit-print-color-adjust: exact !important;
-                    print-color-adjust: exact !important;
-                  }
-                  .print-wrapper {
-                    width: 210mm !important;
-                    max-width: 210mm !important;
-                    margin: 0 auto !important;
-                    overflow: hidden !important;
-                  }
-                  #pdf-page-1, #pdf-page-2 {
-                    width: 210mm !important;
-                    max-width: 210mm !important;
-                    height: 297mm !important;
-                    max-height: 297mm !important;
-                    box-sizing: border-box !important;
-                    overflow: hidden !important;
-                    position: relative !important;
-                    margin: 0 auto !important;
-                    background-color: #ffffff !important;
-                    color: #000000 !important;
-                  }
-                }
-                html, body {
-                  background-color: #ffffff !important;
-                  background: #ffffff !important;
-                  color: #000000 !important;
-                  margin: 0 !important;
-                  padding: 0 !important;
-                  width: 100% !important;
-                  font-family: Arial, sans-serif !important;
-                  -webkit-print-color-adjust: exact !important;
-                  print-color-adjust: exact !important;
-                }
-                .page-break {
-                  page-break-before: always !important;
-                  break-before: page !important;
-                }
-                .print-wrapper {
-                  width: 794px;
-                  max-width: 794px;
-                  margin: 0 auto;
-                  overflow: hidden;
-                  background-color: #ffffff !important;
-                  color: #000000 !important;
-                }
-                #pdf-page-1, #pdf-page-2 {
-                  width: 794px !important;
-                  max-width: 794px !important;
-                  height: 1123px !important;
-                  max-height: 1123px !important;
-                  overflow: hidden !important;
-                  margin: 0 auto !important;
-                  background-color: #ffffff !important;
-                  color: #000000 !important;
-                  box-sizing: border-box !important;
-                  position: relative !important;
-                }
-              </style>
-            </head>
-            <body class="bg-white text-black">
-              <div class="print-wrapper">
-                ${page1.outerHTML}
-                ${(page2 && selectedReport.cashierRole === 1) ? '<div class="page-break"></div>' + page2.outerHTML : ''}
-              </div>
-            </body>
-          </html>
-        `);
-        contentDocument.close();
+      if (container) {
+        container.style.left = "0";
+        container.style.top = "0";
+        container.style.zIndex = "-9999";
+        container.style.visibility = "visible";
+      }
 
-        // Allow 250ms for images and barcodes to layout before triggering browser print dialog
-        setTimeout(() => {
-          try {
-            contentWindow?.focus();
-            contentWindow?.print();
-          } catch (err) {
-            console.error("Print trigger error:", err);
-          } finally {
-            if (document.body.contains(iframe)) {
-              document.body.removeChild(iframe);
-            }
-            setGeneratingPDF(false);
-          }
-        }, 250);
-      } else {
-        setGeneratingPDF(false);
+      // Allow 150ms for barcode/QR elements to finish SVG paint
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      // PAGE 1: Financial Audit
+      const canvas1 = await html2canvas(page1, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        imageTimeout: 3000,
+        backgroundColor: "#ffffff"
+      });
+      const imgData1 = canvas1.toDataURL("image/png");
+      const pdfHeight1 = (canvas1.height * pdfWidth) / canvas1.width;
+      pdf.addImage(imgData1, "PNG", 0, 0, pdfWidth, pdfHeight1);
+
+      // PAGE 2: Inventory Audit (Only for Cashier 1)
+      if (page2 && selectedReport.cashierRole === 1) {
+        pdf.addPage();
+        const canvas2 = await html2canvas(page2, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          logging: false,
+          imageTimeout: 3000,
+          backgroundColor: "#ffffff"
+        });
+        const imgData2 = canvas2.toDataURL("image/png");
+        const pdfHeight2 = (canvas2.height * pdfWidth) / canvas2.width;
+        pdf.addImage(imgData2, "PNG", 0, 0, pdfWidth, pdfHeight2);
+      }
+
+      // Restore original hidden position
+      if (container) {
+        container.style.left = originalLeft;
+        container.style.zIndex = originalZIndex;
+      }
+
+      pdf.autoPrint();
+      const blobUrl = pdf.output("bloburl");
+      const win = window.open(blobUrl, "_blank");
+      if (!win) {
+        pdf.save(`Shift_SignOff_${selectedReport.cashierDetails?.name || 'Report'}.pdf`);
       }
     } catch (error) {
-      console.error("PDF Generation Error:", error);
-      toast.error(isAr ? "فشل في طباعة التقرير" : "Failed to trigger report print");
+      console.error("PDF Generate Error:", error);
+      toast.error(isAr ? "فشل في إنشاء تقرير PDF" : "Failed to generate PDF Report.");
+    } finally {
       setGeneratingPDF(false);
     }
   };
