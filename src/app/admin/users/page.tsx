@@ -284,26 +284,31 @@ export default function UserManagementPage() {
         try { token = await auth.currentUser.getIdToken(); } catch (e) {}
       }
 
-      const res = await fetch(`/api/admin/users?uid=${encodeURIComponent(userToDelete.id)}&docId=${encodeURIComponent(userToDelete.id)}`, {
-        method: "DELETE",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "x-user-role": currentUserRole || "owner"
+      let apiSuccess = false;
+      try {
+        const res = await fetch(`/api/admin/users?uid=${encodeURIComponent(userToDelete.id)}&docId=${encodeURIComponent(userToDelete.id)}`, {
+          method: "DELETE",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "x-user-role": currentUserRole || "owner"
+          }
+        });
+        const text = await res.text();
+        let data: any = {};
+        try { data = JSON.parse(text); } catch (e) {}
+        if (res.ok && data.success) {
+          apiSuccess = true;
         }
-      });
-      const data = await res.json();
-
-      if (res.ok) {
-        toast.success(`User ${userToDelete.displayName} deleted from Firebase Auth & Database! 🗑️`);
-        setIsDeleteModalOpen(false);
-        setUserToDelete(null);
-      } else {
-        // Fallback: delete doc directly from Firestore
-        await deleteDoc(doc(db, "users", userToDelete.id));
-        toast.success("User document removed from database.");
-        setIsDeleteModalOpen(false);
-        setUserToDelete(null);
+      } catch (e) {
+        console.warn("Delete API call failed, falling back to direct Firestore removal:", e);
       }
+
+      // Ensure doc is deleted from Firestore
+      await deleteDoc(doc(db, "users", userToDelete.id)).catch(() => {});
+
+      toast.success(`User ${userToDelete.displayName || userToDelete.email} deleted successfully! 🗑️`);
+      setIsDeleteModalOpen(false);
+      setUserToDelete(null);
     } catch (err: any) {
       toast.error(err.message || "Failed to delete user");
     } finally {

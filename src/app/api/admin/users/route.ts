@@ -213,7 +213,17 @@ export async function DELETE(req: NextRequest) {
       try {
         await getAdminAuth().deleteUser(uid);
       } catch (authErr: any) {
-        console.warn("Firebase Auth deleteUser warning:", authErr.message);
+        console.warn("Firebase Auth deleteUser warning:", authErr?.message || authErr);
+        // Try looking up Auth user by email if docId is an email key (e.g. test_ck_com)
+        if (docId && docId.includes("_")) {
+          try {
+            const emailGuess = docId.replace(/_/g, ".");
+            const userRecord = await getAdminAuth().getUserByEmail(emailGuess).catch(() => null);
+            if (userRecord) {
+              await getAdminAuth().deleteUser(userRecord.uid);
+            }
+          } catch (e) {}
+        }
       }
     }
 
