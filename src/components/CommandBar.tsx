@@ -79,7 +79,7 @@ export function CommandBar() {
     { name: "Out of Stock Tracker", href: "/financials/out-of-stock", icon: <Package className="w-5 h-5 text-rose-400" /> },
     { name: "Expiries Audit", href: "/products/expiries-audit", icon: <Package className="w-5 h-5 text-blue-400" /> },
     { name: "Product Lookup", href: "/admin/product-lookup", icon: <Search className="w-5 h-5 text-emerald-400" /> },
-    { name: "Sales Overview", href: "/financials/sales", icon: <TrendingUp className="w-5 h-5 text-emerald-400" /> }
+    { name: "Sales Overview", href: "/financials/detailed-sales", icon: <TrendingUp className="w-5 h-5 text-emerald-400" /> }
   ];
 
   const filteredCommands = commands.filter((cmd) =>

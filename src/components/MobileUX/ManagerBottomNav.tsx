@@ -228,7 +228,7 @@ export function ManagerBottomNav({
       subtitleAr: "تسجيل مبيعات الكاش والفيزا",
       icon: Banknote,
       color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-      path: "/financials/inputs/sales",
+      path: "/financials/detailed-sales",
       rolesAllowed: ["admin", "manager"],
     },
     {
@@ -276,7 +276,7 @@ export function ManagerBottomNav({
       subtitleAr: "سجل متابعة الأصناف المفقودة",
       icon: AlertTriangle,
       color: "bg-amber-500/15 text-amber-400 border-amber-500/30",
-      path: "/products/out-of-stock",
+      path: "/financials/out-of-stock",
       rolesAllowed: ["admin", "manager"],
     },
     {
@@ -312,7 +312,7 @@ export function ManagerBottomNav({
       subtitleAr: "تحليلات هامش الربح والأسعار",
       icon: Percent,
       color: "bg-blue-500/15 text-blue-400 border-blue-500/30",
-      path: "/margin-strategy",
+      path: "/dashboard/margin-calculator",
       rolesAllowed: ["admin", "manager"],
     },
     {
@@ -338,7 +338,7 @@ export function ManagerBottomNav({
       subtitleAr: "تسجيل المنتجات قريبة الانتهاء",
       icon: Clock,
       color: "bg-orange-500/15 text-orange-400 border-orange-500/30",
-      path: "/expiries",
+      path: "/products/expiries-audit",
       rolesAllowed: ["admin", "manager", "cashier"],
     },
     {
@@ -350,7 +350,7 @@ export function ManagerBottomNav({
       subtitleAr: "استعلام الأسعار والباركود",
       icon: Search,
       color: "bg-violet-500/15 text-violet-400 border-violet-500/30",
-      path: "/cashier/lookup",
+      path: "/admin/product-lookup",
       rolesAllowed: ["admin", "manager", "cashier"],
     },
     {
@@ -400,7 +400,7 @@ export function ManagerBottomNav({
       subtitleAr: "متابعة النظافة والتعقيم",
       icon: FileText,
       color: "bg-sky-400/15 text-sky-300 border-sky-400/30",
-      path: "/checklists/cleaning",
+      path: "/admin/cleaning",
       rolesAllowed: ["admin", "manager", "cashier"],
     },
     {
@@ -412,7 +412,7 @@ export function ManagerBottomNav({
       subtitleAr: "سجل الأغراض المفقودة للعملاء",
       icon: HelpCircle,
       color: "bg-purple-400/15 text-purple-300 border-purple-400/30",
-      path: "/lost-found",
+      path: "/admin/lost-and-found",
       rolesAllowed: ["admin", "manager", "cashier"],
     },
     {
@@ -424,7 +424,7 @@ export function ManagerBottomNav({
       subtitleAr: "عروض المتجر والخصومات النشطة",
       icon: Tag,
       color: "bg-rose-400/15 text-rose-300 border-rose-400/30",
-      path: "/offers",
+      path: "/admin/offers",
       rolesAllowed: ["admin", "manager"],
     },
     {
@@ -436,7 +436,7 @@ export function ManagerBottomNav({
       subtitleAr: "دليل أكواد المأكولات والمشروبات",
       icon: Utensils,
       color: "bg-amber-400/15 text-amber-300 border-amber-400/30",
-      path: "/food-codes",
+      path: "/admin/food-codes",
       rolesAllowed: ["admin", "manager", "cashier"],
     },
 
@@ -462,7 +462,7 @@ export function ManagerBottomNav({
       subtitleAr: "إدارة كشوفات وحسابات الكاشير",
       icon: UserCheck,
       color: "bg-indigo-400/15 text-indigo-300 border-indigo-400/30",
-      path: "/hr/cashiers",
+      path: "/settings/cashiers",
       rolesAllowed: ["admin", "manager"],
     },
     {
@@ -474,7 +474,7 @@ export function ManagerBottomNav({
       subtitleAr: "حساب المرتبات والحوافز",
       icon: Coins,
       color: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-      path: "/hr/payroll",
+      path: "/admin/payroll",
       rolesAllowed: ["admin", "manager"],
     },
     {
@@ -486,7 +486,7 @@ export function ManagerBottomNav({
       subtitleAr: "سجل السلفيات وخصميات الموظفين",
       icon: DollarSign,
       color: "bg-amber-500/15 text-amber-300 border-amber-500/30",
-      path: "/hr/loans",
+      path: "/admin/adjustments",
       rolesAllowed: ["admin", "manager"],
     },
     {
@@ -498,7 +498,7 @@ export function ManagerBottomNav({
       subtitleAr: "جدولة ساعات العمل والورديات",
       icon: Calendar,
       color: "bg-blue-400/15 text-blue-300 border-blue-400/30",
-      path: "/hr/scheduler",
+      path: "/admin/schedule",
       rolesAllowed: ["admin", "manager"],
     },
 
@@ -536,7 +536,7 @@ export function ManagerBottomNav({
       subtitleAr: "إرسال تنبيهات فورية للموظفين",
       icon: Bell,
       color: "bg-amber-400/15 text-amber-300 border-amber-400/30",
-      path: "/admin/send-notifications",
+      path: "/settings/notifications",
       rolesAllowed: ["admin"],
     },
   ];
