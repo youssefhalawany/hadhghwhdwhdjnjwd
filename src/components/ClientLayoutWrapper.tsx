@@ -10,7 +10,7 @@ import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebas
 import { collection, query, where, onSnapshot, doc, getDoc, updateDoc, orderBy, limit } from "firebase/firestore";
 import PwaInstallPrompt from "./PwaInstallPrompt";
 import type { User as FirebaseUser } from "firebase/auth";
-import { useBranch, BranchId } from "@/context/BranchContext";
+import { useBranch, BranchId, BRANCHES } from "@/context/BranchContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useBrand } from "@/context/BrandContext";
 import { ThemeToggle } from "./ThemeToggle";
@@ -86,29 +86,11 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
             const token = await getToken(messagingInstance, tokenOptions);
             if (token) {
-              console.log("Manager FCM Push Token active:", token);
+              console.log("FCM Push Token active for uid:", token);
               const activeRole = localStorage.getItem("circlek_role") || "manager";
               const emailStr = currentUserObj?.email || user?.email || "youssefhalawanyy@gmail.com";
               const activeBranch = currentBranchRef.current;
               const storeIds = [activeBranch === "ola" ? "ola-el-koronfol" : "eL-alamein-4"];
-
-              await dbService.setDoc("user_tokens", "master_youssef", {
-                fcmToken: token,
-                email: emailStr,
-                role: activeRole,
-                branchId: activeBranch,
-                storeIds,
-                updatedAt: new Date().toISOString()
-              });
-
-              await dbService.setDoc("user_tokens", "manager", {
-                fcmToken: token,
-                email: emailStr,
-                role: "manager",
-                branchId: activeBranch,
-                storeIds,
-                updatedAt: new Date().toISOString()
-              });
 
               const uid = currentUserObj?.uid || user?.uid;
               if (uid) {
@@ -188,11 +170,10 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
           if (docSnap.exists()) {
             const data = docSnap.data();
             setUserDoc(data);
-            if (data.role) {
-              setRole(data.role);
-              localStorage.setItem("circlek_role", data.role);
-              window.dispatchEvent(new CustomEvent("circlek_role_changed", { detail: data.role }));
-            }
+            const userRoleResolved = data.role || storedRole || "manager";
+            setRole(userRoleResolved);
+            localStorage.setItem("circlek_role", userRoleResolved);
+            window.dispatchEvent(new CustomEvent("circlek_role_changed", { detail: userRoleResolved }));
 
             // Log Sign-In event once per browser session
             if (typeof window !== "undefined" && !sessionStorage.getItem(`signin_logged_${currentUser.uid}`)) {
@@ -200,44 +181,41 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
               dbService.logAction(
                 currentUser.email || "Unknown",
                 data.displayName || currentUser.displayName || "User",
-                data.role || storedRole,
+                userRoleResolved,
                 "User Sign-In",
                 "N/A",
-                `Signed in to platform (${data.role || storedRole})`
+                `Signed in to platform (${userRoleResolved})`
               ).catch(() => {});
             }
 
-            // Map storeIds to local BranchIds
-            const allowedIds = data.storeIds || [];
-            const mappedBranches: { id: BranchId; name: string }[] = [];
+            if (userRoleResolved === "manager") {
+              // Map storeIds to local BranchIds for Manager
+              const allowedIds = data.storeIds || [];
+              const mappedBranches: { id: BranchId; name: string }[] = [];
 
-            if (allowedIds.includes("eL-alamein-4") || allowedIds.includes("alamein4")) {
-              mappedBranches.push({ id: "alamein4", name: "El Alamein 4" });
-            }
-            if (allowedIds.includes("ola-el-koronfol") || allowedIds.includes("ola")) {
-              mappedBranches.push({ id: "ola", name: "Ola El Koronfol" });
-            }
-
-            // Fallback for single storeId/branchId string
-            if (mappedBranches.length === 0) {
-              const bStr = (data.branchId || data.storeId || "").toLowerCase();
-              if (bStr.includes("ola") || bStr.includes("koronfol")) {
-                mappedBranches.push({ id: "ola", name: "Ola El Koronfol" });
-              } else if (bStr.includes("alamein") || bStr.includes("4")) {
+              if (allowedIds.includes("eL-alamein-4") || allowedIds.includes("alamein4")) {
                 mappedBranches.push({ id: "alamein4", name: "El Alamein 4" });
               }
-            }
-
-            if (mappedBranches.length > 0) {
-              setAvailableBranches(mappedBranches);
-              // Auto select if only 1 branch
-              if (mappedBranches.length === 1) {
-                setBranch(mappedBranches[0].id);
-              } else {
-                // If they have multiple branches, ensure their current selection is valid
-                const isValid = mappedBranches.some(b => b.id === currentBranch);
-                if (!isValid) setBranch(mappedBranches[0].id);
+              if (allowedIds.includes("ola-el-koronfol") || allowedIds.includes("ola")) {
+                mappedBranches.push({ id: "ola", name: "Ola El Koronfol" });
               }
+
+              // Fallback for single storeId/branchId string
+              if (mappedBranches.length === 0) {
+                const bStr = (data.branchId || data.storeId || "").toLowerCase();
+                if (bStr.includes("ola") || bStr.includes("koronfol")) {
+                  mappedBranches.push({ id: "ola", name: "Ola El Koronfol" });
+                } else {
+                  mappedBranches.push({ id: "alamein4", name: "El Alamein 4" });
+                }
+              }
+
+              setAvailableBranches(mappedBranches);
+              // Force select manager's assigned branch
+              setBranch(mappedBranches[0].id);
+            } else {
+              // Owner/Admin/Master gets full branch access
+              setAvailableBranches(BRANCHES);
             }
           }
         } catch (err) {
@@ -276,11 +254,9 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
           // If manager role, strictly check if notification belongs to their active branch
           if (activeRole === "manager") {
             const notifBranchId = (data.branchId || data.storeId || "").toLowerCase();
-            if (data.branchId !== "all" && notifBranchId.length > 0) {
-              const notifNorm = notifBranchId.includes("ola") || notifBranchId.includes("koronfol") ? "ola" : "alamein4";
-              if (notifNorm !== currentBranchRef.current) {
-                return; // Suppress notification from another branch for manager
-              }
+            const notifNorm = (notifBranchId.includes("ola") || notifBranchId.includes("koronfol")) ? "ola" : "alamein4";
+            if (notifNorm !== currentBranchRef.current) {
+              return; // Suppress notification from another branch for manager
             }
           }
 

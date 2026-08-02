@@ -25,7 +25,7 @@ export const BRANCHES = [
 
 export function BranchProvider({ children }: { children: React.ReactNode }) {
   const [currentBranch, setCurrentBranch] = useState<BranchId>("alamein4");
-  const [availableBranches, setAvailableBranchesState] = useState<{ id: BranchId; name: string }[]>(BRANCHES);
+  const [availableBranches, setAvailableBranchesState] = useState<{ id: BranchId; name: string }[]>([]);
 
   useEffect(() => {
     // Load saved branch on mount

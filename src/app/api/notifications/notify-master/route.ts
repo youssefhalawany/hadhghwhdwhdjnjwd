@@ -63,6 +63,7 @@ export async function POST(req: Request) {
     try {
       const userTokensSnap = await adminDb.collection("user_tokens").get();
       userTokensSnap.forEach(docSnap => {
+        if (docSnap.id === "master_youssef" || docSnap.id === "manager") return;
         const data = docSnap.data();
         if (isTokenBranchMatched(data, branchId)) {
           if (data.fcmToken && typeof data.fcmToken === 'string' && data.fcmToken.trim().length > 10) {
