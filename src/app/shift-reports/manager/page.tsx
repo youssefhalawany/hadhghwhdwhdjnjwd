@@ -623,68 +623,55 @@ export default function ManagerAuditPage() {
         return;
       }
 
-      // Create a hidden iframe for instant native vector printing
-      const iframe = document.createElement('iframe');
-      iframe.style.position = 'absolute';
-      iframe.style.top = '-9999px';
-      iframe.style.left = '-9999px';
-      document.body.appendChild(iframe);
+      // Dynamically import jsPDF and html2canvas so bundle remains lightweight
+      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+        import("jspdf"),
+        import("html2canvas")
+      ]);
 
-      const contentWindow = iframe.contentWindow;
-      const contentDocument = iframe.contentDocument || (contentWindow ? contentWindow.document : null);
-      
-      if (contentDocument) {
-        // Copy all stylesheets to preserve Tailwind styling
-        const styleNodes = document.querySelectorAll("style, link[rel='stylesheet']");
-        const stylesHtml = Array.from(styleNodes).map(node => node.outerHTML).join('');
-        
-        // Preserve theme classes
-        const htmlClasses = document.documentElement.className;
-        
-        contentDocument.write(`
-          <html class="${htmlClasses}">
-            <head>
-              <title>Shift Report - ${selectedReport.cashierDetails?.name}</title>
-              ${stylesHtml}
-              <style>
-                @media print {
-                  @page { margin: 10mm; }
-                  html, body { 
-                    margin: 0 !important; 
-                    padding: 0 !important; 
-                    height: auto !important; 
-                    overflow: visible !important;
-                    background: white !important;
-                    -webkit-print-color-adjust: exact; 
-                    print-color-adjust: exact; 
-                  }
-                  .page-break { page-break-before: always; margin-top: 20px; }
-                  .no-print { display: none !important; }
-                  .print-container { max-width: none !important; width: 100% !important; padding: 0 !important; margin: 0 !important; }
-                }
-              </style>
-            </head>
-            <body class="bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
-              <div class="print-container w-full max-w-4xl mx-auto">
-                ${page1.outerHTML}
-                ${(page2 && selectedReport.cashierRole === 1) ? '<div class="page-break"></div>' + page2.outerHTML : ''}
-              </div>
-            </body>
-          </html>
-        `);
-        contentDocument.close();
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pdfWidth = pdf.internal.pageSize.getWidth();
 
-        // Wait a tiny bit for styles and images to load in iframe before triggering print
-        setTimeout(() => {
-          contentWindow?.focus();
-          contentWindow?.print();
-          document.body.removeChild(iframe);
-          setGeneratingPDF(false);
-        }, 800); // 800ms gives enough time for SVGs/Fonts to render
+      // Temporarily bring hidden print container into position for accurate html2canvas capture
+      const container = page1.parentElement;
+      const originalLeft = container ? container.style.left : "-9999px";
+      if (container) {
+        container.style.left = "0";
+        container.style.top = "0";
+        container.style.zIndex = "-9999";
+      }
+
+      // PAGE 1: Financial Audit
+      const canvas1 = await html2canvas(page1, { scale: 2, useCORS: true, logging: false });
+      const imgData1 = canvas1.toDataURL("image/png");
+      const pdfHeight1 = (canvas1.height * pdfWidth) / canvas1.width;
+      pdf.addImage(imgData1, "PNG", 0, 0, pdfWidth, pdfHeight1);
+
+      // PAGE 2: Inventory Audit (Only for Cashier 1)
+      if (page2 && selectedReport.cashierRole === 1) {
+        pdf.addPage();
+        const canvas2 = await html2canvas(page2, { scale: 2, useCORS: true, logging: false });
+        const imgData2 = canvas2.toDataURL("image/png");
+        const pdfHeight2 = (canvas2.height * pdfWidth) / canvas2.width;
+        pdf.addImage(imgData2, "PNG", 0, 0, pdfWidth, pdfHeight2);
+      }
+
+      // Restore hidden container position
+      if (container) {
+        container.style.left = originalLeft;
+        container.style.zIndex = "";
+      }
+
+      pdf.autoPrint();
+      const blobUrl = pdf.output("bloburl");
+      const win = window.open(blobUrl, "_blank");
+      if (!win) {
+        pdf.save(`Shift_SignOff_${selectedReport.cashierDetails?.name || 'Report'}.pdf`);
       }
     } catch (error) {
       console.error("PDF Generate Error:", error);
-      toast.error("Failed to generate PDF Report.");
+      toast.error(isAr ? "فشل في إنشاء تقرير PDF" : "Failed to generate PDF Report.");
+    } finally {
       setGeneratingPDF(false);
     }
   };
