@@ -646,13 +646,16 @@ export default function ManagerAuditPage() {
         contentDocument.open();
         contentDocument.write(`
           <!DOCTYPE html>
-          <html class="light" style="color-scheme: light !important; background-color: #ffffff !important;">
+          <html class="light">
             <head>
               <title>Shift Report - ${selectedReport.cashierDetails?.name || 'Cashier'}</title>
               ${stylesHtml}
               <style>
-                :root {
-                  color-scheme: light !important;
+                @media print {
+                  @page {
+                    size: A4 portrait;
+                    margin: 0mm;
+                  }
                 }
                 html, body {
                   background-color: #ffffff !important;
@@ -666,15 +669,6 @@ export default function ManagerAuditPage() {
                   -webkit-print-color-adjust: exact !important;
                   print-color-adjust: exact !important;
                 }
-                /* Force all dark mode overrides to stay strictly white background with dark text */
-                .dark, [class*="dark:"] {
-                  background-color: transparent !important;
-                  color: inherit !important;
-                }
-                @page {
-                  size: A4 portrait;
-                  margin: 0;
-                }
                 .page-break {
                   page-break-before: always !important;
                   break-before: page !important;
@@ -686,13 +680,16 @@ export default function ManagerAuditPage() {
                   color: #000000 !important;
                 }
                 #pdf-page-1, #pdf-page-2 {
+                  width: 794px !important;
+                  margin: 0 auto !important;
                   background-color: #ffffff !important;
                   color: #000000 !important;
                   box-sizing: border-box !important;
+                  position: relative !important;
                 }
               </style>
             </head>
-            <body style="background-color: #ffffff !important; color: #000000 !important;">
+            <body class="bg-white text-black">
               <div class="print-wrapper">
                 ${page1.outerHTML}
                 ${(page2 && selectedReport.cashierRole === 1) ? '<div class="page-break"></div>' + page2.outerHTML : ''}
