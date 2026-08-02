@@ -7,7 +7,7 @@ import { Sun, Moon, Shield, Database, LayoutDashboard, FileText, Printer, Clipbo
 import { auth, messaging, dbService, db } from "@/lib/firebase";
 import { getToken } from "firebase/messaging";
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
-import { collection, query, where, onSnapshot, doc, getDoc, updateDoc, orderBy, limit } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, getDoc, getDocs, updateDoc, orderBy, limit } from "firebase/firestore";
 import PwaInstallPrompt from "./PwaInstallPrompt";
 import type { User as FirebaseUser } from "firebase/auth";
 import { useBranch, BranchId, BRANCHES } from "@/context/BranchContext";
@@ -164,13 +164,35 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
         if (!localStorage.getItem("has_seen_welcome_anh_v2")) {
           setShowWelcomeModal(true);
         }
-        // Fetch user document
+        // Fetch user document (supports uid, emailKey like mahmoud_ck_com, or email field)
         try {
-          const docSnap = await getDoc(doc(db, "users", currentUser.uid));
-          if (docSnap.exists()) {
-            const data = docSnap.data();
-            setUserDoc(data);
-            const userRoleResolved = data.role || storedRole || "manager";
+          let userDocData: any = null;
+
+          const docSnapByUid = await getDoc(doc(db, "users", currentUser.uid));
+          if (docSnapByUid.exists()) {
+            userDocData = docSnapByUid.data();
+          } else if (currentUser.email) {
+            const emailKey = currentUser.email.toLowerCase().replace(/[@.]/g, "_");
+            const docSnapByEmailKey = await getDoc(doc(db, "users", emailKey));
+            if (docSnapByEmailKey.exists()) {
+              userDocData = docSnapByEmailKey.data();
+            } else {
+              const qEmail = query(collection(db, "users"), where("email", "==", currentUser.email.toLowerCase()));
+              const emailSnap = await getDocs(qEmail);
+              if (!emailSnap.empty) {
+                userDocData = emailSnap.docs[0].data();
+              }
+            }
+          }
+
+          if (userDocData) {
+            setUserDoc(userDocData);
+
+            const mName = userDocData.displayName || currentUser.displayName || "Manager";
+            localStorage.setItem("circlek_user_name", mName);
+            window.dispatchEvent(new CustomEvent("circlek_user_changed", { detail: mName }));
+
+            const userRoleResolved = userDocData.role || storedRole || "manager";
             setRole(userRoleResolved);
             localStorage.setItem("circlek_role", userRoleResolved);
             window.dispatchEvent(new CustomEvent("circlek_role_changed", { detail: userRoleResolved }));
@@ -180,7 +202,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
               sessionStorage.setItem(`signin_logged_${currentUser.uid}`, "true");
               dbService.logAction(
                 currentUser.email || "Unknown",
-                data.displayName || currentUser.displayName || "User",
+                mName,
                 userRoleResolved,
                 "User Sign-In",
                 "N/A",
@@ -190,7 +212,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
             if (userRoleResolved === "manager") {
               // Map storeIds to local BranchIds for Manager
-              const allowedIds = data.storeIds || [];
+              const allowedIds: string[] = Array.isArray(userDocData.storeIds) ? userDocData.storeIds : [];
               const mappedBranches: { id: BranchId; name: string }[] = [];
 
               if (allowedIds.includes("eL-alamein-4") || allowedIds.includes("alamein4")) {
@@ -202,17 +224,19 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
               // Fallback for single storeId/branchId string
               if (mappedBranches.length === 0) {
-                const bStr = (data.branchId || data.storeId || "").toLowerCase();
+                const bStr = (userDocData.branchId || userDocData.storeId || "").toLowerCase();
                 if (bStr.includes("ola") || bStr.includes("koronfol")) {
                   mappedBranches.push({ id: "ola", name: "Ola El Koronfol" });
-                } else {
+                } else if (bStr.includes("alamein") || bStr.includes("4")) {
                   mappedBranches.push({ id: "alamein4", name: "El Alamein 4" });
                 }
               }
 
-              setAvailableBranches(mappedBranches);
-              // Force select manager's assigned branch
-              setBranch(mappedBranches[0].id);
+              if (mappedBranches.length > 0) {
+                setAvailableBranches(mappedBranches);
+                // Force select manager's assigned branch
+                setBranch(mappedBranches[0].id);
+              }
             } else {
               // Owner/Admin/Master gets full branch access
               setAvailableBranches(BRANCHES);
