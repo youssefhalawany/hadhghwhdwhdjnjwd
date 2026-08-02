@@ -629,11 +629,14 @@ export default function CashierShiftReportPage() {
           const notifTitle = `📊 Shift #${shiftNumber} Audit Submitted — ${c?.name || "Cashier"}`;
           const notifBody = `${c?.name || "Cashier"} submitted Shift #${shiftNumber} Audit for ${storeName} (Total: EGP ${totalAmt.toLocaleString()} | Cash: EGP ${cashAmt.toLocaleString()} | Visa: EGP ${visaAmt.toLocaleString()}).`;
 
+          const activeShiftBranch = c?.branchId || c?.storeId || "alamein4";
+
           dispatchNotificationSystem({
             title: notifTitle,
             body: notifBody,
             type: "shift",
             url: "/shift-reports/manager",
+            branchId: activeShiftBranch,
             metadata: { cashierName: c?.name, storeId: storeName, totalMoney: totalAmt }
           });
         } catch (notifyErr: any) {
@@ -654,11 +657,13 @@ export default function CashierShiftReportPage() {
       }
       
       // Fire system-wide push and in-app notifications
+      const activeShiftBranch = c?.branchId || c?.storeId || "alamein4";
       dispatchNotificationSystem({
         title: `📋 New Shift Report Submitted - ${c?.name || 'Cashier'}`,
         body: `Store: ${c?.storeId || 'eL-alamein-4'} • Shift: ${c?.shift || 'Standard'}\nTotal Money: EGP ${calculateTotalMoney().toLocaleString()} (Cash: EGP ${calculateTotalCash().toLocaleString()}, Visa: EGP ${visa || 0})`,
         type: "shift",
         url: `/shift-reports/view?id=${submittedId}`,
+        branchId: activeShiftBranch,
         metadata: { cashierName: c?.name, storeId: c?.storeId, shiftId: submittedId }
       });
       

@@ -28,7 +28,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const { tokens: inputTokens, title, body, url = "/financials/inputs" } = await request.json();
+    const { tokens: inputTokens, title, body, url = "/financials/inputs", branchId } = await request.json();
 
     if (!title || !body) {
       return NextResponse.json(
@@ -38,6 +38,20 @@ export async function POST(request: Request) {
     }
 
     let targetTokens: string[] = Array.isArray(inputTokens) && inputTokens.length > 0 ? inputTokens : [];
+
+    const isTokenBranchMatched = (data: any, notifBranchId?: string) => {
+      if (!notifBranchId || notifBranchId === "all") return true;
+      const role = (data.role || "").toLowerCase();
+      if (role === "owner" || role === "admin" || role === "master") return true;
+      
+      const notifNorm = notifBranchId.toLowerCase().includes("ola") ? "ola" : "alamein4";
+      const storeIds: string[] = Array.isArray(data.storeIds) ? data.storeIds : [];
+      const userBranchId = (data.branchId || data.storeId || "").toLowerCase();
+
+      const userNorm = userBranchId.includes("ola") || storeIds.some(s => s.toLowerCase().includes("ola") || s.toLowerCase().includes("koronfol")) ? "ola" : "alamein4";
+      
+      return userNorm === notifNorm;
+    };
 
     // If no tokens were explicitly provided, query all registered FCM tokens from user_tokens and users collections
     if (targetTokens.length === 0) {
@@ -50,20 +64,22 @@ export async function POST(request: Request) {
 
         tokensSnap.forEach((doc) => {
           const data = doc.data();
-          if (data.fcmToken && typeof data.fcmToken === 'string') {
+          if (data.fcmToken && typeof data.fcmToken === 'string' && isTokenBranchMatched(data, branchId)) {
             targetTokens.push(data.fcmToken);
           }
         });
 
         usersSnap.forEach((doc) => {
           const data = doc.data();
-          if (data.fcmToken && typeof data.fcmToken === 'string') {
-            targetTokens.push(data.fcmToken);
-          }
-          if (Array.isArray(data.fcmTokens)) {
-            data.fcmTokens.forEach((t: any) => {
-              if (t && typeof t === 'string') targetTokens.push(t);
-            });
+          if (isTokenBranchMatched(data, branchId)) {
+            if (data.fcmToken && typeof data.fcmToken === 'string') {
+              targetTokens.push(data.fcmToken);
+            }
+            if (Array.isArray(data.fcmTokens)) {
+              data.fcmTokens.forEach((t: any) => {
+                if (t && typeof t === 'string') targetTokens.push(t);
+              });
+            }
           }
         });
       } catch (err) {

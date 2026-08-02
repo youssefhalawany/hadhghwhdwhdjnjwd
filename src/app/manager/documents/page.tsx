@@ -148,7 +148,8 @@ export default function ManagerDocumentsPage() {
         title: "🔔 Circle K Executive Test Alert",
         body: "Operational push notification test broadcast! Received on all registered mobile phones & computers.",
         type: "system",
-        url: "/manager/documents"
+        url: "/manager/documents",
+        branchId: currentBranch
       });
       toast.success("Test notification broadcasted to all registered devices!");
     } catch (err: any) {

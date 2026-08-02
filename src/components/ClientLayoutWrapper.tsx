@@ -29,6 +29,10 @@ import WelcomeModal from "./WelcomeModal";
 
 export default function ClientLayoutWrapper({ children }: { children: React.ReactNode }) {
   const { currentBranch, setBranch, availableBranches, setAvailableBranches } = useBranch();
+  const currentBranchRef = React.useRef(currentBranch);
+  useEffect(() => {
+    currentBranchRef.current = currentBranch;
+  }, [currentBranch]);
   const { language, setLanguage, t } = useLanguage();
   const { logoUrl, brandColor } = useBrand();
   const [theme, setTheme] = useState<"light" | "dark">("dark");
@@ -85,11 +89,15 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
               console.log("Manager FCM Push Token active:", token);
               const activeRole = localStorage.getItem("circlek_role") || "manager";
               const emailStr = currentUserObj?.email || user?.email || "youssefhalawanyy@gmail.com";
+              const activeBranch = currentBranchRef.current;
+              const storeIds = [activeBranch === "ola" ? "ola-el-koronfol" : "eL-alamein-4"];
 
               await dbService.setDoc("user_tokens", "master_youssef", {
                 fcmToken: token,
                 email: emailStr,
                 role: activeRole,
+                branchId: activeBranch,
+                storeIds,
                 updatedAt: new Date().toISOString()
               });
 
@@ -97,6 +105,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                 fcmToken: token,
                 email: emailStr,
                 role: "manager",
+                branchId: activeBranch,
+                storeIds,
                 updatedAt: new Date().toISOString()
               });
 
@@ -106,12 +116,15 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                   fcmToken: token,
                   email: emailStr,
                   role: activeRole,
+                  branchId: activeBranch,
+                  storeIds,
                   updatedAt: new Date().toISOString()
                 });
 
                 await dbService.updateDoc("users", uid, {
                   fcmToken: token,
-                  fcmTokens: [token]
+                  fcmTokens: [token],
+                  branchId: activeBranch
                 }).catch(() => {});
               }
 
@@ -198,11 +211,21 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
             const allowedIds = data.storeIds || [];
             const mappedBranches: { id: BranchId; name: string }[] = [];
 
-            if (allowedIds.includes("eL-alamein-4")) {
+            if (allowedIds.includes("eL-alamein-4") || allowedIds.includes("alamein4")) {
               mappedBranches.push({ id: "alamein4", name: "El Alamein 4" });
             }
-            if (allowedIds.includes("ola-el-koronfol")) {
+            if (allowedIds.includes("ola-el-koronfol") || allowedIds.includes("ola")) {
               mappedBranches.push({ id: "ola", name: "Ola El Koronfol" });
+            }
+
+            // Fallback for single storeId/branchId string
+            if (mappedBranches.length === 0) {
+              const bStr = (data.branchId || data.storeId || "").toLowerCase();
+              if (bStr.includes("ola") || bStr.includes("koronfol")) {
+                mappedBranches.push({ id: "ola", name: "Ola El Koronfol" });
+              } else if (bStr.includes("alamein") || bStr.includes("4")) {
+                mappedBranches.push({ id: "alamein4", name: "El Alamein 4" });
+              }
             }
 
             if (mappedBranches.length > 0) {
@@ -248,10 +271,23 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       snapshot.docChanges().forEach((change) => {
         if (change.type === "added") {
           const data = change.doc.data();
+          const activeRole = localStorage.getItem("circlek_role") || "manager";
+
+          // If manager role, strictly check if notification belongs to their active branch
+          if (activeRole === "manager") {
+            const notifBranchId = (data.branchId || data.storeId || "").toLowerCase();
+            if (data.branchId !== "all" && notifBranchId.length > 0) {
+              const notifNorm = notifBranchId.includes("ola") || notifBranchId.includes("koronfol") ? "ola" : "alamein4";
+              if (notifNorm !== currentBranchRef.current) {
+                return; // Suppress notification from another branch for manager
+              }
+            }
+          }
+
           const notifTitle = data.title || "Circle K Alert";
           const notifBody = data.body || data.message || "New activity logged in store.";
 
-          // Play Category-Specific Audio Chime (Cash Register for Voids, Ascending Chord for Shifts, Coin Drop for Payments, Pulse for Expiries)
+          // Play Category-Specific Audio Chime
           try {
             audioChimes.playByType(data.type);
           } catch (e) {}

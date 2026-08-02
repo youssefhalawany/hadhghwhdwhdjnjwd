@@ -273,12 +273,14 @@ export default function ExpiryTrackerPage() {
       const docRef = await addDoc(collection(db, "expiries"), newItem);
       
       // Dispatch Universal System Notification
+      const activeBranchId = authenticatedUser?.branchId || authenticatedUser?.storeId || "alamein4";
       dispatchNotificationSystem({
         title: `⏰ Product Expiry Logged - ${newItem.itemName}`,
         body: `Logged By: ${newItem.addedBy || 'Cashier'} • Item: ${newItem.itemName}\nExpiry Date: ${newItem.expiryDate} • Quantity: ${newItem.quantity} • Status: ${newItem.status}`,
         type: "expiry",
         url: "/products/expiries-audit",
-        metadata: { itemName: newItem.itemName, expiryDate: newItem.expiryDate, quantity: newItem.quantity }
+        branchId: activeBranchId,
+        metadata: { itemName: newItem.itemName, expiryDate: newItem.expiryDate, quantity: newItem.quantity, storeId: activeBranchId }
       });
 
       setExpiries(prev => [...prev, { id: docRef.id, ...newItem }].sort((a,b) => a.expiryDate.localeCompare(b.expiryDate)));

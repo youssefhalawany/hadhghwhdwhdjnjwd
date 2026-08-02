@@ -155,7 +155,8 @@ export default function OutOfStockPage() {
         body: `Reported By: ${session?.name || 'Cashier'} • Items (${items.length}): ${items.map((i: any) => `${i.description || i.name} (x${i.missingQty})`).join(', ')}\nRef Code: #${code} • Missing Total: ${totalMissing}`,
         type: "out_of_stock",
         url: "/financials/out-of-stock",
-        metadata: { cashierName: session?.name, refCode: code, itemsCount: items.length }
+        branchId: payload.branchId,
+        metadata: { cashierName: session?.name, refCode: code, itemsCount: items.length, storeId: payload.storeId }
       });
 
       playSuccessSound();

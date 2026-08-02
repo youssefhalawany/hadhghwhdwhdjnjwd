@@ -4,17 +4,26 @@ import React, { useState, useEffect } from "react";
 import { useBranch, BranchId } from "@/context/BranchContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { triggerHapticFeedback } from "@/lib/pwaBadges";
-import { Store, Languages, Clock, Bell } from "lucide-react";
+import { Store, Languages, Clock, Bell, LogOut } from "lucide-react";
 import { playPopSound } from "@/lib/sounds";
 import { toast } from "sonner";
+import { auth } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
 
 export function MobileHeader() {
-  const { currentBranch, setBranch } = useBranch();
+  const { currentBranch, setBranch, availableBranches } = useBranch();
   const { language, setLanguage } = useLanguage();
   const isAr = language === "ar";
 
   const [isOnline, setIsOnline] = useState(true);
   const [timeString, setTimeString] = useState("");
+  const [userRole, setUserRole] = useState("manager");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setUserRole(localStorage.getItem("circlek_role") || "manager");
+    }
+  }, []);
 
   useEffect(() => {
     setIsOnline(navigator.onLine);
@@ -45,11 +54,31 @@ export function MobileHeader() {
     return () => clearInterval(interval);
   }, [isAr]);
 
-  const branches: Array<{ id: BranchId; labelEn: string; labelAr: string }> = [
-    { id: "all", labelEn: "All Branches", labelAr: "جميع الفروع" },
-    { id: "alamein4", labelEn: "El Alamein 4", labelAr: "العلمين 4" },
-    { id: "ola", labelEn: "Ola El Koronfol", labelAr: "علا القرنفلي" },
-  ];
+  // Format branches dynamically according to user authorization
+  const displayBranches = React.useMemo(() => {
+    if (availableBranches && availableBranches.length > 0) {
+      if (userRole === "manager") {
+        return availableBranches.map(b => ({
+          id: b.id,
+          labelEn: b.name,
+          labelAr: b.id === "alamein4" ? "العلمين 4" : b.id === "ola" ? "علا القرنفلي" : b.name
+        }));
+      }
+      return [
+        { id: "all" as BranchId, labelEn: "All Branches", labelAr: "جميع الفروع" },
+        ...availableBranches.map(b => ({
+          id: b.id,
+          labelEn: b.name,
+          labelAr: b.id === "alamein4" ? "العلمين 4" : b.id === "ola" ? "علا القرنفلي" : b.name
+        }))
+      ];
+    }
+    return [
+      { id: "all" as BranchId, labelEn: "All Branches", labelAr: "جميع الفروع" },
+      { id: "alamein4" as BranchId, labelEn: "El Alamein 4", labelAr: "العلمين 4" },
+      { id: "ola" as BranchId, labelEn: "Ola El Koronfol", labelAr: "علا القرنفلي" },
+    ];
+  }, [availableBranches, userRole]);
 
   const handleBranchSelect = (id: BranchId) => {
     triggerHapticFeedback(10);
@@ -89,7 +118,8 @@ export function MobileHeader() {
           body: JSON.stringify({
             title: "🔔 Test Push Notification - Circle K",
             body: "Test notification dispatched successfully to all devices!",
-            url: "/admin/product-lookup"
+            url: "/admin/product-lookup",
+            branchId: currentBranch
           })
         });
       } catch (err) {
@@ -115,6 +145,22 @@ export function MobileHeader() {
     }
   };
 
+  const handleLogout = async () => {
+    triggerHapticFeedback(12);
+    playPopSound();
+    try {
+      await signOut(auth);
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("circlek_role");
+        sessionStorage.clear();
+      }
+      toast.success(isAr ? "تم تسجيل الخروج بنجاح" : "Logged out successfully!");
+      window.location.href = "/";
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
+  };
+
   return (
     <header
       className="sticky top-0 z-40 w-full bg-[#0B1121] border-b border-[#1E293B] px-3 py-2 md:hidden no-print transition-all"
@@ -123,7 +169,7 @@ export function MobileHeader() {
       }}
       dir={isAr ? "rtl" : "ltr"}
     >
-      {/* Top Bar: Brand, Status, Time, Language */}
+      {/* Top Bar: Brand, Status, Time, Language, Logout */}
       <div className="flex items-center justify-between gap-2 mb-2">
         <div className="flex items-center gap-2">
           {/* Circle K Red Badge */}
@@ -141,9 +187,9 @@ export function MobileHeader() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {/* Online/Offline Status Pill */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#0F172A] border border-[#1E293B] text-[10px] font-bold">
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-[#0F172A] border border-[#1E293B] text-[10px] font-bold">
             <span
               className={`w-1.5 h-1.5 rounded-full ${isOnline ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" : "bg-amber-500 animate-pulse"
                 }`}
@@ -165,10 +211,19 @@ export function MobileHeader() {
           {/* 1-Tap Language Switcher Pill */}
           <button
             onClick={handleLanguageToggle}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#0F172A] hover:bg-[#1E293B] text-cyan-400 border border-[#1E293B] text-[11px] font-extrabold transition-all active:scale-95"
+            className="flex items-center gap-1 px-2 py-1 rounded-full bg-[#0F172A] hover:bg-[#1E293B] text-cyan-400 border border-[#1E293B] text-[10px] font-extrabold transition-all active:scale-95"
           >
-            <Languages className="w-3.5 h-3.5 text-cyan-400" />
+            <Languages className="w-3 h-3 text-cyan-400" />
             <span>{language === "en" ? "العربية" : "EN"}</span>
+          </button>
+
+          {/* 1-Tap Logout Pill */}
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-1 p-1.5 rounded-full bg-red-950/40 hover:bg-red-900/60 text-rose-400 border border-red-800/40 transition-all active:scale-95"
+            title={isAr ? "تسجيل الخروج" : "Logout"}
+          >
+            <LogOut className="w-3.5 h-3.5 text-rose-400" />
           </button>
         </div>
       </div>
@@ -176,18 +231,18 @@ export function MobileHeader() {
       {/* Bottom Bar: Horizontal Branch Chip Carousel */}
       <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar py-0.5 px-0.5">
         <Store className="w-3.5 h-3.5 text-cyan-400 shrink-0 mx-0.5" />
-        {branches.map((b) => {
+        {displayBranches.map((b) => {
           const isActive = currentBranch === b.id;
           return (
             <button
               key={b.id}
-              onClick={() => handleBranchSelect(b.id)}
+              onClick={() => handleBranchSelect(b.id as BranchId)}
               className={`px-3 py-1 rounded-full text-[11px] font-extrabold whitespace-nowrap transition-all active:scale-95 shrink-0 ${isActive
                 ? "bg-red-600 text-white shadow-md shadow-red-600/30 border border-red-500"
                 : "bg-[#0F172A] text-slate-300 hover:text-white border border-[#1E293B]"
                 }`}
             >
-              {isAr ? b.labelAr : b.labelEn}
+              {b.labelAr && isAr ? b.labelAr : b.labelEn}
             </button>
           );
         })}

@@ -736,7 +736,8 @@ export default function PaymentsRedesignPage() {
         body: `Payment of EGP ${Number(total).toLocaleString(undefined, { minimumFractionDigits: 2 })} logged for ${companyName}.\nTax: EGP ${Number(numTax).toLocaleString()} • Method: ${method?.replace('_', ' ').toUpperCase() || 'CASH'}${invoiceNumber ? ` • Inv #: ${invoiceNumber}` : ''}`,
         type: "payment",
         url: "/financials/inputs/payments",
-        metadata: { companyName, totalAmount: total, method, invoiceNumber }
+        branchId: currentBranch,
+        metadata: { companyName, totalAmount: total, method, invoiceNumber, storeId: currentBranch }
       });
 
       const role = typeof window !== "undefined" ? (localStorage.getItem("circlek_role") || "manager") : "manager";

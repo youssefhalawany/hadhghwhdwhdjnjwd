@@ -508,7 +508,8 @@ export default function CashierVoidPage() {
           body: `Cashier: ${cashierName || 'Cashier'} • Total: EGP ${Number(amount).toLocaleString()}\nItems: ${selectedItems.map((i: any) => `${i.desc || 'Item'} (x${i.qty || 1})`).join(', ')}\nReason: ${reason || 'Customer Return'}`,
           type: "void",
           url: "/voids/manager",
-          metadata: { cashierName, amount, transactionNumber, reason }
+          branchId: currentBranch,
+          metadata: { cashierName, amount, transactionNumber, reason, storeId: currentBranch }
         });
       } catch (notifyErr) {
         console.error("Notification failed:", notifyErr);

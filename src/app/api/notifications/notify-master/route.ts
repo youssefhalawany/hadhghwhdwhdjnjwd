@@ -6,7 +6,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export async function POST(req: Request) {
   try {
-    const { title, body, url } = await req.json();
+    const { title, body, url, branchId } = await req.json();
 
     if (!title || !body) {
       return NextResponse.json({ error: "Missing title or body" }, { status: 400 });
@@ -34,7 +34,21 @@ export async function POST(req: Request) {
       }
     }
 
-    // 1. Collect all registered FCM device tokens across collections
+    const isTokenBranchMatched = (data: any, notifBranchId?: string) => {
+      if (!notifBranchId || notifBranchId === "all") return true;
+      const role = (data.role || "").toLowerCase();
+      if (role === "owner" || role === "admin" || role === "master") return true;
+      
+      const notifNorm = notifBranchId.toLowerCase().includes("ola") ? "ola" : "alamein4";
+      const storeIds: string[] = Array.isArray(data.storeIds) ? data.storeIds : [];
+      const userBranchId = (data.branchId || data.storeId || "").toLowerCase();
+
+      const userNorm = userBranchId.includes("ola") || storeIds.some(s => s.toLowerCase().includes("ola") || s.toLowerCase().includes("koronfol")) ? "ola" : "alamein4";
+      
+      return userNorm === notifNorm;
+    };
+
+    // 1. Collect all registered FCM device tokens across collections matching branchId
     const adminDb = getFirestore();
     const tokensSet = new Set<string>();
 
@@ -42,13 +56,15 @@ export async function POST(req: Request) {
       const userTokensSnap = await adminDb.collection("user_tokens").get();
       userTokensSnap.forEach(docSnap => {
         const data = docSnap.data();
-        if (data.fcmToken && typeof data.fcmToken === 'string' && data.fcmToken.trim().length > 10) {
-          tokensSet.add(data.fcmToken.trim());
-        }
-        if (Array.isArray(data.fcmTokens)) {
-          data.fcmTokens.forEach((t: string) => {
-            if (t && typeof t === 'string' && t.trim().length > 10) tokensSet.add(t.trim());
-          });
+        if (isTokenBranchMatched(data, branchId)) {
+          if (data.fcmToken && typeof data.fcmToken === 'string' && data.fcmToken.trim().length > 10) {
+            tokensSet.add(data.fcmToken.trim());
+          }
+          if (Array.isArray(data.fcmTokens)) {
+            data.fcmTokens.forEach((t: string) => {
+              if (t && typeof t === 'string' && t.trim().length > 10) tokensSet.add(t.trim());
+            });
+          }
         }
       });
     } catch (e) {
@@ -59,13 +75,15 @@ export async function POST(req: Request) {
       const usersSnap = await adminDb.collection("users").get();
       usersSnap.forEach(docSnap => {
         const data = docSnap.data();
-        if (data.fcmToken && typeof data.fcmToken === 'string' && data.fcmToken.trim().length > 10) {
-          tokensSet.add(data.fcmToken.trim());
-        }
-        if (Array.isArray(data.fcmTokens)) {
-          data.fcmTokens.forEach((t: string) => {
-            if (t && typeof t === 'string' && t.trim().length > 10) tokensSet.add(t.trim());
-          });
+        if (isTokenBranchMatched(data, branchId)) {
+          if (data.fcmToken && typeof data.fcmToken === 'string' && data.fcmToken.trim().length > 10) {
+            tokensSet.add(data.fcmToken.trim());
+          }
+          if (Array.isArray(data.fcmTokens)) {
+            data.fcmTokens.forEach((t: string) => {
+              if (t && typeof t === 'string' && t.trim().length > 10) tokensSet.add(t.trim());
+            });
+          }
         }
       });
     } catch (e) {

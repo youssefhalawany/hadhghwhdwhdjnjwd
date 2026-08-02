@@ -36,6 +36,17 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setBranch = (branch: BranchId) => {
+    // If availableBranches is restricted, verify the requested branch is permitted
+    if (availableBranches.length > 0) {
+      const isAllowed = availableBranches.some((b) => b.id === branch);
+      if (!isAllowed) {
+        console.warn(`Attempted to switch to unauthorized branch: ${branch}. Defaulting to ${availableBranches[0].id}`);
+        const fallback = availableBranches[0].id;
+        setCurrentBranch(fallback);
+        localStorage.setItem("circlek_current_branch", fallback);
+        return;
+      }
+    }
     setCurrentBranch(branch);
     localStorage.setItem("circlek_current_branch", branch);
   };

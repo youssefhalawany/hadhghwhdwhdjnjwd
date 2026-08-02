@@ -544,7 +544,8 @@ export default function CreditsPage() {
         body: `Invoice of EGP ${Number(amountDue).toLocaleString(undefined, { minimumFractionDigits: 2 })} logged for ${companyName}.\nTax: EGP ${Number(tax).toLocaleString()}${poNumber ? ` • PO #: ${poNumber}` : ''}${invoiceNumber ? ` • Inv #: ${invoiceNumber}` : ''}`,
         type: "credit",
         url: "/financials/inputs/credits",
-        metadata: { companyName, amountDue, tax, poNumber, invoiceNumber }
+        branchId: currentBranch,
+        metadata: { companyName, amountDue, tax, poNumber, invoiceNumber, storeId: currentBranch }
       });
 
       const role = typeof window !== "undefined" ? (localStorage.getItem("circlek_role") || "manager") : "manager";

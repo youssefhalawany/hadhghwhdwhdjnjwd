@@ -143,7 +143,8 @@ export default function DepositsPage() {
         body: `Deposit of EGP ${Number(newDeposit.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })} logged by ${auth.currentUser?.displayName || 'User'}.\nDate: ${newDeposit.date || new Date().toISOString().split('T')[0]}${newDeposit.note ? ` • Note: ${newDeposit.note}` : ''}`,
         type: "deposit",
         url: "/financials/inputs/deposits",
-        metadata: { amount: newDeposit.amount, date: newDeposit.date, depositor: auth.currentUser?.displayName }
+        branchId: currentBranch,
+        metadata: { amount: newDeposit.amount, date: newDeposit.date, depositor: auth.currentUser?.displayName, storeId: currentBranch }
       });
 
       toast.success("Deposit added & notification sent!");

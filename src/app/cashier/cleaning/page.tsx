@@ -102,7 +102,8 @@ export default function CashierCleaningPage() {
         body: `Completed By: ${cashierName || 'Cashier'} • Area: ${payload.areaNameEn} (${payload.areaNameAr})\nTime: ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`,
         type: "cleaning",
         url: "/admin/cleaning",
-        metadata: { cashierName, area: payload.areaNameEn }
+        branchId: storeId,
+        metadata: { cashierName, area: payload.areaNameEn, storeId }
       });
       playSuccessSound();
       setShowSuccess(true);
