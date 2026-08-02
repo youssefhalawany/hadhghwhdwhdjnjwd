@@ -656,6 +656,35 @@ export default function ManagerAuditPage() {
                     size: A4 portrait;
                     margin: 0mm;
                   }
+                  html, body {
+                    width: 210mm !important;
+                    max-width: 210mm !important;
+                    margin: 0 auto !important;
+                    padding: 0 !important;
+                    overflow: hidden !important;
+                    background-color: #ffffff !important;
+                    color: #000000 !important;
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                  }
+                  .print-wrapper {
+                    width: 210mm !important;
+                    max-width: 210mm !important;
+                    margin: 0 auto !important;
+                    overflow: hidden !important;
+                  }
+                  #pdf-page-1, #pdf-page-2 {
+                    width: 210mm !important;
+                    max-width: 210mm !important;
+                    height: 297mm !important;
+                    max-height: 297mm !important;
+                    box-sizing: border-box !important;
+                    overflow: hidden !important;
+                    position: relative !important;
+                    margin: 0 auto !important;
+                    background-color: #ffffff !important;
+                    color: #000000 !important;
+                  }
                 }
                 html, body {
                   background-color: #ffffff !important;
@@ -664,7 +693,6 @@ export default function ManagerAuditPage() {
                   margin: 0 !important;
                   padding: 0 !important;
                   width: 100% !important;
-                  height: auto !important;
                   font-family: Arial, sans-serif !important;
                   -webkit-print-color-adjust: exact !important;
                   print-color-adjust: exact !important;
@@ -675,12 +703,18 @@ export default function ManagerAuditPage() {
                 }
                 .print-wrapper {
                   width: 794px;
+                  max-width: 794px;
                   margin: 0 auto;
+                  overflow: hidden;
                   background-color: #ffffff !important;
                   color: #000000 !important;
                 }
                 #pdf-page-1, #pdf-page-2 {
                   width: 794px !important;
+                  max-width: 794px !important;
+                  height: 1123px !important;
+                  max-height: 1123px !important;
+                  overflow: hidden !important;
                   margin: 0 auto !important;
                   background-color: #ffffff !important;
                   color: #000000 !important;
@@ -1770,22 +1804,22 @@ export default function ManagerAuditPage() {
               </div>
               
               {/* Micro-Typography Security Borders */}
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: 'none', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '4px', overflow: 'hidden' }}>
-                <div style={{ fontSize: '6px', color: '#000000', fontFamily: 'monospace', letterSpacing: '3px', whiteSpace: 'nowrap', opacity: 0.3 }}>
-                  {Array(25).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: 'none', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '4px', overflow: 'hidden', maxWidth: '794px' }}>
+                <div style={{ fontSize: '6px', color: '#000000', fontFamily: 'monospace', letterSpacing: '2px', whiteSpace: 'nowrap', opacity: 0.3, overflow: 'hidden' }}>
+                  {Array(4).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
                 </div>
-                <div style={{ fontSize: '6px', color: '#000000', fontFamily: 'monospace', letterSpacing: '3px', whiteSpace: 'nowrap', opacity: 0.3 }}>
-                  {Array(25).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
-                </div>
-              </div>
-              <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, zIndex: 1, pointerEvents: 'none', display: 'flex', flexDirection: 'column', padding: '4px', overflow: 'hidden', writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
-                <div style={{ fontSize: '6px', color: '#000000', fontFamily: 'monospace', letterSpacing: '3px', whiteSpace: 'nowrap', opacity: 0.3 }}>
-                  {Array(35).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
+                <div style={{ fontSize: '6px', color: '#000000', fontFamily: 'monospace', letterSpacing: '2px', whiteSpace: 'nowrap', opacity: 0.3, overflow: 'hidden' }}>
+                  {Array(4).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
                 </div>
               </div>
-              <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: 'none', display: 'flex', flexDirection: 'column', padding: '4px', overflow: 'hidden', writingMode: 'vertical-rl' }}>
-                <div style={{ fontSize: '6px', color: '#000000', fontFamily: 'monospace', letterSpacing: '3px', whiteSpace: 'nowrap', opacity: 0.3 }}>
-                  {Array(35).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
+              <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, zIndex: 1, pointerEvents: 'none', display: 'flex', flexDirection: 'column', padding: '4px', overflow: 'hidden', writingMode: 'vertical-rl', transform: 'rotate(180deg)', maxHeight: '1123px' }}>
+                <div style={{ fontSize: '6px', color: '#000000', fontFamily: 'monospace', letterSpacing: '2px', whiteSpace: 'nowrap', opacity: 0.3, overflow: 'hidden' }}>
+                  {Array(6).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
+                </div>
+              </div>
+              <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: 'none', display: 'flex', flexDirection: 'column', padding: '4px', overflow: 'hidden', writingMode: 'vertical-rl', maxHeight: '1123px' }}>
+                <div style={{ fontSize: '6px', color: '#000000', fontFamily: 'monospace', letterSpacing: '2px', whiteSpace: 'nowrap', opacity: 0.3, overflow: 'hidden' }}>
+                  {Array(6).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
                 </div>
               </div>
             </>
