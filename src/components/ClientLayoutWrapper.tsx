@@ -7,7 +7,7 @@ import { Sun, Moon, Shield, Database, LayoutDashboard, FileText, Printer, Clipbo
 import { auth, messaging, dbService, db } from "@/lib/firebase";
 import { getToken } from "firebase/messaging";
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
-import { collection, query, where, onSnapshot, doc, getDoc, getDocs, updateDoc, orderBy, limit } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, getDoc, getDocs, setDoc, updateDoc, orderBy, limit } from "firebase/firestore";
 import PwaInstallPrompt from "./PwaInstallPrompt";
 import type { User as FirebaseUser } from "firebase/auth";
 import { useBranch, BranchId, BRANCHES } from "@/context/BranchContext";
@@ -187,6 +187,14 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
           if (userDocData) {
             setUserDoc(userDocData);
+
+            // Auto-sync emailKey document (e.g. mahmoud_ck_com) to currentUser.uid so UID is used as document key (like old users)
+            if (currentUser.uid && !docSnapByUid.exists()) {
+              setDoc(doc(db, "users", currentUser.uid), {
+                ...userDocData,
+                updatedAt: new Date().toISOString()
+              }, { merge: true }).catch(console.warn);
+            }
 
             const mName = userDocData.displayName || currentUser.displayName || "Manager";
             localStorage.setItem("circlek_user_name", mName);

@@ -192,3 +192,63 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: error.message || "Failed to update user" }, { status: 500 });
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const admin = await verifyAdminEditor(req);
+    if (!admin) {
+      return NextResponse.json({ error: "Unauthorized. Valid admin session required." }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const uid = searchParams.get("uid");
+    const docId = searchParams.get("docId") || uid;
+
+    if (!uid && !docId) {
+      return NextResponse.json({ error: "Missing user UID or docId" }, { status: 400 });
+    }
+
+    // 1. Delete from Firebase Auth if uid is provided
+    if (uid) {
+      try {
+        await getAdminAuth().deleteUser(uid);
+      } catch (authErr: any) {
+        console.warn("Firebase Auth deleteUser warning:", authErr.message);
+      }
+    }
+
+    // 2. Delete document from Firestore
+    try {
+      if (docId) {
+        await getAdminDb().collection("users").doc(docId).delete();
+      }
+      if (uid && uid !== docId) {
+        await getAdminDb().collection("users").doc(uid).delete();
+      }
+    } catch (fsErr: any) {
+      console.error("Firestore user doc delete failed:", fsErr);
+    }
+
+    // 3. Log to audit_logs
+    try {
+      await getAdminDb().collection("audit_logs").add({
+        userEmail: admin.email || "",
+        userName: admin.displayName || "Admin",
+        role: admin.role,
+        action: "Delete User",
+        previousValue: `Deleted user ${uid || docId}`,
+        newValue: "Deleted",
+        timestamp: new Date().toISOString(),
+        ip: req.headers.get("x-forwarded-for") || "Server",
+        device: req.headers.get("user-agent") || "API Client"
+      });
+    } catch (auditErr) {
+      console.error("Audit log delete failed:", auditErr);
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error("Error deleting user:", error);
+    return NextResponse.json({ error: error.message || "Failed to delete user" }, { status: 500 });
+  }
+}

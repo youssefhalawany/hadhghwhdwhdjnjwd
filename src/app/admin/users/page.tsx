@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { collection, query, onSnapshot, getDocs, orderBy, doc, getDoc, updateDoc, setDoc } from "firebase/firestore";
+import { collection, query, onSnapshot, getDocs, orderBy, doc, getDoc, updateDoc, setDoc, deleteDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
-import { Plus, Edit2, Shield, UserX, CheckCircle, X, Search, ShieldCheck, Activity } from "lucide-react";
+import { Plus, Edit2, Shield, UserX, CheckCircle, X, Search, ShieldCheck, Activity, KeyRound, Trash2, Lock, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useBranch } from "@/context/BranchContext";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
@@ -29,12 +29,23 @@ export default function UserManagementPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Modal State
+  // Modal States
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState("");
   const [selectedProfileUser, setSelectedProfileUser] = useState<UserProfile | null>(null);
-  
+
+  // Password Reset Modal State
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [passwordResetUser, setPasswordResetUser] = useState<UserProfile | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [resettingPassword, setResettingPassword] = useState(false);
+
+  // Delete User Modal State
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
+  const [deletingUser, setDeletingUser] = useState(false);
+
   // Form State
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -53,16 +64,25 @@ export default function UserManagementPage() {
     const unsubscribeAuth = auth.onAuthStateChanged(async (user) => {
       if (user) {
         try {
+          let userRole = "owner";
           const userDoc = await getDoc(doc(db, "users", user.uid));
-          const userRole = userDoc.exists() ? (userDoc.data().role || "manager") : "owner";
+          if (userDoc.exists()) {
+            userRole = userDoc.data().role || "manager";
+          } else if (user.email) {
+            const emailKey = user.email.toLowerCase().replace(/[@.]/g, "_");
+            const docByEmailKey = await getDoc(doc(db, "users", emailKey));
+            if (docByEmailKey.exists()) {
+              userRole = docByEmailKey.data().role || "manager";
+            }
+          }
           setCurrentUserRole(userRole);
 
-          // Fetch users for admin roles or owner
+          // Fetch users live snapshot from Firestore
           const q = collection(db, "users");
           unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
             const usersData: UserProfile[] = [];
-            snapshot.forEach((doc) => {
-              usersData.push({ id: doc.id, ...doc.data() } as UserProfile);
+            snapshot.forEach((docSnap) => {
+              usersData.push({ id: docSnap.id, ...docSnap.data() } as UserProfile);
             });
             // Sort in memory by createdAt descending
             usersData.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
@@ -96,7 +116,7 @@ export default function UserManagementPage() {
     setDisplayName("");
     setPassword("");
     setRole("manager");
-    setSelectedBranches([]);
+    setSelectedBranches(["eL-alamein-4"]);
     setIsActive(true);
     setFeatures({ canUseMasterScanner: false });
     setIsModalOpen(true);
@@ -107,12 +127,23 @@ export default function UserManagementPage() {
     setEditingId(user.id);
     setEmail(user.email);
     setDisplayName(user.displayName);
-    setPassword(""); // Keep blank unless changing
+    setPassword(""); // Keep blank unless changing password
     setRole(user.role);
     setSelectedBranches(user.storeIds || []);
     setIsActive(user.isActive !== false);
     setFeatures(user.features || {});
     setIsModalOpen(true);
+  };
+
+  const handleOpenPasswordModal = (user: UserProfile) => {
+    setPasswordResetUser(user);
+    setNewPassword("");
+    setIsPasswordModalOpen(true);
+  };
+
+  const handleOpenDeleteModal = (user: UserProfile) => {
+    setUserToDelete(user);
+    setIsDeleteModalOpen(true);
   };
 
   const toggleBranch = (branchId: string) => {
@@ -139,11 +170,7 @@ export default function UserManagementPage() {
     try {
       let token = "";
       if (auth.currentUser) {
-        try {
-          token = await auth.currentUser.getIdToken();
-        } catch (tErr) {
-          console.warn("Could not get Firebase ID token:", tErr);
-        }
+        try { token = await auth.currentUser.getIdToken(); } catch (tErr) {}
       }
 
       const payload: any = {
@@ -159,72 +186,128 @@ export default function UserManagementPage() {
         payload.password = password;
       }
 
-      let apiSuccess = false;
-
-      try {
-        if (isEditing) {
-          payload.uid = editingId;
-          const res = await fetch("/api/admin/users", {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${token}`,
-              "x-user-role": currentUserRole || "owner"
-            },
-            body: JSON.stringify(payload)
-          });
-          const data = await res.json();
-          if (res.ok) {
-            apiSuccess = true;
-            toast.success("User updated successfully!");
-          } else {
-            console.warn("API update returned error, falling back to direct Firestore write:", data.error);
-          }
+      if (isEditing) {
+        payload.uid = editingId;
+        const res = await fetch("/api/admin/users", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+            "x-user-role": currentUserRole || "owner"
+          },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.ok) {
+          toast.success("User updated successfully in Firebase Auth & Database!");
+          setIsModalOpen(false);
         } else {
-          const res = await fetch("/api/admin/users", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${token}`,
-              "x-user-role": currentUserRole || "owner"
-            },
-            body: JSON.stringify(payload)
-          });
-          const data = await res.json();
-          if (res.ok) {
-            apiSuccess = true;
-            toast.success("User created successfully!");
-          } else {
-            console.warn("API create returned error, falling back to direct Firestore write:", data.error);
-          }
+          toast.error(data.error || "Failed to update user");
         }
-      } catch (apiErr) {
-        console.warn("API call failed, attempting direct Firestore save:", apiErr);
+      } else {
+        const res = await fetch("/api/admin/users", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+            "x-user-role": currentUserRole || "owner"
+          },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.ok && data.uid) {
+          toast.success("User created successfully in Firebase Auth & Database!");
+          setIsModalOpen(false);
+        } else {
+          toast.error(data.error || "Failed to create user in Firebase Auth");
+        }
       }
-
-      // Fallback: If API call failed or server endpoint couldn't create Firebase auth user directly, save profile to Firestore
-      if (!apiSuccess) {
-        const targetDocId = isEditing ? editingId : email.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase();
-        await setDoc(doc(db, "users", targetDocId), {
-          email,
-          displayName: displayName || email.split("@")[0],
-          role,
-          storeIds: selectedBranches,
-          isActive: isActive !== false,
-          features: features || {},
-          updatedAt: new Date().toISOString(),
-          ...(isEditing ? {} : { createdAt: new Date().toISOString() })
-        }, { merge: true });
-
-        toast.success(isEditing ? "User profile updated successfully!" : "User profile created successfully!");
-      }
-
-      setIsModalOpen(false);
     } catch (error: any) {
       console.error("User submit error:", error);
       toast.error(error.message || "Failed to save user");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handlePasswordResetSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!passwordResetUser || !newPassword) return;
+    if (newPassword.length < 6) {
+      toast.error("Password must be at least 6 characters.");
+      return;
+    }
+
+    setResettingPassword(true);
+    try {
+      let token = "";
+      if (auth.currentUser) {
+        try { token = await auth.currentUser.getIdToken(); } catch (e) {}
+      }
+
+      const res = await fetch("/api/admin/users", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+          "x-user-role": currentUserRole || "owner"
+        },
+        body: JSON.stringify({
+          uid: passwordResetUser.id,
+          email: passwordResetUser.email,
+          password: newPassword
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(`Password for ${passwordResetUser.displayName} updated successfully in Firebase Auth! 🔑`);
+        setIsPasswordModalOpen(false);
+        setPasswordResetUser(null);
+        setNewPassword("");
+      } else {
+        toast.error(data.error || "Failed to update password in Firebase Auth");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Password update failed");
+    } finally {
+      setResettingPassword(false);
+    }
+  };
+
+  const handleDeleteUserSubmit = async () => {
+    if (!userToDelete) return;
+    setDeletingUser(true);
+    try {
+      let token = "";
+      if (auth.currentUser) {
+        try { token = await auth.currentUser.getIdToken(); } catch (e) {}
+      }
+
+      const res = await fetch(`/api/admin/users?uid=${encodeURIComponent(userToDelete.id)}&docId=${encodeURIComponent(userToDelete.id)}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "x-user-role": currentUserRole || "owner"
+        }
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        toast.success(`User ${userToDelete.displayName} deleted from Firebase Auth & Database! 🗑️`);
+        setIsDeleteModalOpen(false);
+        setUserToDelete(null);
+      } else {
+        // Fallback: delete doc directly from Firestore
+        await deleteDoc(doc(db, "users", userToDelete.id));
+        toast.success("User document removed from database.");
+        setIsDeleteModalOpen(false);
+        setUserToDelete(null);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete user");
+    } finally {
+      setDeletingUser(false);
     }
   };
 
@@ -270,7 +353,7 @@ export default function UserManagementPage() {
 
   const filteredUsers = users.filter(user => 
     user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.displayName.toLowerCase().includes(searchTerm.toLowerCase())
+    (user.displayName || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -334,27 +417,27 @@ export default function UserManagementPage() {
                     </td>
                     <td className="p-4">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold
-                        ${user.role === 'admin_editor' ? 'bg-red-500/10 text-red-600' : 
-                          user.role === 'admin_viewer' ? 'bg-blue-500/10 text-blue-600' : 
-                          'bg-emerald-500/10 text-emerald-600'}`}>
-                        {user.role === 'admin_editor' ? t("admin.users.role_admin_editor") : 
+                        ${user.role === 'admin_editor' || user.role === 'owner' ? 'bg-red-500/10 text-red-600 border border-red-500/20' : 
+                          user.role === 'admin_viewer' ? 'bg-blue-500/10 text-blue-600 border border-blue-500/20' : 
+                          'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'}`}>
+                        {user.role === 'admin_editor' || user.role === 'owner' ? t("admin.users.role_admin_editor") : 
                          user.role === 'admin_viewer' ? t("admin.users.role_admin_viewer") : t("admin.users.role_manager")}
                       </span>
                     </td>
                     <td className="p-4">
                       <div className="flex flex-wrap gap-1">
-                        {user.role === "admin_editor" || user.role === "admin_viewer" ? (
+                        {user.role === "admin_editor" || user.role === "admin_viewer" || user.role === "owner" ? (
                           <span className="text-xs font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">{t("admin.users.all_branches")}</span>
                         ) : (
                           user.storeIds && user.storeIds.length > 0 ? (
                             user.storeIds.map(storeId => {
-                              const branchName = storeId === "eL-alamein-4" ? "El Alamein 4" : storeId === "ola-el-koronfol" ? "Ola El Koronfol" : storeId;
+                              const branchName = storeId === "eL-alamein-4" || storeId === "alamein4" ? "El Alamein 4" : storeId === "ola-el-koronfol" || storeId === "ola" ? "Ola El Koronfol" : storeId;
                               return (
                                 <span key={storeId} className="text-xs font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">{branchName}</span>
                               );
                             })
                           ) : (
-                            <span className="text-xs text-red-500 font-semibold bg-red-500/10 px-2 py-0.5 rounded-md">No Access</span>
+                            <span className="text-xs text-amber-500 font-semibold bg-amber-500/10 px-2 py-0.5 rounded-md">El Alamein 4 (Default)</span>
                           )
                         )}
                       </div>
@@ -372,7 +455,8 @@ export default function UserManagementPage() {
                     </td>
                     {isAdminEditor && (
                       <td className="p-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* Stats View */}
                           <button
                             onClick={() => setSelectedProfileUser(user)}
                             className="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
@@ -380,19 +464,41 @@ export default function UserManagementPage() {
                           >
                             <Activity className="h-4 w-4" />
                           </button>
+
+                          {/* Edit User & Branches */}
                           <button
                             onClick={() => handleOpenEditUser(user)}
                             className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                            title="Edit User"
+                            title="Edit User & Branches"
                           >
                             <Edit2 className="h-4 w-4" />
                           </button>
+
+                          {/* Password Reset Button */}
+                          <button
+                            onClick={() => handleOpenPasswordModal(user)}
+                            className="p-2 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors"
+                            title="Change Auth Password"
+                          >
+                            <KeyRound className="h-4 w-4" />
+                          </button>
+
+                          {/* Toggle Active Status */}
                           <button
                             onClick={() => toggleActiveStatus(user)}
-                            className={`p-2 rounded-lg transition-colors ${user.isActive !== false ? 'text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20' : 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'}`}
+                            className={`p-2 rounded-lg transition-colors ${user.isActive !== false ? 'text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800' : 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'}`}
                             title={user.isActive !== false ? "Deactivate User" : "Activate User"}
                           >
                             {user.isActive !== false ? <UserX className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
+                          </button>
+
+                          {/* Delete User Button */}
+                          <button
+                            onClick={() => handleOpenDeleteModal(user)}
+                            className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                            title="Delete User from Auth & Database"
+                          >
+                            <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
                       </td>
@@ -405,7 +511,7 @@ export default function UserManagementPage() {
         </div>
       </div>
 
-      {/* User Modal */}
+      {/* User Create / Edit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-2xl shadow-2xl border border-border overflow-hidden flex flex-col">
@@ -423,7 +529,7 @@ export default function UserManagementPage() {
               {!isEditing && (
                 <div className="bg-blue-500/10 text-blue-700 dark:text-blue-400 p-3 rounded-lg text-sm flex gap-2 items-start mb-6 border border-blue-500/20">
                   <ShieldCheck className="h-5 w-5 shrink-0" />
-                  <p><strong>Note:</strong> The user will be created without affecting your current session.</p>
+                  <p><strong>Firebase Authentication Sync:</strong> This will automatically create the user account in Firebase Auth and link their assigned store branches.</p>
                 </div>
               )}
 
@@ -453,23 +559,22 @@ export default function UserManagementPage() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">
-                    {t("admin.users.password")} {isEditing ? `(${t("admin.users.password_placeholder")})` : "*"}
-                  </label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    placeholder="Minimum 6 characters"
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-border rounded-lg p-2.5 text-sm outline-none focus:border-red-500"
-                    required={!isEditing}
-                  />
-                  {!isEditing && <p className="text-xs text-muted-foreground mt-1">Must be at least 6 characters. The user will use this to log in for the first time.</p>}
-                </div>
+                {!isEditing && (
+                  <div>
+                    <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">{t("admin.users.password")} *</label>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      placeholder="At least 6 characters"
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-border rounded-lg p-2.5 text-sm outline-none focus:border-red-500"
+                      required
+                    />
+                  </div>
+                )}
 
                 <div>
-                  <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">{t("admin.users.user_role")} *</label>
+                  <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">{t("admin.users.role")} *</label>
                   <select
                     value={role}
                     onChange={e => setRole(e.target.value)}
@@ -485,152 +590,165 @@ export default function UserManagementPage() {
                   <div>
                     <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">{t("admin.users.branch_access")}</label>
                     <div className="bg-slate-50 dark:bg-slate-950 border border-border rounded-xl p-2 space-y-1">
-                      {availableBranches.length > 0 ? availableBranches.map(branch => {
-                        // We map branch IDs to storeIds (e.g. "alamein4" -> "eL-alamein-4")
-                        const mappedStoreId = branch.id === "alamein4" ? "eL-alamein-4" : branch.id === "ola" ? "ola-el-koronfol" : branch.id;
-                        const isChecked = selectedBranches.includes(mappedStoreId);
-                        
-                        return (
-                          <label key={branch.id} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${isChecked ? 'bg-red-500/10 border-red-500/30' : 'border-transparent hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                            <input 
-                              type="checkbox" 
-                              checked={isChecked}
-                              onChange={() => toggleBranch(mappedStoreId)}
-                              className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
-                            />
-                            <div>
-                              <p className="font-semibold text-sm">{branch.name}</p>
-                              <p className="text-xs text-muted-foreground">storeId: {mappedStoreId} • ✓ Active</p>
-                            </div>
-                          </label>
-                        )
-                      }) : (
-                         <div className="p-3 text-sm text-muted-foreground">
-                           <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${selectedBranches.includes('eL-alamein-4') ? 'bg-red-500/10 border-red-500/30' : 'border-transparent hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                             <input type="checkbox" checked={selectedBranches.includes('eL-alamein-4')} onChange={() => toggleBranch('eL-alamein-4')} className="w-4 h-4 text-red-600 rounded focus:ring-red-500"/>
-                             <div><p className="font-semibold text-sm">El Alamein 4</p><p className="text-xs text-muted-foreground">storeId: eL-alamein-4</p></div>
-                           </label>
-                           <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${selectedBranches.includes('ola-el-koronfol') ? 'bg-red-500/10 border-red-500/30' : 'border-transparent hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                             <input type="checkbox" checked={selectedBranches.includes('ola-el-koronfol')} onChange={() => toggleBranch('ola-el-koronfol')} className="w-4 h-4 text-red-600 rounded focus:ring-red-500"/>
-                             <div><p className="font-semibold text-sm">Ola El Koronfol</p><p className="text-xs text-muted-foreground">storeId: ola-el-koronfol</p></div>
-                           </label>
-                         </div>
-                      )}
+                      <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${selectedBranches.includes('eL-alamein-4') ? 'bg-red-500/10 border-red-500/30' : 'border-transparent hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                        <input 
+                          type="checkbox" 
+                          checked={selectedBranches.includes('eL-alamein-4')} 
+                          onChange={() => toggleBranch('eL-alamein-4')} 
+                          className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
+                        />
+                        <div>
+                          <p className="font-semibold text-sm">El Alamein 4</p>
+                          <p className="text-xs text-muted-foreground">storeId: eL-alamein-4</p>
+                        </div>
+                      </label>
+                      <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${selectedBranches.includes('ola-el-koronfol') ? 'bg-red-500/10 border-red-500/30' : 'border-transparent hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                        <input 
+                          type="checkbox" 
+                          checked={selectedBranches.includes('ola-el-koronfol')} 
+                          onChange={() => toggleBranch('ola-el-koronfol')} 
+                          className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
+                        />
+                        <div>
+                          <p className="font-semibold text-sm">Ola El Koronfol</p>
+                          <p className="text-xs text-muted-foreground">storeId: ola-el-koronfol</p>
+                        </div>
+                      </label>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-2">Select which branches this user can access. Manager roles typically need at least one branch.</p>
                   </div>
                 )}
-                
-                <div className="mt-4 pt-2">
-                  <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">{t("admin.users.special_features")}</label>
-                  <div className="bg-slate-50 dark:bg-slate-950 border border-border rounded-xl p-3">
-                    <label className="flex items-center justify-between cursor-pointer">
-                      <div>
-                        <p className="font-semibold text-sm">{t("admin.users.feature_scanner")}</p>
-                        <p className="text-xs text-muted-foreground">{t("admin.users.feature_scanner_desc")}</p>
-                      </div>
-                      <div className="relative inline-flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={features.canUseMasterScanner || false}
-                          onChange={(e) => setFeatures({...features, canUseMasterScanner: e.target.checked})}
-                          className="sr-only peer"
-                        />
-                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-red-600"></div>
-                      </div>
-                    </label>
-                  </div>
-                </div>
-                
-                <div className="p-4 border-t border-border bg-slate-50 dark:bg-slate-950 flex justify-end gap-3 mt-4 -mx-6 -mb-6">
-                  <button
-                    type="button"
-                    onClick={() => setIsModalOpen(false)}
-                    className="px-4 py-2 rounded-xl font-bold text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
-                    disabled={submitting}
-                  >
-                    {t("common.cancel")}
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="px-6 py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
-                  >
-                    {submitting ? t("common.loading") : (isEditing ? t("common.save") : <><Plus className="h-4 w-4" /> {t("admin.users.add_new")}</>)}
-                  </button>
+
+                <div className="pt-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isActive}
+                      onChange={e => setIsActive(e.target.checked)}
+                      className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
+                    />
+                    <span className="text-sm font-semibold">{t("admin.users.account_active")}</span>
+                  </label>
                 </div>
               </form>
+            </div>
+
+            <div className="p-4 border-t border-border bg-slate-50 dark:bg-slate-950 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="px-4 py-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {t("admin.users.cancel")}
+              </button>
+              <button
+                type="submit"
+                form="user-form"
+                disabled={submitting}
+                className="bg-red-600 hover:bg-red-500 text-white px-5 py-2 rounded-xl text-sm font-bold shadow-md transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                {submitting ? t("admin.users.saving") : isEditing ? t("admin.users.update") : t("admin.users.create")}
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* RPG Stats Modal */}
-      <AnimatePresence>
-        {selectedProfileUser && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4"
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              className="bg-slate-950 border border-slate-800 rounded-3xl p-8 max-w-2xl w-full text-white shadow-2xl relative overflow-hidden"
-            >
-              {/* Background Glow */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-indigo-500/20 blur-[100px] rounded-full pointer-events-none" />
-              
-              <button 
-                onClick={() => setSelectedProfileUser(null)}
-                className="absolute top-6 right-6 p-2 rounded-full bg-slate-900 hover:bg-slate-800 transition-colors z-10"
-              >
-                <X className="w-5 h-5 text-slate-400" />
+      {/* Password Reset Modal */}
+      {isPasswordModalOpen && passwordResetUser && (
+        <div className="fixed inset-0 z-[105] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl border border-border overflow-hidden">
+            <div className="p-4 border-b border-border bg-slate-50 dark:bg-slate-950 flex justify-between items-center">
+              <h3 className="font-bold text-base flex items-center gap-2 text-amber-500">
+                <KeyRound className="h-5 w-5" /> Change Password
+              </h3>
+              <button onClick={() => setIsPasswordModalOpen(false)} className="p-1 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg">
+                <X className="h-4 w-4" />
               </button>
+            </div>
 
-              <div className="flex flex-col md:flex-row gap-8 items-center md:items-start relative z-10">
-                <div className="flex-1 text-center md:text-left space-y-4">
-                  <div className="inline-block px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-400 text-xs font-black tracking-widest uppercase mb-2">
-                    Lvl 42 {selectedProfileUser.role.replace('_', ' ')}
-                  </div>
-                  <h2 className="text-4xl font-black">{selectedProfileUser.displayName || 'Unknown Hero'}</h2>
-                  <p className="text-slate-400 font-medium">{selectedProfileUser.email}</p>
-                  
-                  <div className="grid grid-cols-2 gap-4 mt-6">
-                    <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800">
-                      <p className="text-xs text-slate-500 font-bold uppercase mb-1">XP Points</p>
-                      <p className="text-2xl font-black text-amber-400">14,250</p>
-                    </div>
-                    <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800">
-                      <p className="text-xs text-slate-500 font-bold uppercase mb-1">Quests Completed</p>
-                      <p className="text-2xl font-black text-emerald-400">312</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="w-full md:w-80 h-80 bg-slate-900/50 rounded-full border border-slate-800 p-4 flex items-center justify-center">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RadarChart cx="50%" cy="50%" outerRadius="70%" data={[
-                      { subject: 'Speed', A: 85, fullMark: 100 },
-                      { subject: 'Accuracy', A: 98, fullMark: 100 },
-                      { subject: 'Sales', A: 70, fullMark: 100 },
-                      { subject: 'Attendance', A: 100, fullMark: 100 },
-                      { subject: 'Reviews', A: 88, fullMark: 100 },
-                    ]}>
-                      <PolarGrid stroke="#334155" />
-                      <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 'bold' }} />
-                      <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                      <Radar name="Stats" dataKey="A" stroke="#8b5cf6" strokeWidth={3} fill="#8b5cf6" fillOpacity={0.4} />
-                    </RadarChart>
-                  </ResponsiveContainer>
-                </div>
+            <form onSubmit={handlePasswordResetSubmit} className="p-6 space-y-4">
+              <div>
+                <p className="text-xs text-muted-foreground font-semibold">User Account:</p>
+                <p className="font-bold text-sm text-foreground">{passwordResetUser.displayName}</p>
+                <p className="text-xs text-slate-400 font-mono">{passwordResetUser.email}</p>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
+              <div>
+                <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">New Password *</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  placeholder="Enter new password (min 6 chars)"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-border rounded-lg p-2.5 text-sm outline-none focus:border-amber-500"
+                  required
+                  minLength={6}
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsPasswordModalOpen(false)}
+                  className="px-4 py-2 text-sm font-semibold text-muted-foreground"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={resettingPassword}
+                  className="bg-amber-600 hover:bg-amber-500 text-white px-5 py-2 rounded-xl text-sm font-bold shadow-md transition-colors disabled:opacity-50 flex items-center gap-2"
+                >
+                  {resettingPassword ? "Updating..." : "Update Password"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete User Confirmation Modal */}
+      {isDeleteModalOpen && userToDelete && (
+        <div className="fixed inset-0 z-[105] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl border border-red-500/30 overflow-hidden">
+            <div className="p-4 border-b border-border bg-red-500/10 flex justify-between items-center">
+              <h3 className="font-bold text-base flex items-center gap-2 text-red-600">
+                <AlertTriangle className="h-5 w-5" /> Delete User Account
+              </h3>
+              <button onClick={() => setIsDeleteModalOpen(false)} className="p-1 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-foreground">
+                Are you sure you want to permanently delete user <strong className="text-red-500">{userToDelete.displayName}</strong> ({userToDelete.email})?
+              </p>
+              <p className="text-xs text-muted-foreground bg-slate-100 dark:bg-slate-800 p-3 rounded-lg border border-border">
+                ⚠️ This action will delete the user account from <strong>Firebase Authentication</strong> and remove their record from the database. This action cannot be undone.
+              </p>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsDeleteModalOpen(false)}
+                  className="px-4 py-2 text-sm font-semibold text-muted-foreground"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteUserSubmit}
+                  disabled={deletingUser}
+                  className="bg-red-600 hover:bg-red-500 text-white px-5 py-2 rounded-xl text-sm font-bold shadow-md transition-colors disabled:opacity-50 flex items-center gap-2"
+                >
+                  {deletingUser ? "Deleting..." : "Permanently Delete"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
