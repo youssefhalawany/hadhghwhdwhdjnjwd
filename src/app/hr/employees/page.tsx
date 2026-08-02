@@ -800,9 +800,9 @@ export default function EmployeesPage() {
         {selectedEmployee && (() => {
           const sid = (selectedEmployee.storeId || "").toLowerCase();
           const isOla = sid.includes("ola") || sid.includes("koronfol") || sid.includes("anh") || currentBranch === "ola";
-          const companyTitleAr = isOla ? "شركة اي ان اتش للتجارة والخدمات البترولية" : "الشركة المصرية للتجارة";
-          const companySubtitleEn = isOla ? "ANH Trading & Petroleum Services" : "Circle K Franchise - Egypt";
-          const companyPartyName = isOla ? "شركة اي ان اتش للتجارة والخدمات البترولية (ANH)" : "الشركة المصرية للتجارة (El Masreya for Trade - Circle K)";
+          const companyTitleAr = isOla ? "شركة اي ان اتش للتجارة" : "الشركة المصرية للتجارة";
+          const companySubtitleEn = isOla ? "ANH Trading" : "Circle K Franchise - Egypt";
+          const companyPartyName = isOla ? "شركة اي ان اتش للتجارة (ANH)" : "الشركة المصرية للتجارة (El Masreya for Trade - Circle K)";
 
           return (
           <div className="content-wrapper" style={{ maxWidth: "800px", margin: "0 auto", color: "#000", fontFamily: "'Cairo', 'Tajawal', system-ui, sans-serif" }}>
