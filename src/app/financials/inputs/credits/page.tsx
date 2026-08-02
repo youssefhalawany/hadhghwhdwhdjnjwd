@@ -2627,7 +2627,14 @@ export default function CreditsPage() {
       )}
     </AnimatePresence>
 
-    {selectedCreditForPrint && (
+    {selectedCreditForPrint && (() => {
+      const cBranchStr = ((selectedCreditForPrint as any).branchId || (selectedCreditForPrint as any).storeId || currentBranch || "").toLowerCase();
+      const isOlaBranch = cBranchStr.includes("ola") || cBranchStr.includes("koronfol");
+      const companyNameDisplay = isOlaBranch ? "ANH Trade" : "El Masreya for Trade";
+      const branchNameDisplay = isOlaBranch ? "Ola El Koronfol" : "El Alamein 4";
+      const branchNameHeaderDisplay = isOlaBranch ? "CIRCLE K OLA EL KORONFOL" : "CIRCLE K EL-ALAMEIN 4";
+
+      return (
       <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
         <div id="print-credit-container" style={{ width: '794px', minHeight: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
           
@@ -2638,7 +2645,7 @@ export default function CreditsPage() {
                 <span style={{ fontSize: '30px', fontWeight: 'bold', color: '#000', lineHeight: 1 }}>K</span>
               </div>
               <div>
-                <h1 style={{ fontSize: '20px', fontWeight: 'bold', color: '#000', margin: 0, textTransform: 'uppercase', letterSpacing: '-0.5px' }}>CIRCLE K EL-ALAMEIN 4</h1>
+                <h1 style={{ fontSize: '20px', fontWeight: 'bold', color: '#000', margin: 0, textTransform: 'uppercase', letterSpacing: '-0.5px' }}>{branchNameHeaderDisplay}</h1>
                 <p style={{ fontSize: '12px', color: '#333', margin: '2px 0 0', fontWeight: 'bold' }}>CREDIT APPROVAL REPORT</p>
               </div>
             </div>
@@ -2670,7 +2677,7 @@ export default function CreditsPage() {
                     <span style={{ fontSize: '10px', color: '#666', textTransform: 'uppercase', fontWeight: 'bold' }}>Our Company</span>
                     <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#333' }}>اسم شركتنا</span>
                   </div>
-                  <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '16px', color: '#000' }}>El Masreya for Trade</div>
+                  <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '16px', color: '#000' }}>{companyNameDisplay}</div>
                 </div>
                 <div style={{ flex: 1, padding: '12px 15px', backgroundColor: '#ffffff' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
@@ -2704,7 +2711,7 @@ export default function CreditsPage() {
                     <span style={{ fontSize: '10px', color: '#666', textTransform: 'uppercase', fontWeight: 'bold' }}>Branch</span>
                     <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#333' }}>اسم الفرع</span>
                   </div>
-                  <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '16px', color: '#000' }}>El Alamein 4</div>
+                  <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '16px', color: '#000' }}>{branchNameDisplay}</div>
                 </div>
                 <div style={{ flex: 1, padding: '12px 15px', backgroundColor: '#ffffff' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
@@ -2790,7 +2797,7 @@ export default function CreditsPage() {
                   boxShadow: 'inset 0 0 0 1px rgba(0,0,128,0.2), 0 0 0 1px rgba(0,0,128,0.2)'
                 }}>
                   <span style={{ fontSize: '20px', fontWeight: '900', color: '#000080', letterSpacing: '1px', lineHeight: 1.2 }}>Circle k</span>
-                  <span style={{ fontSize: '16px', fontWeight: '900', color: '#000080', letterSpacing: '0.5px', lineHeight: 1.2 }}>El Alamein 4</span>
+                  <span style={{ fontSize: '16px', fontWeight: '900', color: '#000080', letterSpacing: '0.5px', lineHeight: 1.2 }}>{branchNameDisplay}</span>
                 </div>
               </div>
             </div>
@@ -2820,7 +2827,7 @@ export default function CreditsPage() {
 
         </div>
       </div>
-    )}
+    ); })()}
 
     {selectedCreditForPrint && (() => {
       const urls = selectedCreditForPrint.poUrls && selectedCreditForPrint.poUrls.length > 0 

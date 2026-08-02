@@ -508,7 +508,7 @@ export default function ChequesPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '48px' }}>
                 <div>
                   <p style={{ fontSize: '12px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '8px', fontWeight: 'bold' }}>Company</p>
-                  <p style={{ fontSize: '18px', fontWeight: '800', color: '#1e293b', margin: '0 0 4px 0' }}>El Masreya for Trade</p>
+                  <p style={{ fontSize: '18px', fontWeight: '800', color: '#1e293b', margin: '0 0 4px 0' }}>{(selectedForPrint.storeId || currentBranch || "").toLowerCase().includes("ola") || (selectedForPrint.storeId || currentBranch || "").toLowerCase().includes("koronfol") ? "ANH Trade" : "El Masreya for Trade"}</p>
                   <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>Branch: <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{getBranchName(selectedForPrint.storeId)}</span></p>
                 </div>
                 <div style={{ textAlign: 'right' }}>
