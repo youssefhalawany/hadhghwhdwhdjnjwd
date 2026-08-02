@@ -98,7 +98,13 @@
       "select_branches": "Select Branches (For Manager)",
       "special_features": "Special Features",
       "feature_scanner": "Master Item Scanner",
-      "feature_scanner_desc": "Scan barcodes to view detailed pricing and history."
+      "feature_scanner_desc": "Scan barcodes to view detailed pricing and history.",
+      "role": "User Role",
+      "account_active": "Account Active (User can log in)",
+      "cancel": "Cancel",
+      "create": "Create User",
+      "update": "Update User",
+      "saving": "Saving..."
     },
     "financials_inputs": {
       "loading": "Loading overview...",

@@ -197,7 +197,10 @@ export default function UserManagementPage() {
           },
           body: JSON.stringify(payload)
         });
-        const data = await res.json();
+        const text = await res.text();
+        let data: any = {};
+        try { data = JSON.parse(text); } catch (e) {}
+
         if (res.ok) {
           toast.success("User updated successfully in Firebase Auth & Database!");
           setIsModalOpen(false);
@@ -214,8 +217,11 @@ export default function UserManagementPage() {
           },
           body: JSON.stringify(payload)
         });
-        const data = await res.json();
-        if (res.ok && data.uid) {
+        const text = await res.text();
+        let data: any = {};
+        try { data = JSON.parse(text); } catch (e) {}
+
+        if (res.ok && (data.success || data.uid)) {
           toast.success("User created successfully in Firebase Auth & Database!");
           setIsModalOpen(false);
         } else {
@@ -579,7 +585,7 @@ export default function UserManagementPage() {
                 )}
 
                 <div>
-                  <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">{t("admin.users.role")} *</label>
+                  <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">{t("admin.users.role") !== "admin.users.role" ? t("admin.users.role") : "USER ROLE"} *</label>
                   <select
                     value={role}
                     onChange={e => setRole(e.target.value)}
@@ -631,7 +637,9 @@ export default function UserManagementPage() {
                       onChange={e => setIsActive(e.target.checked)}
                       className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
                     />
-                    <span className="text-sm font-semibold">{t("admin.users.account_active")}</span>
+                    <span className="text-sm font-semibold">
+                      {t("admin.users.account_active") !== "admin.users.account_active" ? t("admin.users.account_active") : "Account Active (User Can Log In)"}
+                    </span>
                   </label>
                 </div>
               </form>
@@ -643,7 +651,7 @@ export default function UserManagementPage() {
                 onClick={() => setIsModalOpen(false)}
                 className="px-4 py-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
               >
-                {t("admin.users.cancel")}
+                {t("admin.users.cancel") !== "admin.users.cancel" ? t("admin.users.cancel") : "Cancel"}
               </button>
               <button
                 type="submit"
@@ -651,7 +659,7 @@ export default function UserManagementPage() {
                 disabled={submitting}
                 className="bg-red-600 hover:bg-red-500 text-white px-5 py-2 rounded-xl text-sm font-bold shadow-md transition-colors disabled:opacity-50 flex items-center gap-2"
               >
-                {submitting ? t("admin.users.saving") : isEditing ? t("admin.users.update") : t("admin.users.create")}
+                {submitting ? "Saving..." : isEditing ? "Update User" : "Create User"}
               </button>
             </div>
           </div>

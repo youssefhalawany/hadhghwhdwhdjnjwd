@@ -98,7 +98,13 @@
       "select_branches": "تحديد الفروع (للمدير)",
       "special_features": "ميزات خاصة",
       "feature_scanner": "ماسح الباركود الرئيسي",
-      "feature_scanner_desc": "مسح الباركود لعرض التسعير التفصيلي والتاريخ."
+      "feature_scanner_desc": "مسح الباركود لعرض التسعير التفصيلي والتاريخ.",
+      "role": "دور المستخدم",
+      "account_active": "الحساب مفعل (يمكنه الدخول)",
+      "cancel": "إلغاء",
+      "create": "إنشاء المستخدم",
+      "update": "تحديث المستخدم",
+      "saving": "جاري الحفظ..."
     },
     "financials_inputs": {
       "loading": "جاري تحميل الملخص...",

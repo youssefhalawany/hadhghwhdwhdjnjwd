@@ -79,17 +79,37 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // 1. Create user in Firebase Auth
-    const userRecord = await getAdminAuth().createUser({
-      email,
-      password,
-      displayName,
-      disabled: isActive === false
-    });
-
-    // 2. Create user document in Firestore (Fault tolerant)
+    // 1. Create or update user in Firebase Auth
+    let userUid = "";
     try {
-      await getAdminDb().collection("users").doc(userRecord.uid).set({
+      const userRecord = await getAdminAuth().createUser({
+        email,
+        password,
+        displayName,
+        disabled: isActive === false
+      });
+      userUid = userRecord.uid;
+    } catch (authErr: any) {
+      if (authErr.code === "auth/email-already-exists" || authErr.message?.includes("already in use")) {
+        try {
+          const existingUser = await getAdminAuth().getUserByEmail(email);
+          userUid = existingUser.uid;
+          await getAdminAuth().updateUser(userUid, {
+            password,
+            displayName,
+            disabled: isActive === false
+          });
+        } catch (e: any) {
+          return NextResponse.json({ error: "The email address is already in use by another user account." }, { status: 400 });
+        }
+      } else {
+        return NextResponse.json({ error: authErr.message || "Failed to create Firebase Auth user." }, { status: 400 });
+      }
+    }
+
+    // 2. Create user document in Firestore using Auth UID (Fault tolerant)
+    try {
+      await getAdminDb().collection("users").doc(userUid).set({
         email,
         displayName: displayName || "",
         role,
@@ -98,7 +118,7 @@ export async function POST(req: NextRequest) {
         features: features || {},
         createdAt: new Date().toISOString(),
         createdBy: admin.uid
-      });
+      }, { merge: true });
     } catch (fsErr) {
       console.error("Firestore user doc create failed:", fsErr);
     }
@@ -111,7 +131,7 @@ export async function POST(req: NextRequest) {
         role: admin.role,
         action: "Create User",
         previousValue: "N/A",
-        newValue: `Created user ${email} with role ${role}`,
+        newValue: `Created user ${email} (${userUid}) with role ${role}`,
         timestamp: new Date().toISOString(),
         ip: req.headers.get("x-forwarded-for") || "Server",
         device: req.headers.get("user-agent") || "API Client"
@@ -120,10 +140,10 @@ export async function POST(req: NextRequest) {
       console.error("Audit log creation failed:", auditErr);
     }
 
-    return NextResponse.json({ success: true, uid: userRecord.uid });
+    return NextResponse.json({ success: true, uid: userUid });
   } catch (error: any) {
     console.error("Error creating user:", error);
-    return NextResponse.json({ error: error.message || "Failed to create user" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed to create user" }, { status: 400 });
   }
 }
 
