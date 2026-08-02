@@ -49,12 +49,25 @@ export default function FinancialInputsOverview() {
   }, []);
 
   useEffect(() => {
+    const storedName = localStorage.getItem("circlek_user_name");
+    if (storedName) setUserName(storedName);
+
+    const handleUserChanged = (e: CustomEvent) => {
+      if (e.detail) setUserName(e.detail);
+    };
+    window.addEventListener("circlek_user_changed", handleUserChanged as any);
+
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
-        setUserName(user.displayName || "Manager");
+        const name = localStorage.getItem("circlek_user_name") || user.displayName || user.email?.split("@")[0] || "Manager";
+        setUserName(name);
       }
     });
-    return () => unsubscribe();
+
+    return () => {
+      window.removeEventListener("circlek_user_changed", handleUserChanged as any);
+      unsubscribe();
+    };
   }, []);
 
   const getShiftName = (hour: number) => {

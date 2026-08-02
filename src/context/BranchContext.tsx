@@ -6,7 +6,7 @@ export type BranchId = "alamein4" | "ola" | "all"; // 'all' might be used for ow
 
 interface BranchContextType {
   currentBranch: BranchId;
-  setBranch: (branch: BranchId) => void;
+  setBranch: (branch: BranchId, overrideAllowed?: { id: BranchId; name: string }[]) => void;
   availableBranches: { id: BranchId; name: string }[];
   setAvailableBranches: (branches: { id: BranchId; name: string }[]) => void;
 }
@@ -35,13 +35,14 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const setBranch = (branch: BranchId) => {
+  const setBranch = (branch: BranchId, overrideAllowed?: { id: BranchId; name: string }[]) => {
     // If availableBranches is restricted, verify the requested branch is permitted
-    if (availableBranches.length > 0) {
-      const isAllowed = availableBranches.some((b) => b.id === branch);
+    const allowed = overrideAllowed || availableBranches;
+    if (allowed.length > 0) {
+      const isAllowed = allowed.some((b) => b.id === branch);
       if (!isAllowed) {
-        console.warn(`Attempted to switch to unauthorized branch: ${branch}. Defaulting to ${availableBranches[0].id}`);
-        const fallback = availableBranches[0].id;
+        console.warn(`Attempted to switch to unauthorized branch: ${branch}. Defaulting to ${allowed[0].id}`);
+        const fallback = allowed[0].id;
         setCurrentBranch(fallback);
         localStorage.setItem("circlek_current_branch", fallback);
         return;

@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { Sun, Moon, Shield, Database, LayoutDashboard, FileText, Printer, ClipboardList, CheckCircle, Search, LogOut, User, Users, Menu, X, Bell, PackageX, Truck, CalendarDays, DollarSign, Activity, Wallet, Tag, Sparkles, Barcode, Briefcase, Clock, PackageMinus, Package, Bot, ShoppingCart, Box } from "lucide-react";
 import { auth, messaging, dbService, db } from "@/lib/firebase";
 import { getToken } from "firebase/messaging";
-import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
+import { signInWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile } from "firebase/auth";
 import { collection, query, where, onSnapshot, doc, getDoc, getDocs, setDoc, updateDoc, orderBy, limit } from "firebase/firestore";
 import PwaInstallPrompt from "./PwaInstallPrompt";
 import type { User as FirebaseUser } from "firebase/auth";
@@ -86,16 +86,16 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
             const token = await getToken(messagingInstance, tokenOptions);
             if (token) {
-              console.log("FCM Push Token active for uid:", token);
               const activeRole = localStorage.getItem("circlek_role") || "manager";
-              const emailStr = currentUserObj?.email || user?.email || "youssefhalawanyy@gmail.com";
-              const activeBranch = currentBranchRef.current;
+              const emailStr = currentUserObj?.email || user?.email || "user@ckk.com";
+              const activeBranch = localStorage.getItem("circlek_current_branch") || "alamein4";
               const storeIds = [activeBranch === "ola" ? "ola-el-koronfol" : "eL-alamein-4"];
 
               const uid = currentUserObj?.uid || user?.uid;
               if (uid) {
                 await dbService.setDoc("user_tokens", uid, {
                   fcmToken: token,
+                  tokens: [token],
                   email: emailStr,
                   role: activeRole,
                   branchId: activeBranch,
@@ -109,8 +109,6 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                   branchId: activeBranch
                 }).catch(() => {});
               }
-
-              toast.success("🔔 Lock screen push notifications active for this device!");
             }
           }
         }
@@ -134,9 +132,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     }
   }, []);
 
-  // Initialize theme, role, and mock status from localStorage
   useEffect(() => {
-    // Theme
     const storedTheme = localStorage.getItem("circlek_theme") as "light" | "dark";
     if (storedTheme) {
       setTheme(storedTheme);
@@ -145,18 +141,13 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       document.documentElement.classList.add("dark");
     }
 
-    // Role
     const storedRole = localStorage.getItem("circlek_role") || "owner";
     setRole(storedRole);
 
-    // Fast Splash screen timer (optimized for desktop & PWA speed)
     const splashTimer = setTimeout(() => setMinSplashDone(true), 300);
-
-    // Live Clock timer (updates every 30s to minimize rerenders)
     const clockTimer = setInterval(() => setCurrentDateTime(new Date()), 30000);
     setCurrentDateTime(new Date());
 
-    // Firebase Auth Listener
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
 
@@ -164,7 +155,6 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
         if (!localStorage.getItem("has_seen_welcome_anh_v2")) {
           setShowWelcomeModal(true);
         }
-        // Fetch user document (supports uid, emailKey like mahmoud_ck_com, or email field)
         try {
           let userDocData: any = null;
 
@@ -186,26 +176,35 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
           }
 
           if (userDocData) {
-            setUserDoc(userDocData);
+            const mName = userDocData.displayName || userDocData.name || userDocData.features?.displayName || currentUser.displayName || currentUser.email?.split("@")[0] || "Manager";
+            const userRoleResolved = userDocData.role || userDocData.features?.role || storedRole || "manager";
 
-            // Auto-sync emailKey document (e.g. mahmoud_ck_com) to currentUser.uid so UID is used as document key (like old users)
-            if (currentUser.uid && !docSnapByUid.exists()) {
+            const normalizedUserDoc = {
+              ...userDocData,
+              displayName: mName,
+              role: userRoleResolved
+            };
+
+            setUserDoc(normalizedUserDoc);
+
+            if (currentUser && mName && (!currentUser.displayName || currentUser.displayName !== mName)) {
+              updateProfile(currentUser, { displayName: mName }).catch(console.warn);
+            }
+
+            if (currentUser.uid) {
               setDoc(doc(db, "users", currentUser.uid), {
-                ...userDocData,
+                ...normalizedUserDoc,
                 updatedAt: new Date().toISOString()
               }, { merge: true }).catch(console.warn);
             }
 
-            const mName = userDocData.displayName || currentUser.displayName || "Manager";
             localStorage.setItem("circlek_user_name", mName);
             window.dispatchEvent(new CustomEvent("circlek_user_changed", { detail: mName }));
 
-            const userRoleResolved = userDocData.role || storedRole || "manager";
             setRole(userRoleResolved);
             localStorage.setItem("circlek_role", userRoleResolved);
             window.dispatchEvent(new CustomEvent("circlek_role_changed", { detail: userRoleResolved }));
 
-            // Log Sign-In event once per browser session
             if (typeof window !== "undefined" && !sessionStorage.getItem(`signin_logged_${currentUser.uid}`)) {
               sessionStorage.setItem(`signin_logged_${currentUser.uid}`, "true");
               dbService.logAction(
@@ -218,46 +217,45 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
               ).catch(() => {});
             }
 
+            const rawStoreIds: any[] = [];
+            if (Array.isArray(userDocData.storeIds)) rawStoreIds.push(...userDocData.storeIds);
+            if (Array.isArray(userDocData.features?.storeIds)) rawStoreIds.push(...userDocData.features.storeIds);
+            if (userDocData.storeId) rawStoreIds.push(userDocData.storeId);
+            if (userDocData.branchId) rawStoreIds.push(userDocData.branchId);
+            if (userDocData.features?.storeId) rawStoreIds.push(userDocData.features.storeId);
+            if (userDocData.features?.branchId) rawStoreIds.push(userDocData.features.branchId);
+
+            const mappedBranches: { id: BranchId; name: string }[] = [];
+            const storeStrings = rawStoreIds.map((s) => String(s).toLowerCase());
+
+            const hasAlamein = storeStrings.some((s) => s.includes("alamein") || s.includes("4"));
+            const hasOla = storeStrings.some((s) => s.includes("ola") || s.includes("koronfol"));
+
+            if (hasAlamein) {
+              mappedBranches.push({ id: "alamein4", name: "El Alamein 4" });
+            }
+            if (hasOla) {
+              mappedBranches.push({ id: "ola", name: "Ola El Koronfol" });
+            }
+
             if (userRoleResolved === "manager") {
-              // Map storeIds to local BranchIds for Manager
-              const allowedIds: string[] = Array.isArray(userDocData.storeIds) ? userDocData.storeIds : [];
-              const mappedBranches: { id: BranchId; name: string }[] = [];
-
-              if (allowedIds.includes("eL-alamein-4") || allowedIds.includes("alamein4")) {
-                mappedBranches.push({ id: "alamein4", name: "El Alamein 4" });
-              }
-              if (allowedIds.includes("ola-el-koronfol") || allowedIds.includes("ola")) {
-                mappedBranches.push({ id: "ola", name: "Ola El Koronfol" });
-              }
-
-              // Fallback for single storeId/branchId string
-              if (mappedBranches.length === 0) {
-                const bStr = (userDocData.branchId || userDocData.storeId || "").toLowerCase();
-                if (bStr.includes("ola") || bStr.includes("koronfol")) {
-                  mappedBranches.push({ id: "ola", name: "Ola El Koronfol" });
-                } else if (bStr.includes("alamein") || bStr.includes("4")) {
-                  mappedBranches.push({ id: "alamein4", name: "El Alamein 4" });
-                }
-              }
-
               if (mappedBranches.length > 0) {
                 setAvailableBranches(mappedBranches);
-                // Force select manager's assigned branch
-                setBranch(mappedBranches[0].id);
+                setBranch(mappedBranches[0].id, mappedBranches);
               }
             } else {
-              // Owner/Admin/Master gets full branch access
               setAvailableBranches(BRANCHES);
+              if (mappedBranches.length > 0) {
+                setBranch(mappedBranches[0].id, BRANCHES);
+              }
             }
           }
         } catch (err) {
           console.error("Failed to fetch user doc:", err);
         }
 
-        // Proactively register FCM Push token for Manager
         registerFcmPushToken(currentUser);
 
-        // Show welcome toast if just logged in
         if (typeof window !== "undefined") {
           const hasSeenWelcome = sessionStorage.getItem("circlek_welcomed");
           if (!hasSeenWelcome) {
