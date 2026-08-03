@@ -71,7 +71,6 @@ export async function POST(request: Request) {
         ]);
 
         tokensSnap.forEach((doc) => {
-          if (doc.id === "master_youssef" || doc.id === "manager") return;
           const data = doc.data();
           if (data.fcmToken && typeof data.fcmToken === 'string' && isTokenBranchMatched(data, branchId)) {
             targetTokens.push(data.fcmToken);
