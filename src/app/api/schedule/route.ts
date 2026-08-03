@@ -43,7 +43,11 @@ export async function GET(request: Request) {
     });
   } catch (error: any) {
     console.error('Error fetching schedule:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ 
+      error: error.message || 'Internal Server Error',
+      details: String(error),
+      stack: String(error?.stack)
+    }, { status: 500 });
   }
 }
 
