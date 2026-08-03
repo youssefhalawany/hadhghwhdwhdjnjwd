@@ -14,19 +14,18 @@ export async function GET(request: Request) {
     const adminDb = getAdminDb();
     
     // Fetch all schedule documents from Firestore admin
-    const snapshot = await adminDb.collection('schedules').get();
-    const monthDocs = snapshot.docs
-      .filter((d) => d.id.endsWith(`_${month}`))
-      .map((d) => ({ id: d.id, ...d.data() }));
+    const allDocs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const monthDocs = allDocs.filter((d) => d.id.endsWith(`_${month}`));
+    const docsToReturn = monthDocs.length > 0 ? monthDocs : allDocs;
 
-    if (monthDocs.length === 0) {
+    if (docsToReturn.length === 0) {
       return NextResponse.json({ schedule: null, schedules: [] });
     }
 
     let targetSchedule = null;
     if (storeId && storeId !== 'ALL' && storeId !== 'N/A') {
       const targetDbStoreId = getDbStoreId(storeId);
-      targetSchedule = monthDocs.find((s: any) =>
+      targetSchedule = docsToReturn.find((s: any) =>
         s.id === `${targetDbStoreId}_${month}` ||
         s.id === `${storeId}_${month}` ||
         normalizeBranchId(s.storeId) === normalizeBranchId(storeId)
@@ -34,7 +33,7 @@ export async function GET(request: Request) {
     }
 
     if (!targetSchedule) {
-      targetSchedule = monthDocs[0];
+      targetSchedule = docsToReturn[0];
     }
 
     return NextResponse.json({
