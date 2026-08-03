@@ -14,8 +14,9 @@ export async function GET(request: Request) {
     const adminDb = getAdminDb();
     
     // Fetch all schedule documents from Firestore admin
-    const allDocs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-    const monthDocs = allDocs.filter((d) => d.id.endsWith(`_${month}`));
+    const snapshot = await adminDb.collection('schedules').get();
+    const allDocs = snapshot.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+    const monthDocs = allDocs.filter((d: any) => d.id.endsWith(`_${month}`));
     const docsToReturn = monthDocs.length > 0 ? monthDocs : allDocs;
 
     if (docsToReturn.length === 0) {
