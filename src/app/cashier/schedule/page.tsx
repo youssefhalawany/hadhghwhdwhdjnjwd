@@ -217,29 +217,20 @@ export default function CashierSchedulePage() {
 
       // 2. Direct Firestore Client Fallback
       if (!loadedSchedule) {
-        const ALL_STORES = Array.from(new Set(["eL-alamein-4", "ola-el-koronfol", storeId, getDbStoreId(storeId)]));
+        const ALL_STORES = Array.from(new Set([storeId, getDbStoreId(storeId), "eL-alamein-4", "ola-el-koronfol"]));
         for (const sId of ALL_STORES) {
           try {
             const snap = await getDoc(doc(db, "schedules", `${sId}_${targetMonth}`));
             if (snap.exists()) {
               const sData = snap.data();
               if (sData && sData.assignments && sData.assignments.length > 0) {
-                const fullSched = { id: snap.id, ...sData };
-                const hasUserShift = sData.assignments?.some((day: any) =>
-                  day.shifts?.some((s: any) =>
-                    s.employeeId === currentUser?.id ||
-                    s.employeeId === currentUser?.employeeId ||
-                    (s.employeeName && targetUserNorm && normalizeArabicName(s.employeeName) === targetUserNorm)
-                  )
-                );
-                if (hasUserShift) {
-                  loadedSchedule = fullSched;
-                  break;
-                }
-                if (!loadedSchedule) loadedSchedule = fullSched;
+                loadedSchedule = { id: snap.id, ...sData };
+                break;
               }
             }
-          } catch {}
+          } catch (e) {
+            console.warn("Direct getDoc error:", e);
+          }
         }
       }
 
@@ -249,17 +240,11 @@ export default function CashierSchedulePage() {
           const allSnap = await getDocs(collection(db, "schedules"));
           if (!allSnap.empty) {
             const docsData = allSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-            loadedSchedule = docsData.find((s: any) =>
-              s.assignments?.some((day: any) =>
-                day.shifts?.some((st: any) =>
-                  st.employeeId === currentUser?.id ||
-                  st.employeeId === currentUser?.employeeId ||
-                  (st.employeeName && targetUserNorm && normalizeArabicName(st.employeeName) === targetUserNorm)
-                )
-              )
-            ) || docsData[0];
+            loadedSchedule = docsData[0];
           }
-        } catch {}
+        } catch (e) {
+          console.warn("Collection getDocs error:", e);
+        }
       }
 
       setSchedule(loadedSchedule);
@@ -354,7 +339,11 @@ export default function CashierSchedulePage() {
     return day.shifts.find((s: any) =>
       s.employeeId === user.id ||
       s.employeeId === user.employeeId ||
-      (s.employeeName && targetUserNorm && normalizeArabicName(s.employeeName) === targetUserNorm)
+      (s.employeeName && targetUserNorm && (
+        normalizeArabicName(s.employeeName) === targetUserNorm ||
+        normalizeArabicName(s.employeeName).includes(targetUserNorm) ||
+        targetUserNorm.includes(normalizeArabicName(s.employeeName))
+      ))
     );
   };
 
