@@ -126,36 +126,58 @@ export default function CashierHubPage() {
           ? authenticatedUser.storeId
           : (authenticatedUser.branchId || "eL-alamein-4");
         const sId = rawStoreId.toLowerCase().includes("ola") ? "ola-el-koronfol" : "eL-alamein-4";
+        const ALL_STORES = Array.from(new Set(["eL-alamein-4", "ola-el-koronfol", sId]));
 
-        let scheduleData: any = null;
+        let userShiftFound: string | null = null;
 
-        // 1. Direct Firestore check
-        try {
-          const snap = await getDoc(doc(db, "schedules", `${sId}_${month}`));
-          if (snap.exists()) {
-            scheduleData = snap.data();
+        // 1. Direct Firestore check across all store schedules
+        for (const storeKey of ALL_STORES) {
+          try {
+            const snap = await getDoc(doc(db, "schedules", `${storeKey}_${month}`));
+            if (snap.exists()) {
+              const data = snap.data();
+              if (data && (data.isPublished || data.isPublished === undefined)) {
+                const todayEntry = data.assignments?.find((d: any) => d.date === todayStr);
+                const myS = todayEntry?.shifts?.find((s: any) =>
+                  s.employeeId === authenticatedUser.id ||
+                  s.employeeId === authenticatedUser.employeeId ||
+                  (s.employeeName && s.employeeName.trim().toLowerCase() === authenticatedUser.name?.trim().toLowerCase())
+                );
+                if (myS) {
+                  userShiftFound = myS.shiftTime;
+                  break;
+                }
+              }
+            }
+          } catch {
+            // continue fallback
           }
-        } catch {
-          // continue fallback
         }
 
-        // 2. API fallback
-        if (!scheduleData) {
-          const res = await fetch(`/api/schedule?storeId=${sId}&month=${month}&t=${Date.now()}`, { cache: "no-store" });
-          const data = await res.json();
-          if (data.schedule) scheduleData = data.schedule;
+        // 2. API fallback if direct read didn't find shift
+        if (!userShiftFound) {
+          for (const storeKey of ALL_STORES) {
+            try {
+              const res = await fetch(`/api/schedule?storeId=${storeKey}&month=${month}&t=${Date.now()}`, { cache: "no-store" });
+              const data = await res.json();
+              if (data.schedule && (data.schedule.isPublished || data.schedule.isPublished === undefined)) {
+                const todayEntry = data.schedule.assignments?.find((d: any) => d.date === todayStr);
+                const myS = todayEntry?.shifts?.find((s: any) =>
+                  s.employeeId === authenticatedUser.id ||
+                  s.employeeId === authenticatedUser.employeeId ||
+                  (s.employeeName && s.employeeName.trim().toLowerCase() === authenticatedUser.name?.trim().toLowerCase())
+                );
+                if (myS) {
+                  userShiftFound = myS.shiftTime;
+                  break;
+                }
+              }
+            } catch {}
+          }
         }
 
-        if (scheduleData && (scheduleData.isPublished || scheduleData.isPublished === undefined)) {
-          const todayEntry = scheduleData.assignments?.find((d: any) => d.date === todayStr);
-          if (todayEntry) {
-            const myS = todayEntry.shifts?.find((s: any) =>
-              s.employeeId === authenticatedUser.id ||
-              s.employeeId === authenticatedUser.employeeId ||
-              (s.employeeName && s.employeeName.trim().toLowerCase() === authenticatedUser.name?.trim().toLowerCase())
-            );
-            if (myS) setTodayShift(myS.shiftTime);
-          }
+        if (userShiftFound) {
+          setTodayShift(userShiftFound);
         }
       } catch (err) {
         console.warn("Cashier today shift notice", err);

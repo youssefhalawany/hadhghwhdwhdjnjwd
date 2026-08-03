@@ -172,22 +172,39 @@ export default function CashierSchedulePage() {
       d.setMonth(d.getMonth() + offset);
       const targetMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       const storeId = resolveStoreId(currentUser);
-      const ALL_STORES = ["eL-alamein-4", "ola-el-koronfol", storeId];
+      const ALL_STORES = Array.from(new Set(["eL-alamein-4", "ola-el-koronfol", storeId, getDbStoreId(storeId)]));
 
       let loadedSchedule: any = null;
+      let matchedByShift: any = null;
+      let matchedByBranch: any = null;
 
-      // 1. Try reading directly from Firestore
+      // 1. Try reading directly from Firestore across all branch schedules
       for (const sId of ALL_STORES) {
         try {
           const snap = await getDoc(doc(db, "schedules", `${sId}_${targetMonth}`));
           if (snap.exists()) {
             const sData = snap.data();
             if (sData && (sData.isPublished || sData.isPublished === undefined)) {
-              if (normalizeBranchId(sData.storeId || sId) === normalizeBranchId(storeId)) {
-                loadedSchedule = { id: snap.id, ...sData };
-                break;
+              const fullSched = { id: snap.id, ...sData };
+
+              // Check if user is explicitly listed in this schedule's shifts
+              const hasUserShift = sData.assignments?.some((day: any) =>
+                day.shifts?.some((s: any) =>
+                  s.employeeId === currentUser.id ||
+                  s.employeeId === currentUser.employeeId ||
+                  (s.employeeName && s.employeeName.trim().toLowerCase() === currentUser.name?.trim().toLowerCase())
+                )
+              );
+
+              if (hasUserShift) {
+                matchedByShift = fullSched;
+                break; // Highest priority: user is scheduled here!
+              }
+
+              if (normalizeBranchId(sData.storeId || sId) === normalizeBranchId(storeId) && !matchedByBranch) {
+                matchedByBranch = fullSched;
               } else if (!loadedSchedule) {
-                loadedSchedule = { id: snap.id, ...sData };
+                loadedSchedule = fullSched;
               }
             }
           }
@@ -196,7 +213,9 @@ export default function CashierSchedulePage() {
         }
       }
 
-      // 2. If not found in Firestore direct, try API
+      loadedSchedule = matchedByShift || matchedByBranch || loadedSchedule;
+
+      // 2. If not found in Firestore direct, try API fallback
       if (!loadedSchedule) {
         const results = await Promise.all(
           ALL_STORES.map((sId) =>
@@ -211,7 +230,15 @@ export default function CashierSchedulePage() {
           .filter((s) => s && s.isPublished);
 
         if (published.length > 0) {
-          loadedSchedule = published.find((s) => normalizeBranchId(s.storeId) === normalizeBranchId(storeId)) || published[0];
+          loadedSchedule = published.find((s: any) =>
+            s.assignments?.some((day: any) =>
+              day.shifts?.some((st: any) =>
+                st.employeeId === currentUser.id ||
+                st.employeeId === currentUser.employeeId ||
+                (st.employeeName && st.employeeName.trim().toLowerCase() === currentUser.name?.trim().toLowerCase())
+              )
+            )
+          ) || published.find((s: any) => normalizeBranchId(s.storeId) === normalizeBranchId(storeId)) || published[0];
         }
       }
 
