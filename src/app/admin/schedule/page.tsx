@@ -274,6 +274,7 @@ export default function AdminSchedulePage() {
         ...generated,
         storeId: targetDbStoreId,
         branchName: getBranchDisplayName(targetDbStoreId),
+        isPublished: true,
         updatedAt: new Date().toISOString(),
       };
 
@@ -309,7 +310,7 @@ export default function AdminSchedulePage() {
     try {
       const targetDbStoreId = getDbStoreId(activeBranchId);
       const docId = `${targetDbStoreId}_${selectedMonth}`;
-      const isPub = publishState !== undefined ? publishState : schedule.isPublished;
+      const isPub = publishState !== undefined ? publishState : (schedule.isPublished !== undefined ? schedule.isPublished : true);
       const now = new Date().toISOString();
 
       const scheduleData: MonthlySchedule = {

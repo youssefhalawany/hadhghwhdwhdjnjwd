@@ -177,6 +177,6 @@ export function generateSchedule(
       defaultShift: rules.defaultShift ?? 'Morning'
     },
     assignments,
-    isPublished: false
+    isPublished: true
   };
 }

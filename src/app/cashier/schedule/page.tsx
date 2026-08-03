@@ -184,7 +184,7 @@ export default function CashierSchedulePage() {
           const snap = await getDoc(doc(db, "schedules", `${sId}_${targetMonth}`));
           if (snap.exists()) {
             const sData = snap.data();
-            if (sData && (sData.isPublished || sData.isPublished === undefined)) {
+            if (sData && sData.assignments && sData.assignments.length > 0) {
               const fullSched = { id: snap.id, ...sData };
 
               // Check if user is explicitly listed in this schedule's shifts

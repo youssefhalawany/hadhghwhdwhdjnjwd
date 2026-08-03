@@ -136,7 +136,7 @@ export default function CashierHubPage() {
             const snap = await getDoc(doc(db, "schedules", `${storeKey}_${month}`));
             if (snap.exists()) {
               const data = snap.data();
-              if (data && (data.isPublished || data.isPublished === undefined)) {
+              if (data && data.assignments && data.assignments.length > 0) {
                 const todayEntry = data.assignments?.find((d: any) => d.date === todayStr);
                 const myS = todayEntry?.shifts?.find((s: any) =>
                   s.employeeId === authenticatedUser.id ||
