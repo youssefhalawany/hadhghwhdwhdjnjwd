@@ -392,18 +392,36 @@ export default function AdminSchedulePage() {
   const applyBulkEmployeeShift = (employeeId: string, employeeName: string, shiftTime: string, onlyWeekdays = false) => {
     if (!schedule) return;
     const targetNormName = employeeName.trim().toLowerCase();
+    const empInfo = branchEmployees.find((e) => e.id === employeeId || e.name.trim().toLowerCase() === targetNormName) || allEmployees.find((e) => e.id === employeeId || e.name.trim().toLowerCase() === targetNormName);
+    const empPos = empInfo?.position || "Staff";
+    const canonicalName = empInfo?.name || employeeName;
+
     const newAssignments = schedule.assignments.map((day) => {
       const dateObj = new Date(day.date);
       const isWeekend = dateObj.getDay() === 5 || dateObj.getDay() === 6; // Fri / Sat
       if (onlyWeekdays && isWeekend) return day;
 
-      const newShifts = day.shifts.map((s) => {
-        const matches = s.employeeId === employeeId || (s.employeeName && s.employeeName.trim().toLowerCase() === targetNormName);
-        if (matches && !s.shiftTime.includes("Approved Leave")) {
-          return { ...s, shiftTime };
+      const existingIdx = day.shifts.findIndex(
+        (s) => s.employeeId === employeeId || (s.employeeName && s.employeeName.trim().toLowerCase() === targetNormName)
+      );
+
+      let newShifts = [...day.shifts];
+      if (existingIdx !== -1) {
+        if (!newShifts[existingIdx].shiftTime.includes("Approved Leave")) {
+          newShifts[existingIdx] = {
+            ...newShifts[existingIdx],
+            shiftTime,
+          };
         }
-        return s;
-      });
+      } else {
+        newShifts.push({
+          employeeId,
+          employeeName: canonicalName,
+          position: empPos,
+          shiftTime,
+        });
+      }
+
       return { ...day, shifts: newShifts };
     });
 
@@ -417,18 +435,36 @@ export default function AdminSchedulePage() {
   const applyPatternToEmployee = (employeeId: string, employeeName: string, workShift: string, offDayOfWeek: number) => {
     if (!schedule) return;
     const targetNormName = employeeName.trim().toLowerCase();
+    const empInfo = branchEmployees.find((e) => e.id === employeeId || e.name.trim().toLowerCase() === targetNormName) || allEmployees.find((e) => e.id === employeeId || e.name.trim().toLowerCase() === targetNormName);
+    const empPos = empInfo?.position || "Staff";
+    const canonicalName = empInfo?.name || employeeName;
+
     const newAssignments = schedule.assignments.map((day) => {
       const dateObj = new Date(day.date);
       const isOff = dateObj.getDay() === offDayOfWeek;
       const targetShift = isOff ? "Off" : workShift;
 
-      const newShifts = day.shifts.map((s) => {
-        const matches = s.employeeId === employeeId || (s.employeeName && s.employeeName.trim().toLowerCase() === targetNormName);
-        if (matches && !s.shiftTime.includes("Approved Leave")) {
-          return { ...s, shiftTime: targetShift };
+      const existingIdx = day.shifts.findIndex(
+        (s) => s.employeeId === employeeId || (s.employeeName && s.employeeName.trim().toLowerCase() === targetNormName)
+      );
+
+      let newShifts = [...day.shifts];
+      if (existingIdx !== -1) {
+        if (!newShifts[existingIdx].shiftTime.includes("Approved Leave")) {
+          newShifts[existingIdx] = {
+            ...newShifts[existingIdx],
+            shiftTime: targetShift,
+          };
         }
-        return s;
-      });
+      } else {
+        newShifts.push({
+          employeeId,
+          employeeName: canonicalName,
+          position: empPos,
+          shiftTime: targetShift,
+        });
+      }
+
       return { ...day, shifts: newShifts };
     });
 
