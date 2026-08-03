@@ -243,6 +243,25 @@ export default function CashierSchedulePage() {
         }
       }
 
+      // 3. Collection-Wide Firestore Fallback
+      if (!loadedSchedule) {
+        try {
+          const allSnap = await getDocs(collection(db, "schedules"));
+          if (!allSnap.empty) {
+            const docsData = allSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+            loadedSchedule = docsData.find((s: any) =>
+              s.assignments?.some((day: any) =>
+                day.shifts?.some((st: any) =>
+                  st.employeeId === currentUser?.id ||
+                  st.employeeId === currentUser?.employeeId ||
+                  (st.employeeName && targetUserNorm && normalizeArabicName(st.employeeName) === targetUserNorm)
+                )
+              )
+            ) || docsData[0];
+          }
+        } catch {}
+      }
+
       setSchedule(loadedSchedule);
 
       // Fetch leave requests from Firestore directly
@@ -567,7 +586,19 @@ export default function CashierSchedulePage() {
                   {!schedule ? (
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "48px 16px", gap: 12 }}>
                       <CalendarIcon size={40} color={D.textDim} />
-                      <p style={{ color: D.textSecondary, fontWeight: 600, fontSize: 14, margin: 0 }}>{t.noSchedule}</p>
+                      <p style={{ color: D.textSecondary, fontWeight: 600, fontSize: 14, margin: 0, textAlign: "center" }}>{t.noSchedule}</p>
+                      <button
+                        onClick={() => fetchData(user, monthOffset)}
+                        style={{
+                          marginTop: 8, padding: "9px 20px", borderRadius: 12,
+                          background: D.cyan, color: "#0B1121", fontWeight: 800, fontSize: 12,
+                          border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
+                          boxShadow: "0 4px 12px rgba(34,211,238,0.2)"
+                        }}
+                      >
+                        <RefreshCw size={14} />
+                        {lang === "en" ? "Force Reload Schedule" : "تحديث وحمل البيانات الآن"}
+                      </button>
                     </div>
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 520, overflowY: "auto" }}>
