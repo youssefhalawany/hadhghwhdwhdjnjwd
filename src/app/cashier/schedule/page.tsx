@@ -225,12 +225,12 @@ export default function CashierSchedulePage() {
           )
         );
 
-        const published = results
+        const availableSchedules = results
           .map((r) => r.schedule)
-          .filter((s) => s && s.isPublished);
+          .filter((s) => s && s.assignments && s.assignments.length > 0);
 
-        if (published.length > 0) {
-          loadedSchedule = published.find((s: any) =>
+        if (availableSchedules.length > 0) {
+          loadedSchedule = availableSchedules.find((s: any) =>
             s.assignments?.some((day: any) =>
               day.shifts?.some((st: any) =>
                 st.employeeId === currentUser.id ||
@@ -238,7 +238,7 @@ export default function CashierSchedulePage() {
                 (st.employeeName && st.employeeName.trim().toLowerCase() === currentUser.name?.trim().toLowerCase())
               )
             )
-          ) || published.find((s: any) => normalizeBranchId(s.storeId) === normalizeBranchId(storeId)) || published[0];
+          ) || availableSchedules.find((s: any) => normalizeBranchId(s.storeId) === normalizeBranchId(storeId)) || availableSchedules[0];
         }
       }
 

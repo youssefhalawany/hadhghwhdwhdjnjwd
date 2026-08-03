@@ -210,7 +210,7 @@ service cloud.firestore {
       allow write: if request.auth != null && isAdminEditor();
     }
     match /schedules/{doc} {
-      allow read: if request.auth != null && (isAdmin() || isManagerFor(resource.data.storeId));
+      allow read: if true;
       allow write: if request.auth != null && isAdminEditor();
     }
         // expired_items
