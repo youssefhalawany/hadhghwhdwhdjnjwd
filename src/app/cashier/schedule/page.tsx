@@ -6,7 +6,7 @@ import {
   ArrowLeft, Calendar as CalendarIcon, Clock, CheckCircle2, 
   XCircle, Clock3, CalendarDays, Globe, Sun, Moon, Sunrise,
   Coffee, CalendarCheck, Users, ChevronLeft, ChevronRight,
-  Sparkles, CheckCircle, AlertCircle
+  Sparkles, CheckCircle, AlertCircle, RefreshCw
 } from "lucide-react";
 import { CashierBottomNav } from "@/components/CashierBottomNav";
 import { PullToRefresh } from "@/components/MobileUX/PullToRefresh";
