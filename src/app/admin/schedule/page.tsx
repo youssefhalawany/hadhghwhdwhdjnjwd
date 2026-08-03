@@ -389,15 +389,17 @@ export default function AdminSchedulePage() {
   };
 
   // Bulk set shifts for an employee across the month
-  const applyBulkEmployeeShift = (employeeId: string, shiftTime: string, onlyWeekdays = false) => {
+  const applyBulkEmployeeShift = (employeeId: string, employeeName: string, shiftTime: string, onlyWeekdays = false) => {
     if (!schedule) return;
+    const targetNormName = employeeName.trim().toLowerCase();
     const newAssignments = schedule.assignments.map((day) => {
       const dateObj = new Date(day.date);
       const isWeekend = dateObj.getDay() === 5 || dateObj.getDay() === 6; // Fri / Sat
       if (onlyWeekdays && isWeekend) return day;
 
       const newShifts = day.shifts.map((s) => {
-        if (s.employeeId === employeeId && !s.shiftTime.includes("Approved Leave")) {
+        const matches = s.employeeId === employeeId || (s.employeeName && s.employeeName.trim().toLowerCase() === targetNormName);
+        if (matches && !s.shiftTime.includes("Approved Leave")) {
           return { ...s, shiftTime };
         }
         return s;
@@ -412,15 +414,17 @@ export default function AdminSchedulePage() {
   };
 
   // Apply pattern (e.g. 6 days work / 1 day off)
-  const applyPatternToEmployee = (employeeId: string, workShift: string, offDayOfWeek: number) => {
+  const applyPatternToEmployee = (employeeId: string, employeeName: string, workShift: string, offDayOfWeek: number) => {
     if (!schedule) return;
+    const targetNormName = employeeName.trim().toLowerCase();
     const newAssignments = schedule.assignments.map((day) => {
       const dateObj = new Date(day.date);
       const isOff = dateObj.getDay() === offDayOfWeek;
       const targetShift = isOff ? "Off" : workShift;
 
       const newShifts = day.shifts.map((s) => {
-        if (s.employeeId === employeeId && !s.shiftTime.includes("Approved Leave")) {
+        const matches = s.employeeId === employeeId || (s.employeeName && s.employeeName.trim().toLowerCase() === targetNormName);
+        if (matches && !s.shiftTime.includes("Approved Leave")) {
           return { ...s, shiftTime: targetShift };
         }
         return s;
@@ -1448,25 +1452,25 @@ export default function AdminSchedulePage() {
                 <p className="text-xs font-black uppercase text-muted-foreground mb-2">1. Fill All Days of Month</p>
                 <div className="grid grid-cols-2 gap-2">
                   <button
-                    onClick={() => applyBulkEmployeeShift(bulkEmpModal.id, "Morning")}
+                    onClick={() => applyBulkEmployeeShift(bulkEmpModal.id, bulkEmpModal.name, "Morning")}
                     className="p-2.5 bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30 rounded-xl text-xs font-bold hover:bg-blue-500/25"
                   >
                     🌅 All Morning
                   </button>
                   <button
-                    onClick={() => applyBulkEmployeeShift(bulkEmpModal.id, "Noon")}
+                    onClick={() => applyBulkEmployeeShift(bulkEmpModal.id, bulkEmpModal.name, "Noon")}
                     className="p-2.5 bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold hover:bg-amber-500/25"
                   >
                     ☀️ All Noon
                   </button>
                   <button
-                    onClick={() => applyBulkEmployeeShift(bulkEmpModal.id, "Night")}
+                    onClick={() => applyBulkEmployeeShift(bulkEmpModal.id, bulkEmpModal.name, "Night")}
                     className="p-2.5 bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30 rounded-xl text-xs font-bold hover:bg-purple-500/25"
                   >
                     🌙 All Night
                   </button>
                   <button
-                    onClick={() => applyBulkEmployeeShift(bulkEmpModal.id, "Off")}
+                    onClick={() => applyBulkEmployeeShift(bulkEmpModal.id, bulkEmpModal.name, "Off")}
                     className="p-2.5 bg-slate-500/15 text-slate-700 dark:text-slate-300 border border-slate-500/30 rounded-xl text-xs font-bold hover:bg-slate-500/25"
                   >
                     🏖️ All Off
@@ -1478,25 +1482,25 @@ export default function AdminSchedulePage() {
                 <p className="text-xs font-black uppercase text-muted-foreground mb-2">2. Standard Weekly Pattern (6 Work / 1 Off)</p>
                 <div className="grid grid-cols-2 gap-2">
                   <button
-                    onClick={() => applyPatternToEmployee(bulkEmpModal.id, "Morning", 5)} // Off on Friday
+                    onClick={() => applyPatternToEmployee(bulkEmpModal.id, bulkEmpModal.name, "Morning", 5)} // Off on Friday
                     className="p-2.5 bg-card border border-border rounded-xl text-xs font-bold hover:bg-muted text-left"
                   >
                     Morning (Friday Off)
                   </button>
                   <button
-                    onClick={() => applyPatternToEmployee(bulkEmpModal.id, "Morning", 0)} // Off on Sunday
+                    onClick={() => applyPatternToEmployee(bulkEmpModal.id, bulkEmpModal.name, "Morning", 0)} // Off on Sunday
                     className="p-2.5 bg-card border border-border rounded-xl text-xs font-bold hover:bg-muted text-left"
                   >
                     Morning (Sunday Off)
                   </button>
                   <button
-                    onClick={() => applyPatternToEmployee(bulkEmpModal.id, "Night", 5)} // Off on Friday
+                    onClick={() => applyPatternToEmployee(bulkEmpModal.id, bulkEmpModal.name, "Night", 5)} // Off on Friday
                     className="p-2.5 bg-card border border-border rounded-xl text-xs font-bold hover:bg-muted text-left"
                   >
                     Night (Friday Off)
                   </button>
                   <button
-                    onClick={() => applyPatternToEmployee(bulkEmpModal.id, "Night", 1)} // Off on Monday
+                    onClick={() => applyPatternToEmployee(bulkEmpModal.id, bulkEmpModal.name, "Night", 1)} // Off on Monday
                     className="p-2.5 bg-card border border-border rounded-xl text-xs font-bold hover:bg-muted text-left"
                   >
                     Night (Monday Off)
