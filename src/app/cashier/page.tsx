@@ -22,6 +22,7 @@ import { playSuccessSound, playErrorSound, playPopSound, getAudioCtx } from "@/l
 import { toast } from "sonner";
 import { useLanguage } from "@/context/LanguageContext";
 import { showIsland } from "@/components/MobileUX/DynamicIsland";
+import { normalizeArabicName } from "@/lib/schedule-generator";
 
 // ── Midnight Navy Design Tokens (Matches Screenshot) ────────────────
 const D = {
@@ -129,6 +130,7 @@ export default function CashierHubPage() {
         const ALL_STORES = Array.from(new Set(["eL-alamein-4", "ola-el-koronfol", sId]));
 
         let userShiftFound: string | null = null;
+        const targetUserNorm = normalizeArabicName(authenticatedUser?.name);
 
         // 1. Direct Firestore check across all store schedules
         for (const storeKey of ALL_STORES) {
@@ -141,7 +143,7 @@ export default function CashierHubPage() {
                 const myS = todayEntry?.shifts?.find((s: any) =>
                   s.employeeId === authenticatedUser.id ||
                   s.employeeId === authenticatedUser.employeeId ||
-                  (s.employeeName && s.employeeName.trim().toLowerCase() === authenticatedUser.name?.trim().toLowerCase())
+                  (s.employeeName && targetUserNorm && normalizeArabicName(s.employeeName) === targetUserNorm)
                 );
                 if (myS) {
                   userShiftFound = myS.shiftTime;
@@ -160,12 +162,12 @@ export default function CashierHubPage() {
             try {
               const res = await fetch(`/api/schedule?storeId=${storeKey}&month=${month}&t=${Date.now()}`, { cache: "no-store" });
               const data = await res.json();
-              if (data.schedule && (data.schedule.isPublished || data.schedule.isPublished === undefined)) {
+              if (data.schedule && data.schedule.assignments && data.schedule.assignments.length > 0) {
                 const todayEntry = data.schedule.assignments?.find((d: any) => d.date === todayStr);
                 const myS = todayEntry?.shifts?.find((s: any) =>
                   s.employeeId === authenticatedUser.id ||
                   s.employeeId === authenticatedUser.employeeId ||
-                  (s.employeeName && s.employeeName.trim().toLowerCase() === authenticatedUser.name?.trim().toLowerCase())
+                  (s.employeeName && targetUserNorm && normalizeArabicName(s.employeeName) === targetUserNorm)
                 );
                 if (myS) {
                   userShiftFound = myS.shiftTime;

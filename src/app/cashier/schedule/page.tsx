@@ -11,7 +11,7 @@ import {
 import { CashierBottomNav } from "@/components/CashierBottomNav";
 import { PullToRefresh } from "@/components/MobileUX/PullToRefresh";
 import { SkeletonSchedule } from "@/components/MobileUX/SkeletonLoader";
-import { normalizeBranchId, getDbStoreId, getBranchDisplayName } from "@/lib/schedule-generator";
+import { normalizeBranchId, getDbStoreId, getBranchDisplayName, normalizeArabicName } from "@/lib/schedule-generator";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, collection, addDoc, getDocs, query, where } from "firebase/firestore";
 
@@ -188,11 +188,12 @@ export default function CashierSchedulePage() {
               const fullSched = { id: snap.id, ...sData };
 
               // Check if user is explicitly listed in this schedule's shifts
+              const targetUserNorm = normalizeArabicName(currentUser?.name);
               const hasUserShift = sData.assignments?.some((day: any) =>
                 day.shifts?.some((s: any) =>
                   s.employeeId === currentUser.id ||
                   s.employeeId === currentUser.employeeId ||
-                  (s.employeeName && s.employeeName.trim().toLowerCase() === currentUser.name?.trim().toLowerCase())
+                  (s.employeeName && targetUserNorm && normalizeArabicName(s.employeeName) === targetUserNorm)
                 )
               );
 
@@ -230,12 +231,13 @@ export default function CashierSchedulePage() {
           .filter((s) => s && s.assignments && s.assignments.length > 0);
 
         if (availableSchedules.length > 0) {
+          const targetUserNorm = normalizeArabicName(currentUser?.name);
           loadedSchedule = availableSchedules.find((s: any) =>
             s.assignments?.some((day: any) =>
               day.shifts?.some((st: any) =>
                 st.employeeId === currentUser.id ||
                 st.employeeId === currentUser.employeeId ||
-                (st.employeeName && st.employeeName.trim().toLowerCase() === currentUser.name?.trim().toLowerCase())
+                (st.employeeName && targetUserNorm && normalizeArabicName(st.employeeName) === targetUserNorm)
               )
             )
           ) || availableSchedules.find((s: any) => normalizeBranchId(s.storeId) === normalizeBranchId(storeId)) || availableSchedules[0];
@@ -330,10 +332,11 @@ export default function CashierSchedulePage() {
   // Find user's shift for a given day with robust matching
   const findUserShift = (day: any) => {
     if (!day || !day.shifts || !user) return null;
+    const targetUserNorm = normalizeArabicName(user.name);
     return day.shifts.find((s: any) =>
       s.employeeId === user.id ||
       s.employeeId === user.employeeId ||
-      (s.employeeName && s.employeeName.trim().toLowerCase() === user.name?.trim().toLowerCase())
+      (s.employeeName && targetUserNorm && normalizeArabicName(s.employeeName) === targetUserNorm)
     );
   };
 

@@ -55,6 +55,22 @@ export interface MonthlySchedule {
 }
 
 /**
+ * Normalizes Arabic & English names by removing hamzas, diacritics, and all whitespace.
+ * Handles "عبد الله" vs "عبدالله", "عبد العاطي" vs "عبدالعاطي", "أشرف" vs "اشرف", "ي" vs "ى", etc.
+ */
+export function normalizeArabicName(name?: string): string {
+  if (!name) return "";
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[أإآ]/g, "ا")
+    .replace(/ة/g, "ه")
+    .replace(/ى/g, "ي")
+    .replace(/\s+/g, "")
+    .replace(/[\u064B-\u0652]/g, "");
+}
+
+/**
  * Normalizes branch strings to standard IDs
  */
 export function normalizeBranchId(input?: string): 'alamein4' | 'ola' | 'all' {
