@@ -239,6 +239,19 @@ export default function AdminSchedulePage() {
     };
   }, []);
 
+  // Deep-strip undefined values so Firestore never sees them
+  const sanitizeForFirestore = (obj: any): any => {
+    if (Array.isArray(obj)) return obj.map(sanitizeForFirestore);
+    if (obj !== null && typeof obj === "object") {
+      const out: any = {};
+      for (const [k, v] of Object.entries(obj)) {
+        if (v !== undefined) out[k] = sanitizeForFirestore(v);
+      }
+      return out;
+    }
+    return obj;
+  };
+
   // Generate / Initialize Schedule for Branch
   const handleGenerate = async (preserveEdits = false) => {
     setGenerating(true);
@@ -264,12 +277,12 @@ export default function AdminSchedulePage() {
         updatedAt: new Date().toISOString(),
       };
 
-      // Save directly to Firestore
-      await setDoc(doc(db, "schedules", docId), scheduleData, { merge: true });
+      // Save directly to Firestore (sanitize strips undefined fields)
+      await setDoc(doc(db, "schedules", docId), sanitizeForFirestore(scheduleData), { merge: true });
 
       // Save alias doc if branchId differs
       if (activeBranchId !== targetDbStoreId) {
-        await setDoc(doc(db, "schedules", `${activeBranchId}_${selectedMonth}`), scheduleData, { merge: true }).catch(() => {});
+        await setDoc(doc(db, "schedules", `${activeBranchId}_${selectedMonth}`), sanitizeForFirestore(scheduleData), { merge: true }).catch(() => {});
       }
 
       setSchedule(scheduleData);
@@ -297,6 +310,7 @@ export default function AdminSchedulePage() {
       const targetDbStoreId = getDbStoreId(activeBranchId);
       const docId = `${targetDbStoreId}_${selectedMonth}`;
       const isPub = publishState !== undefined ? publishState : schedule.isPublished;
+      const now = new Date().toISOString();
 
       const scheduleData: MonthlySchedule = {
         ...schedule,
@@ -304,15 +318,15 @@ export default function AdminSchedulePage() {
         branchName: getBranchDisplayName(targetDbStoreId),
         month: selectedMonth,
         isPublished: isPub,
-        updatedAt: new Date().toISOString(),
-        ...(isPub ? { publishedAt: new Date().toISOString() } : {}),
+        updatedAt: now,
+        publishedAt: isPub ? (schedule.publishedAt || now) : schedule.publishedAt,
       };
 
-      // Save directly to Firestore
-      await setDoc(doc(db, "schedules", docId), scheduleData, { merge: true });
+      // Save directly to Firestore — sanitize strips undefined fields
+      await setDoc(doc(db, "schedules", docId), sanitizeForFirestore(scheduleData), { merge: true });
 
       if (activeBranchId !== targetDbStoreId) {
-        await setDoc(doc(db, "schedules", `${activeBranchId}_${selectedMonth}`), scheduleData, { merge: true }).catch(() => {});
+        await setDoc(doc(db, "schedules", `${activeBranchId}_${selectedMonth}`), sanitizeForFirestore(scheduleData), { merge: true }).catch(() => {});
       }
 
       setSchedule(scheduleData);
@@ -468,27 +482,51 @@ export default function AdminSchedulePage() {
   };
 
   // Derived unique employee list in current schedule
+  // Deduplicates by BOTH id AND name — employees may appear in both
+  // the `employees` and `cashiers` Firestore collections with different
+  // document IDs but the same display name. Using a name-keyed secondary
+  // map ensures we never show the same person twice in the roster grid.
   const scheduledEmployees = useMemo(() => {
     if (!schedule) return branchEmployees;
-    const map = new Map<string, { id: string; name: string; position: string }>();
+
+    // Primary map: id → entry (built from saved schedule shifts)
+    const byId = new Map<string, { id: string; name: string; position: string }>();
+    // Secondary dedup map: normalised name → id already in byId
+    const byName = new Map<string, string>();
+
+    const addEntry = (id: string, name: string, position: string) => {
+      const normName = name.trim().toLowerCase();
+      if (byId.has(id)) return; // already added by this id
+      if (byName.has(normName)) {
+        // Another entry with same name exists — prefer the branchEmployee version
+        // (from the `employees` collection) over cashier collection duplicates.
+        const existingId = byName.get(normName)!;
+        const existing = byId.get(existingId)!;
+        // Keep the one whose id matches a branchEmployee (more authoritative)
+        const existingIsBranch = branchEmployees.some((b) => b.id === existingId);
+        const newIsBranch = branchEmployees.some((b) => b.id === id);
+        if (newIsBranch && !existingIsBranch) {
+          byId.delete(existingId);
+          byName.set(normName, id);
+          byId.set(id, { id, name, position });
+        }
+        return;
+      }
+      byId.set(id, { id, name, position });
+      byName.set(normName, id);
+    };
+
+    // First, seed from branchEmployees so they take priority
+    branchEmployees.forEach((b) => addEntry(b.id, b.name, b.position || "Staff"));
+
+    // Then fill in any extra people that exist in saved schedule but not in current branchEmployees
     schedule.assignments.forEach((day) => {
       day.shifts.forEach((s) => {
-        if (!map.has(s.employeeId)) {
-          map.set(s.employeeId, {
-            id: s.employeeId,
-            name: s.employeeName,
-            position: s.position || "Staff",
-          });
-        }
+        addEntry(s.employeeId, s.employeeName, s.position || "Staff");
       });
     });
-    // Ensure all current branch employees are included
-    branchEmployees.forEach((b) => {
-      if (!map.has(b.id)) {
-        map.set(b.id, { id: b.id, name: b.name, position: b.position || "Staff" });
-      }
-    });
-    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+
+    return Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [schedule, branchEmployees]);
 
   // Filtered employees for matrix view
