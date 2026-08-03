@@ -356,9 +356,15 @@ export default function AdminSchedulePage() {
   // Update a single shift in state
   const updateShift = (dateStr: string, employeeId: string, shiftTime: string, notes?: string) => {
     if (!schedule) return;
+    const targetEmp = scheduledEmployees.find((e) => e.id === employeeId) || branchEmployees.find((e) => e.id === employeeId);
+    const targetNormName = targetEmp ? targetEmp.name.trim().toLowerCase() : "";
+
     const newAssignments = schedule.assignments.map((day) => {
       if (day.date !== dateStr) return day;
-      const existingShiftIdx = day.shifts.findIndex((s) => s.employeeId === employeeId);
+      const existingShiftIdx = day.shifts.findIndex(
+        (s) => s.employeeId === employeeId || (targetNormName && s.employeeName && s.employeeName.trim().toLowerCase() === targetNormName)
+      );
+
       if (existingShiftIdx !== -1) {
         const newShifts = [...day.shifts];
         newShifts[existingShiftIdx] = {
@@ -368,7 +374,7 @@ export default function AdminSchedulePage() {
         };
         return { ...day, shifts: newShifts };
       } else {
-        const emp = branchEmployees.find((e) => e.id === employeeId) || allEmployees.find((e) => e.id === employeeId);
+        const emp = targetEmp || allEmployees.find((e) => e.id === employeeId);
         return {
           ...day,
           shifts: [
@@ -498,10 +504,13 @@ export default function AdminSchedulePage() {
     });
 
     const rows: string[][] = [];
-    empMap.forEach((info, empId) => {
+    filteredScheduledEmployees.forEach((emp) => {
+      const normName = emp.name.trim().toLowerCase();
       let mCount = 0, nCount = 0, ntCount = 0, offCount = 0;
       const dayShifts = schedule.assignments.map((day) => {
-        const s = day.shifts.find((x) => x.employeeId === empId);
+        const s = day.shifts.find(
+          (x) => x.employeeId === emp.id || (x.employeeName && x.employeeName.trim().toLowerCase() === normName)
+        );
         const shift = s ? s.shiftTime : "Off";
         if (shift.includes("Morning")) mCount++;
         else if (shift.includes("Noon")) nCount++;
@@ -509,7 +518,7 @@ export default function AdminSchedulePage() {
         else offCount++;
         return `"${shift}"`;
       });
-      rows.push([`"${info.name}"`, `"${info.position}"`, ...dayShifts, `${mCount}`, `${nCount}`, `${ntCount}`, `${offCount}`]);
+      rows.push([`"${emp.name}"`, `"${emp.position}"`, ...dayShifts, `${mCount}`, `${nCount}`, `${ntCount}`, `${offCount}`]);
     });
 
     const csvContent = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
@@ -607,26 +616,30 @@ export default function AdminSchedulePage() {
 
     schedule.assignments.forEach((day) => {
       day.shifts.forEach((s) => {
-        if (!map[s.employeeId]) {
-          map[s.employeeId] = { morning: 0, noon: 0, night: 0, off: 0, leave: 0, totalDays: 0, workedDays: 0, hours: 0 };
+        const matchingEmp = scheduledEmployees.find(
+          (e) => e.id === s.employeeId || (s.employeeName && e.name.trim().toLowerCase() === s.employeeName.trim().toLowerCase())
+        );
+        const empKey = matchingEmp ? matchingEmp.id : s.employeeId;
+        if (!map[empKey]) {
+          map[empKey] = { morning: 0, noon: 0, night: 0, off: 0, leave: 0, totalDays: 0, workedDays: 0, hours: 0 };
         }
-        map[s.employeeId].totalDays++;
+        map[empKey].totalDays++;
         if (s.shiftTime.includes("Morning")) {
-          map[s.employeeId].morning++;
-          map[s.employeeId].workedDays++;
-          map[s.employeeId].hours += 8;
+          map[empKey].morning++;
+          map[empKey].workedDays++;
+          map[empKey].hours += 8;
         } else if (s.shiftTime.includes("Noon")) {
-          map[s.employeeId].noon++;
-          map[s.employeeId].workedDays++;
-          map[s.employeeId].hours += 8;
+          map[empKey].noon++;
+          map[empKey].workedDays++;
+          map[empKey].hours += 8;
         } else if (s.shiftTime.includes("Night")) {
-          map[s.employeeId].night++;
-          map[s.employeeId].workedDays++;
-          map[s.employeeId].hours += 8;
+          map[empKey].night++;
+          map[empKey].workedDays++;
+          map[empKey].hours += 8;
         } else if (s.shiftTime.includes("Approved Leave")) {
-          map[s.employeeId].leave++;
+          map[empKey].leave++;
         } else {
-          map[s.employeeId].off++;
+          map[empKey].off++;
         }
       });
     });
@@ -1042,7 +1055,9 @@ export default function AdminSchedulePage() {
 
                           {/* Day Shift Cells */}
                           {schedule.assignments.map((day) => {
-                            const shift = day.shifts.find((s) => s.employeeId === emp.id);
+                            const shift = day.shifts.find(
+                              (s) => s.employeeId === emp.id || (s.employeeName && s.employeeName.trim().toLowerCase() === emp.name.trim().toLowerCase())
+                            );
                             const shiftTime = shift ? shift.shiftTime : "Off";
                             const isLeave = shiftTime.includes("Approved Leave");
 
