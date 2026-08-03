@@ -1,943 +1,1540 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { 
-  CalendarDays, Settings, Users, CheckCircle, 
-  XCircle, Printer, Send, RefreshCw, AlertCircle, BarChart3, Plus 
+  Calendar, Clock, Plus, Trash2, Save, Download, RefreshCw, 
+  AlertCircle, CheckCircle2, Users, Check, X, ArrowRightLeft, 
+  Send, Inbox, CalendarCheck, Coffee, Sun, Moon, Sunrise, 
+  Printer, ChevronLeft, ChevronRight, Filter, Search, Globe, Eye,
+  Sliders, UserCheck, ShieldCheck, Sparkles
 } from "lucide-react";
-import { toast } from "react-hot-toast";
-import { useBranch } from "@/context/BranchContext";
+import { useBranch, BranchId } from "@/context/BranchContext";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, addDoc, updateDoc, doc, onSnapshot, query, where, orderBy, limit } from "firebase/firestore";
+import { collection, addDoc, updateDoc, doc, onSnapshot, query, getDocs } from "firebase/firestore";
+import { normalizeBranchId, getDbStoreId, getBranchDisplayName } from "@/lib/schedule-generator";
+
+interface ShiftAssignment {
+  employeeId: string;
+  employeeName: string;
+  position?: string;
+  shiftTime: string; // "Morning" | "Noon" | "Night" | "Off" | "Off (Approved Leave)" | "Custom"
+  isBorrowed?: boolean;
+  borrowedFrom?: string;
+  notes?: string;
+}
+
+interface DailySchedule {
+  date: string;
+  shifts: ShiftAssignment[];
+}
+
+interface MonthlySchedule {
+  id?: string;
+  month: string;
+  storeId: string;
+  branchName?: string;
+  assignments: DailySchedule[];
+  isPublished: boolean;
+  updatedAt?: string;
+  publishedAt?: string;
+  rules?: any;
+}
+
+interface EmployeeItem {
+  id: string;
+  name: string;
+  position?: string;
+  storeId?: string;
+  branchId?: string;
+  shiftTime?: string;
+  status?: string;
+}
+
+const SHIFT_OPTIONS = [
+  { id: "Morning", label: "Morning (08:00 - 16:00)", short: "Morning", color: "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30", icon: Sunrise },
+  { id: "Noon", label: "Noon (16:00 - 00:00)", short: "Noon", color: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30", icon: Sun },
+  { id: "Night", label: "Night (00:00 - 08:00)", short: "Night", color: "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30", icon: Moon },
+  { id: "Off", label: "Day Off", short: "Off", color: "bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-500/30", icon: Coffee },
+  { id: "Off (Approved Leave)", label: "Approved Leave", short: "Leave", color: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30", icon: CalendarCheck },
+];
 
 export default function AdminSchedulePage() {
-  const { currentBranch } = useBranch();
-  const [storeId, setStoreId] = useState("eL-alamein-4");
-  const [month, setMonth] = useState("");
-  const [schedule, setSchedule] = useState<any>(null);
-  const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
+  const { currentBranch, setBranch } = useBranch();
+  
+  // Date & Branch states
+  const now = new Date();
+  const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthStr);
+  const [activeBranchId, setActiveBranchId] = useState<string>(
+    currentBranch === "ola" ? "ola-el-koronfol" : "eL-alamein-4"
+  );
+
+  // View state
+  const [viewMode, setViewMode] = useState<"matrix" | "daily" | "analytics" | "leaves">("matrix");
+  const [searchFilter, setSearchFilter] = useState("");
+  const [shiftFilter, setShiftFilter] = useState<string>("ALL");
+
+  // Data states
+  const [schedule, setSchedule] = useState<MonthlySchedule | null>(null);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'roster' | 'analytics' | 'requests'>('roster');
-  const [allEmployees, setAllEmployees] = useState<any[]>([]);
-  const [showBorrowModal, setShowBorrowModal] = useState<number | null>(null); // dayIndex
-  const [borrowSelectedEmp, setBorrowSelectedEmp] = useState<any>(null);
-  const [borrowShiftTime, setBorrowShiftTime] = useState("Morning");
+  const [generating, setGenerating] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Branch employees and leaves
+  const [branchEmployees, setBranchEmployees] = useState<EmployeeItem[]>([]);
+  const [allEmployees, setAllEmployees] = useState<EmployeeItem[]>([]);
+  const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
   const [borrowRequests, setBorrowRequests] = useState<any[]>([]);
-  const [borrowType, setBorrowType] = useState<"days" | "forever">("days");
+
+  // Modals & Popovers
+  const [activeShiftCell, setActiveShiftCell] = useState<{ date: string; empId: string; empName: string } | null>(null);
+  const [bulkEmpModal, setBulkEmpModal] = useState<EmployeeItem | null>(null);
+  const [showBorrowModal, setShowBorrowModal] = useState<number | null>(null);
+  const [borrowSelectedEmp, setBorrowSelectedEmp] = useState<EmployeeItem | null>(null);
   const [borrowDates, setBorrowDates] = useState<string[]>([]);
-  const [rules, setRules] = useState({
-    minEmployeesMorning: 2,
-    minEmployeesNoon: 0,
-    minEmployeesNight: 2,
-    maxDaysOffPerMonth: 4,
-    allowConsecutiveDaysOff: true,
-    maxConsecutiveDaysOff: 2
-  });
+  const [borrowType, setBorrowType] = useState<"days" | "forever">("days");
+  const [borrowShiftTime, setBorrowShiftTime] = useState<string>("Morning");
 
+  // Synchronize branch from Context
   useEffect(() => {
-    // Set default month to current month
-    const d = new Date();
-    setMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
-
-    const fetchAllEmps = async () => {
-      try {
-        const snap = await getDocs(collection(db, "cashiers"));
-        const emps = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setAllEmployees(emps);
-      } catch (err) {
-        console.error("Failed to load cashiers", err);
-      }
-    };
-    fetchAllEmps();
-  }, []);
-
-  useEffect(() => {
-    if (currentBranch === "alamein4") setStoreId("eL-alamein-4");
-    else if (currentBranch === "ola") setStoreId("ola-el-koronfol");
-    // if "all", we keep whatever was selected
+    if (currentBranch === "ola") {
+      setActiveBranchId("ola-el-koronfol");
+    } else if (currentBranch === "alamein4" || currentBranch === "all") {
+      setActiveBranchId("eL-alamein-4");
+    }
   }, [currentBranch]);
 
-  const isStoreMatch = (id: string) => storeId === "all" || id === storeId || !storeId;
-
-  useEffect(() => {
-    if (!storeId) return;
-    const unsub = onSnapshot(query(collection(db, "borrow_requests"), limit(100)), (snap) => {
-      const reqs = snap.docs.map(d => ({id: d.id, ...d.data()}))
-        .filter((r: any) => isStoreMatch(r.sourceStoreId) || isStoreMatch(r.targetStoreId))
-        .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      setBorrowRequests(reqs);
-    });
-    return () => unsub();
-  }, [storeId]);
-
-  useEffect(() => {
-    if (showBorrowModal !== null && schedule?.assignments[showBorrowModal]) {
-      setBorrowDates([schedule.assignments[showBorrowModal].date]);
-    } else {
-      setBorrowDates([]);
-    }
-  }, [showBorrowModal, schedule]);
-
-  useEffect(() => {
-    if (storeId && month) {
-      fetchData();
-    }
-  }, [storeId, month]);
-
-  const fetchData = async () => {
-    setLoading(true);
+  // Load Active Branch Employees
+  const fetchEmployees = async () => {
     try {
-      // Fetch Schedule with cache busting
-      const res = await fetch(`/api/schedule?storeId=${storeId}&month=${month}&t=${Date.now()}`, { cache: 'no-store' });
-      const data = await res.json();
-      
-      if (!res.ok) {
-        console.error("API Error fetching schedule:", data.error);
-        toast.error("Failed to fetch schedule: " + (data.error || "Server error"));
-        setSchedule(null);
-      } else {
-        setSchedule(data.schedule);
-        if (data.schedule?.rules) {
-          setRules(data.schedule.rules);
+      const [empSnap, cashierSnap] = await Promise.all([
+        getDocs(collection(db, "employees")),
+        getDocs(collection(db, "cashiers")),
+      ]);
+
+      const map = new Map<string, EmployeeItem>();
+      const allList: EmployeeItem[] = [];
+
+      empSnap.forEach((d) => {
+        const data = d.data();
+        const item: EmployeeItem = {
+          id: d.id,
+          name: data.name || "Unnamed",
+          position: data.position || "Staff",
+          storeId: data.storeId || "eL-alamein-4",
+          branchId: data.branchId || data.storeId,
+          shiftTime: data.shiftTime || "Morning",
+          status: data.status || "active",
+        };
+        allList.push(item);
+        if (item.status === "active") {
+          map.set(item.name.trim().toLowerCase(), item);
         }
-      }
+      });
 
-      // Fetch Leave Requests with cache busting
-      const leaveRes = await fetch(`/api/schedule/leave-requests?storeId=${storeId}&t=${Date.now()}`, { cache: 'no-store' });
-      const leaveData = await leaveRes.json();
-      if (!leaveRes.ok) {
-        console.error("API Error fetching leave requests:", leaveData.error);
-      } else {
-        // Filter for this month
-        const monthRequests = leaveData.requests.filter((r: any) => r.date.startsWith(month));
-        setLeaveRequests(monthRequests);
-      }
+      cashierSnap.forEach((d) => {
+        const data = d.data();
+        const item: EmployeeItem = {
+          id: d.id,
+          name: data.name || "Unnamed",
+          position: data.role || "Cashier",
+          storeId: data.storeId || "eL-alamein-4",
+          branchId: data.branchId || data.storeId,
+          shiftTime: data.shiftType && data.shiftType !== "All" ? data.shiftType : "Morning",
+          status: data.isActive !== false ? "active" : "suspended",
+        };
+        allList.push(item);
+        const key = item.name.trim().toLowerCase();
+        if (item.status === "active" && !map.has(key)) {
+          map.set(key, item);
+        }
+      });
 
+      setAllEmployees(allList);
+
+      const targetNorm = normalizeBranchId(activeBranchId);
+      const filtered = Array.from(map.values()).filter((emp) => {
+        const empNorm = normalizeBranchId(emp.storeId || emp.branchId);
+        return empNorm === targetNorm;
+      }).sort((a, b) => a.name.localeCompare(b.name));
+
+      setBranchEmployees(filtered);
     } catch (e) {
-      console.error("Fetch error:", e);
-      toast.error("Network error fetching schedule");
+      console.error("Error loading employees", e);
     }
-    setLoading(false);
   };
 
-  const handleGenerate = async () => {
+  useEffect(() => {
+    fetchEmployees();
+  }, [activeBranchId]);
+
+  // Load Schedule
+  const loadSchedule = async () => {
     setLoading(true);
+    setErrorMsg(null);
     try {
-      const res = await fetch('/api/schedule/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ storeId, month, rules })
-      });
-      
-      const text = await res.text();
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (err) {
-        let errorTitle = "Unknown HTML Error";
-        const titleMatch = text.match(/<title>(.*?)<\/title>/i);
-        if (titleMatch && titleMatch[1]) {
-          errorTitle = titleMatch[1];
-        }
-        throw new Error(`Server returned HTML error: ${errorTitle}. Status: ${res.status}.`);
+      const res = await fetch(`/api/schedule?storeId=${activeBranchId}&month=${selectedMonth}&t=${Date.now()}`);
+      const data = await res.json();
+      if (data.schedule) {
+        setSchedule(data.schedule);
+      } else {
+        setSchedule(null);
       }
-      
+    } catch (err: any) {
+      console.error("Error loading schedule", err);
+      setErrorMsg("Failed to load schedule.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSchedule();
+  }, [activeBranchId, selectedMonth]);
+
+  // Load Leave & Borrow Requests
+  useEffect(() => {
+    const unsubLeaves = onSnapshot(collection(db, "leave_requests"), (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setLeaveRequests(list);
+    });
+
+    const unsubBorrow = onSnapshot(collection(db, "borrow_requests"), (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setBorrowRequests(list);
+    });
+
+    return () => {
+      unsubLeaves();
+      unsubBorrow();
+    };
+  }, []);
+
+  // Generate / Initialize Schedule for Branch
+  const handleGenerate = async (preserveEdits = false) => {
+    setGenerating(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    try {
+      const res = await fetch("/api/schedule/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          storeId: activeBranchId,
+          month: selectedMonth,
+          preserveEdits,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.schedule) {
+        setSchedule(data.schedule);
+        setSuccessMsg(
+          preserveEdits
+            ? "Schedule updated with active staff roster (existing shifts preserved)!"
+            : `Schedule roster initialized for ${getBranchDisplayName(activeBranchId)} with ${data.employeeCount || 0} active employees!`
+        );
+        setTimeout(() => setSuccessMsg(null), 4000);
+      } else {
+        setErrorMsg(data.error || "Failed to generate schedule.");
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to initialize schedule.");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  // Save Schedule Changes
+  const handleSave = async (publishState?: boolean) => {
+    if (!schedule) return;
+    setSaving(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    try {
+      const isPub = publishState !== undefined ? publishState : schedule.isPublished;
+      const res = await fetch("/api/schedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...schedule,
+          storeId: activeBranchId,
+          month: selectedMonth,
+          isPublished: isPub,
+        }),
+      });
+      const data = await res.json();
       if (data.success) {
         setSchedule(data.schedule);
-        alert("Schedule generated successfully!");
+        setSuccessMsg(
+          isPub
+            ? "Schedule published! Cashiers can now view their shifts."
+            : "Schedule changes saved successfully!"
+        );
+        setTimeout(() => setSuccessMsg(null), 4000);
       } else {
-        alert("Failed to generate: " + (data.error || "Unknown error"));
+        setErrorMsg(data.error || "Failed to save schedule.");
       }
-    } catch (e: any) {
-      console.error(e);
-      alert("Error during generation: " + e.message);
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to save schedule.");
+    } finally {
+      setSaving(false);
     }
-    setLoading(false);
   };
 
-  const handlePublish = async () => {
+  // Publish / Unpublish
+  const togglePublish = async () => {
     if (!schedule) return;
-    setLoading(true);
-    try {
-      const updated = { ...schedule, isPublished: true };
-      await fetch('/api/schedule', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updated)
-      });
-      setSchedule(updated);
-      alert('Schedule Published successfully!');
-    } catch (e) {
-      console.error(e);
-    }
-    setLoading(false);
+    const nextPub = !schedule.isPublished;
+    setPublishing(true);
+    await handleSave(nextPub);
+    setPublishing(false);
   };
 
-  const handleLeaveAction = async (requestId: string, status: string) => {
-    try {
-      await fetch('/api/schedule/leave-requests', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requestId, status })
-      });
-      fetchData();
-    } catch (e) {
-      console.error(e);
-    }
+  // Update a single shift in state
+  const updateShift = (dateStr: string, employeeId: string, shiftTime: string, notes?: string) => {
+    if (!schedule) return;
+    const newAssignments = schedule.assignments.map((day) => {
+      if (day.date !== dateStr) return day;
+      const existingShiftIdx = day.shifts.findIndex((s) => s.employeeId === employeeId);
+      if (existingShiftIdx !== -1) {
+        const newShifts = [...day.shifts];
+        newShifts[existingShiftIdx] = {
+          ...newShifts[existingShiftIdx],
+          shiftTime,
+          notes: notes !== undefined ? notes : newShifts[existingShiftIdx].notes,
+        };
+        return { ...day, shifts: newShifts };
+      } else {
+        const emp = branchEmployees.find((e) => e.id === employeeId) || allEmployees.find((e) => e.id === employeeId);
+        return {
+          ...day,
+          shifts: [
+            ...day.shifts,
+            {
+              employeeId,
+              employeeName: emp?.name || "Staff",
+              position: emp?.position || "Staff",
+              shiftTime,
+              notes,
+            },
+          ],
+        };
+      }
+    });
+
+    setSchedule({ ...schedule, assignments: newAssignments });
   };
 
-  const handlePrint = () => {
-    window.print();
+  // Bulk set shifts for an employee across the month
+  const applyBulkEmployeeShift = (employeeId: string, shiftTime: string, onlyWeekdays = false) => {
+    if (!schedule) return;
+    const newAssignments = schedule.assignments.map((day) => {
+      const dateObj = new Date(day.date);
+      const isWeekend = dateObj.getDay() === 5 || dateObj.getDay() === 6; // Fri / Sat
+      if (onlyWeekdays && isWeekend) return day;
+
+      const newShifts = day.shifts.map((s) => {
+        if (s.employeeId === employeeId && !s.shiftTime.includes("Approved Leave")) {
+          return { ...s, shiftTime };
+        }
+        return s;
+      });
+      return { ...day, shifts: newShifts };
+    });
+
+    setSchedule({ ...schedule, assignments: newAssignments });
+    setBulkEmpModal(null);
+    setSuccessMsg("Bulk shift applied! Remember to click Save.");
+    setTimeout(() => setSuccessMsg(null), 3000);
   };
+
+  // Apply pattern (e.g. 6 days work / 1 day off)
+  const applyPatternToEmployee = (employeeId: string, workShift: string, offDayOfWeek: number) => {
+    if (!schedule) return;
+    const newAssignments = schedule.assignments.map((day) => {
+      const dateObj = new Date(day.date);
+      const isOff = dateObj.getDay() === offDayOfWeek;
+      const targetShift = isOff ? "Off" : workShift;
+
+      const newShifts = day.shifts.map((s) => {
+        if (s.employeeId === employeeId && !s.shiftTime.includes("Approved Leave")) {
+          return { ...s, shiftTime: targetShift };
+        }
+        return s;
+      });
+      return { ...day, shifts: newShifts };
+    });
+
+    setSchedule({ ...schedule, assignments: newAssignments });
+    setBulkEmpModal(null);
+    setSuccessMsg("Shift pattern applied! Remember to click Save.");
+    setTimeout(() => setSuccessMsg(null), 3000);
+  };
+
+  // Month navigation
+  const shiftMonth = (delta: number) => {
+    const [y, m] = selectedMonth.split("-").map(Number);
+    const d = new Date(y, m - 1 + delta, 1);
+    const newM = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    setSelectedMonth(newM);
+  };
+
+  // Export to CSV
+  const exportToCSV = () => {
+    if (!schedule || !schedule.assignments.length) return;
+    const headers = ["Employee", "Position", ...schedule.assignments.map((d) => d.date), "Morning Count", "Noon Count", "Night Count", "Off Count"];
+    
+    // Get unique employees across schedule
+    const empMap = new Map<string, { name: string; position: string }>();
+    schedule.assignments.forEach((day) => {
+      day.shifts.forEach((s) => {
+        if (!empMap.has(s.employeeId)) {
+          empMap.set(s.employeeId, { name: s.employeeName, position: s.position || "Staff" });
+        }
+      });
+    });
+
+    const rows: string[][] = [];
+    empMap.forEach((info, empId) => {
+      let mCount = 0, nCount = 0, ntCount = 0, offCount = 0;
+      const dayShifts = schedule.assignments.map((day) => {
+        const s = day.shifts.find((x) => x.employeeId === empId);
+        const shift = s ? s.shiftTime : "Off";
+        if (shift.includes("Morning")) mCount++;
+        else if (shift.includes("Noon")) nCount++;
+        else if (shift.includes("Night")) ntCount++;
+        else offCount++;
+        return `"${shift}"`;
+      });
+      rows.push([`"${info.name}"`, `"${info.position}"`, ...dayShifts, `${mCount}`, `${nCount}`, `${ntCount}`, `${offCount}`]);
+    });
+
+    const csvContent = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Schedule_${activeBranchId}_${selectedMonth}.csv`;
+    a.click();
+  };
+
+  // Derived unique employee list in current schedule
+  const scheduledEmployees = useMemo(() => {
+    if (!schedule) return branchEmployees;
+    const map = new Map<string, { id: string; name: string; position: string }>();
+    schedule.assignments.forEach((day) => {
+      day.shifts.forEach((s) => {
+        if (!map.has(s.employeeId)) {
+          map.set(s.employeeId, {
+            id: s.employeeId,
+            name: s.employeeName,
+            position: s.position || "Staff",
+          });
+        }
+      });
+    });
+    // Ensure all current branch employees are included
+    branchEmployees.forEach((b) => {
+      if (!map.has(b.id)) {
+        map.set(b.id, { id: b.id, name: b.name, position: b.position || "Staff" });
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [schedule, branchEmployees]);
+
+  // Filtered employees for matrix view
+  const filteredScheduledEmployees = useMemo(() => {
+    return scheduledEmployees.filter((emp) => {
+      if (searchFilter && !emp.name.toLowerCase().includes(searchFilter.toLowerCase())) {
+        return false;
+      }
+      return true;
+    });
+  }, [scheduledEmployees, searchFilter]);
+
+  // Daily totals calculation
+  const dailyTotals = useMemo(() => {
+    if (!schedule) return {};
+    const map: Record<string, { morning: number; noon: number; night: number; off: number; total: number }> = {};
+    schedule.assignments.forEach((day) => {
+      let m = 0, n = 0, nt = 0, o = 0;
+      day.shifts.forEach((s) => {
+        if (s.shiftTime.includes("Morning")) m++;
+        else if (s.shiftTime.includes("Noon")) n++;
+        else if (s.shiftTime.includes("Night")) nt++;
+        else o++;
+      });
+      map[day.date] = { morning: m, noon: n, night: nt, off: o, total: day.shifts.length };
+    });
+    return map;
+  }, [schedule]);
+
+  // Employee Monthly Stats calculation
+  const employeeStats = useMemo(() => {
+    if (!schedule) return {};
+    const map: Record<string, { morning: number; noon: number; night: number; off: number; leave: number; totalDays: number; workedDays: number; hours: number }> = {};
+    
+    scheduledEmployees.forEach((emp) => {
+      map[emp.id] = { morning: 0, noon: 0, night: 0, off: 0, leave: 0, totalDays: 0, workedDays: 0, hours: 0 };
+    });
+
+    schedule.assignments.forEach((day) => {
+      day.shifts.forEach((s) => {
+        if (!map[s.employeeId]) {
+          map[s.employeeId] = { morning: 0, noon: 0, night: 0, off: 0, leave: 0, totalDays: 0, workedDays: 0, hours: 0 };
+        }
+        map[s.employeeId].totalDays++;
+        if (s.shiftTime.includes("Morning")) {
+          map[s.employeeId].morning++;
+          map[s.employeeId].workedDays++;
+          map[s.employeeId].hours += 8;
+        } else if (s.shiftTime.includes("Noon")) {
+          map[s.employeeId].noon++;
+          map[s.employeeId].workedDays++;
+          map[s.employeeId].hours += 8;
+        } else if (s.shiftTime.includes("Night")) {
+          map[s.employeeId].night++;
+          map[s.employeeId].workedDays++;
+          map[s.employeeId].hours += 8;
+        } else if (s.shiftTime.includes("Approved Leave")) {
+          map[s.employeeId].leave++;
+        } else {
+          map[s.employeeId].off++;
+        }
+      });
+    });
+    return map;
+  }, [schedule, scheduledEmployees]);
+
+  const targetBranchNorm = normalizeBranchId(activeBranchId);
+  const pendingLeavesForBranch = leaveRequests.filter(
+    (r) => r.status === "pending" && (targetBranchNorm === "all" || normalizeBranchId(r.storeId) === targetBranchNorm)
+  );
 
   return (
-      <div className="p-6 max-w-7xl mx-auto min-h-screen">
-        {/* Header - Hidden on Print */}
-        <div className="print:hidden mb-8 flex flex-col md:flex-row justify-between items-start md:items-center bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-xl shadow-slate-200/40 dark:shadow-none border border-slate-200/60 dark:border-slate-800 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 dark:bg-blue-500/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
-          <div className="relative z-10 mb-4 md:mb-0">
-            <h1 className="text-3xl font-black text-slate-900 dark:text-white flex items-center gap-3">
-              <CalendarDays className="w-8 h-8 text-blue-500" />
-              Smart Scheduler
-            </h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium">Generate & manage employee rosters automatically.</p>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-3 relative z-10 w-full md:w-auto">
-            <div className="relative group">
-              <select 
-                value={storeId} 
-                onChange={(e) => setStoreId(e.target.value)}
-                className={`w-full sm:w-auto appearance-none bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl px-5 py-3 pr-10 font-bold text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all cursor-pointer ${currentBranch !== "all" ? "opacity-75 cursor-not-allowed" : "hover:border-blue-400"}`}
-                disabled={currentBranch !== "all"}
-              >
-                {(currentBranch === "all" || currentBranch === "alamein4") && <option value="eL-alamein-4">El Alamein 4</option>}
-                {(currentBranch === "all" || currentBranch === "ola") && <option value="ola-el-koronfol">Ola El Koronfol</option>}
-              </select>
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 group-hover:text-blue-500 transition-colors">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-              </div>
-            </div>
-            <input 
-              type="month" 
-              value={month}
-              onChange={(e) => setMonth(e.target.value)}
-              className="w-full sm:w-auto bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl px-5 py-3 font-bold text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all hover:border-blue-400"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 print:block">
+    <div className="min-h-screen bg-background text-foreground pb-24 print:bg-white print:text-black print:pb-0">
+      
+      {/* Top Header */}
+      <div className="border-b border-border bg-card/60 backdrop-blur-md sticky top-0 z-30 px-4 lg:px-8 py-4 shadow-sm print:hidden">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           
-          {/* Left Column: Rules & Requests (Hidden on Print) */}
-          <div className="lg:col-span-1 space-y-6 print:hidden">
-            
-            {/* Rules Builder */}
-            <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl shadow-slate-200/40 dark:shadow-none border border-slate-200/60 dark:border-slate-800 p-6 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 dark:bg-blue-500/10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none transition-transform group-hover:scale-110"></div>
-              <div className="flex items-center space-x-3 mb-6 relative z-10">
-                <div className="bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 p-2 rounded-xl">
-                  <Settings className="w-5 h-5" />
-                </div>
-                <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Generation Rules</h2>
+          <div>
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-red-500/10 text-red-600 dark:text-red-400 rounded-xl border border-red-500/20">
+                <CalendarCheck className="w-6 h-6" />
               </div>
-              
-              <div className="space-y-6 relative z-10">
-                <div>
-                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3 block">Min Employees Per Shift</label>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-2xl border border-slate-100 dark:border-slate-700">
-                      <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1 block text-center">Morning</label>
-                      <input 
-                        type="number" min={0}
-                        value={rules.minEmployeesMorning || 0}
-                        onChange={(e) => setRules({...rules, minEmployeesMorning: parseInt(e.target.value) || 0})}
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-2 py-2 text-sm font-bold text-center focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
-                      />
-                    </div>
-                    <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-2xl border border-slate-100 dark:border-slate-700">
-                      <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1 block text-center">Noon</label>
-                      <input 
-                        type="number" min={0}
-                        value={rules.minEmployeesNoon || 0}
-                        onChange={(e) => setRules({...rules, minEmployeesNoon: parseInt(e.target.value) || 0})}
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-2 py-2 text-sm font-bold text-center focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
-                      />
-                    </div>
-                    <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-2xl border border-slate-100 dark:border-slate-700">
-                      <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1 block text-center">Night</label>
-                      <input 
-                        type="number" min={0}
-                        value={rules.minEmployeesNight || 0}
-                        onChange={(e) => setRules({...rules, minEmployeesNight: parseInt(e.target.value) || 0})}
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-2 py-2 text-sm font-bold text-center focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-700">
-                  <div className="flex items-center justify-between mb-3">
-                    <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Max Days Off / Month</label>
-                    <input 
-                      type="number" min={0}
-                      value={rules.maxDaysOffPerMonth}
-                      onChange={(e) => setRules({...rules, maxDaysOffPerMonth: parseInt(e.target.value)})}
-                      className="w-16 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-2 py-1.5 text-sm font-bold text-center focus:ring-2 focus:ring-blue-500 outline-none"
-                    />
-                  </div>
-                  
-                  <div className="w-full h-px bg-slate-200 dark:bg-slate-700 my-3"></div>
-
-                  <div className="flex items-center justify-between py-1">
-                    <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Allow Consecutive Off</label>
-                    <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${rules.allowConsecutiveDaysOff ? 'bg-blue-500' : 'bg-slate-300 dark:bg-slate-600'}`} onClick={() => setRules({...rules, allowConsecutiveDaysOff: !rules.allowConsecutiveDaysOff})}>
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${rules.allowConsecutiveDaysOff ? 'translate-x-6' : 'translate-x-1'}`} />
-                    </div>
-                  </div>
-                  
-                  {rules.allowConsecutiveDaysOff && (
-                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 border-dashed">
-                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400">Max Consecutive Days</label>
-                      <input 
-                        type="number" min={1}
-                        value={rules.maxConsecutiveDaysOff}
-                        onChange={(e) => setRules({...rules, maxConsecutiveDaysOff: parseInt(e.target.value)})}
-                        className="w-16 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-2 py-1.5 text-sm font-bold text-center focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
-                    </div>
+              <div>
+                <h1 className="text-xl lg:text-2xl font-black tracking-tight flex items-center gap-2">
+                  Staff Shift Roster
+                  {schedule?.isPublished ? (
+                    <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                      <Globe className="w-3 h-3" /> Published
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                      <Eye className="w-3 h-3" /> Draft
+                    </span>
                   )}
-                </div>
-                
-                <button 
-                  onClick={handleGenerate}
-                  disabled={loading}
-                  className="w-full mt-2 flex items-center justify-center space-x-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 active:scale-[0.98] shadow-lg shadow-blue-500/25 text-white py-3.5 rounded-xl font-bold transition-all disabled:opacity-70 disabled:cursor-not-allowed"
-                >
-                  {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <CalendarDays className="w-5 h-5" />}
-                  <span>Auto-Generate Schedule</span>
-                </button>
+                </h1>
+                <p className="text-xs text-muted-foreground">
+                  Manual branch schedule manager • {getBranchDisplayName(activeBranchId)} ({branchEmployees.length} active staff)
+                </p>
               </div>
             </div>
-
-            {/* Leave Requests Inbox */}
-            <div className="bg-card rounded-2xl shadow-sm border border-border p-5">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-2">
-                  <Users className="w-5 h-5 text-orange-400" />
-                  <h2 className="text-lg font-semibold">Leave Requests</h2>
-                </div>
-                <span className="bg-orange-500/20 text-orange-400 text-xs px-2 py-1 rounded-full">
-                  {leaveRequests.filter(r => r.status === 'pending').length} Pending
-                </span>
-              </div>
-              
-              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
-                {leaveRequests.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">No requests this month.</p>
-                ) : (
-                  leaveRequests.map(req => (
-                    <div key={req.id} className="bg-background border border-border rounded-lg p-3 text-sm">
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="font-medium text-foreground">{req.employeeName}</span>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase font-bold
-                          ${req.status === 'approved' ? 'bg-green-500/20 text-green-400' : 
-                            req.status === 'rejected' ? 'bg-red-500/20 text-red-400' : 
-                            'bg-yellow-500/20 text-yellow-400'}`}>
-                          {req.status}
-                        </span>
-                      </div>
-                      <p className="text-muted-foreground text-xs mb-2">
-                        {req.date} ({req.type})
-                      </p>
-                      {req.status === 'pending' && (
-                        <div className="flex space-x-2 mt-2">
-                          <button onClick={() => handleLeaveAction(req.id, 'approved')} className="flex-1 bg-green-500/10 hover:bg-green-500/20 text-green-400 py-1 rounded transition-colors flex items-center justify-center space-x-1">
-                            <CheckCircle className="w-3 h-3" /> <span>Approve</span>
-                          </button>
-                          <button onClick={() => handleLeaveAction(req.id, 'rejected')} className="flex-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 py-1 rounded transition-colors flex items-center justify-center space-x-1">
-                            <XCircle className="w-3 h-3" /> <span>Reject</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
           </div>
 
-          {/* Right Column: Calendar View (Printable) */}
-          <div className="lg:col-span-3">
-            <div className="bg-card rounded-2xl shadow-sm border border-border p-1 md:p-6 print:border-none print:shadow-none print:p-0">
-              
-              {/* Toolbar */}
-              <div className="print:hidden flex flex-col md:flex-row justify-between items-start md:items-center mb-6 px-6 pt-6 md:p-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-                <div className="flex bg-slate-200/50 dark:bg-slate-800/50 p-1.5 rounded-2xl mb-4 md:mb-0 overflow-x-auto w-full md:w-auto shadow-inner border border-slate-200/80 dark:border-slate-700">
-                  <button 
-                    onClick={() => setActiveTab('roster')}
-                    className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${activeTab === 'roster' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                  >
-                    Schedule Roster
-                  </button>
-                  <button 
-                    onClick={() => setActiveTab('analytics')}
-                    className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${activeTab === 'analytics' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                  >
-                    Employee Analytics
-                  </button>
-                  <button 
-                    onClick={() => setActiveTab('requests')}
-                    className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center whitespace-nowrap ${activeTab === 'requests' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                  >
-                    Staff Requests
-                    {borrowRequests.filter(r => isStoreMatch(r.sourceStoreId) && r.status === 'pending').length > 0 && (
-                      <span className="ml-2 bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-black shadow-sm">
-                        {borrowRequests.filter(r => isStoreMatch(r.sourceStoreId) && r.status === 'pending').length}
-                      </span>
-                    )}
-                  </button>
-                </div>
+          {/* Action Bar */}
+          <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+            {/* Branch Switcher */}
+            <div className="flex bg-muted/60 p-1 rounded-xl border border-border">
+              <button
+                onClick={() => {
+                  setActiveBranchId("eL-alamein-4");
+                  setBranch("alamein4");
+                }}
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                  normalizeBranchId(activeBranchId) === "alamein4"
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                El Alamein 4
+              </button>
+              <button
+                onClick={() => {
+                  setActiveBranchId("ola-el-koronfol");
+                  setBranch("ola");
+                }}
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                  normalizeBranchId(activeBranchId) === "ola"
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Ola El Koronfol
+              </button>
+            </div>
 
-                {schedule && activeTab === 'roster' && (
-                  <div className="flex space-x-3 items-center">
-                    {schedule?.isPublished ? (
-                      <span className="bg-green-500/20 text-green-400 text-xs px-2 py-1 rounded-full flex items-center mr-2"><CheckCircle className="w-3 h-3 mr-1"/> Published</span>
-                    ) : (
-                      <span className="bg-yellow-500/20 text-yellow-400 text-xs px-2 py-1 rounded-full flex items-center mr-2"><AlertCircle className="w-3 h-3 mr-1"/> Draft Mode</span>
-                    )}
-                    <button onClick={handlePrint} className="flex items-center space-x-2 bg-secondary hover:bg-secondary/80 text-foreground px-4 py-2 rounded-lg transition-colors text-sm">
-                      <Printer className="w-4 h-4" /> <span className="hidden sm:inline">Print A4</span>
-                    </button>
-                    {!schedule.isPublished && (
-                      <button onClick={handlePublish} className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors text-sm">
-                        <Send className="w-4 h-4" /> <span className="hidden sm:inline">Publish to App</span>
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
+            {/* Month Picker */}
+            <div className="flex items-center bg-card border border-border rounded-xl px-2 py-1 shadow-sm">
+              <button
+                onClick={() => shiftMonth(-1)}
+                className="p-1 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+                title="Previous Month"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="bg-transparent border-0 text-xs font-bold text-foreground px-2 py-1 outline-none cursor-pointer"
+              />
+              <button
+                onClick={() => shiftMonth(1)}
+                className="p-1 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+                title="Next Month"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
 
-              {/* Print Header (Only visible when printing) */}
-              <div className="hidden print:block text-center mb-6 text-black">
-                <h1 className="text-3xl font-bold">Monthly Schedule - {storeId}</h1>
-                <p className="text-xl mt-2">{month}</p>
-              </div>
+            {/* Print */}
+            <button
+              onClick={() => window.print()}
+              className="p-2 bg-card hover:bg-muted text-muted-foreground hover:text-foreground border border-border rounded-xl shadow-sm transition-colors"
+              title="Print Schedule A4"
+            >
+              <Printer className="w-4 h-4" />
+            </button>
 
-              {/* Main Content Area */}
-              {activeTab === 'roster' ? (
-                loading && !schedule ? (
-                  <div className="flex flex-col items-center justify-center h-64">
-                    <RefreshCw className="w-8 h-8 text-blue-500 animate-spin mb-4" />
-                    <p className="text-muted-foreground">Loading Schedule...</p>
-                  </div>
-                ) : !schedule ? (
-                  <div className="flex flex-col items-center justify-center h-64 text-center border-2 border-dashed border-border rounded-xl m-4">
-                    <CalendarDays className="w-12 h-12 text-muted-foreground/50 mb-4" />
-                    <p className="text-muted-foreground">No schedule generated for this month yet.</p>
-                    <p className="text-xs text-muted-foreground mt-2">Adjust your rules on the left and click Auto-Generate.</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm print:text-black">
-                      <thead className="bg-slate-50 dark:bg-slate-900 print:bg-gray-100">
-                        <tr>
-                          <th className="p-4 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs border-y border-slate-200 dark:border-slate-800 print:border-black">Date</th>
-                          <th className="p-4 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs border-y border-slate-200 dark:border-slate-800 print:border-black">Assigned Employees & Shifts</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {schedule.assignments.map((day: any, dayIndex: number) => {
-                          const dateObj = new Date(day.date);
-                          const isWeekend = dateObj.getDay() === 5 || dateObj.getDay() === 6; // Fri/Sat in some regions
-                          
-                          let morningCount = 0;
-                          let noonCount = 0;
-                          let nightCount = 0;
-                          day.shifts.forEach((s: any) => {
-                            const l = s.shiftTime.toLowerCase();
-                            if (l.includes('morning')) morningCount++;
-                            if (l.includes('noon')) noonCount++;
-                            if (l.includes('night')) nightCount++;
-                          });
-                          
-                          let overstaffed = false;
-                          let understaffed = false;
-                          if (morningCount > rules.minEmployeesMorning || noonCount > rules.minEmployeesNoon || nightCount > rules.minEmployeesNight) overstaffed = true;
-                          if (morningCount < rules.minEmployeesMorning || noonCount < rules.minEmployeesNoon || nightCount < rules.minEmployeesNight) understaffed = true;
-                          
-                          let heatmapClass = "";
-                          if (understaffed && overstaffed) heatmapClass = "bg-gradient-to-r from-red-500/10 to-blue-500/10 dark:from-red-900/20 dark:to-blue-900/20";
-                          else if (overstaffed) heatmapClass = "bg-red-500/10 dark:bg-red-900/20";
-                          else if (understaffed) heatmapClass = "bg-blue-500/10 dark:bg-blue-900/20";
+            {/* Export CSV */}
+            <button
+              onClick={exportToCSV}
+              disabled={!schedule}
+              className="p-2 bg-card hover:bg-muted text-muted-foreground hover:text-foreground border border-border rounded-xl shadow-sm transition-colors disabled:opacity-40"
+              title="Export CSV"
+            >
+              <Download className="w-4 h-4" />
+            </button>
 
-                          return (
-                            <tr key={day.date} className={`border-b border-slate-100 dark:border-slate-800/50 print:border-black transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-800/20 ${heatmapClass || (isWeekend ? 'bg-orange-50/30 dark:bg-orange-900/10' : '')}`}>
-                              <td className="p-4 border-r border-slate-100 dark:border-slate-800 print:border-black w-40 whitespace-nowrap align-top">
-                                <div className={`font-bold text-base ${isWeekend ? 'text-orange-600 dark:text-orange-400' : 'text-slate-800 dark:text-slate-200'}`}>{dateObj.toLocaleDateString('en-US', { weekday: 'long' })}</div>
-                                <div className="text-xs font-semibold text-slate-400 dark:text-slate-500 mt-1 print:text-gray-600">{dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
-                                {overstaffed && !understaffed && <div className="mt-3 inline-block px-2 py-1 bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300 text-[10px] font-bold uppercase rounded-md border border-red-200 dark:border-red-800 shadow-sm shadow-red-500/20">Overstaffed</div>}
-                                {understaffed && !overstaffed && <div className="mt-3 inline-block px-2 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 text-[10px] font-bold uppercase rounded-md border border-blue-200 dark:border-blue-800 shadow-sm shadow-blue-500/20">Understaffed</div>}
-                                {understaffed && overstaffed && <div className="mt-3 inline-block px-2 py-1 bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 text-[10px] font-bold uppercase rounded-md border border-purple-200 dark:border-purple-800 shadow-sm shadow-purple-500/20">Unbalanced</div>}
-                                {!understaffed && !overstaffed && <div className="mt-3 inline-block px-2 py-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 text-[10px] font-bold uppercase rounded-md border border-emerald-200 dark:border-emerald-800 shadow-sm shadow-emerald-500/20">Optimal</div>}
-                              </td>
-                              <td className="p-4 align-top">
-                                <div className="flex flex-wrap gap-3 items-start">
-                                  {day.shifts.map((shift: any, i: number) => {
-                                    const lower = shift.shiftTime.toLowerCase();
-                                    const isOff = lower.includes('off');
-                                    const isMorning = lower.includes('morning');
-                                    const isNoon = lower.includes('noon');
-                                    const isNight = lower.includes('night');
+            {/* Save Button */}
+            <button
+              onClick={() => handleSave()}
+              disabled={saving || !schedule}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 transition-all disabled:opacity-50"
+            >
+              {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              Save Changes
+            </button>
 
-                                    let badgeColors = 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700';
-                                    if (isOff) badgeColors = 'bg-red-50 text-red-600 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800/50';
-                                    else if (isMorning) badgeColors = 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800/50';
-                                    else if (isNight) badgeColors = 'bg-indigo-50 text-indigo-600 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-800/50';
-                                    else if (isNoon) badgeColors = 'bg-orange-50 text-orange-600 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800/50';
-
-                                    return (
-                                      <div key={i} className={`p-2.5 rounded-xl border flex flex-col print:border-black backdrop-blur-sm shadow-sm transition-all w-36 ${badgeColors}`}>
-                                        <span className="font-bold text-[13px] tracking-tight leading-tight mb-2 flex items-start justify-between">
-                                          {shift.employeeName}
-                                          {shift.isBorrowed && <span className="text-[9px] bg-purple-500/20 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded-sm ml-1 uppercase tracking-wider font-black">Borrowed</span>}
-                                        </span>
-                                        
-                                        <div className="relative group">
-                                          <select 
-                                            value={shift.shiftTime}
-                                            onChange={(e) => {
-                                              const newSchedule = JSON.parse(JSON.stringify(schedule));
-                                              newSchedule.assignments[dayIndex].shifts[i].shiftTime = e.target.value;
-                                              setSchedule(newSchedule);
-                                              
-                                              if (schedule.isPublished) {
-                                                fetch('/api/schedule', {
-                                                  method: 'POST',
-                                                  headers: { 'Content-Type': 'application/json' },
-                                                  body: JSON.stringify(newSchedule)
-                                                }).catch(console.error);
-                                              }
-                                            }}
-                                            className={`appearance-none rounded-lg px-2 py-1.5 text-xs font-bold focus:ring-2 focus:ring-blue-500/50 outline-none print:hidden w-full cursor-pointer transition-colors border
-                                              ${schedule.isPublished ? 'bg-black/5 dark:bg-white/5 border-transparent hover:bg-black/10 dark:hover:bg-white/10' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 shadow-inner'}`}
-                                          >
-                                            <option value="Off">Off</option>
-                                            <option value="Scheduled">Scheduled</option>
-                                            <option value="Morning">Morning</option>
-                                            <option value="Noon">Noon</option>
-                                            <option value="Night">Night</option>
-                                            <option value="Off (Approved Leave)">Off (Approved Leave)</option>
-                                          </select>
-                                          <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50 print:hidden">
-                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                                          </div>
-                                        </div>
-                                        <span className="hidden print:block opacity-80 mt-1 text-xs font-bold">{shift.shiftTime}</span>
-                                      </div>
-                                    );
-                                  })}
-                                  
-                                  {/* Borrow Button */}
-                                  <button 
-                                    onClick={() => setShowBorrowModal(dayIndex)} 
-                                    className="p-2 h-[82px] w-20 flex flex-col items-center justify-center bg-slate-50 hover:bg-blue-50 dark:bg-slate-800/30 dark:hover:bg-blue-900/20 text-slate-400 hover:text-blue-500 border border-dashed border-slate-300 hover:border-blue-400 dark:border-slate-700 dark:hover:border-blue-500 rounded-xl transition-colors print:hidden group"
-                                    title="Borrow employee"
-                                  >
-                                    <Plus className="w-5 h-5 mb-1 group-hover:scale-110 transition-transform"/>
-                                    <span className="text-[10px] font-bold uppercase tracking-wider">Borrow</span>
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )
+            {/* Publish Toggle Button */}
+            <button
+              onClick={togglePublish}
+              disabled={publishing || !schedule}
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold shadow-md transition-all disabled:opacity-50 ${
+                schedule?.isPublished
+                  ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/20"
+                  : "bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-700 hover:to-amber-700 text-white shadow-red-500/20"
+              }`}
+            >
+              {publishing ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              ) : schedule?.isPublished ? (
+                <ShieldCheck className="w-3.5 h-3.5" />
               ) : (
-                /* Analytics Tab */
-                <div className="p-4">
-                  {!schedule ? (
-                    <div className="flex flex-col items-center justify-center h-64 text-center">
-                      <BarChart3 className="w-12 h-12 text-muted-foreground/50 mb-4" />
-                      <p className="text-muted-foreground">Generate a schedule first to view analytics.</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-6">
-                      <div className="flex items-center space-x-2 mb-4">
-                        <BarChart3 className="w-5 h-5 text-blue-500" />
-                        <h3 className="text-lg font-bold">Employee Workload & Fairness</h3>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        <div className="bg-secondary/20 border border-border rounded-xl p-4">
-                          <p className="text-sm text-muted-foreground mb-1">Total Shifts Scheduled</p>
-                          <p className="text-2xl font-black text-foreground">
-                            {schedule.assignments.reduce((sum: number, day: any) => sum + day.shifts.filter((s:any) => !s.shiftTime.includes('Off')).length, 0)}
-                          </p>
-                        </div>
-                        <div className="bg-secondary/20 border border-border rounded-xl p-4">
-                          <p className="text-sm text-muted-foreground mb-1">Total Estimated Hours</p>
-                          <p className="text-2xl font-black text-blue-500">
-                            {schedule.assignments.reduce((sum: number, day: any) => sum + day.shifts.filter((s:any) => !s.shiftTime.includes('Off')).length, 0) * 9} hrs
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">Based on 9hr shifts</p>
-                        </div>
-                      </div>
-
-                      <div className="overflow-x-auto border border-border rounded-xl">
-                        <table className="w-full text-left text-sm">
-                          <thead className="bg-secondary/50">
-                            <tr>
-                              <th className="p-3 font-semibold">Employee</th>
-                              <th className="p-3 font-semibold text-center">Worked Days</th>
-                              <th className="p-3 font-semibold text-center">Days Off</th>
-                              <th className="p-3 font-semibold text-center">Morning</th>
-                              <th className="p-3 font-semibold text-center">Noon</th>
-                              <th className="p-3 font-semibold text-center">Night</th>
-                              <th className="p-3 font-semibold text-right">Total Hours</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {(() => {
-                              // Compute stats
-                              const stats: Record<string, any> = {};
-                              schedule.assignments.forEach((day: any) => {
-                                day.shifts.forEach((shift: any) => {
-                                  if (!stats[shift.employeeName]) {
-                                    stats[shift.employeeName] = { worked: 0, off: 0, morning: 0, noon: 0, night: 0, id: shift.employeeId };
-                                  }
-                                  if (shift.shiftTime.includes('Off')) {
-                                    stats[shift.employeeName].off += 1;
-                                  } else {
-                                    stats[shift.employeeName].worked += 1;
-                                    if (shift.shiftTime === 'Morning') stats[shift.employeeName].morning += 1;
-                                    else if (shift.shiftTime === 'Noon') stats[shift.employeeName].noon += 1;
-                                    else if (shift.shiftTime === 'Night') stats[shift.employeeName].night += 1;
-                                  }
-                                });
-                              });
-
-                              return Object.entries(stats).sort((a: any, b: any) => b[1].worked - a[1].worked).map(([name, data]: any) => {
-                                const totalHours = data.worked * 9;
-                                const isOvertimeWarning = totalHours > 200; // Arbitrary warning threshold
-                                
-                                return (
-                                  <tr key={name} className="border-t border-border/50 hover:bg-secondary/10">
-                                    <td className="p-3 font-medium">{name}</td>
-                                    <td className="p-3 text-center">{data.worked}</td>
-                                    <td className="p-3 text-center text-red-400">{data.off}</td>
-                                    <td className="p-3 text-center text-orange-400">{data.morning}</td>
-                                    <td className="p-3 text-center text-yellow-500">{data.noon}</td>
-                                    <td className="p-3 text-center text-blue-400">{data.night}</td>
-                                    <td className={`p-3 text-right font-bold ${isOvertimeWarning ? 'text-orange-500' : 'text-green-500'}`}>
-                                      {totalHours}
-                                      {isOvertimeWarning && <span title="High hours warning"><AlertCircle className="w-3 h-3 inline ml-1" /></span>}
-                                    </td>
-                                  </tr>
-                                );
-                              });
-                            })()}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-
-                  {activeTab === 'requests' && (
-                    <div className="space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Incoming Requests */}
-                        <div className="bg-card border border-border rounded-xl p-4">
-                          <h3 className="font-bold text-lg mb-4 flex items-center">
-                            <span className="bg-blue-100 text-blue-700 p-1.5 rounded-lg mr-2">
-                              <Users className="w-4 h-4" />
-                            </span>
-                            Incoming Requests
-                          </h3>
-                          <div className="space-y-3">
-                            {borrowRequests.filter(r => isStoreMatch(r.sourceStoreId)).length === 0 ? (
-                              <p className="text-sm text-muted-foreground text-center py-4">No incoming requests.</p>
-                            ) : (
-                              borrowRequests.filter(r => isStoreMatch(r.sourceStoreId)).map((req) => (
-                                <div key={req.id} className="bg-background border border-border rounded-xl p-3">
-                                  <div className="flex justify-between items-start mb-2">
-                                    <p className="font-bold text-sm">{req.employeeName}</p>
-                                    <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase font-bold
-                                      ${req.status === 'approved' ? 'bg-green-500/20 text-green-500' : 
-                                        req.status === 'rejected' ? 'bg-red-500/20 text-red-500' : 
-                                        'bg-yellow-500/20 text-yellow-500'}`}>
-                                      {req.status}
-                                    </span>
-                                  </div>
-                                  <p className="text-xs text-muted-foreground mb-1">
-                                    Requested by: <span className="font-semibold text-foreground">{req.targetStoreId}</span>
-                                  </p>
-                                  {req.type === 'forever' ? (
-                                    <p className="text-xs text-purple-500 font-medium mb-3 border border-purple-200 bg-purple-50 inline-block px-2 py-0.5 rounded">Permanent Transfer</p>
-                                  ) : (
-                                    <div className="text-xs text-muted-foreground mb-3">
-                                      <p>Temporary Borrow: {req.dates?.length} day(s)</p>
-                                      <p className="line-clamp-1">{req.dates?.join(', ')}</p>
-                                    </div>
-                                  )}
-                                  
-                                  {req.status === 'pending' && (
-                                    <div className="flex space-x-2">
-                                      <button 
-                                        onClick={async () => {
-                                          try {
-                                            await updateDoc(doc(db, "borrow_requests", req.id), { status: "approved" });
-                                            if (req.type === "forever") {
-                                              await updateDoc(doc(db, "cashiers", req.employeeId), {
-                                                branchId: req.targetStoreId,
-                                                storeId: req.targetStoreId
-                                              });
-                                              alert("Employee permanently transferred!");
-                                            } else {
-                                              // Auto-inject into target schedule
-                                              const firstDate = req.dates[0];
-                                              const reqMonth = firstDate.substring(0, 7);
-                                              const targetRes = await fetch(`/api/schedule?storeId=${req.targetStoreId}&month=${reqMonth}`);
-                                              const targetData = await targetRes.json();
-                                              
-                                              if (targetData.schedule) {
-                                                const newTargetSchedule = JSON.parse(JSON.stringify(targetData.schedule));
-                                                req.dates.forEach((dateStr: string) => {
-                                                  const dayIndex = newTargetSchedule.assignments.findIndex((a: any) => a.date === dateStr);
-                                                  if (dayIndex !== -1) {
-                                                    newTargetSchedule.assignments[dayIndex].shifts.push({
-                                                      employeeId: req.employeeId,
-                                                      employeeName: req.employeeName,
-                                                      shiftTime: req.shiftTime || 'Morning',
-                                                      isBorrowed: true,
-                                                      borrowedFrom: req.sourceStoreId
-                                                    });
-                                                  }
-                                                });
-                                                await fetch('/api/schedule', {
-                                                  method: 'POST',
-                                                  headers: { 'Content-Type': 'application/json' },
-                                                  body: JSON.stringify(newTargetSchedule)
-                                                });
-                                              }
-                                              alert("Request approved and added to their schedule!");
-                                            }
-                                          } catch(e) {
-                                            alert("Error approving request");
-                                          }
-                                        }}
-                                        className="flex-1 bg-green-500 hover:bg-green-600 text-white py-1.5 rounded-lg transition-colors text-xs font-bold"
-                                      >
-                                        Approve
-                                      </button>
-                                      <button 
-                                        onClick={async () => {
-                                          await updateDoc(doc(db, "borrow_requests", req.id), { status: "rejected" });
-                                        }}
-                                        className="flex-1 bg-red-500 hover:bg-red-600 text-white py-1.5 rounded-lg transition-colors text-xs font-bold"
-                                      >
-                                        Reject
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Outgoing Requests */}
-                        <div className="bg-card border border-border rounded-xl p-4">
-                          <h3 className="font-bold text-lg mb-4 flex items-center">
-                            <span className="bg-orange-100 text-orange-700 p-1.5 rounded-lg mr-2">
-                              <Send className="w-4 h-4" />
-                            </span>
-                            Outgoing Requests
-                          </h3>
-                          <div className="space-y-3">
-                            {borrowRequests.filter(r => isStoreMatch(r.targetStoreId)).length === 0 ? (
-                              <p className="text-sm text-muted-foreground text-center py-4">No outgoing requests.</p>
-                            ) : (
-                              borrowRequests.filter(r => isStoreMatch(r.targetStoreId)).map((req) => (
-                                <div key={req.id} className="bg-background border border-border rounded-xl p-3">
-                                  <div className="flex justify-between items-start mb-2">
-                                    <p className="font-bold text-sm">{req.employeeName}</p>
-                                    <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase font-bold
-                                      ${req.status === 'approved' ? 'bg-green-500/20 text-green-500' : 
-                                        req.status === 'rejected' ? 'bg-red-500/20 text-red-500' : 
-                                        'bg-yellow-500/20 text-yellow-500'}`}>
-                                      {req.status}
-                                    </span>
-                                  </div>
-                                  <p className="text-xs text-muted-foreground mb-1">
-                                    Request to: <span className="font-semibold text-foreground">{req.sourceStoreId}</span>
-                                  </p>
-                                  {req.type === 'forever' ? (
-                                    <p className="text-xs text-purple-500 font-medium mb-1 border border-purple-200 bg-purple-50 inline-block px-2 py-0.5 rounded">Permanent Transfer</p>
-                                  ) : (
-                                    <div className="text-xs text-muted-foreground mb-1">
-                                      <p>Temporary Borrow: {req.dates?.length} day(s)</p>
-                                      <p className="line-clamp-1">{req.dates?.join(', ')}</p>
-                                    </div>
-                                  )}
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <Send className="w-3.5 h-3.5" />
               )}
+              {schedule?.isPublished ? "Published (Live)" : "Publish to Staff"}
+            </button>
+          </div>
+        </div>
+
+        {/* Notifications Bar */}
+        {successMsg && (
+          <div className="max-w-7xl mx-auto mt-3 p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 rounded-xl text-xs font-semibold flex items-center gap-2 animate-in fade-in">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <span>{successMsg}</span>
+          </div>
+        )}
+        {errorMsg && (
+          <div className="max-w-7xl mx-auto mt-3 p-3 bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 rounded-xl text-xs font-semibold flex items-center gap-2 animate-in fade-in">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Main Container */}
+      <div className="max-w-7xl mx-auto px-4 lg:px-8 py-6 space-y-6">
+
+        {/* Quick Summary / Navigation Tabs */}
+        <div className="flex flex-wrap items-center justify-between gap-4 print:hidden">
+          
+          {/* View Mode Tabs */}
+          <div className="flex items-center bg-card border border-border p-1 rounded-2xl shadow-sm">
+            <button
+              onClick={() => setViewMode("matrix")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                viewMode === "matrix"
+                  ? "bg-red-600 text-white shadow-md shadow-red-500/20"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Calendar className="w-4 h-4" />
+              Month Matrix Grid
+            </button>
+            <button
+              onClick={() => setViewMode("daily")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                viewMode === "daily"
+                  ? "bg-red-600 text-white shadow-md shadow-red-500/20"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Clock className="w-4 h-4" />
+              Daily Rosters
+            </button>
+            <button
+              onClick={() => setViewMode("analytics")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                viewMode === "analytics"
+                  ? "bg-red-600 text-white shadow-md shadow-red-500/20"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              Staff Hours & Analytics
+            </button>
+            <button
+              onClick={() => setViewMode("leaves")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all relative ${
+                viewMode === "leaves"
+                  ? "bg-red-600 text-white shadow-md shadow-red-500/20"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <CalendarCheck className="w-4 h-4" />
+              Leaves & Transfers
+              {pendingLeavesForBranch.length > 0 && (
+                <span className="px-1.5 py-0.5 text-[10px] font-black bg-amber-500 text-slate-950 rounded-full">
+                  {pendingLeavesForBranch.length}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Quick Generate / Refresh Tools */}
+          <div className="flex items-center gap-2">
+            {!schedule ? (
+              <button
+                onClick={() => handleGenerate(false)}
+                disabled={generating}
+                className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-700 hover:to-amber-700 text-white rounded-xl text-xs font-black shadow-lg shadow-red-500/20 transition-all disabled:opacity-50"
+              >
+                {generating ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                Generate {getBranchDisplayName(activeBranchId)} Roster
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleGenerate(true)}
+                  disabled={generating}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-card hover:bg-muted text-muted-foreground hover:text-foreground border border-border rounded-xl text-xs font-semibold shadow-sm transition-all"
+                  title="Sync any new active employees without overwriting current shifts"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${generating ? "animate-spin" : ""}`} />
+                  Sync Active Staff
+                </button>
+                <button
+                  onClick={() => {
+                    if (confirm("Reset this month to default shifts? Custom manual edits will be re-initialized.")) {
+                      handleGenerate(false);
+                    }
+                  }}
+                  disabled={generating}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-card hover:bg-red-500/10 text-muted-foreground hover:text-red-500 border border-border rounded-xl text-xs font-semibold shadow-sm transition-all"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Reset Month
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Printable Header */}
+        <div className="hidden print:block mb-6 border-b pb-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-2xl font-black text-black">Circle K - Monthly Staff Schedule</h1>
+              <p className="text-sm text-gray-600 font-semibold">
+                Branch: {getBranchDisplayName(activeBranchId)} • Month: {selectedMonth}
+              </p>
+            </div>
+            <div className="text-right text-xs text-gray-500">
+              Printed on {new Date().toLocaleDateString()}
             </div>
           </div>
         </div>
 
-        {/* Borrow Employee Modal */}
-        {showBorrowModal !== null && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="bg-card w-full max-w-md rounded-2xl shadow-2xl border border-border p-6 animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto custom-scrollbar">
-              <h3 className="text-xl font-bold mb-1">Request Staff</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Request an employee from another branch.
+        {/* Loading State */}
+        {loading && (
+          <div className="flex flex-col items-center justify-center p-16 bg-card border border-border rounded-3xl shadow-sm space-y-4">
+            <RefreshCw className="w-8 h-8 text-red-500 animate-spin" />
+            <p className="text-sm font-semibold text-muted-foreground">Loading branch schedule...</p>
+          </div>
+        )}
+
+        {/* Empty / Uninitialized State */}
+        {!loading && !schedule && (
+          <div className="flex flex-col items-center justify-center p-12 lg:p-20 bg-card border border-border rounded-3xl text-center space-y-6 shadow-sm">
+            <div className="w-16 h-16 bg-red-500/10 text-red-600 dark:text-red-400 rounded-3xl flex items-center justify-center border border-red-500/20 shadow-inner">
+              <Calendar className="w-8 h-8" />
+            </div>
+            <div className="max-w-md space-y-2">
+              <h2 className="text-xl font-black">No Schedule Created for {selectedMonth}</h2>
+              <p className="text-xs text-muted-foreground">
+                Initialize the roster for <strong>{getBranchDisplayName(activeBranchId)}</strong>. All{" "}
+                <strong>{branchEmployees.length} active employees</strong> will be populated across the month, and approved leaves will be applied automatically so you can schedule shifts manually.
               </p>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground uppercase mb-1 block">Request Type</label>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => setBorrowType("days")}
-                      className={`flex-1 py-2 text-sm rounded-xl border transition-colors ${borrowType === "days" ? "bg-blue-50 border-blue-200 text-blue-700 font-bold" : "bg-card border-border hover:bg-secondary"}`}
-                    >
-                      Temporary Borrow
-                    </button>
-                    <button 
-                      onClick={() => setBorrowType("forever")}
-                      className={`flex-1 py-2 text-sm rounded-xl border transition-colors ${borrowType === "forever" ? "bg-purple-50 border-purple-200 text-purple-700 font-bold" : "bg-card border-border hover:bg-secondary"}`}
-                    >
-                      Permanent Transfer
-                    </button>
-                  </div>
-                </div>
+            </div>
+            <button
+              onClick={() => handleGenerate(false)}
+              disabled={generating}
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-700 hover:to-amber-700 text-white rounded-2xl text-sm font-black shadow-xl shadow-red-500/25 transition-all"
+            >
+              {generating ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              Generate {selectedMonth} Roster ({branchEmployees.length} Staff)
+            </button>
+          </div>
+        )}
 
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground uppercase mb-1 block">Select Employee</label>
-                  <select 
-                    className="w-full bg-background border border-border rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                    onChange={(e) => {
-                      const emp = allEmployees.find(x => x.id === e.target.value);
-                      setBorrowSelectedEmp(emp || null);
-                    }}
-                    value={borrowSelectedEmp?.id || ""}
+        {/* VIEW 1: MATRIX VIEW (Staff vs Month Days) */}
+        {!loading && schedule && viewMode === "matrix" && (
+          <div className="space-y-4">
+            
+            {/* Filter & Legend Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-card border border-border p-3 rounded-2xl shadow-sm print:hidden">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="relative flex-1 sm:w-64">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="text"
+                    value={searchFilter}
+                    onChange={(e) => setSearchFilter(e.target.value)}
+                    placeholder="Search staff name..."
+                    className="w-full pl-8 pr-3 py-1.5 text-xs bg-background border border-border rounded-xl outline-none focus:border-red-500 transition-colors"
+                  />
+                </div>
+                {searchFilter && (
+                  <button
+                    onClick={() => setSearchFilter("")}
+                    className="p-1.5 text-xs text-muted-foreground hover:text-foreground"
                   >
-                    <option value="">-- Choose an employee --</option>
-                    {allEmployees
-                      .filter(emp => emp.branchId !== storeId && emp.storeId !== storeId) // Only from other branches
-                      .map(emp => (
-                        <option key={emp.id} value={emp.id}>
-                          {emp.name} ({emp.branchId || emp.storeId || 'Unknown'})
-                        </option>
-                      ))}
-                  </select>
-                </div>
-
-                {borrowType === "days" ? (
-                  <>
-                    <div>
-                      <label className="text-xs font-semibold text-muted-foreground uppercase mb-1 block">Select Days</label>
-                      <div className="max-h-32 overflow-y-auto border border-border rounded-xl p-2 bg-background/50 grid grid-cols-2 gap-2 custom-scrollbar">
-                        {schedule?.assignments.map((assignment: any, idx: number) => (
-                          <label key={idx} className="flex items-center space-x-2 text-sm cursor-pointer p-1 hover:bg-secondary rounded">
-                            <input 
-                              type="checkbox" 
-                              checked={borrowDates.includes(assignment.date)} 
-                              onChange={(e) => {
-                                if (e.target.checked) setBorrowDates([...borrowDates, assignment.date]);
-                                else setBorrowDates(borrowDates.filter(d => d !== assignment.date));
-                              }}
-                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            />
-                            <span>{assignment.date}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-muted-foreground uppercase mb-1 block">Shift Time</label>
-                      <select 
-                        value={borrowShiftTime}
-                        onChange={(e) => setBorrowShiftTime(e.target.value)}
-                        className="w-full bg-background border border-border rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="Morning">Morning</option>
-                        <option value="Noon">Noon</option>
-                        <option value="Night">Night</option>
-                      </select>
-                    </div>
-                  </>
-                ) : (
-                  <div className="bg-purple-50 text-purple-700 p-4 rounded-xl text-sm border border-purple-100">
-                    <strong>Note:</strong> This will send a request to permanently move this employee to <strong>{storeId}</strong>. They will no longer appear on their original branch's schedule.
-                  </div>
+                    <X className="w-3.5 h-3.5" />
+                  </button>
                 )}
               </div>
 
-              <div className="flex space-x-3 mt-6">
-                <button 
-                  onClick={() => {
-                    setShowBorrowModal(null);
-                    setBorrowSelectedEmp(null);
-                    setBorrowDates([]);
-                  }}
-                  className="flex-1 px-4 py-2 bg-secondary text-foreground rounded-xl hover:bg-secondary/80 font-medium"
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={async () => {
-                    if (!borrowSelectedEmp) return;
-                    
-                    const requestData = {
-                      type: borrowType,
-                      employeeId: borrowSelectedEmp.id,
-                      employeeName: borrowSelectedEmp.name,
-                      sourceStoreId: borrowSelectedEmp.branchId || borrowSelectedEmp.storeId || "Unknown",
-                      targetStoreId: storeId,
-                      status: "pending",
-                      createdAt: new Date().toISOString(),
-                      ...(borrowType === "days" ? {
-                        dates: borrowDates.length > 0 ? borrowDates : [schedule?.assignments[showBorrowModal]?.date].filter(Boolean),
-                        shiftTime: borrowShiftTime
-                      } : {})
-                    };
+              {/* Shift Legend */}
+              <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold">
+                <span className="text-muted-foreground mr-1">Shifts:</span>
+                {SHIFT_OPTIONS.map((opt) => {
+                  const Icon = opt.icon;
+                  return (
+                    <span
+                      key={opt.id}
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border ${opt.color}`}
+                    >
+                      <Icon className="w-3 h-3" />
+                      {opt.short}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
 
-                    try {
-                      await addDoc(collection(db, "borrow_requests"), requestData);
-                      alert("Request sent successfully to the other manager!");
-                    } catch (e) {
-                      console.error("Error creating request", e);
-                      alert("Failed to send request.");
-                    }
-                    
-                    setShowBorrowModal(null);
-                    setBorrowSelectedEmp(null);
-                    setBorrowDates([]);
-                  }}
-                  disabled={!borrowSelectedEmp}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Send Request
-                </button>
+            {/* Matrix Table Container */}
+            <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
+              <div className="overflow-x-auto custom-scrollbar">
+                <table className="w-full text-left border-collapse text-xs">
+                  
+                  {/* Table Header */}
+                  <thead>
+                    <tr className="bg-muted/60 border-b border-border text-[11px] font-black uppercase text-muted-foreground">
+                      <th className="p-3 sticky left-0 z-20 bg-muted/95 backdrop-blur-sm min-w-[180px] max-w-[220px] border-r border-border">
+                        Employee ({filteredScheduledEmployees.length})
+                      </th>
+                      {schedule.assignments.map((day) => {
+                        const dateObj = new Date(day.date);
+                        const dayNum = dateObj.getDate();
+                        const dayName = dateObj.toLocaleDateString("en-US", { weekday: "short" });
+                        const isWeekend = dateObj.getDay() === 5 || dateObj.getDay() === 6; // Fri / Sat
+                        return (
+                          <th
+                            key={day.date}
+                            className={`p-2 text-center min-w-[58px] border-r border-border/60 ${
+                              isWeekend ? "bg-red-500/5 dark:bg-red-500/10 font-black text-red-600 dark:text-red-400" : ""
+                            }`}
+                          >
+                            <div className="text-[10px] opacity-80">{dayName}</div>
+                            <div className="text-xs font-black">{dayNum}</div>
+                          </th>
+                        );
+                      })}
+                      <th className="p-3 text-center min-w-[120px] bg-muted/95 border-l border-border">
+                        Monthly Summary
+                      </th>
+                    </tr>
+                  </thead>
+
+                  {/* Table Body */}
+                  <tbody className="divide-y divide-border">
+                    {filteredScheduledEmployees.map((emp) => {
+                      const stats = employeeStats[emp.id] || { morning: 0, noon: 0, night: 0, off: 0, leave: 0, hours: 0, workedDays: 0 };
+                      return (
+                        <tr key={emp.id} className="hover:bg-muted/30 transition-colors group">
+                          
+                          {/* Staff Column (Sticky Left) */}
+                          <td className="p-3 sticky left-0 z-10 bg-card group-hover:bg-muted/60 backdrop-blur-sm border-r border-border">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="font-bold text-foreground truncate">{emp.name}</p>
+                                <p className="text-[10px] text-muted-foreground">{emp.position}</p>
+                              </div>
+                              <button
+                                onClick={() => setBulkEmpModal(branchEmployees.find((b) => b.id === emp.id) || (emp as any))}
+                                className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg opacity-0 group-hover:opacity-100 transition-all print:hidden"
+                                title="Quick Bulk Scheduling"
+                              >
+                                <Sliders className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+
+                          {/* Day Shift Cells */}
+                          {schedule.assignments.map((day) => {
+                            const shift = day.shifts.find((s) => s.employeeId === emp.id);
+                            const shiftTime = shift ? shift.shiftTime : "Off";
+                            const isLeave = shiftTime.includes("Approved Leave");
+
+                            // Color map
+                            let pillStyle = "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20";
+                            let icon = <Coffee className="w-2.5 h-2.5" />;
+                            let label = "Off";
+
+                            if (shiftTime.includes("Morning")) {
+                              pillStyle = "bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500/40 hover:bg-blue-500/30";
+                              icon = <Sunrise className="w-2.5 h-2.5" />;
+                              label = "M";
+                            } else if (shiftTime.includes("Noon")) {
+                              pillStyle = "bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/40 hover:bg-amber-500/30";
+                              icon = <Sun className="w-2.5 h-2.5" />;
+                              label = "N";
+                            } else if (shiftTime.includes("Night")) {
+                              pillStyle = "bg-purple-500/20 text-purple-700 dark:text-purple-300 border-purple-500/40 hover:bg-purple-500/30";
+                              icon = <Moon className="w-2.5 h-2.5" />;
+                              label = "Nt";
+                            } else if (isLeave) {
+                              pillStyle = "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/40";
+                              icon = <CalendarCheck className="w-2.5 h-2.5" />;
+                              label = "LV";
+                            }
+
+                            return (
+                              <td
+                                key={day.date}
+                                className="p-1 text-center border-r border-border/40 relative cursor-pointer select-none"
+                                onClick={() => {
+                                  if (isLeave) {
+                                    alert(`${emp.name} has approved leave on ${day.date}.`);
+                                    return;
+                                  }
+                                  setActiveShiftCell({
+                                    date: day.date,
+                                    empId: emp.id,
+                                    empName: emp.name,
+                                  });
+                                }}
+                              >
+                                <div
+                                  className={`mx-auto w-full max-w-[50px] py-1.5 px-1 rounded-lg border text-[11px] font-black flex items-center justify-center gap-1 transition-all ${pillStyle}`}
+                                  title={`${emp.name}: ${shiftTime} (${day.date})`}
+                                >
+                                  {icon}
+                                  <span>{label}</span>
+                                </div>
+                              </td>
+                            );
+                          })}
+
+                          {/* Employee Stats Column */}
+                          <td className="p-2 text-center bg-muted/30 border-l border-border">
+                            <div className="flex items-center justify-center gap-1.5 text-[10px] font-bold">
+                              <span className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400" title="Morning Shifts">
+                                {stats.morning}M
+                              </span>
+                              <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400" title="Noon Shifts">
+                                {stats.noon}N
+                              </span>
+                              <span className="px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400" title="Night Shifts">
+                                {stats.night}Nt
+                              </span>
+                              <span className="px-1.5 py-0.5 rounded bg-slate-500/10 text-slate-600 dark:text-slate-400" title="Days Off">
+                                {stats.off}Off
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-muted-foreground mt-0.5 font-semibold">
+                              {stats.workedDays} days ({stats.hours} hrs)
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+
+                  {/* Daily Headcount Summary Footer */}
+                  <tfoot>
+                    <tr className="bg-muted/80 font-black border-t-2 border-border text-[10px]">
+                      <td className="p-3 sticky left-0 z-20 bg-muted/95 backdrop-blur-sm border-r border-border uppercase">
+                        Daily Headcount
+                      </td>
+                      {schedule.assignments.map((day) => {
+                        const counts = dailyTotals[day.date] || { morning: 0, noon: 0, night: 0, off: 0 };
+                        return (
+                          <td key={day.date} className="p-1.5 text-center border-r border-border/40">
+                            <div className="space-y-0.5 text-[9px]">
+                              <div className="text-blue-600 dark:text-blue-400 font-black" title="Morning staff count">
+                                {counts.morning}M
+                              </div>
+                              <div className="text-amber-600 dark:text-amber-400 font-black" title="Noon staff count">
+                                {counts.noon}N
+                              </div>
+                              <div className="text-purple-600 dark:text-purple-400 font-black" title="Night staff count">
+                                {counts.night}Nt
+                              </div>
+                            </div>
+                          </td>
+                        );
+                      })}
+                      <td className="p-2 text-center text-muted-foreground border-l border-border">
+                        Total Roster
+                      </td>
+                    </tr>
+                  </tfoot>
+
+                </table>
               </div>
             </div>
           </div>
         )}
 
+        {/* VIEW 2: DAILY ROSTER VIEW */}
+        {!loading && schedule && viewMode === "daily" && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {schedule.assignments.map((day) => {
+                const dateObj = new Date(day.date);
+                const dayName = dateObj.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+                const counts = dailyTotals[day.date] || { morning: 0, noon: 0, night: 0, off: 0 };
+
+                return (
+                  <div key={day.date} className="bg-card border border-border rounded-2xl p-4 shadow-sm space-y-3">
+                    <div className="flex justify-between items-start border-b border-border pb-2.5">
+                      <div>
+                        <h3 className="font-bold text-sm text-foreground">{dayName}</h3>
+                        <p className="text-[11px] text-muted-foreground">{day.shifts.length} assigned staff</p>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[10px] font-black">
+                        <span className="px-2 py-0.5 rounded-lg bg-blue-500/15 text-blue-600 dark:text-blue-400">
+                          {counts.morning} M
+                        </span>
+                        <span className="px-2 py-0.5 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                          {counts.noon} N
+                        </span>
+                        <span className="px-2 py-0.5 rounded-lg bg-purple-500/15 text-purple-600 dark:text-purple-400">
+                          {counts.night} Nt
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Staff List */}
+                    <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar pr-1">
+                      {day.shifts.map((s) => (
+                        <div
+                          key={s.employeeId}
+                          className="flex items-center justify-between p-2 rounded-xl bg-background border border-border/80 text-xs"
+                        >
+                          <div className="min-w-0 pr-2">
+                            <p className="font-bold truncate">{s.employeeName}</p>
+                            <p className="text-[10px] text-muted-foreground">{s.position || "Staff"}</p>
+                          </div>
+                          <select
+                            value={s.shiftTime}
+                            onChange={(e) => updateShift(day.date, s.employeeId, e.target.value)}
+                            disabled={s.shiftTime.includes("Approved Leave")}
+                            className="text-xs font-bold bg-card border border-border rounded-lg px-2 py-1 outline-none focus:border-red-500 cursor-pointer"
+                          >
+                            <option value="Morning">🌅 Morning</option>
+                            <option value="Noon">☀️ Noon</option>
+                            <option value="Night">🌙 Night</option>
+                            <option value="Off">🏖️ Off</option>
+                            {s.shiftTime.includes("Approved Leave") && (
+                              <option value="Off (Approved Leave)">🌴 Leave</option>
+                            )}
+                          </select>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* VIEW 3: STAFF ANALYTICS & HOURS */}
+        {!loading && schedule && viewMode === "analytics" && (
+          <div className="space-y-4">
+            <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
+              <h2 className="text-lg font-black mb-1">Staff Workload & Hours Analysis</h2>
+              <p className="text-xs text-muted-foreground mb-6">
+                Monthly distribution of shifts, working hours, and days off for {getBranchDisplayName(activeBranchId)}.
+              </p>
+
+              <div className="overflow-x-auto custom-scrollbar">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-border text-[11px] font-black uppercase text-muted-foreground bg-muted/40">
+                      <th className="p-3">Employee</th>
+                      <th className="p-3">Role</th>
+                      <th className="p-3 text-center">Morning (08-16)</th>
+                      <th className="p-3 text-center">Noon (16-00)</th>
+                      <th className="p-3 text-center">Night (00-08)</th>
+                      <th className="p-3 text-center">Days Off</th>
+                      <th className="p-3 text-center">Approved Leaves</th>
+                      <th className="p-3 text-center">Total Shifts</th>
+                      <th className="p-3 text-center">Estimated Hours</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {scheduledEmployees.map((emp) => {
+                      const stats = employeeStats[emp.id] || { morning: 0, noon: 0, night: 0, off: 0, leave: 0, hours: 0, workedDays: 0 };
+                      return (
+                        <tr key={emp.id} className="hover:bg-muted/30">
+                          <td className="p-3 font-bold">{emp.name}</td>
+                          <td className="p-3 text-muted-foreground">{emp.position}</td>
+                          <td className="p-3 text-center font-semibold text-blue-600 dark:text-blue-400">{stats.morning}</td>
+                          <td className="p-3 text-center font-semibold text-amber-600 dark:text-amber-400">{stats.noon}</td>
+                          <td className="p-3 text-center font-semibold text-purple-600 dark:text-purple-400">{stats.night}</td>
+                          <td className="p-3 text-center font-semibold text-slate-500">{stats.off}</td>
+                          <td className="p-3 text-center font-semibold text-emerald-600">{stats.leave}</td>
+                          <td className="p-3 text-center font-black">{stats.workedDays}</td>
+                          <td className="p-3 text-center font-black text-red-600 dark:text-red-400">
+                            {stats.hours} hrs
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* VIEW 4: LEAVES & TRANSFERS */}
+        {!loading && viewMode === "leaves" && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            {/* Leave Requests */}
+            <div className="bg-card border border-border rounded-2xl p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-emerald-500/10 text-emerald-600 rounded-xl">
+                    <CalendarCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm">Staff Time-Off Requests</h3>
+                    <p className="text-[11px] text-muted-foreground">Approve or reject leave requests from cashiers</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {leaveRequests.filter((r) => targetBranchNorm === "all" || normalizeBranchId(r.storeId) === targetBranchNorm).length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground text-xs font-semibold">
+                    No leave requests found for this branch.
+                  </div>
+                ) : (
+                  leaveRequests
+                    .filter((r) => targetBranchNorm === "all" || normalizeBranchId(r.storeId) === targetBranchNorm)
+                    .map((req) => (
+                      <div key={req.id} className="p-3.5 rounded-xl bg-background border border-border space-y-2">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-bold text-xs">{req.employeeName}</p>
+                            <p className="text-[11px] text-muted-foreground">{req.date} • {req.type || "Time Off"}</p>
+                          </div>
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              req.status === "approved"
+                                ? "bg-emerald-500/15 text-emerald-600"
+                                : req.status === "rejected"
+                                ? "bg-red-500/15 text-red-600"
+                                : "bg-amber-500/15 text-amber-600"
+                            }`}
+                          >
+                            {req.status}
+                          </span>
+                        </div>
+
+                        {req.status === "pending" && (
+                          <div className="flex gap-2 pt-1">
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await fetch("/api/schedule/leave-requests", {
+                                    method: "PUT",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ requestId: req.id, status: "approved" }),
+                                  });
+                                  // Auto-update schedule cell if loaded
+                                  if (schedule) {
+                                    updateShift(req.date, req.employeeId, "Off (Approved Leave)");
+                                  }
+                                  alert("Leave request approved and assigned as Off on schedule!");
+                                } catch (e) {
+                                  alert("Failed to update status");
+                                }
+                              }}
+                              className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await fetch("/api/schedule/leave-requests", {
+                                    method: "PUT",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ requestId: req.id, status: "rejected" }),
+                                  });
+                                } catch (e) {
+                                  alert("Failed to reject");
+                                }
+                              }}
+                              className="flex-1 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition-colors"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                )}
+              </div>
+            </div>
+
+            {/* Cross-Branch Staff Requests */}
+            <div className="bg-card border border-border rounded-2xl p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-blue-500/10 text-blue-600 rounded-xl">
+                    <ArrowRightLeft className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm">Cross-Branch Staff Borrowing</h3>
+                    <p className="text-[11px] text-muted-foreground">Borrow or transfer employees across branches</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowBorrowModal(0)}
+                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-colors"
+                >
+                  + Request Staff
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {borrowRequests.filter((r) => normalizeBranchId(r.targetStoreId) === targetBranchNorm || normalizeBranchId(r.sourceStoreId) === targetBranchNorm).length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground text-xs font-semibold">
+                    No active borrow or transfer requests.
+                  </div>
+                ) : (
+                  borrowRequests
+                    .filter((r) => normalizeBranchId(r.targetStoreId) === targetBranchNorm || normalizeBranchId(r.sourceStoreId) === targetBranchNorm)
+                    .map((req) => (
+                      <div key={req.id} className="p-3.5 rounded-xl bg-background border border-border space-y-2">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-bold text-xs">{req.employeeName}</p>
+                            <p className="text-[11px] text-muted-foreground">
+                              From: {getBranchDisplayName(req.sourceStoreId)} → To: {getBranchDisplayName(req.targetStoreId)}
+                            </p>
+                          </div>
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              req.status === "approved"
+                                ? "bg-emerald-500/15 text-emerald-600"
+                                : req.status === "rejected"
+                                ? "bg-red-500/15 text-red-600"
+                                : "bg-amber-500/15 text-amber-600"
+                            }`}
+                          >
+                            {req.status}
+                          </span>
+                        </div>
+                        {req.dates && req.dates.length > 0 && (
+                          <p className="text-[11px] text-muted-foreground">Dates: {req.dates.join(", ")}</p>
+                        )}
+                      </div>
+                    ))
+                )}
+              </div>
+            </div>
+
+          </div>
+        )}
+
       </div>
+
+      {/* QUICK SHIFT SELECTOR POPOVER / MODAL */}
+      {activeShiftCell && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-card w-full max-w-sm rounded-3xl shadow-2xl border border-border p-5 space-y-4 animate-in zoom-in-95">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="font-black text-sm text-foreground">{activeShiftCell.empName}</h3>
+                <p className="text-xs text-muted-foreground">Change shift for {activeShiftCell.date}</p>
+              </div>
+              <button
+                onClick={() => setActiveShiftCell(null)}
+                className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2">
+              {SHIFT_OPTIONS.map((opt) => {
+                const Icon = opt.icon;
+                return (
+                  <button
+                    key={opt.id}
+                    onClick={() => {
+                      updateShift(activeShiftCell.date, activeShiftCell.empId, opt.id);
+                      setActiveShiftCell(null);
+                    }}
+                    className={`flex items-center gap-3 p-3 rounded-2xl border text-xs font-bold transition-all text-left ${opt.color} hover:scale-[1.02]`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span>{opt.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* BULK EMPLOYEE SCHEDULING MODAL */}
+      {bulkEmpModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-card w-full max-w-md rounded-3xl shadow-2xl border border-border p-6 space-y-5 animate-in zoom-in-95">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="font-black text-base text-foreground">Quick Schedule: {bulkEmpModal.name}</h3>
+                <p className="text-xs text-muted-foreground">Bulk assign shifts across {selectedMonth}</p>
+              </div>
+              <button
+                onClick={() => setBulkEmpModal(null)}
+                className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs font-black uppercase text-muted-foreground mb-2">1. Fill All Days of Month</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => applyBulkEmployeeShift(bulkEmpModal.id, "Morning")}
+                    className="p-2.5 bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30 rounded-xl text-xs font-bold hover:bg-blue-500/25"
+                  >
+                    🌅 All Morning
+                  </button>
+                  <button
+                    onClick={() => applyBulkEmployeeShift(bulkEmpModal.id, "Noon")}
+                    className="p-2.5 bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold hover:bg-amber-500/25"
+                  >
+                    ☀️ All Noon
+                  </button>
+                  <button
+                    onClick={() => applyBulkEmployeeShift(bulkEmpModal.id, "Night")}
+                    className="p-2.5 bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30 rounded-xl text-xs font-bold hover:bg-purple-500/25"
+                  >
+                    🌙 All Night
+                  </button>
+                  <button
+                    onClick={() => applyBulkEmployeeShift(bulkEmpModal.id, "Off")}
+                    className="p-2.5 bg-slate-500/15 text-slate-700 dark:text-slate-300 border border-slate-500/30 rounded-xl text-xs font-bold hover:bg-slate-500/25"
+                  >
+                    🏖️ All Off
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-black uppercase text-muted-foreground mb-2">2. Standard Weekly Pattern (6 Work / 1 Off)</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => applyPatternToEmployee(bulkEmpModal.id, "Morning", 5)} // Off on Friday
+                    className="p-2.5 bg-card border border-border rounded-xl text-xs font-bold hover:bg-muted text-left"
+                  >
+                    Morning (Friday Off)
+                  </button>
+                  <button
+                    onClick={() => applyPatternToEmployee(bulkEmpModal.id, "Morning", 0)} // Off on Sunday
+                    className="p-2.5 bg-card border border-border rounded-xl text-xs font-bold hover:bg-muted text-left"
+                  >
+                    Morning (Sunday Off)
+                  </button>
+                  <button
+                    onClick={() => applyPatternToEmployee(bulkEmpModal.id, "Night", 5)} // Off on Friday
+                    className="p-2.5 bg-card border border-border rounded-xl text-xs font-bold hover:bg-muted text-left"
+                  >
+                    Night (Friday Off)
+                  </button>
+                  <button
+                    onClick={() => applyPatternToEmployee(bulkEmpModal.id, "Night", 1)} // Off on Monday
+                    className="p-2.5 bg-card border border-border rounded-xl text-xs font-bold hover:bg-muted text-left"
+                  >
+                    Night (Monday Off)
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CROSS-BRANCH BORROW MODAL */}
+      {showBorrowModal !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-card w-full max-w-md rounded-3xl shadow-2xl border border-border p-6 space-y-4 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="font-black text-base">Request Staff Borrowing / Transfer</h3>
+                <p className="text-xs text-muted-foreground">Request an employee from another branch</p>
+              </div>
+              <button onClick={() => setShowBorrowModal(null)} className="p-1 text-muted-foreground hover:text-foreground">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-muted-foreground uppercase block mb-1">Request Type</label>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setBorrowType("days")}
+                    className={`flex-1 py-2 text-xs font-bold rounded-xl border transition-all ${
+                      borrowType === "days" ? "bg-blue-500/20 text-blue-600 border-blue-500/40" : "bg-card border-border"
+                    }`}
+                  >
+                    Temporary Borrow
+                  </button>
+                  <button
+                    onClick={() => setBorrowType("forever")}
+                    className={`flex-1 py-2 text-xs font-bold rounded-xl border transition-all ${
+                      borrowType === "forever" ? "bg-purple-500/20 text-purple-600 border-purple-500/40" : "bg-card border-border"
+                    }`}
+                  >
+                    Permanent Transfer
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-muted-foreground uppercase block mb-1">Select Employee</label>
+                <select
+                  className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs font-semibold focus:border-red-500 outline-none"
+                  onChange={(e) => {
+                    const emp = allEmployees.find((x) => x.id === e.target.value);
+                    setBorrowSelectedEmp(emp || null);
+                  }}
+                  value={borrowSelectedEmp?.id || ""}
+                >
+                  <option value="">-- Choose an employee --</option>
+                  {allEmployees
+                    .filter((emp) => normalizeBranchId(emp.branchId || emp.storeId) !== targetBranchNorm)
+                    .map((emp) => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.name} ({getBranchDisplayName(emp.branchId || emp.storeId)})
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              {borrowType === "days" && (
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase block mb-1">Shift Time</label>
+                  <select
+                    value={borrowShiftTime}
+                    onChange={(e) => setBorrowShiftTime(e.target.value)}
+                    className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs font-semibold focus:border-red-500 outline-none"
+                  >
+                    <option value="Morning">🌅 Morning</option>
+                    <option value="Noon">☀️ Noon</option>
+                    <option value="Night">🌙 Night</option>
+                  </select>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => setShowBorrowModal(null)}
+                className="flex-1 py-2 bg-muted text-foreground rounded-xl text-xs font-bold hover:bg-muted/80"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  if (!borrowSelectedEmp) return;
+                  try {
+                    await addDoc(collection(db, "borrow_requests"), {
+                      type: borrowType,
+                      employeeId: borrowSelectedEmp.id,
+                      employeeName: borrowSelectedEmp.name,
+                      sourceStoreId: borrowSelectedEmp.branchId || borrowSelectedEmp.storeId || "Unknown",
+                      targetStoreId: activeBranchId,
+                      shiftTime: borrowShiftTime,
+                      status: "pending",
+                      createdAt: new Date().toISOString(),
+                    });
+                    alert("Borrow request sent successfully to the branch manager!");
+                    setShowBorrowModal(null);
+                  } catch (e) {
+                    alert("Failed to submit borrow request");
+                  }
+                }}
+                disabled={!borrowSelectedEmp}
+                className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold disabled:opacity-50"
+              >
+                Submit Request
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
   );
 }

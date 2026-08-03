@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase-admin';
+import { normalizeBranchId, getDbStoreId, getBranchDisplayName } from '@/lib/schedule-generator';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,18 +15,31 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Missing storeId or month' }, { status: 400 });
     }
 
-    const docId = `${storeId}_${month}`;
     const adminDb = getAdminDb();
-    const doc = await adminDb.collection('schedules').doc(docId).get();
+    const targetDbStoreId = getDbStoreId(storeId);
+    
+    // Try primary canonical ID first
+    let docId = `${targetDbStoreId}_${month}`;
+    let docSnap = await adminDb.collection('schedules').doc(docId).get();
 
-    if (!doc.exists) {
+    // Fallback if saved with raw storeId
+    if (!docSnap.exists && storeId !== targetDbStoreId) {
+      const fallbackDocId = `${storeId}_${month}`;
+      const fallbackSnap = await adminDb.collection('schedules').doc(fallbackDocId).get();
+      if (fallbackSnap.exists) {
+        docSnap = fallbackSnap;
+        docId = fallbackDocId;
+      }
+    }
+
+    if (!docSnap.exists) {
       return NextResponse.json({ schedule: null });
     }
 
-    return NextResponse.json({ schedule: { id: doc.id, ...doc.data() } });
-  } catch (error) {
+    return NextResponse.json({ schedule: { id: docSnap.id, ...docSnap.data() } });
+  } catch (error: any) {
     console.error('Error fetching schedule:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }
 
@@ -39,22 +53,31 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing storeId or month' }, { status: 400 });
     }
 
-    const docId = `${storeId}_${month}`;
+    const targetDbStoreId = getDbStoreId(storeId);
+    const docId = `${targetDbStoreId}_${month}`;
+    
     const scheduleData = {
-      storeId,
+      storeId: targetDbStoreId,
+      branchName: getBranchDisplayName(targetDbStoreId),
       month,
-      rules,
-      assignments,
-      isPublished: isPublished || false,
-      updatedAt: new Date().toISOString()
+      rules: rules || {},
+      assignments: assignments || [],
+      isPublished: isPublished ?? false,
+      updatedAt: new Date().toISOString(),
+      ...(isPublished ? { publishedAt: new Date().toISOString() } : {})
     };
 
     const adminDb = getAdminDb();
     await adminDb.collection('schedules').doc(docId).set(scheduleData, { merge: true });
 
+    // Also write alias doc if storeId differed
+    if (storeId !== targetDbStoreId) {
+      await adminDb.collection('schedules').doc(`${storeId}_${month}`).set(scheduleData, { merge: true }).catch(() => {});
+    }
+
     return NextResponse.json({ success: true, schedule: { id: docId, ...scheduleData } });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error saving schedule:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }

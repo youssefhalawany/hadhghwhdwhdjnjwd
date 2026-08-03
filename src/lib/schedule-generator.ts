@@ -1,177 +1,162 @@
 export interface Employee {
   id: string;
   name: string;
+  position?: string;
   storeId: string;
+  branchId?: string;
   shiftTime?: string;
-  status: string; // 'active' or something else
+  status?: string; // 'active' | 'suspended'
 }
 
 export interface LeaveRequest {
   id: string;
   employeeId: string;
+  employeeName?: string;
   date: string; // YYYY-MM-DD
+  type?: string;
   status: 'pending' | 'approved' | 'rejected';
 }
 
 export interface ScheduleRules {
-  minEmployeesMorning: number;
-  minEmployeesNoon: number;
-  minEmployeesNight: number;
-  maxDaysOffPerMonth: number;
-  allowConsecutiveDaysOff: boolean;
-  maxConsecutiveDaysOff: number;
+  minEmployeesMorning?: number;
+  minEmployeesNoon?: number;
+  minEmployeesNight?: number;
+  maxDaysOffPerMonth?: number;
+  allowConsecutiveDaysOff?: boolean;
+  maxConsecutiveDaysOff?: number;
+  defaultShift?: string;
+}
+
+export interface ShiftAssignment {
+  employeeId: string;
+  employeeName: string;
+  position?: string;
+  shiftTime: string; // "Morning" | "Noon" | "Night" | "Off" | "Off (Approved Leave)" | "Custom"
+  isBorrowed?: boolean;
+  borrowedFrom?: string;
+  notes?: string;
 }
 
 export interface DailySchedule {
   date: string; // YYYY-MM-DD
-  shifts: {
-    employeeId: string;
-    employeeName: string;
-    shiftTime: string; // e.g. "Night", "9-5", or "Off"
-  }[];
+  shifts: ShiftAssignment[];
 }
 
 export interface MonthlySchedule {
+  id?: string;
   month: string; // YYYY-MM
   storeId: string;
-  rules: ScheduleRules;
+  branchName?: string;
+  rules?: ScheduleRules;
   assignments: DailySchedule[];
   isPublished: boolean;
+  updatedAt?: string;
+  publishedAt?: string;
 }
 
+/**
+ * Normalizes branch strings to standard IDs
+ */
+export function normalizeBranchId(input?: string): 'alamein4' | 'ola' | 'all' {
+  if (!input) return 'alamein4';
+  const low = input.toLowerCase().trim();
+  if (low.includes('ola') || low.includes('koronfol')) return 'ola';
+  if (low.includes('alamein') || low.includes('el-alamein')) return 'alamein4';
+  if (low === 'all') return 'all';
+  return 'alamein4';
+}
+
+export function getDbStoreId(branchId?: string): string {
+  const norm = normalizeBranchId(branchId);
+  return norm === 'ola' ? 'ola-el-koronfol' : 'eL-alamein-4';
+}
+
+export function getBranchDisplayName(storeId?: string): string {
+  const norm = normalizeBranchId(storeId);
+  return norm === 'ola' ? 'Ola El Koronfol' : 'El Alamein 4';
+}
+
+/**
+ * Generates a clean, comprehensive monthly roster containing all active employees for the branch.
+ * Approved leaves are automatically marked as 'Off (Approved Leave)'.
+ * Existing manual edits can be preserved if provided.
+ */
 export function generateSchedule(
   month: string, // 'YYYY-MM'
   employees: Employee[],
-  leaveRequests: LeaveRequest[],
-  rules: ScheduleRules
+  leaveRequests: LeaveRequest[] = [],
+  rules: ScheduleRules = {},
+  existingAssignments?: DailySchedule[]
 ): MonthlySchedule {
   const [yearStr, monthStr] = month.split('-');
   const year = parseInt(yearStr, 10);
-  const monthNum = parseInt(monthStr, 10) - 1; // JS months are 0-indexed
+  const monthNum = parseInt(monthStr, 10) - 1; // JS 0-indexed month
   
   const daysInMonth = new Date(year, monthNum + 1, 0).getDate();
-  const activeEmployees = employees.filter(e => e.status === 'active');
   
+  // Filter active employees only
+  const activeEmployees = employees.filter(e => e.status === undefined || e.status === 'active');
+  
+  // Map existing assignments for fast lookup by date + employeeId
+  const existingMap = new Map<string, ShiftAssignment>();
+  if (existingAssignments && existingAssignments.length > 0) {
+    existingAssignments.forEach(day => {
+      day.shifts.forEach(shift => {
+        existingMap.set(`${day.date}_${shift.employeeId}`, shift);
+        existingMap.set(`${day.date}_${shift.employeeName.trim().toLowerCase()}`, shift);
+      });
+    });
+  }
+
   const assignments: DailySchedule[] = [];
-  
-  const daysOffCount: Record<string, number> = {};
-  const consecutiveDaysOff: Record<string, number> = {};
-  
-  activeEmployees.forEach(e => {
-    daysOffCount[e.id] = 0;
-    consecutiveDaysOff[e.id] = 0;
-  });
 
   for (let day = 1; day <= daysInMonth; day++) {
     const dateStr = `${year}-${String(monthNum + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const remainingDaysInMonth = daysInMonth - day;
     
-    // Find approved leaves for today
+    // Find approved leaves for this date
     const leavesToday = leaveRequests.filter(
       r => r.date === dateStr && r.status === 'approved'
     );
-    const employeesOnLeave = leavesToday.map(r => r.employeeId);
-    
-    const dailyShifts: DailySchedule['shifts'] = [];
-    
-    // 1. Assign approved leaves
+    const employeeIdsOnLeave = new Set(leavesToday.map(r => r.employeeId));
+    const employeeNamesOnLeave = new Set(leavesToday.map(r => r.employeeName?.trim().toLowerCase()).filter(Boolean));
+
+    const dailyShifts: ShiftAssignment[] = [];
+
     for (const emp of activeEmployees) {
-      if (employeesOnLeave.includes(emp.id)) {
+      const isLeave = employeeIdsOnLeave.has(emp.id) || employeeNamesOnLeave.has(emp.name.trim().toLowerCase());
+      
+      if (isLeave) {
         dailyShifts.push({
           employeeId: emp.id,
           employeeName: emp.name,
+          position: emp.position || 'Staff',
           shiftTime: 'Off (Approved Leave)'
         });
-        daysOffCount[emp.id]++;
-        consecutiveDaysOff[emp.id]++;
+        continue;
       }
-    }
-    
-    // 2. Sort available employees by priority for a day off
-    const availableEmployees = activeEmployees.filter(e => !employeesOnLeave.includes(e.id));
-    
-    availableEmployees.sort((a, b) => {
-      // Priority 1: Force day off if they are running out of days in the month to take their required days off
-      const aNeedsForce = (rules.maxDaysOffPerMonth - daysOffCount[a.id]) >= remainingDaysInMonth + 1;
-      const bNeedsForce = (rules.maxDaysOffPerMonth - daysOffCount[b.id]) >= remainingDaysInMonth + 1;
-      if (aNeedsForce !== bNeedsForce) return aNeedsForce ? -1 : 1;
-      
-      // Priority 2: Stagger consecutive days off
-      // If rules allow consecutive, prioritize someone who already has a consecutive streak started
-      // but hasn't reached the max yet.
-      if (rules.allowConsecutiveDaysOff) {
-        const aWantsConsecutive = consecutiveDaysOff[a.id] > 0 && consecutiveDaysOff[a.id] < rules.maxConsecutiveDaysOff;
-        const bWantsConsecutive = consecutiveDaysOff[b.id] > 0 && consecutiveDaysOff[b.id] < rules.maxConsecutiveDaysOff;
-        if (aWantsConsecutive !== bWantsConsecutive) return aWantsConsecutive ? -1 : 1;
-      }
-      
-      // Priority 3: Least total days off
-      return daysOffCount[a.id] - daysOffCount[b.id];
-    });
-    
-    // 3. Assign Off or Scheduled based on rules
-    const totalAvailableByShift: Record<string, number> = { Morning: 0, Noon: 0, Night: 0, Scheduled: 0 };
-    availableEmployees.forEach(emp => {
-      const shift = emp.shiftTime || 'Scheduled';
-      totalAvailableByShift[shift] = (totalAvailableByShift[shift] || 0) + 1;
-    });
 
-    const givenOffByShift: Record<string, number> = { Morning: 0, Noon: 0, Night: 0, Scheduled: 0 };
-    
-    for (const emp of availableEmployees) {
-      const shift = emp.shiftTime || 'Scheduled';
-      const canTakeDayOff = daysOffCount[emp.id] < rules.maxDaysOffPerMonth;
-      
-      let consecutiveCheckPass = true;
-      if (!rules.allowConsecutiveDaysOff && consecutiveDaysOff[emp.id] >= 1) {
-        consecutiveCheckPass = false;
-      }
-      if (rules.allowConsecutiveDaysOff && consecutiveDaysOff[emp.id] >= rules.maxConsecutiveDaysOff) {
-        consecutiveCheckPass = false;
-      }
-      
-      // Will we drop below minEmployees for THIS specific shift if we give this person off?
-      const workingIfGivenOff = totalAvailableByShift[shift] - givenOffByShift[shift] - 1;
-      
-      let minStaffMet = true;
-      if (shift === 'Morning') {
-        minStaffMet = workingIfGivenOff >= rules.minEmployeesMorning;
-      } else if (shift === 'Noon') {
-        minStaffMet = workingIfGivenOff >= rules.minEmployeesNoon;
-      } else if (shift === 'Night') {
-        minStaffMet = workingIfGivenOff >= rules.minEmployeesNight;
-      } else {
-        minStaffMet = workingIfGivenOff >= 1; // Generic fallback
-      }
-      
-      const needsForce = (rules.maxDaysOffPerMonth - daysOffCount[emp.id]) >= remainingDaysInMonth + 1;
-      let preferredMaxOffMet = true;
-      // Prefer giving only 1 person off per shift, UNLESS they are running out of days in the month
-      if (!needsForce && givenOffByShift[shift] >= 1) {
-        preferredMaxOffMet = false;
-      }
-      
-      if (canTakeDayOff && consecutiveCheckPass && minStaffMet && preferredMaxOffMet) {
-        // Give day off
+      // Check if there was an existing manually saved shift
+      const existing = existingMap.get(`${dateStr}_${emp.id}`) || existingMap.get(`${dateStr}_${emp.name.trim().toLowerCase()}`);
+      if (existing) {
         dailyShifts.push({
+          ...existing,
           employeeId: emp.id,
           employeeName: emp.name,
-          shiftTime: 'Off'
+          position: emp.position || existing.position || 'Staff'
         });
-        daysOffCount[emp.id]++;
-        consecutiveDaysOff[emp.id]++;
-        givenOffByShift[shift]++;
-      } else {
-        // Must work
-        dailyShifts.push({
-          employeeId: emp.id,
-          employeeName: emp.name,
-          shiftTime: shift
-        });
-        consecutiveDaysOff[emp.id] = 0;
+        continue;
       }
+
+      // Assign default shift (from employee profile or fallback to Morning)
+      const defaultShift = emp.shiftTime && emp.shiftTime !== 'All' ? emp.shiftTime : (rules.defaultShift || 'Morning');
+      dailyShifts.push({
+        employeeId: emp.id,
+        employeeName: emp.name,
+        position: emp.position || 'Staff',
+        shiftTime: defaultShift
+      });
     }
-    
+
     assignments.push({
       date: dateStr,
       shifts: dailyShifts
@@ -180,8 +165,17 @@ export function generateSchedule(
 
   return {
     month,
-    storeId: employees.length > 0 ? employees[0].storeId : '',
-    rules,
+    storeId: employees.length > 0 ? employees[0].storeId : 'eL-alamein-4',
+    branchName: getBranchDisplayName(employees.length > 0 ? employees[0].storeId : 'eL-alamein-4'),
+    rules: {
+      minEmployeesMorning: rules.minEmployeesMorning ?? 2,
+      minEmployeesNoon: rules.minEmployeesNoon ?? 0,
+      minEmployeesNight: rules.minEmployeesNight ?? 2,
+      maxDaysOffPerMonth: rules.maxDaysOffPerMonth ?? 4,
+      allowConsecutiveDaysOff: rules.allowConsecutiveDaysOff ?? true,
+      maxConsecutiveDaysOff: rules.maxConsecutiveDaysOff ?? 2,
+      defaultShift: rules.defaultShift ?? 'Morning'
+    },
     assignments,
     isPublished: false
   };

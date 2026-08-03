@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase-admin';
+import { normalizeBranchId, getDbStoreId } from '@/lib/schedule-generator';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,22 +14,27 @@ export async function GET(request: Request) {
     const adminDb = getAdminDb();
     let query: FirebaseFirestore.Query = adminDb.collection('leave_requests');
 
-    if (storeId) {
-      query = query.where('storeId', '==', storeId);
-    }
     if (employeeId) {
       query = query.where('employeeId', '==', employeeId);
     }
 
-    // Usually we would sort by date, but simple where is fine for now
     const snapshot = await query.get();
-    
-    const requests = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+    let requests = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+
+    // Filter by branch normalization in memory if storeId is provided
+    if (storeId && !employeeId) {
+      const targetNorm = normalizeBranchId(storeId);
+      requests = requests.filter((r: any) => {
+        if (!r.storeId) return true;
+        const reqNorm = normalizeBranchId(r.storeId);
+        return targetNorm === 'all' || reqNorm === targetNorm;
+      });
+    }
 
     return NextResponse.json({ requests });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching leave requests:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }
 
@@ -42,10 +48,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    const targetDbStoreId = getDbStoreId(storeId);
     const requestData = {
       employeeId,
-      employeeName,
-      storeId,
+      employeeName: employeeName || 'Employee',
+      storeId: targetDbStoreId,
+      branchId: normalizeBranchId(storeId),
       date,
       type,
       status: 'pending',
@@ -56,9 +64,9 @@ export async function POST(request: Request) {
     const docRef = await adminDb.collection('leave_requests').add(requestData);
 
     return NextResponse.json({ success: true, request: { id: docRef.id, ...requestData } });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error submitting leave request:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }
 
@@ -79,8 +87,8 @@ export async function PUT(request: Request) {
     });
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating leave request:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }

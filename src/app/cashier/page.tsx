@@ -9,7 +9,8 @@ import {
   Lock, User as UserIcon, ChevronDown, FileText, Shield,
   Calendar as CalendarIcon, UserCircle, Globe, LogOut,
   Download, Bell, Fingerprint, ScanLine, ChevronRight, AlertTriangle,
-  ClipboardList, Clock, CheckSquare, LayoutGrid, LayoutDashboard, FileBarChart2, Sparkles, BookOpen, Barcode, Pin, PinOff, Package
+  ClipboardList, Clock, CheckSquare, LayoutGrid, LayoutDashboard, FileBarChart2, Sparkles, BookOpen, Barcode, Pin, PinOff, Package,
+  CalendarDays
 } from "lucide-react";
 import { CashierBottomNav } from "@/components/CashierBottomNav";
 import { PullToRefresh } from "@/components/MobileUX/PullToRefresh";
@@ -112,6 +113,39 @@ export default function CashierHubPage() {
   const [isNotificationEnabled, setIsNotificationEnabled] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [pinnedWidgets, setPinnedWidgets] = useState<string[]>([]);
+  const [todayShift, setTodayShift] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!authenticatedUser) return;
+    const fetchTodayShift = async () => {
+      try {
+        const now = new Date();
+        const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+        const todayStr = now.toISOString().split("T")[0];
+        const rawStoreId = authenticatedUser.storeId && authenticatedUser.storeId !== "N/A" && authenticatedUser.storeId !== "ALL"
+          ? authenticatedUser.storeId
+          : (authenticatedUser.branchId || "eL-alamein-4");
+        const sId = rawStoreId.toLowerCase().includes("ola") ? "ola-el-koronfol" : "eL-alamein-4";
+
+        const res = await fetch(`/api/schedule?storeId=${sId}&month=${month}&t=${Date.now()}`, { cache: "no-store" });
+        const data = await res.json();
+        if (data.schedule && data.schedule.isPublished) {
+          const todayEntry = data.schedule.assignments?.find((d: any) => d.date === todayStr);
+          if (todayEntry) {
+            const myS = todayEntry.shifts?.find((s: any) =>
+              s.employeeId === authenticatedUser.id ||
+              s.employeeId === authenticatedUser.employeeId ||
+              (s.employeeName && s.employeeName.trim().toLowerCase() === authenticatedUser.name?.trim().toLowerCase())
+            );
+            if (myS) setTodayShift(myS.shiftTime);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching cashier shift today", err);
+      }
+    };
+    fetchTodayShift();
+  }, [authenticatedUser]);
 
   useEffect(() => {
     const saved = localStorage.getItem("ck_pinned_widgets");
@@ -412,6 +446,48 @@ export default function CashierHubPage() {
                   </div>
                   <DashboardClock lang={lang} />
                 </div>
+
+                {todayShift && (
+                  <div
+                    onClick={() => nav("/cashier/schedule")}
+                    style={{
+                      marginTop: 14,
+                      padding: "12px 16px",
+                      borderRadius: 16,
+                      background: todayShift.toLowerCase().includes("off") ? "rgba(100,116,139,0.14)" : "rgba(34,211,238,0.12)",
+                      border: `1px solid ${todayShift.toLowerCase().includes("off") ? "rgba(100,116,139,0.25)" : D.cyanBorder}`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <div
+                        style={{
+                          width: 36, height: 36, borderRadius: 10,
+                          background: todayShift.toLowerCase().includes("off") ? "rgba(100,116,139,0.25)" : D.cyanDim,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                        }}
+                      >
+                        <CalendarDays size={18} color={todayShift.toLowerCase().includes("off") ? D.textSecondary : D.cyan} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 11, color: D.textSecondary, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                          {lang === "en" ? "Today's Work Shift" : "وردية عملك اليوم"}
+                        </div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: todayShift.toLowerCase().includes("off") ? D.textSecondary : D.textPrimary }}>
+                          {todayShift}
+                        </div>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: D.cyan, display: "flex", alignItems: "center", gap: 4 }}>
+                      {lang === "en" ? "Full Roster" : "الجدول"}
+                      <ChevronRight size={14} style={{ transform: isRTL ? "scaleX(-1)" : "none" }} />
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.1em", color: D.textSecondary, textTransform: "uppercase", marginBottom: 12, padding: "0 4px" }}>
