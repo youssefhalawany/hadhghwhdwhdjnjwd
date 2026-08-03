@@ -594,71 +594,171 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
   if (authLoading || !minSplashDone) {
     return (
-      <div className="h-[100dvh] w-full flex flex-col items-center justify-center bg-background relative overflow-hidden">
-        {/* Decorative background blur */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-red-500/20 rounded-full blur-[100px] pointer-events-none"></div>
+      <div className="h-[100dvh] w-full flex flex-col items-center justify-center relative overflow-hidden" style={{ background: '#09090B' }}>
+        {/* Ambient glow orbs */}
+        <div className="absolute top-[20%] left-[15%] w-72 h-72 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(225,29,72,0.12) 0%, transparent 70%)', filter: 'blur(60px)' }} />
+        <div className="absolute bottom-[25%] right-[10%] w-60 h-60 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(249,115,22,0.10) 0%, transparent 70%)', filter: 'blur(60px)' }} />
 
-        <div className="z-10 flex flex-col items-center animate-in fade-in zoom-in duration-1000">
+        <div className="z-10 flex flex-col items-center">
+          {/* Animated gradient ring logo */}
           <div className="relative">
-            <div className="absolute inset-0 bg-red-600 rounded-full animate-ping opacity-20"></div>
-            <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full bg-red-600 flex items-center justify-center font-black text-white text-4xl sm:text-5xl border-[3px] border-orange-500 shadow-2xl relative z-10">
+            <div className="absolute -inset-2 rounded-full" style={{
+              background: 'conic-gradient(from 0deg, #E11D48, #F97316, #FBBF24, #E11D48)',
+              animation: 'spin 3s linear infinite',
+              filter: 'blur(8px)',
+              opacity: 0.5,
+            }} />
+            <div className="absolute -inset-2 rounded-full" style={{
+              background: 'conic-gradient(from 0deg, #E11D48, #F97316, #FBBF24, #E11D48)',
+              animation: 'spin 3s linear infinite',
+            }} />
+            <div className="relative h-24 w-24 rounded-full flex items-center justify-center font-black text-white text-5xl shadow-2xl" style={{
+              background: '#09090B',
+              border: '3px solid rgba(255,255,255,0.06)',
+            }}>
               K
             </div>
           </div>
-          <h1 className="mt-8 text-3xl sm:text-4xl font-extrabold tracking-widest text-red-600 dark:text-red-500">CIRCLE K</h1>
-          <p className="mt-3 text-sm text-muted-foreground uppercase tracking-[0.2em] font-semibold">Franchise Portal</p>
 
-          <div className="mt-12 flex gap-2">
-            <div className="w-2 h-2 rounded-full bg-red-600 animate-bounce" style={{ animationDelay: '0ms' }}></div>
-            <div className="w-2 h-2 rounded-full bg-red-600 animate-bounce" style={{ animationDelay: '150ms' }}></div>
-            <div className="w-2 h-2 rounded-full bg-red-600 animate-bounce" style={{ animationDelay: '300ms' }}></div>
+          {/* Brand text with stagger */}
+          <div className="mt-10 flex items-center gap-[3px]">
+            {'CIRCLE K'.split('').map((char, i) => (
+              <span key={i} className="text-3xl sm:text-4xl font-extrabold tracking-widest" style={{
+                color: '#FAFAFA',
+                opacity: 0,
+                animation: `fadeInUp 0.4s ease forwards`,
+                animationDelay: `${0.8 + i * 0.06}s`,
+              }}>
+                {char === ' ' ? '\u00A0' : char}
+              </span>
+            ))}
+          </div>
+          <p className="mt-3 text-sm uppercase tracking-[0.25em] font-semibold" style={{ color: '#71717A', opacity: 0, animation: 'fadeInUp 0.5s ease forwards', animationDelay: '1.4s' }}>
+            Franchise Portal
+          </p>
+
+          {/* Progress ring spinner */}
+          <div className="mt-14">
+            <svg width="28" height="28" viewBox="0 0 28 28" className="animate-spin" style={{ animationDuration: '1.2s' }}>
+              <circle cx="14" cy="14" r="12" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="2.5" />
+              <circle cx="14" cy="14" r="12" fill="none" stroke="url(#splashGrad)" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="60 100" />
+              <defs>
+                <linearGradient id="splashGrad" x1="0" y1="0" x2="28" y2="28">
+                  <stop offset="0%" stopColor="#E11D48" />
+                  <stop offset="100%" stopColor="#F97316" />
+                </linearGradient>
+              </defs>
+            </svg>
           </div>
         </div>
+
+        {/* Keyframe styles */}
+        <style>{`
+          @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+        `}</style>
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="h-[100dvh] w-full overflow-y-auto flex items-center justify-center bg-background text-foreground py-8">
-        <div className="glass-panel p-8 rounded-2xl w-full max-w-md border border-border shadow-2xl">
-          <div className="flex flex-col items-center mb-8">
-            <div className="h-16 w-16 rounded-full bg-red-600 flex items-center justify-center font-black text-white text-3xl border-2 border-orange-500 shadow-md mb-4">
-              K
+      <div className="h-[100dvh] w-full overflow-y-auto flex items-center justify-center py-8 relative" style={{ background: '#09090B' }}>
+        {/* Gradient mesh background */}
+        <div className="absolute inset-0 pointer-events-none" style={{
+          background: 'radial-gradient(ellipse at 20% 0%, rgba(225,29,72,0.15) 0%, transparent 50%), radial-gradient(ellipse at 80% 100%, rgba(249,115,22,0.10) 0%, transparent 50%)',
+        }} />
+
+        {/* Login card */}
+        <div className="relative z-10 p-8 sm:p-10 rounded-3xl w-full max-w-md mx-4" style={{
+          background: 'rgba(24,24,27,0.7)',
+          backdropFilter: 'blur(40px)',
+          WebkitBackdropFilter: 'blur(40px)',
+          border: '1px solid rgba(255,255,255,0.06)',
+          boxShadow: '0 25px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04)',
+        }}>
+          {/* Logo */}
+          <div className="flex flex-col items-center mb-10">
+            <div className="relative">
+              <div className="absolute -inset-1.5 rounded-full" style={{
+                background: 'conic-gradient(from 0deg, #E11D48, #F97316, #FBBF24, #E11D48)',
+                filter: 'blur(6px)',
+                opacity: 0.4,
+              }} />
+              <div className="relative h-16 w-16 rounded-full flex items-center justify-center font-black text-white text-3xl" style={{
+                background: '#18181B',
+                border: '2px solid rgba(255,255,255,0.08)',
+              }}>
+                K
+              </div>
             </div>
-            <h1 className="text-2xl font-bold tracking-wider text-red-600 dark:text-red-500">CIRCLE K</h1>
-            <p className="text-sm text-muted-foreground uppercase tracking-widest font-semibold text-center mt-2">Franchise Enterprise<br />Authorized Access Only</p>
+            <h1 className="mt-5 text-2xl font-extrabold tracking-[0.15em]" style={{ color: '#FAFAFA' }}>CIRCLE K</h1>
+            <p className="text-xs uppercase tracking-[0.2em] font-semibold text-center mt-2" style={{ color: '#71717A' }}>
+              Franchise Enterprise<br />Authorized Access Only
+            </p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-5">
             {authError && (
-              <div className="bg-red-500/10 text-red-500 p-3 rounded-lg text-sm text-center border border-red-500/20 font-medium">
+              <div className="p-3.5 rounded-xl text-sm text-center font-semibold" style={{
+                background: 'rgba(225,29,72,0.08)',
+                color: '#FB7185',
+                border: '1px solid rgba(225,29,72,0.15)',
+              }}>
                 {authError}
               </div>
             )}
-            <div>
-              <label className="text-xs font-bold text-muted-foreground uppercase">Email Address</label>
+
+            {/* Email Field */}
+            <div className="relative">
+              <label className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block" style={{ color: '#71717A' }}>Email Address</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full mt-1 bg-muted/50 border border-border rounded-lg p-3 text-sm outline-none focus:border-red-500 transition-colors"
+                placeholder="manager@circlek.com"
+                className="w-full rounded-xl p-3.5 text-sm outline-none transition-all duration-200"
+                style={{
+                  background: 'rgba(39,39,42,0.5)',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  color: '#FAFAFA',
+                }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(225,29,72,0.4)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(225,29,72,0.08)'; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; e.currentTarget.style.boxShadow = 'none'; }}
                 required
               />
             </div>
-            <div>
-              <label className="text-xs font-bold text-muted-foreground uppercase">Password</label>
+
+            {/* Password Field */}
+            <div className="relative">
+              <label className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block" style={{ color: '#71717A' }}>Password</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full mt-1 bg-muted/50 border border-border rounded-lg p-3 text-sm outline-none focus:border-red-500 transition-colors"
+                placeholder="••••••••"
+                className="w-full rounded-xl p-3.5 text-sm outline-none transition-all duration-200"
+                style={{
+                  background: 'rgba(39,39,42,0.5)',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  color: '#FAFAFA',
+                }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(225,29,72,0.4)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(225,29,72,0.08)'; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; e.currentTarget.style.boxShadow = 'none'; }}
                 required
               />
             </div>
+
+            {/* Sign In Button */}
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white font-bold py-3 rounded-lg mt-4 transition-all hover:scale-[1.02] shadow-lg shadow-red-500/20"
+              className="w-full text-white font-extrabold py-3.5 rounded-xl mt-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] text-sm tracking-wide"
+              style={{
+                background: 'linear-gradient(135deg, #E11D48, #F97316)',
+                boxShadow: '0 8px 25px rgba(225,29,72,0.25), inset 0 1px 0 rgba(255,255,255,0.1)',
+              }}
             >
               Sign In to Enterprise System
             </button>
@@ -686,26 +786,29 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
       {/* Desktop Sidebar */}
       {!pathname.startsWith('/cashier') && !pathname.startsWith('/owner') && (
-        <aside className="hidden lg:flex flex-col w-64 h-full border-r border-border bg-card z-50 flex-shrink-0 overflow-hidden print:hidden">
-          <div className="p-4 border-b border-border flex flex-col gap-4 flex-shrink-0">
+        <aside className="hidden lg:flex flex-col w-64 h-full z-50 flex-shrink-0 overflow-hidden print:hidden" style={{ background: '#09090B', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="p-4 flex flex-col gap-4 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
             <Link href="/" className="flex items-center gap-3">
               {logoUrl ? (
-                <img src={logoUrl} alt="Store Logo" className="h-10 w-10 rounded-full object-cover border-2 shadow-md" style={{ borderColor: brandColor || '#f97316' }} />
+                <img src={logoUrl} alt="Store Logo" className="h-10 w-10 rounded-full object-cover border-2 shadow-md" style={{ borderColor: brandColor || '#F97316' }} />
               ) : (
-                <div className="h-10 w-10 rounded-full bg-red-600 flex items-center justify-center font-black text-white text-xl border-2 border-orange-500 shadow-md transition-colors" style={brandColor ? { backgroundColor: brandColor, borderColor: brandColor } : {}}>
-                  K
+                <div style={{ position: 'relative' }}>
+                  <div style={{ position: 'absolute', inset: -2, borderRadius: '50%', background: 'conic-gradient(from 0deg, #E11D48, #F97316, #FBBF24, #E11D48)', filter: 'blur(4px)', opacity: 0.35 }} />
+                  <div className="h-10 w-10 rounded-full flex items-center justify-center font-black text-white text-xl relative" style={{ background: '#18181B', border: '2px solid rgba(255,255,255,0.08)' }}>
+                    K
+                  </div>
                 </div>
               )}
               <div className="flex flex-col text-start">
-                <span className="font-bold tracking-wider text-base text-red-600 dark:text-red-500">CIRCLE K</span>
-                <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">
+                <span className="font-extrabold tracking-[0.12em] text-base" style={{ color: '#FAFAFA' }}>CIRCLE K</span>
+                <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: '#71717A' }}>
                   {currentBranch === 'alamein4' ? (language === 'ar' ? 'بوابة العلمين 4' : 'El Alamein 4 Portal') : currentBranch === 'ola' ? (language === 'ar' ? 'بوابة علا القرنفل' : 'Ola El Koronfol Portal') : (language === 'ar' ? 'بوابة الفروع' : 'All Branches')}
                 </span>
               </div>
             </Link>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar p-3 flex flex-col gap-2">
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar p-3 flex flex-col gap-1">
             {navItems.map((item) => {
               const isActive = item.href ? pathname === item.href : item.children?.some(child => pathname === child.href);
               const Icon = item.icon;
@@ -713,7 +816,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
               if (item.children) {
                 return (
                   <div key={item.name} className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">
+                    <div className="flex items-center gap-2 px-3 py-2 text-[10px] font-black uppercase tracking-widest mt-3" style={{ color: '#52525B' }}>
                       <span>{item.name}</span>
                     </div>
                     {item.children.map(child => {
@@ -723,7 +826,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                           key={child.href}
                           href={child.href}
                           prefetch={true}
-                          className={`group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${isChildActive ? "bg-red-500/10 text-red-600 dark:text-red-500" : "text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-foreground"}`}
+                          className="group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
+                          style={isChildActive ? { background: 'rgba(225,29,72,0.08)', color: '#FB7185', borderLeft: '3px solid #E11D48' } : { color: '#A1A1AA' }}
                         >
                           <child.icon className={`h-4 w-4 ${isChildActive ? 'scale-110 drop-shadow-sm' : 'opacity-70 group-hover:opacity-100'}`} />
                           <span>{child.name}</span>
@@ -759,7 +863,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                   key={item.href || item.name}
                   href={item.href!}
                   prefetch={true}
-                  className={`group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive ? "bg-red-500/10 text-red-600 dark:text-red-500" : "text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-foreground"}`}
+                  className="group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
+                  style={isActive ? { background: 'rgba(225,29,72,0.08)', color: '#FB7185', borderLeft: '3px solid #E11D48' } : { color: '#A1A1AA' }}
                 >
                   <Icon className={`h-4 w-4 ${isActive ? 'scale-110 drop-shadow-sm' : 'opacity-70 group-hover:opacity-100'}`} />
                   {!item.isIconOnly && <span>{item.name}</span>}
@@ -773,10 +878,11 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
             })}
           </div>
 
-          <div className="p-4 border-t border-border mt-auto">
+          <div className="p-4 mt-auto" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
             <button
               onClick={() => signOut(auth)}
-              className="w-full flex items-center justify-center gap-2 p-2.5 rounded-lg border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors text-sm font-bold"
+              className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl text-sm font-bold transition-all duration-200"
+              style={{ background: 'rgba(225,29,72,0.06)', border: '1px solid rgba(225,29,72,0.12)', color: '#FB7185' }}
             >
               <LogOut className="h-4 w-4" /> {t("nav.sign_out")}
             </button>
@@ -791,41 +897,46 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
         {/* Top Header */}
         {!pathname.startsWith('/cashier') && !pathname.startsWith('/owner') && (
           <header
-            className="flex-shrink-0 glass-header border-b border-border hidden md:flex items-center justify-between px-4 sm:px-6 z-40 print:hidden"
+            className="flex-shrink-0 hidden md:flex items-center justify-between px-4 sm:px-6 z-40 print:hidden"
             style={{
               paddingTop: 'max(1rem, env(safe-area-inset-top))',
               paddingBottom: '1rem',
-              minHeight: 'calc(4rem + env(safe-area-inset-top))'
+              minHeight: 'calc(4rem + env(safe-area-inset-top))',
+              background: '#09090BF2',
+              backdropFilter: 'blur(24px) saturate(1.5)',
+              WebkitBackdropFilter: 'blur(24px) saturate(1.5)',
+              borderBottom: '1px solid rgba(255,255,255,0.06)',
             }}
           >
 
             {/* Mobile Left: Logo & Hamburger */}
             <div className="flex lg:hidden items-center gap-3">
               <button
-                className="p-2 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground transition-colors"
+                className="p-2 rounded-xl transition-all"
+                style={{ background: '#18181B', border: '1px solid rgba(255,255,255,0.06)', color: '#A1A1AA' }}
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               >
                 {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
               </button>
-              <span className="font-bold tracking-wider text-sm text-red-600 dark:text-red-500">CIRCLE K</span>
+              <span className="font-extrabold tracking-[0.12em] text-sm" style={{ color: '#FAFAFA' }}>CIRCLE K</span>
             </div>
 
             {/* Desktop Left: Breadcrumb or Greeting */}
             <div className="hidden lg:flex items-center gap-6">
               {userDoc && (
-                <div className="text-sm font-semibold text-muted-foreground">
-                  <span>{language === 'ar' ? 'مرحباً، ' : 'Welcome, '}<span className="text-foreground text-lg">{userDoc.displayName || user?.email?.split('@')[0]}</span></span>
+                <div className="text-sm font-semibold" style={{ color: '#A1A1AA' }}>
+                  <span>{language === 'ar' ? 'مرحباً، ' : 'Welcome, '}<span className="text-lg font-extrabold" style={{ color: '#FAFAFA' }}>{userDoc.displayName || user?.email?.split('@')[0]}</span></span>
                 </div>
               )}
               {currentDateTime && (
-                <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/50 px-3 py-1.5 rounded-lg border border-border">
-                  <CalendarDays className="h-4 w-4 text-slate-500" />
-                  <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl" style={{ background: '#18181B', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <CalendarDays className="h-4 w-4" style={{ color: '#52525B' }} />
+                  <span className="text-xs font-bold" style={{ color: '#A1A1AA' }}>
                     {currentDateTime.toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                   </span>
-                  <div className="w-px h-3 bg-border mx-1"></div>
-                  <Clock className="h-4 w-4 text-indigo-500" />
-                  <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 font-mono tracking-wider">
+                  <div className="w-px h-3 mx-1" style={{ background: 'rgba(255,255,255,0.06)' }}></div>
+                  <Clock className="h-4 w-4" style={{ color: '#E11D48' }} />
+                  <span className="text-xs font-black font-mono tracking-wider" style={{ color: '#FB7185' }}>
                     {currentDateTime.toLocaleTimeString(language === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                   </span>
                 </div>
@@ -836,15 +947,16 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
             <div className="flex items-center gap-2 sm:gap-3 ml-auto">
               {/* Branch Switcher */}
               {availableBranches.length > 1 && (
-                <div className="flex items-center gap-1.5 bg-muted/60 border border-border px-2.5 py-1.5 rounded-lg">
-                  <Store className="h-3.5 w-3.5 text-blue-500" />
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl" style={{ background: '#18181B', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <Store className="h-3.5 w-3.5" style={{ color: '#E11D48' }} />
                   <select
                     value={currentBranch}
                     onChange={(e) => setBranch(e.target.value as BranchId)}
-                    className="bg-transparent border-none text-xs font-semibold focus:ring-0 cursor-pointer outline-none text-foreground"
+                    className="bg-transparent border-none text-xs font-bold focus:ring-0 cursor-pointer outline-none"
+                    style={{ color: '#FAFAFA' }}
                   >
                     {availableBranches.map((b) => (
-                      <option key={b.id} value={b.id} className="bg-card">{language === "ar" && b.id === "alamein4" ? "العلمين 4" : language === "ar" && b.id === "ola" ? "علا القرنفل" : b.name}</option>
+                      <option key={b.id} value={b.id} style={{ background: '#18181B' }}>{language === "ar" && b.id === "alamein4" ? "العلمين 4" : language === "ar" && b.id === "ola" ? "علا القرنفل" : b.name}</option>
                     ))}
                   </select>
                 </div>
@@ -854,11 +966,12 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
               <div className="relative">
                 <button
                   onClick={() => setNotificationsOpen(!notificationsOpen)}
-                  className="relative p-2 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  className="relative p-2 rounded-xl transition-all"
+                  style={{ background: '#18181B', border: '1px solid rgba(255,255,255,0.06)', color: '#A1A1AA' }}
                 >
-                  <Bell className={`h-4 w-4 ${totalNotifications > 0 ? "animate-pulse text-red-500" : ""}`} />
+                  <Bell className={`h-4 w-4 ${totalNotifications > 0 ? "animate-pulse" : ""}`} style={totalNotifications > 0 ? { color: '#FB7185' } : {}} />
                   {totalNotifications > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-lg">
+                    <span className="absolute -top-1 -right-1 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-lg" style={{ background: '#E11D48' }}>
                       {totalNotifications}
                     </span>
                   )}
@@ -866,8 +979,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
                 {/* Dropdown omitted for brevity but keeps original logic */}
                 {notificationsOpen && (
-                  <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-900 border border-border rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col">
-                    <div className="bg-slate-50 dark:bg-slate-950 border-b border-border p-3 font-bold text-sm text-foreground flex justify-between items-center">
+                  <div className="absolute right-0 mt-2 w-64 rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col" style={{ background: '#18181B', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div className="p-3 font-bold text-sm flex justify-between items-center" style={{ background: '#09090B', borderBottom: '1px solid rgba(255,255,255,0.06)', color: '#FAFAFA' }}>
                       <div className="flex items-center gap-2">
                         <span>Notifications</span>
                         <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full">{totalNotifications}</span>

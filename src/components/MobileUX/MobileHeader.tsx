@@ -10,6 +10,22 @@ import { toast } from "sonner";
 import { auth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 
+// Obsidian Design Tokens
+const O = {
+  bg: '#09090B',
+  surface: '#18181B',
+  elevated: '#27272A',
+  border: 'rgba(255,255,255,0.06)',
+  borderActive: 'rgba(225,29,72,0.3)',
+  textPrimary: '#FAFAFA',
+  textSecondary: '#A1A1AA',
+  textDim: '#52525B',
+  rose: '#E11D48',
+  orange: '#F97316',
+  success: '#22C55E',
+  amber: '#F59E0B',
+};
+
 export function MobileHeader() {
   const { currentBranch, setBranch, availableBranches } = useBranch();
   const { language, setLanguage } = useLanguage();
@@ -189,85 +205,132 @@ export function MobileHeader() {
 
   return (
     <header
-      className="sticky top-0 z-40 w-full bg-[#080D1A]/95 backdrop-blur-2xl border-b border-slate-800/80 shadow-2xl px-3 py-2.5 md:hidden no-print transition-all"
+      className="sticky top-0 z-40 w-full md:hidden no-print transition-all"
       style={{
+        background: `${O.bg}F2`,
+        backdropFilter: 'blur(24px) saturate(1.5)',
+        WebkitBackdropFilter: 'blur(24px) saturate(1.5)',
+        borderBottom: `1px solid ${O.border}`,
         paddingTop: "max(10px, env(safe-area-inset-top))",
+        paddingLeft: 14,
+        paddingRight: 14,
+        paddingBottom: 10,
       }}
       dir={isAr ? "rtl" : "ltr"}
     >
-      {/* Top Header Row: User Info Profile, Status, Controls */}
-      <div className="flex items-center justify-between gap-2 mb-2">
-        
-        {/* User Manager Profile Badge */}
-        <div className="flex items-center gap-2 overflow-hidden">
-          {/* Avatar with Gradient Frame */}
-          <div className="relative shrink-0">
-            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-red-600 via-rose-500 to-amber-500 p-[1.5px] shadow-lg shadow-red-600/20">
-              <div className="w-full h-full rounded-[14px] bg-[#0F172A] flex items-center justify-center text-white font-black text-xs">
+      {/* Top Row: Avatar + Name + Controls */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
+
+        {/* User Profile Badge */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden', flex: 1, minWidth: 0 }}>
+          {/* Gradient-ringed Avatar */}
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: 16,
+              background: 'conic-gradient(from 0deg, #E11D48, #F97316, #FBBF24, #E11D48)',
+              padding: 2,
+            }}>
+              <div style={{
+                width: '100%', height: '100%', borderRadius: 14,
+                background: O.surface,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: O.textPrimary, fontWeight: 900, fontSize: 14, letterSpacing: '-0.02em',
+              }}>
                 {getInitials(managerName)}
               </div>
             </div>
-            <span
-              className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#080D1A] ${
-                isOnline ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" : "bg-amber-500"
-              }`}
-            />
+            {/* Online indicator */}
+            <span style={{
+              position: 'absolute', bottom: -1, right: -1,
+              width: 10, height: 10, borderRadius: '50%',
+              background: isOnline ? O.success : O.amber,
+              border: `2.5px solid ${O.bg}`,
+              boxShadow: isOnline ? `0 0 8px rgba(34,197,94,0.7)` : 'none',
+            }} />
           </div>
 
-          {/* User Name and Role Pill */}
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
-              <h2 className="text-xs font-black tracking-tight text-white truncate max-w-[130px]">
+          {/* Name + Role */}
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <h2 style={{
+                fontSize: 14, fontWeight: 800, color: O.textPrimary,
+                letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap', maxWidth: 140, margin: 0,
+              }}>
                 {managerName}
               </h2>
-              <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 uppercase shrink-0 flex items-center gap-0.5">
-                <ShieldCheck className="w-2.5 h-2.5 text-red-400" />
-                {isManager ? (isAr ? "مدير" : "Manager") : (isAr ? "مالك" : "Owner")}
+              <span style={{
+                fontSize: 9, fontWeight: 800, padding: '2px 7px', borderRadius: 8,
+                background: 'rgba(225,29,72,0.12)', color: '#FB7185',
+                border: '1px solid rgba(225,29,72,0.2)', textTransform: 'uppercase',
+                display: 'inline-flex', alignItems: 'center', gap: 3, flexShrink: 0,
+              }}>
+                <ShieldCheck size={10} color="#FB7185" />
+                {isManager ? (isAr ? "مدير" : "Mgr") : (isAr ? "مالك" : "Owner")}
               </span>
             </div>
-            <p className="text-[10px] text-slate-400 font-medium flex items-center gap-1 mt-0.5">
-              <Clock className="w-2.5 h-2.5 text-cyan-400" />
-              <span className="text-slate-300 font-semibold">{timeString}</span>
+            <p style={{ fontSize: 11, color: O.textSecondary, margin: 0, marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Clock size={10} color={O.textDim} />
+              <span style={{ fontWeight: 600, color: O.textSecondary }}>{timeString}</span>
             </p>
           </div>
         </div>
 
-        {/* Action Controls (Notifications, Language, Logout) */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          
-          {/* Notification Alert Test Pill */}
+        {/* Action Controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          {/* Notification Button */}
           <button
             onClick={handleNotificationToggle}
-            className="p-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-amber-400 border border-slate-800 transition-all active:scale-95 shadow-sm"
-            title="Notification Options"
+            style={{
+              width: 36, height: 36, borderRadius: 12,
+              background: O.surface, border: `1px solid ${O.border}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', transition: 'all 0.15s',
+            }}
+            title="Notifications"
           >
-            <Bell className="w-3.5 h-3.5 text-amber-400 fill-amber-400/20" />
+            <Bell size={15} color={O.textSecondary} />
           </button>
 
-          {/* Language Switcher Button */}
+          {/* Language Toggle */}
           <button
             onClick={handleLanguageToggle}
-            className="flex items-center gap-1 px-2 py-1 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-cyan-400 border border-slate-800 text-[10px] font-extrabold transition-all active:scale-95 shadow-sm"
+            style={{
+              height: 36, borderRadius: 12, padding: '0 10px',
+              background: O.surface, border: `1px solid ${O.border}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+              cursor: 'pointer', transition: 'all 0.15s',
+              fontSize: 11, fontWeight: 800, color: O.textSecondary,
+            }}
           >
-            <Languages className="w-3 h-3 text-cyan-400" />
-            <span>{language === "en" ? "العربية" : "EN"}</span>
+            <Languages size={13} color={O.textSecondary} />
+            {language === "en" ? "عربي" : "EN"}
           </button>
 
-          {/* Logout Button */}
+          {/* Logout */}
           <button
             onClick={handleLogout}
-            className="p-1.5 rounded-xl bg-red-950/40 hover:bg-red-900/60 text-rose-400 border border-red-900/40 transition-all active:scale-95 shadow-sm"
+            style={{
+              width: 36, height: 36, borderRadius: 12,
+              background: 'rgba(225,29,72,0.06)', border: '1px solid rgba(225,29,72,0.12)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', transition: 'all 0.15s',
+            }}
             title={isAr ? "تسجيل الخروج" : "Logout"}
           >
-            <LogOut className="w-3.5 h-3.5 text-rose-400" />
+            <LogOut size={15} color="#FB7185" />
           </button>
         </div>
       </div>
 
-      {/* Bottom Header Row: Branch Chip Carousel */}
-      <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar py-0.5 px-0.5">
-        <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400 shrink-0 mr-1">
-          <Store className="w-3.5 h-3.5 text-rose-500" />
+      {/* Bottom Row: Branch Selector Pills */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 6,
+        overflowX: 'auto', paddingBottom: 2,
+        msOverflowStyle: 'none', scrollbarWidth: 'none',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, color: O.textDim, flexShrink: 0, marginRight: 2 }}>
+          <Store size={13} color={O.rose} />
           <span>{isAr ? "الفرع:" : "Branch:"}</span>
         </div>
 
@@ -277,13 +340,21 @@ export function MobileHeader() {
             <button
               key={b.id}
               onClick={() => handleBranchSelect(b.id as BranchId)}
-              className={`px-3 py-1 rounded-xl text-[11px] font-extrabold whitespace-nowrap transition-all active:scale-95 shrink-0 flex items-center gap-1.5 ${
-                isActive
-                  ? "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-600/30 border border-red-500"
-                  : "bg-slate-900/90 text-slate-300 hover:text-white border border-slate-800"
-              }`}
+              style={{
+                padding: '6px 14px', borderRadius: 10,
+                fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap',
+                cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0,
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: isActive ? 'linear-gradient(135deg, #E11D48, #F97316)' : O.surface,
+                color: isActive ? '#fff' : O.textSecondary,
+                border: isActive ? '1px solid rgba(225,29,72,0.5)' : `1px solid ${O.border}`,
+                boxShadow: isActive ? '0 4px 14px rgba(225,29,72,0.2)' : 'none',
+              }}
             >
-              <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-white animate-pulse" : "bg-slate-500"}`} />
+              <span style={{
+                width: 5, height: 5, borderRadius: '50%',
+                background: isActive ? '#fff' : O.textDim,
+              }} />
               {b.labelAr && isAr ? b.labelAr : b.labelEn}
             </button>
           );

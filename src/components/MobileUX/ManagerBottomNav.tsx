@@ -16,8 +16,6 @@ import {
   PackageX,
   CreditCard,
   Search,
-  Camera,
-  Mic,
   ChevronUp,
   AlertTriangle,
   Users,
@@ -26,7 +24,6 @@ import {
   Vault,
   ClipboardCheck,
   Boxes,
-  PieChart,
   RotateCcw,
   FileText,
   Layers,
@@ -48,6 +45,21 @@ import { triggerHapticFeedback } from "@/lib/pwaBadges";
 import { useLanguage } from "@/context/LanguageContext";
 import { useBranch } from "@/context/BranchContext";
 import { playPopSound } from "@/lib/sounds";
+
+// Obsidian Design Tokens
+const O = {
+  bg: '#09090B',
+  surface: '#18181B',
+  elevated: '#27272A',
+  border: 'rgba(255,255,255,0.06)',
+  textPrimary: '#FAFAFA',
+  textSecondary: '#A1A1AA',
+  textDim: '#52525B',
+  rose: '#E11D48',
+  orange: '#F97316',
+  success: '#22C55E',
+  amber: '#F59E0B',
+};
 
 interface ManagerBottomNavProps {
   pendingShiftsCount?: number;
@@ -167,7 +179,7 @@ export function ManagerBottomNav({
       subtitleEn: "Ask floor AI assistant",
       subtitleAr: "استفسارات المساعد الذكي",
       icon: Bot,
-      color: "bg-[#22d3ee]/15 text-cyan-300 border-[#22d3ee]/30",
+      accent: O.rose,
       path: "/ai-assistant",
       rolesAllowed: ["admin", "manager", "cashier"],
     },
@@ -179,7 +191,7 @@ export function ManagerBottomNav({
       subtitleEn: "View payslips & admin receipts",
       subtitleAr: "سجل المفردات والإيصالات الرسمية",
       icon: FileCheck2,
-      color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+      accent: O.success,
       path: "/manager/documents",
       rolesAllowed: ["admin", "manager", "cashier"],
     },
@@ -191,7 +203,7 @@ export function ManagerBottomNav({
       subtitleEn: "Dispatch payslips & receipts",
       subtitleAr: "إرسال الإيصالات والمرتبات للمدير",
       icon: FileText,
-      color: "bg-cyan-500/15 text-cyan-400 border-cyan-500/30",
+      accent: '#06B6D4',
       path: "/admin/send-document",
       rolesAllowed: ["admin"],
     },
@@ -203,7 +215,7 @@ export function ManagerBottomNav({
       subtitleEn: "Inputs overview & live feed",
       subtitleAr: "لوحة تحكم المدخلات المالية",
       icon: LayoutDashboard,
-      color: "bg-sky-500/15 text-sky-400 border-sky-500/30",
+      accent: '#38BDF8',
       path: "/financials/inputs",
       rolesAllowed: ["admin", "manager"],
     },
@@ -215,7 +227,7 @@ export function ManagerBottomNav({
       subtitleEn: "P&L & sales breakdowns",
       subtitleAr: "تقارير الأرباح والخسائر والتحليلات",
       icon: TrendingUp,
-      color: "bg-indigo-500/15 text-indigo-400 border-indigo-500/30",
+      accent: '#818CF8',
       path: "/financial-reports",
       rolesAllowed: ["admin", "manager"],
     },
@@ -227,7 +239,7 @@ export function ManagerBottomNav({
       subtitleEn: "Daily Cash & Visa sales",
       subtitleAr: "تسجيل مبيعات الكاش والفيزا",
       icon: Banknote,
-      color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+      accent: O.success,
       path: "/financials/detailed-sales",
       rolesAllowed: ["admin", "manager"],
     },
@@ -239,7 +251,7 @@ export function ManagerBottomNav({
       subtitleEn: "Log vendor payment",
       subtitleAr: "تسجيل مدفوعات الموردين",
       icon: Wallet,
-      color: "bg-teal-500/15 text-teal-400 border-teal-500/30",
+      accent: '#2DD4BF',
       path: "/financials/inputs/payments",
       rolesAllowed: ["admin", "manager"],
     },
@@ -251,7 +263,7 @@ export function ManagerBottomNav({
       subtitleEn: "Record vendor credit notes",
       subtitleAr: "إدخال كشوفات الآجل والموردين",
       icon: CreditCard,
-      color: "bg-purple-500/15 text-purple-400 border-purple-500/30",
+      accent: '#A78BFA',
       path: "/financials/inputs/credits",
       rolesAllowed: ["admin", "manager"],
     },
@@ -263,7 +275,7 @@ export function ManagerBottomNav({
       subtitleEn: "Safe & bank deposit vouchers",
       subtitleAr: "سجل التحويلات والإيداعات البنكية",
       icon: Vault,
-      color: "bg-cyan-500/15 text-cyan-400 border-cyan-500/30",
+      accent: '#06B6D4',
       path: "/financials/inputs/deposits",
       rolesAllowed: ["admin", "manager"],
     },
@@ -275,7 +287,7 @@ export function ManagerBottomNav({
       subtitleEn: "Missing shelf items tracker",
       subtitleAr: "سجل متابعة الأصناف المفقودة",
       icon: AlertTriangle,
-      color: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+      accent: O.amber,
       path: "/financials/out-of-stock",
       rolesAllowed: ["admin", "manager"],
     },
@@ -287,9 +299,10 @@ export function ManagerBottomNav({
       subtitleEn: "Approve POS item returns",
       subtitleAr: "اعتماد مرتجعات ورجوع الاصناف",
       icon: PackageX,
-      color: "bg-rose-500/15 text-rose-400 border-rose-500/30",
+      accent: '#FB7185',
       path: "/voids/manager",
       rolesAllowed: ["admin", "manager"],
+      priority: true,
     },
     {
       id: "shift-audit",
@@ -299,9 +312,10 @@ export function ManagerBottomNav({
       subtitleEn: "Reconcile cash & safe drops",
       subtitleAr: "تدقيق السلف واغلاق الخزينة",
       icon: FileCheck2,
-      color: "bg-cyan-500/15 text-cyan-400 border-cyan-500/30",
+      accent: '#06B6D4',
       path: "/shift-reports/manager",
       rolesAllowed: ["admin", "manager"],
+      priority: true,
     },
     {
       id: "margin-strategy",
@@ -311,7 +325,7 @@ export function ManagerBottomNav({
       subtitleEn: "Profit margin analytics",
       subtitleAr: "تحليلات هامش الربح والأسعار",
       icon: Percent,
-      color: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+      accent: '#60A5FA',
       path: "/dashboard/margin-calculator",
       rolesAllowed: ["admin", "manager"],
     },
@@ -323,7 +337,7 @@ export function ManagerBottomNav({
       subtitleEn: "Generate RTV voucher",
       subtitleAr: "إنشاء إيصالات ارتجاع الموردين",
       icon: RotateCcw,
-      color: "bg-rose-600/15 text-rose-300 border-rose-600/30",
+      accent: '#FB7185',
       path: "/dashboard/supplier-returns",
       rolesAllowed: ["admin", "manager"],
     },
@@ -337,7 +351,7 @@ export function ManagerBottomNav({
       subtitleEn: "Log near-expiry shelf items",
       subtitleAr: "تسجيل المنتجات قريبة الانتهاء",
       icon: Clock,
-      color: "bg-orange-500/15 text-orange-400 border-orange-500/30",
+      accent: O.orange,
       path: "/products/expiries-audit",
       rolesAllowed: ["admin", "manager", "cashier"],
     },
@@ -349,7 +363,7 @@ export function ManagerBottomNav({
       subtitleEn: "Rapid price & SKU check",
       subtitleAr: "استعلام الأسعار والباركود",
       icon: Search,
-      color: "bg-violet-500/15 text-violet-400 border-violet-500/30",
+      accent: '#8B5CF6',
       path: "/admin/product-lookup",
       rolesAllowed: ["admin", "manager", "cashier"],
     },
@@ -361,7 +375,7 @@ export function ManagerBottomNav({
       subtitleEn: "Manager stock audit",
       subtitleAr: "جرد وجدول كميات المخزون",
       icon: Boxes,
-      color: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+      accent: O.amber,
       path: "/inventory-audit/manager",
       rolesAllowed: ["admin", "manager"],
     },
@@ -373,7 +387,7 @@ export function ManagerBottomNav({
       subtitleEn: "Create supplier purchase orders",
       subtitleAr: "إرسال الطلبيات للموردين",
       icon: Truck,
-      color: "bg-emerald-400/15 text-emerald-300 border-emerald-400/30",
+      accent: '#34D399',
       path: "/products/supplier-orders",
       rolesAllowed: ["admin", "manager"],
     },
@@ -387,7 +401,7 @@ export function ManagerBottomNav({
       subtitleEn: "Review store audit checklists",
       subtitleAr: "مراجعة قوائم التفتيش المكتملة",
       icon: ClipboardCheck,
-      color: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+      accent: '#60A5FA',
       path: "/checklists/manager",
       rolesAllowed: ["admin", "manager"],
     },
@@ -399,7 +413,7 @@ export function ManagerBottomNav({
       subtitleEn: "Daily store sanitation log",
       subtitleAr: "متابعة النظافة والتعقيم",
       icon: FileText,
-      color: "bg-sky-400/15 text-sky-300 border-sky-400/30",
+      accent: '#38BDF8',
       path: "/admin/cleaning",
       rolesAllowed: ["admin", "manager", "cashier"],
     },
@@ -411,7 +425,7 @@ export function ManagerBottomNav({
       subtitleEn: "Customer left items tracker",
       subtitleAr: "سجل الأغراض المفقودة للعملاء",
       icon: HelpCircle,
-      color: "bg-purple-400/15 text-purple-300 border-purple-400/30",
+      accent: '#A78BFA',
       path: "/admin/lost-and-found",
       rolesAllowed: ["admin", "manager", "cashier"],
     },
@@ -423,7 +437,7 @@ export function ManagerBottomNav({
       subtitleEn: "Active promotions & discounts",
       subtitleAr: "عروض المتجر والخصومات النشطة",
       icon: Tag,
-      color: "bg-rose-400/15 text-rose-300 border-rose-400/30",
+      accent: '#FB7185',
       path: "/admin/offers",
       rolesAllowed: ["admin", "manager"],
     },
@@ -435,7 +449,7 @@ export function ManagerBottomNav({
       subtitleEn: "Fresh food SKU codes",
       subtitleAr: "دليل أكواد المأكولات والمشروبات",
       icon: Utensils,
-      color: "bg-amber-400/15 text-amber-300 border-amber-400/30",
+      accent: O.amber,
       path: "/admin/food-codes",
       rolesAllowed: ["admin", "manager", "cashier"],
     },
@@ -449,7 +463,7 @@ export function ManagerBottomNav({
       subtitleEn: "Staff directory & files",
       subtitleAr: "بيانات الموظفين والملفات",
       icon: Users,
-      color: "bg-teal-400/15 text-teal-300 border-teal-400/30",
+      accent: '#2DD4BF',
       path: "/hr/employees",
       rolesAllowed: ["admin", "manager"],
     },
@@ -461,7 +475,7 @@ export function ManagerBottomNav({
       subtitleEn: "POS credentials & PINs",
       subtitleAr: "إدارة كشوفات وحسابات الكاشير",
       icon: UserCheck,
-      color: "bg-indigo-400/15 text-indigo-300 border-indigo-400/30",
+      accent: '#818CF8',
       path: "/settings/cashiers",
       rolesAllowed: ["admin", "manager"],
     },
@@ -473,7 +487,7 @@ export function ManagerBottomNav({
       subtitleEn: "Monthly salaries & bonuses",
       subtitleAr: "حساب المرتبات والحوافز",
       icon: Coins,
-      color: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+      accent: '#34D399',
       path: "/admin/payroll",
       rolesAllowed: ["admin", "manager"],
     },
@@ -485,7 +499,7 @@ export function ManagerBottomNav({
       subtitleEn: "Employee advance payments",
       subtitleAr: "سجل السلفيات وخصميات الموظفين",
       icon: DollarSign,
-      color: "bg-amber-500/15 text-amber-300 border-amber-500/30",
+      accent: O.amber,
       path: "/admin/adjustments",
       rolesAllowed: ["admin", "manager"],
     },
@@ -497,7 +511,7 @@ export function ManagerBottomNav({
       subtitleEn: "Shift roster & timetables",
       subtitleAr: "جدولة ساعات العمل والورديات",
       icon: Calendar,
-      color: "bg-blue-400/15 text-blue-300 border-blue-400/30",
+      accent: '#60A5FA',
       path: "/admin/schedule",
       rolesAllowed: ["admin", "manager"],
     },
@@ -511,7 +525,7 @@ export function ManagerBottomNav({
       subtitleEn: "Roles & access control",
       subtitleAr: "إدارة الصلاحيات والمستخدمين",
       icon: Lock,
-      color: "bg-red-500/15 text-red-400 border-red-500/30",
+      accent: O.rose,
       path: "/admin/users",
       rolesAllowed: ["admin"],
     },
@@ -523,7 +537,7 @@ export function ManagerBottomNav({
       subtitleEn: "AI demand forecasting",
       subtitleAr: "التنبؤ بطلب واستنزاف الاصناف",
       icon: Sparkles,
-      color: "bg-purple-500/15 text-purple-400 border-purple-500/30",
+      accent: '#A78BFA',
       path: "/admin/inventory-predict",
       rolesAllowed: ["admin"],
     },
@@ -535,7 +549,7 @@ export function ManagerBottomNav({
       subtitleEn: "Broadcast mobile push alerts",
       subtitleAr: "إرسال تنبيهات فورية للموظفين",
       icon: Bell,
-      color: "bg-amber-400/15 text-amber-300 border-amber-400/30",
+      accent: O.amber,
       path: "/settings/notifications",
       rolesAllowed: ["admin"],
     },
@@ -545,7 +559,7 @@ export function ManagerBottomNav({
   const normRole = (userRole || "manager").toLowerCase();
 
   const filteredActions = QUICK_ACTIONS.filter((action) => {
-    // 1. Role Security Check (Case-insensitive & substring match for custom roles like ADMIN_EDITOR)
+    // 1. Role Security Check
     if (action.rolesAllowed && action.rolesAllowed.length > 0) {
       const isAllowed =
         normRole.includes("admin") ||
@@ -554,7 +568,6 @@ export function ManagerBottomNav({
         normRole.includes("owner") ||
         normRole.includes("manager") ||
         action.rolesAllowed.some((r) => normRole.includes(r.toLowerCase()) || r.toLowerCase().includes(normRole));
-
       if (!isAllowed) return false;
     }
 
@@ -579,25 +592,46 @@ export function ManagerBottomNav({
       ? QUICK_ACTIONS.filter((a) => selectedCategory === "all" || a.category === selectedCategory)
       : filteredActions;
 
+  // Group actions by category for list view
+  const groupedActions = React.useMemo(() => {
+    const groups: Record<string, typeof displayActions> = {};
+    displayActions.forEach(action => {
+      if (!groups[action.category]) groups[action.category] = [];
+      groups[action.category].push(action);
+    });
+    return groups;
+  }, [displayActions]);
+
+  const categoryLabel = (catId: string) => {
+    const cat = CATEGORIES.find(c => c.id === catId);
+    return cat ? (isAr ? cat.labelAr : cat.labelEn) : catId;
+  };
+
+  // Bottom Nav Tab Items
+  const tabs = [
+    { id: "overview", labelEn: "Home", labelAr: "الرئيسية", icon: LayoutDashboard, path: "/financials/inputs" },
+    { id: "approvals", labelEn: "Approvals", labelAr: "الاعتمادات", icon: Zap, path: "/shift-reports/manager" },
+    { id: "financials", labelEn: "Reports", labelAr: "التقارير", icon: TrendingUp, path: "/financial-reports" },
+    { id: "ai", labelEn: "AI", labelAr: "المساعد", icon: Bot, path: "/ai-assistant" },
+  ];
+
   return (
     <>
-      {/* 1. Backdrop Overlay for FAB & Quick Sheet */}
+      {/* 1. Backdrop Overlay */}
       <AnimatePresence>
         {(fabOpen || statusSheetOpen) && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => {
-              setFabOpen(false);
-              setStatusSheetOpen(false);
-            }}
-            className="fixed inset-0 z-40 bg-black/80 backdrop-blur-md md:hidden"
+            onClick={() => { setFabOpen(false); setStatusSheetOpen(false); }}
+            className="fixed inset-0 z-40 md:hidden"
+            style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)' }}
           />
         )}
       </AnimatePresence>
 
-      {/* 2. Store Status Quick Sheet (Swipe-Up Drawer) */}
+      {/* 2. Store Status Quick Sheet */}
       <AnimatePresence>
         {statusSheetOpen && (
           <motion.div
@@ -605,63 +639,78 @@ export function ManagerBottomNav({
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: "100%", opacity: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="fixed bottom-[90px] left-3 right-3 z-50 p-4 rounded-3xl bg-[#0B1121] border border-[rgba(34,211,238,0.25)] text-white shadow-2xl backdrop-blur-2xl md:hidden"
+            className="fixed bottom-[90px] left-4 right-4 z-50 md:hidden"
+            style={{
+              background: O.surface,
+              border: `1px solid ${O.border}`,
+              borderRadius: 24,
+              padding: 20,
+              boxShadow: '0 -20px 60px rgba(0,0,0,0.6)',
+            }}
             dir={isAr ? "rtl" : "ltr"}
           >
-            <div className="w-12 h-1 bg-[#1E293B] rounded-full mx-auto mb-3 cursor-pointer" onClick={toggleStatusSheet} />
-            
-            <div className="flex justify-between items-center mb-4">
+            {/* Drag Handle */}
+            <div style={{ width: 40, height: 4, borderRadius: 2, background: O.elevated, margin: '0 auto 16px' }} onClick={toggleStatusSheet} />
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div>
-                <h3 className="text-sm font-extrabold flex items-center gap-2 text-slate-100">
-                  <Store className="w-4 h-4 text-cyan-400" />
+                <h3 style={{ fontSize: 14, fontWeight: 800, color: O.textPrimary, display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+                  <Store size={16} color={O.rose} />
                   {currentBranch === "all" ? (isAr ? "جميع الفروع" : "All Branches") : currentBranch === "ola" ? "Ola El Koronfol" : "El Alamein 4"}
                 </h3>
-                <p className="text-xs text-slate-400">
+                <p style={{ fontSize: 11, color: O.textSecondary, margin: '4px 0 0' }}>
                   {isAr ? "ملخص النشاط والتنبيهات المباشرة" : "Real-time store metrics & floor alerts"}
                 </p>
               </div>
-              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#0F172A] border border-[rgba(34,211,238,0.2)]">
-                {isOnline ? (
-                  <>
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-                    <span className="text-emerald-400">{isAr ? "متصل" : "Online"}</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                    <span className="text-amber-400">{isAr ? "محلي offline" : "Offline"}</span>
-                  </>
-                )}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '4px 12px', borderRadius: 20,
+                fontSize: 11, fontWeight: 800,
+                background: O.bg, border: `1px solid ${O.border}`,
+              }}>
+                <span style={{
+                  width: 6, height: 6, borderRadius: '50%',
+                  background: isOnline ? O.success : O.amber,
+                  boxShadow: isOnline ? '0 0 8px rgba(34,197,94,0.7)' : 'none',
+                }} />
+                <span style={{ color: isOnline ? O.success : O.amber }}>
+                  {isOnline ? (isAr ? "متصل" : "Online") : (isAr ? "غير متصل" : "Offline")}
+                </span>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 mb-3">
-              <div className="p-3 rounded-2xl bg-[#0F172A] border border-[rgba(34,211,238,0.15)]">
-                <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider flex items-center gap-1">
-                  <TrendingUp className="w-3 h-3 text-emerald-400" /> {isAr ? "مبيعات اليوم" : "Today Sales"}
+            {/* Metric Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+              <div style={{ padding: 14, borderRadius: 16, background: O.bg, border: `1px solid ${O.border}` }}>
+                <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', color: O.textDim, letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <TrendingUp size={12} color={O.success} /> {isAr ? "مبيعات اليوم" : "Today Sales"}
                 </span>
-                <span className="text-base font-extrabold text-white mt-1 block">Live Sync</span>
+                <span style={{ fontSize: 15, fontWeight: 800, color: O.textPrimary, marginTop: 6, display: 'block' }}>Live Sync</span>
               </div>
-              <div className="p-3 rounded-2xl bg-[#0F172A] border border-[rgba(34,211,238,0.15)]">
-                <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider flex items-center gap-1">
-                  <Users className="w-3 h-3 text-cyan-400" /> {isAr ? "الورديات المعلقة" : "Pending Shifts"}
+              <div style={{ padding: 14, borderRadius: 16, background: O.bg, border: `1px solid ${O.border}` }}>
+                <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', color: O.textDim, letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Users size={12} color={O.rose} /> {isAr ? "الورديات المعلقة" : "Pending Shifts"}
                 </span>
-                <span className="text-base font-extrabold text-cyan-400 mt-1 block">{pendingShiftsCount} {isAr ? "وردية" : "Shifts"}</span>
+                <span style={{ fontSize: 15, fontWeight: 800, color: O.rose, marginTop: 6, display: 'block' }}>{pendingShiftsCount} {isAr ? "وردية" : "Shifts"}</span>
               </div>
             </div>
 
-            <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
-              <div className="text-xs">
-                <p className="font-bold text-amber-400">{isAr ? "التنبيهات الميدانية" : "Floor Alerts"}</p>
-                <p className="text-amber-200/80">
+            {/* Floor Alert */}
+            <div style={{
+              padding: 14, borderRadius: 16,
+              background: 'rgba(249,115,22,0.06)',
+              border: '1px solid rgba(249,115,22,0.12)',
+              display: 'flex', alignItems: 'center', gap: 12,
+            }}>
+              <AlertTriangle size={18} color={O.orange} style={{ flexShrink: 0 }} />
+              <div>
+                <p style={{ fontSize: 12, fontWeight: 800, color: O.orange, margin: 0 }}>
+                  {isAr ? "التنبيهات الميدانية" : "Floor Alerts"}
+                </p>
+                <p style={{ fontSize: 11, color: 'rgba(249,115,22,0.7)', margin: '2px 0 0' }}>
                   {totalPending > 0
-                    ? isAr
-                      ? `يوجد ${totalPending} إجراءات تنتظر اعتماد المدير`
-                      : `You have ${totalPending} items pending manager sign-off`
-                    : isAr
-                    ? "جميع البيانات متزنة ولا يوجد تنبيهات"
-                    : "All shifts balanced & clear"}
+                    ? isAr ? `يوجد ${totalPending} إجراءات تنتظر اعتماد المدير` : `You have ${totalPending} items pending manager sign-off`
+                    : isAr ? "جميع البيانات متزنة ولا يوجد تنبيهات" : "All shifts balanced & clear"}
                 </p>
               </div>
             </div>
@@ -669,64 +718,93 @@ export function ManagerBottomNav({
         )}
       </AnimatePresence>
 
-      {/* 3. Center FAB Quick Action Drawer (Role Secured & Categorized Hub) */}
+      {/* 3. Center FAB Quick Action Drawer */}
       <AnimatePresence>
         {fabOpen && (
           <motion.div
-            initial={{ scale: 0.85, opacity: 0, y: 40 }}
+            initial={{ scale: 0.92, opacity: 0, y: 30 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.85, opacity: 0, y: 40 }}
-            transition={{ type: "spring", stiffness: 350, damping: 25 }}
-            className="fixed bottom-[90px] left-3 right-3 z-50 p-4 rounded-3xl bg-[#0B1121] border border-[rgba(34,211,238,0.3)] text-white shadow-[0_20px_60px_rgba(0,0,0,0.95)] backdrop-blur-2xl md:hidden max-h-[72vh] flex flex-col mb-1"
+            exit={{ scale: 0.92, opacity: 0, y: 30 }}
+            transition={{ type: "spring", stiffness: 350, damping: 28 }}
+            className="fixed bottom-[90px] left-4 right-4 z-50 md:hidden"
+            style={{
+              background: O.surface,
+              border: `1px solid ${O.border}`,
+              borderRadius: 24,
+              padding: 20,
+              boxShadow: '0 -20px 80px rgba(0,0,0,0.8)',
+              maxHeight: '72vh',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
             dir={isAr ? "rtl" : "ltr"}
           >
-            {/* Top Swipe Indicator Pill */}
-            <div className="w-12 h-1 bg-[#1E293B] rounded-full mx-auto mb-3 cursor-pointer shrink-0" onClick={toggleFab} />
+            {/* Drag Handle */}
+            <div style={{ width: 40, height: 4, borderRadius: 2, background: O.elevated, margin: '0 auto 14px', flexShrink: 0 }} onClick={toggleFab} />
 
-            {/* Header & Close Button */}
-            <div className="flex justify-between items-center mb-3 pb-2 border-b border-[#1E293B] shrink-0">
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, paddingBottom: 14, borderBottom: `1px solid ${O.border}`, flexShrink: 0 }}>
               <div>
-                <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-cyan-400 fill-cyan-400" />
-                  {isAr ? "مركز أفعال النظام الميدانية" : "Portal Command Hub"}
-                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 uppercase font-black">
+                <h3 style={{ fontSize: 15, fontWeight: 800, color: O.textPrimary, display: 'flex', alignItems: 'center', gap: 8, margin: 0, letterSpacing: '-0.01em' }}>
+                  <Zap size={16} color={O.rose} fill={O.rose} />
+                  {isAr ? "مركز القيادة" : "Command Hub"}
+                  <span style={{
+                    fontSize: 9, padding: '2px 8px', borderRadius: 6,
+                    background: 'rgba(225,29,72,0.1)', color: '#FB7185',
+                    border: '1px solid rgba(225,29,72,0.15)',
+                    textTransform: 'uppercase', fontWeight: 900,
+                  }}>
                     {normRole}
                   </span>
                 </h3>
-                <p className="text-[11px] text-slate-400">
-                  {isAr ? "جميع الأدوات والصفحات المتاحة لحسابك" : "All authorized portal tools & pages"}
+                <p style={{ fontSize: 11, color: O.textSecondary, margin: '4px 0 0' }}>
+                  {isAr ? "جميع الأدوات والصفحات المتاحة" : "All authorized portal tools & pages"}
                 </p>
               </div>
               <button
                 onClick={toggleFab}
-                className="p-1.5 rounded-full bg-[#1E293B] text-slate-400 hover:text-white"
+                style={{
+                  width: 32, height: 32, borderRadius: 10,
+                  background: O.elevated, border: 'none',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', color: O.textSecondary,
+                }}
               >
-                <X className="w-4 h-4" />
+                <X size={16} />
               </button>
             </div>
 
-            {/* Search Input Bar */}
-            <div className="relative mb-3 shrink-0">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            {/* Search Bar */}
+            <div style={{ position: 'relative', marginBottom: 14, flexShrink: 0 }}>
+              <Search size={15} color={O.textDim} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
               <input
                 type="text"
-                placeholder={isAr ? "ابحث في جميع أدوات وصفحات النظام..." : "Search 28+ portal tools & pages..."}
+                placeholder={isAr ? "ابحث في أدوات النظام..." : "Search portal tools..."}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 rounded-2xl bg-[#0F172A] border border-[rgba(34,211,238,0.2)] text-xs text-white placeholder-slate-400 outline-none focus:border-cyan-400 font-bold"
+                style={{
+                  width: '100%', padding: '11px 14px 11px 40px',
+                  borderRadius: 14, fontSize: 12, fontWeight: 700,
+                  background: O.bg, border: `1px solid ${O.border}`,
+                  color: O.textPrimary, outline: 'none',
+                }}
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs font-bold"
+                  style={{
+                    position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                    background: 'none', border: 'none', color: O.textDim,
+                    fontSize: 11, fontWeight: 800, cursor: 'pointer',
+                  }}
                 >
                   Clear
                 </button>
               )}
             </div>
 
-            {/* Category Filter Pills Bar */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-2.5 mb-3 hide-scrollbar shrink-0">
+            {/* Category Filter Pills */}
+            <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 12, marginBottom: 6, flexShrink: 0, scrollbarWidth: 'none' }}>
               {CATEGORIES.filter((cat) => !cat.adminOnly || normRole.includes("admin") || normRole.includes("editor")).map((cat) => {
                 const Icon = cat.icon;
                 const isActive = selectedCategory === cat.id;
@@ -737,43 +815,117 @@ export function ManagerBottomNav({
                       triggerHapticFeedback(8);
                       setSelectedCategory(cat.id);
                     }}
-                    className={`px-3 py-1.5 rounded-xl text-[10px] font-black whitespace-nowrap flex items-center gap-1.5 transition-all shrink-0 ${
-                      isActive
-                        ? "bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/30"
-                        : "bg-[#0F172A] text-slate-400 hover:text-slate-200 border border-[#1E293B]"
-                    }`}
+                    style={{
+                      padding: '6px 12px', borderRadius: 10,
+                      fontSize: 10, fontWeight: 900, whiteSpace: 'nowrap',
+                      display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0,
+                      cursor: 'pointer', transition: 'all 0.15s',
+                      background: isActive ? `linear-gradient(135deg, ${O.rose}, ${O.orange})` : O.bg,
+                      color: isActive ? '#fff' : O.textSecondary,
+                      border: isActive ? 'none' : `1px solid ${O.border}`,
+                      boxShadow: isActive ? '0 4px 12px rgba(225,29,72,0.25)' : 'none',
+                    }}
                   >
-                    <Icon className="w-3 h-3" />
+                    <Icon size={12} />
                     <span>{isAr ? cat.labelAr : cat.labelEn}</span>
                   </button>
                 );
               })}
             </div>
 
-            {/* Actions Grid (Scrollable) */}
-            <div className="overflow-y-auto pr-1 flex-1 space-y-3 custom-scrollbar">
+            {/* Actions List */}
+            <div style={{ overflowY: 'auto', flex: 1, scrollbarWidth: 'none' }}>
               {displayActions.length === 0 ? (
-                <div className="p-6 text-center text-slate-400 text-xs rounded-2xl bg-[#0F172A] border border-[#1E293B]">
-                  No matching tools found for "{searchQuery}".
+                <div style={{ padding: 32, textAlign: 'center', color: O.textDim, fontSize: 12, borderRadius: 16, background: O.bg, border: `1px solid ${O.border}` }}>
+                  No matching tools found for &ldquo;{searchQuery}&rdquo;.
                 </div>
+              ) : selectedCategory === "all" && !searchQuery.trim() ? (
+                // Grouped list view
+                Object.entries(groupedActions).map(([catId, actions]) => (
+                  <div key={catId} style={{ marginBottom: 16 }}>
+                    <h4 style={{
+                      fontSize: 10, fontWeight: 900, textTransform: 'uppercase',
+                      color: O.textDim, letterSpacing: '0.08em',
+                      margin: '0 0 8px 4px',
+                    }}>
+                      {categoryLabel(catId)}
+                    </h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {actions.map((action) => {
+                        const Icon = action.icon;
+                        return (
+                          <button
+                            key={action.id}
+                            onClick={() => handleNavClick(action.id, action.path)}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 12,
+                              padding: '12px 14px', borderRadius: 14, width: '100%',
+                              background: O.bg, border: `1px solid ${O.border}`,
+                              cursor: 'pointer', transition: 'all 0.15s',
+                              textAlign: isAr ? 'right' : 'left',
+                              borderLeft: (action as any).priority && !isAr ? `3px solid ${O.orange}` : undefined,
+                              borderRight: (action as any).priority && isAr ? `3px solid ${O.orange}` : undefined,
+                            }}
+                          >
+                            <div style={{
+                              width: 38, height: 38, borderRadius: 12, flexShrink: 0,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              background: `${action.accent}12`,
+                              border: `1px solid ${action.accent}20`,
+                            }}>
+                              <Icon size={18} color={action.accent} />
+                            </div>
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <h4 style={{
+                                fontSize: 13, fontWeight: 800, color: O.textPrimary,
+                                margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                letterSpacing: '-0.01em',
+                              }}>
+                                {isAr ? action.titleAr : action.titleEn}
+                              </h4>
+                              <p style={{ fontSize: 10, color: O.textDim, margin: '2px 0 0', fontWeight: 600 }}>
+                                {isAr ? action.subtitleAr : action.subtitleEn}
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))
               ) : (
-                <div className="grid grid-cols-2 gap-2.5 pb-2">
+                // Filtered grid view
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, paddingBottom: 8 }}>
                   {displayActions.map((action) => {
                     const Icon = action.icon;
                     return (
                       <button
                         key={action.id}
                         onClick={() => handleNavClick(action.id, action.path)}
-                        className="p-3 rounded-2xl bg-[#0F172A] hover:bg-[#1E293B] border border-[rgba(34,211,238,0.15)] flex items-start gap-2.5 text-left transition-all active:scale-95 group"
+                        style={{
+                          display: 'flex', alignItems: 'flex-start', gap: 10,
+                          padding: 14, borderRadius: 14, width: '100%',
+                          background: O.bg, border: `1px solid ${O.border}`,
+                          cursor: 'pointer', transition: 'all 0.15s',
+                          textAlign: isAr ? 'right' : 'left',
+                        }}
                       >
-                        <div className={`p-2 rounded-xl border ${action.color} shrink-0`}>
-                          <Icon className="w-4 h-4" />
+                        <div style={{
+                          width: 34, height: 34, borderRadius: 10, flexShrink: 0,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: `${action.accent}12`,
+                          border: `1px solid ${action.accent}20`,
+                        }}>
+                          <Icon size={16} color={action.accent} />
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <h4 className="text-xs font-black text-slate-100 group-hover:text-cyan-400 truncate tracking-tight">
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <h4 style={{
+                            fontSize: 12, fontWeight: 800, color: O.textPrimary,
+                            margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          }}>
                             {isAr ? action.titleAr : action.titleEn}
                           </h4>
-                          <p className="text-[9px] text-slate-400 truncate mt-0.5 font-medium">
+                          <p style={{ fontSize: 9, color: O.textDim, margin: '2px 0 0', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {isAr ? action.subtitleAr : action.subtitleEn}
                           </p>
                         </div>
@@ -787,105 +939,162 @@ export function ManagerBottomNav({
         )}
       </AnimatePresence>
 
-      {/* 4. Manager Mobile Glassmorphic Bottom Navigation Bar */}
+      {/* 4. Floating Island Bottom Navigation Bar */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-50 md:hidden pt-4 pb-[calc(14px+env(safe-area-inset-bottom))] print:hidden"
+        className="fixed bottom-0 left-0 right-0 z-50 md:hidden print:hidden"
+        style={{ paddingTop: 16, paddingBottom: 'calc(14px + env(safe-area-inset-bottom))' }}
         dir={isAr ? "rtl" : "ltr"}
       >
-        <div className="relative mx-3 flex items-center justify-between px-3 py-2.5 rounded-3xl bg-[#0B1121] border border-[#1E293B] shadow-[0_10px_35px_rgba(0,0,0,0.85)] backdrop-blur-2xl text-slate-400">
-          
-          {/* Top Swipe-Up Drawer Trigger Handle Pill (Hidden when FAB drawer is open to prevent overlap) */}
+        <div style={{
+          position: 'relative',
+          margin: '0 16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '10px 8px',
+          borderRadius: 22,
+          background: `${O.surface}F5`,
+          border: `1px solid ${O.border}`,
+          backdropFilter: 'blur(24px) saturate(1.5)',
+          WebkitBackdropFilter: 'blur(24px) saturate(1.5)',
+          boxShadow: '0 -8px 40px rgba(0,0,0,0.6)',
+        }}>
+
+          {/* Live Pulse Handle */}
           {!fabOpen && (
             <button
               onClick={toggleStatusSheet}
-              className="absolute -top-5.5 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full bg-[#050B14] border border-[rgba(34,211,238,0.4)] text-[10px] font-black text-cyan-400 flex items-center gap-1.5 shadow-[0_6px_20px_rgba(0,0,0,0.9)] z-40 cursor-pointer hover:border-cyan-300 transition-all active:scale-95 tracking-wide"
+              style={{
+                position: 'absolute',
+                top: -22,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                padding: '5px 16px',
+                borderRadius: 20,
+                background: O.bg,
+                border: `1px solid ${O.border}`,
+                fontSize: 10, fontWeight: 900, color: O.textSecondary,
+                display: 'flex', alignItems: 'center', gap: 6,
+                cursor: 'pointer', zIndex: 40,
+                boxShadow: '0 4px 16px rgba(0,0,0,0.6)',
+                transition: 'all 0.15s',
+                letterSpacing: '0.02em',
+              }}
             >
-              <ChevronUp className={`w-3.5 h-3.5 text-cyan-400 transition-transform duration-300 ${statusSheetOpen ? "rotate-180" : ""}`} />
-              <span className="leading-none">{isAr ? "حالة الفرع المباشرة" : "Live Pulse"}</span>
-              {isOnline ? (
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)]" />
-              ) : (
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-              )}
+              <ChevronUp size={13} color={O.textSecondary} style={{ transition: 'transform 0.3s', transform: statusSheetOpen ? 'rotate(180deg)' : 'none' }} />
+              <span>{isAr ? "حالة المتجر" : "Live Pulse"}</span>
+              <span style={{
+                width: 5, height: 5, borderRadius: '50%',
+                background: isOnline ? O.success : O.amber,
+                boxShadow: isOnline ? '0 0 6px rgba(34,197,94,0.7)' : 'none',
+              }} />
             </button>
           )}
 
-          {/* Left Tab 1: Overview */}
-          <button
-            onClick={() => handleNavClick("overview", "/financials/inputs")}
-            className={`flex flex-col items-center justify-center flex-1 py-1 transition-all outline-none cursor-pointer active:scale-95 ${
-              activeTab === "overview" ? "text-cyan-400 font-extrabold" : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            <LayoutDashboard className="w-5 h-5" strokeWidth={activeTab === "overview" ? 2.5 : 2} />
-            <span className="text-[10px] font-extrabold uppercase tracking-wider mt-1">{isAr ? "الرئيسية" : "Overview"}</span>
-            {activeTab === "overview" && (
-              <motion.div layoutId="managerNavIndicator" className="w-6 h-1 rounded-full mt-0.5 bg-gradient-to-r from-cyan-400 to-emerald-400 shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
-            )}
-          </button>
+          {/* Left Tabs */}
+          {tabs.slice(0, 2).map(tab => {
+            const isActive = activeTab === tab.id;
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => handleNavClick(tab.id, tab.path)}
+                style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  justifyContent: 'center', flex: 1, padding: '4px 0',
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: isActive ? O.textPrimary : O.textDim,
+                  transition: 'all 0.15s', position: 'relative',
+                }}
+              >
+                <Icon size={20} strokeWidth={isActive ? 2.5 : 2} color={isActive ? O.textPrimary : O.textDim} />
+                <span style={{ fontSize: 10, fontWeight: 800, marginTop: 3, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  {isAr ? tab.labelAr : tab.labelEn}
+                </span>
+                {isActive && (
+                  <motion.div
+                    layoutId="obsidianNavDot"
+                    style={{
+                      width: 5, height: 5, borderRadius: '50%', marginTop: 3,
+                      background: `linear-gradient(135deg, ${O.rose}, ${O.orange})`,
+                      boxShadow: `0 0 10px rgba(225,29,72,0.6)`,
+                    }}
+                  />
+                )}
+                {/* Pending badge for Approvals */}
+                {tab.id === "approvals" && totalPending > 0 && (
+                  <span style={{
+                    position: 'absolute', top: 0, right: 6,
+                    padding: '1px 5px', borderRadius: 8,
+                    fontSize: 9, fontWeight: 900,
+                    background: O.rose, color: '#fff',
+                    boxShadow: `0 2px 8px rgba(225,29,72,0.5)`,
+                    border: `1.5px solid ${O.surface}`,
+                  }}>
+                    {totalPending}
+                  </span>
+                )}
+              </button>
+            );
+          })}
 
-          {/* Left Tab 2: Approvals */}
-          <button
-            onClick={() => handleNavClick("approvals", "/shift-reports/manager")}
-            className={`flex flex-col items-center justify-center flex-1 py-1 relative transition-all outline-none cursor-pointer active:scale-95 ${
-              activeTab === "approvals" ? "text-cyan-400 font-extrabold" : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            <Zap className="w-5 h-5" strokeWidth={activeTab === "approvals" ? 2.5 : 2} />
-            <span className="text-[10px] font-extrabold uppercase tracking-wider mt-1">{isAr ? "الاعتمادات" : "Approvals"}</span>
-            {activeTab === "approvals" && (
-              <motion.div layoutId="managerNavIndicator" className="w-6 h-1 rounded-full mt-0.5 bg-gradient-to-r from-cyan-400 to-emerald-400 shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
-            )}
-
-            {/* Pulsing Badge */}
-            {totalPending > 0 && (
-              <span className="absolute top-0.5 right-2 px-1.5 py-0.2 rounded-full text-[9px] font-black bg-rose-600 text-white shadow-lg shadow-rose-600/50 animate-pulse border border-rose-400">
-                {totalPending}
-              </span>
-            )}
-          </button>
-
-          {/* Center Elevated Morphing Action Button (Cyan Glow) */}
-          <div className="relative -top-4 flex justify-center flex-1">
+          {/* Center FAB */}
+          <div style={{ position: 'relative', top: -18, display: 'flex', justifyContent: 'center', flex: 1 }}>
             <motion.button
               onClick={toggleFab}
               whileTap={{ scale: 0.9 }}
-              animate={{ rotate: fabOpen ? 45 : 0, backgroundColor: fabOpen ? "#ef4444" : "#22d3ee" }}
+              animate={{
+                rotate: fabOpen ? 45 : 0,
+              }}
               transition={{ type: "spring", stiffness: 300, damping: 20 }}
-              className="w-13 h-13 rounded-full flex items-center justify-center shadow-[0_0_25px_rgba(34,211,238,0.6)] border-2 border-white/20 z-50 cursor-pointer outline-none"
-              style={{ width: "52px", height: "52px" }}
+              style={{
+                width: 52, height: 52, borderRadius: 18,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: fabOpen ? '#EF4444' : `linear-gradient(135deg, ${O.rose}, ${O.orange})`,
+                border: '2px solid rgba(255,255,255,0.15)',
+                cursor: 'pointer', outline: 'none',
+                boxShadow: fabOpen
+                  ? '0 0 20px rgba(239,68,68,0.4)'
+                  : `0 0 25px rgba(225,29,72,0.4), 0 8px 20px rgba(0,0,0,0.4)`,
+              }}
             >
-              <Plus className="w-6 h-6 stroke-[2.5] text-white" />
+              <Plus size={24} strokeWidth={2.5} color="#fff" />
             </motion.button>
           </div>
 
-          {/* Right Tab 3: Financials */}
-          <button
-            onClick={() => handleNavClick("financials", "/financial-reports")}
-            className={`flex flex-col items-center justify-center flex-1 py-1 transition-all outline-none cursor-pointer active:scale-95 ${
-              activeTab === "financials" ? "text-cyan-400 font-extrabold" : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            <TrendingUp className="w-5 h-5" strokeWidth={activeTab === "financials" ? 2.5 : 2} />
-            <span className="text-[10px] font-extrabold uppercase tracking-wider mt-1">{isAr ? "التقارير" : "Financials"}</span>
-            {activeTab === "financials" && (
-              <motion.div layoutId="managerNavIndicator" className="w-6 h-1 rounded-full mt-0.5 bg-gradient-to-r from-cyan-400 to-emerald-400 shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
-            )}
-          </button>
-
-          {/* Right Tab 4: AI Assistant */}
-          <button
-            onClick={() => handleNavClick("ai", "/ai-assistant")}
-            className={`flex flex-col items-center justify-center flex-1 py-1 transition-all outline-none cursor-pointer active:scale-95 ${
-              activeTab === "ai" ? "text-cyan-400 font-extrabold" : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            <Bot className="w-5 h-5" strokeWidth={activeTab === "ai" ? 2.5 : 2} />
-            <span className="text-[10px] font-extrabold uppercase tracking-wider mt-1">{isAr ? "المساعد" : "Ask AI"}</span>
-            {activeTab === "ai" && (
-              <motion.div layoutId="managerNavIndicator" className="w-6 h-1 rounded-full mt-0.5 bg-gradient-to-r from-cyan-400 to-emerald-400 shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
-            )}
-          </button>
+          {/* Right Tabs */}
+          {tabs.slice(2).map(tab => {
+            const isActive = activeTab === tab.id;
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => handleNavClick(tab.id, tab.path)}
+                style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  justifyContent: 'center', flex: 1, padding: '4px 0',
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: isActive ? O.textPrimary : O.textDim,
+                  transition: 'all 0.15s', position: 'relative',
+                }}
+              >
+                <Icon size={20} strokeWidth={isActive ? 2.5 : 2} color={isActive ? O.textPrimary : O.textDim} />
+                <span style={{ fontSize: 10, fontWeight: 800, marginTop: 3, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  {isAr ? tab.labelAr : tab.labelEn}
+                </span>
+                {isActive && (
+                  <motion.div
+                    layoutId="obsidianNavDot"
+                    style={{
+                      width: 5, height: 5, borderRadius: '50%', marginTop: 3,
+                      background: `linear-gradient(135deg, ${O.rose}, ${O.orange})`,
+                      boxShadow: `0 0 10px rgba(225,29,72,0.6)`,
+                    }}
+                  />
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
     </>
