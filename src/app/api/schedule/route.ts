@@ -11,13 +11,16 @@ export async function GET(request: Request) {
     const storeId = searchParams.get('storeId');
     const month = searchParams.get('month') || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
 
-    const adminDb = getAdminDb();
-    
-    // Fetch all schedule documents from Firestore admin
-    const snapshot = await adminDb.collection('schedules').get();
-    const allDocs = snapshot.docs.map((d: any) => ({ id: d.id, ...d.data() }));
-    const monthDocs = allDocs.filter((d: any) => d.id.endsWith(`_${month}`));
-    const docsToReturn = monthDocs.length > 0 ? monthDocs : allDocs;
+    let docsToReturn: any[] = [];
+    try {
+      const adminDb = getAdminDb();
+      const snapshot = await adminDb.collection('schedules').get();
+      const allDocs = snapshot.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+      const monthDocs = allDocs.filter((d: any) => d.id.endsWith(`_${month}`));
+      docsToReturn = monthDocs.length > 0 ? monthDocs : allDocs;
+    } catch (dbErr) {
+      console.error("Admin DB schedule read error:", dbErr);
+    }
 
     if (docsToReturn.length === 0) {
       return NextResponse.json({ schedule: null, schedules: [] });
@@ -39,7 +42,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       schedule: targetSchedule,
-      schedules: monthDocs,
+      schedules: docsToReturn,
     });
   } catch (error: any) {
     console.error('Error fetching schedule:', error);
