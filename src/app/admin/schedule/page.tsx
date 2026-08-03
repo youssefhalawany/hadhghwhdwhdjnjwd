@@ -9,9 +9,9 @@ import {
   Sliders, UserCheck, ShieldCheck, Sparkles
 } from "lucide-react";
 import { useBranch, BranchId } from "@/context/BranchContext";
-import { db } from "@/lib/firebase";
-import { collection, addDoc, updateDoc, doc, onSnapshot, query, getDocs } from "firebase/firestore";
-import { normalizeBranchId, getDbStoreId, getBranchDisplayName } from "@/lib/schedule-generator";
+import { db, dbService } from "@/lib/firebase";
+import { collection, addDoc, updateDoc, setDoc, getDoc, doc, onSnapshot, query, getDocs } from "firebase/firestore";
+import { normalizeBranchId, getDbStoreId, getBranchDisplayName, generateSchedule } from "@/lib/schedule-generator";
 
 interface ShiftAssignment {
   employeeId: string;
@@ -171,21 +171,47 @@ export default function AdminSchedulePage() {
     fetchEmployees();
   }, [activeBranchId]);
 
-  // Load Schedule
+  // Load Schedule directly from Firestore with fallback to API
   const loadSchedule = async () => {
     setLoading(true);
     setErrorMsg(null);
     try {
+      const targetDbStoreId = getDbStoreId(activeBranchId);
+      const primaryDocId = `${targetDbStoreId}_${selectedMonth}`;
+      
+      // 1. Check primary doc in Firestore
+      const primarySnap = await getDoc(doc(db, "schedules", primaryDocId));
+      if (primarySnap.exists()) {
+        setSchedule({ id: primarySnap.id, ...primarySnap.data() } as MonthlySchedule);
+        setLoading(false);
+        return;
+      }
+
+      // 2. Check alias doc in Firestore if storeId differs
+      if (activeBranchId !== targetDbStoreId) {
+        const aliasSnap = await getDoc(doc(db, "schedules", `${activeBranchId}_${selectedMonth}`));
+        if (aliasSnap.exists()) {
+          setSchedule({ id: aliasSnap.id, ...aliasSnap.data() } as MonthlySchedule);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // 3. Fallback to API endpoint
       const res = await fetch(`/api/schedule?storeId=${activeBranchId}&month=${selectedMonth}&t=${Date.now()}`);
-      const data = await res.json();
-      if (data.schedule) {
-        setSchedule(data.schedule);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.schedule) {
+          setSchedule(data.schedule);
+        } else {
+          setSchedule(null);
+        }
       } else {
         setSchedule(null);
       }
     } catch (err: any) {
-      console.error("Error loading schedule", err);
-      setErrorMsg("Failed to load schedule.");
+      console.warn("Schedule not found or error loading schedule", err);
+      setSchedule(null);
     } finally {
       setLoading(false);
     }
@@ -219,28 +245,42 @@ export default function AdminSchedulePage() {
     setErrorMsg(null);
     setSuccessMsg(null);
     try {
-      const res = await fetch("/api/schedule/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          storeId: activeBranchId,
-          month: selectedMonth,
-          preserveEdits,
-        }),
-      });
-      const data = await res.json();
-      if (data.success && data.schedule) {
-        setSchedule(data.schedule);
-        setSuccessMsg(
-          preserveEdits
-            ? "Schedule updated with active staff roster (existing shifts preserved)!"
-            : `Schedule roster initialized for ${getBranchDisplayName(activeBranchId)} with ${data.employeeCount || 0} active employees!`
-        );
-        setTimeout(() => setSuccessMsg(null), 4000);
-      } else {
-        setErrorMsg(data.error || "Failed to generate schedule.");
+      const targetDbStoreId = getDbStoreId(activeBranchId);
+      const docId = `${targetDbStoreId}_${selectedMonth}`;
+
+      // Run generator directly with current active branch employees
+      const generated = generateSchedule(
+        selectedMonth,
+        branchEmployees,
+        leaveRequests,
+        schedule?.rules || {},
+        preserveEdits && schedule?.assignments ? schedule.assignments : undefined
+      );
+
+      const scheduleData: MonthlySchedule = {
+        ...generated,
+        storeId: targetDbStoreId,
+        branchName: getBranchDisplayName(targetDbStoreId),
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Save directly to Firestore
+      await setDoc(doc(db, "schedules", docId), scheduleData, { merge: true });
+
+      // Save alias doc if branchId differs
+      if (activeBranchId !== targetDbStoreId) {
+        await setDoc(doc(db, "schedules", `${activeBranchId}_${selectedMonth}`), scheduleData, { merge: true }).catch(() => {});
       }
+
+      setSchedule(scheduleData);
+      setSuccessMsg(
+        preserveEdits
+          ? "Schedule updated with active staff roster (existing shifts preserved)!"
+          : `Schedule roster initialized for ${getBranchDisplayName(activeBranchId)} with ${branchEmployees.length} active employees!`
+      );
+      setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err: any) {
+      console.error("Error generating schedule", err);
       setErrorMsg(err.message || "Failed to initialize schedule.");
     } finally {
       setGenerating(false);
@@ -254,30 +294,36 @@ export default function AdminSchedulePage() {
     setErrorMsg(null);
     setSuccessMsg(null);
     try {
+      const targetDbStoreId = getDbStoreId(activeBranchId);
+      const docId = `${targetDbStoreId}_${selectedMonth}`;
       const isPub = publishState !== undefined ? publishState : schedule.isPublished;
-      const res = await fetch("/api/schedule", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...schedule,
-          storeId: activeBranchId,
-          month: selectedMonth,
-          isPublished: isPub,
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setSchedule(data.schedule);
-        setSuccessMsg(
-          isPub
-            ? "Schedule published! Cashiers can now view their shifts."
-            : "Schedule changes saved successfully!"
-        );
-        setTimeout(() => setSuccessMsg(null), 4000);
-      } else {
-        setErrorMsg(data.error || "Failed to save schedule.");
+
+      const scheduleData: MonthlySchedule = {
+        ...schedule,
+        storeId: targetDbStoreId,
+        branchName: getBranchDisplayName(targetDbStoreId),
+        month: selectedMonth,
+        isPublished: isPub,
+        updatedAt: new Date().toISOString(),
+        ...(isPub ? { publishedAt: new Date().toISOString() } : {}),
+      };
+
+      // Save directly to Firestore
+      await setDoc(doc(db, "schedules", docId), scheduleData, { merge: true });
+
+      if (activeBranchId !== targetDbStoreId) {
+        await setDoc(doc(db, "schedules", `${activeBranchId}_${selectedMonth}`), scheduleData, { merge: true }).catch(() => {});
       }
+
+      setSchedule(scheduleData);
+      setSuccessMsg(
+        isPub
+          ? "Schedule published! Cashiers can now view their shifts."
+          : "Schedule changes saved successfully!"
+      );
+      setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err: any) {
+      console.error("Error saving schedule", err);
       setErrorMsg(err.message || "Failed to save schedule.");
     } finally {
       setSaving(false);

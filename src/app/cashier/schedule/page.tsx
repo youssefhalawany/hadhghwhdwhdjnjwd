@@ -12,6 +12,8 @@ import { CashierBottomNav } from "@/components/CashierBottomNav";
 import { PullToRefresh } from "@/components/MobileUX/PullToRefresh";
 import { SkeletonSchedule } from "@/components/MobileUX/SkeletonLoader";
 import { normalizeBranchId, getDbStoreId, getBranchDisplayName } from "@/lib/schedule-generator";
+import { db } from "@/lib/firebase";
+import { doc, getDoc, collection, addDoc, getDocs, query, where } from "firebase/firestore";
 
 // Design Tokens (Circle K Cashier Theme)
 const D = {
@@ -170,41 +172,77 @@ export default function CashierSchedulePage() {
       d.setMonth(d.getMonth() + offset);
       const targetMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       const storeId = resolveStoreId(currentUser);
+      const ALL_STORES = ["eL-alamein-4", "ola-el-koronfol", storeId];
 
-      const ALL_STORES = ["eL-alamein-4", "ola-el-koronfol"];
-      const results = await Promise.all(
-        ALL_STORES.map((sId) =>
-          fetch(`/api/schedule?storeId=${sId}&month=${targetMonth}&t=${Date.now()}`, { cache: "no-store" })
-            .then((r) => r.json())
-            .catch(() => ({ schedule: null }))
-        )
-      );
+      let loadedSchedule: any = null;
 
-      const published = results
-        .map((r) => r.schedule)
-        .filter((s) => s && s.isPublished);
-
-      if (published.length > 0) {
-        // Pick store schedule matching user's branch or fallback
-        const primary = published.find((s) => normalizeBranchId(s.storeId) === normalizeBranchId(storeId)) || published[0];
-        setSchedule(primary);
-      } else {
-        setSchedule(null);
+      // 1. Try reading directly from Firestore
+      for (const sId of ALL_STORES) {
+        try {
+          const snap = await getDoc(doc(db, "schedules", `${sId}_${targetMonth}`));
+          if (snap.exists()) {
+            const sData = snap.data();
+            if (sData && (sData.isPublished || sData.isPublished === undefined)) {
+              if (normalizeBranchId(sData.storeId || sId) === normalizeBranchId(storeId)) {
+                loadedSchedule = { id: snap.id, ...sData };
+                break;
+              } else if (!loadedSchedule) {
+                loadedSchedule = { id: snap.id, ...sData };
+              }
+            }
+          }
+        } catch {
+          // continue fallback
+        }
       }
 
-      // Fetch leave requests
-      const leaveRes = await fetch(`/api/schedule/leave-requests?storeId=${storeId}&t=${Date.now()}`, { cache: "no-store" });
-      const leaveData = await leaveRes.json();
-      if (leaveData.requests) {
-        const userReqs = leaveData.requests.filter((r: any) =>
-          r.employeeId === currentUser.id ||
-          r.employeeId === currentUser.employeeId ||
-          (r.employeeName && r.employeeName.trim().toLowerCase() === currentUser.name?.trim().toLowerCase())
+      // 2. If not found in Firestore direct, try API
+      if (!loadedSchedule) {
+        const results = await Promise.all(
+          ALL_STORES.map((sId) =>
+            fetch(`/api/schedule?storeId=${sId}&month=${targetMonth}&t=${Date.now()}`, { cache: "no-store" })
+              .then((r) => r.json())
+              .catch(() => ({ schedule: null }))
+          )
         );
+
+        const published = results
+          .map((r) => r.schedule)
+          .filter((s) => s && s.isPublished);
+
+        if (published.length > 0) {
+          loadedSchedule = published.find((s) => normalizeBranchId(s.storeId) === normalizeBranchId(storeId)) || published[0];
+        }
+      }
+
+      setSchedule(loadedSchedule);
+
+      // Fetch leave requests from Firestore directly
+      try {
+        const leavesSnap = await getDocs(collection(db, "leave_requests"));
+        const userReqs = leavesSnap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter((r: any) =>
+            r.employeeId === currentUser.id ||
+            r.employeeId === currentUser.employeeId ||
+            (r.employeeName && r.employeeName.trim().toLowerCase() === currentUser.name?.trim().toLowerCase())
+          );
         setLeaveRequests(userReqs);
+      } catch {
+        // Fallback to API
+        const leaveRes = await fetch(`/api/schedule/leave-requests?storeId=${storeId}&t=${Date.now()}`, { cache: "no-store" });
+        const leaveData = await leaveRes.json();
+        if (leaveData.requests) {
+          const userReqs = leaveData.requests.filter((r: any) =>
+            r.employeeId === currentUser.id ||
+            r.employeeId === currentUser.employeeId ||
+            (r.employeeName && r.employeeName.trim().toLowerCase() === currentUser.name?.trim().toLowerCase())
+          );
+          setLeaveRequests(userReqs);
+        }
       }
     } catch (e) {
-      console.error("Error fetching cashier schedule", e);
+      console.warn("Cashier schedule fetch notice:", e);
     } finally {
       setLoading(false);
     }
@@ -222,22 +260,41 @@ export default function CashierSchedulePage() {
     if (!leaveDate || !user) return;
     setSubmitting(true);
     try {
-      await fetch("/api/schedule/leave-requests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          employeeId: user.id,
-          employeeName: user.name,
-          storeId: resolveStoreId(user),
-          date: leaveDate,
-          type: leaveType,
-        }),
-      });
+      const payload = {
+        employeeId: user.id || "emp_" + Date.now(),
+        employeeName: user.name || "Cashier Staff",
+        storeId: resolveStoreId(user),
+        date: leaveDate,
+        type: leaveType,
+        status: "pending",
+        createdAt: new Date().toISOString(),
+      };
+
+      // Direct write to Firestore with API fallback
+      await addDoc(collection(db, "leave_requests"), payload);
+
       alert(DICT[lang].successMsg);
       setLeaveDate("");
       fetchData(user, monthOffset);
     } catch {
-      alert(DICT[lang].failMsg);
+      try {
+        await fetch("/api/schedule/leave-requests", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            employeeId: user.id,
+            employeeName: user.name,
+            storeId: resolveStoreId(user),
+            date: leaveDate,
+            type: leaveType,
+          }),
+        });
+        alert(DICT[lang].successMsg);
+        setLeaveDate("");
+        fetchData(user, monthOffset);
+      } catch {
+        alert(DICT[lang].failMsg);
+      }
     } finally {
       setSubmitting(false);
     }

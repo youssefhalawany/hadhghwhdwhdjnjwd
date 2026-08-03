@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { db, messaging, dbService } from "@/lib/firebase";
-import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
+import { collection, getDocs, deleteDoc, doc, getDoc } from "firebase/firestore";
 import { getToken } from "firebase/messaging";
 import { useRouter } from "next/navigation";
 import {
@@ -127,10 +127,27 @@ export default function CashierHubPage() {
           : (authenticatedUser.branchId || "eL-alamein-4");
         const sId = rawStoreId.toLowerCase().includes("ola") ? "ola-el-koronfol" : "eL-alamein-4";
 
-        const res = await fetch(`/api/schedule?storeId=${sId}&month=${month}&t=${Date.now()}`, { cache: "no-store" });
-        const data = await res.json();
-        if (data.schedule && data.schedule.isPublished) {
-          const todayEntry = data.schedule.assignments?.find((d: any) => d.date === todayStr);
+        let scheduleData: any = null;
+
+        // 1. Direct Firestore check
+        try {
+          const snap = await getDoc(doc(db, "schedules", `${sId}_${month}`));
+          if (snap.exists()) {
+            scheduleData = snap.data();
+          }
+        } catch {
+          // continue fallback
+        }
+
+        // 2. API fallback
+        if (!scheduleData) {
+          const res = await fetch(`/api/schedule?storeId=${sId}&month=${month}&t=${Date.now()}`, { cache: "no-store" });
+          const data = await res.json();
+          if (data.schedule) scheduleData = data.schedule;
+        }
+
+        if (scheduleData && (scheduleData.isPublished || scheduleData.isPublished === undefined)) {
+          const todayEntry = scheduleData.assignments?.find((d: any) => d.date === todayStr);
           if (todayEntry) {
             const myS = todayEntry.shifts?.find((s: any) =>
               s.employeeId === authenticatedUser.id ||
@@ -141,7 +158,7 @@ export default function CashierHubPage() {
           }
         }
       } catch (err) {
-        console.error("Error fetching cashier shift today", err);
+        console.warn("Cashier today shift notice", err);
       }
     };
     fetchTodayShift();

@@ -2,7 +2,7 @@ export interface Employee {
   id: string;
   name: string;
   position?: string;
-  storeId: string;
+  storeId?: string;
   branchId?: string;
   shiftTime?: string;
   status?: string; // 'active' | 'suspended'
@@ -165,8 +165,8 @@ export function generateSchedule(
 
   return {
     month,
-    storeId: employees.length > 0 ? employees[0].storeId : 'eL-alamein-4',
-    branchName: getBranchDisplayName(employees.length > 0 ? employees[0].storeId : 'eL-alamein-4'),
+    storeId: (employees.length > 0 && employees[0].storeId) ? employees[0].storeId : 'eL-alamein-4',
+    branchName: getBranchDisplayName((employees.length > 0 && employees[0].storeId) ? employees[0].storeId : 'eL-alamein-4'),
     rules: {
       minEmployeesMorning: rules.minEmployeesMorning ?? 2,
       minEmployeesNoon: rules.minEmployeesNoon ?? 0,
