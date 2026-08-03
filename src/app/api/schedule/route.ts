@@ -9,34 +9,38 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const storeId = searchParams.get('storeId');
-    const month = searchParams.get('month');
-
-    if (!storeId || !month) {
-      return NextResponse.json({ error: 'Missing storeId or month' }, { status: 400 });
-    }
+    const month = searchParams.get('month') || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
 
     const adminDb = getAdminDb();
-    const targetDbStoreId = getDbStoreId(storeId);
     
-    // Try primary canonical ID first
-    let docId = `${targetDbStoreId}_${month}`;
-    let docSnap = await adminDb.collection('schedules').doc(docId).get();
+    // Fetch all schedule documents from Firestore admin
+    const snapshot = await adminDb.collection('schedules').get();
+    const monthDocs = snapshot.docs
+      .filter((d) => d.id.endsWith(`_${month}`))
+      .map((d) => ({ id: d.id, ...d.data() }));
 
-    // Fallback if saved with raw storeId
-    if (!docSnap.exists && storeId !== targetDbStoreId) {
-      const fallbackDocId = `${storeId}_${month}`;
-      const fallbackSnap = await adminDb.collection('schedules').doc(fallbackDocId).get();
-      if (fallbackSnap.exists) {
-        docSnap = fallbackSnap;
-        docId = fallbackDocId;
-      }
+    if (monthDocs.length === 0) {
+      return NextResponse.json({ schedule: null, schedules: [] });
     }
 
-    if (!docSnap.exists) {
-      return NextResponse.json({ schedule: null });
+    let targetSchedule = null;
+    if (storeId && storeId !== 'ALL' && storeId !== 'N/A') {
+      const targetDbStoreId = getDbStoreId(storeId);
+      targetSchedule = monthDocs.find((s: any) =>
+        s.id === `${targetDbStoreId}_${month}` ||
+        s.id === `${storeId}_${month}` ||
+        normalizeBranchId(s.storeId) === normalizeBranchId(storeId)
+      );
     }
 
-    return NextResponse.json({ schedule: { id: docSnap.id, ...docSnap.data() } });
+    if (!targetSchedule) {
+      targetSchedule = monthDocs[0];
+    }
+
+    return NextResponse.json({
+      schedule: targetSchedule,
+      schedules: monthDocs,
+    });
   } catch (error: any) {
     console.error('Error fetching schedule:', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });

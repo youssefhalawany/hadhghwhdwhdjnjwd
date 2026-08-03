@@ -172,75 +172,74 @@ export default function CashierSchedulePage() {
       d.setMonth(d.getMonth() + offset);
       const targetMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       const storeId = resolveStoreId(currentUser);
-      const ALL_STORES = Array.from(new Set(["eL-alamein-4", "ola-el-koronfol", storeId, getDbStoreId(storeId)]));
+      const targetUserNorm = normalizeArabicName(currentUser?.name);
 
       let loadedSchedule: any = null;
-      let matchedByShift: any = null;
-      let matchedByBranch: any = null;
 
-      // 1. Try reading directly from Firestore across all branch schedules
-      for (const sId of ALL_STORES) {
-        try {
-          const snap = await getDoc(doc(db, "schedules", `${sId}_${targetMonth}`));
-          if (snap.exists()) {
-            const sData = snap.data();
-            if (sData && sData.assignments && sData.assignments.length > 0) {
-              const fullSched = { id: snap.id, ...sData };
+      // 1. Primary Load: Fetch via Server API route (uses Firebase Admin, bypasses browser client permissions)
+      try {
+        const res = await fetch(`/api/schedule?month=${targetMonth}&storeId=${storeId}&t=${Date.now()}`, {
+          cache: "no-store",
+          headers: { "Cache-Control": "no-cache" }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const allScheds: any[] = Array.isArray(data.schedules) && data.schedules.length > 0
+            ? data.schedules
+            : (data.schedule ? [data.schedule] : []);
 
-              // Check if user is explicitly listed in this schedule's shifts
-              const targetUserNorm = normalizeArabicName(currentUser?.name);
-              const hasUserShift = sData.assignments?.some((day: any) =>
-                day.shifts?.some((s: any) =>
-                  s.employeeId === currentUser.id ||
-                  s.employeeId === currentUser.employeeId ||
-                  (s.employeeName && targetUserNorm && normalizeArabicName(s.employeeName) === targetUserNorm)
+          if (allScheds.length > 0) {
+            // Priority 1: Find schedule where this cashier is explicitly listed in shifts
+            loadedSchedule = allScheds.find((s: any) =>
+              s.assignments?.some((day: any) =>
+                day.shifts?.some((st: any) =>
+                  st.employeeId === currentUser?.id ||
+                  st.employeeId === currentUser?.employeeId ||
+                  (st.employeeName && targetUserNorm && normalizeArabicName(st.employeeName) === targetUserNorm)
                 )
-              );
+              )
+            );
 
-              if (hasUserShift) {
-                matchedByShift = fullSched;
-                break; // Highest priority: user is scheduled here!
-              }
+            // Priority 2: Schedule matching cashier's branch store ID
+            if (!loadedSchedule) {
+              loadedSchedule = allScheds.find((s: any) => normalizeBranchId(s.storeId) === normalizeBranchId(storeId));
+            }
 
-              if (normalizeBranchId(sData.storeId || sId) === normalizeBranchId(storeId) && !matchedByBranch) {
-                matchedByBranch = fullSched;
-              } else if (!loadedSchedule) {
-                loadedSchedule = fullSched;
-              }
+            // Priority 3: Fallback to first available schedule for month
+            if (!loadedSchedule) {
+              loadedSchedule = allScheds[0];
             }
           }
-        } catch {
-          // continue fallback
         }
+      } catch (apiErr) {
+        console.warn("API schedule fetch error:", apiErr);
       }
 
-      loadedSchedule = matchedByShift || matchedByBranch || loadedSchedule;
-
-      // 2. If not found in Firestore direct, try API fallback
+      // 2. Direct Firestore Client Fallback
       if (!loadedSchedule) {
-        const results = await Promise.all(
-          ALL_STORES.map((sId) =>
-            fetch(`/api/schedule?storeId=${sId}&month=${targetMonth}&t=${Date.now()}`, { cache: "no-store" })
-              .then((r) => r.json())
-              .catch(() => ({ schedule: null }))
-          )
-        );
-
-        const availableSchedules = results
-          .map((r) => r.schedule)
-          .filter((s) => s && s.assignments && s.assignments.length > 0);
-
-        if (availableSchedules.length > 0) {
-          const targetUserNorm = normalizeArabicName(currentUser?.name);
-          loadedSchedule = availableSchedules.find((s: any) =>
-            s.assignments?.some((day: any) =>
-              day.shifts?.some((st: any) =>
-                st.employeeId === currentUser.id ||
-                st.employeeId === currentUser.employeeId ||
-                (st.employeeName && targetUserNorm && normalizeArabicName(st.employeeName) === targetUserNorm)
-              )
-            )
-          ) || availableSchedules.find((s: any) => normalizeBranchId(s.storeId) === normalizeBranchId(storeId)) || availableSchedules[0];
+        const ALL_STORES = Array.from(new Set(["eL-alamein-4", "ola-el-koronfol", storeId, getDbStoreId(storeId)]));
+        for (const sId of ALL_STORES) {
+          try {
+            const snap = await getDoc(doc(db, "schedules", `${sId}_${targetMonth}`));
+            if (snap.exists()) {
+              const sData = snap.data();
+              if (sData && sData.assignments && sData.assignments.length > 0) {
+                const fullSched = { id: snap.id, ...sData };
+                const hasUserShift = sData.assignments?.some((day: any) =>
+                  day.shifts?.some((s: any) =>
+                    s.employeeId === currentUser?.id ||
+                    s.employeeId === currentUser?.employeeId ||
+                    (s.employeeName && targetUserNorm && normalizeArabicName(s.employeeName) === targetUserNorm)
+                  )
+                );
+                if (hasUserShift) {
+                  loadedSchedule = fullSched;
+                  break;
+                }
+                if (!loadedSchedule) loadedSchedule = fullSched;
+              }
+            }
+          } catch {}
         }
       }
 
