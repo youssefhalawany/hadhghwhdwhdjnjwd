@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { LayoutDashboard, FileText, User, ShieldAlert, LogOut, ScanBarcode, Plus, X, Globe, Megaphone } from "lucide-react";
+import { LayoutDashboard, FileText, User, ShieldAlert, LogOut, ScanBarcode, Plus, X, Globe, Megaphone, CalendarDays } from "lucide-react";
 import { playClickSound, playSwooshSound } from "@/lib/audioCues";
 import { hapticLight } from "@/lib/haptics";
 import { useLanguage } from "@/context/LanguageContext";
@@ -24,7 +24,8 @@ const MAIN_NAV = [
 ];
 
 const DIAL_ACTIONS = [
-  { label: "Shift", icon: FileText, href: "/shift-reports/cashier", color: "#34d399" },
+  { label: "Schedule", labelAr: "الجدول", icon: CalendarDays, href: "/cashier/schedule", color: "#22d3ee" },
+  { label: "Shift", labelAr: "الوردية", icon: FileText, href: "/shift-reports/cashier", color: "#34d399" },
   { label: "Voids", labelAr: "مرتجعات", icon: ShieldAlert, href: "/voids/cashier", color: "#ef4444" },
   { label: "Offers", labelAr: "عروض", icon: Megaphone, href: "/cashier/offers", color: "#f59e0b" },
   { label: "Lang", labelAr: "لغة", icon: Globe, action: "lang", color: "#8b5cf6" },

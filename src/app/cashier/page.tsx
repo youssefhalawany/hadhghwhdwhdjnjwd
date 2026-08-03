@@ -488,47 +488,45 @@ export default function CashierHubPage() {
                   <DashboardClock lang={lang} />
                 </div>
 
-                {todayShift && (
-                  <div
-                    onClick={() => nav("/cashier/schedule")}
-                    style={{
-                      marginTop: 14,
-                      padding: "12px 16px",
-                      borderRadius: 16,
-                      background: todayShift.toLowerCase().includes("off") ? "rgba(100,116,139,0.14)" : "rgba(34,211,238,0.12)",
-                      border: `1px solid ${todayShift.toLowerCase().includes("off") ? "rgba(100,116,139,0.25)" : D.cyanBorder}`,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      cursor: "pointer",
-                      transition: "all 0.2s ease",
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <div
-                        style={{
-                          width: 36, height: 36, borderRadius: 10,
-                          background: todayShift.toLowerCase().includes("off") ? "rgba(100,116,139,0.25)" : D.cyanDim,
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                        }}
-                      >
-                        <CalendarDays size={18} color={todayShift.toLowerCase().includes("off") ? D.textSecondary : D.cyan} />
+                <div
+                  onClick={() => nav("/cashier/schedule")}
+                  style={{
+                    marginTop: 14,
+                    padding: "12px 16px",
+                    borderRadius: 16,
+                    background: todayShift && todayShift.toLowerCase().includes("off") ? "rgba(100,116,139,0.14)" : "rgba(34,211,238,0.12)",
+                    border: `1px solid ${todayShift && todayShift.toLowerCase().includes("off") ? "rgba(100,116,139,0.25)" : D.cyanBorder}`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div
+                      style={{
+                        width: 36, height: 36, borderRadius: 10,
+                        background: todayShift && todayShift.toLowerCase().includes("off") ? "rgba(100,116,139,0.25)" : D.cyanDim,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}
+                    >
+                      <CalendarDays size={18} color={todayShift && todayShift.toLowerCase().includes("off") ? D.textSecondary : D.cyan} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, color: D.textSecondary, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                        {lang === "en" ? "Work Schedule Roster" : "جدول مواعيد العمل"}
                       </div>
-                      <div>
-                        <div style={{ fontSize: 11, color: D.textSecondary, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                          {lang === "en" ? "Today's Work Shift" : "وردية عملك اليوم"}
-                        </div>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: todayShift.toLowerCase().includes("off") ? D.textSecondary : D.textPrimary }}>
-                          {todayShift}
-                        </div>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: D.textPrimary }}>
+                        {todayShift || (lang === "en" ? "View Monthly Roster" : "عرض ورديات الشهر")}
                       </div>
                     </div>
-                    <span style={{ fontSize: 11, fontWeight: 800, color: D.cyan, display: "flex", alignItems: "center", gap: 4 }}>
-                      {lang === "en" ? "Full Roster" : "الجدول"}
-                      <ChevronRight size={14} style={{ transform: isRTL ? "scaleX(-1)" : "none" }} />
-                    </span>
                   </div>
-                )}
+                  <span style={{ fontSize: 11, fontWeight: 800, color: D.cyan, display: "flex", alignItems: "center", gap: 4 }}>
+                    {lang === "en" ? "Full Roster" : "الجدول"}
+                    <ChevronRight size={14} style={{ transform: isRTL ? "scaleX(-1)" : "none" }} />
+                  </span>
+                </div>
               </div>
 
               <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.1em", color: D.textSecondary, textTransform: "uppercase", marginBottom: 12, padding: "0 4px" }}>
