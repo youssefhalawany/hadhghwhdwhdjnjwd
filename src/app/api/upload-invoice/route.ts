@@ -17,9 +17,9 @@ export async function POST(req: Request) {
 
     const collectionName = type === "credit" ? "credits" : "cash_payments";
     
-    // We update the array fields, but keep the first element in the legacy string field for backward compatibility
+    // We update both invoiceUrls and poUrls for credits for full compatibility across all views
     const updateField = type === "credit" 
-      ? { poUrls: urls, poUrl: urls[0] } 
+      ? { poUrls: urls, poUrl: urls[0], invoiceUrls: urls, invoiceUrl: urls[0] } 
       : { invoiceUrls: urls, invoiceUrl: urls[0] };
 
     // Update Firestore document directly with the compressed base64 strings

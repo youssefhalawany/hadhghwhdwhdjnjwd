@@ -15,6 +15,7 @@ import {
   deleteDoc,
   doc,
   updateDoc,
+  onSnapshot,
   Timestamp,
   where,
   limit
@@ -288,12 +289,126 @@ export default function CreditsPage() {
   const [expandedCredits, setExpandedCredits] = useState<Record<string, boolean>>({});
   const [selectedCreditForPrint, setSelectedCreditForPrint] = useState<Credit | null>(null);
   const [selectedCreditForView, setSelectedCreditForView] = useState<Credit | null>(null);
+  const [savedCreditForQR, setSavedCreditForQR] = useState<Credit | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
   const [isPasting, setIsPasting] = useState(false);
 
+  const qrFileInputRef = React.useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!savedCreditForQR) return;
+    const unsub = onSnapshot(doc(db, "credits", savedCreditForQR.id), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.invoiceUrl || data.poUrl || (data.invoiceUrls && data.invoiceUrls.length > 0) || (data.poUrls && data.poUrls.length > 0)) {
+          toast.success(isAr ? "تم رفع صورة الفاتورة بنجاح!" : "Invoice successfully uploaded!");
+          setSavedCreditForQR(null);
+          fetchCredits();
+        }
+      }
+    });
+    return () => unsub();
+  }, [savedCreditForQR]);
+
+  const uploadInvoiceDataUrl = async (activeId: string, dataUrl: string) => {
+    setIsPasting(true);
+    setSavedCreditForQR(null);
+    toast.loading(isAr ? "جاري رفع صورة الفاتورة..." : "Uploading invoice image...", { id: "credit-invoice-upload-toast" });
+
+    try {
+      let finalDataUrl = dataUrl;
+      if (dataUrl.length > 350000) {
+        const img = new window.Image();
+        img.src = dataUrl;
+        await new Promise((res) => { img.onload = res; img.onerror = res; });
+        if (img.width > 0) {
+          const canvas = document.createElement("canvas");
+          let w = img.width;
+          let h = img.height;
+          const maxW = 1200;
+          if (w > maxW) {
+            h = Math.round((h * maxW) / w);
+            w = maxW;
+          }
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, w, h);
+            finalDataUrl = canvas.toDataURL("image/jpeg", 0.8);
+          }
+        }
+      }
+
+      const res = await fetch("/api/upload-invoice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          paymentId: activeId,
+          invoiceDataUrls: [finalDataUrl],
+          type: "credit",
+        }),
+      });
+
+      if (res.ok) {
+        toast.success(isAr ? "تم رفع وإرفاق الفاتورة بنجاح! 📄✨" : "Invoice uploaded & attached successfully! 📄✨", { id: "credit-invoice-upload-toast" });
+        fetchCredits();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to upload invoice", { id: "credit-invoice-upload-toast" });
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error uploading invoice", { id: "credit-invoice-upload-toast" });
+    } finally {
+      setIsPasting(false);
+    }
+  };
+
+  const handlePasteFromClipboardButton = async () => {
+    const activeId = savedCreditForQR?.id || (selectedCreditForView && (!selectedCreditForView.invoiceUrl && !((selectedCreditForView.invoiceUrls?.length || 0) > 0) && !selectedCreditForView.poUrl) ? selectedCreditForView.id : null);
+    if (!activeId) return;
+
+    try {
+      if (navigator.clipboard && navigator.clipboard.read) {
+        const items = await navigator.clipboard.read();
+        for (const item of items) {
+          const imageType = item.types.find(t => t.startsWith("image/"));
+          if (imageType) {
+            const blob = await item.getType(imageType);
+            const file = new File([blob], "clipboard-invoice.png", { type: imageType });
+            const compressed = await compressImage(file, 1200, 0.8);
+            await uploadInvoiceDataUrl(activeId, compressed);
+            return;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("Clipboard API read restriction:", err);
+    }
+
+    if (qrFileInputRef.current) {
+      qrFileInputRef.current.click();
+    } else {
+      toast.info(isAr ? "يرجى استخدام Ctrl+V للصق صورة الفاتورة أو اختيار ملف" : "Please press Ctrl+V to paste or select invoice file");
+    }
+  };
+
+  const handleQrFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const activeId = savedCreditForQR?.id || selectedCreditForView?.id;
+    if (!activeId || !e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    try {
+      const compressed = await compressImage(file, 1200, 0.8);
+      await uploadInvoiceDataUrl(activeId, compressed);
+    } catch (err) {
+      toast.error("Failed to process image file.");
+    }
+  };
+
   useEffect(() => {
     const handlePaste = async (e: ClipboardEvent) => {
-      const activeId = selectedCreditForView && (!selectedCreditForView.invoiceUrl && !((selectedCreditForView.invoiceUrls?.length || 0) > 0)) ? selectedCreditForView.id : null;
+      const activeId = savedCreditForQR?.id || (selectedCreditForView && (!selectedCreditForView.invoiceUrl && !((selectedCreditForView.invoiceUrls?.length || 0) > 0) && !selectedCreditForView.poUrl) ? selectedCreditForView.id : null);
       if (!activeId) return;
 
       const items = e.clipboardData?.items;
@@ -304,32 +419,10 @@ export default function CreditsPage() {
           const file = items[i].getAsFile();
           if (!file) continue;
 
-          setIsPasting(true);
           const reader = new FileReader();
           reader.onload = async (event) => {
             const dataUrl = event.target?.result as string;
-            try {
-              const res = await fetch("/api/upload-invoice", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  paymentId: activeId,
-                  invoiceDataUrls: [dataUrl],
-                  type: "credit",
-                }),
-              });
-              if (res.ok) {
-                toast.success("Invoice uploaded from clipboard!");
-              } else {
-                const data = await res.json();
-                toast.error(data.error || "Failed to upload invoice");
-              }
-            } catch (err) {
-              console.error(err);
-              toast.error("Error uploading invoice");
-            } finally {
-              setIsPasting(false);
-            }
+            await uploadInvoiceDataUrl(activeId, dataUrl);
           };
           reader.readAsDataURL(file);
           break;
@@ -339,7 +432,7 @@ export default function CreditsPage() {
 
     window.addEventListener("paste", handlePaste);
     return () => window.removeEventListener("paste", handlePaste);
-  }, [selectedCreditForView]);
+  }, [savedCreditForQR, selectedCreditForView]);
   
   // Skeuomorphic States
   const [isCoinDropping, setIsCoinDropping] = useState(false);
@@ -567,6 +660,7 @@ export default function CreditsPage() {
 
       toast.success("Credit added & notification sent!");
       setShowAddModal(false);
+      setSavedCreditForQR(savedCredit);
 
       // Reset form
       setInvoiceNumber("");
@@ -2634,6 +2728,90 @@ export default function CreditsPage() {
         </div>
       )}
     </AnimatePresence>
+
+    {/* QR Upload Modal for Credit Record */}
+    <AnimatePresence>
+        {savedCreditForQR && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-slate-200 dark:border-slate-800 relative"
+            >
+              <button
+                onClick={() => setSavedCreditForQR(null)}
+                className="absolute top-4 right-4 p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors"
+                title={isAr ? "إغلاق للعودة للنظام" : "Close & return to system"}
+              >
+                <X size={18} />
+              </button>
+
+              <div className="p-6 text-center flex-1 flex flex-col items-center justify-center">
+                <div className="w-14 h-14 bg-indigo-500/10 text-indigo-500 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-indigo-500/20">
+                  <ImageIcon size={28} />
+                </div>
+                <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight mb-1">
+                  {isAr ? "إرفاق صورة الفاتورة الورقية" : "Attach Credit Paper Invoice"}
+                </h2>
+                <p className="text-xs text-slate-500 font-medium mb-4 max-w-[320px]">
+                  {isAr
+                    ? `امسح رمز QR بالهاتف أو اضغط زر اللصق من الحافظة (Ctrl+V) لشركة ${savedCreditForQR.companyName}`
+                    : `Scan QR with phone or click button to paste invoice image from clipboard for ${savedCreditForQR.companyName}`}
+                </p>
+
+                <div className="bg-white p-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 inline-block mb-4 shadow-sm">
+                  <QRCode
+                    value={`${typeof window !== 'undefined' ? window.location.origin : 'https://anh-zeta.vercel.app'}/cashier/upload-invoice/${savedCreditForQR.id}?type=credit`}
+                    size={170}
+                    level="H"
+                  />
+                </div>
+
+                <input
+                  type="file"
+                  ref={qrFileInputRef}
+                  onChange={handleQrFileSelected}
+                  accept="image/*"
+                  className="hidden"
+                />
+
+                <div className="w-full space-y-2 mb-2">
+                  <button
+                    onClick={handlePasteFromClipboardButton}
+                    disabled={isPasting}
+                    className="w-full py-3.5 px-4 rounded-xl font-extrabold text-sm text-white flex items-center justify-center gap-2.5 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-indigo-500/20 cursor-pointer"
+                    style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}
+                  >
+                    {isPasting ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-white" />
+                    ) : (
+                      <ClipboardPaste className="w-4 h-4" />
+                    )}
+                    <span>
+                      {isAr ? "لصق الفاتورة من الحافظة (Ctrl+V)" : "Paste Invoice from Clipboard (Ctrl+V)"}
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => qrFileInputRef.current?.click()}
+                    disabled={isPasting}
+                    className="w-full py-3 px-4 rounded-xl font-bold text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                  >
+                    <FileText className="w-4 h-4 text-slate-500" />
+                    <span>{isAr ? "اختيار صورة الفاتورة من الجهاز" : "Select Invoice Image File"}</span>
+                  </button>
+                </div>
+
+                <p className="text-[11px] text-slate-400 mt-1 font-semibold flex items-center justify-center gap-1.5">
+                  <Loader2 className="h-3 w-3 animate-spin text-indigo-500" />
+                  {isPasting ? (isAr ? "جاري الرفع وإغلاق النافذة..." : "Uploading & returning to system...") : (isAr ? "يتم إغلاق النافذة والعودة للنظام فور اللصق" : "Modal closes & system resumes automatically upon pasting")}
+                </p>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     {selectedCreditForPrint && (() => {
       const cBranchStr = ((selectedCreditForPrint as any).branchId || (selectedCreditForPrint as any).storeId || currentBranch || "").toLowerCase();
