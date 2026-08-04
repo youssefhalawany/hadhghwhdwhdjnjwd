@@ -252,6 +252,107 @@ export default function PaymentsRedesignPage() {
   const [generatingPDF, setGeneratingPDF] = useState(false);
   const [isPasting, setIsPasting] = useState(false);
 
+  const qrFileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const uploadInvoiceDataUrl = async (activeId: string, dataUrl: string) => {
+    setIsPasting(true);
+    // Immediately close the QR modal and return user back to system
+    setSavedPaymentForQR(null);
+    toast.loading(isAr ? "جاري رفع صورة الفاتورة..." : "Uploading invoice image...", { id: "invoice-upload-toast" });
+
+    try {
+      let finalDataUrl = dataUrl;
+      // Fast client-side image compression if image payload is large
+      if (dataUrl.length > 350000) {
+        const img = new window.Image();
+        img.src = dataUrl;
+        await new Promise((res) => { img.onload = res; img.onerror = res; });
+        if (img.width > 0) {
+          const canvas = document.createElement("canvas");
+          let w = img.width;
+          let h = img.height;
+          const maxW = 1200;
+          if (w > maxW) {
+            h = Math.round((h * maxW) / w);
+            w = maxW;
+          }
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, w, h);
+            finalDataUrl = canvas.toDataURL("image/jpeg", 0.8);
+          }
+        }
+      }
+
+      const res = await fetch("/api/upload-invoice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          paymentId: activeId,
+          invoiceDataUrls: [finalDataUrl],
+          type: "payment",
+        }),
+      });
+
+      if (res.ok) {
+        toast.success(isAr ? "تم رفع وإرفاق الفاتورة بنجاح! 📄✨" : "Invoice uploaded & attached successfully! 📄✨", { id: "invoice-upload-toast" });
+        fetchData();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to upload invoice", { id: "invoice-upload-toast" });
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error uploading invoice", { id: "invoice-upload-toast" });
+    } finally {
+      setIsPasting(false);
+    }
+  };
+
+  const handlePasteFromClipboardButton = async () => {
+    const activeId = savedPaymentForQR?.id || (selectedPaymentForView && (!selectedPaymentForView.invoiceUrl && !((selectedPaymentForView.invoiceUrls?.length || 0) > 0)) ? selectedPaymentForView.id : null);
+    if (!activeId) return;
+
+    try {
+      if (navigator.clipboard && navigator.clipboard.read) {
+        const items = await navigator.clipboard.read();
+        for (const item of items) {
+          const imageType = item.types.find(t => t.startsWith("image/"));
+          if (imageType) {
+            const blob = await item.getType(imageType);
+            const file = new File([blob], "clipboard-invoice.png", { type: imageType });
+            const compressed = await compressImage(file, 1200, 0.8);
+            await uploadInvoiceDataUrl(activeId, compressed);
+            return;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("Clipboard API read restriction:", err);
+    }
+
+    // Fallback: click hidden file input if clipboard read is restricted
+    if (qrFileInputRef.current) {
+      qrFileInputRef.current.click();
+    } else {
+      toast.info(isAr ? "يرجى استخدام Ctrl+V للصق صورة الفاتورة أو اختيار ملف" : "Please press Ctrl+V to paste or select invoice file");
+    }
+  };
+
+  const handleQrFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const activeId = savedPaymentForQR?.id || selectedPaymentForView?.id;
+    if (!activeId || !e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    try {
+      const compressed = await compressImage(file, 1200, 0.8);
+      await uploadInvoiceDataUrl(activeId, compressed);
+    } catch (err) {
+      toast.error("Failed to process image file.");
+    }
+  };
+
   useEffect(() => {
     const handlePaste = async (e: ClipboardEvent) => {
       const activeId = savedPaymentForQR?.id || (selectedPaymentForView && (!selectedPaymentForView.invoiceUrl && !((selectedPaymentForView.invoiceUrls?.length || 0) > 0)) ? selectedPaymentForView.id : null);
@@ -265,32 +366,10 @@ export default function PaymentsRedesignPage() {
           const file = items[i].getAsFile();
           if (!file) continue;
 
-          setIsPasting(true);
           const reader = new FileReader();
           reader.onload = async (event) => {
             const dataUrl = event.target?.result as string;
-            try {
-              const res = await fetch("/api/upload-invoice", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  paymentId: activeId,
-                  invoiceDataUrls: [dataUrl],
-                  type: "payment",
-                }),
-              });
-              if (res.ok) {
-                toast.success("Invoice uploaded from clipboard!");
-              } else {
-                const data = await res.json();
-                toast.error(data.error || "Failed to upload invoice");
-              }
-            } catch (err) {
-              console.error(err);
-              toast.error("Error uploading invoice");
-            } finally {
-              setIsPasting(false);
-            }
+            await uploadInvoiceDataUrl(activeId, dataUrl);
           };
           reader.readAsDataURL(file);
           break;
@@ -2758,36 +2837,84 @@ export default function PaymentsRedesignPage() {
       {/* QR Upload Modal */}
       <AnimatePresence>
         {savedPaymentForQR && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-md">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
             <motion.div
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-slate-200 dark:border-slate-800"
+              className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-slate-200 dark:border-slate-800 relative"
             >
-              <div className="p-8 text-center flex-1 flex flex-col items-center justify-center">
-                <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <ImageIcon size={32} />
+              {/* Close Button */}
+              <button
+                onClick={() => setSavedPaymentForQR(null)}
+                className="absolute top-4 right-4 p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors"
+                title={isAr ? "إغلاق للعودة للنظام" : "Close & return to system"}
+              >
+                <X size={18} />
+              </button>
+
+              <div className="p-6 text-center flex-1 flex flex-col items-center justify-center">
+                <div className="w-14 h-14 bg-indigo-500/10 text-indigo-500 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-indigo-500/20">
+                  <ImageIcon size={28} />
                 </div>
-                <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mb-2">Mandatory Upload</h2>
-                <p className="text-slate-500 font-medium mb-8">
-                  Please scan this QR code with your phone or <span className="font-bold text-indigo-500">paste an image from your clipboard (Ctrl+V)</span> to upload the signed paper invoice for {savedPaymentForQR.companyName}.
+                <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight mb-1">
+                  {isAr ? "إرفاق صورة الفاتورة الورقية" : "Attach Paper Invoice"}
+                </h2>
+                <p className="text-xs text-slate-500 font-medium mb-4 max-w-[320px]">
+                  {isAr
+                    ? `امسح رمز QR بالهاتف أو اضغط زر اللصق من الحافظة (Ctrl+V) لشركة ${savedPaymentForQR.companyName}`
+                    : `Scan QR with phone or click button to paste invoice image from clipboard for ${savedPaymentForQR.companyName}`}
                 </p>
 
-                <div className="bg-white p-4 rounded-2xl border-4 border-slate-100 inline-block mb-6 shadow-sm">
+                {/* QR Code Container */}
+                <div className="bg-white p-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 inline-block mb-4 shadow-sm">
                   <QRCode
                     value={`${typeof window !== 'undefined' ? window.location.origin : 'https://anh-zeta.vercel.app'}/cashier/upload-invoice/${savedPaymentForQR.id}`}
-                    size={200}
+                    size={170}
                     level="H"
                   />
                 </div>
 
-                <p className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center justify-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-indigo-500" />
-                  {isPasting ? "Uploading pasted image..." : "Waiting for upload from phone..."}
-                </p>
-                <p className="text-xs text-slate-500 mt-2 max-w-[250px] mx-auto text-red-500 font-medium">
-                  Do not close this window until the image is uploaded.
+                {/* Hidden File Input */}
+                <input
+                  type="file"
+                  ref={qrFileInputRef}
+                  onChange={handleQrFileSelected}
+                  accept="image/*"
+                  className="hidden"
+                />
+
+                {/* Action Buttons */}
+                <div className="w-full space-y-2 mb-2">
+                  <button
+                    onClick={handlePasteFromClipboardButton}
+                    disabled={isPasting}
+                    className="w-full py-3.5 px-4 rounded-xl font-extrabold text-sm text-white flex items-center justify-center gap-2.5 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-indigo-500/20 cursor-pointer"
+                    style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}
+                  >
+                    {isPasting ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-white" />
+                    ) : (
+                      <ClipboardPaste className="w-4 h-4" />
+                    )}
+                    <span>
+                      {isAr ? "لصق الفاتورة من الحافظة (Ctrl+V)" : "Paste Invoice from Clipboard (Ctrl+V)"}
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => qrFileInputRef.current?.click()}
+                    disabled={isPasting}
+                    className="w-full py-3 px-4 rounded-xl font-bold text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                  >
+                    <FileText className="w-4 h-4 text-slate-500" />
+                    <span>{isAr ? "اختيار صورة الفاتورة من الجهاز" : "Select Invoice Image File"}</span>
+                  </button>
+                </div>
+
+                <p className="text-[11px] text-slate-400 mt-1 font-semibold flex items-center justify-center gap-1.5">
+                  <Loader2 className="h-3 w-3 animate-spin text-indigo-500" />
+                  {isPasting ? (isAr ? "جاري الرفع وإغلاق النافذة..." : "Uploading & returning to system...") : (isAr ? "يتم إغلاق النافذة والعودة للنظام فور اللصق" : "Modal closes & system resumes automatically upon pasting")}
                 </p>
               </div>
             </motion.div>
