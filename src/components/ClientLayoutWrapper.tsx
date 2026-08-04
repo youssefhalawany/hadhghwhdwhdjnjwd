@@ -61,61 +61,87 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   const [pushPermissionNeeded, setPushPermissionNeeded] = useState(false);
 
   const registerFcmPushToken = async (currentUserObj?: any) => {
-    if (typeof window === "undefined" || !("Notification" in window) || !("serviceWorker" in navigator)) {
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      toast.error(language === "ar" ? "الإشعارات غير مدعومة على هذا الجهاز" : "Push notifications are not supported on this browser/device.");
       return;
     }
 
     try {
-      const reg = await navigator.serviceWorker.register("/firebase-messaging-sw.js").catch(() => null);
-      if (reg) await navigator.serviceWorker.ready;
-
       let perm = Notification.permission;
+
+      if (perm === "denied") {
+        toast.error(
+          language === "ar"
+            ? "الإشعارات محظورة من إعدادات المتصفح. يرجى تفعيلها من إعدادات الموقع."
+            : "Notifications are blocked in your browser settings. Please enable notification permissions in site settings.",
+          { duration: 6000 }
+        );
+        setPushPermissionNeeded(false);
+        return;
+      }
+
       if (perm !== "granted") {
-        setPushPermissionNeeded(true);
         perm = await Notification.requestPermission();
       }
 
       if (perm === "granted") {
         setPushPermissionNeeded(false);
-        if (messaging) {
-          const messagingInstance = await messaging;
-          if (messagingInstance) {
-            const tokenOptions: any = {
-              vapidKey: process.env.NEXT_PUBLIC_VAPID_KEY || "BHiDvLTbQ2DTED8p7X1BQ8Vu811fuu3dmpVfclmA5P7n-DuRltU7kkai9E2_2VkbLpS7Ns5ekNQClP5CsTeWf7M"
-            };
-            if (reg) tokenOptions.serviceWorkerRegistration = reg;
+        toast.success(language === "ar" ? "تم تفعيل الإشعارات بنجاح! 🔔" : "Push notifications enabled successfully! 🔔");
 
-            const token = await getToken(messagingInstance, tokenOptions);
-            if (token) {
-              const activeRole = localStorage.getItem("circlek_role") || "manager";
-              const emailStr = currentUserObj?.email || user?.email || "user@ckk.com";
-              const activeBranch = localStorage.getItem("circlek_current_branch") || "alamein4";
-              const storeIds = [activeBranch === "ola" ? "ola-el-koronfol" : "eL-alamein-4"];
+        if ("serviceWorker" in navigator) {
+          const reg = await navigator.serviceWorker.register("/firebase-messaging-sw.js").catch((swErr) => {
+            console.warn("SW register catch:", swErr);
+            return null;
+          });
+          if (reg) await navigator.serviceWorker.ready;
 
-              const uid = currentUserObj?.uid || user?.uid;
-              if (uid) {
-                await dbService.setDoc("user_tokens", uid, {
-                  fcmToken: token,
-                  tokens: [token],
-                  email: emailStr,
-                  role: activeRole,
-                  branchId: activeBranch,
-                  storeIds,
-                  updatedAt: new Date().toISOString()
-                });
+          if (messaging) {
+            const messagingInstance = await messaging;
+            if (messagingInstance) {
+              const tokenOptions: any = {
+                vapidKey: process.env.NEXT_PUBLIC_VAPID_KEY || "BHiDvLTbQ2DTED8p7X1BQ8Vu811fuu3dmpVfclmA5P7n-DuRltU7kkai9E2_2VkbLpS7Ns5ekNQClP5CsTeWf7M"
+              };
+              if (reg) tokenOptions.serviceWorkerRegistration = reg;
 
-                await dbService.updateDoc("users", uid, {
-                  fcmToken: token,
-                  fcmTokens: [token],
-                  branchId: activeBranch
-                }).catch(() => {});
+              const token = await getToken(messagingInstance, tokenOptions).catch((tokenErr) => {
+                console.warn("FCM getToken catch:", tokenErr);
+                return null;
+              });
+
+              if (token) {
+                const activeRole = localStorage.getItem("circlek_role") || "manager";
+                const emailStr = currentUserObj?.email || user?.email || "user@ckk.com";
+                const activeBranch = localStorage.getItem("circlek_current_branch") || "alamein4";
+                const storeIds = [activeBranch === "ola" ? "ola-el-koronfol" : "eL-alamein-4"];
+
+                const uid = currentUserObj?.uid || user?.uid;
+                if (uid) {
+                  await dbService.setDoc("user_tokens", uid, {
+                    fcmToken: token,
+                    tokens: [token],
+                    email: emailStr,
+                    role: activeRole,
+                    branchId: activeBranch,
+                    storeIds,
+                    updatedAt: new Date().toISOString()
+                  });
+
+                  await dbService.updateDoc("users", uid, {
+                    fcmToken: token,
+                    fcmTokens: [token],
+                    branchId: activeBranch
+                  }).catch(() => {});
+                }
               }
             }
           }
         }
+      } else {
+        toast.error(language === "ar" ? "لم يتم منح إذن الإشعارات" : "Notification permission was not granted.");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("FCM Token generation error:", err);
+      toast.error(language === "ar" ? "حدث خطأ أثناء طلب تفعيل الإشعارات" : "Failed to request notification permission.");
     }
   };
 
@@ -649,7 +675,10 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
             ))}
           </div>
           <p className="mt-3 text-sm uppercase tracking-[0.25em] font-semibold" style={{ color: '#71717A', opacity: 0, animation: 'fadeInUp 0.5s ease forwards', animationDelay: '1.4s' }}>
-            Franchise Portal
+            ANH Portal
+          </p>
+          <p className="mt-3 text-xs font-bold tracking-wider" style={{ color: '#FB7185', opacity: 0, animation: 'fadeInUp 0.5s ease forwards', animationDelay: '1.6s' }}>
+            Please wait {(userDoc?.displayName || user?.displayName || user?.email?.split('@')[0]) ? `${userDoc?.displayName || user?.displayName || user?.email?.split('@')[0]}` : ''}...
           </p>
 
           {/* Progress ring spinner */}
@@ -801,22 +830,22 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
       {/* Desktop Sidebar */}
       {!pathname.startsWith('/cashier') && !pathname.startsWith('/owner') && (
-        <aside className="hidden lg:flex flex-col w-64 h-full z-50 flex-shrink-0 overflow-hidden print:hidden" style={{ background: '#09090B', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
-          <div className="p-4 flex flex-col gap-4 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <aside className="hidden lg:flex flex-col w-64 h-full z-50 flex-shrink-0 overflow-hidden print:hidden bg-card border-r border-border backdrop-blur-xl transition-colors duration-300">
+          <div className="p-4 flex flex-col gap-4 flex-shrink-0 border-b border-border">
             <Link href="/" className="flex items-center gap-3">
               {logoUrl ? (
                 <img src={logoUrl} alt="Store Logo" className="h-10 w-10 rounded-full object-cover border-2 shadow-md" style={{ borderColor: brandColor || '#F97316' }} />
               ) : (
                 <div style={{ position: 'relative' }}>
                   <div style={{ position: 'absolute', inset: -2, borderRadius: '50%', background: 'conic-gradient(from 0deg, #E11D48, #F97316, #FBBF24, #E11D48)', filter: 'blur(4px)', opacity: 0.35 }} />
-                  <div className="h-10 w-10 rounded-full flex items-center justify-center font-black text-white text-xl relative" style={{ background: '#18181B', border: '2px solid rgba(255,255,255,0.08)' }}>
+                  <div className="h-10 w-10 rounded-full flex items-center justify-center font-black text-white text-xl relative bg-zinc-900 border border-white/10">
                     K
                   </div>
                 </div>
               )}
               <div className="flex flex-col text-start">
-                <span className="font-extrabold tracking-[0.12em] text-base" style={{ color: '#FAFAFA' }}>CIRCLE K</span>
-                <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: '#71717A' }}>
+                <span className="font-extrabold tracking-[0.12em] text-base text-foreground">CIRCLE K</span>
+                <span className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground">
                   {currentBranch === 'alamein4' ? (language === 'ar' ? 'بوابة العلمين 4' : 'El Alamein 4 Portal') : currentBranch === 'ola' ? (language === 'ar' ? 'بوابة علا القرنفل' : 'Ola El Koronfol Portal') : (language === 'ar' ? 'بوابة الفروع' : 'All Branches')}
                 </span>
               </div>
@@ -831,7 +860,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
               if (item.children) {
                 return (
                   <div key={item.name} className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2 px-3 py-2 text-[10px] font-black uppercase tracking-widest mt-3" style={{ color: '#52525B' }}>
+                    <div className="flex items-center gap-2 px-3 py-2 text-[10px] font-black uppercase tracking-widest mt-3 text-muted-foreground/70">
                       <span>{item.name}</span>
                     </div>
                     {item.children.map(child => {
@@ -841,28 +870,31 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                           key={child.href}
                           href={child.href}
                           prefetch={true}
-                          className="group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
-                          style={isChildActive ? { background: 'rgba(225,29,72,0.08)', color: '#FB7185', borderLeft: '3px solid #E11D48' } : { color: '#A1A1AA' }}
+                          className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                            isChildActive 
+                              ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-l-4 border-rose-500 font-bold'
+                              : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                          }`}
                         >
-                          <child.icon className={`h-4 w-4 ${isChildActive ? 'scale-110 drop-shadow-sm' : 'opacity-70 group-hover:opacity-100'}`} />
+                          <child.icon className={`h-4 w-4 ${isChildActive ? 'scale-110 text-rose-500 drop-shadow-sm' : 'opacity-70 group-hover:opacity-100'}`} />
                           <span>{child.name}</span>
                           {child.name === t("nav.shift_audit") && pendingShiftCount > 0 && (
-                            <span className={`ml-auto bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(244,63,94,0.4)] animate-pulse ${hasAgedShifts ? 'shadow-[0_0_15px_rgba(239,68,68,0.8)]' : ''}`}>
+                            <span className={`ml-auto bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-pulse ${hasAgedShifts ? 'shadow-rose-500/80' : ''}`}>
                               {pendingShiftCount}
                             </span>
                           )}
                           {child.name === t("nav.voids_returns") && pendingVoidCount > 0 && (
-                            <span className="ml-auto bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(244,63,94,0.4)] animate-pulse">
+                            <span className="ml-auto bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-pulse">
                               {pendingVoidCount}
                             </span>
                           )}
                           {child.name === t("nav.expiries") && pendingExpiriesCount > 0 && (
-                            <span className="ml-auto bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(244,63,94,0.4)] animate-pulse">
+                            <span className="ml-auto bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-pulse">
                               {pendingExpiriesCount}
                             </span>
                           )}
                           {(child.name === "Out of Stock" || child.name === "سجل النواقص") && pendingOosCount > 0 && (
-                            <span className="ml-auto bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(244,63,94,0.4)] animate-pulse">
+                            <span className="ml-auto bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-pulse">
                               {pendingOosCount}
                             </span>
                           )}
@@ -878,10 +910,13 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                   key={item.href || item.name}
                   href={item.href!}
                   prefetch={true}
-                  className="group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
-                  style={isActive ? { background: 'rgba(225,29,72,0.08)', color: '#FB7185', borderLeft: '3px solid #E11D48' } : { color: '#A1A1AA' }}
+                  className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                    isActive 
+                      ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-l-4 border-rose-500 font-bold'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                  }`}
                 >
-                  <Icon className={`h-4 w-4 ${isActive ? 'scale-110 drop-shadow-sm' : 'opacity-70 group-hover:opacity-100'}`} />
+                  <Icon className={`h-4 w-4 ${isActive ? 'scale-110 text-rose-500 drop-shadow-sm' : 'opacity-70 group-hover:opacity-100'}`} />
                   {!item.isIconOnly && <span>{item.name}</span>}
                   {item.name === t("nav.returns") && pendingReturnsCount > 0 && (
                     <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse shadow-sm shadow-red-500/30">
@@ -893,11 +928,10 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
             })}
           </div>
 
-          <div className="p-4 mt-auto" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="p-4 mt-auto border-t border-border">
             <button
               onClick={() => signOut(auth)}
-              className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl text-sm font-bold transition-all duration-200"
-              style={{ background: 'rgba(225,29,72,0.06)', border: '1px solid rgba(225,29,72,0.12)', color: '#FB7185' }}
+              className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl text-sm font-bold transition-all duration-200 bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 cursor-pointer"
             >
               <LogOut className="h-4 w-4" /> {t("nav.sign_out")}
             </button>
@@ -912,46 +946,41 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
         {/* Top Header */}
         {!pathname.startsWith('/cashier') && !pathname.startsWith('/owner') && (
           <header
-            className="flex-shrink-0 hidden md:flex items-center justify-between px-4 sm:px-6 z-40 print:hidden"
+            className="flex-shrink-0 hidden md:flex items-center justify-between px-4 sm:px-6 z-40 print:hidden bg-card/90 backdrop-blur-xl border-b border-border transition-colors duration-300"
             style={{
               paddingTop: 'max(1rem, env(safe-area-inset-top))',
               paddingBottom: '1rem',
               minHeight: 'calc(4rem + env(safe-area-inset-top))',
-              background: '#09090BF2',
-              backdropFilter: 'blur(24px) saturate(1.5)',
-              WebkitBackdropFilter: 'blur(24px) saturate(1.5)',
-              borderBottom: '1px solid rgba(255,255,255,0.06)',
             }}
           >
 
             {/* Mobile Left: Logo & Hamburger */}
             <div className="flex lg:hidden items-center gap-3">
               <button
-                className="p-2 rounded-xl transition-all"
-                style={{ background: '#18181B', border: '1px solid rgba(255,255,255,0.06)', color: '#A1A1AA' }}
+                className="p-2 rounded-xl transition-all bg-muted border border-border text-muted-foreground hover:text-foreground"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               >
                 {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
               </button>
-              <span className="font-extrabold tracking-[0.12em] text-sm" style={{ color: '#FAFAFA' }}>CIRCLE K</span>
+              <span className="font-extrabold tracking-[0.12em] text-sm text-foreground">CIRCLE K</span>
             </div>
 
             {/* Desktop Left: Breadcrumb or Greeting */}
             <div className="hidden lg:flex items-center gap-6">
               {userDoc && (
-                <div className="text-sm font-semibold" style={{ color: '#A1A1AA' }}>
-                  <span>{language === 'ar' ? 'مرحباً، ' : 'Welcome, '}<span className="text-lg font-extrabold" style={{ color: '#FAFAFA' }}>{userDoc.displayName || user?.email?.split('@')[0]}</span></span>
+                <div className="text-sm font-semibold text-muted-foreground">
+                  <span>{language === 'ar' ? 'مرحباً، ' : 'Welcome, '}<span className="text-lg font-extrabold text-foreground">{userDoc.displayName || user?.email?.split('@')[0]}</span></span>
                 </div>
               )}
               {currentDateTime && (
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl" style={{ background: '#18181B', border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <CalendarDays className="h-4 w-4" style={{ color: '#52525B' }} />
-                  <span className="text-xs font-bold" style={{ color: '#A1A1AA' }}>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-muted/60 border border-border">
+                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs font-bold text-muted-foreground">
                     {currentDateTime.toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                   </span>
-                  <div className="w-px h-3 mx-1" style={{ background: 'rgba(255,255,255,0.06)' }}></div>
-                  <Clock className="h-4 w-4" style={{ color: '#E11D48' }} />
-                  <span className="text-xs font-black font-mono tracking-wider" style={{ color: '#FB7185' }}>
+                  <div className="w-px h-3 mx-1 bg-border"></div>
+                  <Clock className="h-4 w-4 text-rose-500" />
+                  <span className="text-xs font-black font-mono tracking-wider text-rose-600 dark:text-rose-400">
                     {currentDateTime.toLocaleTimeString(language === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                   </span>
                 </div>
@@ -962,16 +991,15 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
             <div className="flex items-center gap-2 sm:gap-3 ml-auto">
               {/* Branch Switcher */}
               {availableBranches.length > 1 && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl" style={{ background: '#18181B', border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <Store className="h-3.5 w-3.5" style={{ color: '#E11D48' }} />
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-muted/60 border border-border text-foreground">
+                  <Store className="h-3.5 w-3.5 text-rose-500" />
                   <select
                     value={currentBranch}
                     onChange={(e) => setBranch(e.target.value as BranchId)}
-                    className="bg-transparent border-none text-xs font-bold focus:ring-0 cursor-pointer outline-none"
-                    style={{ color: '#FAFAFA' }}
+                    className="bg-transparent border-none text-xs font-bold focus:ring-0 cursor-pointer outline-none text-foreground"
                   >
                     {availableBranches.map((b) => (
-                      <option key={b.id} value={b.id} style={{ background: '#18181B' }}>{language === "ar" && b.id === "alamein4" ? "العلمين 4" : language === "ar" && b.id === "ola" ? "علا القرنفل" : b.name}</option>
+                      <option key={b.id} value={b.id} className="bg-card text-foreground">{language === "ar" && b.id === "alamein4" ? "العلمين 4" : language === "ar" && b.id === "ola" ? "علا القرنفل" : b.name}</option>
                     ))}
                   </select>
                 </div>
@@ -981,30 +1009,28 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
               <div className="relative">
                 <button
                   onClick={() => setNotificationsOpen(!notificationsOpen)}
-                  className="relative p-2 rounded-xl transition-all"
-                  style={{ background: '#18181B', border: '1px solid rgba(255,255,255,0.06)', color: '#A1A1AA' }}
+                  className="relative p-2 rounded-xl transition-all bg-muted/60 border border-border text-muted-foreground hover:text-foreground cursor-pointer"
                 >
-                  <Bell className={`h-4 w-4 ${totalNotifications > 0 ? "animate-pulse" : ""}`} style={totalNotifications > 0 ? { color: '#FB7185' } : {}} />
+                  <Bell className={`h-4 w-4 ${totalNotifications > 0 ? "animate-pulse text-rose-500" : ""}`} />
                   {totalNotifications > 0 && (
-                    <span className="absolute -top-1 -right-1 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-lg" style={{ background: '#E11D48' }}>
+                    <span className="absolute -top-1 -right-1 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-lg bg-rose-500">
                       {totalNotifications}
                     </span>
                   )}
                 </button>
 
-                {/* Dropdown omitted for brevity but keeps original logic */}
+                {/* Dropdown */}
                 {notificationsOpen && (
-                  <div className="absolute right-0 mt-2 w-72 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col" style={{ background: '#18181B', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 20px 60px rgba(0,0,0,0.8)' }}>
-                    <div className="p-3.5 font-black text-sm flex justify-between items-center" style={{ background: '#09090B', borderBottom: '1px solid rgba(255,255,255,0.08)', color: '#FAFAFA' }}>
+                  <div className="absolute right-0 mt-2 w-72 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col bg-card border border-border">
+                    <div className="p-3.5 font-black text-sm flex justify-between items-center bg-muted/40 border-b border-border text-foreground">
                       <div className="flex items-center gap-2">
                         <span>{isAr ? "التنبيهات" : "Notifications"}</span>
-                        <span className="text-white text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: '#E11D48' }}>{totalNotifications}</span>
+                        <span className="text-white text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-500">{totalNotifications}</span>
                       </div>
                       {systemNotifications.length > 0 && (
                         <button 
                           onClick={handleClearAllNotifications}
-                          className="text-[10px] font-bold transition-colors px-2 py-1 rounded-lg cursor-pointer"
-                          style={{ color: '#FB7185', background: 'rgba(225,29,72,0.12)', border: '1px solid rgba(225,29,72,0.2)' }}
+                          className="text-[10px] font-bold transition-colors px-2 py-1 rounded-lg cursor-pointer text-rose-600 dark:text-rose-400 bg-rose-500/10 border border-rose-500/20"
                         >
                           {isAr ? "مسح الكل" : "Clear All"}
                         </button>
@@ -1012,11 +1038,11 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                     </div>
                     <div className="max-h-72 overflow-y-auto custom-scrollbar">
                       {totalNotifications === 0 ? (
-                        <div className="p-6 text-center text-xs font-semibold" style={{ color: '#A1A1AA' }}>{isAr ? "لا توجد تنبيهات جديدة" : "All caught up! No pending alerts."}</div>
+                        <div className="p-6 text-center text-xs font-semibold text-muted-foreground">{isAr ? "لا توجد تنبيهات جديدة" : "All caught up! No pending alerts."}</div>
                       ) : (
                         <>
                           {systemNotifications.length > 0 && (
-                            <div className="px-3.5 py-1.5 text-[10px] font-black uppercase tracking-wider" style={{ background: '#27272A', color: '#F97316' }}>
+                            <div className="px-3.5 py-1.5 text-[10px] font-black uppercase tracking-wider bg-muted text-secondary">
                               {isAr ? "إجراءات حديثة" : "Recent Actions"}
                             </div>
                           )}
@@ -1030,47 +1056,46 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                                   await updateDoc(doc(db, "notifications", notif.id), { read: true });
                                 } catch (e) { console.error("Error marking read", e); }
                               }}
-                              className="block p-3.5 transition-colors"
-                              style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(225,29,72,0.04)' }}
+                              className="block p-3.5 transition-colors border-b border-border bg-rose-500/5 hover:bg-rose-500/10"
                             >
                               <div className="flex justify-between items-start mb-1">
-                                <p className="text-xs font-extrabold capitalize flex items-center gap-2" style={{ color: '#FAFAFA' }}>
-                                  <span className="w-2 h-2 rounded-full inline-block animate-pulse" style={{ background: '#E11D48' }}></span>
+                                <p className="text-xs font-extrabold capitalize flex items-center gap-2 text-foreground">
+                                  <span className="w-2 h-2 rounded-full inline-block animate-pulse bg-rose-500"></span>
                                   {notif.type} Update
                                 </p>
-                                <span className="text-[10px] font-medium" style={{ color: '#71717A' }}>{new Date(notif.createdAt?.toDate ? notif.createdAt.toDate() : Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                <span className="text-[10px] font-medium text-muted-foreground">{new Date(notif.createdAt?.toDate ? notif.createdAt.toDate() : Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                               </div>
-                              <p className="text-xs font-medium" style={{ color: '#A1A1AA' }}>{notif.message}</p>
+                              <p className="text-xs font-medium text-muted-foreground">{notif.message}</p>
                             </Link>
                           ))}
 
                           {(pendingShiftCount > 0 || pendingVoidCount > 0 || pendingReturnsCount > 0 || pendingExpiriesCount > 0) && (
-                            <div className="px-3.5 py-1.5 text-[10px] font-black uppercase tracking-wider" style={{ background: '#27272A', color: '#F97316' }}>
+                            <div className="px-3.5 py-1.5 text-[10px] font-black uppercase tracking-wider bg-muted text-secondary">
                               {isAr ? "في انتظار الاعتماد" : "Pending Approvals"}
                             </div>
                           )}
                           {pendingShiftCount > 0 && (
-                            <Link href="/shift-reports/manager" onClick={() => setNotificationsOpen(false)} className="block p-3.5 transition-colors hover:bg-white/5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                              <p className="text-xs font-extrabold" style={{ color: '#FAFAFA' }}>{isAr ? "مراجعة الورديات" : "Shift Audits"}</p>
-                              <p className="text-xs font-semibold mt-0.5" style={{ color: '#A1A1AA' }}>{pendingShiftCount} {isAr ? "ورديات تنتظر اعتماد المدير" : "pending shifts require approval."}</p>
+                            <Link href="/shift-reports/manager" onClick={() => setNotificationsOpen(false)} className="block p-3.5 transition-colors border-b border-border hover:bg-muted/50">
+                              <p className="text-xs font-extrabold text-foreground">{isAr ? "مراجعة الورديات" : "Shift Audits"}</p>
+                              <p className="text-xs font-semibold mt-0.5 text-muted-foreground">{pendingShiftCount} {isAr ? "ورديات تنتظر اعتماد المدير" : "pending shifts require approval."}</p>
                             </Link>
                           )}
                           {pendingVoidCount > 0 && (
-                            <Link href="/voids/manager" onClick={() => setNotificationsOpen(false)} className="block p-3.5 transition-colors hover:bg-white/5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                              <p className="text-xs font-extrabold" style={{ color: '#FAFAFA' }}>{isAr ? "إلغاءات ومرتجعات المبيعات" : "Voids & Returns"}</p>
-                              <p className="text-xs font-semibold mt-0.5" style={{ color: '#A1A1AA' }}>{pendingVoidCount} {isAr ? "طلبات تراجع تحتاج مراجعة" : "requests require review."}</p>
+                            <Link href="/voids/manager" onClick={() => setNotificationsOpen(false)} className="block p-3.5 transition-colors border-b border-border hover:bg-muted/50">
+                              <p className="text-xs font-extrabold text-foreground">{isAr ? "إلغاءات ومرتجعات المبيعات" : "Voids & Returns"}</p>
+                              <p className="text-xs font-semibold mt-0.5 text-muted-foreground">{pendingVoidCount} {isAr ? "طلبات تراجع تحتاج مراجعة" : "requests require review."}</p>
                             </Link>
                           )}
                           {pendingReturnsCount > 0 && (
-                            <Link href="/dashboard/supplier-returns" onClick={() => setNotificationsOpen(false)} className="block p-3.5 transition-colors hover:bg-white/5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                              <p className="text-xs font-extrabold" style={{ color: '#FAFAFA' }}>{isAr ? "مرتجعات الموردين" : "Supplier Returns"}</p>
-                              <p className="text-xs font-semibold mt-0.5" style={{ color: '#A1A1AA' }}>{pendingReturnsCount} {isAr ? "إيصالات مرتجع قيد التسوية" : "returns pending settlement."}</p>
+                            <Link href="/dashboard/supplier-returns" onClick={() => setNotificationsOpen(false)} className="block p-3.5 transition-colors border-b border-border hover:bg-muted/50">
+                              <p className="text-xs font-extrabold text-foreground">{isAr ? "مرتجعات الموردين" : "Supplier Returns"}</p>
+                              <p className="text-xs font-semibold mt-0.5 text-muted-foreground">{pendingReturnsCount} {isAr ? "إيصالات مرتجع قيد التسوية" : "returns pending settlement."}</p>
                             </Link>
                           )}
                           {pendingExpiriesCount > 0 && (
-                            <Link href="/products/expiries-audit" onClick={() => setNotificationsOpen(false)} className="block p-3.5 transition-colors hover:bg-white/5">
-                              <p className="text-xs font-extrabold" style={{ color: '#FAFAFA' }}>{isAr ? "جرد الصلاحيات" : "Expiry Audits"}</p>
-                              <p className="text-xs font-semibold mt-0.5" style={{ color: '#A1A1AA' }}>{pendingExpiriesCount} {isAr ? "سجلات تحتاج مراجعة" : "audits require review."}</p>
+                            <Link href="/products/expiries-audit" onClick={() => setNotificationsOpen(false)} className="block p-3.5 transition-colors hover:bg-muted/50">
+                              <p className="text-xs font-extrabold text-foreground">{isAr ? "جرد الصلاحيات" : "Expiry Audits"}</p>
+                              <p className="text-xs font-semibold mt-0.5 text-muted-foreground">{pendingExpiriesCount} {isAr ? "سجلات تحتاج مراجعة" : "audits require review."}</p>
                             </Link>
                           )}
                         </>
@@ -1083,8 +1108,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
               {/* Language Toggle */}
               <button
                 onClick={() => setLanguage(language === "en" ? "ar" : "en")}
-                className="p-2 rounded-xl transition-all flex items-center gap-1 cursor-pointer"
-                style={{ background: '#18181B', border: '1px solid rgba(255,255,255,0.06)', color: '#A1A1AA' }}
+                className="p-2 rounded-xl transition-all flex items-center gap-1 cursor-pointer bg-muted/60 border border-border text-muted-foreground hover:text-foreground"
               >
                 <Languages className="h-4 w-4" />
                 <span className="text-[10px] font-black uppercase">{language === "en" ? "عربي" : "EN"}</span>
@@ -1093,10 +1117,9 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
               {/* Theme Toggle */}
               <button
                 onClick={toggleTheme}
-                className="p-2 rounded-xl transition-all cursor-pointer"
-                style={{ background: '#18181B', border: '1px solid rgba(255,255,255,0.06)', color: '#A1A1AA' }}
+                className="p-2 rounded-xl transition-all cursor-pointer bg-muted/60 border border-border text-muted-foreground hover:text-foreground"
               >
-                {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                {theme === "dark" ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-indigo-500" />}
               </button>
             </div>
           </header>
@@ -1104,12 +1127,12 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
         {/* Mobile Dropdown Menu (Only shown on small screens) */}
         {mobileMenuOpen && !pathname.startsWith('/cashier') && !pathname.startsWith('/owner') && (
-          <div className="lg:hidden absolute top-16 left-0 w-full bg-white dark:bg-slate-950 border-b border-border shadow-xl z-50 flex flex-col p-4 gap-2 h-[calc(100vh-4rem)] overflow-y-auto">
+          <div className="lg:hidden absolute top-16 left-0 w-full bg-card border-b border-border shadow-xl z-50 flex flex-col p-4 gap-2 h-[calc(100vh-4rem)] overflow-y-auto">
             {navItems.map((item) => {
               if (item.children) {
                 return (
                   <div key={item.name} className="flex flex-col gap-1">
-                    <div className="flex justify-between items-center px-4 py-2 text-sm font-bold text-slate-500 uppercase tracking-widest border-b border-border mt-2">
+                    <div className="flex justify-between items-center px-4 py-2 text-sm font-bold text-muted-foreground uppercase tracking-widest border-b border-border mt-2">
                       <div className="flex items-center gap-3">
                         <item.icon className="h-4 w-4" />
                         {item.name}
@@ -1123,8 +1146,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                           href={child.href}
                           onClick={() => setMobileMenuOpen(false)}
                           className={`flex justify-between items-center px-6 py-2.5 rounded-lg text-sm font-semibold transition-all ${isActive
-                            ? "bg-red-500/10 text-red-600 dark:text-red-500"
-                            : "text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-foreground"
+                            ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold"
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
                             }`}
                         >
                           <div className="flex items-center gap-3">
@@ -1146,8 +1169,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                   href={item.href!}
                   onClick={() => setMobileMenuOpen(false)}
                   className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${isActive
-                    ? "bg-red-500/10 text-red-600 dark:text-red-500"
-                    : "text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-foreground"
+                    ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     }`}
                 >
                   <Icon className="h-5 w-5" />
@@ -1161,7 +1184,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                   setMobileMenuOpen(false);
                   signOut(auth);
                 }}
-                className="w-full flex items-center justify-center gap-2 p-3 rounded-lg border border-red-500/30 bg-red-500/10 text-red-500 font-bold"
+                className="w-full flex items-center justify-center gap-2 p-3 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold"
               >
                 <LogOut className="h-4 w-4" /> {t("nav.sign_out")}
               </button>
@@ -1171,17 +1194,26 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
         {/* Push Notification Authorization Banner for Manager Phone / Device */}
         {pushPermissionNeeded && (
-          <div className="bg-gradient-to-r from-amber-500 via-red-600 to-cyan-500 text-slate-950 text-xs font-black px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 shadow-lg no-print z-50">
+          <div className="bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 text-white text-xs font-bold px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 shadow-sm no-print z-50 backdrop-blur-md">
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping" />
-              <span>Enable Lock Screen Push Notifications on this Manager Phone / PWA Device!</span>
+              <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+              <span>{isAr ? "قم بتفعيل إشعارات الشاشة الرئيسية والقفل لمتابعة التنبيهات!" : "Enable Lock Screen Push Notifications on this Manager Phone / PWA Device!"}</span>
             </div>
-            <button
-              onClick={() => registerFcmPushToken(user)}
-              className="px-3.5 py-1 rounded-xl bg-slate-950 text-white text-[11px] font-black uppercase tracking-wider shadow hover:bg-slate-900 active:scale-95 transition-all cursor-pointer"
-            >
-              Enable Push Notifications 🔔
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => registerFcmPushToken(user)}
+                className="px-3.5 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 active:scale-95 text-white border border-white/30 text-[11px] font-bold uppercase tracking-wider backdrop-blur-sm transition-all cursor-pointer"
+              >
+                {isAr ? "تفعيل الإشعارات 🔔" : "Enable Push Notifications 🔔"}
+              </button>
+              <button
+                onClick={() => setPushPermissionNeeded(false)}
+                className="p-1 rounded-lg hover:bg-white/20 text-white/80 hover:text-white transition-colors cursor-pointer"
+                title={isAr ? "إغلاق" : "Dismiss"}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         )}
 

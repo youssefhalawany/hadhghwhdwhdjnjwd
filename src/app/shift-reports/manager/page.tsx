@@ -780,12 +780,12 @@ export default function ManagerAuditPage() {
         </div>
 
         {/* Desktop-Only Header (Strictly hidden md:flex) */}
-        <div className="hidden md:flex flex-col sm:flex-row sm:justify-between sm:items-end border-b border-border pb-4 mb-8 gap-4" dir={isAr ? "rtl" : "ltr"}>
+        <div className="hidden md:flex flex-col sm:flex-row sm:justify-between sm:items-end border-b border-border pb-5 mb-8 gap-4" dir={isAr ? "rtl" : "ltr"}>
           <div>
             <h1 className="text-3xl font-black text-foreground tracking-tight">
-              {isAr ? "بوابة تدقيق ور ديات الكاشير" : "Manager Audit Portal"}
+              {isAr ? "بوابة تدقيق ورديات الكاشير" : "Manager Audit Portal"}
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-sm text-muted-foreground mt-1 font-medium">
               {isAr ? "مراجعة وتدقيق وإعتماد وتقفيل ورديات الكاشير وتوريدات الخزينة" : "Review, approve, and print end-of-shift reports"}
             </p>
           </div>
@@ -794,27 +794,27 @@ export default function ManagerAuditPage() {
           <div className="flex items-center gap-4 flex-wrap">
             <button
               onClick={() => setEarlyDayModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold transition-all shadow-md whitespace-nowrap cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white rounded-xl text-sm font-bold transition-all shadow-md shadow-indigo-500/20 whitespace-nowrap cursor-pointer active:scale-95"
             >
               <Clock className="h-4 w-4" /> {isAr ? "طلب تقفيل وردية مبكر" : "Request Early Day"}
             </button>
 
-            <div className="flex bg-muted/50 p-1 rounded-xl border border-border">
+            <div className="flex bg-muted/60 p-1.5 rounded-2xl border border-border/80 backdrop-blur-md items-center gap-1">
               <button
                 onClick={() => { setActiveTab("pending"); setSelectedReport(null); }}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "pending" ? "bg-card shadow text-red-500 border border-border" : "text-muted-foreground hover:text-foreground"} ${hasAgedShifts ? 'animate-pulse' : ''}`}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer ${activeTab === "pending" ? "bg-card shadow-sm text-rose-600 dark:text-rose-400 border border-border/60" : "text-muted-foreground hover:text-foreground hover:bg-muted/40"} ${hasAgedShifts ? 'animate-pulse' : ''}`}
               >
                 <Clock className="h-4 w-4" /> {isAr ? "قيد التدقيق" : "Pending"} ({pendingReports.length})
               </button>
               <button
                 onClick={() => { setActiveTab("history"); setSelectedReport(null); }}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "history" ? "bg-card shadow text-foreground border border-border" : "text-muted-foreground hover:text-foreground"}`}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer ${activeTab === "history" ? "bg-card shadow-sm text-foreground border border-border/60" : "text-muted-foreground hover:text-foreground hover:bg-muted/40"}`}
               >
                 <Archive className="h-4 w-4" /> {isAr ? "سجل الورديات المدققة" : "Audit History"} ({historyReports.length})
               </button>
               <button
                 onClick={() => { setActiveTab("performance"); setSelectedReport(null); }}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "performance" ? "bg-card shadow text-blue-600 border border-border" : "text-muted-foreground hover:text-foreground"}`}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer ${activeTab === "performance" ? "bg-card shadow-sm text-blue-600 dark:text-blue-400 border border-border/60" : "text-muted-foreground hover:text-foreground hover:bg-muted/40"}`}
               >
                 {isAr ? "لوحة المتصدرين والتقييم" : "Performance"}
               </button>
@@ -853,15 +853,15 @@ export default function ManagerAuditPage() {
 
         {activeTab === "performance" ? (
           <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
-            <div className="bg-slate-900 rounded-2xl p-6 text-white shadow-lg border border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4" dir={isAr ? "rtl" : "ltr"}>
+            <div className="bg-gradient-to-r from-zinc-900 to-zinc-950 dark:from-zinc-950 dark:to-black rounded-2xl p-6 text-white shadow-md border border-zinc-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4" dir={isAr ? "rtl" : "ltr"}>
               <div>
                 <h2 className="text-2xl font-black mb-1">{isAr ? "تحليلات وتقييم أداء الكاشيرية" : "Cashier Intelligence"}</h2>
-                <p className="text-slate-400 text-sm">
+                <p className="text-zinc-400 text-sm">
                   {isAr ? "إحصائيات تجميعية لأداء الكاشير والفروقات لآخر ٥٠ وردية." : "Aggregated performance and variance metrics from the last 50 processed shifts."}
                 </p>
               </div>
-              <div className="bg-slate-800/50 px-4 py-2 rounded-lg border border-slate-700">
-                <span className="text-sm font-bold text-slate-300">{isAr ? "عدد الكاشيرية النشطين: " : "Total Active Cashiers: "}</span>
+              <div className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10">
+                <span className="text-sm font-bold text-zinc-300">{isAr ? "عدد الكاشيرية النشطين: " : "Total Active Cashiers: "}</span>
                 <span className="text-lg font-black text-white">{cashierLeaderboard.length}</span>
               </div>
             </div>
@@ -995,23 +995,23 @@ export default function ManagerAuditPage() {
               {activeTab === "pending" && [...earlyRadars, ...rejectedRadars].length > 0 && (
                 <div className="mb-4 space-y-3">
                   {[...earlyRadars, ...rejectedRadars].map((radar, idx) => (
-                    <div key={idx} className="bg-slate-900 border border-slate-700 p-4 rounded-xl shadow-lg relative overflow-hidden flex items-center gap-4">
+                    <div key={idx} className="bg-emerald-500/10 border border-emerald-500/30 dark:bg-emerald-950/20 p-4 rounded-2xl shadow-sm relative overflow-hidden flex items-center gap-4">
                       {/* Scanning Radar Animation */}
-                      <div className="absolute inset-0 opacity-20 pointer-events-none overflow-hidden rounded-xl">
+                      <div className="absolute inset-0 opacity-20 pointer-events-none overflow-hidden rounded-2xl">
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent animate-[spin_3s_linear_infinite]" style={{ transformOrigin: 'center' }}></div>
-                        <div className="absolute inset-0 rounded-xl border-2 border-emerald-500/20"></div>
+                        <div className="absolute inset-0 rounded-2xl border-2 border-emerald-500/20"></div>
                       </div>
                       
                       <div className="relative z-10 flex items-center justify-center h-10 w-10 bg-emerald-500/20 rounded-full border border-emerald-500/50">
                         <div className="h-4 w-4 bg-emerald-500 rounded-full animate-ping"></div>
-                        <Clock className="h-5 w-5 text-emerald-400 absolute" />
+                        <Clock className="h-5 w-5 text-emerald-600 dark:text-emerald-400 absolute" />
                       </div>
                       
                       <div className="relative z-10 flex-1">
-                        <h4 className="text-white font-bold text-sm tracking-wide">
+                        <h4 className="text-foreground font-bold text-sm tracking-wide">
                           {radar.type === 'early' ? (isAr ? 'في انتظار التوريد المبكر' : 'Awaiting Early Drop') : (isAr ? 'في انتظار إعادة التوريد' : 'Awaiting Re-submission')}
                         </h4>
-                        <p className="text-emerald-400 text-xs font-medium">
+                        <p className="text-emerald-600 dark:text-emerald-400 text-xs font-semibold mt-0.5">
                           {radar.type === 'early' 
                             ? (isAr ? 'في انتظار إرسال الكاشير لتقرير التقفيل المبكر...' : `Waiting for cashier to submit early day report...`)
                             : (isAr ? `في انتظار ${radar.cashierDetails?.name || 'الكاشير'} لتعديل الوردية المرفوضة...` : `Waiting for ${radar.cashierDetails?.name || 'cashier'} to fix rejected shift...`)}
@@ -1023,9 +1023,9 @@ export default function ManagerAuditPage() {
               )}
 
               {reportsList.length === 0 ? (
-                <div className="glass-panel p-8 text-center rounded-2xl">
-                  <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
-                  <p className="font-bold text-foreground">{activeTab === "pending" ? (isAr ? "تم تدقيق جميع الورديات!" : "All caught up!") : (isAr ? "لا يوجد سجل ورديات سابق." : "No history found.")}</p>
+                <div className="glass-panel p-8 text-center rounded-2xl border border-border bg-card/60 backdrop-blur-md shadow-sm">
+                  <CheckCircle className="h-12 w-12 text-emerald-500 mx-auto mb-3" />
+                  <p className="font-bold text-foreground text-base">{activeTab === "pending" ? (isAr ? "تم تدقيق جميع الورديات!" : "All caught up!") : (isAr ? "لا يوجد سجل ورديات سابق." : "No history found.")}</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -1067,44 +1067,44 @@ export default function ManagerAuditPage() {
                                   : 'hover:-translate-y-1 hover:shadow-xl hover:z-20'
                               }`}
                           >
-                            {/* Pass Background Gradient */}
-                            <div className={`absolute inset-0 opacity-90 ${
+                            {/* Pass Background */}
+                            <div className={`absolute inset-0 opacity-95 ${
                               showdownMode && showdownSelection.find(s => s.id === report.id) 
-                                ? 'bg-gradient-to-br from-red-900 to-red-950'
+                                ? 'bg-rose-950/80 border-2 border-rose-500'
                                 : selectedReport?.id === report.id 
-                                  ? 'bg-gradient-to-br from-slate-800 to-slate-900' 
-                                  : 'bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900'
+                                  ? 'bg-card border-2 border-rose-500 shadow-lg' 
+                                  : 'bg-card border border-border hover:border-rose-400/50'
                               }`} />
                             
-                            <div className="relative z-10 p-0 flex flex-col h-full border border-slate-300/50 dark:border-slate-700/50 rounded-2xl overflow-hidden">
+                            <div className="relative z-10 p-0 flex flex-col h-full rounded-2xl overflow-hidden">
                                {/* Pass Header */}
-                               <div className={`px-5 py-4 flex justify-between items-center ${
+                               <div className={`px-5 py-4 flex justify-between items-center border-b border-border/50 ${
                                   (selectedReport?.id === report.id || (showdownMode && showdownSelection.find(s => s.id === report.id))) 
-                                    ? 'bg-black/20 text-white' 
-                                    : 'bg-black/5 text-slate-800 dark:text-slate-200'
+                                    ? 'bg-rose-500/10 text-foreground font-bold' 
+                                    : 'bg-muted/30 text-foreground'
                                 }`}>
                                  <div className="flex flex-col">
                                    <span className="font-black tracking-tight text-lg">{report?.cashierDetails?.name}</span>
-                                   <span className="text-xs opacity-80 font-medium">{isAr ? "الفرع: " : "Store: "}{report?.cashierDetails?.storeId}</span>
+                                   <span className="text-xs text-muted-foreground font-medium">{isAr ? "الفرع: " : "Store: "}{report?.cashierDetails?.storeId}</span>
                                  </div>
                                  <div className="flex flex-col items-end">
-                                   <span className="font-bold text-sm">{report?.cashierDetails?.date}</span>
-                                   <span className="text-[10px] font-black uppercase tracking-wider opacity-80">
+                                   <span className="font-bold text-sm text-foreground">{report?.cashierDetails?.date}</span>
+                                   <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
                                      {report?.cashierDetails?.shift === "Morning" ? (isAr ? "الوردية الصباحية" : "Morning Shift") : report?.cashierDetails?.shift === "Night" ? (isAr ? "الوردية الليلية" : "Night Shift") : (isAr ? "الوردية المسائية" : "Noon Shift")}
                                    </span>
                                  </div>
                                </div>
 
                                {/* Pass Body */}
-                               <div className={`px-5 py-5 flex justify-between items-center bg-white dark:bg-slate-950`}>
+                               <div className="px-5 py-5 flex justify-between items-center bg-card">
                                  <div className="flex flex-col">
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{isAr ? "إجمالي التوريد" : "Total Handled"}</span>
-                                    <span className="text-xl font-black text-slate-900 dark:text-white">EGP {report?.cashierCounts?.total?.toLocaleString()}</span>
+                                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">{isAr ? "إجمالي التوريد" : "Total Handled"}</span>
+                                    <span className="text-xl font-black text-foreground">EGP {report?.cashierCounts?.total?.toLocaleString()}</span>
                                  </div>
                                  {report.managerAudit && (
                                    <div className="flex flex-col items-end">
-                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{isAr ? "الفروقات" : "Variance"}</span>
-                                     <span className={`text-lg font-black ${report.managerAudit.overShort < 0 ? 'text-red-500' : report.managerAudit.overShort > 0 ? 'text-emerald-500' : 'text-slate-500'}`}>
+                                     <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">{isAr ? "الفروقات" : "Variance"}</span>
+                                     <span className={`text-lg font-black ${report.managerAudit.overShort < 0 ? 'text-rose-600 dark:text-rose-400' : report.managerAudit.overShort > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>
                                         {report.managerAudit.overShort < 0 ? '-' : report.managerAudit.overShort > 0 ? '+' : ''}EGP {Math.abs(report.managerAudit.overShort)}
                                      </span>
                                    </div>
@@ -1112,15 +1112,15 @@ export default function ManagerAuditPage() {
                                </div>
 
                                {/* Pass Footer / Cutout effect */}
-                               <div className={`relative px-5 py-3 flex justify-between items-center border-t border-dashed ${selectedReport?.id === report.id ? 'bg-black/20 text-white border-white/20' : 'bg-black/5 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-700'}`}>
+                               <div className={`relative px-5 py-3 flex justify-between items-center border-t border-dashed border-border ${selectedReport?.id === report.id ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400' : 'bg-muted/20 text-muted-foreground'}`}>
                                   {/* Left/Right Cutouts to simulate ticket */}
-                                  <div className="absolute -left-2 -top-2 w-4 h-4 rounded-full bg-background border-r border-b border-transparent" />
-                                  <div className="absolute -right-2 -top-2 w-4 h-4 rounded-full bg-background border-l border-b border-transparent" />
+                                  <div className="absolute -left-2 -top-2 w-4 h-4 rounded-full bg-background border-r border-b border-border/40" />
+                                  <div className="absolute -right-2 -top-2 w-4 h-4 rounded-full bg-background border-l border-b border-border/40" />
 
                                   <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest">
-                                    <CheckCircle className="h-3 w-3" /> {isAr ? "معتمدة" : "Approved"}
+                                    <CheckCircle className="h-3 w-3 text-emerald-500" /> {isAr ? "معتمدة" : "Approved"}
                                   </div>
-                                  <div className={`opacity-60 flex items-center ${selectedReport?.id === report.id ? 'text-white' : 'text-slate-500'}`}>
+                                  <div className="opacity-40 flex items-center text-foreground">
                                     <BarcodeIcon className="w-12 h-6" strokeWidth={1} />
                                   </div>
                                </div>
@@ -1135,30 +1135,30 @@ export default function ManagerAuditPage() {
                       <button
                         key={report.id}
                         onClick={() => { handleSelectReport(report); }}
-                        className={`w-full text-left p-4 rounded-xl border transition-all relative overflow-hidden ${selectedReport?.id === report.id
-                          ? 'border-red-500 bg-red-50 dark:bg-red-950/20 shadow-md shadow-red-500/10'
-                          : 'border-border bg-card hover:border-red-300'
+                        className={`w-full text-left p-4 rounded-2xl border transition-all relative overflow-hidden ${selectedReport?.id === report.id
+                          ? 'border-rose-500 bg-rose-500/10 shadow-md shadow-rose-500/10 ring-1 ring-rose-500'
+                          : 'border-border bg-card hover:border-rose-400/50'
                           }`}
                       >
                         <div className="flex justify-between items-start mb-2">
                           <span className="font-bold text-foreground text-sm">{report?.cashierDetails?.date}</span>
-                          <span className="text-xs font-bold px-2 py-1 bg-red-500/10 rounded-md text-red-500 border border-red-200/20 dark:border-red-950/30">
+                          <span className="text-xs font-bold px-2.5 py-1 bg-rose-500/10 rounded-lg text-rose-600 dark:text-rose-400 border border-rose-500/20">
                             {report?.cashierDetails?.shift === "Morning" ? (isAr ? "صباحية" : "Morning") : report?.cashierDetails?.shift === "Night" ? (isAr ? "ليلية" : "Night") : (isAr ? "مسائية" : "Evening")}
                           </span>
                         </div>
-                        <div className="font-semibold text-lg text-foreground mb-1">
+                        <div className="font-bold text-lg text-foreground mb-1">
                           {report?.cashierDetails?.name}
                           {report?.isEarlyDay && (
-                            <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-700 text-[10px] font-bold uppercase tracking-wider">
+                            <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold uppercase tracking-wider border border-indigo-500/20">
                               <Clock className="h-3 w-3" /> {isAr ? "تقفيل مبكر" : "Early Day"}
                             </span>
                           )}
                         </div>
                         <div className="text-xs text-muted-foreground font-mono mb-3">{isAr ? "الفرع: " : "Store: "}{report?.cashierDetails?.storeId}</div>
 
-                        <div className="flex justify-between items-center pt-3 border-t border-red-100 dark:border-red-900/30">
+                        <div className="flex justify-between items-center pt-3 border-t border-border/50">
                           <span className="text-xs font-bold text-muted-foreground uppercase">{isAr ? "إجمالي التوريد المصرح" : "Declared Total"}</span>
-                          <span className="font-bold text-red-600 dark:text-red-400">EGP {report?.cashierCounts?.total?.toLocaleString()}</span>
+                          <span className="font-black text-rose-600 dark:text-rose-400">EGP {report?.cashierCounts?.total?.toLocaleString()}</span>
                         </div>
                       </button>
                     );
@@ -1256,16 +1256,21 @@ export default function ManagerAuditPage() {
                   </div>
                 </div>
               ) : !selectedReport ? (
-                <div className="glass-panel h-full min-h-[500px] flex flex-col items-center justify-center text-center rounded-2xl border border-border bg-muted/20">
-                  <FileText className="h-16 w-16 text-muted-foreground/30 mb-4" />
-                  <p className="text-lg font-bold text-muted-foreground">
-                    {isAr ? "اختر وردية من القائمة للتدقيق والمراجعة" : "Select a report to view/audit"}
+                <div className="glass-panel h-full min-h-[520px] flex flex-col items-center justify-center text-center rounded-2xl border border-border bg-card/40 backdrop-blur-xl p-8 shadow-sm">
+                  <div className="h-20 w-20 rounded-3xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mb-5 shadow-inner">
+                    <FileText className="h-10 w-10 text-rose-500/80" />
+                  </div>
+                  <h3 className="text-xl font-extrabold text-foreground mb-2">
+                    {isAr ? "اختر وردية من القائمة للتدقيق والمراجعة" : "Select a Report to Audit"}
+                  </h3>
+                  <p className="text-sm text-muted-foreground max-w-md font-medium">
+                    {isAr ? "اضغط على أي وردية من القائمة الجانبية لعرض تفاصيل الجرد، الفروقات، وإعتماد التوريد." : "Click on any pending or archived shift from the list on the left to begin auditing financial counts and inventory."}
                   </p>
                 </div>
               ) : (
                 <div className="glass-panel rounded-2xl border border-border overflow-hidden">
                   {/* Header */}
-                  <div className="bg-slate-900 text-white p-6">
+                  <div className="bg-zinc-900 dark:bg-zinc-950 text-white p-6 border-b border-zinc-800">
                     <div className="flex justify-between items-start mb-4">
                       <div>
                         <h2 className="text-2xl font-black">
@@ -1276,14 +1281,14 @@ export default function ManagerAuditPage() {
                             </span>
                           )}
                         </h2>
-                        <p className="text-slate-400 text-sm mt-1 flex flex-wrap items-center gap-2">
+                        <p className="text-zinc-400 text-sm mt-1 flex flex-wrap items-center gap-2">
                           <span>{selectedReport?.cashierDetails?.date}</span>
-                          <span className="text-slate-600">•</span>
+                          <span className="text-zinc-600">•</span>
                           {activeTab === "pending" ? (
                             <select
                               value={auditShift}
                               onChange={(e) => setAuditShift(e.target.value)}
-                              className="bg-slate-800 border border-slate-600 text-white rounded px-2 py-0.5 outline-none font-bold text-xs focus:border-red-500 transition-colors"
+                              className="bg-zinc-800 border border-zinc-600 text-white rounded px-2 py-0.5 outline-none font-bold text-xs focus:border-rose-500 transition-colors"
                             >
                               <option value="Morning">{isAr ? "الوردية الصباحية" : "Morning Shift"}</option>
                               <option value="Noon">{isAr ? "الوردية المسائية" : "Noon Shift"}</option>
@@ -1292,39 +1297,39 @@ export default function ManagerAuditPage() {
                           ) : (
                             <span>{selectedReport?.cashierDetails?.shift === "Morning" ? (isAr ? "الوردية الصباحية" : "Morning Shift") : selectedReport?.cashierDetails?.shift === "Night" ? (isAr ? "الوردية الليلية" : "Night Shift") : (isAr ? "الوردية المسائية" : "Noon Shift")}</span>
                           )}
-                          <span className="text-slate-600">•</span>
+                          <span className="text-zinc-600">•</span>
                           <span>{selectedReport?.cashierDetails?.storeId}</span>
                         </p>
-                        <p className="text-slate-500 text-xs mt-1 font-semibold text-blue-600">
+                        <p className="text-zinc-400 text-xs mt-1 font-semibold text-rose-400">
                           {selectedReport.cashierRole === 2 
                             ? (isAr ? "كاشير ثانٍ (تسليم نقدية فقط)" : "Cashier 2 (Money Only)") 
                             : (isAr ? "كاشير أول (جرد وتوريد كامل)" : "Cashier 1 (Full Register)")}
                         </p>
-                        <p className="text-slate-400 text-xs mt-1">{isAr ? "وقت الإرسال: " : "Submitted: "}{formatTimeMinus2Hours(selectedReport.createdAt)}</p>
+                        <p className="text-zinc-400 text-xs mt-1">{isAr ? "وقت الإرسال: " : "Submitted: "}{formatTimeMinus2Hours(selectedReport.createdAt)}</p>
                         {activeTab === "history" && (
-                          <span className="inline-block mt-3 px-2 py-1 bg-green-500/20 text-green-400 text-xs font-bold rounded border border-green-500/30">
+                          <span className="inline-block mt-3 px-2 py-1 bg-emerald-500/20 text-emerald-400 text-xs font-bold rounded border border-emerald-500/30">
                             <CheckCircle className="inline h-3 w-3 mr-1" /> {isAr ? `معتمدة بواسطة ${selectedReport.managerAudit?.managerName}` : `Approved by ${selectedReport.managerAudit?.managerName}`}
                           </span>
                         )}
                       </div>
                       <div className="text-right flex flex-col items-end">
-                        <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">{isAr ? "إجمالي التوريد" : "Declared Total"}</p>
-                        <p className="text-2xl font-black text-green-400">EGP {activeTab === "pending" ? ((Number(cashierOverrideCash) || 0) + (Number(cashierOverrideVisa) || 0)).toLocaleString() : selectedReport?.cashierCounts?.total?.toLocaleString()}</p>
+                        <p className="text-xs text-zinc-400 uppercase font-bold tracking-wider mb-1">{isAr ? "إجمالي التوريد" : "Declared Total"}</p>
+                        <p className="text-2xl font-black text-emerald-400">EGP {activeTab === "pending" ? ((Number(cashierOverrideCash) || 0) + (Number(cashierOverrideVisa) || 0)).toLocaleString() : selectedReport?.cashierCounts?.total?.toLocaleString()}</p>
                         {(activeTab === "history" || activeTab === "pending") && (
-                          <div className="mt-4 text-right bg-slate-800/90 border border-slate-700 px-3 py-2 rounded-xl shadow-inner min-w-[180px]">
-                            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1 border-b border-slate-700 pb-1">{isAr ? "السجل التاريخي" : "Historical Context"}</p>
+                          <div className="mt-4 text-right bg-zinc-800/90 border border-zinc-700 px-3 py-2 rounded-xl shadow-inner min-w-[180px]">
+                            <p className="text-[10px] text-zinc-400 uppercase font-bold tracking-wider mb-1 border-b border-zinc-700 pb-1">{isAr ? "السجل التاريخي" : "Historical Context"}</p>
 
                             <div className="flex justify-between items-center text-xs mb-1">
-                              <span className="text-slate-400 font-medium mr-3">{isAr ? "متوسط الكاش (٥ و):" : "Cash Avg (5sh):"}</span>
-                              <span className={`font-black ${getCashierCashDelta(selectedReport.cashierDetails?.name) < 0 ? 'text-red-400' : getCashierCashDelta(selectedReport.cashierDetails?.name) > 0 ? 'text-emerald-400' : 'text-slate-300'}`}>
+                              <span className="text-zinc-400 font-medium mr-3">{isAr ? "متوسط الكاش (٥ و):" : "Cash Avg (5sh):"}</span>
+                              <span className={`font-black ${getCashierCashDelta(selectedReport.cashierDetails?.name) < 0 ? 'text-rose-400' : getCashierCashDelta(selectedReport.cashierDetails?.name) > 0 ? 'text-emerald-400' : 'text-zinc-300'}`}>
                                 {getCashierCashDelta(selectedReport.cashierDetails?.name) < 0 ? '-' : getCashierCashDelta(selectedReport.cashierDetails?.name) > 0 ? '+' : ''}
                                 EGP {Math.abs(getCashierCashDelta(selectedReport.cashierDetails?.name))}
                               </span>
                             </div>
 
                             <div className="flex justify-between items-center text-xs">
-                              <span className="text-slate-400 font-medium mr-3">{isAr ? "متوسط الفيزا (٥ و):" : "Visa Avg (5sh):"}</span>
-                              <span className={`font-black ${getCashierVisaDelta(selectedReport.cashierDetails?.name) < 0 ? 'text-red-400' : getCashierVisaDelta(selectedReport.cashierDetails?.name) > 0 ? 'text-emerald-400' : 'text-slate-300'}`}>
+                              <span className="text-zinc-400 font-medium mr-3">{isAr ? "متوسط الفيزا (٥ و):" : "Visa Avg (5sh):"}</span>
+                              <span className={`font-black ${getCashierVisaDelta(selectedReport.cashierDetails?.name) < 0 ? 'text-rose-400' : getCashierVisaDelta(selectedReport.cashierDetails?.name) > 0 ? 'text-emerald-400' : 'text-zinc-300'}`}>
                                 {getCashierVisaDelta(selectedReport.cashierDetails?.name) < 0 ? '-' : getCashierVisaDelta(selectedReport.cashierDetails?.name) > 0 ? '+' : ''}
                                 EGP {Math.abs(getCashierVisaDelta(selectedReport.cashierDetails?.name))}
                               </span>
@@ -1335,13 +1340,13 @@ export default function ManagerAuditPage() {
                     </div>
                   </div>
 
-                  <div className="p-6 space-y-8 bg-background">
+                  <div className="p-6 space-y-8 bg-card text-card-foreground">
 
                     {/* 1. Cashier Counts vs System Expected */}
                     <section>
                       <div className="flex items-center gap-2 mb-4">
-                        <Banknote className="h-5 w-5 text-red-500" />
-                        <h3 className="text-lg font-bold">{isAr ? "التدقيق المالي (العجز والزيادة)" : "Financial Audit (Over/Short)"}</h3>
+                        <Banknote className="h-5 w-5 text-rose-500" />
+                        <h3 className="text-lg font-bold text-foreground">{isAr ? "التدقيق المالي (العجز والزيادة)" : "Financial Audit (Over/Short)"}</h3>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1352,7 +1357,7 @@ export default function ManagerAuditPage() {
                           <div className="flex justify-between items-center gap-2 p-2 bg-card rounded border border-border">
                             <span className="text-sm font-semibold">{isAr ? "النقدية (كاش)" : "Cash"}</span>
                             {activeTab === "pending" ? (
-                              <input type="number" value={cashierOverrideCash} onChange={e => setCashierOverrideCash(e.target.value)} className="w-28 p-1 text-right font-mono border border-border bg-background rounded outline-none focus:ring-1 focus:ring-blue-500 text-sm" placeholder={isAr ? "تعديل" : "Override"} />
+                              <input type="number" value={cashierOverrideCash} onChange={e => setCashierOverrideCash(e.target.value)} className="w-28 p-1 text-right font-mono border border-border bg-background text-foreground rounded outline-none focus:ring-1 focus:ring-rose-500 text-sm" placeholder={isAr ? "تعديل" : "Override"} />
                             ) : (
                               <span className="font-mono font-bold">EGP {selectedReport?.cashierCounts?.cash?.toLocaleString()}</span>
                             )}
@@ -1360,7 +1365,7 @@ export default function ManagerAuditPage() {
                           <div className="flex justify-between items-center gap-2 p-2 bg-card rounded border border-border">
                             <span className="text-sm font-semibold">{isAr ? "الفيزا" : "Visa"}</span>
                             {activeTab === "pending" ? (
-                              <input type="number" value={cashierOverrideVisa} onChange={e => setCashierOverrideVisa(e.target.value)} className="w-28 p-1 text-right font-mono border border-border bg-background rounded outline-none focus:ring-1 focus:ring-blue-500 text-sm" placeholder={isAr ? "تعديل" : "Override"} />
+                              <input type="number" value={cashierOverrideVisa} onChange={e => setCashierOverrideVisa(e.target.value)} className="w-28 p-1 text-right font-mono border border-border bg-background text-foreground rounded outline-none focus:ring-1 focus:ring-rose-500 text-sm" placeholder={isAr ? "تعديل" : "Override"} />
                             ) : (
                               <span className="font-mono font-bold">EGP {selectedReport?.cashierCounts?.visa?.toLocaleString()}</span>
                             )}
@@ -1368,44 +1373,44 @@ export default function ManagerAuditPage() {
                         </div>
 
                         {/* Manager Input (System Expected) */}
-                        <div className="space-y-3 p-4 bg-red-500/5 dark:bg-red-950/10 rounded-xl border border-red-200/50 dark:border-red-900/30 relative">
-                          <div className="absolute -top-3 left-4 bg-red-100 dark:bg-red-950/80 px-2 text-[10px] font-bold text-red-800 dark:text-red-300 uppercase border border-red-200/50 dark:border-red-900/40 rounded-full">
+                        <div className="space-y-3 p-4 bg-rose-500/5 dark:bg-rose-950/20 rounded-xl border border-rose-200/60 dark:border-rose-900/40 relative">
+                          <div className="absolute -top-3 left-4 bg-card px-2 text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase border border-rose-200/60 dark:border-rose-900/50 rounded-full">
                             {isAr ? "المبيعات المتوقعة من السيستم" : "POS Expected Totals"}
                           </div>
                           <div className="flex justify-between items-center gap-2">
-                            <span className="text-sm font-semibold text-red-900">{isAr ? "الكاش المتوقع" : "Cash"}</span>
-                            <input type="number" value={expectedCash} onChange={e => setExpectedCash(e.target.value)} className="w-32 p-1.5 text-right font-mono border rounded outline-none focus:ring-2 focus:ring-red-500" placeholder="0.00" />
+                            <span className="text-sm font-bold text-rose-700 dark:text-rose-300">{isAr ? "الكاش المتوقع" : "Cash"}</span>
+                            <input type="number" value={expectedCash} onChange={e => setExpectedCash(e.target.value)} className="w-32 p-1.5 text-right font-mono border border-border bg-background text-foreground rounded outline-none focus:ring-2 focus:ring-rose-500" placeholder="0.00" />
                           </div>
                           <div className="flex justify-between items-center gap-2">
-                            <span className="text-sm font-semibold text-red-900">{isAr ? "الفيزا المتوقعة" : "Visa"}</span>
-                            <input type="number" value={expectedVisa} onChange={e => setExpectedVisa(e.target.value)} className="w-32 p-1.5 text-right font-mono border rounded outline-none focus:ring-2 focus:ring-red-500" placeholder="0.00" />
+                            <span className="text-sm font-bold text-rose-700 dark:text-rose-300">{isAr ? "الفيزا المتوقعة" : "Visa"}</span>
+                            <input type="number" value={expectedVisa} onChange={e => setExpectedVisa(e.target.value)} className="w-32 p-1.5 text-right font-mono border border-border bg-background text-foreground rounded outline-none focus:ring-2 focus:ring-rose-500" placeholder="0.00" />
                           </div>
                         </div>
                       </div>
 
                       {/* Variance Result */}
                       <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="p-4 rounded-xl border flex justify-between items-center bg-slate-50 border-slate-200">
-                          <span className="font-bold text-slate-700">{isAr ? "عجز / زيادة النقدية" : "Cash Variance"}</span>
+                        <div className="p-4 rounded-xl border border-border flex justify-between items-center bg-card text-card-foreground shadow-sm">
+                          <span className="font-bold text-foreground">{isAr ? "عجز / زيادة النقدية" : "Cash Variance"}</span>
                           {(() => {
                             const variance = calculateCashVariance();
                             const isZero = variance === 0;
                             const isShort = variance < 0;
                             return (
-                              <span className={`text-xl font-black ${isZero ? 'text-slate-500' : isShort ? 'text-red-600' : 'text-green-600'}`}>
+                              <span className={`text-xl font-black ${isZero ? 'text-muted-foreground' : isShort ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                                 {isShort ? '-' : isZero ? '' : '+'}EGP {Math.abs(variance).toLocaleString()}
                               </span>
                             );
                           })()}
                         </div>
-                        <div className="p-4 rounded-xl border flex justify-between items-center bg-slate-50 border-slate-200">
-                          <span className="font-bold text-slate-700">{isAr ? "عجز / زيادة الفيزا" : "Visa Variance"}</span>
+                        <div className="p-4 rounded-xl border border-border flex justify-between items-center bg-card text-card-foreground shadow-sm">
+                          <span className="font-bold text-foreground">{isAr ? "عجز / زيادة الفيزا" : "Visa Variance"}</span>
                           {(() => {
                             const variance = calculateVisaVariance();
                             const isZero = variance === 0;
                             const isShort = variance < 0;
                             return (
-                              <span className={`text-xl font-black ${isZero ? 'text-slate-500' : isShort ? 'text-red-600' : 'text-green-600'}`}>
+                              <span className={`text-xl font-black ${isZero ? 'text-muted-foreground' : isShort ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                                 {isShort ? '-' : isZero ? '' : '+'}EGP {Math.abs(variance).toLocaleString()}
                               </span>
                             );
