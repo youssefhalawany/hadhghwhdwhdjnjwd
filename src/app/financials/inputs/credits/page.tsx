@@ -973,17 +973,22 @@ export default function CreditsPage() {
 
     setTimeout(async () => {
       try {
+        const wrapper = document.getElementById("single-credit-print-wrapper");
+        if (wrapper) {
+          wrapper.style.left = "0";
+          wrapper.style.top = "0";
+        }
+        await new Promise(resolve => setTimeout(resolve, 500));
+
         const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const page1 = document.getElementById("print-credit-container");
         
         if (page1) {
-          page1.style.left = "0";
-          const canvas1 = await html2canvas(page1, { scale: 2, useCORS: true });
+          const canvas1 = await html2canvas(page1, { scale: 2, useCORS: true, logging: false });
           const imgData1 = canvas1.toDataURL("image/png");
           const pdfHeight1 = (canvas1.height * pdfWidth) / canvas1.width;
           pdf.addImage(imgData1, "PNG", 0, 0, pdfWidth, pdfHeight1);
-          page1.style.left = "-9999px";
         }
 
         const invoiceUrls = selectedCreditForPrint?.poUrls && selectedCreditForPrint.poUrls.length > 0 
@@ -993,13 +998,11 @@ export default function CreditsPage() {
         for (let i = 0; i < invoiceUrls.length; i++) {
           const pageInvoice = document.getElementById(`print-credit-invoice-page-${i}`);
           if (pageInvoice) {
-            pageInvoice.style.left = "0";
-            const canvasInvoice = await html2canvas(pageInvoice, { scale: 2, useCORS: true });
+            const canvasInvoice = await html2canvas(pageInvoice, { scale: 2, useCORS: true, logging: false });
             const imgDataInvoice = canvasInvoice.toDataURL("image/png");
             const pdfHeightInvoice = (canvasInvoice.height * pdfWidth) / canvasInvoice.width;
             pdf.addPage();
             pdf.addImage(imgDataInvoice, "PNG", 0, 0, pdfWidth, pdfHeightInvoice);
-            pageInvoice.style.left = "-9999px";
           }
         }
 
@@ -1008,13 +1011,11 @@ export default function CreditsPage() {
           const pageItems = document.getElementById(`print-credit-items-page-${itemsPageIndex}`);
           if (!pageItems) break;
           
-          pageItems.style.left = "0";
-          const canvasItems = await html2canvas(pageItems, { scale: 2, useCORS: true });
+          const canvasItems = await html2canvas(pageItems, { scale: 2, useCORS: true, logging: false });
           const imgDataItems = canvasItems.toDataURL("image/png");
           const pdfHeightItems = (canvasItems.height * pdfWidth) / canvasItems.width;
           pdf.addPage();
           pdf.addImage(imgDataItems, "PNG", 0, 0, pdfWidth, pdfHeightItems);
-          pageItems.style.left = "-9999px";
           
           itemsPageIndex++;
         }
@@ -1022,8 +1023,13 @@ export default function CreditsPage() {
         pdf.autoPrint();
         window.open(pdf.output("bloburl"), "_blank");
       } catch (error) {
+        console.error("PDF generation error:", error);
         toast.error("Failed to generate PDF.");
       } finally {
+        const wrapper = document.getElementById("single-credit-print-wrapper");
+        if (wrapper) {
+          wrapper.style.left = "-9999px";
+        }
         setIsPrinting(false);
         setSelectedCreditForPrint(null);
       }
@@ -1040,6 +1046,11 @@ export default function CreditsPage() {
     
     // Give React a moment to render the hidden bulk layout
     setTimeout(async () => {
+      const wrapper = document.getElementById("bulk-credit-print-wrapper");
+      if (wrapper) {
+        wrapper.style.left = "0";
+        wrapper.style.top = "0";
+      }
       try {
         const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
         const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -1047,12 +1058,10 @@ export default function CreditsPage() {
         // Render Cover Page
         const coverPage = document.getElementById("pdf-bulk-cover-credits");
         if (coverPage) {
-          coverPage.style.left = "0";
-          const canvas = await html2canvas(coverPage, { scale: 2, useCORS: true });
+          const canvas = await html2canvas(coverPage, { scale: 2, useCORS: true, logging: false });
           const imgData = canvas.toDataURL("image/png");
           const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
           pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-          coverPage.style.left = "-9999px";
         }
         
         // Render each credit
@@ -1061,13 +1070,11 @@ export default function CreditsPage() {
           const pageId = `pdf-bulk-credit-${c.id}`;
           const page1 = document.getElementById(pageId);
           if (page1) {
-            page1.style.left = "0";
-            const canvas1 = await html2canvas(page1, { scale: 2, useCORS: true });
+            const canvas1 = await html2canvas(page1, { scale: 2, useCORS: true, logging: false });
             const imgData1 = canvas1.toDataURL("image/png");
             const pdfHeight1 = (canvas1.height * pdfWidth) / canvas1.width;
             pdf.addPage();
             pdf.addImage(imgData1, "PNG", 0, 0, pdfWidth, pdfHeight1);
-            page1.style.left = "-9999px";
           }
           
           // Render invoices for this credit
@@ -1075,13 +1082,11 @@ export default function CreditsPage() {
           for (let j = 0; j < invoiceUrls.length; j++) {
             const invPage = document.getElementById(`pdf-bulk-credit-${c.id}-invoice-${j}`);
             if (invPage) {
-              invPage.style.left = "0";
-              const canvasInv = await html2canvas(invPage, { scale: 2, useCORS: true });
+              const canvasInv = await html2canvas(invPage, { scale: 2, useCORS: true, logging: false });
               const imgDataInv = canvasInv.toDataURL("image/png");
               const pdfHeightInv = (canvasInv.height * pdfWidth) / canvasInv.width;
               pdf.addPage();
               pdf.addImage(imgDataInv, "PNG", 0, 0, pdfWidth, pdfHeightInv);
-              invPage.style.left = "-9999px";
             }
           }
         }
@@ -1092,6 +1097,9 @@ export default function CreditsPage() {
         toast.error("Error generating bulk PDF.");
         console.error(err);
       } finally {
+        if (wrapper) {
+          wrapper.style.left = "-9999px";
+        }
         setIsGeneratingBulkPDF(false);
         setBulkCreditsForPrint([]); // clear
         setSelectedBulkItems(new Set()); // clear selection
@@ -3010,7 +3018,7 @@ export default function CreditsPage() {
 
       {/* Hidden Bulk Print Render Container for Credits */}
       {bulkCreditsForPrint.length > 0 && (
-        <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+        <div id="bulk-credit-print-wrapper" style={{ position: 'fixed', left: '-9999px', top: 0, zIndex: -9999, pointerEvents: 'none' }}>
           {/* Cover Page */}
           <div id="pdf-bulk-cover-credits" style={{ width: '794px', minHeight: '1123px', backgroundColor: '#ffffff', padding: '40px', fontFamily: 'Arial, sans-serif' }}>
             <div style={{ textAlign: 'center', marginBottom: '40px', borderBottom: '2px solid #000', paddingBottom: '20px' }}>

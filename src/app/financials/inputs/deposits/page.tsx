@@ -175,13 +175,19 @@ export default function DepositsPage() {
 
   const generatePDF = async () => {
     setGeneratingPDF(true);
+    const wrapper = document.getElementById("single-deposit-print-wrapper");
+    if (wrapper) {
+      wrapper.style.left = "0";
+      wrapper.style.top = "0";
+    }
+    await new Promise(resolve => setTimeout(resolve, 500));
     const page = document.getElementById("pdf-deposit-slip");
     try {
       const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
       const pdfWidth = pdf.internal.pageSize.getWidth();
       
       if (page) {
-        const canvas = await html2canvas(page, { scale: 2, useCORS: true });
+        const canvas = await html2canvas(page, { scale: 2, useCORS: true, logging: false });
         const imgData = canvas.toDataURL("image/png");
         const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
         pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
@@ -193,6 +199,9 @@ export default function DepositsPage() {
     } catch (error) {
       toast.error("Failed to generate PDF.");
     } finally {
+      if (wrapper) {
+        wrapper.style.left = "-9999px";
+      }
       setGeneratingPDF(false);
     }
   };
@@ -580,7 +589,7 @@ export default function DepositsPage() {
 
       {/* Hidden Print Receipt container */}
       {selectedDepositForPrint && (
-        <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+        <div id="single-deposit-print-wrapper" style={{ position: 'fixed', left: '-9999px', top: 0, zIndex: -9999, pointerEvents: 'none' }}>
           <div 
             id="pdf-deposit-slip" 
             style={{ width: '794px', minHeight: '1123px', backgroundColor: '#ffffff', color: '#000000', fontFamily: 'Arial, sans-serif' }}

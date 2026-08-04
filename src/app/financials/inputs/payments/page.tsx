@@ -829,47 +829,46 @@ export default function PaymentsRedesignPage() {
 
   const generatePDF = async (paymentToPrint: any) => {
     setGeneratingPDF(true);
-    // Give more time for the DOM to render and images to load
-    await new Promise(resolve => setTimeout(resolve, 800));
+    const wrapper = document.getElementById("single-payment-print-wrapper");
+    if (wrapper) {
+      wrapper.style.left = "0";
+      wrapper.style.top = "0";
+    }
+    // Give time for the DOM to render and images (QR code) to load
+    await new Promise(resolve => setTimeout(resolve, 600));
     try {
       const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const page1 = document.getElementById("pdf-receipt");
 
       if (page1) {
-        page1.style.left = "0";
-        const canvas1 = await html2canvas(page1, { scale: 2, useCORS: true });
+        const canvas1 = await html2canvas(page1, { scale: 2, useCORS: true, logging: false });
         const imgData1 = canvas1.toDataURL("image/png");
         const pdfHeight1 = (canvas1.height * pdfWidth) / canvas1.width;
         pdf.addImage(imgData1, "PNG", 0, 0, pdfWidth, pdfHeight1);
-        page1.style.left = "-9999px";
       }
 
       const page2 = document.getElementById("pdf-receipt-page2");
       if (page2) {
-        page2.style.left = "0";
-        const canvas2 = await html2canvas(page2, { scale: 2, useCORS: true });
+        const canvas2 = await html2canvas(page2, { scale: 2, useCORS: true, logging: false });
         const imgData2 = canvas2.toDataURL("image/png");
         const pdfHeight2 = (canvas2.height * pdfWidth) / canvas2.width;
         pdf.addPage();
         pdf.addImage(imgData2, "PNG", 0, 0, pdfWidth, pdfHeight2);
-        page2.style.left = "-9999px";
       }
 
-      const invoiceUrls = paymentToPrint.invoiceUrls && paymentToPrint.invoiceUrls.length > 0
+      const invoiceUrls = paymentToPrint?.invoiceUrls && paymentToPrint.invoiceUrls.length > 0
         ? paymentToPrint.invoiceUrls
-        : (paymentToPrint.invoiceUrl ? [paymentToPrint.invoiceUrl] : []);
+        : (paymentToPrint?.invoiceUrl ? [paymentToPrint.invoiceUrl] : []);
 
       for (let i = 0; i < invoiceUrls.length; i++) {
         const pageInvoice = document.getElementById(`pdf-receipt-invoice-page-${i}`);
         if (pageInvoice) {
-          pageInvoice.style.left = "0";
-          const canvasInvoice = await html2canvas(pageInvoice, { scale: 4, useCORS: true });
-          const imgDataInvoice = canvasInvoice.toDataURL("image/jpeg", 1.0);
+          const canvasInvoice = await html2canvas(pageInvoice, { scale: 3, useCORS: true, logging: false });
+          const imgDataInvoice = canvasInvoice.toDataURL("image/jpeg", 0.95);
           const pdfHeightInvoice = (canvasInvoice.height * pdfWidth) / canvasInvoice.width;
           pdf.addPage();
-          pdf.addImage(imgDataInvoice, "PNG", 0, 0, pdfWidth, pdfHeightInvoice);
-          pageInvoice.style.left = "-9999px";
+          pdf.addImage(imgDataInvoice, "JPEG", 0, 0, pdfWidth, pdfHeightInvoice);
         }
       }
 
@@ -878,13 +877,11 @@ export default function PaymentsRedesignPage() {
         const pageItems = document.getElementById(`pdf-receipt-page4-${itemsPageIndex}`);
         if (!pageItems) break;
 
-        pageItems.style.left = "0";
-        const canvasItems = await html2canvas(pageItems, { scale: 2, useCORS: true });
+        const canvasItems = await html2canvas(pageItems, { scale: 2, useCORS: true, logging: false });
         const imgDataItems = canvasItems.toDataURL("image/png");
         const pdfHeightItems = (canvasItems.height * pdfWidth) / canvasItems.width;
         pdf.addPage();
         pdf.addImage(imgDataItems, "PNG", 0, 0, pdfWidth, pdfHeightItems);
-        pageItems.style.left = "-9999px";
 
         itemsPageIndex++;
       }
@@ -893,8 +890,12 @@ export default function PaymentsRedesignPage() {
       window.open(pdf.output("bloburl"), "_blank");
       setSelectedPaymentForPrint(null);
     } catch (error) {
+      console.error("PDF Generation Error:", error);
       toast.error("Failed to generate PDF.");
     } finally {
+      if (wrapper) {
+        wrapper.style.left = "-9999px";
+      }
       setGeneratingPDF(false);
     }
   };
@@ -909,6 +910,11 @@ export default function PaymentsRedesignPage() {
 
     // Give React a moment to render the hidden bulk layout
     setTimeout(async () => {
+      const wrapper = document.getElementById("bulk-payment-print-wrapper");
+      if (wrapper) {
+        wrapper.style.left = "0";
+        wrapper.style.top = "0";
+      }
       try {
         const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
         const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -916,12 +922,10 @@ export default function PaymentsRedesignPage() {
         // Render Cover Page
         const coverPage = document.getElementById("pdf-bulk-cover");
         if (coverPage) {
-          coverPage.style.left = "0";
-          const canvas = await html2canvas(coverPage, { scale: 2, useCORS: true });
+          const canvas = await html2canvas(coverPage, { scale: 2, useCORS: true, logging: false });
           const imgData = canvas.toDataURL("image/png");
           const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
           pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-          coverPage.style.left = "-9999px";
         }
 
         // Render each payment
@@ -930,13 +934,11 @@ export default function PaymentsRedesignPage() {
           const pageId = `pdf-bulk-payment-${p.id}`;
           const page1 = document.getElementById(pageId);
           if (page1) {
-            page1.style.left = "0";
-            const canvas1 = await html2canvas(page1, { scale: 2, useCORS: true });
+            const canvas1 = await html2canvas(page1, { scale: 2, useCORS: true, logging: false });
             const imgData1 = canvas1.toDataURL("image/png");
             const pdfHeight1 = (canvas1.height * pdfWidth) / canvas1.width;
             pdf.addPage();
             pdf.addImage(imgData1, "PNG", 0, 0, pdfWidth, pdfHeight1);
-            page1.style.left = "-9999px";
           }
 
           // Render invoices for this payment
@@ -944,13 +946,11 @@ export default function PaymentsRedesignPage() {
           for (let j = 0; j < invoiceUrls.length; j++) {
             const invPage = document.getElementById(`pdf-bulk-payment-${p.id}-invoice-${j}`);
             if (invPage) {
-              invPage.style.left = "0";
-              const canvasInv = await html2canvas(invPage, { scale: 4, useCORS: true });
-              const imgDataInv = canvasInv.toDataURL("image/jpeg", 1.0);
+              const canvasInv = await html2canvas(invPage, { scale: 3, useCORS: true, logging: false });
+              const imgDataInv = canvasInv.toDataURL("image/jpeg", 0.95);
               const pdfHeightInv = (canvasInv.height * pdfWidth) / canvasInv.width;
               pdf.addPage();
               pdf.addImage(imgDataInv, "JPEG", 0, 0, pdfWidth, pdfHeightInv);
-              invPage.style.left = "-9999px";
             }
           }
         }
@@ -961,6 +961,9 @@ export default function PaymentsRedesignPage() {
         toast.error("Error generating bulk PDF.");
         console.error(err);
       } finally {
+        if (wrapper) {
+          wrapper.style.left = "-9999px";
+        }
         setIsGeneratingBulkPDF(false);
         setBulkPaymentsForPrint([]); // clear
         setSelectedBulkItems(new Set()); // clear selection
@@ -1824,7 +1827,7 @@ export default function PaymentsRedesignPage() {
         const branchNameArDisplay = isOlaBranch ? "علا القرنفل" : "العلمين 4";
 
         return (
-        <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+        <div id="single-payment-print-wrapper" style={{ position: 'fixed', left: '-9999px', top: 0, zIndex: -9999, pointerEvents: 'none' }}>
           <div id="pdf-receipt" style={{ width: '794px', minHeight: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
 
             <div style={{ padding: '20px 30px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #000', position: 'relative', zIndex: 10 }}>
@@ -2794,7 +2797,7 @@ export default function PaymentsRedesignPage() {
 
       {/* Hidden Bulk Print Render Container */}
       {bulkPaymentsForPrint.length > 0 && (
-        <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+        <div id="bulk-payment-print-wrapper" style={{ position: 'fixed', left: '-9999px', top: 0, zIndex: -9999, pointerEvents: 'none' }}>
           {/* Cover Page */}
           <div id="pdf-bulk-cover" style={{ width: '794px', minHeight: '1123px', backgroundColor: '#ffffff', padding: '40px', fontFamily: 'Arial, sans-serif' }}>
             <div style={{ textAlign: 'center', marginBottom: '40px', borderBottom: '2px solid #000', paddingBottom: '20px' }}>
