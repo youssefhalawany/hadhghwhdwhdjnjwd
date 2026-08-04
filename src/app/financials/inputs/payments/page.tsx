@@ -1199,26 +1199,27 @@ export default function PaymentsRedesignPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] dark:bg-slate-950 pb-20">
+    <div className="min-h-screen bg-[#09090B] text-slate-100 pb-20">
 
       <div className="p-6 max-w-7xl mx-auto space-y-6">
 
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+            <h1 className="text-3xl font-black text-white tracking-tight">
               {isAr ? "إدارة ومراقبة المدفوعات" : "Payments Control"}
             </h1>
-            <p className="text-sm text-slate-500 font-medium mt-1">
+            <p className="text-sm text-zinc-400 font-medium mt-1">
               {isAr ? "متابعة وإدارة جميع مدفوعات ومصروفات الشركة والفرع." : "Track and manage all corporate outgoings."}
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 bg-white/60 dark:bg-slate-800/60 backdrop-blur-md border border-slate-200/60 dark:border-slate-700/60 text-slate-700 dark:text-slate-300 px-4 py-2.5 rounded-xl font-semibold shadow-sm hover:bg-white transition-all">
+            <button className="flex items-center gap-2 bg-[#18181B] border border-white/10 text-zinc-300 px-4 py-2.5 rounded-xl font-semibold shadow-sm hover:bg-zinc-800 transition-all cursor-pointer">
               <FileDown size={18} /> {isAr ? "تصدير الكل" : "Export All"}
             </button>
             <button
               onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-2 bg-[#ef4444] text-white px-5 py-2.5 rounded-xl font-semibold shadow-md hover:bg-[#dc2626] hover:-translate-y-0.5 transition-all cursor-pointer"
+              className="flex items-center gap-2 text-white px-5 py-2.5 rounded-xl font-extrabold shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+              style={{ background: 'linear-gradient(135deg, #E11D48, #F97316)', boxShadow: '0 4px 16px rgba(225,29,72,0.3)' }}
             >
               <Plus size={20} /> {isAr ? "تسجيل مدفوعات جديدة" : "Record Payment"}
             </button>
@@ -1227,9 +1228,9 @@ export default function PaymentsRedesignPage() {
 
         {/* NEW DASHBOARD TOP */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-1 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 p-6 rounded-3xl shadow-sm flex flex-col justify-center">
-            <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight mb-4 flex items-center gap-2">
-              <PieChartIcon className="text-blue-500" size={20} /> {isAr ? "توزيع المصروفات" : "Spending Breakdown"}
+          <div className="lg:col-span-1 bg-[#18181B] border border-white/10 p-6 rounded-3xl shadow-xl flex flex-col justify-center">
+            <h3 className="text-lg font-black text-white tracking-tight mb-4 flex items-center gap-2">
+              <PieChartIcon className="text-rose-500" size={20} /> {isAr ? "توزيع المصروفات" : "Spending Breakdown"}
             </h3>
             <div className="h-64 w-full">
               {Object.keys(categoryStats).length > 0 ? (
@@ -1246,18 +1247,18 @@ export default function PaymentsRedesignPage() {
                       stroke="none"
                     >
                       {Object.entries(categoryStats).map(([name], index) => {
-                        const COLORS = ['#ef4444', '#3b82f6', '#f59e0b', '#10b981', '#8b5cf6', '#64748b'];
+                        const COLORS = ['#e11d48', '#f97316', '#3b82f6', '#10b981', '#8b5cf6', '#a1a1aa'];
                         return <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />;
                       })}
                     </Pie>
                     <RechartsTooltip
                       formatter={(value: any) => `EGP ${Number(value).toLocaleString()}`}
-                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' }}
+                      contentStyle={{ background: '#09090B', border: '1px solid rgba(255,255,255,0.1)', color: '#FAFAFA', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0, 0, 0, 0.5)' }}
                     />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-full flex items-center justify-center text-slate-400 font-medium text-sm">
+                <div className="h-full flex items-center justify-center text-zinc-500 font-medium text-sm">
                   {isAr ? "لا توجد بيانات لهذه الفترة" : "No data for this period"}
                 </div>
               )}
@@ -1266,75 +1267,75 @@ export default function PaymentsRedesignPage() {
 
           <div className="lg:col-span-2 grid grid-cols-2 md:grid-cols-3 gap-4">
             {categoryStats["order"] && (
-              <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100/50 p-5 rounded-3xl shadow-sm relative overflow-hidden group">
+              <motion.div whileHover={{ y: -4 }} className="bg-[#18181B] border border-blue-500/20 p-5 rounded-3xl shadow-md relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-5xl">📦</div>
-                <div className="flex items-center gap-2 text-blue-600 mb-3">
-                  <span className="text-sm font-bold tracking-wide uppercase">{isAr ? "طلبات وبضائع" : "Order"}</span>
+                <div className="flex items-center gap-2 text-blue-400 mb-3">
+                  <span className="text-sm font-black tracking-wide uppercase">{isAr ? "طلبات وبضائع" : "Order"}</span>
                 </div>
-                <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {categoryStats["order"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                <p className="text-xs font-semibold text-blue-600/70 mt-1 relative z-10">{categoryStats["order"].count} {isAr ? "سند" : "payment(s)"}</p>
+                <p className="text-2xl font-black text-white tracking-tight relative z-10">EGP {categoryStats["order"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                <p className="text-xs font-bold text-blue-400/80 mt-1 relative z-10">{categoryStats["order"].count} {isAr ? "سند" : "payment(s)"}</p>
               </motion.div>
             )}
             {categoryStats["utilities"] && (
-              <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-amber-50 to-yellow-50 border border-amber-100/50 p-5 rounded-3xl shadow-sm relative overflow-hidden group">
+              <motion.div whileHover={{ y: -4 }} className="bg-[#18181B] border border-amber-500/20 p-5 rounded-3xl shadow-md relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-5xl">💡</div>
-                <div className="flex items-center gap-2 text-amber-600 mb-3">
-                  <span className="text-sm font-bold tracking-wide uppercase">{isAr ? "المرافق والخدمات" : "Utilities"}</span>
+                <div className="flex items-center gap-2 text-amber-400 mb-3">
+                  <span className="text-sm font-black tracking-wide uppercase">{isAr ? "المرافق والخدمات" : "Utilities"}</span>
                 </div>
-                <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {categoryStats["utilities"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                <p className="text-xs font-semibold text-amber-600/70 mt-1 relative z-10">{categoryStats["utilities"].count} {isAr ? "سند" : "payment(s)"}</p>
+                <p className="text-2xl font-black text-white tracking-tight relative z-10">EGP {categoryStats["utilities"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                <p className="text-xs font-bold text-amber-400/80 mt-1 relative z-10">{categoryStats["utilities"].count} {isAr ? "سند" : "payment(s)"}</p>
               </motion.div>
             )}
             {categoryStats["maintenance"] && (
-              <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-purple-50 to-fuchsia-50 border border-purple-100/50 p-5 rounded-3xl shadow-sm relative overflow-hidden group">
+              <motion.div whileHover={{ y: -4 }} className="bg-[#18181B] border border-purple-500/20 p-5 rounded-3xl shadow-md relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-5xl">🔧</div>
-                <div className="flex items-center gap-2 text-purple-600 mb-3">
-                  <span className="text-sm font-bold tracking-wide uppercase">{isAr ? "الصيانة" : "Maintenance"}</span>
+                <div className="flex items-center gap-2 text-purple-400 mb-3">
+                  <span className="text-sm font-black tracking-wide uppercase">{isAr ? "الصيانة" : "Maintenance"}</span>
                 </div>
-                <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {categoryStats["maintenance"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                <p className="text-xs font-semibold text-purple-600/70 mt-1 relative z-10">{categoryStats["maintenance"].count} {isAr ? "سند" : "payment(s)"}</p>
+                <p className="text-2xl font-black text-white tracking-tight relative z-10">EGP {categoryStats["maintenance"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                <p className="text-xs font-bold text-purple-400/80 mt-1 relative z-10">{categoryStats["maintenance"].count} {isAr ? "سند" : "payment(s)"}</p>
               </motion.div>
             )}
             {categoryStats["transportation"] && (
-              <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-100/50 p-5 rounded-3xl shadow-sm relative overflow-hidden group">
+              <motion.div whileHover={{ y: -4 }} className="bg-[#18181B] border border-emerald-500/20 p-5 rounded-3xl shadow-md relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-5xl">🚚</div>
-                <div className="flex items-center gap-2 text-emerald-600 mb-3">
-                  <span className="text-sm font-bold tracking-wide uppercase">{isAr ? "النقل والنولون" : "Transportation"}</span>
+                <div className="flex items-center gap-2 text-emerald-400 mb-3">
+                  <span className="text-sm font-black tracking-wide uppercase">{isAr ? "النقل والنولون" : "Transportation"}</span>
                 </div>
-                <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {categoryStats["transportation"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                <p className="text-xs font-semibold text-emerald-600/70 mt-1 relative z-10">{categoryStats["transportation"].count} {isAr ? "سند" : "payment(s)"}</p>
+                <p className="text-2xl font-black text-white tracking-tight relative z-10">EGP {categoryStats["transportation"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                <p className="text-xs font-bold text-emerald-400/80 mt-1 relative z-10">{categoryStats["transportation"].count} {isAr ? "سند" : "payment(s)"}</p>
               </motion.div>
             )}
             {categoryStats["other"] && (
-              <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-slate-50 to-gray-50 border border-slate-100/50 p-5 rounded-3xl shadow-sm relative overflow-hidden group">
+              <motion.div whileHover={{ y: -4 }} className="bg-[#18181B] border border-rose-500/20 p-5 rounded-3xl shadow-md relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-5xl">📝</div>
-                <div className="flex items-center gap-2 text-slate-600 mb-3">
-                  <span className="text-sm font-bold tracking-wide uppercase">{isAr ? "مصروفات أخرى" : "Other"}</span>
+                <div className="flex items-center gap-2 text-rose-400 mb-3">
+                  <span className="text-sm font-black tracking-wide uppercase">{isAr ? "مصروفات أخرى" : "Other"}</span>
                 </div>
-                <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {categoryStats["other"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                <p className="text-xs font-semibold text-slate-600/70 mt-1 relative z-10">{categoryStats["other"].count} {isAr ? "سند" : "payment(s)"}</p>
+                <p className="text-2xl font-black text-white tracking-tight relative z-10">EGP {categoryStats["other"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                <p className="text-xs font-bold text-rose-400/80 mt-1 relative z-10">{categoryStats["other"].count} {isAr ? "سند" : "payment(s)"}</p>
               </motion.div>
             )}
           </div>
         </div>
 
-        <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200/80 dark:border-slate-700/80 p-2 rounded-2xl shadow-sm flex flex-col md:flex-row gap-2">
+        <div className="bg-[#18181B] backdrop-blur-md border border-white/10 p-2 rounded-2xl shadow-xl flex flex-col md:flex-row gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={20} />
             <input
               type="text"
               placeholder={isAr ? "ابحث باسم الشركة، رقم الفاتورة، أو أمر الشراء..." : "Search company, invoice, PO number..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 rounded-xl bg-transparent focus:bg-white hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-none outline-none text-slate-700 dark:text-slate-300 placeholder:text-slate-400 font-medium"
+              className="w-full pl-12 pr-4 py-3 rounded-xl bg-transparent focus:bg-zinc-800/80 transition-colors border-none outline-none text-white placeholder:text-zinc-500 font-medium"
             />
           </div>
-          <div className="h-px md:h-auto md:w-px bg-slate-200 dark:bg-slate-700"></div>
+          <div className="h-px md:h-auto md:w-px bg-white/10"></div>
           <input
             type="month"
             value={monthFilter}
             onChange={(e) => setMonthFilter(e.target.value)}
-            className="w-full md:w-64 px-4 py-3 rounded-xl bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 transition-colors border-none outline-none text-slate-700 dark:text-slate-300 font-bold cursor-pointer"
+            className="w-full md:w-64 px-4 py-3 rounded-xl bg-transparent hover:bg-zinc-800/80 focus:bg-zinc-800 transition-colors border-none outline-none text-white font-extrabold cursor-pointer"
           />
         </div>
 

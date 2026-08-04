@@ -27,7 +27,7 @@ export default function FinancialInputsLayout({ children }: { children: React.Re
   return (
     <PageTransition>
       <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-6 pb-32" dir={isAr ? "rtl" : "ltr"}>
-        <div className="bg-card border border-border shadow-sm rounded-2xl p-2 flex flex-wrap md:flex-nowrap gap-2">
+        <div style={{ background: '#18181B', border: '1px solid rgba(255,255,255,0.08)' }} className="shadow-lg rounded-2xl p-1.5 flex flex-wrap md:flex-nowrap gap-1.5">
           {tabs.map(tab => {
             const isActive = pathname === tab.href;
             const Icon = tab.icon;
@@ -36,11 +36,15 @@ export default function FinancialInputsLayout({ children }: { children: React.Re
                 key={tab.href}
                 href={tab.href}
                 prefetch={true}
-                className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
+                className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-extrabold transition-all duration-200 ${
                   isActive 
-                    ? "bg-slate-900 text-slate-50 dark:bg-slate-100 dark:text-slate-900 shadow-md" 
-                    : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    ? "text-white shadow-lg" 
+                    : "text-zinc-400 hover:text-white hover:bg-zinc-800/60"
                 }`}
+                style={isActive ? {
+                  background: 'linear-gradient(135deg, #E11D48, #F97316)',
+                  boxShadow: '0 4px 16px rgba(225,29,72,0.3)'
+                } : {}}
               >
                 <Icon className={`h-4 w-4 ${isActive ? "opacity-100" : "opacity-70"}`} />
                 {tab.name}

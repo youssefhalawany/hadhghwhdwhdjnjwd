@@ -56,6 +56,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   const [systemNotifications, setSystemNotifications] = useState<any[]>([]);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const pathname = usePathname();
+  const isAr = language === "ar";
 
   const [pushPermissionNeeded, setPushPermissionNeeded] = useState(false);
 
@@ -489,11 +490,25 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     updateAppBadge(totalPending);
   }, [pendingShiftCount, pendingVoidCount, pendingExpiriesCount]);
 
+  useEffect(() => {
+    const savedTheme = (localStorage.getItem("circlek_theme") as "light" | "dark") || "dark";
+    setTheme(savedTheme);
+    if (savedTheme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
+
   const toggleTheme = () => {
     const nextTheme = theme === "dark" ? "light" : "dark";
     setTheme(nextTheme);
     localStorage.setItem("circlek_theme", nextTheme);
-    document.documentElement.classList.toggle("dark", nextTheme === "dark");
+    if (nextTheme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
   };
 
   const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -979,29 +994,30 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
                 {/* Dropdown omitted for brevity but keeps original logic */}
                 {notificationsOpen && (
-                  <div className="absolute right-0 mt-2 w-64 rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col" style={{ background: '#18181B', border: '1px solid rgba(255,255,255,0.06)' }}>
-                    <div className="p-3 font-bold text-sm flex justify-between items-center" style={{ background: '#09090B', borderBottom: '1px solid rgba(255,255,255,0.06)', color: '#FAFAFA' }}>
+                  <div className="absolute right-0 mt-2 w-72 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col" style={{ background: '#18181B', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 20px 60px rgba(0,0,0,0.8)' }}>
+                    <div className="p-3.5 font-black text-sm flex justify-between items-center" style={{ background: '#09090B', borderBottom: '1px solid rgba(255,255,255,0.08)', color: '#FAFAFA' }}>
                       <div className="flex items-center gap-2">
-                        <span>Notifications</span>
-                        <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full">{totalNotifications}</span>
+                        <span>{isAr ? "التنبيهات" : "Notifications"}</span>
+                        <span className="text-white text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: '#E11D48' }}>{totalNotifications}</span>
                       </div>
                       {systemNotifications.length > 0 && (
                         <button 
                           onClick={handleClearAllNotifications}
-                          className="text-[10px] text-red-500 hover:text-red-600 transition-colors bg-red-500/10 hover:bg-red-500/20 px-2 py-1 rounded-md border border-red-500/20"
+                          className="text-[10px] font-bold transition-colors px-2 py-1 rounded-lg cursor-pointer"
+                          style={{ color: '#FB7185', background: 'rgba(225,29,72,0.12)', border: '1px solid rgba(225,29,72,0.2)' }}
                         >
-                          Clear All
+                          {isAr ? "مسح الكل" : "Clear All"}
                         </button>
                       )}
                     </div>
-                    <div className="max-h-64 overflow-y-auto custom-scrollbar">
+                    <div className="max-h-72 overflow-y-auto custom-scrollbar">
                       {totalNotifications === 0 ? (
-                        <div className="p-4 text-center text-sm text-muted-foreground">All caught up!</div>
+                        <div className="p-6 text-center text-xs font-semibold" style={{ color: '#A1A1AA' }}>{isAr ? "لا توجد تنبيهات جديدة" : "All caught up! No pending alerts."}</div>
                       ) : (
                         <>
                           {systemNotifications.length > 0 && (
-                            <div className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-[10px] font-bold uppercase text-slate-500 tracking-wider">
-                              Recent Actions
+                            <div className="px-3.5 py-1.5 text-[10px] font-black uppercase tracking-wider" style={{ background: '#27272A', color: '#F97316' }}>
+                              {isAr ? "إجراءات حديثة" : "Recent Actions"}
                             </div>
                           )}
                           {systemNotifications.map(notif => (
@@ -1014,46 +1030,47 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                                   await updateDoc(doc(db, "notifications", notif.id), { read: true });
                                 } catch (e) { console.error("Error marking read", e); }
                               }}
-                              className="block p-3 border-b border-border hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors bg-blue-50/50 dark:bg-blue-900/10"
+                              className="block p-3.5 transition-colors"
+                              style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(225,29,72,0.04)' }}
                             >
                               <div className="flex justify-between items-start mb-1">
-                                <p className="text-sm font-semibold text-foreground capitalize flex items-center gap-2">
-                                  <span className="w-2 h-2 rounded-full bg-blue-500 inline-block animate-pulse"></span>
+                                <p className="text-xs font-extrabold capitalize flex items-center gap-2" style={{ color: '#FAFAFA' }}>
+                                  <span className="w-2 h-2 rounded-full inline-block animate-pulse" style={{ background: '#E11D48' }}></span>
                                   {notif.type} Update
                                 </p>
-                                <span className="text-[10px] text-muted-foreground">{new Date(notif.createdAt?.toDate ? notif.createdAt.toDate() : Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                <span className="text-[10px] font-medium" style={{ color: '#71717A' }}>{new Date(notif.createdAt?.toDate ? notif.createdAt.toDate() : Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                               </div>
-                              <p className="text-xs text-muted-foreground font-medium">{notif.message}</p>
+                              <p className="text-xs font-medium" style={{ color: '#A1A1AA' }}>{notif.message}</p>
                             </Link>
                           ))}
 
                           {(pendingShiftCount > 0 || pendingVoidCount > 0 || pendingReturnsCount > 0 || pendingExpiriesCount > 0) && (
-                            <div className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-[10px] font-bold uppercase text-slate-500 tracking-wider">
-                              Pending Approvals
+                            <div className="px-3.5 py-1.5 text-[10px] font-black uppercase tracking-wider" style={{ background: '#27272A', color: '#F97316' }}>
+                              {isAr ? "في انتظار الاعتماد" : "Pending Approvals"}
                             </div>
                           )}
                           {pendingShiftCount > 0 && (
-                            <Link href="/shift-reports/manager" onClick={() => setNotificationsOpen(false)} className="block p-3 border-b border-border hover:bg-muted/50 transition-colors">
-                              <p className="text-sm font-semibold text-foreground">Shift Audits</p>
-                              <p className="text-xs text-muted-foreground">{pendingShiftCount} pending shifts require approval.</p>
+                            <Link href="/shift-reports/manager" onClick={() => setNotificationsOpen(false)} className="block p-3.5 transition-colors hover:bg-white/5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                              <p className="text-xs font-extrabold" style={{ color: '#FAFAFA' }}>{isAr ? "مراجعة الورديات" : "Shift Audits"}</p>
+                              <p className="text-xs font-semibold mt-0.5" style={{ color: '#A1A1AA' }}>{pendingShiftCount} {isAr ? "ورديات تنتظر اعتماد المدير" : "pending shifts require approval."}</p>
                             </Link>
                           )}
                           {pendingVoidCount > 0 && (
-                            <Link href="/voids/manager" onClick={() => setNotificationsOpen(false)} className="block p-3 border-b border-border hover:bg-muted/50 transition-colors">
-                              <p className="text-sm font-semibold text-foreground">Voids & Returns</p>
-                              <p className="text-xs text-muted-foreground">{pendingVoidCount} requests require review.</p>
+                            <Link href="/voids/manager" onClick={() => setNotificationsOpen(false)} className="block p-3.5 transition-colors hover:bg-white/5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                              <p className="text-xs font-extrabold" style={{ color: '#FAFAFA' }}>{isAr ? "إلغاءات ومرتجعات المبيعات" : "Voids & Returns"}</p>
+                              <p className="text-xs font-semibold mt-0.5" style={{ color: '#A1A1AA' }}>{pendingVoidCount} {isAr ? "طلبات تراجع تحتاج مراجعة" : "requests require review."}</p>
                             </Link>
                           )}
                           {pendingReturnsCount > 0 && (
-                            <Link href="/dashboard/supplier-returns" onClick={() => setNotificationsOpen(false)} className="block p-3 border-b border-border hover:bg-muted/50 transition-colors">
-                              <p className="text-sm font-semibold text-foreground">Supplier Returns</p>
-                              <p className="text-xs text-muted-foreground">{pendingReturnsCount} returns pending settlement.</p>
+                            <Link href="/dashboard/supplier-returns" onClick={() => setNotificationsOpen(false)} className="block p-3.5 transition-colors hover:bg-white/5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                              <p className="text-xs font-extrabold" style={{ color: '#FAFAFA' }}>{isAr ? "مرتجعات الموردين" : "Supplier Returns"}</p>
+                              <p className="text-xs font-semibold mt-0.5" style={{ color: '#A1A1AA' }}>{pendingReturnsCount} {isAr ? "إيصالات مرتجع قيد التسوية" : "returns pending settlement."}</p>
                             </Link>
                           )}
                           {pendingExpiriesCount > 0 && (
-                            <Link href="/products/expiries-audit" onClick={() => setNotificationsOpen(false)} className="block p-3 hover:bg-muted/50 transition-colors">
-                              <p className="text-sm font-semibold text-foreground">Expiry Audits</p>
-                              <p className="text-xs text-muted-foreground">{pendingExpiriesCount} audits require review.</p>
+                            <Link href="/products/expiries-audit" onClick={() => setNotificationsOpen(false)} className="block p-3.5 transition-colors hover:bg-white/5">
+                              <p className="text-xs font-extrabold" style={{ color: '#FAFAFA' }}>{isAr ? "جرد الصلاحيات" : "Expiry Audits"}</p>
+                              <p className="text-xs font-semibold mt-0.5" style={{ color: '#A1A1AA' }}>{pendingExpiriesCount} {isAr ? "سجلات تحتاج مراجعة" : "audits require review."}</p>
                             </Link>
                           )}
                         </>
@@ -1066,16 +1083,18 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
               {/* Language Toggle */}
               <button
                 onClick={() => setLanguage(language === "en" ? "ar" : "en")}
-                className="p-2 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                className="p-2 rounded-xl transition-all flex items-center gap-1 cursor-pointer"
+                style={{ background: '#18181B', border: '1px solid rgba(255,255,255,0.06)', color: '#A1A1AA' }}
               >
                 <Languages className="h-4 w-4" />
-                <span className="text-[10px] font-bold uppercase">{language === "en" ? "عربي" : "EN"}</span>
+                <span className="text-[10px] font-black uppercase">{language === "en" ? "عربي" : "EN"}</span>
               </button>
 
               {/* Theme Toggle */}
               <button
                 onClick={toggleTheme}
-                className="p-2 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                className="p-2 rounded-xl transition-all cursor-pointer"
+                style={{ background: '#18181B', border: '1px solid rgba(255,255,255,0.06)', color: '#A1A1AA' }}
               >
                 {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </button>
