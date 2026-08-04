@@ -517,24 +517,15 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   }, [pendingShiftCount, pendingVoidCount, pendingExpiriesCount]);
 
   useEffect(() => {
-    const savedTheme = (localStorage.getItem("circlek_theme") as "light" | "dark") || "dark";
-    setTheme(savedTheme);
-    if (savedTheme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
+    setTheme("dark");
+    localStorage.setItem("circlek_theme", "dark");
+    document.documentElement.classList.add("dark");
   }, []);
 
   const toggleTheme = () => {
-    const nextTheme = theme === "dark" ? "light" : "dark";
-    setTheme(nextTheme);
-    localStorage.setItem("circlek_theme", nextTheme);
-    if (nextTheme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
+    setTheme("dark");
+    localStorage.setItem("circlek_theme", "dark");
+    document.documentElement.classList.add("dark");
   };
 
   const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -1114,14 +1105,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                 <span className="text-[10px] font-black uppercase">{language === "en" ? "عربي" : "EN"}</span>
               </button>
 
-              {/* Theme Toggle */}
-              <button
-                onClick={toggleTheme}
-                className="p-2 rounded-xl transition-all cursor-pointer bg-muted/60 border border-border text-muted-foreground hover:text-foreground"
-              >
-                {theme === "dark" ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-indigo-500" />}
-              </button>
-            </div>
+              </div>
           </header>
         )}
 

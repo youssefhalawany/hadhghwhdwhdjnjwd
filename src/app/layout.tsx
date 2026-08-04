@@ -44,25 +44,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={inter.variable}>
+    <html lang="en" suppressHydrationWarning className={`dark ${inter.variable}`}>
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
       <body className="min-h-screen w-full overflow-hidden print:overflow-visible print:min-h-0 flex flex-col bg-background text-foreground font-sans transition-colors duration-300">
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <ThemeProvider attribute="class" defaultTheme="dark" forcedTheme="dark" enableSystem={false}>
           <BrandProvider>
             <BranchProvider>
               <LanguageProvider>
-                <div className="fixed bottom-4 right-4 z-50 print:hidden">
-                  <ThemeToggle />
-                </div>
                 <OfflineBanner />
                 <DynamicIsland />
                 <SuccessOverlay />
                 <CommandBar />
                 <ClientLayoutWrapper>{children}</ClientLayoutWrapper>
-                <Toaster position="top-center" richColors closeButton theme="system" />
+                <Toaster position="top-center" richColors closeButton theme="dark" />
               </LanguageProvider>
             </BranchProvider>
           </BrandProvider>
