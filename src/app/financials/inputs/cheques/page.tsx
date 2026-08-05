@@ -173,11 +173,9 @@ export default function ChequesPage() {
     }
 
     if (wrapper) {
-      wrapper.style.position = "fixed";
+      wrapper.style.position = "absolute";
       wrapper.style.left = "-9999px";
       wrapper.style.top = "0px";
-      wrapper.style.opacity = "1";
-      wrapper.style.visibility = "visible";
     }
 
     await new Promise(resolve => setTimeout(resolve, 400));

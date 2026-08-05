@@ -943,11 +943,9 @@ export default function PaymentsRedesignPage() {
     }
 
     if (wrapper) {
-      wrapper.style.position = "fixed";
+      wrapper.style.position = "absolute";
       wrapper.style.left = "-9999px";
       wrapper.style.top = "0px";
-      wrapper.style.opacity = "1";
-      wrapper.style.visibility = "visible";
     }
 
     const html2canvasOptions = {
@@ -2018,7 +2016,7 @@ export default function PaymentsRedesignPage() {
         const branchNameArDisplay = isOlaBranch ? "علا القرنفل" : "العلمين 4";
 
         return (
-        <div id="single-payment-print-wrapper" style={{ position: 'fixed', left: '-9999px', top: 0, zIndex: -9999, pointerEvents: 'none' }}>
+        <div id="single-payment-print-wrapper" style={{ position: 'absolute', left: '-9999px', top: 0 }}>
           <div id="pdf-receipt" style={{ width: '794px', minHeight: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
 
             <div style={{ padding: '20px 30px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #000', position: 'relative', zIndex: 10 }}>
