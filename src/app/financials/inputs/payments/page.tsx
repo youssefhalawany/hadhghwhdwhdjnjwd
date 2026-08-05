@@ -945,19 +945,39 @@ export default function PaymentsRedesignPage() {
 
       // Page 1: Main Receipt Voucher
       let page1 = document.getElementById("pdf-receipt");
-      if (!page1) {
-        await new Promise(resolve => setTimeout(resolve, 300));
+      let attempts = 0;
+      while (!page1 && attempts < 5) {
+        await new Promise(resolve => setTimeout(resolve, 200));
         page1 = document.getElementById("pdf-receipt");
+        attempts++;
       }
+
       if (page1) {
         try {
+          const images = Array.from(page1.querySelectorAll("img"));
+          await Promise.all(
+            images.map(img => {
+              if (img.complete) return Promise.resolve();
+              return new Promise(res => { img.onload = res; img.onerror = res; });
+            })
+          );
+
           const canvas1 = await html2canvas(page1, html2canvasOptions);
           const imgData1 = canvas1.toDataURL("image/png");
           const pdfHeight1 = (canvas1.height * pdfWidth) / canvas1.width;
           pdf.addImage(imgData1, "PNG", 0, 0, pdfWidth, pdfHeight1);
           pageAddedCount++;
         } catch (err1) {
-          console.error("Primary canvas rendering error:", err1);
+          console.error("Primary canvas rendering error, trying fallback:", err1);
+          try {
+            const canvas1Fb = await html2canvas(page1, { scale: 1.5, logging: false });
+            const imgData1Fb = canvas1Fb.toDataURL("image/png");
+            const pdfHeight1Fb = (canvas1Fb.height * pdfWidth) / canvas1Fb.width;
+            pdf.addImage(imgData1Fb, "PNG", 0, 0, pdfWidth, pdfHeight1Fb);
+            pageAddedCount++;
+          } catch (fbErr) {
+            console.error("Fallback canvas failed:", fbErr);
+          }
         }
       }
 
@@ -2226,7 +2246,7 @@ export default function PaymentsRedesignPage() {
                     justifyContent: 'center',
                     fontFamily: '"Arial Black", Impact, "Arial Rounded MT Bold", sans-serif',
                     opacity: 0.85,
-                    boxShadow: 'inset 0 0 0 1px rgba(0,0,128,0.2), 0 0 0 1px rgba(0,0,128,0.2)'
+                    boxShadow: '0 0 0 1px rgba(0,0,128,0.2)'
                   }}>
                     <span style={{ fontSize: '18px', fontWeight: '900', color: '#000080', letterSpacing: '1px', lineHeight: 1.2 }}>Circle k</span>
                     <span style={{ fontSize: '14px', fontWeight: '900', color: '#000080', letterSpacing: '0.5px', lineHeight: 1.2 }}>El Alamein 4</span>
@@ -2244,7 +2264,7 @@ export default function PaymentsRedesignPage() {
 
                 return (
                   <div style={{ transform: 'rotate(-5deg)', opacity: 0.85 }}>
-                    <div style={{ border: `5px solid ${stampColor}`, borderRadius: '50%', width: '180px', height: '180px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: stampColor, backgroundColor: 'transparent', boxShadow: `inset 0 0 0 2px ${stampColor}33, 0 0 0 2px ${stampColor}33` }}>
+                    <div style={{ border: `5px solid ${stampColor}`, borderRadius: '50%', width: '180px', height: '180px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: stampColor, backgroundColor: 'transparent', boxShadow: `0 0 0 2px ${stampColor}33` }}>
                       <span style={{ fontSize: '18px', fontWeight: '900', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '4px', textAlign: 'center' }}>{stampText}</span>
                       <span style={{ fontSize: '16px', fontWeight: '900', borderBottom: `2px solid ${stampColor}`, paddingBottom: '4px', marginBottom: '6px' }}>معتمد</span>
                       <span style={{ fontSize: '11px', fontWeight: '900', letterSpacing: '1px' }}>PAYMENT</span>
