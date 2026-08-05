@@ -64,6 +64,93 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+/* ==========================================================================
+   GLOBAL HIGH-CONTRAST DARK THEME TEXT & CARD OVERRIDES
+   Fixes hardcoded light-mode text classes (slate-900/800/700, black, etc.)
+   so all text is 100% visible, sharp, and readable across all pages.
+   ========================================================================== */
+@media screen {
+  .text-slate-900,
+  .text-slate-800,
+  .text-gray-900,
+  .text-gray-800,
+  .text-zinc-900,
+  .text-zinc-800,
+  .text-black {
+    color: #f8fafc !important;
+  }
+
+  .text-slate-700,
+  .text-slate-600,
+  .text-gray-700,
+  .text-gray-600,
+  .text-zinc-700,
+  .text-zinc-600 {
+    color: #e2e8f0 !important;
+  }
+
+  .text-slate-500,
+  .text-slate-400,
+  .text-gray-500,
+  .text-gray-400,
+  .text-zinc-500,
+  .text-zinc-400 {
+    color: #94a3b8 !important;
+  }
+
+  input,
+  select,
+  textarea {
+    color: #f8fafc !important;
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #64748b !important;
+  }
+
+  select option {
+    background-color: #18181b !important;
+    color: #fafafa !important;
+  }
+
+  .bg-slate-50,
+  .bg-slate-100,
+  .bg-gray-50,
+  .bg-gray-100,
+  .bg-zinc-50,
+  .bg-zinc-100 {
+    background-color: #18181b !important;
+  }
+
+  div.bg-white,
+  section.bg-white,
+  article.bg-white,
+  tr.bg-white,
+  td.bg-white,
+  th.bg-white,
+  li.bg-white {
+    background-color: #18181b !important;
+    color: #fafafa !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+  }
+
+  button.bg-white,
+  a.bg-white {
+    background-color: #fafafa !important;
+    color: #09090b !important;
+  }
+
+  button.bg-slate-900,
+  button.bg-black,
+  a.bg-slate-900,
+  a.bg-black {
+    background-color: #e11d48 !important;
+    color: #ffffff !important;
+  }
+}
+
 /* Premium Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
