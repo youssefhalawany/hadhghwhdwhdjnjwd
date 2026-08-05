@@ -1067,18 +1067,30 @@ export default function CreditsPage() {
 
     setTimeout(async () => {
       try {
-        const wrapper = document.getElementById("single-credit-print-wrapper");
-        if (wrapper) {
-          wrapper.style.left = "0";
-          wrapper.style.top = "0";
+        await new Promise(resolve => setTimeout(resolve, 400));
+        let wrapper = document.getElementById("single-credit-print-wrapper");
+        if (!wrapper) {
+          await new Promise(resolve => setTimeout(resolve, 300));
+          wrapper = document.getElementById("single-credit-print-wrapper");
         }
-        await new Promise(resolve => setTimeout(resolve, 600));
+
+        if (wrapper) {
+          wrapper.style.left = "0px";
+          wrapper.style.top = "0px";
+          wrapper.style.zIndex = "99999";
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 500));
 
         const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
         const pdfWidth = pdf.internal.pageSize.getWidth();
         let pageAddedCount = 0;
 
-        const page1 = document.getElementById("print-credit-container");
+        let page1 = document.getElementById("print-credit-container");
+        if (!page1) {
+          await new Promise(resolve => setTimeout(resolve, 300));
+          page1 = document.getElementById("print-credit-container");
+        }
         if (page1) {
           try {
             const canvas1 = await html2canvas(page1, { scale: 2, useCORS: true, allowTaint: true, logging: false });

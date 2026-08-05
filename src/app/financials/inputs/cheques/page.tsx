@@ -159,18 +159,35 @@ export default function ChequesPage() {
     }
   };
 
-  const generatePDF = async () => {
-    setGeneratingPDF(true);
-    const wrapper = document.getElementById("single-cheque-print-wrapper");
-    if (wrapper) {
-      wrapper.style.left = "0";
-      wrapper.style.top = "0";
+  const generatePDF = async (chequeToPrint?: any) => {
+    if (chequeToPrint) {
+      setSelectedForPrint(chequeToPrint);
     }
+    setGeneratingPDF(true);
+
+    await new Promise(resolve => setTimeout(resolve, 400));
+    let wrapper = document.getElementById("single-cheque-print-wrapper");
+    if (!wrapper) {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      wrapper = document.getElementById("single-cheque-print-wrapper");
+    }
+
+    if (wrapper) {
+      wrapper.style.left = "0px";
+      wrapper.style.top = "0px";
+      wrapper.style.zIndex = "99999";
+    }
+
     await new Promise(resolve => setTimeout(resolve, 500));
+
     try {
       const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const page = document.getElementById("pdf-cheque-slip");
+      let page = document.getElementById("pdf-cheque-slip");
+      if (!page) {
+        await new Promise(resolve => setTimeout(resolve, 300));
+        page = document.getElementById("pdf-cheque-slip");
+      }
       let pageAdded = false;
       
       if (page) {

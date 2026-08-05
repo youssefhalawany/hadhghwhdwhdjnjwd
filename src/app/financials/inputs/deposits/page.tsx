@@ -174,15 +174,31 @@ export default function DepositsPage() {
     }
   };
 
-  const generatePDF = async () => {
-    setGeneratingPDF(true);
-    const wrapper = document.getElementById("single-deposit-print-wrapper");
-    if (wrapper) {
-      wrapper.style.left = "0";
-      wrapper.style.top = "0";
+  const generatePDF = async (depositToPrint?: any) => {
+    if (depositToPrint) {
+      setSelectedDepositForPrint(depositToPrint);
     }
-    await new Promise(resolve => setTimeout(resolve, 600));
-    const page = document.getElementById("pdf-deposit-slip");
+    setGeneratingPDF(true);
+
+    await new Promise(resolve => setTimeout(resolve, 400));
+    let wrapper = document.getElementById("single-deposit-print-wrapper");
+    if (!wrapper) {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      wrapper = document.getElementById("single-deposit-print-wrapper");
+    }
+
+    if (wrapper) {
+      wrapper.style.left = "0px";
+      wrapper.style.top = "0px";
+      wrapper.style.zIndex = "99999";
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 500));
+    let page = document.getElementById("pdf-deposit-slip");
+    if (!page) {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      page = document.getElementById("pdf-deposit-slip");
+    }
     try {
       const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
       const pdfWidth = pdf.internal.pageSize.getWidth();

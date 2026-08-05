@@ -911,14 +911,23 @@ export default function PaymentsRedesignPage() {
     setSelectedPaymentForPrint(paymentToPrint);
     setGeneratingPDF(true);
 
-    const wrapper = document.getElementById("single-payment-print-wrapper");
+    // Wait for React to re-render and mount single-payment-print-wrapper in DOM
+    await new Promise(resolve => setTimeout(resolve, 400));
+
+    let wrapper = document.getElementById("single-payment-print-wrapper");
+    if (!wrapper) {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      wrapper = document.getElementById("single-payment-print-wrapper");
+    }
+
     if (wrapper) {
-      wrapper.style.left = "0";
-      wrapper.style.top = "0";
+      wrapper.style.left = "0px";
+      wrapper.style.top = "0px";
+      wrapper.style.zIndex = "99999";
     }
     
-    // Give time for the DOM to render and images to load
-    await new Promise(resolve => setTimeout(resolve, 700));
+    // Give time for layout and images to settle
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     const html2canvasOptions = {
       scale: 2,
@@ -934,7 +943,11 @@ export default function PaymentsRedesignPage() {
       let pageAddedCount = 0;
 
       // Page 1: Main Receipt Voucher
-      const page1 = document.getElementById("pdf-receipt");
+      let page1 = document.getElementById("pdf-receipt");
+      if (!page1) {
+        await new Promise(resolve => setTimeout(resolve, 300));
+        page1 = document.getElementById("pdf-receipt");
+      }
       if (page1) {
         try {
           const canvas1 = await html2canvas(page1, html2canvasOptions);
