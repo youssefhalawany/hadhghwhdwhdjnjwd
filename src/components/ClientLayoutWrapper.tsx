@@ -160,13 +160,11 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   }, []);
 
   useEffect(() => {
-    const storedTheme = localStorage.getItem("circlek_theme") as "light" | "dark";
-    if (storedTheme) {
-      setTheme(storedTheme);
-      document.documentElement.classList.toggle("dark", storedTheme === "dark");
-    } else {
-      document.documentElement.classList.add("dark");
-    }
+    localStorage.setItem("circlek_theme", "dark");
+    setTheme("dark");
+    document.documentElement.classList.add("dark");
+    document.documentElement.classList.remove("light");
+    document.documentElement.style.colorScheme = "dark";
 
     const storedRole = localStorage.getItem("circlek_role") || "owner";
     setRole(storedRole);

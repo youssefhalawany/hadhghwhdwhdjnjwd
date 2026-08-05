@@ -16,12 +16,7 @@ import { LaserScannerOverlay } from "@/components/SkeuomorphicUX/LaserScannerOve
 
 export default function CashierInventoryAudit() {
   const { language: lang } = useLanguage();
-  const { setTheme } = useTheme();
   const [user, setUser] = useState<any>(null);
-
-  useEffect(() => {
-    setTheme("light");
-  }, [setTheme]);
 
   useEffect(() => {
     const savedUserStr = localStorage.getItem("active_cashier_session");
