@@ -1072,17 +1072,32 @@ export default function CreditsPage() {
           wrapper.style.left = "0";
           wrapper.style.top = "0";
         }
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 600));
 
         const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
         const pdfWidth = pdf.internal.pageSize.getWidth();
+        let pageAddedCount = 0;
+
         const page1 = document.getElementById("print-credit-container");
-        
         if (page1) {
-          const canvas1 = await html2canvas(page1, { scale: 2, useCORS: true, logging: false });
-          const imgData1 = canvas1.toDataURL("image/png");
-          const pdfHeight1 = (canvas1.height * pdfWidth) / canvas1.width;
-          pdf.addImage(imgData1, "PNG", 0, 0, pdfWidth, pdfHeight1);
+          try {
+            const canvas1 = await html2canvas(page1, { scale: 2, useCORS: true, allowTaint: true, logging: false });
+            const imgData1 = canvas1.toDataURL("image/png");
+            const pdfHeight1 = (canvas1.height * pdfWidth) / canvas1.width;
+            pdf.addImage(imgData1, "PNG", 0, 0, pdfWidth, pdfHeight1);
+            pageAddedCount++;
+          } catch (err1) {
+            console.warn("Credit receipt canvas failed, trying fallback:", err1);
+            try {
+              const canvas1Fb = await html2canvas(page1, { scale: 2, allowTaint: true, logging: false });
+              const imgData1Fb = canvas1Fb.toDataURL("image/png");
+              const pdfHeight1Fb = (canvas1Fb.height * pdfWidth) / canvas1Fb.width;
+              pdf.addImage(imgData1Fb, "PNG", 0, 0, pdfWidth, pdfHeight1Fb);
+              pageAddedCount++;
+            } catch (fbErr) {
+              console.error("Fallback credit canvas failed:", fbErr);
+            }
+          }
         }
 
         const invoiceUrls = selectedCreditForPrint?.poUrls && selectedCreditForPrint.poUrls.length > 0 
@@ -1092,11 +1107,16 @@ export default function CreditsPage() {
         for (let i = 0; i < invoiceUrls.length; i++) {
           const pageInvoice = document.getElementById(`print-credit-invoice-page-${i}`);
           if (pageInvoice) {
-            const canvasInvoice = await html2canvas(pageInvoice, { scale: 2, useCORS: true, logging: false });
-            const imgDataInvoice = canvasInvoice.toDataURL("image/png");
-            const pdfHeightInvoice = (canvasInvoice.height * pdfWidth) / canvasInvoice.width;
-            pdf.addPage();
-            pdf.addImage(imgDataInvoice, "PNG", 0, 0, pdfWidth, pdfHeightInvoice);
+            try {
+              const canvasInvoice = await html2canvas(pageInvoice, { scale: 2, useCORS: true, allowTaint: true, logging: false });
+              const imgDataInvoice = canvasInvoice.toDataURL("image/png");
+              const pdfHeightInvoice = (canvasInvoice.height * pdfWidth) / canvasInvoice.width;
+              pdf.addPage();
+              pdf.addImage(imgDataInvoice, "PNG", 0, 0, pdfWidth, pdfHeightInvoice);
+              pageAddedCount++;
+            } catch (invErr) {
+              console.warn(`Credit attachment ${i} canvas error:`, invErr);
+            }
           }
         }
 
@@ -1105,17 +1125,36 @@ export default function CreditsPage() {
           const pageItems = document.getElementById(`print-credit-items-page-${itemsPageIndex}`);
           if (!pageItems) break;
           
-          const canvasItems = await html2canvas(pageItems, { scale: 2, useCORS: true, logging: false });
-          const imgDataItems = canvasItems.toDataURL("image/png");
-          const pdfHeightItems = (canvasItems.height * pdfWidth) / canvasItems.width;
-          pdf.addPage();
-          pdf.addImage(imgDataItems, "PNG", 0, 0, pdfWidth, pdfHeightItems);
+          try {
+            const canvasItems = await html2canvas(pageItems, { scale: 2, useCORS: true, allowTaint: true, logging: false });
+            const imgDataItems = canvasItems.toDataURL("image/png");
+            const pdfHeightItems = (canvasItems.height * pdfWidth) / canvasItems.width;
+            pdf.addPage();
+            pdf.addImage(imgDataItems, "PNG", 0, 0, pdfWidth, pdfHeightItems);
+            pageAddedCount++;
+          } catch (itemErr) {
+            console.warn(`Credit items page ${itemsPageIndex} canvas error:`, itemErr);
+          }
           
           itemsPageIndex++;
         }
 
-        pdf.autoPrint();
-        window.open(pdf.output("bloburl"), "_blank");
+        if (pageAddedCount > 0) {
+          try {
+            pdf.autoPrint();
+            const blobUrl = pdf.output("bloburl");
+            const printWin = window.open(blobUrl, "_blank");
+            if (!printWin || printWin.closed || typeof printWin.closed === "undefined") {
+              pdf.save(`Credit_Receipt_${(selectedCreditForPrint as any)?.claimNumber || (selectedCreditForPrint as any)?.claimNo || 'voucher'}.pdf`);
+              toast.success("Credit receipt downloaded as PDF!");
+            }
+          } catch (e) {
+            pdf.save(`Credit_Receipt_${(selectedCreditForPrint as any)?.claimNumber || (selectedCreditForPrint as any)?.claimNo || 'voucher'}.pdf`);
+            toast.success("Credit receipt downloaded as PDF!");
+          }
+        } else {
+          toast.error("Failed to generate PDF.");
+        }
       } catch (error) {
         console.error("PDF generation error:", error);
         toast.error("Failed to generate PDF.");

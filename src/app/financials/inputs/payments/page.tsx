@@ -907,35 +907,71 @@ export default function PaymentsRedesignPage() {
   };
 
   const generatePDF = async (paymentToPrint: any) => {
+    if (!paymentToPrint) return;
+    setSelectedPaymentForPrint(paymentToPrint);
     setGeneratingPDF(true);
+
     const wrapper = document.getElementById("single-payment-print-wrapper");
     if (wrapper) {
       wrapper.style.left = "0";
       wrapper.style.top = "0";
     }
-    // Give time for the DOM to render and images (QR code) to load
-    await new Promise(resolve => setTimeout(resolve, 600));
+    
+    // Give time for the DOM to render and images to load
+    await new Promise(resolve => setTimeout(resolve, 700));
+
+    const html2canvasOptions = {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      logging: false,
+      imageTimeout: 15000
+    };
+
     try {
       const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const page1 = document.getElementById("pdf-receipt");
+      let pageAddedCount = 0;
 
+      // Page 1: Main Receipt Voucher
+      const page1 = document.getElementById("pdf-receipt");
       if (page1) {
-        const canvas1 = await html2canvas(page1, { scale: 2, useCORS: true, logging: false });
-        const imgData1 = canvas1.toDataURL("image/png");
-        const pdfHeight1 = (canvas1.height * pdfWidth) / canvas1.width;
-        pdf.addImage(imgData1, "PNG", 0, 0, pdfWidth, pdfHeight1);
+        try {
+          const canvas1 = await html2canvas(page1, html2canvasOptions);
+          const imgData1 = canvas1.toDataURL("image/png");
+          const pdfHeight1 = (canvas1.height * pdfWidth) / canvas1.width;
+          pdf.addImage(imgData1, "PNG", 0, 0, pdfWidth, pdfHeight1);
+          pageAddedCount++;
+        } catch (err1) {
+          console.warn("Primary canvas rendering failed, trying fallback:", err1);
+          try {
+            const canvas1Fb = await html2canvas(page1, { scale: 2, allowTaint: true, logging: false });
+            const imgData1Fb = canvas1Fb.toDataURL("image/png");
+            const pdfHeight1Fb = (canvas1Fb.height * pdfWidth) / canvas1Fb.width;
+            pdf.addImage(imgData1Fb, "PNG", 0, 0, pdfWidth, pdfHeight1Fb);
+            pageAddedCount++;
+          } catch (errFb) {
+            console.error("Fallback canvas failed:", errFb);
+          }
+        }
       }
 
+      // Page 2: Additional Voucher Page
       const page2 = document.getElementById("pdf-receipt-page2");
       if (page2) {
-        const canvas2 = await html2canvas(page2, { scale: 2, useCORS: true, logging: false });
-        const imgData2 = canvas2.toDataURL("image/png");
-        const pdfHeight2 = (canvas2.height * pdfWidth) / canvas2.width;
-        pdf.addPage();
-        pdf.addImage(imgData2, "PNG", 0, 0, pdfWidth, pdfHeight2);
+        try {
+          const canvas2 = await html2canvas(page2, html2canvasOptions);
+          const imgData2 = canvas2.toDataURL("image/png");
+          const pdfHeight2 = (canvas2.height * pdfWidth) / canvas2.width;
+          pdf.addPage();
+          pdf.addImage(imgData2, "PNG", 0, 0, pdfWidth, pdfHeight2);
+          pageAddedCount++;
+        } catch (err2) {
+          console.warn("Page 2 canvas failed:", err2);
+        }
       }
 
+      // Invoices Attachment Pages
       const invoiceUrls = paymentToPrint?.invoiceUrls && paymentToPrint.invoiceUrls.length > 0
         ? paymentToPrint.invoiceUrls
         : (paymentToPrint?.invoiceUrl ? [paymentToPrint.invoiceUrl] : []);
@@ -943,31 +979,57 @@ export default function PaymentsRedesignPage() {
       for (let i = 0; i < invoiceUrls.length; i++) {
         const pageInvoice = document.getElementById(`pdf-receipt-invoice-page-${i}`);
         if (pageInvoice) {
-          const canvasInvoice = await html2canvas(pageInvoice, { scale: 3, useCORS: true, logging: false });
-          const imgDataInvoice = canvasInvoice.toDataURL("image/jpeg", 0.95);
-          const pdfHeightInvoice = (canvasInvoice.height * pdfWidth) / canvasInvoice.width;
-          pdf.addPage();
-          pdf.addImage(imgDataInvoice, "JPEG", 0, 0, pdfWidth, pdfHeightInvoice);
+          try {
+            const canvasInvoice = await html2canvas(pageInvoice, { scale: 2, useCORS: true, allowTaint: true, logging: false, imageTimeout: 15000 });
+            const imgDataInvoice = canvasInvoice.toDataURL("image/jpeg", 0.95);
+            const pdfHeightInvoice = (canvasInvoice.height * pdfWidth) / canvasInvoice.width;
+            pdf.addPage();
+            pdf.addImage(imgDataInvoice, "JPEG", 0, 0, pdfWidth, pdfHeightInvoice);
+            pageAddedCount++;
+          } catch (errInv) {
+            console.warn(`Invoice page ${i} canvas failed:`, errInv);
+          }
         }
       }
 
+      // Additional Items Pages
       let itemsPageIndex = 0;
       while (true) {
         const pageItems = document.getElementById(`pdf-receipt-page4-${itemsPageIndex}`);
         if (!pageItems) break;
 
-        const canvasItems = await html2canvas(pageItems, { scale: 2, useCORS: true, logging: false });
-        const imgDataItems = canvasItems.toDataURL("image/png");
-        const pdfHeightItems = (canvasItems.height * pdfWidth) / canvasItems.width;
-        pdf.addPage();
-        pdf.addImage(imgDataItems, "PNG", 0, 0, pdfWidth, pdfHeightItems);
+        try {
+          const canvasItems = await html2canvas(pageItems, html2canvasOptions);
+          const imgDataItems = canvasItems.toDataURL("image/png");
+          const pdfHeightItems = (canvasItems.height * pdfWidth) / canvasItems.width;
+          pdf.addPage();
+          pdf.addImage(imgDataItems, "PNG", 0, 0, pdfWidth, pdfHeightItems);
+          pageAddedCount++;
+        } catch (errItems) {
+          console.warn(`Items page ${itemsPageIndex} canvas failed:`, errItems);
+        }
 
         itemsPageIndex++;
       }
 
-      pdf.autoPrint();
-      window.open(pdf.output("bloburl"), "_blank");
-      setSelectedPaymentForPrint(null);
+      if (pageAddedCount > 0) {
+        try {
+          pdf.autoPrint();
+          const blobUrl = pdf.output("bloburl");
+          const printWindow = window.open(blobUrl, "_blank");
+          if (!printWindow || printWindow.closed || typeof printWindow.closed === "undefined") {
+            // Popup blocker intercepted print window, fallback to direct download
+            pdf.save(`Payment_Receipt_${paymentToPrint.invoiceNumber || paymentToPrint.id || 'voucher'}.pdf`);
+            toast.success("Receipt downloaded as PDF!");
+          }
+        } catch (printErr) {
+          pdf.save(`Payment_Receipt_${paymentToPrint.invoiceNumber || paymentToPrint.id || 'voucher'}.pdf`);
+          toast.success("Receipt downloaded as PDF!");
+        }
+      } else {
+        toast.error("Failed to generate PDF receipt.");
+      }
+
     } catch (error) {
       console.error("PDF Generation Error:", error);
       toast.error("Failed to generate PDF.");
@@ -983,11 +1045,9 @@ export default function PaymentsRedesignPage() {
     if (selectedBulkItems.size === 0) return;
     setIsGeneratingBulkPDF(true);
 
-    // Gather all selected payments
     const paymentsToPrint = filteredPayments.filter(p => selectedBulkItems.has(p.id));
     setBulkPaymentsForPrint(paymentsToPrint);
 
-    // Give React a moment to render the hidden bulk layout
     setTimeout(async () => {
       const wrapper = document.getElementById("bulk-payment-print-wrapper");
       if (wrapper) {
@@ -998,38 +1058,47 @@ export default function PaymentsRedesignPage() {
         const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
         const pdfWidth = pdf.internal.pageSize.getWidth();
 
-        // Render Cover Page
         const coverPage = document.getElementById("pdf-bulk-cover");
         if (coverPage) {
-          const canvas = await html2canvas(coverPage, { scale: 2, useCORS: true, logging: false });
-          const imgData = canvas.toDataURL("image/png");
-          const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-          pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+          try {
+            const canvas = await html2canvas(coverPage, { scale: 2, useCORS: true, allowTaint: true, logging: false });
+            const imgData = canvas.toDataURL("image/png");
+            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+            pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+          } catch (cErr) {
+            console.warn("Bulk cover page canvas error:", cErr);
+          }
         }
 
-        // Render each payment
         for (let i = 0; i < paymentsToPrint.length; i++) {
           const p = paymentsToPrint[i];
           const pageId = `pdf-bulk-payment-${p.id}`;
           const page1 = document.getElementById(pageId);
           if (page1) {
-            const canvas1 = await html2canvas(page1, { scale: 2, useCORS: true, logging: false });
-            const imgData1 = canvas1.toDataURL("image/png");
-            const pdfHeight1 = (canvas1.height * pdfWidth) / canvas1.width;
-            pdf.addPage();
-            pdf.addImage(imgData1, "PNG", 0, 0, pdfWidth, pdfHeight1);
+            try {
+              const canvas1 = await html2canvas(page1, { scale: 2, useCORS: true, allowTaint: true, logging: false });
+              const imgData1 = canvas1.toDataURL("image/png");
+              const pdfHeight1 = (canvas1.height * pdfWidth) / canvas1.width;
+              pdf.addPage();
+              pdf.addImage(imgData1, "PNG", 0, 0, pdfWidth, pdfHeight1);
+            } catch (pErr) {
+              console.warn(`Bulk payment ${p.id} canvas error:`, pErr);
+            }
           }
 
-          // Render invoices for this payment
           const invoiceUrls = p.invoiceUrls && p.invoiceUrls.length > 0 ? p.invoiceUrls : (p.invoiceUrl ? [p.invoiceUrl] : []);
           for (let j = 0; j < invoiceUrls.length; j++) {
             const invPage = document.getElementById(`pdf-bulk-payment-${p.id}-invoice-${j}`);
             if (invPage) {
-              const canvasInv = await html2canvas(invPage, { scale: 3, useCORS: true, logging: false });
-              const imgDataInv = canvasInv.toDataURL("image/jpeg", 0.95);
-              const pdfHeightInv = (canvasInv.height * pdfWidth) / canvasInv.width;
-              pdf.addPage();
-              pdf.addImage(imgDataInv, "JPEG", 0, 0, pdfWidth, pdfHeightInv);
+              try {
+                const canvasInv = await html2canvas(invPage, { scale: 2, useCORS: true, allowTaint: true, logging: false });
+                const imgDataInv = canvasInv.toDataURL("image/jpeg", 0.95);
+                const pdfHeightInv = (canvasInv.height * pdfWidth) / canvasInv.width;
+                pdf.addPage();
+                pdf.addImage(imgDataInv, "JPEG", 0, 0, pdfWidth, pdfHeightInv);
+              } catch (invErr) {
+                console.warn(`Bulk payment ${p.id} invoice ${j} error:`, invErr);
+              }
             }
           }
         }
@@ -1044,10 +1113,10 @@ export default function PaymentsRedesignPage() {
           wrapper.style.left = "-9999px";
         }
         setIsGeneratingBulkPDF(false);
-        setBulkPaymentsForPrint([]); // clear
-        setSelectedBulkItems(new Set()); // clear selection
+        setBulkPaymentsForPrint([]);
+        setSelectedBulkItems(new Set());
       }
-    }, 1000); // 1000ms for react to render
+    }, 1000);
   };// Derived filtered data
   const filteredPayments = useMemo(() => {
     return payments.filter(p => {

@@ -181,23 +181,50 @@ export default function DepositsPage() {
       wrapper.style.left = "0";
       wrapper.style.top = "0";
     }
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 600));
     const page = document.getElementById("pdf-deposit-slip");
     try {
       const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
       const pdfWidth = pdf.internal.pageSize.getWidth();
+      let pageAdded = false;
       
       if (page) {
-        const canvas = await html2canvas(page, { scale: 2, useCORS: true, logging: false });
-        const imgData = canvas.toDataURL("image/png");
-        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-        pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+        try {
+          const canvas = await html2canvas(page, { scale: 2, useCORS: true, allowTaint: true, logging: false });
+          const imgData = canvas.toDataURL("image/png");
+          const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+          pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+          pageAdded = true;
+        } catch (err1) {
+          console.warn("Primary deposit slip canvas failed, using fallback:", err1);
+          const canvasFb = await html2canvas(page, { scale: 2, allowTaint: true, logging: false });
+          const imgDataFb = canvasFb.toDataURL("image/png");
+          const pdfHeightFb = (canvasFb.height * pdfWidth) / canvasFb.width;
+          pdf.addImage(imgDataFb, "PNG", 0, 0, pdfWidth, pdfHeightFb);
+          pageAdded = true;
+        }
       }
 
-      pdf.autoPrint();
-      window.open(pdf.output("bloburl"), "_blank");
+      if (pageAdded) {
+        try {
+          pdf.autoPrint();
+          const blobUrl = pdf.output("bloburl");
+          const printWin = window.open(blobUrl, "_blank");
+          if (!printWin || printWin.closed || typeof printWin.closed === "undefined") {
+            pdf.save(`Deposit_Slip_${new Date().toISOString().split('T')[0]}.pdf`);
+            toast.success("Deposit slip downloaded as PDF!");
+          }
+        } catch (e) {
+          pdf.save(`Deposit_Slip_${new Date().toISOString().split('T')[0]}.pdf`);
+          toast.success("Deposit slip downloaded as PDF!");
+        }
+      } else {
+        toast.error("Failed to generate PDF.");
+      }
+
       setSelectedDepositForPrint(null);
     } catch (error) {
+      console.error("Deposit PDF Generation Error:", error);
       toast.error("Failed to generate PDF.");
     } finally {
       if (wrapper) {
