@@ -27,7 +27,8 @@ import {
   AlertTriangle,
   Loader2,
   X,
-  Printer
+  Printer,
+  UserCheck
 } from "lucide-react";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
@@ -253,6 +254,91 @@ export default function DepositsPage() {
     }
   };
 
+  // Fuzzy & Case-Insensitive Owner Distribution Breakdown calculation
+  const ownerSummary = React.useMemo(() => {
+    const summaryMap: Record<string, {
+      displayName: string;
+      fromBank: number;
+      fromSafe: number;
+      otherSource: number;
+      total: number;
+      count: number;
+    }> = {};
+
+    deposits.forEach((deposit: any) => {
+      const fromSrc = String(deposit.from || "").toLowerCase();
+      const toSrc = String(deposit.to || "").toLowerCase();
+      const isOwnerDest = toSrc === "owner";
+
+      let raw = String(deposit.ownerName || "").trim();
+
+      if (!raw && deposit.note) {
+        const noteStr = String(deposit.note).trim();
+        if (noteStr.toLowerCase().includes("owner:")) {
+          const parts = noteStr.split(/owner:/i);
+          raw = parts[1] ? parts[1].trim() : noteStr;
+        } else if (isOwnerDest) {
+          raw = noteStr;
+        }
+      }
+
+      if (!raw && !isOwnerDest) return;
+      if (!raw && isOwnerDest) raw = "General Owner";
+
+      // Clean string: remove "Owner:" prefix, dots, dashes, underscores, and extra spaces
+      let cleaned = raw.replace(/^owner:\s*/i, "").trim();
+      const normalizedKey = cleaned.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+      if (!normalizedKey) return;
+
+      let key = normalizedKey;
+      let displayName = cleaned;
+
+      if (normalizedKey.includes("ashraf")) {
+        key = "mr_ashraf";
+        displayName = "Mr. Ashraf";
+      } else if (normalizedKey.includes("youssef")) {
+        key = "mr_youssef";
+        displayName = "Mr. Youssef";
+      } else {
+        displayName = cleaned
+          .replace(/\./g, " ")
+          .split(" ")
+          .filter(Boolean)
+          .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+          .join(" ");
+        if (!displayName.toLowerCase().startsWith("mr") && !displayName.toLowerCase().startsWith("mr.")) {
+          displayName = `Mr. ${displayName}`;
+        }
+      }
+
+      if (!summaryMap[key]) {
+        summaryMap[key] = {
+          displayName,
+          fromBank: 0,
+          fromSafe: 0,
+          otherSource: 0,
+          total: 0,
+          count: 0
+        };
+      }
+
+      const amt = Number(deposit.amount) || 0;
+      summaryMap[key].total += amt;
+      summaryMap[key].count += 1;
+
+      if (fromSrc === "bank") {
+        summaryMap[key].fromBank += amt;
+      } else if (fromSrc === "safe") {
+        summaryMap[key].fromSafe += amt;
+      } else {
+        summaryMap[key].otherSource += amt;
+      }
+    });
+
+    return Object.values(summaryMap).sort((a, b) => b.total - a.total);
+  }, [deposits]);
+
   return (
     <div className="space-y-6">
       {/* Header & Controls */}
@@ -336,6 +422,79 @@ export default function DepositsPage() {
           <p className="text-xs font-semibold text-amber-600/60 dark:text-amber-400/60 mt-1">active paths</p>
         </div>
       </div>
+
+      {/* 👑 OWNER WITHDRAWAL & DISTRIBUTION BREAKDOWN BOX */}
+      {ownerSummary.length > 0 && (
+        <div className="bg-[#0A101D] border border-cyan-500/20 rounded-3xl p-6 shadow-xl relative overflow-hidden space-y-4">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none" />
+
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-border/50 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-gradient-to-br from-amber-500/20 to-rose-500/20 rounded-2xl border border-amber-500/30">
+                <UserCheck className="w-6 h-6 text-amber-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-white tracking-tight flex items-center gap-2">
+                  👑 Owner Received Breakdown
+                </h3>
+                <p className="text-xs text-muted-foreground font-medium">
+                  Aggregated money received by each owner from Bank & Safe
+                </p>
+              </div>
+            </div>
+            <div className="px-3.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-mono font-bold">
+              EGP {formatMoney(ownerSummary.reduce((acc, curr) => acc + curr.total, 0))} Total Distributed
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+            {ownerSummary.map((owner) => (
+              <div
+                key={owner.displayName}
+                className="bg-card border border-border/80 rounded-2xl p-4 space-y-3 relative group hover:border-cyan-500/40 transition-all shadow-md"
+              >
+                <div className="flex justify-between items-start">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center font-black text-cyan-400 text-sm">
+                      {owner.displayName.replace(/^mr\.\s*/i, "").charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-white text-base tracking-tight">{owner.displayName}</h4>
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{owner.count} transactions</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Total Received</span>
+                    <span className="text-xl font-black text-emerald-400 font-mono">
+                      EGP {formatMoney(owner.total)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/40 text-xs">
+                  <div className="bg-muted/40 p-2.5 rounded-xl border border-border/50">
+                    <span className="text-[10px] font-bold text-sky-400 uppercase tracking-wider flex items-center gap-1 mb-0.5">
+                      🏦 From Bank
+                    </span>
+                    <span className="font-mono font-bold text-white text-sm">
+                      EGP {formatMoney(owner.fromBank)}
+                    </span>
+                  </div>
+
+                  <div className="bg-muted/40 p-2.5 rounded-xl border border-border/50">
+                    <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1 mb-0.5">
+                      🔐 From Safe
+                    </span>
+                    <span className="font-mono font-bold text-white text-sm">
+                      EGP {formatMoney(owner.fromSafe)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Flow Summary Badges */}
       {uniqueFlows.length > 0 && (
