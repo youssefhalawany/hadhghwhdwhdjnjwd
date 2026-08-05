@@ -1061,131 +1061,84 @@ export default function CreditsPage() {
     }
   };
 
-  const handlePrintPdf = async (credit: Credit) => {
+  const handlePrintPdf = (credit: Credit) => {
     setSelectedCreditForPrint(credit);
     setIsPrinting(true);
+  };
 
-    await new Promise(resolve => setTimeout(resolve, 350));
+  // useEffect: when isPrinting becomes true and the print wrapper is in the DOM, clone it into an iframe and print
+  useEffect(() => {
+    if (!isPrinting || !selectedCreditForPrint) return;
 
-    let page1 = document.getElementById("print-credit-container");
-    if (!page1) {
-      await new Promise(resolve => setTimeout(resolve, 350));
-      page1 = document.getElementById("print-credit-container");
-    }
+    let attempts = 0;
+    const maxAttempts = 20; // 20 * 100ms = 2 seconds max wait
 
-    if (!page1) {
-      toast.error("Failed to prepare credit receipt.");
-      setIsPrinting(false);
-      return;
-    }
+    const tryPrint = () => {
+      attempts++;
+      const wrapper = document.getElementById("single-credit-print-wrapper");
+      if (!wrapper) {
+        if (attempts < maxAttempts) {
+          setTimeout(tryPrint, 100);
+          return;
+        }
+        toast.error("Could not prepare credit receipt for printing.");
+        setIsPrinting(false);
+        return;
+      }
 
-    const html2canvasOptions = {
-      scale: 2,
-      useCORS: true,
-      logging: false
+      // Create or reuse a hidden iframe
+      let iframe = document.getElementById("credit-print-iframe") as HTMLIFrameElement;
+      if (iframe) iframe.remove();
+      iframe = document.createElement("iframe");
+      iframe.id = "credit-print-iframe";
+      iframe.style.position = "fixed";
+      iframe.style.right = "0";
+      iframe.style.bottom = "0";
+      iframe.style.width = "0px";
+      iframe.style.height = "0px";
+      iframe.style.border = "0";
+      document.body.appendChild(iframe);
+
+      const receiptHtml = wrapper.innerHTML;
+      const iframeDoc = iframe.contentWindow?.document;
+      if (!iframeDoc) {
+        toast.error("Could not open print window.");
+        setIsPrinting(false);
+        return;
+      }
+
+      iframeDoc.open();
+      iframeDoc.write(`<!DOCTYPE html>
+<html>
+<head>
+<title>Credit Receipt</title>
+<style>
+@page { size: A4 portrait; margin: 0; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+</style>
+</head>
+<body>${receiptHtml}</body>
+</html>`);
+      iframeDoc.close();
+
+      // Wait for iframe content to load, then print
+      setTimeout(() => {
+        try {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+          toast.success("Print dialog opened!");
+        } catch (e) {
+          console.error("Print failed:", e);
+          toast.error("Print failed. Please try again.");
+        }
+        setIsPrinting(false);
+      }, 400);
     };
 
-    try {
-      const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      let pageAddedCount = 0;
-
-      if (page1) {
-        const canvas1 = await html2canvas(page1, html2canvasOptions);
-        const imgData1 = canvas1.toDataURL("image/png");
-        const pdfHeight1 = (canvas1.height * pdfWidth) / canvas1.width;
-        pdf.addImage(imgData1, "PNG", 0, 0, pdfWidth, pdfHeight1);
-        pageAddedCount++;
-      }
-
-      const invoiceUrls = credit?.poUrls && credit.poUrls.length > 0 
-        ? credit.poUrls 
-        : (credit?.poUrl ? [credit.poUrl] : []);
-
-      for (let i = 0; i < invoiceUrls.length; i++) {
-        const pageInvoice = document.getElementById(`print-credit-invoice-page-${i}`);
-        if (pageInvoice) {
-          try {
-            const canvasInvoice = await html2canvas(pageInvoice, html2canvasOptions);
-            const imgDataInvoice = canvasInvoice.toDataURL("image/png");
-            const pdfHeightInvoice = (canvasInvoice.height * pdfWidth) / canvasInvoice.width;
-            pdf.addPage();
-            pdf.addImage(imgDataInvoice, "PNG", 0, 0, pdfWidth, pdfHeightInvoice);
-            pageAddedCount++;
-          } catch (invErr) {}
-        }
-      }
-
-      let itemsPageIndex = 0;
-      while (true) {
-        const pageItems = document.getElementById(`print-credit-items-page-${itemsPageIndex}`);
-        if (!pageItems) break;
-        
-        try {
-          const canvasItems = await html2canvas(pageItems, html2canvasOptions);
-          const imgDataItems = canvasItems.toDataURL("image/png");
-          const pdfHeightItems = (canvasItems.height * pdfWidth) / canvasItems.width;
-          pdf.addPage();
-          pdf.addImage(imgDataItems, "PNG", 0, 0, pdfWidth, pdfHeightItems);
-          pageAddedCount++;
-        } catch (itemErr) {}
-        
-        itemsPageIndex++;
-      }
-
-      if (pageAddedCount > 0) {
-        pdf.save(`Credit_Receipt_${(credit as any)?.claimNumber || (credit as any)?.claimNo || 'voucher'}.pdf`);
-        toast.success("Credit receipt PDF downloaded!");
-      } else {
-        throw new Error("No credit pages captured.");
-      }
-    } catch (error) {
-      console.warn("Canvas PDF generation failed, running HTML print fallback:", error);
-      let iframe = document.getElementById("credit-print-iframe") as HTMLIFrameElement;
-      if (!iframe) {
-        iframe = document.createElement("iframe");
-        iframe.id = "credit-print-iframe";
-        iframe.style.position = "fixed";
-        iframe.style.right = "0";
-        iframe.style.bottom = "0";
-        iframe.style.width = "0px";
-        iframe.style.height = "0px";
-        iframe.style.border = "0";
-        document.body.appendChild(iframe);
-      }
-
-      const containerHtml = page1.outerHTML;
-      const doc = iframe.contentWindow?.document;
-      if (doc) {
-        doc.open();
-        doc.write(`
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <title>Credit Report</title>
-              <style>
-                @page { size: A4 portrait; margin: 0; }
-                body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-              </style>
-            </head>
-            <body>
-              ${containerHtml}
-              <script>
-                setTimeout(function() {
-                  window.focus();
-                  window.print();
-                }, 300);
-              </script>
-            </body>
-          </html>
-        `);
-        doc.close();
-        toast.success("Opening print window...");
-      }
-    } finally {
-      setIsPrinting(false);
-    }
-  };
+    // Start polling for the wrapper to appear in DOM
+    setTimeout(tryPrint, 100);
+  }, [isPrinting, selectedCreditForPrint]);
 
   const generateBulkPDF = async () => {
     if (selectedBulkItems.size === 0) return;
@@ -2878,7 +2831,7 @@ export default function CreditsPage() {
       const branchNameHeaderDisplay = isOlaBranch ? "CIRCLE K OLA EL KORONFOL" : "CIRCLE K EL-ALAMEIN 4";
 
       return (
-      <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+      <div id="single-credit-print-wrapper" style={{ position: 'absolute', left: '-9999px', top: 0 }}>
         <div id="print-credit-container" style={{ width: '794px', minHeight: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
           
           {/* Header like Shift Report */}

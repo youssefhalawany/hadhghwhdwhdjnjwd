@@ -906,147 +906,85 @@ export default function PaymentsRedesignPage() {
     }
   };
 
-  const generatePDF = async (paymentToPrint: any) => {
+  const generatePDF = (paymentToPrint: any) => {
     if (!paymentToPrint) return;
     setSelectedPaymentForPrint(paymentToPrint);
     setGeneratingPDF(true);
+  };
 
-    await new Promise(resolve => setTimeout(resolve, 350));
+  // useEffect: when generatingPDF becomes true and the print wrapper is in the DOM, clone it into an iframe and print
+  useEffect(() => {
+    if (!generatingPDF || !selectedPaymentForPrint) return;
 
-    let page1 = document.getElementById("pdf-receipt");
-    if (!page1) {
-      await new Promise(resolve => setTimeout(resolve, 350));
-      page1 = document.getElementById("pdf-receipt");
-    }
+    let attempts = 0;
+    const maxAttempts = 20; // 20 * 100ms = 2 seconds max wait
 
-    if (!page1) {
-      toast.error("Failed to prepare receipt for printing.");
-      setGeneratingPDF(false);
-      return;
-    }
+    const tryPrint = () => {
+      attempts++;
+      const wrapper = document.getElementById("single-payment-print-wrapper");
+      if (!wrapper) {
+        if (attempts < maxAttempts) {
+          setTimeout(tryPrint, 100);
+          return;
+        }
+        toast.error("Could not prepare receipt for printing.");
+        setGeneratingPDF(false);
+        return;
+      }
 
-    const html2canvasOptions = {
-      scale: 2,
-      useCORS: true,
-      logging: false
+      // Create or reuse a hidden iframe
+      let iframe = document.getElementById("payment-print-iframe") as HTMLIFrameElement;
+      if (iframe) iframe.remove();
+      iframe = document.createElement("iframe");
+      iframe.id = "payment-print-iframe";
+      iframe.style.position = "fixed";
+      iframe.style.right = "0";
+      iframe.style.bottom = "0";
+      iframe.style.width = "0px";
+      iframe.style.height = "0px";
+      iframe.style.border = "0";
+      document.body.appendChild(iframe);
+
+      const receiptHtml = wrapper.innerHTML;
+      const iframeDoc = iframe.contentWindow?.document;
+      if (!iframeDoc) {
+        toast.error("Could not open print window.");
+        setGeneratingPDF(false);
+        return;
+      }
+
+      iframeDoc.open();
+      iframeDoc.write(`<!DOCTYPE html>
+<html>
+<head>
+<title>Payment Voucher</title>
+<style>
+@page { size: A4 portrait; margin: 0; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+</style>
+</head>
+<body>${receiptHtml}</body>
+</html>`);
+      iframeDoc.close();
+
+      // Wait for iframe content to load, then print
+      setTimeout(() => {
+        try {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+          toast.success("Print dialog opened!");
+        } catch (e) {
+          console.error("Print failed:", e);
+          toast.error("Print failed. Please try again.");
+        }
+        setGeneratingPDF(false);
+      }, 400);
     };
 
-    try {
-      const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      let pageAddedCount = 0;
-
-      if (page1) {
-        const canvas1 = await html2canvas(page1, html2canvasOptions);
-        const imgData1 = canvas1.toDataURL("image/png");
-        const pdfHeight1 = (canvas1.height * pdfWidth) / canvas1.width;
-        pdf.addImage(imgData1, "PNG", 0, 0, pdfWidth, pdfHeight1);
-        pageAddedCount++;
-      }
-
-      // Page 2: Additional Voucher Page
-      const page2 = document.getElementById("pdf-receipt-page2");
-      if (page2) {
-        try {
-          const canvas2 = await html2canvas(page2, html2canvasOptions);
-          const imgData2 = canvas2.toDataURL("image/png");
-          const pdfHeight2 = (canvas2.height * pdfWidth) / canvas2.width;
-          pdf.addPage();
-          pdf.addImage(imgData2, "PNG", 0, 0, pdfWidth, pdfHeight2);
-          pageAddedCount++;
-        } catch (e2) {}
-      }
-
-      // Invoices Attachment Pages
-      const invoiceUrls = paymentToPrint?.invoiceUrls && paymentToPrint.invoiceUrls.length > 0
-        ? paymentToPrint.invoiceUrls
-        : (paymentToPrint?.invoiceUrl ? [paymentToPrint.invoiceUrl] : []);
-
-      for (let i = 0; i < invoiceUrls.length; i++) {
-        const pageInvoice = document.getElementById(`pdf-receipt-invoice-page-${i}`);
-        if (pageInvoice) {
-          try {
-            const canvasInvoice = await html2canvas(pageInvoice, html2canvasOptions);
-            const imgDataInvoice = canvasInvoice.toDataURL("image/jpeg", 0.95);
-            const pdfHeightInvoice = (canvasInvoice.height * pdfWidth) / canvasInvoice.width;
-            pdf.addPage();
-            pdf.addImage(imgDataInvoice, "JPEG", 0, 0, pdfWidth, pdfHeightInvoice);
-            pageAddedCount++;
-          } catch (eInv) {}
-        }
-      }
-
-      // Additional Items Pages
-      let itemsPageIndex = 0;
-      while (true) {
-        const pageItems = document.getElementById(`pdf-receipt-page4-${itemsPageIndex}`);
-        if (!pageItems) break;
-
-        try {
-          const canvasItems = await html2canvas(pageItems, html2canvasOptions);
-          const imgDataItems = canvasItems.toDataURL("image/png");
-          const pdfHeightItems = (canvasItems.height * pdfWidth) / canvasItems.width;
-          pdf.addPage();
-          pdf.addImage(imgDataItems, "PNG", 0, 0, pdfWidth, pdfHeightItems);
-          pageAddedCount++;
-        } catch (eItems) {}
-
-        itemsPageIndex++;
-      }
-
-      if (pageAddedCount > 0) {
-        pdf.save(`Payment_Voucher_${paymentToPrint.invoiceNumber || paymentToPrint.id || 'receipt'}.pdf`);
-        toast.success("Receipt PDF downloaded!");
-      } else {
-        throw new Error("No receipt pages captured.");
-      }
-    } catch (err) {
-      console.warn("Canvas PDF generation failed, running HTML print fallback:", err);
-      let iframe = document.getElementById("payment-print-iframe") as HTMLIFrameElement;
-      if (!iframe) {
-        iframe = document.createElement("iframe");
-        iframe.id = "payment-print-iframe";
-        iframe.style.position = "fixed";
-        iframe.style.right = "0";
-        iframe.style.bottom = "0";
-        iframe.style.width = "0px";
-        iframe.style.height = "0px";
-        iframe.style.border = "0";
-        document.body.appendChild(iframe);
-      }
-
-      const containerHtml = document.getElementById("single-payment-print-wrapper")?.innerHTML || page1.outerHTML;
-      const doc = iframe.contentWindow?.document;
-      if (doc) {
-        doc.open();
-        doc.write(`
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <title>Payment Voucher</title>
-              <style>
-                @page { size: A4 portrait; margin: 0; }
-                body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-              </style>
-            </head>
-            <body>
-              ${containerHtml}
-              <script>
-                setTimeout(function() {
-                  window.focus();
-                  window.print();
-                }, 300);
-              </script>
-            </body>
-          </html>
-        `);
-        doc.close();
-        toast.success("Opening print window...");
-      }
-    } finally {
-      setGeneratingPDF(false);
-    }
-  };
+    // Start polling for the wrapper to appear in DOM
+    setTimeout(tryPrint, 100);
+  }, [generatingPDF, selectedPaymentForPrint]);
 
   const generateBulkPDF = async () => {
     if (selectedBulkItems.size === 0) return;
