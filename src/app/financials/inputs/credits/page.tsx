@@ -1067,20 +1067,29 @@ export default function CreditsPage() {
 
     setTimeout(async () => {
       try {
-        await new Promise(resolve => setTimeout(resolve, 400));
+        await new Promise(resolve => setTimeout(resolve, 350));
         let wrapper = document.getElementById("single-credit-print-wrapper");
         if (!wrapper) {
-          await new Promise(resolve => setTimeout(resolve, 300));
+          await new Promise(resolve => setTimeout(resolve, 350));
           wrapper = document.getElementById("single-credit-print-wrapper");
         }
 
         if (wrapper) {
-          wrapper.style.left = "0px";
+          wrapper.style.position = "fixed";
+          wrapper.style.left = "-9999px";
           wrapper.style.top = "0px";
-          wrapper.style.zIndex = "99999";
+          wrapper.style.opacity = "1";
+          wrapper.style.visibility = "visible";
         }
 
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 400));
+
+        const html2canvasOptions = {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          imageTimeout: 15000
+        };
 
         const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
         const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -1093,22 +1102,13 @@ export default function CreditsPage() {
         }
         if (page1) {
           try {
-            const canvas1 = await html2canvas(page1, { scale: 2, useCORS: true, allowTaint: true, logging: false });
+            const canvas1 = await html2canvas(page1, html2canvasOptions);
             const imgData1 = canvas1.toDataURL("image/png");
             const pdfHeight1 = (canvas1.height * pdfWidth) / canvas1.width;
             pdf.addImage(imgData1, "PNG", 0, 0, pdfWidth, pdfHeight1);
             pageAddedCount++;
           } catch (err1) {
-            console.warn("Credit receipt canvas failed, trying fallback:", err1);
-            try {
-              const canvas1Fb = await html2canvas(page1, { scale: 2, allowTaint: true, logging: false });
-              const imgData1Fb = canvas1Fb.toDataURL("image/png");
-              const pdfHeight1Fb = (canvas1Fb.height * pdfWidth) / canvas1Fb.width;
-              pdf.addImage(imgData1Fb, "PNG", 0, 0, pdfWidth, pdfHeight1Fb);
-              pageAddedCount++;
-            } catch (fbErr) {
-              console.error("Fallback credit canvas failed:", fbErr);
-            }
+            console.error("Credit receipt canvas error:", err1);
           }
         }
 
@@ -1120,14 +1120,14 @@ export default function CreditsPage() {
           const pageInvoice = document.getElementById(`print-credit-invoice-page-${i}`);
           if (pageInvoice) {
             try {
-              const canvasInvoice = await html2canvas(pageInvoice, { scale: 2, useCORS: true, allowTaint: true, logging: false });
+              const canvasInvoice = await html2canvas(pageInvoice, html2canvasOptions);
               const imgDataInvoice = canvasInvoice.toDataURL("image/png");
               const pdfHeightInvoice = (canvasInvoice.height * pdfWidth) / canvasInvoice.width;
               pdf.addPage();
               pdf.addImage(imgDataInvoice, "PNG", 0, 0, pdfWidth, pdfHeightInvoice);
               pageAddedCount++;
             } catch (invErr) {
-              console.warn(`Credit attachment ${i} canvas error:`, invErr);
+              console.warn(`Credit attachment ${i} canvas skipped:`, invErr);
             }
           }
         }
@@ -1138,14 +1138,14 @@ export default function CreditsPage() {
           if (!pageItems) break;
           
           try {
-            const canvasItems = await html2canvas(pageItems, { scale: 2, useCORS: true, allowTaint: true, logging: false });
+            const canvasItems = await html2canvas(pageItems, html2canvasOptions);
             const imgDataItems = canvasItems.toDataURL("image/png");
             const pdfHeightItems = (canvasItems.height * pdfWidth) / canvasItems.width;
             pdf.addPage();
             pdf.addImage(imgDataItems, "PNG", 0, 0, pdfWidth, pdfHeightItems);
             pageAddedCount++;
           } catch (itemErr) {
-            console.warn(`Credit items page ${itemsPageIndex} canvas error:`, itemErr);
+            console.warn(`Credit items page ${itemsPageIndex} canvas skipped:`, itemErr);
           }
           
           itemsPageIndex++;

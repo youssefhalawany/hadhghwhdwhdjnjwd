@@ -912,27 +912,28 @@ export default function PaymentsRedesignPage() {
     setGeneratingPDF(true);
 
     // Wait for React to re-render and mount single-payment-print-wrapper in DOM
-    await new Promise(resolve => setTimeout(resolve, 400));
+    await new Promise(resolve => setTimeout(resolve, 350));
 
     let wrapper = document.getElementById("single-payment-print-wrapper");
     if (!wrapper) {
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 350));
       wrapper = document.getElementById("single-payment-print-wrapper");
     }
 
     if (wrapper) {
-      wrapper.style.left = "0px";
+      wrapper.style.position = "fixed";
+      wrapper.style.left = "-9999px";
       wrapper.style.top = "0px";
-      wrapper.style.zIndex = "99999";
+      wrapper.style.opacity = "1";
+      wrapper.style.visibility = "visible";
     }
     
-    // Give time for layout and images to settle
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Give time for layout and images to settle offscreen
+    await new Promise(resolve => setTimeout(resolve, 400));
 
     const html2canvasOptions = {
       scale: 2,
       useCORS: true,
-      allowTaint: true,
       logging: false,
       imageTimeout: 15000
     };
@@ -956,16 +957,7 @@ export default function PaymentsRedesignPage() {
           pdf.addImage(imgData1, "PNG", 0, 0, pdfWidth, pdfHeight1);
           pageAddedCount++;
         } catch (err1) {
-          console.warn("Primary canvas rendering failed, trying fallback:", err1);
-          try {
-            const canvas1Fb = await html2canvas(page1, { scale: 2, allowTaint: true, logging: false });
-            const imgData1Fb = canvas1Fb.toDataURL("image/png");
-            const pdfHeight1Fb = (canvas1Fb.height * pdfWidth) / canvas1Fb.width;
-            pdf.addImage(imgData1Fb, "PNG", 0, 0, pdfWidth, pdfHeight1Fb);
-            pageAddedCount++;
-          } catch (errFb) {
-            console.error("Fallback canvas failed:", errFb);
-          }
+          console.error("Primary canvas rendering error:", err1);
         }
       }
 
@@ -980,7 +972,7 @@ export default function PaymentsRedesignPage() {
           pdf.addImage(imgData2, "PNG", 0, 0, pdfWidth, pdfHeight2);
           pageAddedCount++;
         } catch (err2) {
-          console.warn("Page 2 canvas failed:", err2);
+          console.warn("Page 2 canvas skipped:", err2);
         }
       }
 
@@ -993,14 +985,14 @@ export default function PaymentsRedesignPage() {
         const pageInvoice = document.getElementById(`pdf-receipt-invoice-page-${i}`);
         if (pageInvoice) {
           try {
-            const canvasInvoice = await html2canvas(pageInvoice, { scale: 2, useCORS: true, allowTaint: true, logging: false, imageTimeout: 15000 });
+            const canvasInvoice = await html2canvas(pageInvoice, html2canvasOptions);
             const imgDataInvoice = canvasInvoice.toDataURL("image/jpeg", 0.95);
             const pdfHeightInvoice = (canvasInvoice.height * pdfWidth) / canvasInvoice.width;
             pdf.addPage();
             pdf.addImage(imgDataInvoice, "JPEG", 0, 0, pdfWidth, pdfHeightInvoice);
             pageAddedCount++;
           } catch (errInv) {
-            console.warn(`Invoice page ${i} canvas failed:`, errInv);
+            console.warn(`Invoice page ${i} canvas skipped:`, errInv);
           }
         }
       }
@@ -1019,7 +1011,7 @@ export default function PaymentsRedesignPage() {
           pdf.addImage(imgDataItems, "PNG", 0, 0, pdfWidth, pdfHeightItems);
           pageAddedCount++;
         } catch (errItems) {
-          console.warn(`Items page ${itemsPageIndex} canvas failed:`, errItems);
+          console.warn(`Items page ${itemsPageIndex} canvas skipped:`, errItems);
         }
 
         itemsPageIndex++;
@@ -1032,11 +1024,13 @@ export default function PaymentsRedesignPage() {
           const printWindow = window.open(blobUrl, "_blank");
           if (!printWindow || printWindow.closed || typeof printWindow.closed === "undefined") {
             // Popup blocker intercepted print window, fallback to direct download
-            pdf.save(`Payment_Receipt_${paymentToPrint.invoiceNumber || paymentToPrint.id || 'voucher'}.pdf`);
+            pdf.save(`Payment_Voucher_${paymentToPrint.invoiceNumber || paymentToPrint.id || 'receipt'}.pdf`);
             toast.success("Receipt downloaded as PDF!");
+          } else {
+            toast.success("Receipt ready for printing!");
           }
         } catch (printErr) {
-          pdf.save(`Payment_Receipt_${paymentToPrint.invoiceNumber || paymentToPrint.id || 'voucher'}.pdf`);
+          pdf.save(`Payment_Voucher_${paymentToPrint.invoiceNumber || paymentToPrint.id || 'receipt'}.pdf`);
           toast.success("Receipt downloaded as PDF!");
         }
       } else {
