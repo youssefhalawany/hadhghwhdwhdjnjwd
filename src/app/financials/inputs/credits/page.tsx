@@ -1431,7 +1431,7 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <button className="flex items-center gap-2 bg-white/60 backdrop-blur-md border border-slate-200/60 text-slate-700 px-4 py-2.5 rounded-xl font-semibold shadow-sm hover:bg-white hover:border-slate-300 transition-all">
+              <button className="flex items-center gap-2 bg-slate-800/60 backdrop-blur-md border border-slate-700/60 text-slate-300 px-4 py-2.5 rounded-xl font-semibold shadow-sm hover:bg-slate-700 hover:border-slate-600 transition-all">
                 <FileDown size={18} /> {isAr ? "تصدير" : "Export"}
               </button>
               <button
@@ -1447,18 +1447,18 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
             {/* 1. Credit Aging Dashboard */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/60 p-6 rounded-3xl shadow-sm lg:col-span-1">
-              <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-6">
+            <div className="bg-slate-900 border border-slate-700/60 p-6 rounded-3xl shadow-sm lg:col-span-1">
+              <h3 className="text-lg font-black text-slate-100 flex items-center gap-2 mb-6">
                 <AlertCircle size={20} className="text-rose-500" />
                 {isAr ? "أعمار الديون والآجل" : "Credit Aging"}
               </h3>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={dashboardData.agingChartData} margin={{top:10, right:10, left:-20, bottom:0}}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize:12, fill:'#64748b'}} />
                     <YAxis axisLine={false} tickLine={false} tick={{fontSize:12, fill:'#64748b'}} tickFormatter={(val) => `£${(val/1000).toFixed(0)}k`} />
-                    <RechartsTooltip cursor={{fill: '#f1f5f9'}} contentStyle={{borderRadius:'12px', border:'none', boxShadow:'0 10px 15px -3px rgb(0 0 0 / 0.1)'}} />
+                    <RechartsTooltip cursor={{fill: '#1e293b'}} contentStyle={{borderRadius:'12px', border:'1px solid #334155', boxShadow:'0 10px 15px -3px rgb(0 0 0 / 0.3)', backgroundColor:'#1e293b', color:'#e2e8f0'}} />
                     <Bar dataKey="amount" radius={[6,6,6,6]}>
                       {dashboardData.agingChartData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
@@ -1470,8 +1470,8 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
             </div>
 
             {/* 2. Debt Waterfall */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/60 p-6 rounded-3xl shadow-sm lg:col-span-1">
-              <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-6">
+            <div className="bg-slate-900 border border-slate-700/60 p-6 rounded-3xl shadow-sm lg:col-span-1">
+              <h3 className="text-lg font-black text-slate-100 flex items-center gap-2 mb-6">
                 <Calendar size={20} className="text-sky-500" />
                 30-Day Debt Waterfall
               </h3>
@@ -1484,10 +1484,10 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                         <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" />
                     <XAxis dataKey="date" axisLine={false} tickLine={false} tickFormatter={(val) => val.split('-').slice(1).join('/')} tick={{fontSize:12, fill:'#64748b'}} />
                     <YAxis axisLine={false} tickLine={false} tick={{fontSize:12, fill:'#64748b'}} tickFormatter={(val) => `£${(val/1000).toFixed(0)}k`} />
-                    <RechartsTooltip cursor={{stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '4 4'}} contentStyle={{borderRadius:'12px', border:'none', boxShadow:'0 10px 15px -3px rgb(0 0 0 / 0.1)'}} />
+                    <RechartsTooltip cursor={{stroke: '#475569', strokeWidth: 1, strokeDasharray: '4 4'}} contentStyle={{borderRadius:'12px', border:'1px solid #334155', boxShadow:'0 10px 15px -3px rgb(0 0 0 / 0.3)', backgroundColor:'#1e293b', color:'#e2e8f0'}} />
                     <Area type="monotone" dataKey="amount" stroke="#0ea5e9" strokeWidth={3} fillOpacity={1} fill="url(#colorAmount)" />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -1495,12 +1495,12 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
             </div>
 
             {/* 3. Smart Payment Simulator */}
-            <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-slate-800 dark:to-slate-900 border border-indigo-100 dark:border-slate-700 p-6 rounded-3xl shadow-sm lg:col-span-1 relative overflow-hidden flex flex-col">
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 p-6 rounded-3xl shadow-sm lg:col-span-1 relative overflow-hidden flex flex-col">
               <div className="absolute top-0 right-0 p-4 opacity-5"><Banknote size={100} /></div>
-              <h3 className="text-lg font-black text-indigo-900 dark:text-indigo-300 flex items-center gap-2 mb-2 relative z-10">
+              <h3 className="text-lg font-black text-indigo-300 flex items-center gap-2 mb-2 relative z-10">
                 <Banknote size={20} /> Smart Settle Simulator
               </h3>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 relative z-10">Type your available cash. We'll suggest the perfect payment plan.</p>
+              <p className="text-sm text-slate-400 mb-4 relative z-10">Type your available cash. We'll suggest the perfect payment plan.</p>
               
               <div className="relative z-10 flex gap-2 mb-4">
                 <input 
@@ -1508,7 +1508,7 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                   placeholder="e.g. 20000"
                   value={simulatorCash}
                   onChange={(e) => setSimulatorCash(e.target.value)}
-                  className="flex-1 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 font-bold focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 font-bold text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 />
               </div>
 
@@ -1517,9 +1517,9 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                   <div className="text-center text-slate-400 text-sm mt-8">Awaiting cash input...</div>
                 ) : (
                   simulatorResults.map((res, i) => (
-                    <div key={i} className="flex justify-between items-center bg-white/60 dark:bg-slate-800/60 p-2 rounded-lg border border-slate-200/50">
+                    <div key={i} className="flex justify-between items-center bg-slate-800/60 p-2 rounded-lg border border-slate-700/50">
                       <div>
-                        <p className="text-xs font-bold text-slate-800 dark:text-white capitalize">{res.credit.companyName}</p>
+                        <p className="text-xs font-bold text-white capitalize">{res.credit.companyName}</p>
                         <p className="text-[10px] text-slate-500">{res.type} Payment</p>
                       </div>
                       <p className="text-sm font-black text-indigo-600">EGP {res.payAmount.toLocaleString()}</p>
@@ -1533,67 +1533,67 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
 
           {/* Premium Metric Cards */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-rose-50 to-orange-50 border border-orange-100/50 p-5 rounded-2xl shadow-sm relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><AlertCircle size={48} className="text-orange-600" /></div>
-              <div className="flex items-center gap-2 text-orange-600 mb-3">
+            <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-orange-950/40 to-slate-900 border border-orange-800/30 p-5 rounded-2xl shadow-sm relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><AlertCircle size={48} className="text-orange-500" /></div>
+              <div className="flex items-center gap-2 text-orange-500 mb-3">
                 <AlertCircle size={18} className="drop-shadow-sm" />
                 <p className="text-sm font-bold tracking-wide uppercase">Outstanding</p>
               </div>
               <div className="flex items-center gap-1 relative z-10">
-                <span className="text-xl font-bold text-slate-900 tracking-tight mt-1">EGP</span>
+                <span className="text-xl font-bold text-white tracking-tight mt-1">EGP</span>
                 <AnalogOdometer value={stats.outstanding.amount} />
               </div>
-              <p className="text-xs font-semibold text-orange-600/70 mt-1 relative z-10">{stats.outstanding.count} open invoices</p>
+              <p className="text-xs font-semibold text-orange-500/70 mt-1 relative z-10">{stats.outstanding.count} open invoices</p>
             </motion.div>
 
-            <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-sky-50 to-blue-50 border border-blue-100/50 p-5 rounded-2xl shadow-sm relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Clock size={48} className="text-blue-600" /></div>
-              <div className="flex items-center gap-2 text-blue-600 mb-3">
+            <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-blue-950/40 to-slate-900 border border-blue-800/30 p-5 rounded-2xl shadow-sm relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Clock size={48} className="text-blue-400" /></div>
+              <div className="flex items-center gap-2 text-blue-400 mb-3">
                 <Clock size={18} className="drop-shadow-sm" />
                 <p className="text-sm font-bold tracking-wide uppercase">Pending</p>
               </div>
-              <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {stats.pending.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-              <p className="text-xs font-semibold text-blue-600/70 mt-1 relative z-10">{stats.pending.count} awaiting clear</p>
+              <p className="text-2xl font-black text-white tracking-tight relative z-10">EGP {stats.pending.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+              <p className="text-xs font-semibold text-blue-400/70 mt-1 relative z-10">{stats.pending.count} awaiting clear</p>
             </motion.div>
 
-            <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-amber-50 to-yellow-50 border border-yellow-100/50 p-5 rounded-2xl shadow-sm relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><PieChart size={48} className="text-amber-600" /></div>
-              <div className="flex items-center gap-2 text-amber-600 mb-3">
+            <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-amber-950/40 to-slate-900 border border-amber-800/30 p-5 rounded-2xl shadow-sm relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><PieChart size={48} className="text-amber-400" /></div>
+              <div className="flex items-center gap-2 text-amber-400 mb-3">
                 <PieChart size={18} className="drop-shadow-sm" />
                 <p className="text-sm font-bold tracking-wide uppercase">Partial</p>
               </div>
-              <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {stats.partial.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-              <p className="text-xs font-semibold text-amber-600/70 mt-1 relative z-10">{stats.partial.count} partially paid</p>
+              <p className="text-2xl font-black text-white tracking-tight relative z-10">EGP {stats.partial.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+              <p className="text-xs font-semibold text-amber-400/70 mt-1 relative z-10">{stats.partial.count} partially paid</p>
             </motion.div>
 
-            <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-100/50 p-5 rounded-2xl shadow-sm relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><CheckCircle size={48} className="text-emerald-600" /></div>
-              <div className="flex items-center gap-2 text-emerald-600 mb-3">
+            <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-emerald-950/40 to-slate-900 border border-emerald-800/30 p-5 rounded-2xl shadow-sm relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><CheckCircle size={48} className="text-emerald-400" /></div>
+              <div className="flex items-center gap-2 text-emerald-400 mb-3">
                 <CheckCircle size={18} className="drop-shadow-sm" />
                 <p className="text-sm font-bold tracking-wide uppercase">Collected</p>
               </div>
-              <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {stats.collected.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-              <p className="text-xs font-semibold text-emerald-600/70 mt-1 relative z-10">{stats.collected.count} fully paid</p>
+              <p className="text-2xl font-black text-white tracking-tight relative z-10">EGP {stats.collected.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+              <p className="text-xs font-semibold text-emerald-400/70 mt-1 relative z-10">{stats.collected.count} fully paid</p>
             </motion.div>
 
-            <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-red-50 to-rose-50 border border-red-100/50 p-5 rounded-2xl shadow-sm relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><AlertTriangle size={48} className="text-red-600" /></div>
-              <div className="flex items-center gap-2 text-red-600 mb-3">
+            <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-red-950/40 to-slate-900 border border-red-800/30 p-5 rounded-2xl shadow-sm relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><AlertTriangle size={48} className="text-red-400" /></div>
+              <div className="flex items-center gap-2 text-red-400 mb-3">
                 <AlertTriangle size={18} className="drop-shadow-sm" />
                 <p className="text-sm font-bold tracking-wide uppercase">Overdue</p>
               </div>
-              <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {stats.overdue.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-              <p className="text-xs font-semibold text-red-600/70 mt-1 relative z-10">{stats.overdue.count} past due date</p>
+              <p className="text-2xl font-black text-white tracking-tight relative z-10">EGP {stats.overdue.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+              <p className="text-xs font-semibold text-red-400/70 mt-1 relative z-10">{stats.overdue.count} past due date</p>
             </motion.div>
 
-            <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-100/50 p-5 rounded-2xl shadow-sm relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Building size={48} className="text-violet-600" /></div>
-              <div className="flex items-center gap-2 text-violet-600 mb-3">
+            <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-violet-950/40 to-slate-900 border border-violet-800/30 p-5 rounded-2xl shadow-sm relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Building size={48} className="text-violet-400" /></div>
+              <div className="flex items-center gap-2 text-violet-400 mb-3">
                 <Building size={18} className="drop-shadow-sm" />
                 <p className="text-sm font-bold tracking-wide uppercase">Sales Only</p>
               </div>
-              <p className="text-2xl font-black text-slate-900 tracking-tight relative z-10">EGP {stats.salesOnly.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-              <p className="text-xs font-semibold text-violet-600/70 mt-1 relative z-10">{stats.salesOnly.count} active accounts</p>
+              <p className="text-2xl font-black text-white tracking-tight relative z-10">EGP {stats.salesOnly.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+              <p className="text-xs font-semibold text-violet-400/70 mt-1 relative z-10">{stats.salesOnly.count} active accounts</p>
             </motion.div>
           </div>
 
