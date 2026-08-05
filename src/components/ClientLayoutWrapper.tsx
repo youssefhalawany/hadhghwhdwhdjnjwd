@@ -520,6 +520,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     setTheme("dark");
     localStorage.setItem("circlek_theme", "dark");
     document.documentElement.classList.add("dark");
+    document.documentElement.classList.remove("light");
+    document.documentElement.style.colorScheme = "dark";
   }, []);
 
   const toggleTheme = () => {

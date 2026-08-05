@@ -24,6 +24,7 @@
 }
 
 :root, .dark, .light, html {
+  color-scheme: dark !important;
   --background: #09090b;
   --foreground: #fafafa;
   --card: #18181b;
