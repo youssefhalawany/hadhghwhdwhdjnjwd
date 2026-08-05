@@ -116,13 +116,23 @@ body {
     color: #fafafa !important;
   }
 
+  /* Override semi-transparent white & light slate background classes */
+  [class*="bg-white/"],
   .bg-slate-50,
   .bg-slate-100,
   .bg-gray-50,
   .bg-gray-100,
   .bg-zinc-50,
-  .bg-zinc-100 {
-    background-color: #18181b !important;
+  .bg-zinc-100,
+  [class*="bg-slate-50/"],
+  [class*="bg-slate-100/"] {
+    background-color: #0A101D !important;
+  }
+
+  [class*="border-slate-200"],
+  [class*="border-slate-100"],
+  [class*="border-slate-300"] {
+    border-color: rgba(255, 255, 255, 0.1) !important;
   }
 
   div.bg-white,
