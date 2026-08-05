@@ -1062,123 +1062,141 @@ export default function CreditsPage() {
   };
 
   const handlePrintPdf = async (credit: Credit) => {
+    let printWin: Window | null = null;
+    try {
+      printWin = window.open("", "_blank");
+      if (printWin) {
+        printWin.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head><title>Generating Receipt...</title></head>
+            <body style="font-family: system-ui, -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #0f172a; color: white;">
+              <div style="text-align: center; padding: 20px;">
+                <h2 style="margin: 0 0 10px; font-size: 20px;">Generating Credit PDF...</h2>
+                <p style="margin: 0; color: #94a3b8; font-size: 14px;">Please wait a moment while your document is formatted.</p>
+              </div>
+            </body>
+          </html>
+        `);
+      }
+    } catch (e) {
+      console.warn("Could not open window synchronously:", e);
+    }
+
     setSelectedCreditForPrint(credit);
     setIsPrinting(true);
 
-    setTimeout(async () => {
-      try {
-        await new Promise(resolve => setTimeout(resolve, 350));
-        let wrapper = document.getElementById("single-credit-print-wrapper");
-        if (!wrapper) {
-          await new Promise(resolve => setTimeout(resolve, 350));
-          wrapper = document.getElementById("single-credit-print-wrapper");
-        }
-
-        if (wrapper) {
-          wrapper.style.position = "fixed";
-          wrapper.style.left = "-9999px";
-          wrapper.style.top = "0px";
-          wrapper.style.opacity = "1";
-          wrapper.style.visibility = "visible";
-        }
-
+    try {
+      await new Promise(resolve => setTimeout(resolve, 400));
+      let wrapper = document.getElementById("single-credit-print-wrapper");
+      if (!wrapper) {
         await new Promise(resolve => setTimeout(resolve, 400));
-
-        const html2canvasOptions = {
-          scale: 2,
-          useCORS: true,
-          logging: false,
-          imageTimeout: 15000
-        };
-
-        const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        let pageAddedCount = 0;
-
-        let page1 = document.getElementById("print-credit-container");
-        if (!page1) {
-          await new Promise(resolve => setTimeout(resolve, 300));
-          page1 = document.getElementById("print-credit-container");
-        }
-        if (page1) {
-          try {
-            const canvas1 = await html2canvas(page1, html2canvasOptions);
-            const imgData1 = canvas1.toDataURL("image/png");
-            const pdfHeight1 = (canvas1.height * pdfWidth) / canvas1.width;
-            pdf.addImage(imgData1, "PNG", 0, 0, pdfWidth, pdfHeight1);
-            pageAddedCount++;
-          } catch (err1) {
-            console.error("Credit receipt canvas error:", err1);
-          }
-        }
-
-        const invoiceUrls = selectedCreditForPrint?.poUrls && selectedCreditForPrint.poUrls.length > 0 
-          ? selectedCreditForPrint.poUrls 
-          : (selectedCreditForPrint?.poUrl ? [selectedCreditForPrint.poUrl] : []);
-
-        for (let i = 0; i < invoiceUrls.length; i++) {
-          const pageInvoice = document.getElementById(`print-credit-invoice-page-${i}`);
-          if (pageInvoice) {
-            try {
-              const canvasInvoice = await html2canvas(pageInvoice, html2canvasOptions);
-              const imgDataInvoice = canvasInvoice.toDataURL("image/png");
-              const pdfHeightInvoice = (canvasInvoice.height * pdfWidth) / canvasInvoice.width;
-              pdf.addPage();
-              pdf.addImage(imgDataInvoice, "PNG", 0, 0, pdfWidth, pdfHeightInvoice);
-              pageAddedCount++;
-            } catch (invErr) {
-              console.warn(`Credit attachment ${i} canvas skipped:`, invErr);
-            }
-          }
-        }
-
-        let itemsPageIndex = 0;
-        while (true) {
-          const pageItems = document.getElementById(`print-credit-items-page-${itemsPageIndex}`);
-          if (!pageItems) break;
-          
-          try {
-            const canvasItems = await html2canvas(pageItems, html2canvasOptions);
-            const imgDataItems = canvasItems.toDataURL("image/png");
-            const pdfHeightItems = (canvasItems.height * pdfWidth) / canvasItems.width;
-            pdf.addPage();
-            pdf.addImage(imgDataItems, "PNG", 0, 0, pdfWidth, pdfHeightItems);
-            pageAddedCount++;
-          } catch (itemErr) {
-            console.warn(`Credit items page ${itemsPageIndex} canvas skipped:`, itemErr);
-          }
-          
-          itemsPageIndex++;
-        }
-
-        if (pageAddedCount > 0) {
-          try {
-            pdf.autoPrint();
-            const blobUrl = pdf.output("bloburl");
-            const printWin = window.open(blobUrl, "_blank");
-            if (!printWin || printWin.closed || typeof printWin.closed === "undefined") {
-              pdf.save(`Credit_Receipt_${(selectedCreditForPrint as any)?.claimNumber || (selectedCreditForPrint as any)?.claimNo || 'voucher'}.pdf`);
-              toast.success("Credit receipt downloaded as PDF!");
-            }
-          } catch (e) {
-            pdf.save(`Credit_Receipt_${(selectedCreditForPrint as any)?.claimNumber || (selectedCreditForPrint as any)?.claimNo || 'voucher'}.pdf`);
-            toast.success("Credit receipt downloaded as PDF!");
-          }
-        } else {
-          toast.error("Failed to generate PDF.");
-        }
-      } catch (error) {
-        console.error("PDF generation error:", error);
-        toast.error("Failed to generate PDF.");
-      } finally {
-        const wrapper = document.getElementById("single-credit-print-wrapper");
-        if (wrapper) {
-          wrapper.style.left = "-9999px";
-        }
-        setIsPrinting(false);
-        setSelectedCreditForPrint(null);
+        wrapper = document.getElementById("single-credit-print-wrapper");
       }
-    }, 500);
+
+      if (wrapper) {
+        wrapper.style.position = "fixed";
+        wrapper.style.left = "-9999px";
+        wrapper.style.top = "0px";
+        wrapper.style.opacity = "1";
+        wrapper.style.visibility = "visible";
+      }
+
+      const html2canvasOptions = {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        imageTimeout: 15000
+      };
+
+      const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      let pageAddedCount = 0;
+
+      let page1 = document.getElementById("print-credit-container");
+      let attempts = 0;
+      while (!page1 && attempts < 5) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+        page1 = document.getElementById("print-credit-container");
+        attempts++;
+      }
+
+      if (page1) {
+        try {
+          const canvas1 = await html2canvas(page1, html2canvasOptions);
+          const imgData1 = canvas1.toDataURL("image/png");
+          const pdfHeight1 = (canvas1.height * pdfWidth) / canvas1.width;
+          pdf.addImage(imgData1, "PNG", 0, 0, pdfWidth, pdfHeight1);
+          pageAddedCount++;
+        } catch (err1) {
+          console.error("Credit receipt canvas error:", err1);
+        }
+      }
+
+      const invoiceUrls = credit?.poUrls && credit.poUrls.length > 0 
+        ? credit.poUrls 
+        : (credit?.poUrl ? [credit.poUrl] : []);
+
+      for (let i = 0; i < invoiceUrls.length; i++) {
+        const pageInvoice = document.getElementById(`print-credit-invoice-page-${i}`);
+        if (pageInvoice) {
+          try {
+            const canvasInvoice = await html2canvas(pageInvoice, html2canvasOptions);
+            const imgDataInvoice = canvasInvoice.toDataURL("image/png");
+            const pdfHeightInvoice = (canvasInvoice.height * pdfWidth) / canvasInvoice.width;
+            pdf.addPage();
+            pdf.addImage(imgDataInvoice, "PNG", 0, 0, pdfWidth, pdfHeightInvoice);
+            pageAddedCount++;
+          } catch (invErr) {
+            console.warn(`Credit attachment ${i} canvas skipped:`, invErr);
+          }
+        }
+      }
+
+      let itemsPageIndex = 0;
+      while (true) {
+        const pageItems = document.getElementById(`print-credit-items-page-${itemsPageIndex}`);
+        if (!pageItems) break;
+        
+        try {
+          const canvasItems = await html2canvas(pageItems, html2canvasOptions);
+          const imgDataItems = canvasItems.toDataURL("image/png");
+          const pdfHeightItems = (canvasItems.height * pdfWidth) / canvasItems.width;
+          pdf.addPage();
+          pdf.addImage(imgDataItems, "PNG", 0, 0, pdfWidth, pdfHeightItems);
+          pageAddedCount++;
+        } catch (itemErr) {
+          console.warn(`Credit items page ${itemsPageIndex} canvas skipped:`, itemErr);
+        }
+        
+        itemsPageIndex++;
+      }
+
+      if (pageAddedCount > 0) {
+        pdf.autoPrint();
+        const blobUrl = pdf.output("bloburl");
+        if (printWin && !printWin.closed) {
+          printWin.location.href = String(blobUrl);
+          toast.success("Credit receipt ready for printing!");
+        } else {
+          pdf.save(`Credit_Receipt_${(credit as any)?.claimNumber || (credit as any)?.claimNo || 'voucher'}.pdf`);
+          toast.success("Credit receipt downloaded as PDF!");
+        }
+      } else {
+        if (printWin && !printWin.closed) printWin.close();
+        toast.error("Failed to generate PDF.");
+      }
+    } catch (error) {
+      if (printWin && !printWin.closed) printWin.close();
+      console.error("PDF generation error:", error);
+      toast.error("Failed to generate PDF.");
+    } finally {
+      const wrapper = document.getElementById("single-credit-print-wrapper");
+      if (wrapper) {
+        wrapper.style.left = "-9999px";
+      }
+      setIsPrinting(false);
+    }
   };
 
   const generateBulkPDF = async () => {

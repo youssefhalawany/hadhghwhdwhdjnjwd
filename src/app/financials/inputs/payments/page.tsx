@@ -908,15 +908,37 @@ export default function PaymentsRedesignPage() {
 
   const generatePDF = async (paymentToPrint: any) => {
     if (!paymentToPrint) return;
+
+    let printWin: Window | null = null;
+    try {
+      printWin = window.open("", "_blank");
+      if (printWin) {
+        printWin.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head><title>Generating Receipt...</title></head>
+            <body style="font-family: system-ui, -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #0f172a; color: white;">
+              <div style="text-align: center; padding: 20px;">
+                <h2 style="margin: 0 0 10px; font-size: 20px;">Generating Receipt PDF...</h2>
+                <p style="margin: 0; color: #94a3b8; font-size: 14px;">Please wait a moment while your document is formatted.</p>
+              </div>
+            </body>
+          </html>
+        `);
+      }
+    } catch (e) {
+      console.warn("Could not open window synchronously:", e);
+    }
+
     setSelectedPaymentForPrint(paymentToPrint);
     setGeneratingPDF(true);
 
     // Wait for React to re-render and mount single-payment-print-wrapper in DOM
-    await new Promise(resolve => setTimeout(resolve, 350));
+    await new Promise(resolve => setTimeout(resolve, 400));
 
     let wrapper = document.getElementById("single-payment-print-wrapper");
     if (!wrapper) {
-      await new Promise(resolve => setTimeout(resolve, 350));
+      await new Promise(resolve => setTimeout(resolve, 400));
       wrapper = document.getElementById("single-payment-print-wrapper");
     }
 
@@ -927,9 +949,6 @@ export default function PaymentsRedesignPage() {
       wrapper.style.opacity = "1";
       wrapper.style.visibility = "visible";
     }
-    
-    // Give time for layout and images to settle offscreen
-    await new Promise(resolve => setTimeout(resolve, 400));
 
     const html2canvasOptions = {
       scale: 2,
@@ -1038,26 +1057,22 @@ export default function PaymentsRedesignPage() {
       }
 
       if (pageAddedCount > 0) {
-        try {
-          pdf.autoPrint();
-          const blobUrl = pdf.output("bloburl");
-          const printWindow = window.open(blobUrl, "_blank");
-          if (!printWindow || printWindow.closed || typeof printWindow.closed === "undefined") {
-            // Popup blocker intercepted print window, fallback to direct download
-            pdf.save(`Payment_Voucher_${paymentToPrint.invoiceNumber || paymentToPrint.id || 'receipt'}.pdf`);
-            toast.success("Receipt downloaded as PDF!");
-          } else {
-            toast.success("Receipt ready for printing!");
-          }
-        } catch (printErr) {
+        pdf.autoPrint();
+        const blobUrl = pdf.output("bloburl");
+        if (printWin && !printWin.closed) {
+          printWin.location.href = String(blobUrl);
+          toast.success("Receipt ready for printing!");
+        } else {
           pdf.save(`Payment_Voucher_${paymentToPrint.invoiceNumber || paymentToPrint.id || 'receipt'}.pdf`);
           toast.success("Receipt downloaded as PDF!");
         }
       } else {
+        if (printWin && !printWin.closed) printWin.close();
         toast.error("Failed to generate PDF receipt.");
       }
 
     } catch (error) {
+      if (printWin && !printWin.closed) printWin.close();
       console.error("PDF Generation Error:", error);
       toast.error("Failed to generate PDF.");
     } finally {
