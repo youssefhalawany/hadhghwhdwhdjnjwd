@@ -8,7 +8,8 @@ import {
   RefreshCw, Users, Wifi, WifiOff, Clock, AlertTriangle, X, Loader2,
   BellRing, Compass, Sparkles, Send, Check, Radio, ShieldAlert, Cpu,
   Battery, BatteryCharging, BatteryWarning, Navigation, Wrench, MessageSquare,
-  FileText, DollarSign, Package, ClipboardList, CheckCircle2
+  FileText, DollarSign, Package, ClipboardList, CheckCircle2, Lock, Unlock,
+  Camera, Eye, KeyRound, ZoomIn, Image as ImageIcon, Maximize2
 } from "lucide-react";
 import { toast } from "sonner";
 import { useLanguage } from "@/context/LanguageContext";
@@ -25,6 +26,7 @@ interface SessionData {
   deviceType: string;
   loginAt: string;
   lastActiveAt: string;
+  isOnline?: boolean;
   currentPath?: string;
   pageLabel?: string;
   isPwa?: boolean;
@@ -33,6 +35,17 @@ interface SessionData {
   isCharging?: boolean;
   hasBattery?: boolean;
   forceLogout?: boolean;
+  isLocked?: boolean;
+  lockPin?: string;
+  lockReason?: string;
+  lockedAt?: string;
+  screenSnapshot?: {
+    imageBase64: string;
+    capturedAt: string;
+    currentPath?: string;
+    pageLabel?: string;
+    requestId?: string;
+  };
   source?: string;
   remoteMessage?: any;
   lastReply?: {
@@ -47,24 +60,28 @@ function parseTimeAgo(dateStr?: string): string {
   const now = Date.now();
   const then = new Date(dateStr).getTime();
   const diffMs = now - then;
+  const diffSecs = Math.floor(diffMs / 1000);
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
 
-  if (diffMins < 1) return "Just now";
+  if (diffSecs < 15) return "Just now";
+  if (diffSecs < 60) return `${diffSecs}s ago`;
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
   return `${diffDays}d ago`;
 }
 
-function getSessionStatus(lastActiveAt: string): "online" | "idle" | "offline" {
-  if (!lastActiveAt) return "offline";
+function getSessionStatus(session: SessionData): "online" | "idle" | "offline" {
+  if (!session.lastActiveAt) return "offline";
+  if (session.isOnline === false) return "offline";
   const now = Date.now();
-  const last = new Date(lastActiveAt).getTime();
-  const diffMins = (now - last) / 60000;
+  const last = new Date(session.lastActiveAt).getTime();
+  const diffMs = now - last;
+  const diffMins = diffMs / 60000;
 
-  if (diffMins < 15) return "online";
-  if (diffMins < 60) return "idle";
+  if (diffMs < 45000) return "online";
+  if (diffMins < 10) return "idle";
   return "offline";
 }
 
@@ -139,12 +156,19 @@ export default function DeviceSessionsPage() {
   const [sessions, setSessions] = useState<SessionData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "online" | "idle" | "offline">("all");
   const [revokingSession, setRevokingSession] = useState<string | null>(null);
   const [revokingAllUser, setRevokingAllUser] = useState<string | null>(null);
   const [reloadingSession, setReloadingSession] = useState<string | null>(null);
   const [confirmModal, setConfirmModal] = useState<{ type: "single" | "all"; sessionId?: string; userId?: string; userName?: string } | null>(null);
   const [pingModal, setPingModal] = useState<{ sessionId?: string; userId?: string; userName: string; deviceName?: string } | null>(null);
   const [teleportModal, setTeleportModal] = useState<{ sessionId?: string; userName: string; deviceName?: string } | null>(null);
+  const [lockModal, setLockModal] = useState<{ sessionId: string; userName: string; deviceName?: string } | null>(null);
+  const [screenPreviewModal, setScreenPreviewModal] = useState<{ sessionId: string; userName: string; deviceName?: string; snapshot?: any } | null>(null);
+  const [lockPin, setLockPin] = useState("1234");
+  const [lockReason, setLockReason] = useState("Terminal secured by Administration");
+  const [lockingSession, setLockingSession] = useState(false);
+  const [capturingScreen, setCapturingScreen] = useState(false);
   const [pingMessage, setPingMessage] = useState("");
   const [sendingPing, setSendingPing] = useState(false);
   const [teleporting, setTeleporting] = useState(false);
@@ -167,6 +191,20 @@ export default function DeviceSessionsPage() {
         const remainingAuth = authOnly.filter(s => !trackedUserIds.has(s.userId));
         return [...firestoreSessions, ...remainingAuth];
       });
+
+      // Update screen snapshot in modal if active
+      setScreenPreviewModal(curr => {
+        if (!curr) return null;
+        const updated = firestoreSessions.find(s => s.id === curr.sessionId);
+        if (updated && updated.screenSnapshot) {
+          return {
+            ...curr,
+            snapshot: updated.screenSnapshot
+          };
+        }
+        return curr;
+      });
+
       setLoading(false);
     }, (err) => {
       console.error("Sessions listener error:", err);
@@ -219,6 +257,76 @@ export default function DeviceSessionsPage() {
       unsubAuth();
     };
   }, []);
+
+  // Request Remote Screen Snapshot
+  const handleRequestScreenCapture = async (sessionId: string, userName: string, deviceName?: string) => {
+    setCapturingScreen(true);
+    const existing = sessions.find(s => s.id === sessionId);
+    setScreenPreviewModal({
+      sessionId,
+      userName,
+      deviceName,
+      snapshot: existing?.screenSnapshot || null
+    });
+
+    try {
+      if (!sessionId.startsWith("auth_")) {
+        const cmdId = "snap_" + Date.now();
+        await updateDoc(doc(db, "active_sessions", sessionId), {
+          remoteCommand: {
+            action: "capture_screen",
+            commandId: cmdId,
+            requestedAt: new Date().toISOString(),
+            requestedBy: currentAdminName
+          }
+        });
+        toast.info("Capturing live screen from terminal... 📸");
+      }
+    } catch (err: any) {
+      toast.error("Failed to request screen capture: " + err.message);
+    } finally {
+      setCapturingScreen(false);
+    }
+  };
+
+  // Lock Terminal Remotely
+  const handleLockTerminal = async () => {
+    if (!lockModal) return;
+    setLockingSession(true);
+    try {
+      if (!lockModal.sessionId.startsWith("auth_")) {
+        await updateDoc(doc(db, "active_sessions", lockModal.sessionId), {
+          isLocked: true,
+          lockPin: lockPin.trim() || "1234",
+          lockReason: lockReason.trim() || "Terminal secured by Administration",
+          lockedAt: new Date().toISOString(),
+          lockedBy: currentAdminName
+        });
+        toast.success("Terminal locked successfully! PIN required to unlock 🔒");
+      }
+      setLockModal(null);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to lock terminal");
+    } finally {
+      setLockingSession(false);
+    }
+  };
+
+  // Unlock Terminal Remotely
+  const handleUnlockTerminal = async (sessionId: string) => {
+    try {
+      if (!sessionId.startsWith("auth_")) {
+        await updateDoc(doc(db, "active_sessions", sessionId), {
+          isLocked: false,
+          unlockedAt: new Date().toISOString(),
+          unlockedBy: currentAdminName
+        });
+        toast.success("Terminal unlocked remotely! 🔓");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to unlock terminal");
+    }
+  };
 
   // Force Remote Reload of Device
   const handleRemoteReload = async (sessionId: string) => {
@@ -310,7 +418,7 @@ export default function DeviceSessionsPage() {
         await updateDoc(doc(db, "active_sessions", pingModal.sessionId), {
           remoteMessage: payload
         });
-        toast.success("Priority alert dispatched to device with audio chime! 🔔");
+        toast.success("Priority alert dispatched to device with repeating audio chime! 🔔");
       } else if (pingModal.userId) {
         const targetSessions = sessions.filter(s => s.userId === pingModal.userId && !s.id.startsWith("auth_"));
         for (const s of targetSessions) {
@@ -412,14 +520,19 @@ export default function DeviceSessionsPage() {
     }
   };
 
-  const filteredSessions = sessions.filter(s =>
-    s.userEmail?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.userName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.browser?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.os?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.pageLabel?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.currentPath?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredSessions = sessions.filter(s => {
+    const status = getSessionStatus(s);
+    if (statusFilter !== "all" && status !== statusFilter) return false;
+
+    return (
+      s.userEmail?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.userName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.browser?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.os?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.pageLabel?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.currentPath?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
 
   // Group sessions by user
   const userGroups = filteredSessions.reduce<Record<string, SessionData[]>>((acc, session) => {
@@ -429,9 +542,9 @@ export default function DeviceSessionsPage() {
     return acc;
   }, {});
 
-  const onlineCount = sessions.filter(s => getSessionStatus(s.lastActiveAt) === "online").length;
-  const idleCount = sessions.filter(s => getSessionStatus(s.lastActiveAt) === "idle").length;
-  const offlineCount = sessions.filter(s => getSessionStatus(s.lastActiveAt) === "offline").length;
+  const onlineCount = sessions.filter(s => getSessionStatus(s) === "online").length;
+  const idleCount = sessions.filter(s => getSessionStatus(s) === "idle").length;
+  const offlineCount = sessions.filter(s => getSessionStatus(s) === "offline").length;
   const pwaCount = sessions.filter(s => s.isPwa).length;
 
   return (
@@ -445,49 +558,67 @@ export default function DeviceSessionsPage() {
             </div>
             <div>
               <h1 className="text-2xl font-black flex items-center gap-2">
-                Device Sessions & Live Hub
+                Device Sessions & Live Control Center
               </h1>
               <p className="text-muted-foreground text-xs mt-0.5 flex items-center gap-2">
                 <span className="flex h-2 w-2 relative">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                 </span>
-                Live Telemetry • Remote Teleport • Battery Monitoring • Repeating Audio Pings
+                Live Telemetry • Screen Lock • View Screen • Repeating Audio Pings • Teleport
               </p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards & Filter Bar */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-border p-4 flex items-center gap-3">
+        <button
+          onClick={() => setStatusFilter("all")}
+          className={`text-left rounded-xl border p-4 flex items-center gap-3 transition-all cursor-pointer ${
+            statusFilter === "all" ? "bg-slate-100 dark:bg-slate-800 border-slate-400 shadow-sm" : "bg-white dark:bg-slate-900 border-border hover:border-slate-300"
+          }`}
+        >
           <div className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
             <Users className="h-5 w-5 text-slate-500" />
           </div>
           <div>
             <p className="text-2xl font-black text-foreground">{sessions.length}</p>
-            <p className="text-xs text-muted-foreground font-semibold">Total Terminals</p>
+            <p className="text-xs text-muted-foreground font-semibold">All Terminals</p>
           </div>
-        </div>
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-border p-4 flex items-center gap-3">
+        </button>
+
+        <button
+          onClick={() => setStatusFilter("online")}
+          className={`text-left rounded-xl border p-4 flex items-center gap-3 transition-all cursor-pointer ${
+            statusFilter === "online" ? "bg-emerald-500/15 border-emerald-500/50 shadow-sm" : "bg-white dark:bg-slate-900 border-border hover:border-emerald-500/30"
+          }`}
+        >
           <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
             <Wifi className="h-5 w-5 text-emerald-500" />
           </div>
           <div>
             <p className="text-2xl font-black text-emerald-500">{onlineCount}</p>
-            <p className="text-xs text-muted-foreground font-semibold">Live Online</p>
+            <p className="text-xs text-muted-foreground font-semibold">🟢 Live Online</p>
           </div>
-        </div>
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-border p-4 flex items-center gap-3">
+        </button>
+
+        <button
+          onClick={() => setStatusFilter("idle")}
+          className={`text-left rounded-xl border p-4 flex items-center gap-3 transition-all cursor-pointer ${
+            statusFilter === "idle" ? "bg-amber-500/15 border-amber-500/50 shadow-sm" : "bg-white dark:bg-slate-900 border-border hover:border-amber-500/30"
+          }`}
+        >
           <div className="h-10 w-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
             <Clock className="h-5 w-5 text-amber-500" />
           </div>
           <div>
             <p className="text-2xl font-black text-amber-500">{idleCount}</p>
-            <p className="text-xs text-muted-foreground font-semibold">Idle Sessions</p>
+            <p className="text-xs text-muted-foreground font-semibold">🟡 Idle</p>
           </div>
-        </div>
+        </button>
+
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-border p-4 flex items-center gap-3">
           <div className="h-10 w-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
             <Smartphone className="h-5 w-5 text-blue-500" />
@@ -497,33 +628,53 @@ export default function DeviceSessionsPage() {
             <p className="text-xs text-muted-foreground font-semibold">Installed PWAs</p>
           </div>
         </div>
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-border p-4 flex items-center gap-3 col-span-2 md:col-span-1">
+
+        <button
+          onClick={() => setStatusFilter("offline")}
+          className={`text-left rounded-xl border p-4 flex items-center gap-3 col-span-2 md:col-span-1 transition-all cursor-pointer ${
+            statusFilter === "offline" ? "bg-rose-500/15 border-rose-500/50 shadow-sm" : "bg-white dark:bg-slate-900 border-border hover:border-rose-500/30"
+          }`}
+        >
           <div className="h-10 w-10 rounded-xl bg-rose-500/10 flex items-center justify-center">
             <WifiOff className="h-5 w-5 text-rose-500" />
           </div>
           <div>
             <p className="text-2xl font-black text-rose-500">{offlineCount}</p>
-            <p className="text-xs text-muted-foreground font-semibold">Offline</p>
+            <p className="text-xs text-muted-foreground font-semibold">🔴 Closed / Offline</p>
           </div>
-        </div>
+        </button>
       </div>
 
       {/* Main Content Card */}
       <div className="bg-white dark:bg-slate-900 border border-border rounded-2xl shadow-sm overflow-hidden">
-        {/* Search Bar */}
-        <div className="p-4 border-b border-border flex items-center gap-3">
-          <Search className="h-5 w-5 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search by user, active page, browser, OS, or role..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="bg-transparent outline-none flex-grow text-sm placeholder:text-muted-foreground"
-          />
-          {searchTerm && (
-            <button onClick={() => setSearchTerm("")} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
-              <X className="h-4 w-4 text-muted-foreground" />
-            </button>
+        {/* Search Bar & Active Filters */}
+        <div className="p-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3 flex-grow">
+            <Search className="h-5 w-5 text-muted-foreground shrink-0" />
+            <input
+              type="text"
+              placeholder="Search by user, active page, browser, OS, or role..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="bg-transparent outline-none flex-grow text-sm placeholder:text-muted-foreground"
+            />
+            {searchTerm && (
+              <button onClick={() => setSearchTerm("")} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
+                <X className="h-4 w-4 text-muted-foreground" />
+              </button>
+            )}
+          </div>
+
+          {statusFilter !== "all" && (
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <span className="text-xs text-muted-foreground">Filter:</span>
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-border flex items-center gap-1">
+                {statusFilter === "online" ? "🟢 Online" : statusFilter === "idle" ? "🟡 Idle" : "🔴 Offline"}
+                <button onClick={() => setStatusFilter("all")} className="hover:text-red-500 ml-1">
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            </div>
           )}
         </div>
 
@@ -538,7 +689,7 @@ export default function DeviceSessionsPage() {
             <div className="p-12 text-center">
               <Monitor className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
               <p className="text-muted-foreground text-sm font-semibold">
-                {searchTerm ? "No devices match your search criteria" : "No active terminals found"}
+                {searchTerm ? "No devices match your search criteria" : "No active terminals found in this filter"}
               </p>
               <p className="text-muted-foreground/60 text-xs mt-1">Terminals stream telemetry automatically when users open the portal</p>
             </div>
@@ -609,7 +760,7 @@ export default function DeviceSessionsPage() {
                   {/* Device Telemetry Cards */}
                   <div className="grid gap-2.5 ml-0 md:ml-12">
                     {userSessions.map((session) => {
-                      const status = getSessionStatus(session.lastActiveAt);
+                      const status = getSessionStatus(session);
                       const DeviceIcon = getDeviceIcon(session.deviceType);
                       const isRevoking = revokingSession === session.id;
                       const isReloading = reloadingSession === session.id;
@@ -622,26 +773,26 @@ export default function DeviceSessionsPage() {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -8 }}
                           className={`flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-2xl border transition-all gap-3 ${
-                            status === "online"
+                            session.isLocked
+                              ? "bg-rose-500/10 border-rose-500/40 dark:bg-rose-950/20"
+                              : status === "online"
                               ? "bg-emerald-500/5 border-emerald-500/20 dark:bg-emerald-950/20"
                               : status === "idle"
                               ? "bg-amber-500/5 border-amber-500/20 dark:bg-amber-950/20"
-                              : "bg-slate-50 border-border dark:bg-slate-800/30"
+                              : "bg-slate-50 border-border dark:bg-slate-800/30 opacity-80"
                           }`}
                         >
                           {/* Device Metadata */}
                           <div className="flex items-start sm:items-center gap-3">
                             <div className={`relative h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${
-                              status === "online" ? "bg-emerald-500/15" :
-                              status === "idle" ? "bg-amber-500/15" :
-                              "bg-slate-200 dark:bg-slate-700"
+                              session.isLocked ? "bg-rose-500/20 text-rose-500" :
+                              status === "online" ? "bg-emerald-500/15 text-emerald-500" :
+                              status === "idle" ? "bg-amber-500/15 text-amber-500" :
+                              "bg-slate-200 dark:bg-slate-700 text-slate-400"
                             }`}>
-                              <DeviceIcon className={`h-5 w-5 ${
-                                status === "online" ? "text-emerald-500" :
-                                status === "idle" ? "text-amber-500" :
-                                "text-slate-400"
-                              }`} />
+                              <DeviceIcon className="h-5 w-5" />
                               <div className={`absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-white dark:border-slate-900 ${
+                                session.isLocked ? "bg-rose-500" :
                                 status === "online" ? "bg-emerald-500 animate-pulse" :
                                 status === "idle" ? "bg-amber-500" :
                                 "bg-slate-400"
@@ -661,6 +812,13 @@ export default function DeviceSessionsPage() {
                                     </>
                                   )}
                                 </p>
+
+                                {/* Lock Status Badge */}
+                                {session.isLocked && (
+                                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-rose-600 text-white border border-rose-700 flex items-center gap-1 shadow-sm animate-pulse">
+                                    <Lock className="h-3 w-3" /> Locked (PIN: {session.lockPin || "1234"})
+                                  </span>
+                                )}
 
                                 {/* PWA App Badge */}
                                 {session.isPwa ? (
@@ -727,9 +885,9 @@ export default function DeviceSessionsPage() {
                                 <span className={`font-bold uppercase tracking-wider ${
                                   status === "online" ? "text-emerald-500" :
                                   status === "idle" ? "text-amber-500" :
-                                  "text-slate-400"
+                                  "text-rose-500"
                                 }`}>
-                                  {status === "online" ? "● Online" : status === "idle" ? "● Idle" : "● Offline"}
+                                  {status === "online" ? "● Online" : status === "idle" ? "● Idle" : "● Offline (Closed)"}
                                 </span>
                                 <span>Last active: <strong>{parseTimeAgo(session.lastActiveAt)}</strong></span>
                                 <span>Logged in: <strong>{parseTimeAgo(session.loginAt)}</strong></span>
@@ -738,7 +896,50 @@ export default function DeviceSessionsPage() {
                           </div>
 
                           {/* Device Action Buttons */}
-                          <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
+                          <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0 flex-wrap">
+                            {/* Remote Screen Preview / View Screen */}
+                            <button
+                              onClick={() => handleRequestScreenCapture(
+                                session.id,
+                                session.userName,
+                                `${session.browser} on ${session.os}`
+                              )}
+                              className="p-2 text-cyan-500 hover:bg-cyan-500/15 rounded-xl transition-colors cursor-pointer flex items-center gap-1 text-xs font-bold"
+                              title="Capture & View Remote Screen Live"
+                            >
+                              <Camera className="h-4 w-4" />
+                              <span className="hidden md:inline">View Screen</span>
+                            </button>
+
+                            {/* Remote Screen Lock / Unlock */}
+                            {session.isLocked ? (
+                              <button
+                                onClick={() => handleUnlockTerminal(session.id)}
+                                className="p-2 text-rose-500 hover:bg-rose-500/20 bg-rose-500/10 rounded-xl transition-colors cursor-pointer flex items-center gap-1 text-xs font-bold border border-rose-500/30"
+                                title="Unlock Terminal Remotely"
+                              >
+                                <Unlock className="h-4 w-4 text-emerald-400" />
+                                <span className="hidden md:inline text-emerald-400">Unlock</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  setLockPin("1234");
+                                  setLockReason("Terminal secured by Administration");
+                                  setLockModal({
+                                    sessionId: session.id,
+                                    userName: session.userName,
+                                    deviceName: `${session.browser} on ${session.os}`
+                                  });
+                                }}
+                                className="p-2 text-amber-500 hover:bg-amber-500/15 rounded-xl transition-colors cursor-pointer flex items-center gap-1 text-xs font-bold"
+                                title="Lock Terminal with PIN (Kiosk Lockdown)"
+                              >
+                                <Lock className="h-4 w-4" />
+                                <span className="hidden md:inline">Lock Screen</span>
+                              </button>
+                            )}
+
                             {/* Remote Teleport / Navigation */}
                             <button
                               onClick={() => setTeleportModal({
@@ -816,6 +1017,174 @@ export default function DeviceSessionsPage() {
           )}
         </div>
       </div>
+
+      {/* Remote Screen Preview / Snapshot Modal */}
+      <AnimatePresence>
+        {screenPreviewModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-md p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-white dark:bg-slate-900 w-full max-w-4xl rounded-3xl shadow-2xl border border-cyan-500/30 overflow-hidden flex flex-col max-h-[92vh]"
+            >
+              {/* Header */}
+              <div className="p-5 border-b border-border bg-cyan-500/10 flex justify-between items-center shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-9 w-9 rounded-xl bg-cyan-500 flex items-center justify-center text-white shadow-md">
+                    <Camera className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-base text-foreground flex items-center gap-2">
+                      Live Screen Preview
+                      {screenPreviewModal.snapshot?.pageLabel && (
+                        <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                          {screenPreviewModal.snapshot.pageLabel}
+                        </span>
+                      )}
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      Terminal: <strong>{screenPreviewModal.userName}</strong> ({screenPreviewModal.deviceName || "Device"})
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleRequestScreenCapture(
+                      screenPreviewModal.sessionId,
+                      screenPreviewModal.userName,
+                      screenPreviewModal.deviceName
+                    )}
+                    disabled={capturingScreen}
+                    className="text-xs font-bold bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 px-3 py-1.5 rounded-xl border border-cyan-500/30 flex items-center gap-1.5 cursor-pointer transition-all"
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 ${capturingScreen ? "animate-spin" : ""}`} />
+                    Refresh Screen
+                  </button>
+                  <button onClick={() => setScreenPreviewModal(null)} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Viewport Content */}
+              <div className="p-6 overflow-y-auto custom-scrollbar flex flex-col items-center justify-center bg-slate-950/70 min-h-[380px]">
+                {screenPreviewModal.snapshot?.imageBase64 ? (
+                  <div className="space-y-3 w-full flex flex-col items-center">
+                    <div className="relative rounded-2xl overflow-hidden border border-border shadow-2xl bg-black max-h-[65vh]">
+                      <img
+                        src={screenPreviewModal.snapshot.imageBase64}
+                        alt="Remote Device Screen"
+                        className="w-full h-auto object-contain max-h-[65vh]"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between w-full text-xs text-muted-foreground px-2">
+                      <span>Captured: <strong>{parseTimeAgo(screenPreviewModal.snapshot.capturedAt)}</strong> ({new Date(screenPreviewModal.snapshot.capturedAt).toLocaleTimeString()})</span>
+                      <span>Route: <code className="text-cyan-400">{screenPreviewModal.snapshot.currentPath || "/"}</code></span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center p-10 space-y-3">
+                    <Loader2 className="h-10 w-10 text-cyan-500 animate-spin mx-auto" />
+                    <p className="text-sm font-bold text-foreground">Capturing live terminal viewport...</p>
+                    <p className="text-xs text-muted-foreground">The remote device is generating a real-time snapshot.</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Lock Screen Configuration Modal */}
+      <AnimatePresence>
+        {lockModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 backdrop-blur-md p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl border border-amber-500/30 overflow-hidden flex flex-col"
+            >
+              <div className="p-5 border-b border-border bg-amber-500/10 flex justify-between items-center">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-9 w-9 rounded-xl bg-amber-500 flex items-center justify-center text-white shadow-md">
+                    <Lock className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-base text-foreground">
+                      Remote Kiosk Lockdown
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      Target: <strong>{lockModal.userName}</strong> ({lockModal.deviceName || "Device"})
+                    </p>
+                  </div>
+                </div>
+                <button onClick={() => setLockModal(null)} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Locking this terminal will immediately display a fullscreen security lock screen. Staff will need to enter the 4-digit PIN to unlock it (or you can unlock it remotely anytime).
+                </p>
+
+                <div>
+                  <label className="block text-xs font-bold text-muted-foreground uppercase mb-1.5">
+                    4-Digit Unlock PIN *
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={4}
+                    value={lockPin}
+                    onChange={(e) => setLockPin(e.target.value.replace(/\D/g, ""))}
+                    placeholder="1234"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-border rounded-xl p-3 text-lg font-black tracking-widest text-center outline-none focus:border-amber-500 transition-colors"
+                  />
+                  <span className="text-[10px] text-muted-foreground mt-1 block">Default PIN is 1234 (Master code: 2026)</span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-muted-foreground uppercase mb-1.5">
+                    Lock Message / Reason
+                  </label>
+                  <input
+                    type="text"
+                    value={lockReason}
+                    onChange={(e) => setLockReason(e.target.value)}
+                    placeholder="Terminal secured by Administration"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-border rounded-xl p-3 text-sm outline-none focus:border-amber-500 transition-colors"
+                  />
+                </div>
+
+                <div className="pt-2 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setLockModal(null)}
+                    className="px-4 py-2 text-sm font-semibold text-muted-foreground"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleLockTerminal}
+                    disabled={lockingSession || !lockPin.trim()}
+                    className="bg-amber-600 hover:bg-amber-500 text-white px-5 py-2.5 rounded-xl text-sm font-extrabold shadow-lg shadow-amber-500/25 transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer"
+                  >
+                    {lockingSession ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Lock className="h-4 w-4" />
+                    )}
+                    Lock Terminal Now
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Teleport / Remote Navigation Modal */}
       <AnimatePresence>

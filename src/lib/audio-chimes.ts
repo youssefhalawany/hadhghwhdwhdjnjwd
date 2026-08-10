@@ -180,6 +180,10 @@ class AudioChimeEngine {
     }
   }
 
+  unlock() {
+    this.initCtx();
+  }
+
   private pingInterval: any = null;
 
   /**
@@ -190,23 +194,27 @@ class AudioChimeEngine {
     if (!ctx) return;
 
     try {
+      if (ctx.state === "suspended") {
+        ctx.resume().catch(() => {});
+      }
+
       const now = ctx.currentTime;
-      // High-clarity triple sonar chime (E6 -> G#6 -> B6) with high attention resonance
-      const freqs = [1318.51, 1661.22, 1975.53];
+      // High-intensity repeating chime with harmonic chords (C6, E6, G6, C7)
+      const freqs = [1046.50, 1318.51, 1567.98, 2093.00];
       freqs.forEach((freq, idx) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-        const startTime = now + idx * 0.08;
+        const startTime = now + idx * 0.07;
 
-        osc.type = "sine";
+        osc.type = idx % 2 === 0 ? "sine" : "triangle";
         osc.frequency.setValueAtTime(freq, startTime);
-        gain.gain.setValueAtTime(0.45, startTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.5);
+        gain.gain.setValueAtTime(0.6, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.45);
 
         osc.connect(gain);
         gain.connect(ctx.destination);
         osc.start(startTime);
-        osc.stop(startTime + 0.5);
+        osc.stop(startTime + 0.45);
       });
     } catch (e) {
       console.error("Failed to play ping sound", e);
@@ -216,7 +224,7 @@ class AudioChimeEngine {
   /**
    * 🔁 Continuous looping chime that rings every intervalMs until stopPingLoop() is called on user confirmation
    */
-  startPingLoop(intervalMs = 2000) {
+  startPingLoop(intervalMs = 1800) {
     this.stopPingLoop();
     this.playPingSound();
     this.pingInterval = setInterval(() => {
@@ -260,3 +268,17 @@ class AudioChimeEngine {
 }
 
 export const audioChimes = new AudioChimeEngine();
+
+// Auto-warm AudioContext on first user interaction so mobile browsers never block ping sounds
+if (typeof window !== "undefined") {
+  const warmAudio = () => {
+    audioChimes.unlock();
+    window.removeEventListener("click", warmAudio);
+    window.removeEventListener("touchstart", warmAudio);
+    window.removeEventListener("keydown", warmAudio);
+  };
+  window.addEventListener("click", warmAudio, { passive: true });
+  window.addEventListener("touchstart", warmAudio, { passive: true });
+  window.addEventListener("keydown", warmAudio, { passive: true });
+}
+

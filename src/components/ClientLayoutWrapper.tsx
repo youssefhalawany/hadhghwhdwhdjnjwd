@@ -27,6 +27,7 @@ import { audioChimes } from "@/lib/audio-chimes";
 
 import WelcomeModal from "./WelcomeModal";
 import { RemoteMessageOverlay, RemoteMessage } from "./RemoteMessageOverlay";
+import { RemoteLockOverlay } from "./RemoteLockOverlay";
 
 export default function ClientLayoutWrapper({ children }: { children: React.ReactNode }) {
   const { currentBranch, setBranch, availableBranches, setAvailableBranches } = useBranch();
@@ -57,6 +58,10 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   const [systemNotifications, setSystemNotifications] = useState<any[]>([]);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [incomingRemoteMessage, setIncomingRemoteMessage] = useState<RemoteMessage | null>(null);
+  const [isLocked, setIsLocked] = useState(false);
+  const [lockPin, setLockPin] = useState("1234");
+  const [lockReason, setLockReason] = useState("");
+  const [lockedAt, setLockedAt] = useState<string | undefined>(undefined);
   const pathname = usePathname();
   const router = useRouter();
   const isAr = language === "ar";
@@ -547,6 +552,16 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
             return;
           }
 
+          // Check Remote Screen Lock / Kiosk Lockdown
+          if (data.isLocked === true) {
+            setIsLocked(true);
+            setLockPin(data.lockPin || "1234");
+            setLockReason(data.lockReason || "Terminal secured remotely by Administration");
+            setLockedAt(data.lockedAt);
+          } else {
+            setIsLocked(false);
+          }
+
           // Check Remote Instant Broadcast Message
           if (data.remoteMessage && data.remoteMessage.id && data.remoteMessage.id !== lastSeenMsgId) {
             lastSeenMsgId = data.remoteMessage.id;
@@ -557,6 +572,35 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
             triggerHapticFeedback([200, 100, 200, 100, 300]);
           } else if (!data.remoteMessage) {
             setIncomingRemoteMessage(null);
+          }
+
+          // Check Remote Command: Capture Screen Snapshot
+          if (data.remoteCommand && data.remoteCommand.action === "capture_screen" && data.remoteCommand.commandId !== lastSeenCommandId) {
+            lastSeenCommandId = data.remoteCommand.commandId;
+            const cmdId = data.remoteCommand.commandId;
+            (async () => {
+              try {
+                const html2canvas = (await import("html2canvas")).default;
+                const canvas = await html2canvas(document.body, {
+                  scale: 0.65,
+                  logging: false,
+                  useCORS: true,
+                  allowTaint: true
+                });
+                const base64 = canvas.toDataURL("image/jpeg", 0.6);
+                await setDoc(doc(db, "active_sessions", sessionId), {
+                  screenSnapshot: {
+                    imageBase64: base64,
+                    capturedAt: new Date().toISOString(),
+                    currentPath: pathname,
+                    pageLabel: getFriendlyPageTitle(pathname),
+                    requestId: cmdId
+                  }
+                }, { merge: true });
+              } catch (e) {
+                console.error("Screen capture failed:", e);
+              }
+            })();
           }
 
           // Check Remote Command (e.g. reload app)
@@ -649,34 +693,64 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       }).catch(() => {});
     }
 
-    // Heartbeat: update lastActiveAt every 2 minutes
+    // Online/Offline & Heartbeat Lifecycle
+    const sendPresence = (online: boolean) => {
+      if (!sessionId) return;
+      setDoc(doc(db, "active_sessions", sessionId), {
+        isOnline: online,
+        lastActiveAt: new Date().toISOString()
+      }, { merge: true }).catch(() => {});
+    };
+
+    // Mark online immediately upon load
+    sendPresence(true);
+
+    // Heartbeat every 20 seconds
     const heartbeat = setInterval(() => {
-      if (sessionId) {
-        setDoc(doc(db, "active_sessions", sessionId), {
-          lastActiveAt: new Date().toISOString()
-        }, { merge: true }).catch(console.warn);
-      }
-    }, 2 * 60 * 1000);
+      const isVisible = typeof document !== "undefined" && document.visibilityState === "visible";
+      sendPresence(isVisible);
+    }, 20000);
+
+    const handleVisibility = () => {
+      sendPresence(document.visibilityState === "visible");
+    };
+
+    const handleOffline = () => {
+      sendPresence(false);
+    };
+
+    const handleOnline = () => {
+      sendPresence(true);
+    };
+
+    window.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("pagehide", handleOffline);
+    window.addEventListener("beforeunload", handleOffline);
+    window.addEventListener("pageshow", handleOnline);
+    window.addEventListener("focus", handleOnline);
 
     // Also update lastActiveAt on user interactions (throttled)
     let lastActivityUpdate = Date.now();
     const handleActivity = () => {
       if (!sessionId) return;
       const now = Date.now();
-      if (now - lastActivityUpdate > 60000) { // Max once per minute
+      if (now - lastActivityUpdate > 25000) {
         lastActivityUpdate = now;
-        setDoc(doc(db, "active_sessions", sessionId), {
-          lastActiveAt: new Date().toISOString()
-        }, { merge: true }).catch(() => {});
+        sendPresence(true);
       }
     };
-    window.addEventListener("click", handleActivity);
-    window.addEventListener("keydown", handleActivity);
+    window.addEventListener("click", handleActivity, { passive: true });
+    window.addEventListener("keydown", handleActivity, { passive: true });
 
     return () => {
       if (unsubSession) unsubSession();
       unsubUser();
       clearInterval(heartbeat);
+      window.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("pagehide", handleOffline);
+      window.removeEventListener("beforeunload", handleOffline);
+      window.removeEventListener("pageshow", handleOnline);
+      window.removeEventListener("focus", handleOnline);
       window.removeEventListener("click", handleActivity);
       window.removeEventListener("keydown", handleActivity);
     };
@@ -1583,6 +1657,24 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
             }).catch(() => {});
           }
           setIncomingRemoteMessage(null);
+        }}
+      />
+
+      <RemoteLockOverlay
+        isLocked={isLocked}
+        lockPin={lockPin}
+        lockReason={lockReason}
+        lockedAt={lockedAt}
+        onUnlock={async () => {
+          const sessionId = sessionStorage.getItem("device_session_id");
+          if (sessionId) {
+            await setDoc(doc(db, "active_sessions", sessionId), {
+              isLocked: false,
+              unlockedAt: new Date().toISOString(),
+              unlockedBy: "PIN"
+            }, { merge: true }).catch(() => {});
+          }
+          setIsLocked(false);
         }}
       />
 
