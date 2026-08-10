@@ -26,6 +26,7 @@ import { playPopSound } from "@/lib/sounds";
 import { audioChimes } from "@/lib/audio-chimes";
 
 import WelcomeModal from "./WelcomeModal";
+import { RemoteMessageOverlay, RemoteMessage } from "./RemoteMessageOverlay";
 
 export default function ClientLayoutWrapper({ children }: { children: React.ReactNode }) {
   const { currentBranch, setBranch, availableBranches, setAvailableBranches } = useBranch();
@@ -55,6 +56,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   const [currentDateTime, setCurrentDateTime] = useState<Date | null>(null);
   const [systemNotifications, setSystemNotifications] = useState<any[]>([]);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [incomingRemoteMessage, setIncomingRemoteMessage] = useState<RemoteMessage | null>(null);
   const pathname = usePathname();
   const isAr = language === "ar";
 
@@ -422,7 +424,77 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     };
   }, []);
 
-  // Device session heartbeat & force-logout listener
+  // Helper for friendly page name
+  const getFriendlyPageTitle = (path: string): string => {
+    if (path === "/" || path === "/dashboard") return "Dashboard Overview";
+    if (path.includes("/financials/inputs/deposits")) return "Deposits Input";
+    if (path.includes("/financials/inputs/sales")) return "Sales Input";
+    if (path.includes("/financials/inputs/payments")) return "Payments Input";
+    if (path.includes("/financials/inputs/credits")) return "Credits Input";
+    if (path.includes("/financials/inputs/cheques")) return "Cheques Input";
+    if (path.includes("/financials/inputs/tmt-invoices")) return "TMT Invoices";
+    if (path.includes("/financials/inputs/safe-report")) return "Safe Report";
+    if (path.includes("/financials/inputs")) return "Financial Inputs";
+    if (path.includes("/financial-reports/month-summary")) return "Month Summary Report";
+    if (path.includes("/financial-reports/pnl")) return "P&L Statement";
+    if (path.includes("/financial-reports/expenses")) return "Expenses Report";
+    if (path.includes("/financial-reports/sales-and-credits")) return "Sales & Credits";
+    if (path.includes("/financial-reports/vendor-statements")) return "Vendor Statements";
+    if (path.includes("/financial-reports/end-shift-cash")) return "End Shift Cash";
+    if (path.includes("/financial-reports")) return "Financial Reports";
+    if (path.includes("/financials/detailed-sales")) return "Detailed Sales Analysis";
+    if (path.includes("/financials/out-of-stock")) return "Out of Stock Log";
+    if (path.includes("/shift-reports/manager")) return "Shift Reports Audit";
+    if (path.includes("/shift-reports/cashier")) return "Cashier Shift Entry";
+    if (path.includes("/voids/manager")) return "Voids & Returns Manager";
+    if (path.includes("/voids/cashier")) return "Cashier Voids Request";
+    if (path.includes("/admin/devices")) return "Device Sessions & Control";
+    if (path.includes("/admin/users")) return "User Management";
+    if (path.includes("/admin/schedule")) return "Smart Scheduler";
+    if (path.includes("/admin/payroll")) return "Payroll System";
+    if (path.includes("/admin/adjustments")) return "Adjustments & Loans";
+    if (path.includes("/admin/cleaning")) return "Cleaning Logs";
+    if (path.includes("/admin/lost-and-found")) return "Lost & Found";
+    if (path.includes("/admin/offers")) return "Offers Management";
+    if (path.includes("/admin/food-codes")) return "Food Codes";
+    if (path.includes("/admin/inventory-predict")) return "Inventory Predict";
+    if (path.includes("/admin/send-document")) return "Dispatch Document";
+    if (path.includes("/admin/import-csv")) return "Data Import";
+    if (path.includes("/products/expiries-audit")) return "Expiries Audit";
+    if (path.includes("/products/supplier-orders")) return "Supplier Orders";
+    if (path.includes("/products/product-lookup") || path.includes("/admin/product-lookup")) return "Product Lookup";
+    if (path.includes("/checklists/manager")) return "Manager Checklists";
+    if (path.includes("/checklists/cashier")) return "Cashier Checklists";
+    if (path.includes("/hr/employees")) return "HR Employees";
+    if (path.includes("/ai-assistant")) return "Ibrahim AI Assistant";
+    if (path.includes("/settings/audit-log")) return "Security Audit Log";
+    if (path.includes("/settings/notifications")) return "Notification Settings";
+    if (path.includes("/settings/cashiers")) return "Cashier Accounts";
+    if (path.includes("/cashier")) return "Cashier Terminal";
+    return path;
+  };
+
+  // Real-time live page & PWA status sync
+  useEffect(() => {
+    if (!user) return;
+    const sessionId = typeof window !== "undefined" ? sessionStorage.getItem("device_session_id") : null;
+    if (!sessionId) return;
+
+    const isStandalone = typeof window !== "undefined" && (
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as any).standalone === true
+    );
+
+    setDoc(doc(db, "active_sessions", sessionId), {
+      currentPath: pathname,
+      pageLabel: getFriendlyPageTitle(pathname),
+      isPwa: isStandalone,
+      screenSize: typeof window !== "undefined" ? `${window.innerWidth}×${window.innerHeight}` : "Unknown",
+      lastActiveAt: new Date().toISOString()
+    }, { merge: true }).catch(() => {});
+  }, [pathname, user]);
+
+  // Device session heartbeat, remote message & force-logout listener
   useEffect(() => {
     if (!user) return;
 
@@ -431,6 +503,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
     let hasLoadedSessionDoc = false;
     let isTerminating = false;
+    let lastSeenMsgId = "";
+    let lastSeenCommandId = "";
 
     const triggerClientLogout = async (reason?: string) => {
       if (isTerminating) return;
@@ -464,8 +538,33 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       unsubSession = onSnapshot(doc(db, "active_sessions", sessionId), (snap) => {
         if (snap.exists()) {
           hasLoadedSessionDoc = true;
-          if (snap.data()?.forceLogout === true) {
+          const data = snap.data();
+
+          // Check Force Logout
+          if (data.forceLogout === true) {
             triggerClientLogout("forceLogout flag is true");
+            return;
+          }
+
+          // Check Remote Instant Broadcast Message
+          if (data.remoteMessage && data.remoteMessage.id && data.remoteMessage.id !== lastSeenMsgId) {
+            lastSeenMsgId = data.remoteMessage.id;
+            setIncomingRemoteMessage(data.remoteMessage);
+            try {
+              audioChimes.playPingSound();
+            } catch (e) {}
+            triggerHapticFeedback([200, 100, 200, 100, 300]);
+          } else if (!data.remoteMessage) {
+            setIncomingRemoteMessage(null);
+          }
+
+          // Check Remote Command (e.g. reload app)
+          if (data.remoteCommand && data.remoteCommand.action === "reload" && data.remoteCommand.commandId !== lastSeenCommandId) {
+            lastSeenCommandId = data.remoteCommand.commandId;
+            toast.loading(language === "ar" ? "جاري تحديث التطبيق عن بُعد..." : "Reloading application (remote command)...", { duration: 2000 });
+            setTimeout(() => {
+              window.location.reload();
+            }, 1000);
           }
         } else if (hasLoadedSessionDoc) {
           // Document was removed/deleted by admin
@@ -495,14 +594,14 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       console.debug("User doc listener error:", err);
     });
 
-    // Heartbeat: update lastActiveAt every 3 minutes
+    // Heartbeat: update lastActiveAt every 2 minutes
     const heartbeat = setInterval(() => {
       if (sessionId) {
         setDoc(doc(db, "active_sessions", sessionId), {
           lastActiveAt: new Date().toISOString()
         }, { merge: true }).catch(console.warn);
       }
-    }, 3 * 60 * 1000);
+    }, 2 * 60 * 1000);
 
     // Also update lastActiveAt on user interactions (throttled)
     let lastActivityUpdate = Date.now();
@@ -1411,6 +1510,20 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
         }}
         userName={userDoc?.displayName || userDoc?.name || user?.displayName || (user?.email ? user.email.split("@")[0] : "Mr. Youssef Halawany")}
         userRole={userDoc?.role || role || "Executive Administrator"}
+      />
+
+      <RemoteMessageOverlay
+        message={incomingRemoteMessage}
+        onAcknowledge={async () => {
+          const sessionId = sessionStorage.getItem("device_session_id");
+          if (sessionId) {
+            updateDoc(doc(db, "active_sessions", sessionId), {
+              remoteMessage: null,
+              acknowledgedAt: new Date().toISOString()
+            }).catch(() => {});
+          }
+          setIncomingRemoteMessage(null);
+        }}
       />
 
       <PwaInstallPrompt />

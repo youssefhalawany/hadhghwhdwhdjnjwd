@@ -180,8 +180,43 @@ class AudioChimeEngine {
     }
   }
 
+  /**
+   * 🔔 5. Urgent Device Ping / High Priority Remote Broadcast Sound
+   */
+  playPingSound() {
+    const ctx = this.initCtx();
+    if (!ctx) return;
+
+    try {
+      const now = ctx.currentTime;
+      // High-clarity double sonar chime (E6 -> G#6 -> B6)
+      const freqs = [1318.51, 1661.22, 1975.53];
+      freqs.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const startTime = now + idx * 0.08;
+
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, startTime);
+        gain.gain.setValueAtTime(0.4, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.5);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(startTime);
+        osc.stop(startTime + 0.5);
+      });
+    } catch (e) {
+      console.error("Failed to play ping sound", e);
+    }
+  }
+
   playByType(type?: string) {
     switch (type) {
+      case "ping":
+      case "alert":
+        this.playPingSound();
+        break;
       case "void":
         this.playVoidCashRegisterSound();
         break;
