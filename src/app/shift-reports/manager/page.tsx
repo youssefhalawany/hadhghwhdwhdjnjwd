@@ -1856,15 +1856,15 @@ export default function ManagerAuditPage() {
           );
 
           const renderVarianceBadge = (variance: number) => {
-            if (variance === 0) return <div style={{ fontWeight: '900', fontSize: '13px', letterSpacing: '0.5px' }}>✓ BALANCED</div>;
-            if (variance < 0) return <div style={{ fontWeight: '900', fontSize: '13px', letterSpacing: '0.5px' }}>▼ SHORT: {variance}</div>;
-            return <div style={{ fontWeight: '900', fontSize: '13px', letterSpacing: '0.5px' }}>▲ OVER: +{variance}</div>;
+            if (variance === 0) return <div style={{ fontWeight: '900', fontSize: '13px', letterSpacing: '0.5px', color: '#000000' }}>✓ BALANCED</div>;
+            if (variance < 0) return <div style={{ fontWeight: '900', fontSize: '13px', letterSpacing: '0.5px', color: '#b91c1c' }}>▼ SHORT: {variance}</div>;
+            return <div style={{ fontWeight: '900', fontSize: '13px', letterSpacing: '0.5px', color: '#15803d' }}>▲ OVER: +{variance}</div>;
           };
 
           return (
             <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
               {/* PAGE 1: FINANCIAL AUDIT */}
-              <div id="pdf-page-1" style={{ width: '794px', height: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', display: 'flex', flexDirection: 'column' }}>
+              <div id="pdf-page-1" style={{ width: '794px', height: '1123px', backgroundColor: '#ffffff', color: '#000000', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', display: 'flex', flexDirection: 'column' }}>
                 {securityBorders}
                 {renderHeader(selectedReport.cashierRole === 2 ? "SHIFT REPORT" : "SHIFT REPORT (FINANCIALS)")}
 
@@ -1872,66 +1872,71 @@ export default function ManagerAuditPage() {
                   {/* Left Column (Details) */}
                   <div style={{ flex: 1, padding: '10px 15px 10px 30px', display: 'flex', flexDirection: 'column' }}>
                     <div style={{ backgroundColor: '#fff', border: '1px solid #000', borderRight: '4px solid #000', borderRadius: '6px', padding: '6px 10px', direction: 'rtl', textAlign: 'right', marginBottom: '15px' }}>
-                      <p style={{ margin: '0 0 2px', fontSize: '10px', color: '#000', lineHeight: 1.4, fontWeight: 'bold' }}><span style={{ color: '#000', marginLeft: '6px' }}>■</span>{generateEgyptianSummary()}</p>
-                      <p style={{ margin: 0, fontSize: '10px', color: '#000', lineHeight: 1.4, fontWeight: 'bold' }}><span style={{ color: '#000', marginLeft: '6px' }}>■</span>{generateVolumeContext()}</p>
+                      <p style={{ margin: '0 0 2px', fontSize: '10px', color: '#000000', lineHeight: 1.4, fontWeight: 'bold' }}><span style={{ color: '#000000', marginLeft: '6px' }}>■</span>{generateEgyptianSummary()}</p>
+                      <p style={{ margin: 0, fontSize: '10px', color: '#000000', lineHeight: 1.4, fontWeight: 'bold' }}><span style={{ color: '#000000', marginLeft: '6px' }}>■</span>{generateVolumeContext()}</p>
                     </div>
 
-                    <div style={{ border: '2px solid #000', borderRadius: '6px', padding: '8px 15px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ border: '2px solid #000', borderRadius: '6px', padding: '8px 15px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff' }}>
                       <div style={{ textAlign: 'center' }}>
-                        <p style={{ margin: '0 0 2px', fontSize: '9px', fontWeight: 'bold', color: '#666', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Expected System Cash</p>
-                        <p style={{ margin: 0, fontSize: '16px', fontWeight: 'bold', color: '#000' }}>EGP {Number(expectedCash).toLocaleString()}</p>
+                        <p style={{ margin: '0 0 2px', fontSize: '9px', fontWeight: 'bold', color: '#666666', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Expected System Cash</p>
+                        <p style={{ margin: 0, fontSize: '16px', fontWeight: 'bold', color: '#000000' }}>EGP {Number(expectedCash).toLocaleString()}</p>
                       </div>
                       <div style={{ width: '1px', backgroundColor: '#000', alignSelf: 'stretch' }}></div>
                       <div style={{ textAlign: 'center' }}>
-                        <p style={{ margin: '0 0 2px', fontSize: '9px', fontWeight: 'bold', color: '#666', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Actual Cashier Cash</p>
-                        <p style={{ margin: 0, fontSize: '16px', fontWeight: 'bold', color: '#000' }}>EGP {selectedReport?.cashierCounts?.cash?.toLocaleString()}</p>
+                        <p style={{ margin: '0 0 2px', fontSize: '9px', fontWeight: 'bold', color: '#666666', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Actual Cashier Cash</p>
+                        <p style={{ margin: 0, fontSize: '16px', fontWeight: 'bold', color: '#000000' }}>EGP {selectedReport?.cashierCounts?.cash?.toLocaleString()}</p>
                       </div>
                       <div style={{ width: '1px', backgroundColor: '#000', alignSelf: 'stretch' }}></div>
                       <div style={{ textAlign: 'center' }}>
-                        <p style={{ margin: '0 0 2px', fontSize: '9px', fontWeight: 'bold', color: '#666', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total System Visa</p>
-                        <p style={{ margin: 0, fontSize: '16px', fontWeight: 'bold', color: '#000' }}>EGP {Number(expectedVisa).toLocaleString()}</p>
+                        <p style={{ margin: '0 0 2px', fontSize: '9px', fontWeight: 'bold', color: '#666666', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total System Visa</p>
+                        <p style={{ margin: 0, fontSize: '16px', fontWeight: 'bold', color: '#000000' }}>EGP {Number(expectedVisa).toLocaleString()}</p>
                       </div>
                     </div>
-                    <div style={{ textAlign: 'center', border: '2px solid #000', color: '#000', padding: '6px 20px', borderRadius: '6px', marginBottom: '15px' }}>
-                      <p style={{ margin: '0 0 2px', fontSize: '9px', fontWeight: 'bold', color: '#333', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Net Sales (Sys)</p>
-                      <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>EGP {(Number(expectedCash) + Number(expectedVisa)).toLocaleString()}</p>
+                    <div style={{ textAlign: 'center', border: '2px solid #000', color: '#000000', backgroundColor: '#fff', padding: '6px 20px', borderRadius: '6px', marginBottom: '15px' }}>
+                      <p style={{ margin: '0 0 2px', fontSize: '9px', fontWeight: 'bold', color: '#333333', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Net Sales (Sys)</p>
+                      <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: '#000000' }}>EGP {(Number(expectedCash) + Number(expectedVisa)).toLocaleString()}</p>
                     </div>
 
-                    <div style={{ border: '2px solid #000', marginBottom: '15px', borderRadius: '4px', overflow: 'hidden' }}>
-                      <div style={{ backgroundColor: '#f9f9f9', padding: '4px 15px', borderBottom: '1px solid #000', fontWeight: 'bold', color: '#000', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                    <div style={{ border: '2px solid #000', marginBottom: '15px', borderRadius: '4px', overflow: 'hidden', backgroundColor: '#fff' }}>
+                      <div style={{ backgroundColor: '#f9f9f9', padding: '4px 15px', borderBottom: '1px solid #000', fontWeight: 'bold', color: '#000000', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px' }}>
                         1. Shift & Branch Information
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginTop: '4px' }}>
-                          <div><p style={{ margin: '0 0 2px', color: '#666', fontSize: '9px' }}>Audited By</p><p style={{ margin: 0, fontWeight: 'bold', fontSize: '11px', color: '#000' }}>{managerName || "Pending"}</p></div>
-                          <div><p style={{ margin: '0 0 2px', color: '#666', fontSize: '9px' }}>Date Audited</p><p style={{ margin: 0, fontWeight: 'bold', fontSize: '11px', color: '#000' }}>{formatTimeMinus2Hours(selectedReport.managerAudit?.auditedAt || new Date().toISOString())}</p></div>
+                          <div><p style={{ margin: '0 0 2px', color: '#666666', fontSize: '9px' }}>Audited By</p><p style={{ margin: 0, fontWeight: 'bold', fontSize: '11px', color: '#000000' }}>{managerName || "Pending"}</p></div>
+                          <div><p style={{ margin: '0 0 2px', color: '#666666', fontSize: '9px' }}>Date Audited</p><p style={{ margin: 0, fontWeight: 'bold', fontSize: '11px', color: '#000000' }}>{formatTimeMinus2Hours(selectedReport.managerAudit?.auditedAt || new Date().toISOString())}</p></div>
                         </div>
                       </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0' }}>
-                        <div style={{ padding: '6px 15px', borderRight: '1px dotted #ccc', borderBottom: '1px dotted #ccc' }}><p style={{ fontSize: '9px', color: '#666', textTransform: 'uppercase', margin: '0 0 2px' }}>Store ID</p><p style={{ fontSize: '11px', color: '#000', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.storeId}</p></div>
-                        <div style={{ padding: '6px 15px', borderBottom: '1px dotted #ccc' }}><p style={{ fontSize: '9px', color: '#666', textTransform: 'uppercase', margin: '0 0 2px' }}>Shift Period</p><p style={{ fontSize: '11px', color: '#000', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.shift} Shift</p></div>
-                        <div style={{ padding: '6px 15px', borderRight: '1px dotted #ccc', borderBottom: '1px dotted #ccc' }}><p style={{ fontSize: '9px', color: '#666', textTransform: 'uppercase', margin: '0 0 2px' }}>Cashier Name</p><p style={{ fontSize: '11px', color: '#000', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.name}</p></div>
-                        <div style={{ padding: '6px 15px', borderBottom: '1px dotted #ccc' }}><p style={{ fontSize: '9px', color: '#666', textTransform: 'uppercase', margin: '0 0 2px' }}>Operating Date</p><p style={{ fontSize: '11px', color: '#000', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.date}</p></div>
-                        <div style={{ padding: '6px 15px', borderRight: '1px dotted #ccc' }}><p style={{ fontSize: '9px', color: '#666', textTransform: 'uppercase', margin: '0 0 2px' }}>Cashier Role</p><p style={{ fontSize: '11px', color: '#000', fontWeight: 'bold', margin: 0 }}>{selectedReport.cashierRole === 2 ? 'Cashier 2 (Money Only)' : 'Cashier 1 (Full)'}</p></div>
-                        <div style={{ padding: '6px 15px' }}><p style={{ fontSize: '9px', color: '#666', textTransform: 'uppercase', margin: '0 0 2px' }}>Timestamp</p><p style={{ fontSize: '11px', color: '#000', fontWeight: 'bold', margin: 0 }}>{formatTimeMinus2Hours(selectedReport.createdAt)}</p></div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0', backgroundColor: '#fff' }}>
+                        <div style={{ padding: '6px 15px', borderRight: '1px dotted #ccc', borderBottom: '1px dotted #ccc' }}><p style={{ fontSize: '9px', color: '#666666', textTransform: 'uppercase', margin: '0 0 2px' }}>Store ID</p><p style={{ fontSize: '11px', color: '#000000', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.storeId}</p></div>
+                        <div style={{ padding: '6px 15px', borderBottom: '1px dotted #ccc' }}><p style={{ fontSize: '9px', color: '#666666', textTransform: 'uppercase', margin: '0 0 2px' }}>Shift Period</p><p style={{ fontSize: '11px', color: '#000000', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.shift} Shift</p></div>
+                        <div style={{ padding: '6px 15px', borderRight: '1px dotted #ccc', borderBottom: '1px dotted #ccc' }}><p style={{ fontSize: '9px', color: '#666666', textTransform: 'uppercase', margin: '0 0 2px' }}>Cashier Name</p><p style={{ fontSize: '11px', color: '#000000', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.name}</p></div>
+                        <div style={{ padding: '6px 15px', borderBottom: '1px dotted #ccc' }}><p style={{ fontSize: '9px', color: '#666666', textTransform: 'uppercase', margin: '0 0 2px' }}>Operating Date</p><p style={{ fontSize: '11px', color: '#000000', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.date}</p></div>
+                        <div style={{ padding: '6px 15px', borderRight: '1px dotted #ccc' }}><p style={{ fontSize: '9px', color: '#666666', textTransform: 'uppercase', margin: '0 0 2px' }}>Cashier Role</p><p style={{ fontSize: '11px', color: '#000000', fontWeight: 'bold', margin: 0 }}>{selectedReport.cashierRole === 2 ? 'Cashier 2 (Money Only)' : 'Cashier 1 (Full)'}</p></div>
+                        <div style={{ padding: '6px 15px' }}><p style={{ fontSize: '9px', color: '#666666', textTransform: 'uppercase', margin: '0 0 2px' }}>Timestamp</p><p style={{ fontSize: '11px', color: '#000000', fontWeight: 'bold', margin: 0 }}>{formatTimeMinus2Hours(selectedReport.createdAt)}</p></div>
                       </div>
                     </div>
 
-                    <div style={{ border: '2px solid #000', marginBottom: '15px', borderRadius: '4px', overflow: 'hidden' }}>
-                      <div style={{ backgroundColor: '#f9f9f9', padding: '4px 15px', borderBottom: '1px solid #000', fontWeight: 'bold', color: '#000', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px' }}>2. Financial Audit & Variance</div>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '11px' }}>
+                    <div style={{ border: '2px solid #000', marginBottom: '15px', borderRadius: '4px', overflow: 'hidden', backgroundColor: '#fff' }}>
+                      <div style={{ backgroundColor: '#f9f9f9', padding: '4px 15px', borderBottom: '1px solid #000', fontWeight: 'bold', color: '#000000', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px' }}>2. Financial Audit & Variance</div>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '11px', color: '#000000' }}>
                         <thead style={{ backgroundColor: '#fff', borderBottom: '1px solid #000' }}>
-                          <tr><th style={{ padding: '6px 15px', fontWeight: 'bold' }}>Tender Type</th><th style={{ padding: '6px 15px', fontWeight: 'bold' }}>Declared</th><th style={{ padding: '6px 15px', fontWeight: 'bold' }}>Expected</th><th style={{ padding: '6px 15px', textAlign: 'right', fontWeight: 'bold' }}>Variance Status</th></tr>
+                          <tr>
+                            <th style={{ padding: '6px 15px', fontWeight: 'bold', color: '#000000' }}>Tender Type</th>
+                            <th style={{ padding: '6px 15px', fontWeight: 'bold', color: '#000000' }}>Declared</th>
+                            <th style={{ padding: '6px 15px', fontWeight: 'bold', color: '#000000' }}>Expected</th>
+                            <th style={{ padding: '6px 15px', textAlign: 'right', fontWeight: 'bold', color: '#000000' }}>Variance Status</th>
+                          </tr>
                         </thead>
                         <tbody>
                           <tr style={{ backgroundColor: '#fff' }}>
-                            <td style={{ padding: '8px 15px', borderBottom: '1px dotted #ccc', fontWeight: 'bold', fontSize: '12px' }}>Cash</td>
-                            <td style={{ padding: '8px 15px', borderBottom: '1px dotted #ccc', fontFamily: 'monospace', fontSize: '13px' }}>EGP {selectedReport?.cashierCounts?.cash?.toLocaleString()}</td>
-                            <td style={{ padding: '8px 15px', borderBottom: '1px dotted #ccc', fontFamily: 'monospace', fontSize: '13px' }}>EGP {Number(expectedCash).toLocaleString() || "0"}</td>
+                            <td style={{ padding: '8px 15px', borderBottom: '1px dotted #ccc', fontWeight: 'bold', fontSize: '12px', color: '#000000' }}>Cash</td>
+                            <td style={{ padding: '8px 15px', borderBottom: '1px dotted #ccc', fontFamily: 'monospace', fontSize: '13px', color: '#000000', fontWeight: 'bold' }}>EGP {selectedReport?.cashierCounts?.cash?.toLocaleString()}</td>
+                            <td style={{ padding: '8px 15px', borderBottom: '1px dotted #ccc', fontFamily: 'monospace', fontSize: '13px', color: '#000000', fontWeight: 'bold' }}>EGP {Number(expectedCash).toLocaleString() || "0"}</td>
                             <td style={{ padding: '8px 15px', borderBottom: '1px dotted #ccc', textAlign: 'right' }}>{renderVarianceBadge(calculateCashVariance())}</td>
                           </tr>
                           <tr style={{ backgroundColor: '#fff' }}>
-                            <td style={{ padding: '8px 15px', borderBottom: '1px dotted #ccc', fontWeight: 'bold', fontSize: '12px' }}>Visa</td>
-                            <td style={{ padding: '8px 15px', borderBottom: '1px dotted #ccc', fontFamily: 'monospace', fontSize: '13px' }}>EGP {selectedReport?.cashierCounts?.visa?.toLocaleString()}</td>
-                            <td style={{ padding: '8px 15px', borderBottom: '1px dotted #ccc', fontFamily: 'monospace', fontSize: '13px' }}>EGP {Number(expectedVisa).toLocaleString() || "0"}</td>
+                            <td style={{ padding: '8px 15px', borderBottom: '1px dotted #ccc', fontWeight: 'bold', fontSize: '12px', color: '#000000' }}>Visa</td>
+                            <td style={{ padding: '8px 15px', borderBottom: '1px dotted #ccc', fontFamily: 'monospace', fontSize: '13px', color: '#000000', fontWeight: 'bold' }}>EGP {selectedReport?.cashierCounts?.visa?.toLocaleString()}</td>
+                            <td style={{ padding: '8px 15px', borderBottom: '1px dotted #ccc', fontFamily: 'monospace', fontSize: '13px', color: '#000000', fontWeight: 'bold' }}>EGP {Number(expectedVisa).toLocaleString() || "0"}</td>
                             <td style={{ padding: '8px 15px', borderBottom: '1px dotted #ccc', textAlign: 'right' }}>{renderVarianceBadge(calculateVisaVariance())}</td>
                           </tr>
                         </tbody>
@@ -1939,28 +1944,28 @@ export default function ManagerAuditPage() {
                     </div>
 
                     {/* Manager Notes & Category Sales % on Page 1 */}
-                    <div style={{ border: '2px solid #000', marginBottom: '15px', borderRadius: '4px', overflow: 'hidden' }}>
-                      <div style={{ backgroundColor: '#f9f9f9', padding: '4px 15px', borderBottom: '1px solid #000', fontWeight: 'bold', color: '#000', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', justifyContent: 'space-between' }}>
+                    <div style={{ border: '2px solid #000', marginBottom: '15px', borderRadius: '4px', overflow: 'hidden', backgroundColor: '#fff' }}>
+                      <div style={{ backgroundColor: '#f9f9f9', padding: '4px 15px', borderBottom: '1px solid #000', fontWeight: 'bold', color: '#000000', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', justifyContent: 'space-between' }}>
                         <span>3. Manager Comments & Category Sales %</span>
                       </div>
                       <div style={{ display: 'flex', borderBottom: '1px solid #000' }}>
                         <div style={{ flex: 1, padding: '6px 15px', borderRight: '1px solid #000', backgroundColor: '#fff' }}>
-                          <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#666', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Coffee Sales %</span>
-                          <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#000' }}>{selectedReport.managerAudit?.coffeePercent || coffeePercent || 0}%</span>
+                          <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#666666', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Coffee Sales %</span>
+                          <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#000000' }}>{selectedReport.managerAudit?.coffeePercent || coffeePercent || 0}%</span>
                         </div>
                         <div style={{ flex: 1, padding: '6px 15px', backgroundColor: '#fff' }}>
-                          <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#666', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Cigarette Sales %</span>
-                          <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#000' }}>{selectedReport.managerAudit?.cigarettePercent || cigarettePercent || 0}%</span>
+                          <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#666666', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Cigarette Sales %</span>
+                          <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#000000' }}>{selectedReport.managerAudit?.cigarettePercent || cigarettePercent || 0}%</span>
                         </div>
                       </div>
-                      <div style={{ padding: '6px 15px', fontSize: '11px', color: '#000', fontStyle: selectedReport.managerAudit?.comments ? 'normal' : 'italic', backgroundColor: '#fff' }}>
+                      <div style={{ padding: '6px 15px', fontSize: '11px', color: '#000000', fontStyle: selectedReport.managerAudit?.comments ? 'normal' : 'italic', backgroundColor: '#fff' }}>
                         {selectedReport.managerAudit?.rejectReason && (
                           <div style={{ marginBottom: '6px', paddingBottom: '6px', borderBottom: '1px dotted #ccc' }}>
-                            <p style={{ margin: '0 0 2px', fontSize: '9px', fontWeight: 'bold', color: '#000', textTransform: 'uppercase' }}>Previous Rejection Reason (Corrected by Cashier)</p>
-                            <p style={{ margin: 0, fontStyle: 'italic', color: '#000', fontWeight: 'bold' }}>"{selectedReport.managerAudit.rejectReason}"</p>
+                            <p style={{ margin: '0 0 2px', fontSize: '9px', fontWeight: 'bold', color: '#000000', textTransform: 'uppercase' }}>Previous Rejection Reason (Corrected by Cashier)</p>
+                            <p style={{ margin: 0, fontStyle: 'italic', color: '#000000', fontWeight: 'bold' }}>&ldquo;{selectedReport.managerAudit.rejectReason}&rdquo;</p>
                           </div>
                         )}
-                        <div style={{ fontStyle: selectedReport.managerAudit?.comments || comments ? 'normal' : 'italic' }}>
+                        <div style={{ fontStyle: selectedReport.managerAudit?.comments || comments ? 'normal' : 'italic', color: '#000000' }}>
                           {selectedReport.managerAudit?.comments || comments || "No additional comments provided."}
                         </div>
                       </div>
@@ -1976,8 +1981,8 @@ export default function ManagerAuditPage() {
                     <div style={{ position: 'absolute', top: '10px', left: '-12px', fontSize: '24px', backgroundColor: '#fff' }}>✂</div>
                     <div style={{ position: 'absolute', bottom: '10px', left: '-12px', fontSize: '24px', backgroundColor: '#fff' }}>✂</div>
                     <div style={{ transform: 'rotate(-90deg)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
-                      <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#000', letterSpacing: '1px' }}>AFFIX Z-REPORT TAPE HERE</span>
-                      <span style={{ fontSize: '12px', color: '#333' }}>(عرض 80 مم - قم بتدبيس تقرير Z هنا)</span>
+                      <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#000000', letterSpacing: '1px' }}>AFFIX Z-REPORT TAPE HERE</span>
+                      <span style={{ fontSize: '12px', color: '#333333' }}>(عرض 80 مم - قم بتدبيس تقرير Z هنا)</span>
                     </div>
                   </div>
                 </div>
@@ -1986,11 +1991,11 @@ export default function ManagerAuditPage() {
 
               {/* PAGE 2: INVENTORY AUDIT (Only for Cashier 1) */}
               {selectedReport.cashierRole !== 2 && (
-                <div id="pdf-page-2" style={{ width: '794px', minHeight: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', display: 'flex', flexDirection: 'column', marginTop: '20px' }}>
+                <div id="pdf-page-2" style={{ width: '794px', minHeight: '1123px', backgroundColor: '#ffffff', color: '#000000', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', display: 'flex', flexDirection: 'column', marginTop: '20px' }}>
                   {securityBorders}
                   {renderHeader("SHIFT REPORT (INVENTORY)")}
                   
-                  <div style={{ padding: '10px 30px', position: 'relative', zIndex: 10, display: 'flex', flex: 1, flexDirection: 'column' }}>
+                  <div style={{ padding: '10px 30px', position: 'relative', zIndex: 10, display: 'flex', flex: 1, flexDirection: 'column', color: '#000000' }}>
                     {(() => {
                       let totalCigarettesSold = 0;
                       if (selectedReport.inventoryCounts?.cigaretteCounts) {
@@ -2009,43 +2014,43 @@ export default function ManagerAuditPage() {
                       return (
                         <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
                           <div style={{ flex: 1, backgroundColor: '#fff', border: '2px solid #000', borderRadius: '6px', padding: '8px 12px' }}>
-                            <p style={{ margin: '0 0 2px', fontSize: '10px', fontWeight: 'bold', color: '#333', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Cigarettes Sold</p>
-                            <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold', color: '#000' }}>{totalCigarettesSold} <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#666' }}>Packs</span></p>
+                            <p style={{ margin: '0 0 2px', fontSize: '10px', fontWeight: 'bold', color: '#333333', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Cigarettes Sold</p>
+                            <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold', color: '#000000' }}>{totalCigarettesSold} <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#666666' }}>Packs</span></p>
                           </div>
                           <div style={{ flex: 1, backgroundColor: '#fff', border: '2px solid #000', borderRadius: '6px', padding: '8px 12px' }}>
-                            <p style={{ margin: '0 0 2px', fontSize: '10px', fontWeight: 'bold', color: '#333', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Lighters Sold</p>
-                            <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold', color: '#000' }}>{totalLightersSold} <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#666' }}>Units</span></p>
+                            <p style={{ margin: '0 0 2px', fontSize: '10px', fontWeight: 'bold', color: '#333333', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Lighters Sold</p>
+                            <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold', color: '#000000' }}>{totalLightersSold} <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#666666' }}>Units</span></p>
                           </div>
                           <div style={{ flex: 1, backgroundColor: '#f9f9f9', border: '2px solid #000', borderRadius: '6px', padding: '8px 12px' }}>
-                            <p style={{ margin: '0 0 2px', fontSize: '10px', fontWeight: 'bold', color: '#333', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Units Moved</p>
-                            <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold', color: '#000' }}>{totalUnits} <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#666' }}>Total</span></p>
+                            <p style={{ margin: '0 0 2px', fontSize: '10px', fontWeight: 'bold', color: '#333333', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Units Moved</p>
+                            <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold', color: '#000000' }}>{totalUnits} <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#666666' }}>Total</span></p>
                           </div>
                         </div>
                       );
                     })()}
 
-                    <div style={{ border: '2px solid #000', marginBottom: '15px', borderRadius: '4px', overflow: 'hidden' }}>
-                      <div style={{ backgroundColor: '#f9f9f9', padding: '4px 15px', borderBottom: '1px solid #000', fontWeight: 'bold', color: '#000', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                    <div style={{ border: '2px solid #000', marginBottom: '15px', borderRadius: '4px', overflow: 'hidden', backgroundColor: '#fff' }}>
+                      <div style={{ backgroundColor: '#f9f9f9', padding: '4px 15px', borderBottom: '1px solid #000', fontWeight: 'bold', color: '#000000', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px' }}>
                         3. Detailed Inventory Breakdown
                       </div>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '10px' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '10px', color: '#000000' }}>
                         <thead style={{ backgroundColor: '#fff', borderBottom: '1px solid #000' }}>
                           <tr>
-                            <th style={{ padding: '4px 15px', fontWeight: 'bold', color: '#000' }}>Item</th>
-                            <th style={{ padding: '4px 15px', fontWeight: 'bold', color: '#000' }}>Start</th>
-                            <th style={{ padding: '4px 15px', fontWeight: 'bold', color: '#000' }}>Delivery</th>
-                            <th style={{ padding: '4px 15px', fontWeight: 'bold', color: '#000' }}>End</th>
-                            <th style={{ padding: '4px 15px', fontWeight: 'bold', color: '#000', textAlign: 'right' }}>Calculated Sold</th>
+                            <th style={{ padding: '4px 15px', fontWeight: 'bold', color: '#000000' }}>Item</th>
+                            <th style={{ padding: '4px 15px', fontWeight: 'bold', color: '#000000' }}>Start</th>
+                            <th style={{ padding: '4px 15px', fontWeight: 'bold', color: '#000000' }}>Delivery</th>
+                            <th style={{ padding: '4px 15px', fontWeight: 'bold', color: '#000000' }}>End</th>
+                            <th style={{ padding: '4px 15px', fontWeight: 'bold', color: '#000000', textAlign: 'right' }}>Calculated Sold</th>
                           </tr>
                         </thead>
                         <tbody>
                           {selectedReport.inventoryCounts?.cigarettes && (
-                            <tr style={{ backgroundColor: '#f9f9f9' }}>
-                              <td style={{ padding: '4px 15px', borderBottom: '1px dotted #ccc', fontWeight: 'bold' }}>Cigarettes</td>
-                              <td style={{ padding: '4px 15px', borderBottom: '1px dotted #ccc' }}>{selectedReport.inventoryCounts?.cigarettes?.start || 0}</td>
-                              <td style={{ padding: '4px 15px', borderBottom: '1px dotted #ccc' }}>{selectedReport.inventoryCounts?.cigarettes?.delivery || 0}</td>
-                              <td style={{ padding: '4px 15px', borderBottom: '1px dotted #ccc' }}>{selectedReport.inventoryCounts?.cigarettes?.end || 0}</td>
-                              <td style={{ padding: '4px 15px', borderBottom: '1px dotted #ccc', textAlign: 'right', fontWeight: 'bold', fontSize: '12px' }}>{selectedReport.inventoryCounts?.cigarettes?.sold || 0}</td>
+                            <tr style={{ backgroundColor: '#f9f9f9', color: '#000000' }}>
+                              <td style={{ padding: '4px 15px', borderBottom: '1px dotted #ccc', fontWeight: 'bold', color: '#000000' }}>Cigarettes</td>
+                              <td style={{ padding: '4px 15px', borderBottom: '1px dotted #ccc', color: '#000000' }}>{selectedReport.inventoryCounts?.cigarettes?.start || 0}</td>
+                              <td style={{ padding: '4px 15px', borderBottom: '1px dotted #ccc', color: '#000000' }}>{selectedReport.inventoryCounts?.cigarettes?.delivery || 0}</td>
+                              <td style={{ padding: '4px 15px', borderBottom: '1px dotted #ccc', color: '#000000' }}>{selectedReport.inventoryCounts?.cigarettes?.end || 0}</td>
+                              <td style={{ padding: '4px 15px', borderBottom: '1px dotted #ccc', textAlign: 'right', fontWeight: 'bold', fontSize: '12px', color: '#000000' }}>{selectedReport.inventoryCounts?.cigarettes?.sold || 0}</td>
                             </tr>
                           )}
                           {selectedReport.inventoryCounts?.cigaretteCounts && Object.entries(selectedReport.inventoryCounts.cigaretteCounts).map(([type, count], index) => {
@@ -2058,32 +2063,32 @@ export default function ManagerAuditPage() {
                             const e = Number(end) || 0;
                             const sold = isObj ? String(s + d - e) : "-";
                             return (
-                              <tr key={type} style={{ backgroundColor: index % 2 === 0 ? '#fff' : '#f9f9f9' }}>
-                                <td style={{ padding: '4px 15px', borderBottom: '1px dotted #ccc', fontWeight: 'bold', fontSize: '9px' }}>{type}</td>
-                                <td style={{ padding: '4px 15px', borderBottom: '1px dotted #ccc' }}>{start}</td>
-                                <td style={{ padding: '4px 15px', borderBottom: '1px dotted #ccc' }}>{delivery}</td>
-                                <td style={{ padding: '4px 15px', borderBottom: '1px dotted #ccc', fontWeight: 'bold' }}>{end}</td>
-                                <td style={{ padding: '4px 15px', borderBottom: '1px dotted #ccc', textAlign: 'right', fontWeight: 'bold', fontSize: '11px' }}>{sold}</td>
+                              <tr key={type} style={{ backgroundColor: index % 2 === 0 ? '#fff' : '#f9f9f9', color: '#000000' }}>
+                                <td style={{ padding: '4px 15px', borderBottom: '1px dotted #ccc', fontWeight: 'bold', fontSize: '9px', color: '#000000' }}>{type}</td>
+                                <td style={{ padding: '4px 15px', borderBottom: '1px dotted #ccc', color: '#000000' }}>{start}</td>
+                                <td style={{ padding: '4px 15px', borderBottom: '1px dotted #ccc', color: '#000000' }}>{delivery}</td>
+                                <td style={{ padding: '4px 15px', borderBottom: '1px dotted #ccc', fontWeight: 'bold', color: '#000000' }}>{end}</td>
+                                <td style={{ padding: '4px 15px', borderBottom: '1px dotted #ccc', textAlign: 'right', fontWeight: 'bold', fontSize: '11px', color: '#000000' }}>{sold}</td>
                               </tr>
                             );
                           })}
-                          <tr style={{ backgroundColor: '#fff' }}>
-                            <td style={{ padding: '4px 15px', borderBottom: '1px dotted #ccc', fontWeight: 'bold' }}>Lighters</td>
-                            <td style={{ padding: '4px 15px', borderBottom: '1px dotted #ccc' }}>{selectedReport.inventoryCounts?.lighters?.start || 0}</td>
-                            <td style={{ padding: '4px 15px', borderBottom: '1px dotted #ccc' }}>{selectedReport.inventoryCounts?.lighters?.delivery || 0}</td>
-                            <td style={{ padding: '4px 15px', borderBottom: '1px dotted #ccc' }}>{selectedReport.inventoryCounts?.lighters?.end || 0}</td>
-                            <td style={{ padding: '4px 15px', borderBottom: '1px dotted #ccc', textAlign: 'right', fontWeight: 'bold', fontSize: '12px' }}>{selectedReport.inventoryCounts?.lighters?.sold || 0}</td>
+                          <tr style={{ backgroundColor: '#fff', color: '#000000' }}>
+                            <td style={{ padding: '4px 15px', borderBottom: '1px dotted #ccc', fontWeight: 'bold', color: '#000000' }}>Lighters</td>
+                            <td style={{ padding: '4px 15px', borderBottom: '1px dotted #ccc', color: '#000000' }}>{selectedReport.inventoryCounts?.lighters?.start || 0}</td>
+                            <td style={{ padding: '4px 15px', borderBottom: '1px dotted #ccc', color: '#000000' }}>{selectedReport.inventoryCounts?.lighters?.delivery || 0}</td>
+                            <td style={{ padding: '4px 15px', borderBottom: '1px dotted #ccc', color: '#000000' }}>{selectedReport.inventoryCounts?.lighters?.end || 0}</td>
+                            <td style={{ padding: '4px 15px', borderBottom: '1px dotted #ccc', textAlign: 'right', fontWeight: 'bold', fontSize: '12px', color: '#000000' }}>{selectedReport.inventoryCounts?.lighters?.sold || 0}</td>
                           </tr>
                         </tbody>
                       </table>
                       <div style={{ display: 'flex', backgroundColor: '#f9f9f9', borderTop: '2px solid #000' }}>
                         <div style={{ padding: '6px 15px', flex: 1, borderRight: '1px solid #ccc' }}>
-                          <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#666', textTransform: 'uppercase', marginRight: '10px' }}>Coffee Shrink</span>
-                          <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#000' }}>{selectedReport.managerAudit?.coffeePercent || coffeePercent || 0}%</span>
+                          <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#666666', textTransform: 'uppercase', marginRight: '10px' }}>Coffee Shrink</span>
+                          <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#000000' }}>{selectedReport.managerAudit?.coffeePercent || coffeePercent || 0}%</span>
                         </div>
                         <div style={{ padding: '6px 15px', flex: 1 }}>
-                          <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#666', textTransform: 'uppercase', marginRight: '10px' }}>Cigarette Shrink</span>
-                          <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#000' }}>{selectedReport.managerAudit?.cigarettePercent || cigarettePercent || 0}%</span>
+                          <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#666666', textTransform: 'uppercase', marginRight: '10px' }}>Cigarette Shrink</span>
+                          <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#000000' }}>{selectedReport.managerAudit?.cigarettePercent || cigarettePercent || 0}%</span>
                         </div>
                       </div>
                     </div>
