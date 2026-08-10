@@ -398,5 +398,10 @@ service cloud.firestore {
       allow create, read, update, delete: if true;
     }
 
+    // ---------- Active Device Sessions ----------
+    match /active_sessions/{doc} {
+      allow create, read, update, delete: if true;
+    }
+
   }
 }
