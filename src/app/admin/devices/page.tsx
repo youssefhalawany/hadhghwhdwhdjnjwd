@@ -20,6 +20,7 @@ interface SessionData {
   loginAt: string;
   lastActiveAt: string;
   forceLogout?: boolean;
+  source?: string; // 'firebase_auth' for users pulled from Auth, undefined for tracked sessions
 }
 
 function parseTimeAgo(dateStr: string): string {
@@ -70,17 +71,51 @@ export default function DeviceSessionsPage() {
     const q = query(collection(db, "active_sessions"), orderBy("loginAt", "desc"));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const sessionsData: SessionData[] = snapshot.docs.map((docSnap) => ({
+      const firestoreSessions: SessionData[] = snapshot.docs.map((docSnap) => ({
         id: docSnap.id,
         ...docSnap.data()
       } as SessionData));
-      setSessions(sessionsData);
+      // Merge with auth users (keep auth users that don't have a tracked session)
+      setSessions(prev => {
+        const authOnly = prev.filter(s => s.source === "firebase_auth");
+        const trackedUserIds = new Set(firestoreSessions.map(s => s.userId));
+        const remainingAuth = authOnly.filter(s => !trackedUserIds.has(s.userId));
+        return [...firestoreSessions, ...remainingAuth];
+      });
       setLoading(false);
     }, (err) => {
       console.error("Sessions listener error:", err);
-      toast.error("Failed to load device sessions");
       setLoading(false);
     });
+
+    // Fetch Firebase Auth users via API (for users who haven't refreshed yet)
+    const fetchAuthUsers = async () => {
+      try {
+        let token = "";
+        if (auth.currentUser) {
+          try { token = await auth.currentUser.getIdToken(); } catch (e) {}
+        }
+        const res = await fetch("/api/admin/sessions", {
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "x-user-role": localStorage.getItem("circlek_role") || "owner"
+          }
+        });
+        const data = await res.json();
+        if (data.success && data.sessions) {
+          const authSessions = data.sessions.filter((s: any) => s.source === "firebase_auth") as SessionData[];
+          if (authSessions.length > 0) {
+            setSessions(prev => {
+              const trackedUserIds = new Set(prev.filter(s => !s.source).map(s => s.userId));
+              const newAuth = authSessions.filter(s => !trackedUserIds.has(s.userId));
+              return [...prev.filter(s => !s.source), ...newAuth];
+            });
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to fetch auth users:", e);
+      }
+    };
 
     // Get current user role
     const unsubAuth = auth.onAuthStateChanged(async (user) => {
@@ -90,6 +125,8 @@ export default function DeviceSessionsPage() {
         if (userDoc.exists()) {
           setCurrentUserRole(userDoc.data().role || "owner");
         }
+        // Fetch auth users after we have the token
+        fetchAuthUsers();
       }
     });
 
@@ -346,9 +383,19 @@ export default function DeviceSessionsPage() {
                             </div>
                             <div>
                               <p className="text-sm font-semibold text-foreground flex items-center gap-2">
-                                {session.browser || "Unknown Browser"}
-                                <span className="text-xs text-muted-foreground font-normal">on</span>
-                                {session.os || "Unknown OS"}
+                                {session.source === "firebase_auth" ? (
+                                  <>
+                                    <Globe className="h-3.5 w-3.5 text-muted-foreground inline" />
+                                    <span>Signed In</span>
+                                    <span className="text-[10px] text-muted-foreground/60 font-normal bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">via Firebase Auth</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    {session.browser || "Unknown Browser"}
+                                    <span className="text-xs text-muted-foreground font-normal">on</span>
+                                    {session.os || "Unknown OS"}
+                                  </>
+                                )}
                               </p>
                               <div className="flex items-center gap-3 mt-0.5">
                                 <span className={`text-[11px] font-bold uppercase tracking-wider ${
@@ -359,7 +406,7 @@ export default function DeviceSessionsPage() {
                                   {status === "online" ? "● Online" : status === "idle" ? "● Idle" : "● Offline"}
                                 </span>
                                 <span className="text-[11px] text-muted-foreground">
-                                  Last active {parseTimeAgo(session.lastActiveAt)}
+                                  {session.source === "firebase_auth" ? "Last sign-in" : "Last active"} {parseTimeAgo(session.lastActiveAt)}
                                 </span>
                                 <span className="text-[11px] text-muted-foreground">
                                   Logged in {parseTimeAgo(session.loginAt)}

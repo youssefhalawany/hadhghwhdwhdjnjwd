@@ -65,7 +65,7 @@ async function verifyAdminAccess(req: NextRequest) {
   }
 }
 
-// GET — List all active sessions
+// GET — List all active sessions + Firebase Auth users
 export async function GET(req: NextRequest) {
   try {
     const admin = await verifyAdminAccess(req);
@@ -73,15 +73,63 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
+    // 1. Get tracked sessions from Firestore
     const sessionsSnap = await getAdminDb()
       .collection("active_sessions")
       .orderBy("loginAt", "desc")
       .get();
 
-    const sessions = sessionsSnap.docs.map((doc) => ({
+    const trackedSessions = sessionsSnap.docs.map((doc) => ({
       id: doc.id,
       ...doc.data()
     }));
+
+    // 2. Get all Firebase Auth users to show devices that haven't refreshed yet
+    const trackedUserIds = new Set(trackedSessions.map((s: any) => s.userId));
+    const authUsers: any[] = [];
+
+    try {
+      const listResult = await getAdminAuth().listUsers(1000);
+      for (const userRecord of listResult.users) {
+        // Skip users that already have tracked sessions
+        if (trackedUserIds.has(userRecord.uid)) continue;
+
+        // Only include users who have signed in (have metadata)
+        if (userRecord.metadata.lastSignInTime) {
+          // Try to get user profile from Firestore for display name/role
+          let displayName = userRecord.displayName || userRecord.email?.split("@")[0] || "Unknown";
+          let role = "manager";
+          try {
+            const userDoc = await getAdminDb().collection("users").doc(userRecord.uid).get();
+            if (userDoc.exists) {
+              displayName = userDoc.data()?.displayName || displayName;
+              role = userDoc.data()?.role || role;
+            }
+          } catch (e) {}
+
+          // Parse user agent from tokensValidAfterTime to infer activity
+          authUsers.push({
+            id: `auth_${userRecord.uid}`,
+            userId: userRecord.uid,
+            userEmail: userRecord.email || "",
+            userName: displayName,
+            role,
+            browser: "Unknown",
+            os: "Unknown",
+            deviceType: "desktop",
+            loginAt: userRecord.metadata.lastSignInTime || "",
+            lastActiveAt: userRecord.metadata.lastRefreshTime || userRecord.metadata.lastSignInTime || "",
+            forceLogout: false,
+            source: "firebase_auth" // Flag to distinguish from tracked sessions
+          });
+        }
+      }
+    } catch (authErr) {
+      console.warn("Failed to list Firebase Auth users:", authErr);
+    }
+
+    // 3. Combine both sources
+    const sessions = [...trackedSessions, ...authUsers];
 
     return NextResponse.json({ success: true, sessions });
   } catch (error: any) {
