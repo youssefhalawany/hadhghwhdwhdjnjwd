@@ -3,11 +3,11 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sun, Moon, Shield, Database, LayoutDashboard, FileText, Printer, ClipboardList, CheckCircle, Search, LogOut, User, Users, Menu, X, Bell, PackageX, Truck, CalendarDays, DollarSign, Activity, Wallet, Tag, Sparkles, Barcode, Briefcase, Clock, PackageMinus, Package, Bot, ShoppingCart, Box } from "lucide-react";
+import { Sun, Moon, Shield, Database, LayoutDashboard, FileText, Printer, ClipboardList, CheckCircle, Search, LogOut, User, Users, Menu, X, Bell, PackageX, Truck, CalendarDays, DollarSign, Activity, Wallet, Tag, Sparkles, Barcode, Briefcase, Clock, PackageMinus, Package, Bot, ShoppingCart, Box, Monitor } from "lucide-react";
 import { auth, messaging, dbService, db } from "@/lib/firebase";
 import { getToken } from "firebase/messaging";
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile } from "firebase/auth";
-import { collection, query, where, onSnapshot, doc, getDoc, getDocs, setDoc, updateDoc, orderBy, limit } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, orderBy, limit } from "firebase/firestore";
 import PwaInstallPrompt from "./PwaInstallPrompt";
 import type { User as FirebaseUser } from "firebase/auth";
 import { useBranch, BranchId, BRANCHES } from "@/context/BranchContext";
@@ -242,6 +242,56 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
               ).catch(() => {});
             }
 
+            // Register device session for admin device tracking
+            if (typeof window !== "undefined") {
+              try {
+                const ua = navigator.userAgent;
+                let browser = "Unknown";
+                let os = "Unknown";
+                let deviceType = "desktop";
+
+                // Parse browser
+                if (ua.includes("Chrome") && !ua.includes("Edg")) browser = "Chrome";
+                else if (ua.includes("Safari") && !ua.includes("Chrome")) browser = "Safari";
+                else if (ua.includes("Firefox")) browser = "Firefox";
+                else if (ua.includes("Edg")) browser = "Edge";
+                else if (ua.includes("Opera") || ua.includes("OPR")) browser = "Opera";
+
+                // Parse OS
+                if (ua.includes("Windows")) os = "Windows";
+                else if (ua.includes("Mac OS")) os = "macOS";
+                else if (ua.includes("Linux") && !ua.includes("Android")) os = "Linux";
+                else if (ua.includes("Android")) os = "Android";
+                else if (ua.includes("iPhone") || ua.includes("iPad")) os = "iOS";
+
+                // Parse device type
+                if (/Mobi|Android.*Mobile|iPhone/.test(ua)) deviceType = "mobile";
+                else if (/iPad|Android(?!.*Mobile)|Tablet/.test(ua)) deviceType = "tablet";
+
+                // Generate unique session ID per tab (stored in sessionStorage)
+                let sessionId = sessionStorage.getItem("device_session_id");
+                if (!sessionId) {
+                  sessionId = `${currentUser.uid}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+                  sessionStorage.setItem("device_session_id", sessionId);
+                }
+
+                setDoc(doc(db, "active_sessions", sessionId), {
+                  userId: currentUser.uid,
+                  userEmail: currentUser.email || "",
+                  userName: mName,
+                  role: userRoleResolved,
+                  browser,
+                  os,
+                  deviceType,
+                  loginAt: new Date().toISOString(),
+                  lastActiveAt: new Date().toISOString(),
+                  forceLogout: false
+                }, { merge: true }).catch(console.warn);
+              } catch (sessionErr) {
+                console.warn("Session registration failed:", sessionErr);
+              }
+            }
+
             const rawStoreIds: any[] = [];
             if (Array.isArray(userDocData.storeIds)) rawStoreIds.push(...userDocData.storeIds);
             if (Array.isArray(userDocData.features?.storeIds)) rawStoreIds.push(...userDocData.features.storeIds);
@@ -370,6 +420,56 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       clearInterval(clockTimer);
     };
   }, []);
+
+  // Device session heartbeat & force-logout listener
+  useEffect(() => {
+    if (!user) return;
+
+    const sessionId = typeof window !== "undefined" ? sessionStorage.getItem("device_session_id") : null;
+    if (!sessionId) return;
+
+    // Heartbeat: update lastActiveAt every 5 minutes
+    const heartbeat = setInterval(() => {
+      setDoc(doc(db, "active_sessions", sessionId), {
+        lastActiveAt: new Date().toISOString()
+      }, { merge: true }).catch(console.warn);
+    }, 5 * 60 * 1000);
+
+    // Listen for force-logout flag
+    const unsubForceLogout = onSnapshot(doc(db, "active_sessions", sessionId), (snap) => {
+      if (snap.exists() && snap.data()?.forceLogout === true) {
+        // Admin has force-logged-out this device
+        toast.error(language === "ar" ? "تم تسجيل خروجك عن بُعد بواسطة المسؤول" : "You have been logged out remotely by an administrator.", { duration: 6000 });
+        // Clean up session doc and sign out
+        deleteDoc(doc(db, "active_sessions", sessionId)).catch(() => {});
+        sessionStorage.removeItem("device_session_id");
+        signOut(auth);
+      }
+    }, (err) => {
+      console.debug("Force-logout listener error:", err);
+    });
+
+    // Also update lastActiveAt on user interactions (throttled)
+    let lastActivityUpdate = Date.now();
+    const handleActivity = () => {
+      const now = Date.now();
+      if (now - lastActivityUpdate > 60000) { // Max once per minute
+        lastActivityUpdate = now;
+        setDoc(doc(db, "active_sessions", sessionId), {
+          lastActiveAt: new Date().toISOString()
+        }, { merge: true }).catch(() => {});
+      }
+    };
+    window.addEventListener("click", handleActivity);
+    window.addEventListener("keydown", handleActivity);
+
+    return () => {
+      clearInterval(heartbeat);
+      unsubForceLogout();
+      window.removeEventListener("click", handleActivity);
+      window.removeEventListener("keydown", handleActivity);
+    };
+  }, [user]);
 
   // Set up Firebase real-time listeners for notifications
   useEffect(() => {
@@ -587,6 +687,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
         { name: t("nav.inventory_predict"), href: "/admin/inventory-predict", icon: Database },
         { name: t("nav.send_notifications"), href: "/settings/notifications", icon: Bell },
         { name: t("nav.security_audit_log"), href: "/settings/audit-log", icon: Shield },
+        { name: language === "ar" ? "الأجهزة المتصلة" : "Device Sessions", href: "/admin/devices", icon: Monitor },
         { name: t("nav.data_import"), href: "/admin/import-csv", icon: Database }
       ]
     },
@@ -921,7 +1022,15 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
           <div className="p-4 mt-auto border-t border-border">
             <button
-              onClick={() => signOut(auth)}
+              onClick={() => {
+                // Clean up device session before signing out
+                const sessionId = sessionStorage.getItem("device_session_id");
+                if (sessionId) {
+                  deleteDoc(doc(db, "active_sessions", sessionId)).catch(() => {});
+                  sessionStorage.removeItem("device_session_id");
+                }
+                signOut(auth);
+              }}
               className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl text-sm font-bold transition-all duration-200 bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 cursor-pointer"
             >
               <LogOut className="h-4 w-4" /> {t("nav.sign_out")}
@@ -1166,6 +1275,12 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
               <button
                 onClick={() => {
                   setMobileMenuOpen(false);
+                  // Clean up device session before signing out
+                  const sessionId = sessionStorage.getItem("device_session_id");
+                  if (sessionId) {
+                    deleteDoc(doc(db, "active_sessions", sessionId)).catch(() => {});
+                    sessionStorage.removeItem("device_session_id");
+                  }
                   signOut(auth);
                 }}
                 className="w-full flex items-center justify-center gap-2 p-3 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold"
