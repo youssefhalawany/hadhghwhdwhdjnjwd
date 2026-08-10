@@ -6,7 +6,9 @@ import { auth, db } from "@/lib/firebase";
 import {
   Monitor, Smartphone, Tablet, Laptop, Globe, LogOut, Search, Shield,
   RefreshCw, Users, Wifi, WifiOff, Clock, AlertTriangle, X, Loader2,
-  BellRing, Compass, Sparkles, Send, Check, Radio, ShieldAlert, Cpu, Eye
+  BellRing, Compass, Sparkles, Send, Check, Radio, ShieldAlert, Cpu,
+  Battery, BatteryCharging, BatteryWarning, Navigation, Wrench, MessageSquare,
+  FileText, DollarSign, Package, ClipboardList, CheckCircle2
 } from "lucide-react";
 import { toast } from "sonner";
 import { useLanguage } from "@/context/LanguageContext";
@@ -27,12 +29,20 @@ interface SessionData {
   pageLabel?: string;
   isPwa?: boolean;
   screenSize?: string;
+  batteryLevel?: number;
+  isCharging?: boolean;
+  hasBattery?: boolean;
   forceLogout?: boolean;
   source?: string;
   remoteMessage?: any;
+  lastReply?: {
+    text: string;
+    repliedAt: string;
+    repliedBy?: string;
+  };
 }
 
-function parseTimeAgo(dateStr: string): string {
+function parseTimeAgo(dateStr?: string): string {
   if (!dateStr) return "Unknown";
   const now = Date.now();
   const then = new Date(dateStr).getTime();
@@ -75,6 +85,55 @@ const QUICK_PING_TEMPLATES = [
   "⚠️ Immediate attention required at the cashier counter."
 ];
 
+const TELEPORT_ROUTES = [
+  {
+    category: "Financial Inputs",
+    icon: DollarSign,
+    routes: [
+      { name: "Deposits Input", path: "/financials/inputs/deposits" },
+      { name: "Sales Input", path: "/financials/inputs/sales" },
+      { name: "Payments Input", path: "/financials/inputs/payments" },
+      { name: "Credits Input", path: "/financials/inputs/credits" },
+      { name: "Safe Report", path: "/financials/inputs/safe-report" },
+      { name: "TMT Invoices", path: "/financials/inputs/tmt-invoices" }
+    ]
+  },
+  {
+    category: "Operations & Shifts",
+    icon: ClipboardList,
+    routes: [
+      { name: "Shift Reports Audit", path: "/shift-reports/manager" },
+      { name: "Cashier Shift Entry", path: "/shift-reports/cashier" },
+      { name: "Voids & Returns Manager", path: "/voids/manager" },
+      { name: "Cashier Voids Request", path: "/voids/cashier" },
+      { name: "Official Documents", path: "/manager/documents" },
+      { name: "Cleaning Logs", path: "/admin/cleaning" }
+    ]
+  },
+  {
+    category: "Inventory & Products",
+    icon: Package,
+    routes: [
+      { name: "Expiries Audit", path: "/products/expiries-audit" },
+      { name: "Out of Stock Log", path: "/financials/out-of-stock" },
+      { name: "Supplier Orders", path: "/products/supplier-orders" },
+      { name: "Food Codes", path: "/admin/food-codes" },
+      { name: "Offers Management", path: "/admin/offers" }
+    ]
+  },
+  {
+    category: "Financial Reports",
+    icon: FileText,
+    routes: [
+      { name: "Month Summary", path: "/financial-reports/month-summary" },
+      { name: "Detailed Sales", path: "/financials/detailed-sales" },
+      { name: "P&L Statement", path: "/financial-reports/pnl" },
+      { name: "Expenses Report", path: "/financial-reports/expenses" },
+      { name: "End Shift Cash", path: "/financial-reports/end-shift-cash" }
+    ]
+  }
+];
+
 export default function DeviceSessionsPage() {
   const { t } = useLanguage();
   const [sessions, setSessions] = useState<SessionData[]>([]);
@@ -85,8 +144,10 @@ export default function DeviceSessionsPage() {
   const [reloadingSession, setReloadingSession] = useState<string | null>(null);
   const [confirmModal, setConfirmModal] = useState<{ type: "single" | "all"; sessionId?: string; userId?: string; userName?: string } | null>(null);
   const [pingModal, setPingModal] = useState<{ sessionId?: string; userId?: string; userName: string; deviceName?: string } | null>(null);
+  const [teleportModal, setTeleportModal] = useState<{ sessionId?: string; userName: string; deviceName?: string } | null>(null);
   const [pingMessage, setPingMessage] = useState("");
   const [sendingPing, setSendingPing] = useState(false);
+  const [teleporting, setTeleporting] = useState(false);
   const [currentUserRole, setCurrentUserRole] = useState("owner");
   const [currentAdminName, setCurrentAdminName] = useState("System Administrator");
 
@@ -183,6 +244,51 @@ export default function DeviceSessionsPage() {
     }
   };
 
+  // Remote Cache & Offline Storage Reset
+  const handleRemoteClearCache = async (sessionId: string) => {
+    try {
+      if (!sessionId.startsWith("auth_")) {
+        await updateDoc(doc(db, "active_sessions", sessionId), {
+          remoteCommand: {
+            action: "clear_cache",
+            commandId: Date.now().toString(),
+            requestedAt: new Date().toISOString(),
+            requestedBy: currentAdminName
+          }
+        });
+        toast.success("Remote cache flush signal sent! 🧹");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to flush remote cache");
+    }
+  };
+
+  // Remote Teleport / Navigation Command
+  const handleTeleportDevice = async (targetPath: string, pageName: string) => {
+    if (!teleportModal || !teleportModal.sessionId) return;
+    setTeleporting(true);
+    try {
+      if (!teleportModal.sessionId.startsWith("auth_")) {
+        await updateDoc(doc(db, "active_sessions", teleportModal.sessionId), {
+          remoteCommand: {
+            action: "navigate",
+            targetPath,
+            pageLabel: pageName,
+            commandId: Date.now().toString(),
+            requestedAt: new Date().toISOString(),
+            requestedBy: currentAdminName
+          }
+        });
+        toast.success(`Teleport signal sent! Device navigating to ${pageName} 🔀`);
+      }
+      setTeleportModal(null);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to teleport device");
+    } finally {
+      setTeleporting(false);
+    }
+  };
+
   // Send Remote Ping / Instant Alert
   const handleSendPing = async () => {
     if (!pingModal || !pingMessage.trim()) {
@@ -201,13 +307,11 @@ export default function DeviceSessionsPage() {
       };
 
       if (pingModal.sessionId && !pingModal.sessionId.startsWith("auth_")) {
-        // Send to specific session
         await updateDoc(doc(db, "active_sessions", pingModal.sessionId), {
           remoteMessage: payload
         });
         toast.success("Priority alert dispatched to device with audio chime! 🔔");
       } else if (pingModal.userId) {
-        // Broadcast to all sessions of user
         const targetSessions = sessions.filter(s => s.userId === pingModal.userId && !s.id.startsWith("auth_"));
         for (const s of targetSessions) {
           updateDoc(doc(db, "active_sessions", s.id), { remoteMessage: payload }).catch(() => {});
@@ -348,7 +452,7 @@ export default function DeviceSessionsPage() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                 </span>
-                Real-time active terminals • Zero manual refresh needed
+                Live Telemetry • Remote Teleport • Battery Monitoring • Repeating Audio Pings
               </p>
             </div>
           </div>
@@ -411,7 +515,7 @@ export default function DeviceSessionsPage() {
           <Search className="h-5 w-5 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search by user, page, browser, OS, or store role..."
+            placeholder="Search by user, active page, browser, OS, or role..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="bg-transparent outline-none flex-grow text-sm placeholder:text-muted-foreground"
@@ -428,7 +532,7 @@ export default function DeviceSessionsPage() {
           {loading ? (
             <div className="p-12 text-center">
               <Loader2 className="h-8 w-8 text-muted-foreground animate-spin mx-auto mb-3" />
-              <p className="text-muted-foreground text-sm font-semibold">Syncing device telemetry...</p>
+              <p className="text-muted-foreground text-sm font-semibold">Syncing device telemetry & power stats...</p>
             </div>
           ) : Object.keys(userGroups).length === 0 ? (
             <div className="p-12 text-center">
@@ -436,7 +540,7 @@ export default function DeviceSessionsPage() {
               <p className="text-muted-foreground text-sm font-semibold">
                 {searchTerm ? "No devices match your search criteria" : "No active terminals found"}
               </p>
-              <p className="text-muted-foreground/60 text-xs mt-1">Terminals will stream here automatically when users open the portal</p>
+              <p className="text-muted-foreground/60 text-xs mt-1">Terminals stream telemetry automatically when users open the portal</p>
             </div>
           ) : (
             Object.entries(userGroups).map(([userId, userSessions]) => {
@@ -569,6 +673,26 @@ export default function DeviceSessionsPage() {
                                   </span>
                                 )}
 
+                                {/* Battery Telemetry Badge */}
+                                {session.batteryLevel !== undefined && (
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 ${
+                                    session.isCharging
+                                      ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                      : session.batteryLevel < 20
+                                      ? "bg-rose-500/15 text-rose-400 border-rose-500/30 animate-pulse"
+                                      : "bg-slate-100 dark:bg-slate-800 text-zinc-300 border-border"
+                                  }`}>
+                                    {session.isCharging ? (
+                                      <BatteryCharging className="h-3 w-3 text-emerald-400" />
+                                    ) : session.batteryLevel < 20 ? (
+                                      <BatteryWarning className="h-3 w-3 text-rose-400" />
+                                    ) : (
+                                      <Battery className="h-3 w-3 text-zinc-400" />
+                                    )}
+                                    <span>{session.batteryLevel}% {session.isCharging ? "Charging" : ""}</span>
+                                  </span>
+                                )}
+
                                 {/* Screen resolution */}
                                 {session.screenSize && (
                                   <span className="text-[10px] text-muted-foreground bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
@@ -579,8 +703,8 @@ export default function DeviceSessionsPage() {
 
                               {/* Live Current Page Indicator */}
                               {session.pageLabel ? (
-                                <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-lg w-fit border border-emerald-500/20">
-                                  <Compass className="h-3 w-3 animate-spin" style={{ animationDuration: '6s' }} />
+                                <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-lg w-fit border border-emerald-500/20">
+                                  <Compass className="h-3.5 w-3.5 animate-spin" style={{ animationDuration: '6s' }} />
                                   <span>Active on: <strong className="text-emerald-300">{session.pageLabel}</strong></span>
                                 </div>
                               ) : (
@@ -589,8 +713,17 @@ export default function DeviceSessionsPage() {
                                 </div>
                               )}
 
-                              {/* Latency & Timestamps */}
-                              <div className="flex items-center gap-3 text-[11px] text-muted-foreground flex-wrap">
+                              {/* Two-Way Quick Reply Bubble */}
+                              {session.lastReply && session.lastReply.text && (
+                                <div className="text-xs font-semibold text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2.5 py-1 rounded-xl w-fit flex items-center gap-1.5 mt-1">
+                                  <MessageSquare className="h-3 w-3 text-blue-400 shrink-0" />
+                                  <span>Last Reply: <strong className="text-white">&ldquo;{session.lastReply.text}&rdquo;</strong></span>
+                                  <span className="text-[10px] text-blue-400/70 font-normal">({parseTimeAgo(session.lastReply.repliedAt)})</span>
+                                </div>
+                              )}
+
+                              {/* Timestamps */}
+                              <div className="flex items-center gap-3 text-[11px] text-muted-foreground flex-wrap pt-0.5">
                                 <span className={`font-bold uppercase tracking-wider ${
                                   status === "online" ? "text-emerald-500" :
                                   status === "idle" ? "text-amber-500" :
@@ -598,7 +731,7 @@ export default function DeviceSessionsPage() {
                                 }`}>
                                   {status === "online" ? "● Online" : status === "idle" ? "● Idle" : "● Offline"}
                                 </span>
-                                <span>Last activity: <strong>{parseTimeAgo(session.lastActiveAt)}</strong></span>
+                                <span>Last active: <strong>{parseTimeAgo(session.lastActiveAt)}</strong></span>
                                 <span>Logged in: <strong>{parseTimeAgo(session.loginAt)}</strong></span>
                               </div>
                             </div>
@@ -606,7 +739,20 @@ export default function DeviceSessionsPage() {
 
                           {/* Device Action Buttons */}
                           <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
-                            {/* Ping Single Device */}
+                            {/* Remote Teleport / Navigation */}
+                            <button
+                              onClick={() => setTeleportModal({
+                                sessionId: session.id,
+                                userName: session.userName,
+                                deviceName: `${session.browser} on ${session.os}`
+                              })}
+                              className="p-2 text-emerald-500 hover:bg-emerald-500/15 rounded-xl transition-colors cursor-pointer"
+                              title="Teleport / Redirect Device to Any Page"
+                            >
+                              <Navigation className="h-4 w-4" />
+                            </button>
+
+                            {/* Ping Single Device with Audio Loop */}
                             <button
                               onClick={() => setPingModal({
                                 sessionId: session.id,
@@ -614,9 +760,18 @@ export default function DeviceSessionsPage() {
                                 deviceName: `${session.browser} on ${session.os}`
                               })}
                               className="p-2 text-blue-500 hover:bg-blue-500/15 rounded-xl transition-colors cursor-pointer"
-                              title="Send Priority Alert / Ping with Audio Chime"
+                              title="Send Repeating Priority Ping with Audio Chime"
                             >
                               <BellRing className="h-4 w-4" />
+                            </button>
+
+                            {/* Remote Clear Cache & Fix */}
+                            <button
+                              onClick={() => handleRemoteClearCache(session.id)}
+                              className="p-2 text-purple-500 hover:bg-purple-500/15 rounded-xl transition-colors cursor-pointer"
+                              title="Remote Flush Offline Cache & Diagnostics"
+                            >
+                              <Wrench className="h-4 w-4" />
                             </button>
 
                             {/* Remote Force Reload */}
@@ -662,10 +817,77 @@ export default function DeviceSessionsPage() {
         </div>
       </div>
 
+      {/* Teleport / Remote Navigation Modal */}
+      <AnimatePresence>
+        {teleportModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 backdrop-blur-md p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-3xl shadow-2xl border border-emerald-500/30 overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              <div className="p-5 border-b border-border bg-emerald-500/10 flex justify-between items-center shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-9 w-9 rounded-xl bg-emerald-500 flex items-center justify-center text-white shadow-md">
+                    <Navigation className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-base text-foreground">
+                      Teleport Device to Any Route
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      Target: <strong>{teleportModal.userName}</strong> ({teleportModal.deviceName || "Device"})
+                    </p>
+                  </div>
+                </div>
+                <button onClick={() => setTeleportModal(null)} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-5 overflow-y-auto custom-scrollbar">
+                <p className="text-xs text-muted-foreground">
+                  Select a destination page below. The target terminal will immediately switch screens in real-time.
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {TELEPORT_ROUTES.map((cat, idx) => {
+                    const CatIcon = cat.icon;
+                    return (
+                      <div key={idx} className="bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-border space-y-2.5">
+                        <h4 className="text-xs font-black uppercase text-foreground flex items-center gap-1.5">
+                          <CatIcon className="h-3.5 w-3.5 text-emerald-500" />
+                          {cat.category}
+                        </h4>
+                        <div className="space-y-1">
+                          {cat.routes.map((route, rIdx) => (
+                            <button
+                              key={rIdx}
+                              type="button"
+                              onClick={() => handleTeleportDevice(route.path, route.name)}
+                              disabled={teleporting}
+                              className="w-full text-left text-xs p-2 rounded-xl bg-white dark:bg-slate-900 hover:bg-emerald-500/10 hover:text-emerald-400 border border-border hover:border-emerald-500/30 transition-all font-semibold flex items-center justify-between group cursor-pointer"
+                            >
+                              <span>{route.name}</span>
+                              <span className="text-[10px] text-muted-foreground group-hover:text-emerald-400">Teleport →</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Ping / Instant Message Modal */}
       <AnimatePresence>
         {pingModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 backdrop-blur-md p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -725,7 +947,7 @@ export default function DeviceSessionsPage() {
 
                 <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 text-xs text-blue-400 flex items-center gap-2">
                   <Radio className="h-4 w-4 shrink-0 animate-pulse" />
-                  <span>The target device will instantly play an operational audio chime and display a priority screen takeover modal.</span>
+                  <span>The target device will play a repeating audio chime continuously until the user confirms reading on screen.</span>
                 </div>
 
                 <div className="pt-2 flex justify-end gap-2">
@@ -747,7 +969,7 @@ export default function DeviceSessionsPage() {
                     ) : (
                       <Send className="h-4 w-4" />
                     )}
-                    Send Priority Alert
+                    Send Repeating Alert
                   </button>
                 </div>
               </div>
@@ -759,7 +981,7 @@ export default function DeviceSessionsPage() {
       {/* Confirm Logout Modal */}
       <AnimatePresence>
         {confirmModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 backdrop-blur-md p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}

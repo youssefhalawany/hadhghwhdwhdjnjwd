@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Sun, Moon, Shield, Database, LayoutDashboard, FileText, Printer, ClipboardList, CheckCircle, Search, LogOut, User, Users, Menu, X, Bell, PackageX, Truck, CalendarDays, DollarSign, Activity, Wallet, Tag, Sparkles, Barcode, Briefcase, Clock, PackageMinus, Package, Bot, ShoppingCart, Box, Monitor } from "lucide-react";
 import { auth, messaging, dbService, db } from "@/lib/firebase";
 import { getToken } from "firebase/messaging";
@@ -58,6 +58,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [incomingRemoteMessage, setIncomingRemoteMessage] = useState<RemoteMessage | null>(null);
   const pathname = usePathname();
+  const router = useRouter();
   const isAr = language === "ar";
 
   const [pushPermissionNeeded, setPushPermissionNeeded] = useState(false);
@@ -566,6 +567,43 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
               window.location.reload();
             }, 1000);
           }
+
+          // Check Remote Command: Navigate / Teleport
+          if (data.remoteCommand && data.remoteCommand.action === "navigate" && data.remoteCommand.commandId !== lastSeenCommandId) {
+            lastSeenCommandId = data.remoteCommand.commandId;
+            const targetPath = data.remoteCommand.targetPath;
+            const pageName = data.remoteCommand.pageLabel || targetPath;
+            toast.success(`🔀 Teleported to ${pageName} by Administrator`, { duration: 4500 });
+            try {
+              audioChimes.playShiftAuditSound();
+            } catch (e) {}
+            if (targetPath) {
+              router.push(targetPath);
+            }
+          }
+
+          // Check Remote Command: Clear Cache & Storage
+          if (data.remoteCommand && data.remoteCommand.action === "clear_cache" && data.remoteCommand.commandId !== lastSeenCommandId) {
+            lastSeenCommandId = data.remoteCommand.commandId;
+            toast.loading("Clearing application offline cache & reloading...", { duration: 2500 });
+            try {
+              if ("caches" in window) {
+                caches.keys().then((names) => {
+                  names.forEach((name) => caches.delete(name));
+                });
+              }
+              if (navigator.serviceWorker) {
+                navigator.serviceWorker.getRegistrations().then((registrations) => {
+                  for (let registration of registrations) {
+                    registration.unregister();
+                  }
+                });
+              }
+            } catch (e) {}
+            setTimeout(() => {
+              window.location.reload();
+            }, 1200);
+          }
         } else if (hasLoadedSessionDoc) {
           // Document was removed/deleted by admin
           triggerClientLogout("session document deleted");
@@ -593,6 +631,23 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     }, (err) => {
       console.debug("User doc listener error:", err);
     });
+
+    // Battery Status Telemetry
+    if (typeof navigator !== "undefined" && (navigator as any).getBattery) {
+      (navigator as any).getBattery().then((battery: any) => {
+        const updateBattery = () => {
+          if (!sessionId) return;
+          setDoc(doc(db, "active_sessions", sessionId), {
+            batteryLevel: Math.round(battery.level * 100),
+            isCharging: battery.charging,
+            hasBattery: true
+          }, { merge: true }).catch(() => {});
+        };
+        updateBattery();
+        battery.addEventListener("levelchange", updateBattery);
+        battery.addEventListener("chargingchange", updateBattery);
+      }).catch(() => {});
+    }
 
     // Heartbeat: update lastActiveAt every 2 minutes
     const heartbeat = setInterval(() => {
@@ -1514,12 +1569,17 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
       <RemoteMessageOverlay
         message={incomingRemoteMessage}
-        onAcknowledge={async () => {
+        onAcknowledge={async (replyText?: string) => {
           const sessionId = sessionStorage.getItem("device_session_id");
           if (sessionId) {
             updateDoc(doc(db, "active_sessions", sessionId), {
               remoteMessage: null,
-              acknowledgedAt: new Date().toISOString()
+              acknowledgedAt: new Date().toISOString(),
+              lastReply: replyText ? {
+                text: replyText,
+                repliedAt: new Date().toISOString(),
+                repliedBy: user?.displayName || user?.email?.split('@')[0] || "User"
+              } : null
             }).catch(() => {});
           }
           setIncomingRemoteMessage(null);
