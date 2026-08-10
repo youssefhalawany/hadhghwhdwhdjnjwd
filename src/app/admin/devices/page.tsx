@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { collection, onSnapshot, query, orderBy, doc, deleteDoc } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc, setDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { Monitor, Smartphone, Tablet, Laptop, Globe, LogOut, Search, Shield, RefreshCw, Users, Wifi, WifiOff, Clock, AlertTriangle, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -139,13 +139,20 @@ export default function DeviceSessionsPage() {
   const handleForceLogout = async (sessionId: string) => {
     setRevokingSession(sessionId);
     try {
+      // 1. If it's a real Firestore doc, set forceLogout: true so target device listener triggers immediately
+      if (!sessionId.startsWith("auth_")) {
+        await updateDoc(doc(db, "active_sessions", sessionId), {
+          forceLogout: true,
+          terminatedAt: new Date().toISOString()
+        }).catch(() => {});
+
+        setTimeout(() => {
+          deleteDoc(doc(db, "active_sessions", sessionId)).catch(() => {});
+        }, 3000);
+      }
+
       // Optimistically remove from UI
       setSessions(prev => prev.filter(s => s.id !== sessionId));
-
-      // 1. If it's a real Firestore doc, clean it up immediately
-      if (!sessionId.startsWith("auth_")) {
-        deleteDoc(doc(db, "active_sessions", sessionId)).catch(() => {});
-      }
 
       // 2. Call API to revoke Firebase Auth refresh tokens & audit log
       let token = "";
@@ -153,25 +160,15 @@ export default function DeviceSessionsPage() {
         try { token = await auth.currentUser.getIdToken(); } catch (e) {}
       }
 
-      const res = await fetch(`/api/admin/sessions?sessionId=${encodeURIComponent(sessionId)}`, {
+      await fetch(`/api/admin/sessions?sessionId=${encodeURIComponent(sessionId)}`, {
         method: "DELETE",
         headers: {
           "Authorization": `Bearer ${token}`,
           "x-user-role": currentUserRole || "owner"
         }
-      });
+      }).catch(console.warn);
 
-      let data: any = {};
-      try {
-        const text = await res.text();
-        data = JSON.parse(text);
-      } catch (e) {}
-
-      if (res.ok && data.success !== false) {
-        toast.success("Device logged out successfully! 🔒");
-      } else {
-        toast.success("Device session terminated! 🔒");
-      }
+      toast.success("Device logged out successfully! 🔒");
     } catch (err: any) {
       toast.error(err.message || "Failed to force logout");
     } finally {
@@ -183,36 +180,41 @@ export default function DeviceSessionsPage() {
   const handleLogoutAllDevices = async (userId: string) => {
     setRevokingAllUser(userId);
     try {
-      // Optimistically remove all sessions for this user from UI
+      // 1. Mark forceLogout: true on all session docs for this user
       const userSessionDocs = sessions.filter(s => s.userId === userId);
+      for (const s of userSessionDocs) {
+        if (!s.id.startsWith("auth_")) {
+          updateDoc(doc(db, "active_sessions", s.id), {
+            forceLogout: true,
+            terminatedAt: new Date().toISOString()
+          }).catch(() => {});
+          setTimeout(() => {
+            deleteDoc(doc(db, "active_sessions", s.id)).catch(() => {});
+          }, 3000);
+        }
+      }
+
+      // 2. Set forceLogoutAt on user document (instantly terminates all open tabs/devices for this user)
+      setDoc(doc(db, "users", userId), {
+        forceLogoutAt: new Date().toISOString()
+      }, { merge: true }).catch(() => {});
+
+      // Optimistically remove from UI
       setSessions(prev => prev.filter(s => s.userId !== userId));
 
-      // Clean up all real Firestore docs
-      userSessionDocs.forEach(s => {
-        if (!s.id.startsWith("auth_")) {
-          deleteDoc(doc(db, "active_sessions", s.id)).catch(() => {});
-        }
-      });
-
-      // Call API to revoke all Auth refresh tokens
+      // 3. Call API to revoke all Auth refresh tokens
       let token = "";
       if (auth.currentUser) {
         try { token = await auth.currentUser.getIdToken(); } catch (e) {}
       }
 
-      const res = await fetch(`/api/admin/sessions?userId=${encodeURIComponent(userId)}&all=true`, {
+      await fetch(`/api/admin/sessions?userId=${encodeURIComponent(userId)}&all=true`, {
         method: "DELETE",
         headers: {
           "Authorization": `Bearer ${token}`,
           "x-user-role": currentUserRole || "owner"
         }
-      });
-
-      let data: any = {};
-      try {
-        const text = await res.text();
-        data = JSON.parse(text);
-      } catch (e) {}
+      }).catch(console.warn);
 
       toast.success("All devices for user logged out! 🔒");
     } catch (err: any) {

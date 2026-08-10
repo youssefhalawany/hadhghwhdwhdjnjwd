@@ -273,6 +273,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                 if (!sessionId) {
                   sessionId = `${currentUser.uid}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
                   sessionStorage.setItem("device_session_id", sessionId);
+                  sessionStorage.setItem("device_login_time", new Date().toISOString());
                 }
 
                 setDoc(doc(db, "active_sessions", sessionId), {
@@ -426,32 +427,87 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     if (!user) return;
 
     const sessionId = typeof window !== "undefined" ? sessionStorage.getItem("device_session_id") : null;
-    if (!sessionId) return;
+    const loginTime = typeof window !== "undefined" ? (sessionStorage.getItem("device_login_time") || new Date().toISOString()) : new Date().toISOString();
 
-    // Heartbeat: update lastActiveAt every 5 minutes
-    const heartbeat = setInterval(() => {
-      setDoc(doc(db, "active_sessions", sessionId), {
-        lastActiveAt: new Date().toISOString()
-      }, { merge: true }).catch(console.warn);
-    }, 5 * 60 * 1000);
+    let hasLoadedSessionDoc = false;
+    let isTerminating = false;
 
-    // Listen for force-logout flag
-    const unsubForceLogout = onSnapshot(doc(db, "active_sessions", sessionId), (snap) => {
-      if (snap.exists() && snap.data()?.forceLogout === true) {
-        // Admin has force-logged-out this device
-        toast.error(language === "ar" ? "تم تسجيل خروجك عن بُعد بواسطة المسؤول" : "You have been logged out remotely by an administrator.", { duration: 6000 });
-        // Clean up session doc and sign out
+    const triggerClientLogout = async (reason?: string) => {
+      if (isTerminating) return;
+      isTerminating = true;
+      console.log("Remote force logout triggered:", reason);
+
+      try {
+        toast.error(language === "ar" ? "تم تسجيل خروجك عن بُعد بواسطة المسؤول" : "You have been logged out remotely by an administrator.", { duration: 8000 });
+      } catch (e) {}
+
+      if (sessionId) {
         deleteDoc(doc(db, "active_sessions", sessionId)).catch(() => {});
         sessionStorage.removeItem("device_session_id");
-        signOut(auth);
+      }
+      sessionStorage.removeItem("device_login_time");
+      sessionStorage.removeItem("circlek_welcomed");
+      localStorage.removeItem("circlek_user_name");
+
+      try {
+        await signOut(auth);
+      } catch (e) {}
+
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 800);
+    };
+
+    // 1. Listen to active_sessions/{sessionId}
+    let unsubSession: (() => void) | null = null;
+    if (sessionId) {
+      unsubSession = onSnapshot(doc(db, "active_sessions", sessionId), (snap) => {
+        if (snap.exists()) {
+          hasLoadedSessionDoc = true;
+          if (snap.data()?.forceLogout === true) {
+            triggerClientLogout("forceLogout flag is true");
+          }
+        } else if (hasLoadedSessionDoc) {
+          // Document was removed/deleted by admin
+          triggerClientLogout("session document deleted");
+        }
+      }, (err) => {
+        console.debug("Force-logout listener error:", err);
+      });
+    }
+
+    // 2. Listen to users/{userId} for account deactivation or global forceLogoutAt
+    const unsubUser = onSnapshot(doc(db, "users", user.uid), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data.isActive === false) {
+          triggerClientLogout("Account deactivated");
+        } else if (data.forceLogoutAt) {
+          const forceTime = new Date(data.forceLogoutAt).getTime();
+          const currentLoginTime = new Date(loginTime).getTime();
+          // If forceLogoutAt occurred after or right around this session's login
+          if (forceTime >= currentLoginTime - 10000) {
+            triggerClientLogout("Global force logout for user");
+          }
+        }
       }
     }, (err) => {
-      console.debug("Force-logout listener error:", err);
+      console.debug("User doc listener error:", err);
     });
+
+    // Heartbeat: update lastActiveAt every 3 minutes
+    const heartbeat = setInterval(() => {
+      if (sessionId) {
+        setDoc(doc(db, "active_sessions", sessionId), {
+          lastActiveAt: new Date().toISOString()
+        }, { merge: true }).catch(console.warn);
+      }
+    }, 3 * 60 * 1000);
 
     // Also update lastActiveAt on user interactions (throttled)
     let lastActivityUpdate = Date.now();
     const handleActivity = () => {
+      if (!sessionId) return;
       const now = Date.now();
       if (now - lastActivityUpdate > 60000) { // Max once per minute
         lastActivityUpdate = now;
@@ -464,8 +520,9 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     window.addEventListener("keydown", handleActivity);
 
     return () => {
+      if (unsubSession) unsubSession();
+      unsubUser();
       clearInterval(heartbeat);
-      unsubForceLogout();
       window.removeEventListener("click", handleActivity);
       window.removeEventListener("keydown", handleActivity);
     };
