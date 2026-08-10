@@ -1,8 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BellRing, ShieldAlert, Check, Clock, User, Sparkles } from "lucide-react";
+import { audioChimes } from "@/lib/audio-chimes";
+import { triggerHapticFeedback } from "@/lib/pwaBadges";
 
 export interface RemoteMessage {
   id: string;
@@ -19,6 +21,18 @@ interface RemoteMessageOverlayProps {
 }
 
 export function RemoteMessageOverlay({ message, onAcknowledge }: RemoteMessageOverlayProps) {
+  useEffect(() => {
+    if (message) {
+      audioChimes.startPingLoop(2200);
+      triggerHapticFeedback([200, 100, 200, 100, 300]);
+    } else {
+      audioChimes.stopPingLoop();
+    }
+    return () => {
+      audioChimes.stopPingLoop();
+    };
+  }, [message]);
+
   if (!message) return null;
 
   return (

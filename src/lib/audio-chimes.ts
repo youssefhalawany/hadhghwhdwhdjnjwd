@@ -180,6 +180,8 @@ class AudioChimeEngine {
     }
   }
 
+  private pingInterval: any = null;
+
   /**
    * 🔔 5. Urgent Device Ping / High Priority Remote Broadcast Sound
    */
@@ -189,7 +191,7 @@ class AudioChimeEngine {
 
     try {
       const now = ctx.currentTime;
-      // High-clarity double sonar chime (E6 -> G#6 -> B6)
+      // High-clarity triple sonar chime (E6 -> G#6 -> B6) with high attention resonance
       const freqs = [1318.51, 1661.22, 1975.53];
       freqs.forEach((freq, idx) => {
         const osc = ctx.createOscillator();
@@ -198,7 +200,7 @@ class AudioChimeEngine {
 
         osc.type = "sine";
         osc.frequency.setValueAtTime(freq, startTime);
-        gain.gain.setValueAtTime(0.4, startTime);
+        gain.gain.setValueAtTime(0.45, startTime);
         gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.5);
 
         osc.connect(gain);
@@ -208,6 +210,24 @@ class AudioChimeEngine {
       });
     } catch (e) {
       console.error("Failed to play ping sound", e);
+    }
+  }
+
+  /**
+   * 🔁 Continuous looping chime that rings every intervalMs until stopPingLoop() is called on user confirmation
+   */
+  startPingLoop(intervalMs = 2000) {
+    this.stopPingLoop();
+    this.playPingSound();
+    this.pingInterval = setInterval(() => {
+      this.playPingSound();
+    }, intervalMs);
+  }
+
+  stopPingLoop() {
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = null;
     }
   }
 
