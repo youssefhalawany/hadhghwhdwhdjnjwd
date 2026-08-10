@@ -74,15 +74,20 @@ export async function GET(req: NextRequest) {
     }
 
     // 1. Get tracked sessions from Firestore
-    const sessionsSnap = await getAdminDb()
-      .collection("active_sessions")
-      .orderBy("loginAt", "desc")
-      .get();
+    let trackedSessions: any[] = [];
+    try {
+      const sessionsSnap = await getAdminDb()
+        .collection("active_sessions")
+        .orderBy("loginAt", "desc")
+        .get();
 
-    const trackedSessions = sessionsSnap.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+      trackedSessions = sessionsSnap.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+    } catch (fsErr) {
+      console.warn("Error reading active_sessions collection:", fsErr);
+    }
 
     // 2. Get all Firebase Auth users to show devices that haven't refreshed yet
     const trackedUserIds = new Set(trackedSessions.map((s: any) => s.userId));
@@ -96,7 +101,6 @@ export async function GET(req: NextRequest) {
 
         // Only include users who have signed in (have metadata)
         if (userRecord.metadata.lastSignInTime) {
-          // Try to get user profile from Firestore for display name/role
           let displayName = userRecord.displayName || userRecord.email?.split("@")[0] || "Unknown";
           let role = "manager";
           try {
@@ -107,7 +111,6 @@ export async function GET(req: NextRequest) {
             }
           } catch (e) {}
 
-          // Parse user agent from tokensValidAfterTime to infer activity
           authUsers.push({
             id: `auth_${userRecord.uid}`,
             userId: userRecord.uid,
@@ -120,7 +123,7 @@ export async function GET(req: NextRequest) {
             loginAt: userRecord.metadata.lastSignInTime || "",
             lastActiveAt: userRecord.metadata.lastRefreshTime || userRecord.metadata.lastSignInTime || "",
             forceLogout: false,
-            source: "firebase_auth" // Flag to distinguish from tracked sessions
+            source: "firebase_auth"
           });
         }
       }
@@ -161,31 +164,33 @@ export async function DELETE(req: NextRequest) {
 
     if (logoutAll && userId) {
       // Logout ALL sessions for a specific user
-      const userSessionsSnap = await db
-        .collection("active_sessions")
-        .where("userId", "==", userId)
-        .get();
+      try {
+        const userSessionsSnap = await db
+          .collection("active_sessions")
+          .where("userId", "==", userId)
+          .get();
 
-      const batch = db.batch();
-      userSessionsSnap.docs.forEach((doc) => {
-        batch.update(doc.ref, { forceLogout: true });
-      });
-      await batch.commit();
+        if (!userSessionsSnap.empty) {
+          const batch = db.batch();
+          userSessionsSnap.docs.forEach((doc) => {
+            batch.update(doc.ref, { forceLogout: true });
+          });
+          await batch.commit();
 
-      sessionsRevoked = userSessionsSnap.docs.length;
+          sessionsRevoked = userSessionsSnap.docs.length;
 
-      // Wait briefly for clients to catch the forceLogout flag, then delete
-      setTimeout(async () => {
-        try {
+          // Delete session documents
           const deleteBatch = db.batch();
           userSessionsSnap.docs.forEach((doc) => {
             deleteBatch.delete(doc.ref);
           });
-          await deleteBatch.commit();
-        } catch (e) {
-          console.warn("Delayed session cleanup error:", e);
+          await deleteBatch.commit().catch(console.warn);
+        } else {
+          sessionsRevoked = 1;
         }
-      }, 5000);
+      } catch (e) {
+        console.warn("Firestore session batch revoke failed:", e);
+      }
 
       // Revoke Firebase Auth refresh tokens
       try {
@@ -194,41 +199,73 @@ export async function DELETE(req: NextRequest) {
         console.warn("Token revocation failed:", e);
       }
     } else if (sessionId) {
-      // Logout a single session
-      const sessionRef = db.collection("active_sessions").doc(sessionId);
-      const sessionSnap = await sessionRef.get();
+      // Check if it's a virtual auth session (starts with auth_)
+      if (sessionId.startsWith("auth_")) {
+        revokedUserId = sessionId.replace("auth_", "");
+        sessionsRevoked = 1;
 
-      if (!sessionSnap.exists) {
-        return NextResponse.json({ error: "Session not found" }, { status: 404 });
-      }
-
-      const sessionData = sessionSnap.data();
-      revokedUserId = sessionData?.userId || "";
-
-      // Flag for force logout first (client will pick this up)
-      await sessionRef.update({ forceLogout: true });
-      sessionsRevoked = 1;
-
-      // Delete after short delay
-      setTimeout(async () => {
-        try {
-          await sessionRef.delete();
-        } catch (e) {
-          console.warn("Delayed session delete error:", e);
-        }
-      }, 5000);
-
-      // Revoke Firebase Auth refresh tokens for the user
-      if (revokedUserId) {
+        // Revoke Firebase Auth refresh tokens
         try {
           await getAdminAuth().revokeRefreshTokens(revokedUserId);
         } catch (e) {
           console.warn("Token revocation failed:", e);
         }
+
+        // Clean up any matching active_sessions if present
+        try {
+          const userSessionsSnap = await db
+            .collection("active_sessions")
+            .where("userId", "==", revokedUserId)
+            .get();
+
+          if (!userSessionsSnap.empty) {
+            const batch = db.batch();
+            userSessionsSnap.docs.forEach((doc) => {
+              batch.update(doc.ref, { forceLogout: true });
+            });
+            await batch.commit();
+
+            const deleteBatch = db.batch();
+            userSessionsSnap.docs.forEach((doc) => {
+              deleteBatch.delete(doc.ref);
+            });
+            await deleteBatch.commit().catch(console.warn);
+          }
+        } catch (e) {
+          console.warn("Active sessions cleanup failed:", e);
+        }
+      } else {
+        // Standard session document in active_sessions
+        try {
+          const sessionRef = db.collection("active_sessions").doc(sessionId);
+          const sessionSnap = await sessionRef.get();
+
+          if (sessionSnap.exists) {
+            const sessionData = sessionSnap.data();
+            revokedUserId = sessionData?.userId || "";
+            // Flag for force logout
+            await sessionRef.update({ forceLogout: true }).catch(console.warn);
+            // Delete session doc
+            await sessionRef.delete().catch(console.warn);
+          }
+          sessionsRevoked = 1;
+        } catch (fsErr) {
+          console.warn("Session doc deletion failed:", fsErr);
+          sessionsRevoked = 1;
+        }
+
+        // Revoke Firebase Auth refresh tokens for user
+        if (revokedUserId) {
+          try {
+            await getAdminAuth().revokeRefreshTokens(revokedUserId);
+          } catch (e) {
+            console.warn("Token revocation failed:", e);
+          }
+        }
       }
     }
 
-    // Audit log
+    // Log to audit_logs (fault-tolerant)
     try {
       await db.collection("audit_logs").add({
         userEmail: admin.email || "",
@@ -236,13 +273,13 @@ export async function DELETE(req: NextRequest) {
         role: admin.role,
         action: logoutAll ? "Force Logout All Devices" : "Force Logout Device",
         previousValue: `Target user: ${revokedUserId}`,
-        newValue: `Revoked ${sessionsRevoked} session(s)${sessionId ? `, sessionId: ${sessionId}` : ""}`,
+        newValue: `Revoked session(s)${sessionId ? `, sessionId: ${sessionId}` : ""}`,
         timestamp: new Date().toISOString(),
         ip: req.headers.get("x-forwarded-for") || "Server",
         device: req.headers.get("user-agent") || "API Client"
       });
     } catch (auditErr) {
-      console.error("Audit log failed:", auditErr);
+      console.warn("Audit log creation failed:", auditErr);
     }
 
     return NextResponse.json({

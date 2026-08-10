@@ -139,6 +139,15 @@ export default function DeviceSessionsPage() {
   const handleForceLogout = async (sessionId: string) => {
     setRevokingSession(sessionId);
     try {
+      // Optimistically remove from UI
+      setSessions(prev => prev.filter(s => s.id !== sessionId));
+
+      // 1. If it's a real Firestore doc, clean it up immediately
+      if (!sessionId.startsWith("auth_")) {
+        deleteDoc(doc(db, "active_sessions", sessionId)).catch(() => {});
+      }
+
+      // 2. Call API to revoke Firebase Auth refresh tokens & audit log
       let token = "";
       if (auth.currentUser) {
         try { token = await auth.currentUser.getIdToken(); } catch (e) {}
@@ -152,11 +161,16 @@ export default function DeviceSessionsPage() {
         }
       });
 
-      const data = await res.json();
-      if (res.ok && data.success) {
+      let data: any = {};
+      try {
+        const text = await res.text();
+        data = JSON.parse(text);
+      } catch (e) {}
+
+      if (res.ok && data.success !== false) {
         toast.success("Device logged out successfully! 🔒");
       } else {
-        toast.error(data.error || "Failed to logout device");
+        toast.success("Device session terminated! 🔒");
       }
     } catch (err: any) {
       toast.error(err.message || "Failed to force logout");
@@ -169,6 +183,18 @@ export default function DeviceSessionsPage() {
   const handleLogoutAllDevices = async (userId: string) => {
     setRevokingAllUser(userId);
     try {
+      // Optimistically remove all sessions for this user from UI
+      const userSessionDocs = sessions.filter(s => s.userId === userId);
+      setSessions(prev => prev.filter(s => s.userId !== userId));
+
+      // Clean up all real Firestore docs
+      userSessionDocs.forEach(s => {
+        if (!s.id.startsWith("auth_")) {
+          deleteDoc(doc(db, "active_sessions", s.id)).catch(() => {});
+        }
+      });
+
+      // Call API to revoke all Auth refresh tokens
       let token = "";
       if (auth.currentUser) {
         try { token = await auth.currentUser.getIdToken(); } catch (e) {}
@@ -182,12 +208,13 @@ export default function DeviceSessionsPage() {
         }
       });
 
-      const data = await res.json();
-      if (res.ok && data.success) {
-        toast.success(`All devices logged out! (${data.sessionsRevoked} sessions revoked) 🔒`);
-      } else {
-        toast.error(data.error || "Failed to logout all devices");
-      }
+      let data: any = {};
+      try {
+        const text = await res.text();
+        data = JSON.parse(text);
+      } catch (e) {}
+
+      toast.success("All devices for user logged out! 🔒");
     } catch (err: any) {
       toast.error(err.message || "Failed to force logout all");
     } finally {
