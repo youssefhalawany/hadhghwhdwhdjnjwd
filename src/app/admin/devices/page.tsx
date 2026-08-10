@@ -1068,26 +1068,54 @@ export default function DeviceSessionsPage() {
               </div>
 
               {/* Viewport Content */}
-              <div className="p-6 overflow-y-auto custom-scrollbar flex flex-col items-center justify-center bg-slate-950/70 min-h-[380px]">
+              <div className="p-6 overflow-y-auto custom-scrollbar flex flex-col items-center justify-center bg-slate-950/80 min-h-[380px]">
                 {screenPreviewModal.snapshot?.imageBase64 ? (
                   <div className="space-y-3 w-full flex flex-col items-center">
-                    <div className="relative rounded-2xl overflow-hidden border border-border shadow-2xl bg-black max-h-[65vh]">
+                    <div className="relative rounded-2xl overflow-hidden border border-border shadow-2xl bg-black max-h-[65vh] w-full flex justify-center">
                       <img
                         src={screenPreviewModal.snapshot.imageBase64}
                         alt="Remote Device Screen"
-                        className="w-full h-auto object-contain max-h-[65vh]"
+                        className="w-full h-auto object-contain max-h-[65vh] rounded-xl"
                       />
                     </div>
-                    <div className="flex items-center justify-between w-full text-xs text-muted-foreground px-2">
+                    <div className="flex items-center justify-between w-full text-xs text-muted-foreground px-2 flex-wrap gap-2">
                       <span>Captured: <strong>{parseTimeAgo(screenPreviewModal.snapshot.capturedAt)}</strong> ({new Date(screenPreviewModal.snapshot.capturedAt).toLocaleTimeString()})</span>
-                      <span>Route: <code className="text-cyan-400">{screenPreviewModal.snapshot.currentPath || "/"}</code></span>
+                      <span>Route: <code className="text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded">{screenPreviewModal.snapshot.currentPath || "/"}</code></span>
                     </div>
                   </div>
                 ) : (
-                  <div className="text-center p-10 space-y-3">
-                    <Loader2 className="h-10 w-10 text-cyan-500 animate-spin mx-auto" />
-                    <p className="text-sm font-bold text-foreground">Capturing live terminal viewport...</p>
-                    <p className="text-xs text-muted-foreground">The remote device is generating a real-time snapshot.</p>
+                  <div className="text-center p-8 space-y-4 max-w-md">
+                    <div className="relative h-16 w-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mx-auto">
+                      <Camera className="h-8 w-8 text-cyan-400 animate-pulse" />
+                    </div>
+                    <div>
+                      <h4 className="text-base font-bold text-foreground">
+                        {capturingScreen ? "Requesting live viewport capture..." : "Waiting for terminal response"}
+                      </h4>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        The remote device is generating a snapshot. If the terminal is in background or loading, click refresh below.
+                      </p>
+                    </div>
+
+                    <div className="bg-slate-900 rounded-xl p-3 border border-border text-left text-xs space-y-1.5">
+                      <p className="text-muted-foreground">Target Terminal: <strong className="text-white">{screenPreviewModal.userName}</strong></p>
+                      <p className="text-muted-foreground">Device: <strong className="text-white">{screenPreviewModal.deviceName || "Active Browser"}</strong></p>
+                      {sessions.find(s => s.id === screenPreviewModal.sessionId)?.pageLabel && (
+                        <p className="text-muted-foreground">Current Screen: <strong className="text-cyan-400">{sessions.find(s => s.id === screenPreviewModal.sessionId)?.pageLabel}</strong></p>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={() => handleRequestScreenCapture(
+                        screenPreviewModal.sessionId,
+                        screenPreviewModal.userName,
+                        screenPreviewModal.deviceName
+                      )}
+                      className="bg-cyan-600 hover:bg-cyan-500 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-cyan-500/25 transition-all flex items-center gap-2 mx-auto cursor-pointer"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Retry Screen Capture
+                    </button>
                   </div>
                 )}
               </div>

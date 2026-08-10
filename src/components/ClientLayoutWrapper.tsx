@@ -579,27 +579,55 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
             lastSeenCommandId = data.remoteCommand.commandId;
             const cmdId = data.remoteCommand.commandId;
             (async () => {
+              let imageBase64: string | null = null;
+              let captureError = "";
+
               try {
-                const html2canvas = (await import("html2canvas")).default;
-                const canvas = await html2canvas(document.body, {
-                  scale: 0.65,
-                  logging: false,
-                  useCORS: true,
-                  allowTaint: true
-                });
-                const base64 = canvas.toDataURL("image/jpeg", 0.6);
-                await setDoc(doc(db, "active_sessions", sessionId), {
-                  screenSnapshot: {
-                    imageBase64: base64,
-                    capturedAt: new Date().toISOString(),
-                    currentPath: pathname,
-                    pageLabel: getFriendlyPageTitle(pathname),
-                    requestId: cmdId
+                // 1. Primary: html-to-image (works with modern Tailwind v4, oklch, and WebKit/Safari)
+                const { toJpeg } = await import("html-to-image");
+                const targetNode = document.body;
+                imageBase64 = await toJpeg(targetNode, {
+                  quality: 0.65,
+                  pixelRatio: 0.7,
+                  cacheBust: true,
+                  backgroundColor: "#09090b",
+                  filter: (node: any) => {
+                    if (node?.classList && node.classList.contains("no-print")) return false;
+                    return true;
                   }
-                }, { merge: true });
-              } catch (e) {
-                console.error("Screen capture failed:", e);
+                });
+              } catch (err: any) {
+                console.warn("Primary html-to-image failed, trying fallback:", err);
+                captureError = err?.message || "html-to-image failed";
+
+                // 2. Fallback: html2canvas
+                try {
+                  const html2canvas = (await import("html2canvas")).default;
+                  const canvas = await html2canvas(document.body, {
+                    scale: 0.5,
+                    logging: false,
+                    useCORS: true,
+                    allowTaint: true
+                  });
+                  imageBase64 = canvas.toDataURL("image/jpeg", 0.5);
+                  captureError = "";
+                } catch (err2: any) {
+                  console.error("Secondary canvas capture failed:", err2);
+                  captureError = err2?.message || "Canvas capture failed";
+                }
               }
+
+              // Always write response back so admin UI is never stuck on loading
+              await setDoc(doc(db, "active_sessions", sessionId), {
+                screenSnapshot: {
+                  imageBase64: imageBase64 || null,
+                  capturedAt: new Date().toISOString(),
+                  currentPath: pathname,
+                  pageLabel: getFriendlyPageTitle(pathname),
+                  requestId: cmdId,
+                  error: captureError || null
+                }
+              }, { merge: true }).catch(console.error);
             })();
           }
 
