@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin";
 
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 async function verifyAdminEditor(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
   const roleHeader = req.headers.get("x-user-role");

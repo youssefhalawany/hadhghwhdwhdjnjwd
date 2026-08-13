@@ -125,6 +125,17 @@ export default function UserManagementPage() {
     };
   }, []);
 
+  // Safe JSON parser to prevent HTML unexpected token crashes
+  const parseJsonSafely = async (res: Response) => {
+    const text = await res.text();
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      console.warn("API returned non-JSON response:", text.slice(0, 200));
+      return { error: `Server error (${res.status} ${res.statusText || 'OK'}). Please check connection.` };
+    }
+  };
+
   const fetchUsersFromApi = async () => {
     try {
       setLoading(true);
@@ -135,8 +146,8 @@ export default function UserManagementPage() {
           "x-user-role": currentUserRole || "owner"
         }
       });
-      const data = await res.json();
-      if (res.ok && data.users) {
+      const data = await parseJsonSafely(res);
+      if (res.ok && data && data.users) {
         setUsers(data.users);
       }
     } catch (e) {
@@ -156,7 +167,7 @@ export default function UserManagementPage() {
           "x-user-role": currentUserRole || "owner"
         }
       });
-      const data = await res.json();
+      const data = await parseJsonSafely(res);
       if (res.ok && data.success) {
         toast.success(data.message || "Auth synchronization completed successfully! ⚡");
         await fetchUsersFromApi();
@@ -257,7 +268,7 @@ export default function UserManagementPage() {
           body: JSON.stringify(payload)
         });
 
-        const data = await res.json();
+        const data = await parseJsonSafely(res);
         if (!res.ok || data.error) {
           throw new Error(data.error || "Failed to update user");
         }
@@ -275,7 +286,7 @@ export default function UserManagementPage() {
           body: JSON.stringify(payload)
         });
 
-        const data = await res.json();
+        const data = await parseJsonSafely(res);
         if (!res.ok || data.error) {
           throw new Error(data.error || "Failed to create user in Firebase Auth");
         }
@@ -317,7 +328,7 @@ export default function UserManagementPage() {
         })
       });
 
-      const data = await res.json();
+      const data = await parseJsonSafely(res);
       if (res.ok && data.success) {
         toast.success(`Password for ${passwordResetUser.displayName || passwordResetUser.email} updated in Firebase Auth! 🔑`);
         setIsPasswordModalOpen(false);
@@ -347,7 +358,7 @@ export default function UserManagementPage() {
         }
       });
 
-      const data = await res.json();
+      const data = await parseJsonSafely(res);
       if (res.ok && data.success) {
         toast.success(`User ${userToDelete.displayName || userToDelete.email} permanently deleted from Firebase Auth & Database! 🗑️`);
         setIsDeleteModalOpen(false);
@@ -386,7 +397,7 @@ export default function UserManagementPage() {
         })
       });
 
-      const data = await res.json();
+      const data = await parseJsonSafely(res);
       if (res.ok && data.success) {
         toast.success(`User ${user.displayName || user.email} ${newStatus ? 'activated & enabled' : 'deactivated & logged out'} in Firebase! ⚡`);
       } else {
