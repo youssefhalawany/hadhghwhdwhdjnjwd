@@ -11,16 +11,20 @@ service cloud.firestore {
       return userDoc().role;
     }
     
+    function isOwner() {
+      return role() == 'owner' || role() == 'superadmin';
+    }
+    
     function isAdminViewer() { 
-      return role() == 'admin_viewer'; 
+      return role() == 'admin_viewer' || isOwner(); 
     }
     
     function isAdminEditor() { 
-      return role() == 'admin_editor'; 
+      return role() == 'admin_editor' || role() == 'admin' || isOwner(); 
     }
     
     function isAdmin() { 
-      return isAdminViewer() || isAdminEditor(); 
+      return isAdminViewer() || isAdminEditor() || isOwner(); 
     }
 
     function managerStores() {
