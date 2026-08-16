@@ -301,6 +301,25 @@ export default function PaymentsRedesignPage() {
         }
       }
 
+      const updatePayload = {
+        invoiceUrls: [finalDataUrl],
+        invoiceUrl: finalDataUrl,
+        updatedAt: new Date().toISOString()
+      };
+
+      try {
+        await updateDoc(doc(db, "cash_payments", activeId), updatePayload);
+        setPayments(prev => prev.map(p => p.id === activeId ? { ...p, ...updatePayload } : p));
+        if (selectedPaymentForView?.id === activeId) {
+          setSelectedPaymentForView((prev: any) => prev ? { ...prev, ...updatePayload } : prev);
+        }
+        toast.success(isAr ? "تم رفع وإرفاق الفاتورة بنجاح! 📄✨" : "Invoice uploaded & attached successfully! 📄✨", { id: "invoice-upload-toast" });
+        fetchData();
+        return;
+      } catch (clientErr) {
+        console.warn("Direct updateDoc failed, attempting /api/upload-invoice fallback:", clientErr);
+      }
+
       const res = await fetch("/api/upload-invoice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -312,10 +331,11 @@ export default function PaymentsRedesignPage() {
       });
 
       if (res.ok) {
+        setPayments(prev => prev.map(p => p.id === activeId ? { ...p, ...updatePayload } : p));
         toast.success(isAr ? "تم رفع وإرفاق الفاتورة بنجاح! 📄✨" : "Invoice uploaded & attached successfully! 📄✨", { id: "invoice-upload-toast" });
         fetchData();
       } else {
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         toast.error(data.error || "Failed to upload invoice", { id: "invoice-upload-toast" });
       }
     } catch (err) {

@@ -372,6 +372,27 @@ export default function CreditsPage() {
         }
       }
 
+      const updatePayload = {
+        invoiceUrls: [finalDataUrl],
+        invoiceUrl: finalDataUrl,
+        poUrls: [finalDataUrl],
+        poUrl: finalDataUrl,
+        updatedAt: new Date().toISOString()
+      };
+
+      try {
+        await updateDoc(doc(db, "credits", activeId), updatePayload);
+        setCredits(prev => prev.map(c => c.id === activeId ? { ...c, ...updatePayload } : c));
+        if (selectedCreditForView?.id === activeId) {
+          setSelectedCreditForView((prev: any) => prev ? { ...prev, ...updatePayload } : prev);
+        }
+        toast.success(isAr ? "تم رفع وإرفاق الفاتورة بنجاح! 📄✨" : "Invoice uploaded & attached successfully! 📄✨", { id: "credit-invoice-upload-toast" });
+        fetchCredits();
+        return;
+      } catch (clientErr) {
+        console.warn("Direct updateDoc failed for credit, attempting /api/upload-invoice fallback:", clientErr);
+      }
+
       const res = await fetch("/api/upload-invoice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -383,10 +404,11 @@ export default function CreditsPage() {
       });
 
       if (res.ok) {
+        setCredits(prev => prev.map(c => c.id === activeId ? { ...c, ...updatePayload } : c));
         toast.success(isAr ? "تم رفع وإرفاق الفاتورة بنجاح! 📄✨" : "Invoice uploaded & attached successfully! 📄✨", { id: "credit-invoice-upload-toast" });
         fetchCredits();
       } else {
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         toast.error(data.error || "Failed to upload invoice", { id: "credit-invoice-upload-toast" });
       }
     } catch (err) {

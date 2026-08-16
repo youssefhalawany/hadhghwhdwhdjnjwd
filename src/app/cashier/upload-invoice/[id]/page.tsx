@@ -7,6 +7,8 @@ import { Camera, CheckCircle, UploadCloud, X, Loader2, RefreshCw, MapPin, Maximi
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactCrop, { type Crop, type PixelCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
+import { db } from "@/lib/firebase";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
 function UploadInvoiceContent() {
   const { id } = useParams() as { id: string };
@@ -42,6 +44,20 @@ function UploadInvoiceContent() {
   useEffect(() => {
     const fetchPayment = async () => {
       try {
+        const collectionName = type === "credit" ? "credits" : "cash_payments";
+        const docSnap = await getDoc(doc(db, collectionName, id));
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const normalizedUrls = type === "credit" 
+            ? (data?.poUrls || (data?.poUrl ? [data.poUrl] : []) || data?.invoiceUrls || (data?.invoiceUrl ? [data.invoiceUrl] : []))
+            : (data?.invoiceUrls || (data?.invoiceUrl ? [data.invoiceUrl] : []));
+          setPaymentInfo({ ...data, invoiceUrls: normalizedUrls });
+          if (normalizedUrls && normalizedUrls.length > 0) {
+            setSuccess(true);
+          }
+          return;
+        }
+
         const res = await fetch(`/api/upload-invoice?paymentId=${id}&type=${type}`);
         if (res.ok) {
           const data = await res.json();
@@ -279,6 +295,21 @@ function UploadInvoiceContent() {
     setProgress(30);
     
     try {
+      const collectionName = type === "credit" ? "credits" : "cash_payments";
+      const updateField = type === "credit"
+        ? { poUrls: compressedDataUrls, poUrl: compressedDataUrls[0], invoiceUrls: compressedDataUrls, invoiceUrl: compressedDataUrls[0], updatedAt: new Date().toISOString() }
+        : { invoiceUrls: compressedDataUrls, invoiceUrl: compressedDataUrls[0], updatedAt: new Date().toISOString() };
+
+      try {
+        await setDoc(doc(db, collectionName, id), updateField, { merge: true });
+        setProgress(100);
+        setSuccess(true);
+        toast.success("Uploaded successfully!");
+        return;
+      } catch (clientErr) {
+        console.warn("Client direct write failed, attempting API route fallback:", clientErr);
+      }
+
       const res = await fetch('/api/upload-invoice', {
         method: 'POST',
         headers: {

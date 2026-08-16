@@ -23,10 +23,10 @@ export async function POST(req: Request) {
       : { invoiceUrls: urls, invoiceUrl: urls[0] };
 
     // Update Firestore document directly with the compressed base64 strings
-    await adminDb.collection(collectionName).doc(paymentId).update({
+    await adminDb.collection(collectionName).doc(paymentId).set({
       ...updateField,
       updatedAt: new Date().toISOString()
-    });
+    }, { merge: true });
 
     return NextResponse.json({ success: true, invoiceUrls: urls });
   } catch (error: any) {
