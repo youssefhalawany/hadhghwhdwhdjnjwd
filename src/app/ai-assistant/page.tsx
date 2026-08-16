@@ -118,18 +118,18 @@ export default function AiAssistantPage() {
         }),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
-      if (response.ok && data.success) {
+      if (response.ok && data.success && data.reply) {
         setMessages(prev => [...prev, { role: "assistant", content: data.reply }]);
       } else {
-        const fallbackMsg = "يا ريس السيرفر عليه ضغط بسيط دلوقتي من السيستم، بس أنا معاك! جرب تسألني تاني كمان ثواني وهرد عليك فوراً يا باشا 🫡";
+        const fallbackMsg = data.reply || "يا ريس السيرفر عليه ضغط بسيط دلوقتي، بس أنا معاك! اسألني تاني وهرد عليك فوراً يا باشا 🫡";
         setMessages(prev => [...prev, { role: "assistant", content: fallbackMsg }]);
         console.error("Chat error:", data.error);
       }
     } catch (error: any) {
       console.error(error);
-      setMessages(prev => [...prev, { role: "assistant", content: "Sorry, I encountered a network error. Please try again." }]);
+      setMessages(prev => [...prev, { role: "assistant", content: "يا ريس حصل ضغط مؤقت في الاتصال، جرب تسألني تاني وهرد عليك فوراً يا باشا 🫡" }]);
     } finally {
       setIsLoading(false);
     }

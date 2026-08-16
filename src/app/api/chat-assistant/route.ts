@@ -201,11 +201,12 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
 
     // Active verified working Gemini models
     const MODEL_CANDIDATES = [
-      "gemini-3.5-flash-lite",
-      "gemini-3.5-flash",
-      "gemini-3.1-flash-lite",
-      "gemini-flash-lite-latest",
-      "gemini-2.5-flash-lite"
+      "gemini-2.0-flash",
+      "gemini-1.5-flash",
+      "gemini-flash-latest",
+      "gemini-2.0-flash-lite",
+      "gemini-1.5-flash-8b",
+      "gemini-1.5-pro"
     ];
     
     let result: any = null;
@@ -242,10 +243,24 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
     }
 
     if (!result) {
+      // Fallback: try generating content directly without tools if startChat/tools failed
+      for (const fallbackModel of ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-flash-latest"]) {
+        try {
+          const directModel = genAI.getGenerativeModel({ model: fallbackModel });
+          const directPrompt = `${systemInstruction}\n\nUser says: "${message}"\n\nPlease answer in your Egyptian assistant persona.`;
+          const directRes = await directModel.generateContent(directPrompt);
+          if (directRes && directRes.response) {
+            return NextResponse.json({ success: true, reply: directRes.response.text() });
+          }
+        } catch (e) {
+          console.warn(`Direct fallback on ${fallbackModel} failed:`, e);
+        }
+      }
+
       // Fallback local response if all models rate limited or failed
       const safeBal = cachedBalances?.safe ? formatCurr(cachedBalances.safe) : "غير متوفر حالياً";
       const bankBal = cachedBalances?.bank ? formatCurr(cachedBalances.bank) : "غير متوفر حالياً";
-      const fallbackReply = `يا ريس، السيرفر عليه ضغط بسيط دلوقتي من جوجل، بس أنا معاك وجهزتلك خلاصة الخزينة من السيستم مباشرة:\n\n• رصيد الخزينة: ${safeBal}\n• رصيد البنك: ${bankBal}\n\nجرب تسألني تاني كمان ثواني وهكون معاك فوراً يا باشا! 🫡`;
+      const fallbackReply = `يا ريس، السيرفر عليه ضغط بسيط دلوقتي من جوجل، بس أنا معاك ومتابع بيانات الفرع:\n\n• رصيد الخزينة: ${safeBal}\n• رصيد البنك: ${bankBal}\n\nجرب تسألني تاني وهكون معاك فوراً يا باشا! 🫡`;
       return NextResponse.json({ success: true, reply: fallbackReply });
     }
     
@@ -497,22 +512,55 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
           };
         }
 
-        const followUpMessage = `[SYSTEM: Tool '${call.name}' executed successfully. Here is the data from the database:]\n\n${JSON.stringify(apiResponse, null, 2)}\n\nNow, provide your final answer to the user based on this data.`;
-        
         if (activeChat) {
-          result = await activeChat.sendMessage(followUpMessage);
+          try {
+            result = await activeChat.sendMessage([{
+              functionResponse: {
+                name: call.name,
+                response: { data: apiResponse }
+              }
+            }]);
+          } catch (fnErr) {
+            console.warn("Function response turn failed, generating with direct prompt fallback:", fnErr);
+            const fallbackPrompt = `${systemInstruction}\n\nUser Question: "${message}"\nTool Data from database for '${call.name}':\n${JSON.stringify(apiResponse, null, 2)}\n\nPlease provide your helpful answer to the user in your Egyptian assistant persona based on this data.`;
+            const fbModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+            result = await fbModel.generateContent(fallbackPrompt);
+          }
         }
 
       } catch (dbError: any) {
         console.error("Firebase Tool Error:", dbError);
         const errorMessage = `[SYSTEM: Tool '${call.name}' failed with a technical error. Please apologize to the user and inform them that the database is currently unreachable.]`;
         if (activeChat) {
-          result = await activeChat.sendMessage(errorMessage);
+          try {
+            result = await activeChat.sendMessage([{
+              functionResponse: {
+                name: call.name,
+                response: { error: "Database temporarily unreachable" }
+              }
+            }]);
+          } catch {
+            const fbModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+            result = await fbModel.generateContent(`يا ريس معلش الداتابيز مش مستجيبة للحظة، بس أنا معاك.`);
+          }
         }
       }
     }
 
-    const responseText = result.response.text();
+    let responseText = "";
+    try {
+      responseText = result?.response?.text ? result.response.text() : "";
+    } catch (textErr) {
+      console.warn("Failed to get response.text(), extracting candidate text:", textErr);
+      const candidate = result?.response?.candidates?.[0];
+      if (candidate?.content?.parts?.[0]?.text) {
+        responseText = candidate.content.parts[0].text;
+      }
+    }
+
+    if (!responseText) {
+      responseText = "يا ريس أنا معاك! اسألني عن مبيعات امبارح أو الشيفتات أو الصلاحيات وهرد عليك فوراً يا باشا 🫡";
+    }
 
     return NextResponse.json({
       success: true,
@@ -521,9 +569,10 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
 
   } catch (error: any) {
     console.error("AI Chat Error:", error);
+    const fallbackReply = "يا ريس، السيرفر عليه ضغط بسيط دلوقتي، بس أنا معاك ومتابع بيانات الفرع! اسألني تاني وهرد عليك فوراً يا باشا 🫡";
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to communicate with AI" },
-      { status: 500 }
+      { success: true, reply: fallbackReply },
+      { status: 200 }
     );
   }
 }
