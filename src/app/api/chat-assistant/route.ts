@@ -199,16 +199,15 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
       cleanHistory.shift();
     }
 
-    // Active verified working Gemini models
+    // Active verified working Gemini models in order of current availability
     const MODEL_CANDIDATES = [
-      "gemini-3-flash-preview",
-      "gemini-3.5-flash",
-      "gemini-3.7-flash",
       "gemini-3.6-flash",
-      "gemini-3.1-flash-lite",
-      "gemini-flash-latest",
+      "gemini-3-flash-preview",
       "gemma-4-31b-it",
-      "gemma-4-26b-a4b-it"
+      "gemini-3.1-flash-lite",
+      "gemma-4-26b-a4b-it",
+      "gemini-3.5-flash",
+      "gemini-3.7-flash"
     ];
     
     let result: any = null;
@@ -246,7 +245,7 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
 
     if (!result) {
       // Fallback: try generating content directly without tools if startChat/tools failed
-      for (const fallbackModel of ["gemini-3-flash-preview", "gemini-3.5-flash", "gemini-3.7-flash", "gemma-4-31b-it"]) {
+      for (const fallbackModel of ["gemini-3.6-flash", "gemini-3-flash-preview", "gemma-4-31b-it", "gemini-3.1-flash-lite"]) {
         try {
           const directModel = genAI.getGenerativeModel({ model: fallbackModel });
           const directPrompt = `${systemInstruction}\n\nUser says: "${message}"\n\nPlease answer in your Egyptian assistant persona.`;
@@ -286,54 +285,119 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
           const args = (call.args as any) || {};
           let targetDate = args.date || yesterday;
           if (targetDate === "yesterday" || targetDate === "امبارح") targetDate = yesterday;
+          if (targetDate === "today" || targetDate === "النهارده") targetDate = today;
           
           console.log(`AI executing get_daily_sales for branch: ${branchId}, date: ${targetDate}`);
           
-          const q = query(
-            collection(productsDb, "detailed_sales_daily"),
-            where("branchId", "in", [branchId, altBranch]),
-            where("date_sold", "==", targetDate),
-            limit(1)
-          );
-          const snapshot = await getDocs(q);
-          
-          if (!snapshot.empty) {
-            apiResponse = snapshot.docs[0].data();
-          } else {
-            // Fallback: Fetch latest available daily sales report if requested date has no record
-            const qLatest = query(
+          // 1. Try detailed_sales_daily in productsDb
+          try {
+            const q = query(
               collection(productsDb, "detailed_sales_daily"),
-              where("branchId", "in", [branchId, altBranch]),
-              orderBy("date_sold", "desc"),
-              limit(1)
+              where("date_sold", "==", targetDate),
+              limit(20)
             );
-            const latestSnap = await getDocs(qLatest);
-            if (!latestSnap.empty) {
-              apiResponse = latestSnap.docs[0].data();
-            } else {
-              apiResponse = { error: `No sales report found for date ${targetDate} or branch ${branchId}.` };
+            const snapshot = await getDocs(q);
+            const matchingDoc = snapshot.docs.find(d => {
+              const b = d.data().branchId;
+              return b === branchId || b === altBranch;
+            });
+            if (matchingDoc) {
+              apiResponse = matchingDoc.data();
             }
+          } catch (e) {
+            console.warn("productsDb detailed_sales_daily query error:", e);
+          }
+
+          // 2. Also query daily sales entries from main `sales` collection in db
+          try {
+            const salesSnap = await getDocs(query(collection(db, "sales"), limit(150)));
+            const daySales: any[] = [];
+            salesSnap.forEach(doc => {
+              const data = doc.data();
+              if ((data.branchId === branchId || data.branchId === altBranch) && data.date === targetDate) {
+                daySales.push(data);
+              }
+            });
+
+            if (daySales.length > 0) {
+              let totalCash = 0, totalVisa = 0, totalOverShort = 0;
+              const shifts: any[] = [];
+              daySales.forEach(s => {
+                const c = Number(s.cash) || 0;
+                const v = Number(s.visa) || 0;
+                const os = Number(s.overShort) || 0;
+                totalCash += c;
+                totalVisa += v;
+                totalOverShort += os;
+                shifts.push({
+                  shift: s.shift || "Unknown",
+                  cash: c,
+                  visa: v,
+                  overShort: os,
+                  notes: s.notes
+                });
+              });
+
+              if (apiResponse) {
+                apiResponse.shiftEntries = shifts;
+                apiResponse.recordedCash = totalCash;
+                apiResponse.recordedVisa = totalVisa;
+                apiResponse.recordedOverShort = totalOverShort;
+              } else {
+                apiResponse = {
+                  date: targetDate,
+                  branchId,
+                  totalSales: totalCash + totalVisa + totalOverShort,
+                  totalCash,
+                  totalVisa,
+                  totalOverShort,
+                  shifts
+                };
+              }
+            }
+          } catch (sErr) {
+            console.warn("db sales query error:", sErr);
+          }
+
+          if (!apiResponse) {
+            apiResponse = {
+              date: targetDate,
+              branchId,
+              message: `لا توجد مبيعات مسجلة حتى الآن لتاريخ ${targetDate} في فرع ${branchId}.`
+            };
           }
         } 
         else if (call.name === "get_historical_sales") {
           console.log(`AI executing get_historical_sales for branch: ${branchId}`);
-          
-          const q = query(
-            collection(productsDb, "detailed_sales_daily"),
-            orderBy("date_sold", "desc"),
-            limit(100)
-          );
-          const snapshot = await getDocs(q);
           const allSales: any[] = [];
-          snapshot.forEach(doc => {
-            const data = doc.data();
-            if (data.branchId === branchId || data.branchId === altBranch) {
-              allSales.push(data);
-            }
-          });
           
-          const recentSales = allSales.slice(0, 7);
-          apiResponse = recentSales.length > 0 ? recentSales : { error: "No historical data found." };
+          try {
+            const snapshot = await getDocs(query(collection(productsDb, "detailed_sales_daily"), limit(50)));
+            snapshot.forEach(doc => {
+              const data = doc.data();
+              if (data.branchId === branchId || data.branchId === altBranch) {
+                allSales.push(data);
+              }
+            });
+          } catch (e) {
+            console.warn("get_historical_sales productsDb error:", e);
+          }
+
+          if (allSales.length === 0) {
+            try {
+              const sSnap = await getDocs(query(collection(db, "sales"), limit(100)));
+              sSnap.forEach(doc => {
+                const data = doc.data();
+                if (data.branchId === branchId || data.branchId === altBranch) {
+                  allSales.push(data);
+                }
+              });
+            } catch (err) {
+              console.warn("get_historical_sales db error:", err);
+            }
+          }
+          
+          apiResponse = allSales.slice(0, 10).length > 0 ? allSales.slice(0, 10) : { message: "لا توجد بيانات تاريخية مسجلة للفرع بعد." };
         }
         else if (call.name === "get_shift_audits") {
           console.log(`AI executing get_shift_audits for branch: ${branchId}`);
