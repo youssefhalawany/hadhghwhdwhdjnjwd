@@ -799,6 +799,11 @@ export default function PaymentsRedesignPage() {
         toast.dismiss("bank-upload");
       }
 
+      const isOrderCategory = category === "order";
+      const finalPoNumber = isOrderCategory ? poNumber.trim() : "";
+      const finalPoItems = isOrderCategory ? poItems : [];
+      const finalPoImageUrl = isOrderCategory ? poImageUrl : "";
+
       const newPayment = {
         amount: numAmount,
         category,
@@ -811,14 +816,14 @@ export default function PaymentsRedesignPage() {
         invoiceNumber,
         isTaxable: numTax > 0,
         method,
-        poNumber,
+        poNumber: finalPoNumber,
         storeId: branchIds.length > 0 ? branchIds[0] : "eL-alamein-4",
         tax: numTax,
         total,
         supplierRepName,
         supplierNationalId,
-        ...(poItems.length > 0 ? { items: poItems } : {}),
-        ...(poImageUrl ? { poImageUrl } : {}),
+        ...(finalPoItems.length > 0 ? { items: finalPoItems } : {}),
+        ...(finalPoImageUrl ? { poImageUrl: finalPoImageUrl } : {}),
         ...(bankTransferReceiptUrl ? { bankTransferReceiptUrl } : {})
       };
 
@@ -827,11 +832,11 @@ export default function PaymentsRedesignPage() {
       // Dispatch Universal System Notification
       dispatchNotificationSystem({
         title: `💵 Cash Payment Logged - ${companyName}`,
-        body: `Payment of EGP ${Number(total).toLocaleString(undefined, { minimumFractionDigits: 2 })} logged for ${companyName}.\nTax: EGP ${Number(numTax).toLocaleString()} • Method: ${method?.replace('_', ' ').toUpperCase() || 'CASH'}${invoiceNumber ? ` • Inv #: ${invoiceNumber}` : ''}`,
+        body: `Payment of EGP ${Number(total).toLocaleString(undefined, { minimumFractionDigits: 2 })} logged for ${companyName}.\nTax: EGP ${Number(numTax).toLocaleString()} • Method: ${method?.replace('_', ' ').toUpperCase() || 'CASH'}${invoiceNumber ? ` • Inv #: ${invoiceNumber}` : ''}${finalPoNumber ? ` • PO #: ${finalPoNumber}` : ''}`,
         type: "payment",
         url: "/financials/inputs/payments",
         branchId: currentBranch,
-        metadata: { companyName, totalAmount: total, method, invoiceNumber, storeId: currentBranch }
+        metadata: { companyName, totalAmount: total, method, invoiceNumber, poNumber: finalPoNumber, storeId: currentBranch }
       });
 
       const role = typeof window !== "undefined" ? (localStorage.getItem("circlek_role") || "manager") : "manager";
@@ -979,8 +984,9 @@ export default function PaymentsRedesignPage() {
       changes.push(`Invoice #: "${editingPayment.invoiceNumber || 'N/A'}" ➔ "${editInvoiceNumber.trim() || 'N/A'}"`);
     }
 
-    if ((editingPayment.poNumber || "") !== editPoNumber.trim()) {
-      changes.push(`PO #: "${editingPayment.poNumber || 'N/A'}" ➔ "${editPoNumber.trim() || 'N/A'}"`);
+    const effectiveEditPoNumber = editCategory === "order" ? editPoNumber.trim() : "";
+    if ((editingPayment.poNumber || "") !== effectiveEditPoNumber) {
+      changes.push(`PO #: "${editingPayment.poNumber || 'N/A'}" ➔ "${effectiveEditPoNumber || 'None'}"`);
     }
 
     if ((editingPayment.date || "") !== editDate) {
@@ -1026,7 +1032,7 @@ export default function PaymentsRedesignPage() {
         isTaxable: numTax > 0,
         companyName: editCompanyName.trim(),
         invoiceNumber: editInvoiceNumber.trim(),
-        poNumber: editPoNumber.trim(),
+        poNumber: effectiveEditPoNumber,
         category: editCategory,
         categoryNote: editCategoryNote.trim(),
         description: editCategoryNote.trim(),
@@ -1977,19 +1983,20 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
 
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "رقم الفاتورة" : "Invoice #"}</label>
-                            <input type="text" placeholder="INV-123" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "رقم أمر الشراء (PO)" : "PO #"}</label>
-                            <input type="text" placeholder="PO-123" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={poNumber} onChange={(e) => setPoNumber(e.target.value)} />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
                             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "التصنيف *" : "Category *"}</label>
-                            <select className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={category} onChange={(e) => setCategory(e.target.value)}>
+                            <select 
+                              className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" 
+                              value={category} 
+                              onChange={(e) => {
+                                const newCat = e.target.value;
+                                setCategory(newCat);
+                                if (newCat !== "order") {
+                                  setPoNumber("");
+                                  setPoItems([]);
+                                  setPoImageFile(null);
+                                }
+                              }}
+                            >
                               <option value="order">{isAr ? "طلبات وبضائع" : "Order"}</option>
                               <option value="maintenance">{isAr ? "صيانة" : "Maintenance"}</option>
                               <option value="utilities">{isAr ? "مرافق وخدمات" : "Utilities"}</option>
@@ -2001,6 +2008,19 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "ملاحظات" : "Notes"}</label>
                             <input type="text" placeholder={isAr ? "تفاصيل إضافية..." : "Optional details..."} className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={categoryNote} onChange={(e) => setCategoryNote(e.target.value)} />
                           </div>
+                        </div>
+
+                        <div className={`grid ${category === "order" ? "grid-cols-2" : "grid-cols-1"} gap-4`}>
+                          <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "رقم الفاتورة" : "Invoice #"}</label>
+                            <input type="text" placeholder="INV-123" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} />
+                          </div>
+                          {category === "order" && (
+                            <div>
+                              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "رقم أمر الشراء (PO)" : "PO #"}</label>
+                              <input type="text" placeholder="PO-123" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={poNumber} onChange={(e) => setPoNumber(e.target.value)} />
+                            </div>
+                          )}
                         </div>
 
                       </div>
@@ -3051,32 +3071,6 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                        {isAr ? "رقم الفاتورة" : "Invoice #"}
-                      </label>
-                      <input
-                        type="text"
-                        value={editInvoiceNumber}
-                        onChange={(e) => setEditInvoiceNumber(e.target.value)}
-                        className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500/20"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                        {isAr ? "رقم أمر الشراء (PO)" : "PO #"}
-                      </label>
-                      <input
-                        type="text"
-                        value={editPoNumber}
-                        onChange={(e) => setEditPoNumber(e.target.value)}
-                        className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500/20"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
                         {isAr ? "طريقة الدفع *" : "Payment Method *"}
                       </label>
                       <select
@@ -3096,7 +3090,13 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                       </label>
                       <select
                         value={editCategory}
-                        onChange={(e) => setEditCategory(e.target.value)}
+                        onChange={(e) => {
+                          const newCat = e.target.value;
+                          setEditCategory(newCat);
+                          if (newCat !== "order") {
+                            setEditPoNumber("");
+                          }
+                        }}
                         className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500/20"
                       >
                         <option value="order">{isAr ? "طلبات وبضائع" : "Order"}</option>
@@ -3106,6 +3106,34 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                         <option value="other">{isAr ? "مصروفات أخرى" : "Other / Misc"}</option>
                       </select>
                     </div>
+                  </div>
+
+                  <div className={`grid ${editCategory === "order" ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"} gap-4`}>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                        {isAr ? "رقم الفاتورة" : "Invoice #"}
+                      </label>
+                      <input
+                        type="text"
+                        value={editInvoiceNumber}
+                        onChange={(e) => setEditInvoiceNumber(e.target.value)}
+                        className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500/20"
+                      />
+                    </div>
+
+                    {editCategory === "order" && (
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                          {isAr ? "رقم أمر الشراء (PO)" : "PO #"}
+                        </label>
+                        <input
+                          type="text"
+                          value={editPoNumber}
+                          onChange={(e) => setEditPoNumber(e.target.value)}
+                          className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500/20"
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <div>
