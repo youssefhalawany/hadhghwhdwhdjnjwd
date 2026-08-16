@@ -86,7 +86,9 @@ import {
   MessageCircle,
   FileText,
   PieChart as PieChartIcon,
-  Printer
+  Printer,
+  Calculator,
+  Pencil
 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, LineChart, Line, XAxis, YAxis } from 'recharts';
 import html2canvas from "html2canvas";
@@ -251,6 +253,19 @@ export default function PaymentsRedesignPage() {
   const [selectedPaymentForView, setSelectedPaymentForView] = useState<any>(null);
   const [generatingPDF, setGeneratingPDF] = useState(false);
   const [isPasting, setIsPasting] = useState(false);
+
+  // Edit Payment State (Admin Only)
+  const [editingPayment, setEditingPayment] = useState<any | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editDate, setEditDate] = useState("");
+  const [editCompanyName, setEditCompanyName] = useState("");
+  const [editAmount, setEditAmount] = useState("");
+  const [editTax, setEditTax] = useState("");
+  const [editInvoiceNumber, setEditInvoiceNumber] = useState("");
+  const [editPoNumber, setEditPoNumber] = useState("");
+  const [editCategory, setEditCategory] = useState("order");
+  const [editCategoryNote, setEditCategoryNote] = useState("");
+  const [editMethod, setEditMethod] = useState("cash");
 
   const qrFileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -906,6 +921,153 @@ export default function PaymentsRedesignPage() {
     }
   };
 
+  const handleOpenEditPayment = (pay: any) => {
+    const role = typeof window !== "undefined" ? localStorage.getItem("circlek_role") : null;
+    if (role === "manager") {
+      toast.error(isAr ? "غير مصرح. التعديل متاح للمسؤول فقط." : "Unauthorized. Edit is only available for Admin.");
+      return;
+    }
+    setEditingPayment(pay);
+    setEditDate(pay.date || new Date().toISOString().split("T")[0]);
+    setEditCompanyName(pay.companyName || "");
+    setEditAmount(pay.amount !== undefined ? pay.amount.toString() : "");
+    setEditTax(pay.tax !== undefined ? pay.tax.toString() : "0");
+    setEditInvoiceNumber(pay.invoiceNumber || "");
+    setEditPoNumber(pay.poNumber || "");
+    setEditCategory(pay.category || "order");
+    setEditCategoryNote(pay.categoryNote || pay.description || "");
+    setEditMethod(pay.method || "cash");
+    setShowEditModal(true);
+  };
+
+  const handleSaveEditPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPayment) return;
+
+    const role = typeof window !== "undefined" ? (localStorage.getItem("circlek_role") || "manager") : "manager";
+    if (role === "manager") {
+      toast.error(isAr ? "غير مصرح لك بتعديل السندات" : "Unauthorized. Only Admins can edit invoices.");
+      return;
+    }
+
+    if (!editCompanyName.trim() || !editAmount) {
+      toast.error(isAr ? "يرجى ملء المورد والمبلغ" : "Supplier name and amount are required.");
+      return;
+    }
+
+    const numAmount = parseFloat(editAmount) || 0;
+    const numTax = parseFloat(editTax) || 0;
+    const newTotal = numAmount + numTax;
+
+    // Detect exact changes
+    const changes: string[] = [];
+    const oldAmount = Number(editingPayment.amount) || 0;
+    if (oldAmount !== numAmount) {
+      changes.push(`Amount (Before Tax): EGP ${oldAmount.toLocaleString()} ➔ EGP ${numAmount.toLocaleString()}`);
+    }
+
+    const oldTax = Number(editingPayment.tax) || 0;
+    if (oldTax !== numTax) {
+      changes.push(`Tax: EGP ${oldTax.toLocaleString()} ➔ EGP ${numTax.toLocaleString()}`);
+    }
+
+    if ((editingPayment.companyName || "") !== editCompanyName.trim()) {
+      changes.push(`Supplier: "${editingPayment.companyName || 'N/A'}" ➔ "${editCompanyName.trim()}"`);
+    }
+
+    if ((editingPayment.invoiceNumber || "") !== editInvoiceNumber.trim()) {
+      changes.push(`Invoice #: "${editingPayment.invoiceNumber || 'N/A'}" ➔ "${editInvoiceNumber.trim() || 'N/A'}"`);
+    }
+
+    if ((editingPayment.poNumber || "") !== editPoNumber.trim()) {
+      changes.push(`PO #: "${editingPayment.poNumber || 'N/A'}" ➔ "${editPoNumber.trim() || 'N/A'}"`);
+    }
+
+    if ((editingPayment.date || "") !== editDate) {
+      changes.push(`Date: "${editingPayment.date || 'N/A'}" ➔ "${editDate}"`);
+    }
+
+    if ((editingPayment.category || "") !== editCategory) {
+      changes.push(`Category: "${editingPayment.category || 'N/A'}" ➔ "${editCategory}"`);
+    }
+
+    if ((editingPayment.categoryNote || editingPayment.description || "") !== editCategoryNote.trim()) {
+      changes.push(`Notes: "${editingPayment.categoryNote || editingPayment.description || 'None'}" ➔ "${editCategoryNote.trim() || 'None'}"`);
+    }
+
+    if ((editingPayment.method || "") !== editMethod) {
+      changes.push(`Method: "${editingPayment.method || 'cash'}" ➔ "${editMethod}"`);
+    }
+
+    if (changes.length === 0) {
+      toast.info(isAr ? "لم يتم إجراء أي تعديل" : "No changes detected.");
+      setShowEditModal(false);
+      setEditingPayment(null);
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const editorName = currentUser?.displayName || currentUser?.email || auth.currentUser?.email || "Admin";
+      const nowIso = new Date().toISOString();
+
+      const newHistoryEntry = {
+        editedAt: nowIso,
+        editedBy: editorName,
+        role: role,
+        changes: changes,
+        summary: changes.join(" • ")
+      };
+
+      const updatedPayload: any = {
+        amount: numAmount,
+        tax: numTax,
+        total: newTotal,
+        isTaxable: numTax > 0,
+        companyName: editCompanyName.trim(),
+        invoiceNumber: editInvoiceNumber.trim(),
+        poNumber: editPoNumber.trim(),
+        category: editCategory,
+        categoryNote: editCategoryNote.trim(),
+        description: editCategoryNote.trim(),
+        method: editMethod,
+        date: editDate,
+        isEdited: true,
+        lastEditedAt: nowIso,
+        lastEditedBy: editorName,
+        editHistory: [...(editingPayment.editHistory || []), newHistoryEntry]
+      };
+
+      await updateDoc(doc(db, "cash_payments", editingPayment.id), updatedPayload);
+
+      // Update local state
+      const updatedDoc = { ...editingPayment, ...updatedPayload };
+      setPayments(prev => prev.map(p => p.id === editingPayment.id ? updatedDoc : p));
+      if (selectedPaymentForView?.id === editingPayment.id) {
+        setSelectedPaymentForView(updatedDoc);
+      }
+
+      // Log in audit log system
+      dbService.logAction(
+        auth.currentUser?.email || editorName,
+        auth.currentUser?.displayName || editorName,
+        role,
+        "Edit Payment Invoice (Admin)",
+        `Payment ID: ${editingPayment.id}, Supplier: ${editCompanyName}`,
+        `Changes: ${changes.join("; ")}`
+      ).catch(() => {});
+
+      toast.success(isAr ? "تم تحديث السند وحفظ سجل التعديل بنجاح!" : "Payment invoice updated & audit logged successfully!");
+      setShowEditModal(false);
+      setEditingPayment(null);
+    } catch (err: any) {
+      console.error("Failed to update payment:", err);
+      toast.error(isAr ? "فشل تعديل السند" : "Failed to update payment.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const generatePDF = (paymentToPrint: any) => {
     if (!paymentToPrint) return;
     setSelectedPaymentForPrint(paymentToPrint);
@@ -1540,6 +1702,18 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                           <span className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
                             {METHOD_EMOJIS[pay.method] || "💵"} <span className="capitalize">{pay.method?.replace('_', ' ') || 'cash'}</span>
                           </span>
+                          {pay.isEdited && (
+                            <span 
+                              className="bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60 text-xs px-2 py-0.5 rounded-full font-bold flex items-center gap-1 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
+                              title={pay.editHistory && pay.editHistory.length > 0 ? `Edited on ${new Date(pay.lastEditedAt).toLocaleDateString()}:\n${pay.editHistory[pay.editHistory.length - 1].summary}` : "Edited"}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedPaymentForView(pay);
+                              }}
+                            >
+                              <Pencil size={11} className="shrink-0" /> {isAr ? "مُعدّل" : "Edited"}
+                            </span>
+                          )}
                         </div>
                         <p className="text-sm font-medium text-slate-500 flex items-center gap-2">
                           <span className="text-slate-400">{pay.date}</span>
@@ -1592,9 +1766,18 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                           <Download size={20} />
                         </button>
                         {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
-                          <button onClick={() => handleDelete(pay.id)} className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-xl transition-colors">
-                            <Trash2 size={20} />
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handleOpenEditPayment(pay)}
+                              className="p-2.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded-xl transition-colors"
+                              title={isAr ? "تعديل الفاتورة (خاص بالإدارة)" : "Edit Payment (Admin Only)"}
+                            >
+                              <Pencil size={20} />
+                            </button>
+                            <button onClick={() => handleDelete(pay.id)} className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-xl transition-colors" title={isAr ? "حذف السند" : "Delete Payment"}>
+                              <Trash2 size={20} />
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>
@@ -1761,6 +1944,34 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                           <div>
                             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "قيمة الضريبة" : "Tax Amount"}</label>
                             <input type="number" placeholder="0.00" step="0.01" min="0" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900 text-lg" value={tax} onChange={(e) => setTax(e.target.value)} />
+                          </div>
+                        </div>
+
+                        {/* Total Sum Preview Box (Amount + Tax) */}
+                        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/20 border border-emerald-200/80 dark:border-emerald-800/40 flex items-center justify-between shadow-xs transition-all">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-base shadow-xs shrink-0">
+                              <Calculator size={18} />
+                            </div>
+                            <div>
+                              <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider block">
+                                {isAr ? "إجمالي المبلغ (شامل الضريبة)" : "Total Amount (Incl. Tax)"}
+                              </span>
+                              <span className="text-xs text-emerald-700/80 dark:text-emerald-400/80 font-medium">
+                                {(parseFloat(tax) || 0) > 0 ? (
+                                  isAr 
+                                    ? `${(parseFloat(amount) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} + ${(parseFloat(tax) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ضريبة`
+                                    : `${(parseFloat(amount) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} + ${(parseFloat(tax) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} tax`
+                                ) : (
+                                  isAr ? "بدون ضريبة إضافية" : "No tax added"
+                                )}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <div className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono tracking-tight">
+                              EGP {((parseFloat(amount) || 0) + (parseFloat(tax) || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
                           </div>
                         </div>
 
@@ -2363,6 +2574,18 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
+                      {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
+                        <button
+                          onClick={() => {
+                            const p = selectedPaymentForView;
+                            setSelectedPaymentForView(null);
+                            handleOpenEditPayment(p);
+                          }}
+                          className="text-xs font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer mr-1"
+                        >
+                          <Pencil size={14} /> {isAr ? "تعديل الفاتورة" : "Edit Invoice"}
+                        </button>
+                      )}
                       {selectedPaymentForView.poImageUrl && (
                         <a
                           href={selectedPaymentForView.poImageUrl}
@@ -2383,6 +2606,49 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                   </div>
 
                   <div className="p-6 overflow-y-auto max-h-[60vh] space-y-6">
+                    {/* Audit Trail / Edit History */}
+                    {selectedPaymentForView.isEdited && selectedPaymentForView.editHistory && selectedPaymentForView.editHistory.length > 0 && (
+                      <div className="bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-800/40 rounded-2xl p-4.5 mb-4 shadow-xs">
+                        <div className="flex items-center gap-2.5 mb-3">
+                          <div className="w-7 h-7 rounded-xl bg-amber-500/20 text-amber-700 dark:text-amber-300 flex items-center justify-center font-black">
+                            <Pencil size={14} />
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-black uppercase tracking-wider text-amber-900 dark:text-amber-200">
+                              {isAr ? "سجل التعديلات (Audit Log)" : "Audit Trail / Modification History"}
+                            </h4>
+                            <p className="text-[11px] text-amber-700/80 dark:text-amber-400/80 font-medium">
+                              {isAr 
+                                ? `تم التعديل بواسطة ${selectedPaymentForView.lastEditedBy || 'Admin'} في ${new Date(selectedPaymentForView.lastEditedAt).toLocaleString('ar-EG')}`
+                                : `Last edited by ${selectedPaymentForView.lastEditedBy || 'Admin'} on ${new Date(selectedPaymentForView.lastEditedAt).toLocaleString()}`}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          {selectedPaymentForView.editHistory.map((hist: any, hIdx: number) => (
+                            <div key={hIdx} className="bg-white/80 dark:bg-slate-900/80 rounded-xl p-3 border border-amber-100 dark:border-amber-900/30 text-xs">
+                              <div className="flex justify-between items-center mb-1.5 text-slate-500 dark:text-slate-400 text-[10px] font-bold">
+                                <span>👤 {hist.editedBy || "Admin"}</span>
+                                <span>🕒 {new Date(hist.editedAt).toLocaleString(isAr ? "ar-EG" : "en-US")}</span>
+                              </div>
+                              <div className="space-y-1">
+                                {hist.changes && hist.changes.length > 0 ? (
+                                  hist.changes.map((ch: string, cIdx: number) => (
+                                    <div key={cIdx} className="text-slate-700 dark:text-slate-200 font-semibold flex items-center gap-1.5">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span>
+                                      <span>{ch}</span>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <p className="text-slate-700 dark:text-slate-200 font-medium">{hist.summary || "Modified"}</p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                       <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "الشركة / المورد" : "Company / Supplier"}</p>
@@ -2645,7 +2911,245 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
         )}
       </AnimatePresence>
 
-      {/* Upload PO to Old Invoice Modal */}
+      {/* EDIT PAYMENT MODAL (ADMIN ONLY) */}
+      <AnimatePresence>
+        {showEditModal && editingPayment && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4 overflow-y-auto"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
+              className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-3xl shadow-2xl relative my-auto border border-slate-100 dark:border-slate-800 overflow-hidden flex flex-col max-h-[92vh]"
+            >
+              {/* Header */}
+              <div className="flex justify-between items-center p-6 border-b border-amber-100 dark:border-amber-900/30 bg-gradient-to-r from-amber-50/80 via-orange-50/40 to-transparent dark:from-amber-950/20 dark:to-transparent" dir={isAr ? "rtl" : "ltr"}>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center font-black">
+                    <Pencil size={20} />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
+                      {isAr ? "تعديل سند الصرف (خاص بالإدارة)" : "Edit Payment Invoice (Admin Only)"}
+                    </h2>
+                    <p className="text-xs font-bold text-amber-600/80 dark:text-amber-400/80 mt-0.5">
+                      {isAr ? "سيتم تسجيل وتتبع كافة التعديلات تلقائياً في سجل الرقابة" : "All modifications will be tracked automatically in the audit log"}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => { setShowEditModal(false); setEditingPayment(null); }}
+                  className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Form */}
+              <form onSubmit={handleSaveEditPayment} className="flex flex-col flex-1 min-h-0" dir={isAr ? "rtl" : "ltr"}>
+                <div className="p-6 overflow-y-auto custom-scrollbar space-y-5 flex-1">
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                        {isAr ? "التاريخ *" : "Date *"}
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        value={editDate}
+                        onChange={(e) => setEditDate(e.target.value)}
+                        className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500/20"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                        {isAr ? "الشركة / المورد *" : "Company / Supplier *"}
+                      </label>
+                      <select
+                        required
+                        value={editCompanyName}
+                        onChange={(e) => setEditCompanyName(e.target.value)}
+                        className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500/20"
+                      >
+                        <option value="">{isAr ? "-- اختر المورد --" : "Select a supplier..."}</option>
+                        {suppliers.map((s) => (
+                          <option key={s.id} value={s.name}>{s.name}</option>
+                        ))}
+                        {editCompanyName && !suppliers.some(s => s.name === editCompanyName) && (
+                          <option value={editCompanyName}>{editCompanyName}</option>
+                        )}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                        {isAr ? "المبلغ (قبل الضريبة) *" : "Amount (Before Tax) *"}
+                      </label>
+                      <input
+                        type="number"
+                        required
+                        step="0.01"
+                        min="0"
+                        value={editAmount}
+                        onChange={(e) => setEditAmount(e.target.value)}
+                        className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 font-black text-red-600 text-lg outline-none focus:ring-2 focus:ring-amber-500/20"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                        {isAr ? "قيمة الضريبة" : "Tax Amount"}
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={editTax}
+                        onChange={(e) => setEditTax(e.target.value)}
+                        className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-white text-lg outline-none focus:ring-2 focus:ring-amber-500/20"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Real-time Calculation Box */}
+                  <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/20 border border-emerald-200/80 dark:border-emerald-800/40 flex items-center justify-between shadow-xs">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-base shadow-xs shrink-0">
+                        <Calculator size={18} />
+                      </div>
+                      <div>
+                        <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider block">
+                          {isAr ? "إجمالي المبلغ المعدل (شامل الضريبة)" : "Total Updated Amount (Incl. Tax)"}
+                        </span>
+                        <span className="text-xs text-emerald-700/80 dark:text-emerald-400/80 font-medium">
+                          {(parseFloat(editTax) || 0) > 0 ? (
+                            isAr 
+                              ? `${(parseFloat(editAmount) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} + ${(parseFloat(editTax) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ضريبة`
+                              : `${(parseFloat(editAmount) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} + ${(parseFloat(editTax) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} tax`
+                          ) : (
+                            isAr ? "بدون ضريبة إضافية" : "No tax added"
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono tracking-tight">
+                        EGP {((parseFloat(editAmount) || 0) + (parseFloat(editTax) || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                        {isAr ? "رقم الفاتورة" : "Invoice #"}
+                      </label>
+                      <input
+                        type="text"
+                        value={editInvoiceNumber}
+                        onChange={(e) => setEditInvoiceNumber(e.target.value)}
+                        className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500/20"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                        {isAr ? "رقم أمر الشراء (PO)" : "PO #"}
+                      </label>
+                      <input
+                        type="text"
+                        value={editPoNumber}
+                        onChange={(e) => setEditPoNumber(e.target.value)}
+                        className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500/20"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                        {isAr ? "طريقة الدفع *" : "Payment Method *"}
+                      </label>
+                      <select
+                        value={editMethod}
+                        onChange={(e) => setEditMethod(e.target.value)}
+                        className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500/20"
+                      >
+                        <option value="cash">{isAr ? "💵 كاش (نقداً)" : "💵 Cash"}</option>
+                        <option value="visa">{isAr ? "💳 فيزا" : "💳 Visa"}</option>
+                        <option value="bank_transfer">{isAr ? "🏦 تحويل بنكي" : "🏦 Bank Transfer"}</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                        {isAr ? "التصنيف *" : "Category *"}
+                      </label>
+                      <select
+                        value={editCategory}
+                        onChange={(e) => setEditCategory(e.target.value)}
+                        className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500/20"
+                      >
+                        <option value="order">{isAr ? "طلبات وبضائع" : "Order"}</option>
+                        <option value="maintenance">{isAr ? "صيانة" : "Maintenance"}</option>
+                        <option value="utilities">{isAr ? "مرافق وخدمات" : "Utilities"}</option>
+                        <option value="transportation">{isAr ? "نقل ونولون" : "Transportation"}</option>
+                        <option value="other">{isAr ? "مصروفات أخرى" : "Other / Misc"}</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                      {isAr ? "ملاحظات" : "Notes"}
+                    </label>
+                    <input
+                      type="text"
+                      value={editCategoryNote}
+                      onChange={(e) => setEditCategoryNote(e.target.value)}
+                      placeholder={isAr ? "تفاصيل إضافية أو سبب التعديل..." : "Optional details or reason for edit..."}
+                      className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500/20"
+                    />
+                  </div>
+
+                </div>
+
+                {/* Footer */}
+                <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => { setShowEditModal(false); setEditingPayment(null); }}
+                    className="px-6 py-2.5 rounded-xl font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                  >
+                    {isAr ? "إلغاء" : "Cancel"}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="px-7 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 shadow-md shadow-amber-500/20 hover:shadow-amber-500/40 hover:-translate-y-0.5 transition-all flex items-center gap-2 cursor-pointer"
+                  >
+                    {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : (
+                      <>
+                        <Pencil size={16} />
+                        {isAr ? "حفظ التعديلات" : "Save Changes"}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <AnimatePresence>
         {selectedPaymentForPoUpload && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
