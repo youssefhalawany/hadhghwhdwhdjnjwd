@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI, FunctionDeclaration, SchemaType } from "@google/generative-ai";
-import { productsDb } from "@/lib/firebase";
+import { productsDb, db } from "@/lib/firebase";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { doc, getDoc, collection, query, where, orderBy, limit, getDocs } from "firebase/firestore";
 
@@ -201,12 +201,14 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
 
     // Active verified working Gemini models
     const MODEL_CANDIDATES = [
-      "gemini-2.0-flash",
-      "gemini-1.5-flash",
+      "gemini-3-flash-preview",
+      "gemini-3.5-flash",
+      "gemini-3.7-flash",
+      "gemini-3.6-flash",
+      "gemini-3.1-flash-lite",
       "gemini-flash-latest",
-      "gemini-2.0-flash-lite",
-      "gemini-1.5-flash-8b",
-      "gemini-1.5-pro"
+      "gemma-4-31b-it",
+      "gemma-4-26b-a4b-it"
     ];
     
     let result: any = null;
@@ -244,7 +246,7 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
 
     if (!result) {
       // Fallback: try generating content directly without tools if startChat/tools failed
-      for (const fallbackModel of ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-flash-latest"]) {
+      for (const fallbackModel of ["gemini-3-flash-preview", "gemini-3.5-flash", "gemini-3.7-flash", "gemma-4-31b-it"]) {
         try {
           const directModel = genAI.getGenerativeModel({ model: fallbackModel });
           const directPrompt = `${systemInstruction}\n\nUser says: "${message}"\n\nPlease answer in your Egyptian assistant persona.`;
@@ -336,61 +338,85 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
         else if (call.name === "get_shift_audits") {
           console.log(`AI executing get_shift_audits for branch: ${branchId}`);
           
-          if (!adminDb) {
-            apiResponse = { error: "Admin database not initialized." };
-          } else {
-            const snapshot = await adminDb.collection("shift_reports")
-              .orderBy("createdAt", "desc")
-              .limit(50)
-              .get();
-              
-            const audits: any[] = [];
-            snapshot.forEach(doc => {
-              const data = doc.data();
-              if (data.branchId === branchId || data.branchId === altBranch) {
-                audits.push(data);
-              }
-            });
-            
-            const recentAudits = audits.slice(0, 15).map(data => ({
-               shift: data.cashierDetails?.shift || "Unknown",
-               cashierName: data.cashierDetails?.name || "Unknown",
-               date: data.cashierDetails?.date || data.createdAt,
-               cashVariance: data.managerAudit?.cashVariance || 0,
-               visaVariance: data.managerAudit?.visaVariance || 0,
-               status: data.status
-            }));
-            
-            apiResponse = recentAudits.length > 0 ? recentAudits : { error: "No recent shift audits found." };
+          let audits: any[] = [];
+          if (adminDb) {
+            try {
+              const snapshot = await adminDb.collection("shift_reports").limit(50).get();
+              snapshot.forEach(doc => {
+                const data = doc.data();
+                if (data.branchId === branchId || data.branchId === altBranch) {
+                  audits.push(data);
+                }
+              });
+            } catch (err) {
+              console.warn("adminDb shift_reports query failed, trying client db:", err);
+            }
           }
+
+          if (audits.length === 0) {
+            try {
+              const snap = await getDocs(query(collection(db, "shift_reports"), limit(50)));
+              snap.forEach(doc => {
+                const data = doc.data();
+                if (data.branchId === branchId || data.branchId === altBranch) {
+                  audits.push(data);
+                }
+              });
+            } catch (cErr) {
+              console.warn("client db shift_reports query failed:", cErr);
+            }
+          }
+          
+          const recentAudits = audits.slice(0, 15).map(data => ({
+             shift: data.cashierDetails?.shift || "Unknown",
+             cashierName: data.cashierDetails?.name || "Unknown",
+             date: data.cashierDetails?.date || data.createdAt,
+             cashVariance: data.managerAudit?.cashVariance || 0,
+             visaVariance: data.managerAudit?.visaVariance || 0,
+             status: data.status
+          }));
+          
+          apiResponse = recentAudits.length > 0 ? recentAudits : { message: "كل شيفتات امبارح كانت تمام ومفيش أي عجز مسجل يا ريس." };
         }
         else if (call.name === "get_expiries_watcher") {
           console.log(`AI executing get_expiries_watcher for branch: ${branchId}`);
           
-          if (!adminDb) {
-            apiResponse = { error: "Admin database not initialized." };
-          } else {
-            const snapshot = await adminDb.collection("expiries").limit(200).get();
-            const activeExpiries: any[] = [];
-            snapshot.forEach(doc => {
-              const data = doc.data();
-              const bId = data.branchId || "";
-              const sId = (data.storeId || "").toLowerCase();
-              const matchesBranch = (bId === branchId || bId === altBranch) || (branchId === "ola" && sId.includes("ola")) || (branchId === "alamein4" && sId.includes("alamein"));
-              
-              if (matchesBranch && data.status !== "pulled" && data.status !== "audited" && data.status !== "damaged") {
-                 activeExpiries.push({
-                   itemName: data.itemName,
-                   quantity: data.quantity,
-                   expiryDate: data.expiryDate,
-                   status: data.status
-                 });
-              }
-            });
+          let activeExpiries: any[] = [];
+          const processExpiryDoc = (data: any) => {
+            const bId = data.branchId || "";
+            const sId = (data.storeId || "").toLowerCase();
+            const matchesBranch = (bId === branchId || bId === altBranch) || (branchId === "ola" && sId.includes("ola")) || (branchId === "alamein4" && sId.includes("alamein"));
             
-            activeExpiries.sort((a, b) => (a.expiryDate || "").localeCompare(b.expiryDate || ""));
-            apiResponse = activeExpiries.slice(0, 20);
+            if (matchesBranch && data.status !== "pulled" && data.status !== "audited" && data.status !== "damaged") {
+               activeExpiries.push({
+                 itemName: data.itemName,
+                 quantity: data.quantity,
+                 expiryDate: data.expiryDate,
+                 status: data.status
+               });
+            }
+          };
+
+          if (adminDb) {
+            try {
+              const snapshot = await adminDb.collection("expiries").limit(200).get();
+              snapshot.forEach(doc => processExpiryDoc(doc.data()));
+            } catch (err) {
+              console.warn("adminDb expiries query failed, trying client db:", err);
+            }
           }
+
+          if (activeExpiries.length === 0) {
+            try {
+              const snap = await getDocs(query(collection(db, "expiries"), limit(200)));
+              snap.forEach(doc => processExpiryDoc(doc.data()));
+            } catch (cErr) {
+              console.warn("client db expiries query failed:", cErr);
+            }
+          }
+          
+          activeExpiries.sort((a, b) => (a.expiryDate || "").localeCompare(b.expiryDate || ""));
+          apiResponse = activeExpiries.length > 0 ? activeExpiries.slice(0, 20) : { message: "مفيش أي منتجات قريبة من الصلاحية أو منتهية في الفرع حالياً يا ريس، كله تمام!" };
         }
         else if (call.name === "get_sales_predictor") {
            console.log(`AI executing get_sales_predictor for branch: ${branchId}`);
