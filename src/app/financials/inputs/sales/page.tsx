@@ -399,30 +399,30 @@ export default function SalesManagementPage() {
         </div>
 
         {/* Grand Total Bar */}
-        <div className="bg-emerald-50 dark:bg-emerald-900/20 p-6 rounded-2xl border border-emerald-100 dark:border-emerald-800 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-emerald-100 dark:bg-emerald-800/50 rounded-xl">
-              <Banknote className="text-emerald-600 dark:text-emerald-400 h-6 w-6" />
+        <div className="bg-gradient-to-r from-emerald-950/50 via-emerald-900/20 to-slate-900/50 p-6 rounded-2xl border border-emerald-500/30 shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4 backdrop-blur-md">
+          <div className="flex items-center gap-3.5">
+            <div className="p-3 bg-emerald-500/15 border border-emerald-500/30 rounded-xl shadow-inner">
+              <Banknote className="text-emerald-400 h-7 w-7" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-emerald-800/70 dark:text-emerald-200/70 uppercase tracking-widest">{isAr ? "إجمالي المبيعات بالفترة المحددة" : "SELECTED PERIOD TOTAL"}</h2>
-              <p className="text-2xl font-black text-emerald-900 dark:text-emerald-50">
+              <h2 className="text-xs font-black text-emerald-400/90 uppercase tracking-widest">{isAr ? "إجمالي المبيعات بالفترة المحددة" : "SELECTED PERIOD TOTAL"}</h2>
+              <p className="text-2xl sm:text-3xl font-black text-emerald-300 tracking-tight mt-0.5">
                 EGP {formatMoney((nightTotals.cash + nightTotals.visa + nightTotals.overShort) + (morningTotals.cash + morningTotals.visa + morningTotals.overShort))}
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-4 md:gap-8 text-sm font-bold text-emerald-800 dark:text-emerald-200">
+          <div className="flex flex-wrap gap-4 md:gap-8 text-sm font-bold">
             <div className="flex flex-col">
-              <span className="text-[10px] uppercase tracking-widest opacity-70">{isAr ? "إجمالي الكاش" : "Total Cash"}</span>
-              <span className="text-emerald-700 dark:text-emerald-300 font-black text-lg">EGP {formatMoney(nightTotals.cash + morningTotals.cash)}</span>
+              <span className="text-[10px] uppercase tracking-widest text-emerald-400/70 font-semibold">{isAr ? "إجمالي الكاش" : "Total Cash"}</span>
+              <span className="text-emerald-300 font-black text-lg">EGP {formatMoney(nightTotals.cash + morningTotals.cash)}</span>
             </div>
             <div className="flex flex-col">
-              <span className="text-[10px] uppercase tracking-widest opacity-70">{isAr ? "إجمالي الفيزا" : "Total Visa"}</span>
-              <span className="text-emerald-700 dark:text-emerald-300 font-black text-lg">EGP {formatMoney(nightTotals.visa + morningTotals.visa)}</span>
+              <span className="text-[10px] uppercase tracking-widest text-emerald-400/70 font-semibold">{isAr ? "إجمالي الفيزا" : "Total Visa"}</span>
+              <span className="text-emerald-300 font-black text-lg">EGP {formatMoney(nightTotals.visa + morningTotals.visa)}</span>
             </div>
             <div className="flex flex-col">
-              <span className="text-[10px] uppercase tracking-widest opacity-70">{isAr ? "إجمالي العجز/الزيادة" : "Total O/S"}</span>
-              <span className={`${(nightTotals.overShort + morningTotals.overShort) < 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-300'} font-black text-lg`}>
+              <span className="text-[10px] uppercase tracking-widest text-emerald-400/70 font-semibold">{isAr ? "إجمالي العجز/الزيادة" : "Total O/S"}</span>
+              <span className={`${(nightTotals.overShort + morningTotals.overShort) < 0 ? 'text-red-400' : 'text-emerald-300'} font-black text-lg`}>
                 EGP {formatMoney(nightTotals.overShort + morningTotals.overShort)}
               </span>
             </div>
@@ -431,14 +431,14 @@ export default function SalesManagementPage() {
 
         {/* All-Time Stats Box */}
         {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
-          <div className="bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-900 dark:to-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-inner flex justify-between items-center gap-4">
+          <div className="bg-card/90 border border-border p-4 rounded-xl shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 backdrop-blur-md">
             <div>
-              <h3 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">{isAr ? "إجمالي مبيعات الشركة التراكمي" : "Lifetime Company Sales"}</h3>
-              <p className="text-lg font-bold text-slate-800 dark:text-slate-200">EGP {formatMoney(allTimeStats.cash + allTimeStats.visa + allTimeStats.overShort)}</p>
+              <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest">{isAr ? "إجمالي مبيعات الشركة التراكمي" : "Lifetime Company Sales"}</h3>
+              <p className="text-lg font-black text-foreground mt-0.5">EGP {formatMoney(allTimeStats.cash + allTimeStats.visa + allTimeStats.overShort)}</p>
             </div>
-            <div className="flex gap-4 text-xs font-semibold text-slate-500 dark:text-slate-400">
-              <div>{isAr ? "كاش: " : "Cash: "}<span className="text-slate-700 dark:text-slate-300">EGP {formatMoney(allTimeStats.cash)}</span></div>
-              <div>{isAr ? "فيزا: " : "Visa: "}<span className="text-slate-700 dark:text-slate-300">EGP {formatMoney(allTimeStats.visa)}</span></div>
+            <div className="flex gap-4 text-xs font-bold text-muted-foreground">
+              <div>{isAr ? "كاش: " : "Cash: "}<span className="text-foreground font-black">EGP {formatMoney(allTimeStats.cash)}</span></div>
+              <div>{isAr ? "فيزا: " : "Visa: "}<span className="text-foreground font-black">EGP {formatMoney(allTimeStats.visa)}</span></div>
             </div>
           </div>
         )}
@@ -447,41 +447,41 @@ export default function SalesManagementPage() {
         <div className="space-y-6">
           <div className="flex items-center gap-2">
             <Activity className="text-indigo-500" size={24} />
-            <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 tracking-tight">{isAr ? "تحليلات ومؤشرات المبيعات" : "Sales Insights"}</h2>
+            <h2 className="text-xl font-black text-foreground tracking-tight">{isAr ? "تحليلات ومؤشرات المبيعات" : "Sales Insights"}</h2>
           </div>
 
           {/* Shift Battle (Tug of War) */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm">
+          <div className="bg-card border border-border p-6 rounded-2xl shadow-sm">
             <div className="flex justify-between items-end mb-4">
               <div>
-                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2"><Sun size={16} className="text-amber-500"/> {isAr ? "الوردية الصباحية" : "Morning Shift"}</h3>
-                <p className="text-2xl font-black text-amber-600">{shiftBattle.morning}%</p>
+                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2"><Sun size={15} className="text-amber-500"/> {isAr ? "الوردية الصباحية" : "Morning Shift"}</h3>
+                <p className="text-2xl font-black text-amber-500 mt-0.5">{shiftBattle.morning}%</p>
               </div>
               <div className="text-center">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full">{isAr ? "مقارنة الورديات" : "Shift Battle"}</span>
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest bg-muted px-3 py-1 rounded-full border border-border">{isAr ? "مقارنة الورديات" : "Shift Battle"}</span>
               </div>
               <div className="text-right">
-                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 justify-end">{isAr ? "الوردية المسائية" : "Night Shift"} <Moon size={16} className="text-blue-500"/></h3>
-                <p className="text-2xl font-black text-blue-600">{shiftBattle.night}%</p>
+                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 justify-end">{isAr ? "الوردية المسائية" : "Night Shift"} <Moon size={15} className="text-blue-500"/></h3>
+                <p className="text-2xl font-black text-blue-500 mt-0.5">{shiftBattle.night}%</p>
               </div>
             </div>
-            <div className="h-6 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex relative border border-slate-200 dark:border-slate-700 shadow-inner">
+            <div className="h-6 w-full bg-muted rounded-full overflow-hidden flex relative border border-border shadow-inner">
               <motion.div 
                 initial={{ width: 0 }}
                 animate={{ width: `${shiftBattle.morning}%` }}
                 transition={{ duration: 1, type: "spring" }}
                 className="h-full bg-gradient-to-r from-amber-400 to-amber-500 relative"
               >
-                {shiftBattle.morning > 0 && <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-black text-white/80">EGP {formatMoney(shiftBattle.totalMorning)}</span>}
+                {shiftBattle.morning > 0 && <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-black text-white">EGP {formatMoney(shiftBattle.totalMorning)}</span>}
               </motion.div>
-              <div className="w-1 h-full bg-white z-10 skew-x-12"></div>
+              <div className="w-1 h-full bg-border z-10 skew-x-12"></div>
               <motion.div 
                 initial={{ width: 0 }}
                 animate={{ width: `${shiftBattle.night}%` }}
                 transition={{ duration: 1, type: "spring" }}
                 className="h-full bg-gradient-to-l from-blue-600 to-blue-500 relative"
               >
-                 {shiftBattle.night > 0 && <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-black text-white/80">EGP {formatMoney(shiftBattle.totalNight)}</span>}
+                 {shiftBattle.night > 0 && <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-black text-white">EGP {formatMoney(shiftBattle.totalNight)}</span>}
               </motion.div>
             </div>
           </div>
@@ -489,8 +489,8 @@ export default function SalesManagementPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
             {/* Cash vs Visa Trendline */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm h-80 flex flex-col">
-              <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+            <div className="bg-card border border-border p-6 rounded-2xl shadow-sm h-80 flex flex-col">
+              <h3 className="text-sm font-bold text-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
                 <TrendingUp size={16} className="text-emerald-500" /> {isAr ? "اتجاه المبيعات (كاش مقابل فيزا)" : "Cash vs. Visa Trend"}
               </h3>
               <div className="flex-1 w-full min-h-0">
@@ -506,11 +506,11 @@ export default function SalesManagementPage() {
                         <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.06)" />
                     <XAxis dataKey="date" tick={{fontSize: 10, fill: '#94a3b8'}} axisLine={false} tickLine={false} />
                     <YAxis tick={{fontSize: 10, fill: '#94a3b8'}} axisLine={false} tickLine={false} tickFormatter={(value) => `EGP ${value/1000}k`} />
                     <RechartsTooltip 
-                      contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
+                      contentStyle={{borderRadius: '12px', background: '#0f172a', borderColor: '#334155', color: '#f8fafc', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)'}}
                       formatter={(value: any) => [`EGP ${Number(value).toLocaleString()}`, undefined]}
                     />
                     <Area type="monotone" dataKey="cash" name={isAr ? "كاش" : "Cash"} stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorCash)" />
@@ -521,20 +521,20 @@ export default function SalesManagementPage() {
             </div>
 
             {/* Busiest Day Radar */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm h-80 flex flex-col">
-              <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+            <div className="bg-card border border-border p-6 rounded-2xl shadow-sm h-80 flex flex-col">
+              <h3 className="text-sm font-bold text-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
                 <Target size={16} className="text-violet-500" /> {isAr ? "رادار اليوم الأكثر مبيعاً" : "Busiest Day Radar"}
               </h3>
               <div className="flex-1 w-full min-h-0 relative">
                 <ResponsiveContainer width="100%" height="100%">
                   <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
-                    <PolarGrid stroke="#e2e8f0" />
-                    <PolarAngleAxis dataKey="subject" tick={{fill: '#64748b', fontSize: 11, fontWeight: 'bold'}} />
+                    <PolarGrid stroke="rgba(255,255,255,0.08)" />
+                    <PolarAngleAxis dataKey="subject" tick={{fill: '#94a3b8', fontSize: 11, fontWeight: 'bold'}} />
                     <PolarRadiusAxis angle={90} domain={[0, 'auto']} tick={false} axisLine={false} />
                     <Radar name={isAr ? "إجمالي المبيعات" : "Total Sales"} dataKey="A" stroke="#8b5cf6" strokeWidth={2} fill="#8b5cf6" fillOpacity={0.5} />
                     <RechartsTooltip 
                       formatter={(value: any) => [`EGP ${Number(value).toLocaleString()}`, isAr ? "المبيعات" : "Sales"]}
-                      contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
+                      contentStyle={{borderRadius: '12px', background: '#0f172a', borderColor: '#334155', color: '#f8fafc', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)'}}
                     />
                   </RadarChart>
                 </ResponsiveContainer>
@@ -542,30 +542,30 @@ export default function SalesManagementPage() {
             </div>
             
             {/* Sales Heatmap (Bar Chart) */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm h-80 flex flex-col lg:col-span-2">
+            <div className="bg-card border border-border p-6 rounded-2xl shadow-sm h-80 flex flex-col lg:col-span-2">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                <h3 className="text-sm font-bold text-foreground uppercase tracking-widest flex items-center gap-2">
                   <CalendarDays size={16} className="text-rose-500" /> {isAr ? "خريطة المبيعات اليومية" : "Daily Sales Heatmap"}
                 </h3>
-                <span className="text-xs font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full">
+                <span className="text-xs font-bold text-muted-foreground bg-muted px-3 py-1 rounded-full border border-border">
                   {isAr ? `المتوسط اليومي: ${formatMoney(averageDailySales)} EGP` : `Daily Average: EGP ${formatMoney(averageDailySales)}`}
                 </span>
               </div>
               <div className="flex-1 w-full min-h-0">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={heatmapData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.06)" />
                     <XAxis dataKey="date" tick={{fontSize: 10, fill: '#94a3b8'}} axisLine={false} tickLine={false} />
                     <YAxis tick={{fontSize: 10, fill: '#94a3b8'}} axisLine={false} tickLine={false} tickFormatter={(value) => `EGP ${value/1000}k`} />
                     <RechartsTooltip 
-                      cursor={{fill: 'rgba(0,0,0,0.05)'}}
-                      contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
+                      cursor={{fill: 'rgba(255,255,255,0.03)'}}
+                      contentStyle={{borderRadius: '12px', background: '#0f172a', borderColor: '#334155', color: '#f8fafc', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)'}}
                       formatter={(value: any, name: any) => [`EGP ${Number(value).toLocaleString()}`, name === 'total' ? (isAr ? 'الإجمالي' : 'Total') : String(name).charAt(0).toUpperCase() + String(name).slice(1)]}
-                      labelStyle={{ color: '#1e293b' }}
+                      labelStyle={{ color: '#f8fafc' }}
                     />
                     <Bar dataKey="total" radius={[4, 4, 0, 0]}>
                       {heatmapData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.isAboveAverage ? '#10b981' : '#cbd5e1'} />
+                        <Cell key={`cell-${index}`} fill={entry.isAboveAverage ? '#10b981' : '#334155'} />
                       ))}
                     </Bar>
                   </BarChart>
@@ -578,73 +578,73 @@ export default function SalesManagementPage() {
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-2xl border border-blue-100 dark:border-blue-800 shadow-sm relative overflow-hidden">
+          <div className="bg-gradient-to-br from-blue-950/40 via-blue-900/20 to-card p-6 rounded-2xl border border-blue-500/25 shadow-md relative overflow-hidden backdrop-blur-sm">
             <div className="absolute top-0 right-0 p-4 opacity-10">
               <Moon size={100} />
             </div>
             <div className="flex justify-between items-start mb-6">
               <div className="flex items-center gap-2">
-                <Moon className="text-blue-500 fill-current h-6 w-6" />
-                <h2 className="text-xl font-black text-blue-900 dark:text-blue-100 tracking-tight">{isAr ? "الوردية المسائية" : "NIGHT"}</h2>
+                <Moon className="text-blue-400 fill-current h-6 w-6" />
+                <h2 className="text-xl font-black text-blue-200 tracking-tight">{isAr ? "الوردية المسائية" : "NIGHT"}</h2>
               </div>
-              <span className="text-sm font-bold text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/50 px-3 py-1 rounded-full">
+              <span className="text-xs font-bold text-blue-300 bg-blue-500/20 border border-blue-500/30 px-3 py-1 rounded-full">
                 {nightSales.length} {isAr ? "سجل" : "entries"}
               </span>
             </div>
             <div className="grid grid-cols-3 gap-4 mb-6">
               <div>
-                <p className="text-xs font-bold text-blue-600/70 dark:text-blue-400/70 mb-1">{isAr ? "كاش" : "Cash"}</p>
-                <p className="text-sm font-bold text-green-600 dark:text-green-400">EGP {formatMoney(nightTotals.cash)}</p>
+                <p className="text-xs font-bold text-blue-300/70 mb-1">{isAr ? "كاش" : "Cash"}</p>
+                <p className="text-sm font-bold text-emerald-400">EGP {formatMoney(nightTotals.cash)}</p>
               </div>
               <div>
-                <p className="text-xs font-bold text-blue-600/70 dark:text-blue-400/70 mb-1">{isAr ? "فيزا" : "Visa"}</p>
-                <p className="text-sm font-bold text-blue-600 dark:text-blue-400">EGP {formatMoney(nightTotals.visa)}</p>
+                <p className="text-xs font-bold text-blue-300/70 mb-1">{isAr ? "فيزا" : "Visa"}</p>
+                <p className="text-sm font-bold text-blue-400">EGP {formatMoney(nightTotals.visa)}</p>
               </div>
               <div>
-                <p className="text-xs font-bold text-blue-600/70 dark:text-blue-400/70 mb-1">{isAr ? "العجز/الزيادة" : "O/S"}</p>
-                <p className={`text-sm font-bold ${nightTotals.overShort < 0 ? "text-red-500" : "text-green-500"}`}>
+                <p className="text-xs font-bold text-blue-300/70 mb-1">{isAr ? "العجز/الزيادة" : "O/S"}</p>
+                <p className={`text-sm font-bold ${nightTotals.overShort < 0 ? "text-red-400" : "text-emerald-400"}`}>
                   EGP {formatMoney(nightTotals.overShort)}
                 </p>
               </div>
             </div>
-            <div className="pt-4 border-t border-blue-200/50 dark:border-blue-800/50">
-              <p className="text-lg font-black text-blue-950 dark:text-blue-50">
+            <div className="pt-4 border-t border-blue-500/20">
+              <p className="text-lg font-black text-blue-100">
                 {isAr ? "الإجمالي: " : "Total: "}EGP {formatMoney(nightTotals.cash + nightTotals.visa + nightTotals.overShort)}
               </p>
             </div>
           </div>
 
-          <div className="bg-amber-50 dark:bg-amber-900/20 p-6 rounded-2xl border border-amber-100 dark:border-amber-800 shadow-sm relative overflow-hidden">
+          <div className="bg-gradient-to-br from-amber-950/40 via-amber-900/20 to-card p-6 rounded-2xl border border-amber-500/25 shadow-md relative overflow-hidden backdrop-blur-sm">
             <div className="absolute top-0 right-0 p-4 opacity-10">
               <Sun size={100} />
             </div>
             <div className="flex justify-between items-start mb-6">
               <div className="flex items-center gap-2">
-                <Sun className="text-amber-500 fill-current h-6 w-6" />
-                <h2 className="text-xl font-black text-amber-900 dark:text-amber-100 tracking-tight">{isAr ? "الوردية الصباحية" : "MORNING"}</h2>
+                <Sun className="text-amber-400 fill-current h-6 w-6" />
+                <h2 className="text-xl font-black text-amber-200 tracking-tight">{isAr ? "الوردية الصباحية" : "MORNING"}</h2>
               </div>
-              <span className="text-sm font-bold text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/50 px-3 py-1 rounded-full">
+              <span className="text-xs font-bold text-amber-300 bg-amber-500/20 border border-amber-500/30 px-3 py-1 rounded-full">
                 {morningSales.length} {isAr ? "سجل" : "entries"}
               </span>
             </div>
             <div className="grid grid-cols-3 gap-4 mb-6">
               <div>
-                <p className="text-xs font-bold text-amber-600/70 dark:text-amber-400/70 mb-1">{isAr ? "كاش" : "Cash"}</p>
-                <p className="text-sm font-bold text-green-600 dark:text-green-400">EGP {formatMoney(morningTotals.cash)}</p>
+                <p className="text-xs font-bold text-amber-300/70 mb-1">{isAr ? "كاش" : "Cash"}</p>
+                <p className="text-sm font-bold text-emerald-400">EGP {formatMoney(morningTotals.cash)}</p>
               </div>
               <div>
-                <p className="text-xs font-bold text-amber-600/70 dark:text-amber-400/70 mb-1">{isAr ? "فيزا" : "Visa"}</p>
-                <p className="text-sm font-bold text-blue-600 dark:text-blue-400">EGP {formatMoney(morningTotals.visa)}</p>
+                <p className="text-xs font-bold text-amber-300/70 mb-1">{isAr ? "فيزا" : "Visa"}</p>
+                <p className="text-sm font-bold text-blue-400">EGP {formatMoney(morningTotals.visa)}</p>
               </div>
               <div>
-                <p className="text-xs font-bold text-amber-600/70 dark:text-amber-400/70 mb-1">{isAr ? "العجز/الزيادة" : "O/S"}</p>
-                <p className={`text-sm font-bold ${morningTotals.overShort < 0 ? "text-red-500" : "text-green-500"}`}>
+                <p className="text-xs font-bold text-amber-300/70 mb-1">{isAr ? "العجز/الزيادة" : "O/S"}</p>
+                <p className={`text-sm font-bold ${morningTotals.overShort < 0 ? "text-red-400" : "text-emerald-400"}`}>
                   EGP {formatMoney(morningTotals.overShort)}
                 </p>
               </div>
             </div>
-            <div className="pt-4 border-t border-amber-200/50 dark:border-amber-800/50">
-              <p className="text-lg font-black text-amber-950 dark:text-amber-50">
+            <div className="pt-4 border-t border-amber-500/20">
+              <p className="text-lg font-black text-amber-100">
                 {isAr ? "الإجمالي: " : "Total: "}EGP {formatMoney(morningTotals.cash + morningTotals.visa + morningTotals.overShort)}
               </p>
             </div>
@@ -671,13 +671,13 @@ export default function SalesManagementPage() {
               <div className="flex gap-2 mb-6">
                 <button 
                   onClick={() => setViewMode("detailed")}
-                  className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-colors cursor-pointer ${viewMode === "detailed" ? 'bg-indigo-500 text-white shadow-md' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+                  className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all cursor-pointer ${viewMode === "detailed" ? 'bg-indigo-600 text-white shadow-md' : 'bg-muted text-muted-foreground hover:text-foreground border border-border hover:bg-muted/80'}`}
                 >
                   {isAr ? "عرض تفصيلي" : "Detailed View"}
                 </button>
                 <button 
                   onClick={() => setViewMode("grouped")}
-                  className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-colors cursor-pointer ${viewMode === "grouped" ? 'bg-emerald-500 text-white shadow-md' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+                  className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all cursor-pointer ${viewMode === "grouped" ? 'bg-emerald-600 text-white shadow-md' : 'bg-muted text-muted-foreground hover:text-foreground border border-border hover:bg-muted/80'}`}
                 >
                   {isAr ? "تجميع حسب اليوم" : "Grouped by Day"}
                 </button>
@@ -697,11 +697,11 @@ export default function SalesManagementPage() {
                       </div>
                       <div className="flex justify-between items-start mb-4 relative z-10">
                         <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
-                            <CalendarDays className="text-emerald-600 dark:text-emerald-400 h-5 w-5" />
+                          <div className="h-10 w-10 rounded-full bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center">
+                            <CalendarDays className="text-emerald-400 h-5 w-5" />
                           </div>
                           <div>
-                            <h4 className="font-black text-foreground tracking-tight uppercase text-emerald-600 dark:text-emerald-400">
+                            <h4 className="font-black text-emerald-400 tracking-tight uppercase">
                               {isAr ? "إجمالي اليوم" : "DAILY TOTAL"}
                             </h4>
                             <p className="text-xs text-muted-foreground font-medium mt-0.5 flex items-center gap-1">
