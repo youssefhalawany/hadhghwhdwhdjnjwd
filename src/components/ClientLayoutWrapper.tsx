@@ -160,9 +160,24 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   }, []);
 
   useEffect(() => {
-    if (typeof window !== "undefined" && "Notification" in window) {
-      if (Notification.permission !== "granted") {
-        setPushPermissionNeeded(true);
+    if (typeof window !== "undefined") {
+      // Clean up legacy stale service workers and corrupted caches
+      if (!sessionStorage.getItem("anh_sw_cleaned_v2")) {
+        sessionStorage.setItem("anh_sw_cleaned_v2", "true");
+        if ("caches" in window) {
+          caches.keys().then((names) => {
+            names.forEach((name) => {
+              if (name.includes("circlek-pwa") || name.includes("workbox")) {
+                caches.delete(name).catch(() => {});
+              }
+            });
+          }).catch(() => {});
+        }
+      }
+      if ("Notification" in window) {
+        if (Notification.permission !== "granted") {
+          setPushPermissionNeeded(true);
+        }
       }
     }
   }, []);
