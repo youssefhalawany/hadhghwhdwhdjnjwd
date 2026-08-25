@@ -1,17 +1,18 @@
 "use client";
 
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Wallet, DollarSign, FileText, CreditCard, FileCheck, Receipt } from "lucide-react";
 import { PageTransition } from "@/components/PageTransition";
-
 import { useLanguage } from "@/context/LanguageContext";
+import { triggerHapticFeedback } from "@/lib/pwaBadges";
 
 export default function FinancialInputsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { language } = useLanguage();
   const isAr = language === "ar";
+  const tabsContainerRef = useRef<HTMLDivElement>(null);
 
   const tabs = [
     { name: isAr ? "نظرة عامة" : "Overview", href: "/financials/inputs", icon: Wallet },
@@ -24,10 +25,30 @@ export default function FinancialInputsLayout({ children }: { children: React.Re
     { name: isAr ? "تقرير الخزنة" : "Safe Report", href: "/financials/inputs/safe-report", icon: FileText }
   ];
 
+  // Auto-scroll active tab into view on mobile
+  useEffect(() => {
+    if (tabsContainerRef.current) {
+      const activeEl = tabsContainerRef.current.querySelector('[data-active="true"]');
+      if (activeEl) {
+        activeEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      }
+    }
+  }, [pathname]);
+
   return (
     <PageTransition>
-      <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-6 pb-32" dir={isAr ? "rtl" : "ltr"}>
-        <div style={{ background: '#18181B', border: '1px solid rgba(255,255,255,0.08)' }} className="shadow-lg rounded-2xl p-1.5 flex flex-wrap md:flex-nowrap gap-1.5">
+      <div className="px-3 sm:px-8 pt-2 sm:pt-6 pb-28 sm:pb-32 max-w-7xl mx-auto space-y-4 sm:space-y-6" dir={isAr ? "rtl" : "ltr"}>
+        {/* Horizontal Navigation Tab Bar */}
+        <div 
+          ref={tabsContainerRef}
+          style={{ 
+            background: '#18181B', 
+            border: '1px solid rgba(255,255,255,0.08)',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none'
+          }} 
+          className="shadow-lg rounded-2xl p-1.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth w-full md:flex-nowrap"
+        >
           {tabs.map(tab => {
             const isActive = pathname === tab.href;
             const Icon = tab.icon;
@@ -36,18 +57,20 @@ export default function FinancialInputsLayout({ children }: { children: React.Re
                 key={tab.href}
                 href={tab.href}
                 prefetch={true}
-                className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-extrabold transition-all duration-200 ${
+                data-active={isActive ? "true" : "false"}
+                onClick={() => triggerHapticFeedback(10)}
+                className={`flex-shrink-0 md:flex-1 flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-extrabold transition-all duration-200 whitespace-nowrap ${
                   isActive 
-                    ? "text-white shadow-lg" 
+                    ? "text-white shadow-lg scale-[1.02]" 
                     : "text-zinc-400 hover:text-white hover:bg-zinc-800/60"
                 }`}
                 style={isActive ? {
                   background: 'linear-gradient(135deg, #E11D48, #F97316)',
-                  boxShadow: '0 4px 16px rgba(225,29,72,0.3)'
+                  boxShadow: '0 4px 16px rgba(225,29,72,0.35)'
                 } : {}}
               >
-                <Icon className={`h-4 w-4 ${isActive ? "opacity-100" : "opacity-70"}`} />
-                {tab.name}
+                <Icon className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${isActive ? "opacity-100" : "opacity-70"}`} />
+                <span>{tab.name}</span>
               </Link>
             );
           })}

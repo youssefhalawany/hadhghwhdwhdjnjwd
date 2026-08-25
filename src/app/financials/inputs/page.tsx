@@ -347,36 +347,36 @@ export default function FinancialInputsOverview() {
   const { kpis, chartData, needsAttention } = dashboardData || {};
 
   return (
-    <div className="space-y-10 pb-12">
+    <div className="space-y-4 sm:space-y-8 pb-12">
       
-      {/* ---------------- NEW COMMAND CENTER DASHBOARD ---------------- */}
+      {/* ---------------- COMMAND CENTER DASHBOARD ---------------- */}
       
       {/* Welcome Screen & Live Clock */}
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="relative bg-[#0A101D] backdrop-blur-xl border border-cyan-500/20 rounded-[2rem] p-8 md:p-10 shadow-[0_0_40px_rgba(34,211,238,0.05)] overflow-hidden group">
+      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="relative bg-[#0A101D] backdrop-blur-xl border border-cyan-500/20 rounded-2xl sm:rounded-[2rem] p-5 sm:p-8 md:p-10 shadow-[0_0_40px_rgba(34,211,238,0.05)] overflow-hidden group">
         <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 group-hover:bg-cyan-500/20 transition-colors duration-700"></div>
         <div className="absolute bottom-0 left-0 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl translate-y-1/3 -translate-x-1/4"></div>
         
-        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sm:gap-6">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-bold uppercase tracking-widest mb-4">
-              <Activity className="w-4 h-4" /> {isAr ? "مركز التحكم" : "Command Center"}
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-2 sm:mb-4">
+              <Activity className="w-3.5 h-3.5" /> {isAr ? "مركز التحكم" : "Command Center"}
             </div>
-            <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight mb-2">
+            <h1 className="text-2xl sm:text-4xl md:text-5xl font-black text-white tracking-tight mb-1 sm:mb-2">
               {currentTime.getHours() < 12 ? (isAr ? "صباح الخير" : "Good morning") : currentTime.getHours() < 18 ? (isAr ? "مساء الخير" : "Good afternoon") : (isAr ? "مساء الخير" : "Good evening")}، <span className="text-cyan-400">{userName}</span>.
             </h1>
-            <p className="text-slate-400 text-lg flex items-center gap-2">
-              {isAr ? "إليك نظرة عامة لحظية ومباشرة على عمليات ومبيعات الفرع الخاص بك." : "Here is the real-time snapshot of your franchise operations."}
+            <p className="text-slate-400 text-xs sm:text-base flex items-center gap-2">
+              {isAr ? "نظرة عامة ومباشرة على عمليات ومبيعات الفرع الخاص بك." : "Real-time operational snapshot of your franchise branch."}
             </p>
           </div>
 
-          <div className="flex flex-col items-end bg-[#0A101D] backdrop-blur-md border border-slate-700/50 p-4 rounded-2xl">
-            <div className="text-3xl font-black text-white tracking-tighter font-mono">
+          <div className="flex flex-row md:flex-col items-center md:items-end justify-between w-full md:w-auto bg-[#0A101D]/80 backdrop-blur-md border border-slate-700/50 px-4 py-2.5 sm:p-4 rounded-xl sm:rounded-2xl gap-2">
+            <div className="text-xl sm:text-3xl font-black text-white tracking-tighter font-mono">
               {currentTime.toLocaleTimeString(isAr ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </div>
-            <div className="flex items-center gap-2 mt-1">
-              <Clock className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="text-sm font-bold text-emerald-400 uppercase tracking-widest">
-                {isAr ? "الوردية النشطة:" : "Active Shift:"} {getShiftName(currentTime.getHours())}
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400" />
+              <span className="text-xs sm:text-sm font-bold text-emerald-400 uppercase tracking-widest">
+                {isAr ? "الوردية:" : "Shift:"} {getShiftName(currentTime.getHours())}
               </span>
             </div>
           </div>
@@ -384,59 +384,59 @@ export default function FinancialInputsOverview() {
       </motion.div>
 
       {/* The Pulse: KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
         {/* Card 1: Sales */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-[#0A101D] backdrop-blur-md p-6 rounded-3xl border border-emerald-500/20 flex flex-col shadow-[0_0_20px_rgba(16,185,129,0.05)] hover:shadow-[0_0_30px_rgba(16,185,129,0.15)] transition-all group">
-            <div className="flex justify-between items-start mb-4">
-              <div className="p-3 bg-emerald-500/10 rounded-xl">
-                <DollarSign className="h-6 w-6 text-emerald-500" />
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-[#0A101D] backdrop-blur-md p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-emerald-500/20 flex flex-col shadow-[0_0_20px_rgba(16,185,129,0.05)] hover:shadow-[0_0_30px_rgba(16,185,129,0.15)] transition-all group">
+            <div className="flex justify-between items-start mb-2 sm:mb-4">
+              <div className="p-2 sm:p-3 bg-emerald-500/10 rounded-xl">
+                <DollarSign className="h-4 w-4 sm:h-6 sm:w-6 text-emerald-500" />
               </div>
-              <span className="text-xs font-bold px-2 py-1 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center gap-1">
-                <TrendingUp className="h-3 w-3" /> {isAr ? "مباشر" : "Live"}
+              <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 sm:py-1 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center gap-1">
+                <TrendingUp className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> {isAr ? "مباشر" : "Live"}
               </span>
             </div>
-            <p className="text-xs font-bold text-emerald-500/70 uppercase tracking-widest mb-1">{isAr ? "مبيعات اليوم" : "Today's Sales"}</p>
-            <h3 className="text-4xl font-black text-white tracking-tighter">{kpis?.totalSales?.toLocaleString()} <span className="text-base font-bold text-emerald-500/50">{isAr ? "ج.م" : "EGP"}</span></h3>
+            <p className="text-[10px] sm:text-xs font-bold text-emerald-500/70 uppercase tracking-widest mb-1">{isAr ? "مبيعات اليوم" : "Today's Sales"}</p>
+            <h3 className="text-xl sm:text-3xl md:text-4xl font-black text-white tracking-tighter">{kpis?.totalSales?.toLocaleString()} <span className="text-xs sm:text-base font-bold text-emerald-500/50">{isAr ? "ج.م" : "EGP"}</span></h3>
           </motion.div>
 
           {/* Card 2: Shortage */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-[#0A101D] backdrop-blur-md p-6 rounded-3xl border border-slate-800 flex flex-col shadow-[0_0_20px_rgba(255,255,255,0.02)] hover:shadow-[0_0_30px_rgba(239,68,68,0.1)] transition-all group">
-            <div className="flex justify-between items-start mb-4">
-              <div className={`p-3 rounded-xl ${Number(kpis?.totalShortage) < -100 ? 'bg-red-500/10' : 'bg-emerald-500/10'}`}>
-                <Wallet className={`h-6 w-6 ${Number(kpis?.totalShortage) < -100 ? 'text-red-500' : 'text-emerald-500'}`} />
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-[#0A101D] backdrop-blur-md p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-800 flex flex-col shadow-[0_0_20px_rgba(255,255,255,0.02)] hover:shadow-[0_0_30px_rgba(239,68,68,0.1)] transition-all group">
+            <div className="flex justify-between items-start mb-2 sm:mb-4">
+              <div className={`p-2 sm:p-3 rounded-xl ${Number(kpis?.totalShortage) < -100 ? 'bg-red-500/10' : 'bg-emerald-500/10'}`}>
+                <Wallet className={`h-4 w-4 sm:h-6 sm:w-6 ${Number(kpis?.totalShortage) < -100 ? 'text-red-500' : 'text-emerald-500'}`} />
               </div>
             </div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">{isAr ? "صافي العجز" : "Net Shortage"}</p>
-            <h3 className={`text-4xl font-black tracking-tighter ${Number(kpis?.totalShortage) < -100 ? 'text-red-400 drop-shadow-[0_0_10px_rgba(248,113,113,0.5)]' : 'text-white'}`}>
-              {kpis?.totalShortage?.toLocaleString()} <span className="text-base font-bold text-slate-600">{isAr ? "ج.م" : "EGP"}</span>
+            <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">{isAr ? "صافي العجز" : "Net Shortage"}</p>
+            <h3 className={`text-xl sm:text-3xl md:text-4xl font-black tracking-tighter ${Number(kpis?.totalShortage) < -100 ? 'text-red-400 drop-shadow-[0_0_10px_rgba(248,113,113,0.5)]' : 'text-white'}`}>
+              {kpis?.totalShortage?.toLocaleString()} <span className="text-xs sm:text-base font-bold text-slate-600">{isAr ? "ج.م" : "EGP"}</span>
             </h3>
           </motion.div>
 
           {/* Card 3: Voids */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-[#0A101D] backdrop-blur-md p-6 rounded-3xl border border-amber-500/20 flex flex-col shadow-[0_0_20px_rgba(245,158,11,0.05)] hover:shadow-[0_0_30px_rgba(245,158,11,0.15)] transition-all group">
-            <div className="flex justify-between items-start mb-4">
-              <div className="p-3 bg-amber-500/10 rounded-xl">
-                <ShieldAlert className="h-6 w-6 text-amber-500" />
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-[#0A101D] backdrop-blur-md p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-amber-500/20 flex flex-col shadow-[0_0_20px_rgba(245,158,11,0.05)] hover:shadow-[0_0_30px_rgba(245,158,11,0.15)] transition-all group">
+            <div className="flex justify-between items-start mb-2 sm:mb-4">
+              <div className="p-2 sm:p-3 bg-amber-500/10 rounded-xl">
+                <ShieldAlert className="h-4 w-4 sm:h-6 sm:w-6 text-amber-500" />
               </div>
             </div>
-            <p className="text-xs font-bold text-amber-500/70 uppercase tracking-widest mb-1">{isAr ? "إلغاءات اليوم" : "Voids Today"}</p>
-            <h3 className="text-4xl font-black text-white tracking-tighter drop-shadow-[0_0_8px_rgba(245,158,11,0.3)]">{kpis?.totalVoids?.toLocaleString()} <span className="text-base font-bold text-amber-500/50">{isAr ? "ج.م" : "EGP"}</span></h3>
+            <p className="text-[10px] sm:text-xs font-bold text-amber-500/70 uppercase tracking-widest mb-1">{isAr ? "إلغاءات اليوم" : "Voids Today"}</p>
+            <h3 className="text-xl sm:text-3xl md:text-4xl font-black text-white tracking-tighter drop-shadow-[0_0_8px_rgba(245,158,11,0.3)]">{kpis?.totalVoids?.toLocaleString()} <span className="text-xs sm:text-base font-bold text-amber-500/50">{isAr ? "ج.م" : "EGP"}</span></h3>
           </motion.div>
 
           {/* Card 4: Expiries */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="bg-[#0A101D] backdrop-blur-md p-6 rounded-3xl border border-blue-500/20 flex flex-col shadow-[0_0_20px_rgba(59,130,246,0.05)] hover:shadow-[0_0_30px_rgba(59,130,246,0.15)] transition-all group">
-            <div className="flex justify-between items-start mb-4">
-              <div className="p-3 bg-blue-500/10 rounded-xl">
-                <Package className="h-6 w-6 text-blue-500" />
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="bg-[#0A101D] backdrop-blur-md p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-blue-500/20 flex flex-col shadow-[0_0_20px_rgba(59,130,246,0.05)] hover:shadow-[0_0_30px_rgba(59,130,246,0.15)] transition-all group">
+            <div className="flex justify-between items-start mb-2 sm:mb-4">
+              <div className="p-2 sm:p-3 bg-blue-500/10 rounded-xl">
+                <Package className="h-4 w-4 sm:h-6 sm:w-6 text-blue-500" />
               </div>
             </div>
-            <p className="text-xs font-bold text-blue-500/70 uppercase tracking-widest mb-1">{isAr ? "ينتهي غداً" : "Expiring Tomorrow"}</p>
-            <h3 className="text-4xl font-black text-white tracking-tighter drop-shadow-[0_0_8px_rgba(59,130,246,0.3)]">{kpis?.expiringTomorrow} <span className="text-base font-bold text-blue-500/50">{isAr ? "صنف" : "Items"}</span></h3>
+            <p className="text-[10px] sm:text-xs font-bold text-blue-500/70 uppercase tracking-widest mb-1">{isAr ? "ينتهي غداً" : "Expiring Tomorrow"}</p>
+            <h3 className="text-xl sm:text-3xl md:text-4xl font-black text-white tracking-tighter drop-shadow-[0_0_8px_rgba(59,130,246,0.3)]">{kpis?.expiringTomorrow} <span className="text-xs sm:text-base font-bold text-blue-500/50">{isAr ? "صنف" : "Items"}</span></h3>
           </motion.div>
         </div>
 
         {/* Main Grid: Chart & Action Center */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
           
           {/* 7-Day Trend Chart & Heatmap */}
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 }} className="xl:col-span-2 bg-[#0A101D] backdrop-blur-md p-6 sm:p-8 rounded-[2rem] border border-slate-800 shadow-[0_0_20px_rgba(0,0,0,0.5)]">

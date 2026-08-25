@@ -1645,7 +1645,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
         )}
 
         {/* Scrollable Main Content */}
-        <main className={`flex-grow overflow-y-auto custom-scrollbar flex flex-col bg-[#09090b] text-foreground ${(pathname.startsWith('/cashier') || pathname.startsWith('/owner')) ? '' : 'p-4 sm:p-6 lg:p-8'}`}>
+        <main className={`flex-grow overflow-y-auto custom-scrollbar flex flex-col bg-[#09090b] text-foreground ${(pathname.startsWith('/cashier') || pathname.startsWith('/owner')) ? '' : 'p-1.5 sm:p-6 lg:p-8'}`}>
           <div
             className={`flex-grow w-full max-w-7xl mx-auto ${(pathname.startsWith('/cashier') || pathname.startsWith('/owner')) ? 'h-full p-0 m-0 max-w-full' : ''}`}
           >
