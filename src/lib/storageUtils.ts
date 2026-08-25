@@ -9,8 +9,7 @@ export function safeSetLocalStorage(key: string, value: string): boolean {
   try {
     localStorage.setItem(key, value);
     return true;
-  } catch (err: any) {
-    console.warn(`[safeSetLocalStorage] Failed writing "${key}" (${value.length} chars). Attempting cleanup:`, err);
+  } catch (_err) {
     try {
       // Clear non-critical large cache items if quota exceeded
       const disposableKeys = [
@@ -21,14 +20,13 @@ export function safeSetLocalStorage(key: string, value: string): boolean {
       ];
       for (const dKey of disposableKeys) {
         if (dKey !== key) {
-          localStorage.removeItem(dKey);
+          try { localStorage.removeItem(dKey); } catch (_) {}
         }
       }
       // Retry once after clearing old caches
       localStorage.setItem(key, value);
       return true;
-    } catch (retryErr) {
-      console.warn(`[safeSetLocalStorage] Retry failed for "${key}". Storage quota reached.`);
+    } catch (_retryErr) {
       return false;
     }
   }
@@ -38,8 +36,7 @@ export function safeGetLocalStorage(key: string): string | null {
   if (typeof window === "undefined") return null;
   try {
     return localStorage.getItem(key);
-  } catch (err) {
-    console.warn(`[safeGetLocalStorage] Failed reading "${key}":`, err);
+  } catch (_err) {
     return null;
   }
 }
