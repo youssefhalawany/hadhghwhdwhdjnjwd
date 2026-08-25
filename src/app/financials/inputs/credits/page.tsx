@@ -971,11 +971,12 @@ export default function CreditsPage() {
     
     setIsProcessingPo(true);
     try {
-      const base64Image = await compressImage(file);
+      const base64Image = await compressImage(file, 1000, 0.7);
       const response = await fetch('/api/process-po', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: base64Image })
+        body: JSON.stringify({ image: base64Image }),
+        signal: AbortSignal.timeout(18000)
       });
         
         if (!response.ok) {
@@ -1030,11 +1031,12 @@ export default function CreditsPage() {
     
     setUploadingPoToOldCredit(true);
     try {
-      const base64Image = await compressImage(file);
+      const base64Image = await compressImage(file, 1000, 0.7);
       const response = await fetch('/api/process-po', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: base64Image })
+        body: JSON.stringify({ image: base64Image }),
+        signal: AbortSignal.timeout(18000)
       });
         
         if (!response.ok) {
