@@ -22,7 +22,7 @@
       "name": "💸 Safe Cash & Overview",
       "short_name": "Safe Cash",
       "description": "View live safe balance and financial inputs",
-      "url": "/financials/inputs/overview",
+      "url": "/financials/inputs",
       "icons": [{ "src": "/icon-manager.png", "sizes": "192x192" }]
     },
     {

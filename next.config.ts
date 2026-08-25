@@ -60,6 +60,15 @@ const nextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: "/financials/inputs/overview",
+        destination: "/financials/inputs",
+        permanent: true,
+      },
+    ];
+  },
   turbopack: {},
 };
 

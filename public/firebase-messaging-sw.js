@@ -19,7 +19,7 @@ messaging.onBackgroundMessage((payload) => {
 
   const notificationTitle = payload.notification?.title || payload.data?.title || "Circle K Notification";
   const notificationBody = payload.notification?.body || payload.data?.body || "Tap to view update.";
-  const clickUrl = payload.data?.url || payload.notification?.click_action || '/financials/inputs/overview';
+  const clickUrl = payload.data?.url || payload.notification?.click_action || '/financials/inputs';
 
   const actions = payload.notification?.actions || [
     { action: 'open_overview', title: '💸 Safe Balance & Overview' }
@@ -43,10 +43,10 @@ messaging.onBackgroundMessage((payload) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   
-  let urlToOpen = event.notification.data?.url || '/financials/inputs/overview';
+  let urlToOpen = event.notification.data?.url || '/financials/inputs';
 
   if (event.action === 'open_overview') {
-    urlToOpen = '/financials/inputs/overview';
+    urlToOpen = '/financials/inputs';
   } else if (event.action === 'open_deposits') {
     urlToOpen = '/financials/inputs/deposits';
   }
@@ -67,7 +67,7 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 // 2. FULL PWA OFFLINE APP SHELL & ASSET CACHING ENGINE
-const CACHE_NAME = 'circlek-pwa-v5';
+const CACHE_NAME = 'circlek-pwa-v7';
 const OFFLINE_URLS = [
   '/',
   '/manifest-manager.json',
@@ -75,7 +75,7 @@ const OFFLINE_URLS = [
   '/icons8-circled-k-50.png',
   '/shift-reports/manager',
   '/voids/manager',
-  '/financials/inputs/overview',
+  '/financials/inputs',
   '/admin/product-lookup'
 ];
 
