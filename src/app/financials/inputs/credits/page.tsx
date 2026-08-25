@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { db, auth, storage, dbService } from "@/lib/firebase";
+import { safeSetLocalStorage, sanitizeCreditForCache } from "@/lib/storageUtils";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { syncProductsToMaster } from "@/lib/products-sync";
 import { dispatchNotificationSystem } from "@/lib/notifications";
@@ -493,6 +494,27 @@ export default function CreditsPage() {
   const [isReceiptPrinting, setIsReceiptPrinting] = useState(false);
 
   useEffect(() => {
+    // Instant cache hydration for fast 0ms initial load
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem('cached_detailed_credits');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setCredits(parsed);
+            const uniqueSuppliers = new Set<string>();
+            parsed.forEach((c: any) => {
+              if (c.companyName) uniqueSuppliers.add(c.companyName.toUpperCase());
+            });
+            setSuppliers(Array.from(uniqueSuppliers).sort().map((name, index) => ({ id: `sup_${index}`, name })));
+            setLoading(false);
+          }
+        }
+      } catch (e) {
+        console.warn("Could not read cached credits:", e);
+      }
+    }
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         setCurrentUser(user);
@@ -567,9 +589,10 @@ export default function CreditsPage() {
         };
       }) as Credit[];
       setCredits(data);
-      if (typeof window !== "undefined") {
-        localStorage.setItem('cached_detailed_credits', JSON.stringify(data.slice(0, 50)));
-      }
+
+      // Safe lightweight caching without heavy payloads (signatures, large base64 images)
+      const cleanData = data.slice(0, 50).map(sanitizeCreditForCache);
+      safeSetLocalStorage('cached_detailed_credits', JSON.stringify(cleanData));
 
       const uniqueSuppliers = new Set<string>();
       data.forEach(c => {
@@ -708,9 +731,9 @@ export default function CreditsPage() {
       const savedCredit = { id: docRef.id, ...newCredit, createdAt: Timestamp.now() } as Credit;
       const updatedCredits = [savedCredit, ...credits];
       setCredits(updatedCredits);
-      if (typeof window !== "undefined") {
-        localStorage.setItem('cached_detailed_credits', JSON.stringify(updatedCredits.slice(0, 50)));
-      }
+      
+      const cleanUpdated = updatedCredits.slice(0, 50).map(sanitizeCreditForCache);
+      safeSetLocalStorage('cached_detailed_credits', JSON.stringify(cleanUpdated));
 
       toast.success("Credit added & notification sent!");
       setShowAddModal(false);
@@ -1605,21 +1628,21 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
   };
 
   if (loading) {
-    return <div className="flex h-screen items-center justify-center bg-[#F8FAFC]"><Loader2 className="animate-spin text-indigo-600" size={48} /></div>;
+    return <div className="flex h-screen items-center justify-center bg-[#09090B]"><Loader2 className="animate-spin text-indigo-500" size={48} /></div>;
   }
 
   return (
     <>
-      <div className="min-h-screen bg-[#F8FAFC] p-4 md:p-8 font-sans print:hidden">
+      <div className="min-h-screen bg-[#09090B] text-slate-100 p-4 md:p-8 font-sans print:hidden">
         <div className="max-w-[1400px] mx-auto space-y-8">
           
           {/* Header & Actions */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
-              <h1 className="text-3xl font-black text-slate-900 tracking-tight">
+              <h1 className="text-3xl font-black text-white tracking-tight">
                 {isAr ? "إدارة الآجل والديون" : "Credits Management"}
               </h1>
-              <p className="text-sm text-slate-500 font-medium mt-1">
+              <p className="text-sm text-slate-400 font-medium mt-1">
                 {isAr ? "متابعة وإدارة وتحصيل مديونيات وآجل العملاء والفرع." : "Track, manage, and collect outstanding corporate credits."}
               </p>
             </div>
@@ -1640,7 +1663,7 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
             {/* 1. Credit Aging Dashboard */}
-            <div className="bg-slate-900 border border-slate-700/60 p-6 rounded-3xl shadow-sm lg:col-span-1">
+            <div className="bg-[#0B1121] border border-slate-800 p-6 rounded-3xl shadow-lg lg:col-span-1">
               <h3 className="text-lg font-black text-slate-100 flex items-center gap-2 mb-6">
                 <AlertCircle size={20} className="text-rose-500" />
                 {isAr ? "أعمار الديون والآجل" : "Credit Aging"}
@@ -1648,7 +1671,7 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={dashboardData.agingChartData} margin={{top:10, right:10, left:-20, bottom:0}}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1e293b" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize:12, fill:'#64748b'}} />
                     <YAxis axisLine={false} tickLine={false} tick={{fontSize:12, fill:'#64748b'}} tickFormatter={(val) => `£${(val/1000).toFixed(0)}k`} />
                     <RechartsTooltip cursor={{fill: '#1e293b'}} contentStyle={{borderRadius:'12px', border:'1px solid #334155', boxShadow:'0 10px 15px -3px rgb(0 0 0 / 0.3)', backgroundColor:'#1e293b', color:'#e2e8f0'}} />
@@ -1663,7 +1686,7 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
             </div>
 
             {/* 2. Debt Waterfall */}
-            <div className="bg-slate-900 border border-slate-700/60 p-6 rounded-3xl shadow-sm lg:col-span-1">
+            <div className="bg-[#0B1121] border border-slate-800 p-6 rounded-3xl shadow-lg lg:col-span-1">
               <h3 className="text-lg font-black text-slate-100 flex items-center gap-2 mb-6">
                 <Calendar size={20} className="text-sky-500" />
                 30-Day Debt Waterfall
@@ -1677,7 +1700,7 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                         <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1e293b" />
                     <XAxis dataKey="date" axisLine={false} tickLine={false} tickFormatter={(val) => val.split('-').slice(1).join('/')} tick={{fontSize:12, fill:'#64748b'}} />
                     <YAxis axisLine={false} tickLine={false} tick={{fontSize:12, fill:'#64748b'}} tickFormatter={(val) => `£${(val/1000).toFixed(0)}k`} />
                     <RechartsTooltip cursor={{stroke: '#475569', strokeWidth: 1, strokeDasharray: '4 4'}} contentStyle={{borderRadius:'12px', border:'1px solid #334155', boxShadow:'0 10px 15px -3px rgb(0 0 0 / 0.3)', backgroundColor:'#1e293b', color:'#e2e8f0'}} />
@@ -1688,7 +1711,7 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
             </div>
 
             {/* 3. Smart Payment Simulator */}
-            <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 p-6 rounded-3xl shadow-sm lg:col-span-1 relative overflow-hidden flex flex-col">
+            <div className="bg-gradient-to-br from-slate-900 to-[#0B1121] border border-slate-800 p-6 rounded-3xl shadow-lg lg:col-span-1 relative overflow-hidden flex flex-col">
               <div className="absolute top-0 right-0 p-4 opacity-5"><Banknote size={100} /></div>
               <h3 className="text-lg font-black text-indigo-300 flex items-center gap-2 mb-2 relative z-10">
                 <Banknote size={20} /> Smart Settle Simulator
@@ -1701,21 +1724,21 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                   placeholder="e.g. 20000"
                   value={simulatorCash}
                   onChange={(e) => setSimulatorCash(e.target.value)}
-                  className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 font-bold text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 font-bold text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 />
               </div>
 
               <div className="flex-1 overflow-y-auto pr-1 space-y-2 relative z-10 max-h-40">
                 {simulatorResults.length === 0 ? (
-                  <div className="text-center text-slate-400 text-sm mt-8">Awaiting cash input...</div>
+                  <div className="text-center text-slate-500 text-sm mt-8">Awaiting cash input...</div>
                 ) : (
                   simulatorResults.map((res, i) => (
                     <div key={i} className="flex justify-between items-center bg-slate-800/60 p-2 rounded-lg border border-slate-700/50">
                       <div>
                         <p className="text-xs font-bold text-white capitalize">{res.credit.companyName}</p>
-                        <p className="text-[10px] text-slate-500">{res.type} Payment</p>
+                        <p className="text-[10px] text-slate-400">{res.type} Payment</p>
                       </div>
-                      <p className="text-sm font-black text-indigo-600">EGP {res.payAmount.toLocaleString()}</p>
+                      <p className="text-sm font-black text-indigo-400">EGP {res.payAmount.toLocaleString()}</p>
                     </div>
                   ))
                 )}
@@ -1791,27 +1814,27 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
           </div>
 
           {/* Unified Command Bar (Filters) */}
-          <div className="bg-white/80 backdrop-blur-md border border-slate-200/80 p-2 rounded-2xl shadow-sm flex flex-col md:flex-row gap-2 items-center">
+          <div className="bg-[#0B1121] border border-slate-800 p-2.5 rounded-2xl shadow-xl flex flex-col md:flex-row gap-2 items-center">
             
             {/* View Mode Toggle */}
-            <div className="flex bg-slate-100 p-1 rounded-xl">
-              <button onClick={() => setViewMode('list')} className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}>List</button>
-              <button onClick={() => setViewMode('board')} className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${viewMode === 'board' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}>Board</button>
+            <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
+              <button onClick={() => setViewMode('list')} className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${viewMode === 'list' ? 'bg-indigo-600 shadow-sm text-white' : 'text-slate-400 hover:text-slate-200'}`}>List</button>
+              <button onClick={() => setViewMode('board')} className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${viewMode === 'board' ? 'bg-indigo-600 shadow-sm text-white' : 'text-slate-400 hover:text-slate-200'}`}>Board</button>
             </div>
 
-            <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+            <div className="relative flex-1 w-full">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={20} />
               <input
                 type="text"
                 placeholder="Search company or invoice..."
-                className="w-full pl-12 pr-4 py-3 rounded-xl bg-transparent focus:bg-white hover:bg-slate-50 transition-colors border-none outline-none text-slate-700 placeholder:text-slate-400 font-medium"
+                className="w-full pl-12 pr-4 py-3 rounded-xl bg-slate-950/80 focus:bg-slate-950 border border-slate-800 focus:border-indigo-500 transition-colors outline-none text-white placeholder:text-slate-500 font-medium"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
 
             <select
-              className="w-full md:w-64 px-4 py-3 rounded-xl bg-transparent hover:bg-slate-50 focus:bg-white transition-colors border-none outline-none text-slate-700 font-bold cursor-pointer appearance-none"
+              className="w-full md:w-64 px-4 py-3 rounded-xl bg-slate-950/80 hover:bg-slate-950 focus:bg-slate-950 border border-slate-800 transition-colors outline-none text-slate-200 font-bold cursor-pointer appearance-none"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
@@ -1827,9 +1850,9 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
 
         {/* Credits Data View */}
         {selectedBulkItems.size > 0 && (
-          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-4 mb-4">
-            <div className="flex items-center gap-3 text-blue-700">
-              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center font-bold">
+          <div className="bg-blue-950/40 border border-blue-800/60 rounded-2xl p-4 flex items-center justify-between shadow-xl animate-in fade-in slide-in-from-top-4 mb-4">
+            <div className="flex items-center gap-3 text-blue-300">
+              <div className="w-8 h-8 rounded-full bg-blue-900/60 border border-blue-700 flex items-center justify-center font-bold">
                 {selectedBulkItems.size}
               </div>
               <span className="font-bold text-sm">Credits Selected</span>
@@ -1837,7 +1860,7 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
             <div className="flex gap-2">
               <button 
                 onClick={() => setSelectedBulkItems(new Set())}
-                className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
+                className="px-4 py-2 text-sm font-bold text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-xl transition-colors"
               >
                 Clear
               </button>
@@ -1880,7 +1903,7 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
         {/* Mobile Cards Container (Strictly md:hidden) */}
         <div className="md:hidden space-y-3">
           {filteredCredits.length === 0 ? (
-            <div className="p-8 text-center text-slate-400 text-xs rounded-2xl bg-[#0B1121] border border-[#1E293B]">
+            <div className="p-8 text-center text-slate-400 text-xs rounded-2xl bg-[#0B1121] border border-slate-800">
               No credit records found.
             </div>
           ) : (
@@ -1892,7 +1915,7 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
               return (
                 <div
                   key={credit.id}
-                  className="p-4 rounded-2xl bg-[#0B1121] border border-[#1E293B] shadow-xl space-y-3 relative overflow-hidden"
+                  className="p-4 rounded-2xl bg-[#0B1121] border border-slate-800 shadow-xl space-y-3 relative overflow-hidden"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
@@ -1914,7 +1937,7 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 bg-[#0F172A] p-2.5 rounded-xl border border-[#1E293B]">
+                  <div className="grid grid-cols-2 gap-2 bg-[#0F172A] p-2.5 rounded-xl border border-slate-800">
                     <div>
                       <p className="text-[10px] font-bold text-slate-400 uppercase">Total Invoice</p>
                       <p className="text-sm font-black font-mono text-slate-200 truncate">
@@ -1929,7 +1952,7 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[#1E293B]">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800">
                     <span className="text-[10px] text-slate-400 shrink-0">
                       {(credit as any).dueDate ? `Due: ${(credit as any).dueDate}` : `Date: ${credit.date}`}
                     </span>
@@ -1956,7 +1979,7 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
               checked={filteredCredits.length > 0 && selectedBulkItems.size === filteredCredits.length}
               onChange={handleSelectAllBulkItems}
             />
-            <h2 className="text-sm font-black text-slate-500 uppercase tracking-wider">
+            <h2 className="text-sm font-black text-slate-400 uppercase tracking-wider">
               Select All ({filteredCredits.length})
             </h2>
           </div>
@@ -1975,11 +1998,11 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
               // Generate Company Initials for Avatar
               const initials = credit.companyName.substring(0, 2).toUpperCase();
               const colors = [
-                'bg-indigo-100 text-indigo-700 border-indigo-200', 
-                'bg-rose-100 text-rose-700 border-rose-200', 
-                'bg-emerald-100 text-emerald-700 border-emerald-200',
-                'bg-amber-100 text-amber-700 border-amber-200',
-                'bg-blue-100 text-blue-700 border-blue-200'
+                'bg-indigo-950/80 text-indigo-300 border-indigo-700/50', 
+                'bg-rose-950/80 text-rose-300 border-rose-700/50', 
+                'bg-emerald-950/80 text-emerald-300 border-emerald-700/50',
+                'bg-amber-950/80 text-amber-300 border-amber-700/50',
+                'bg-sky-950/80 text-sky-300 border-sky-700/50'
               ];
               const avatarColor = colors[credit.companyName.charCodeAt(0) % colors.length];
 
@@ -1991,7 +2014,7 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ duration: 0.2, delay: idx * 0.05 }}
                   key={credit.id} 
-                  className={`bg-white border rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden group ${selectedBulkItems.has(credit.id) ? 'border-blue-400 ring-1 ring-blue-400' : 'border-slate-200/60'}`}
+                  className={`bg-[#0B1121] border rounded-2xl shadow-lg hover:border-slate-700 transition-all overflow-hidden group ${selectedBulkItems.has(credit.id) ? 'border-indigo-500 ring-1 ring-indigo-500' : 'border-slate-800'}`}
                 >
                   {/* Row Summary */}
                   <div className="p-4 md:p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative">
@@ -2002,31 +2025,31 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                         type="checkbox" 
                         checked={selectedBulkItems.has(credit.id)}
                         onChange={() => handleSelectBulkItem(credit.id)}
-                        className="w-5 h-5 rounded text-blue-600 cursor-pointer mr-2 flex-shrink-0"
+                        className="w-5 h-5 rounded text-indigo-600 cursor-pointer mr-2 flex-shrink-0"
                       />
                       <div className={`w-12 h-12 rounded-full border flex items-center justify-center font-black text-lg tracking-tight flex-shrink-0 ${avatarColor}`}>
                         {initials}
                       </div>
                       <div>
                         <div className="flex items-center gap-3 mb-1">
-                          <button onClick={() => setSelectedSupplierProfile(credit.companyName)} className="text-lg font-bold text-slate-900 capitalize tracking-tight text-left hover:text-indigo-600 transition-colors underline decoration-dotted decoration-indigo-300 underline-offset-4">
+                          <button onClick={() => setSelectedSupplierProfile(credit.companyName)} className="text-lg font-bold text-white capitalize tracking-tight text-left hover:text-indigo-400 transition-colors underline decoration-dotted decoration-indigo-500/50 underline-offset-4">
                             {credit.companyName}
                           </button>
                           
                           {/* Modern Badges */}
-                          {credit.status === 'paid' && <span className="bg-emerald-50 text-emerald-600 border border-emerald-200 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><CheckCircle size={12}/> Paid</span>}
-                          {credit.status === 'pending' && <span className="bg-blue-50 text-blue-600 border border-blue-200 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><Clock size={12}/> Pending</span>}
-                          {credit.status === 'partial' && <span className="bg-amber-50 text-amber-600 border border-amber-200 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><PieChart size={12}/> Partial</span>}
-                          {credit.status === 'overdue' && <span className="bg-red-50 text-red-600 border border-red-200 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><AlertTriangle size={12}/> Overdue</span>}
-                          {credit.status === 'open' && <span className="bg-slate-100 text-slate-600 border border-slate-200 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><AlertCircle size={12}/> Open</span>}
+                          {credit.status === 'paid' && <span className="bg-emerald-950/60 text-emerald-400 border border-emerald-800/60 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><CheckCircle size={12}/> Paid</span>}
+                          {credit.status === 'pending' && <span className="bg-blue-950/60 text-blue-400 border border-blue-800/60 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><Clock size={12}/> Pending</span>}
+                          {credit.status === 'partial' && <span className="bg-amber-950/60 text-amber-400 border border-amber-800/60 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><PieChart size={12}/> Partial</span>}
+                          {credit.status === 'overdue' && <span className="bg-rose-950/60 text-rose-400 border border-rose-800/60 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><AlertTriangle size={12}/> Overdue</span>}
+                          {credit.status === 'open' && <span className="bg-slate-800 text-slate-300 border border-slate-700 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><AlertCircle size={12}/> Open</span>}
 
                           {credit.onSalesOnly && (
-                            <span className="bg-violet-50 text-violet-600 border border-violet-200 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><Building size={12}/> Sales Only</span>
+                            <span className="bg-violet-950/60 text-violet-400 border border-violet-800/60 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><Building size={12}/> Sales Only</span>
                           )}
 
                           {credit.isEdited && (
                             <span 
-                              className="bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 text-xs px-2 py-0.5 rounded-full font-bold flex items-center gap-1 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
+                              className="bg-amber-950/50 text-amber-400 border border-amber-800/60 text-xs px-2 py-0.5 rounded-full font-bold flex items-center gap-1 cursor-pointer hover:bg-amber-900/50 transition-colors"
                               title={credit.editHistory && credit.editHistory.length > 0 ? `Edited on ${new Date(credit.lastEditedAt!).toLocaleDateString()}:\n${credit.editHistory[credit.editHistory.length - 1].summary}` : "Edited"}
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -2037,51 +2060,51 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                             </span>
                           )}
                         </div>
-                        <p className="text-sm font-medium text-slate-500 flex items-center gap-2">
-                          <FileText size={14} className="text-slate-400" /> Inv: {credit.invoiceNumber} 
-                          {credit.poNumber && <><span className="text-slate-300">•</span> PO: {credit.poNumber}</>} 
-                          <span className="text-slate-300">•</span> Due: {credit.collectionDate}
+                        <p className="text-sm font-medium text-slate-400 flex items-center gap-2">
+                          <FileText size={14} className="text-slate-500" /> Inv: {credit.invoiceNumber} 
+                          {credit.poNumber && <><span className="text-slate-600">•</span> PO: {credit.poNumber}</>} 
+                          <span className="text-slate-600">•</span> Due: {credit.collectionDate}
                         </p>
                       </div>
                     </div>
 
                     {/* Right: Financials & Actions */}
-                    <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-slate-100 pt-3 md:pt-0">
+                    <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-slate-800 pt-3 md:pt-0">
                       <div className="text-right">
-                        <p className="text-2xl font-black text-slate-900 tracking-tight font-mono">
-                          <span className="text-sm font-medium text-slate-400 mr-1">EGP</span>
+                        <p className="text-2xl font-black text-white tracking-tight font-mono">
+                          <span className="text-sm font-medium text-slate-500 mr-1">EGP</span>
                           {totalDue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </p>
-                        <p className="text-sm font-medium text-slate-500 flex items-center justify-end gap-1">
-                          Paid: <span className="text-emerald-600 font-bold">{credit.paidAmount.toLocaleString()}</span>
+                        <p className="text-sm font-medium text-slate-400 flex items-center justify-end gap-1">
+                          Paid: <span className="text-emerald-400 font-bold">{credit.paidAmount.toLocaleString()}</span>
                         </p>
                       </div>
                       
                       {/* Action Dropdown / Buttons */}
                       <div className="flex items-center gap-2">
-                        <button onClick={() => setSelectedCreditForView(credit)} className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors">
+                        <button onClick={() => setSelectedCreditForView(credit)} className="p-2.5 text-slate-400 hover:text-indigo-400 hover:bg-slate-800/80 rounded-xl transition-colors">
                           <Eye size={20} />
                         </button>
-                        <button onClick={() => handlePrintPdf(credit)} disabled={isPrinting} className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors disabled:opacity-50">
+                        <button onClick={() => handlePrintPdf(credit)} disabled={isPrinting} className="p-2.5 text-slate-400 hover:text-indigo-400 hover:bg-slate-800/80 rounded-xl transition-colors disabled:opacity-50">
                           <Printer size={20} />
                         </button>
                         {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
                           <>
                             <button
                               onClick={() => handleOpenEditCredit(credit)}
-                              className="p-2.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-colors"
+                              className="p-2.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800/80 rounded-xl transition-colors"
                               title={isAr ? "تعديل الفاتورة (خاص بالإدارة)" : "Edit Credit (Admin Only)"}
                             >
                               <Pencil size={20} />
                             </button>
-                            <button onClick={() => handleDeleteCredit(credit.id)} className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors" title={isAr ? "حذف الدين" : "Delete Credit"}>
+                            <button onClick={() => handleDeleteCredit(credit.id)} className="p-2.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800/80 rounded-xl transition-colors" title={isAr ? "حذف الدين" : "Delete Credit"}>
                               <Trash2 size={20} />
                             </button>
                           </>
                         )}
                         <button
                           onClick={() => toggleExpand(credit.id)}
-                          className={`p-2.5 rounded-xl transition-colors ${isExpanded ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}
+                          className={`p-2.5 rounded-xl transition-colors ${isExpanded ? 'bg-indigo-950/80 text-indigo-400 border border-indigo-800/50' : 'text-slate-400 hover:bg-slate-800/80 hover:text-slate-200'}`}
                         >
                           {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                         </button>
@@ -2096,38 +2119,38 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
-                        className="border-t border-slate-100 bg-slate-50/50"
+                        className="border-t border-slate-800 bg-[#070C18]"
                       >
                         <div className="p-5 md:p-6">
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                            <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                            <div className="bg-[#0B1121] p-4 rounded-xl border border-slate-800 shadow-sm">
                               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Amount</p>
-                              <p className="font-black text-slate-900">EGP {credit.amountDue.toLocaleString()}</p>
+                              <p className="font-black text-white">EGP {credit.amountDue.toLocaleString()}</p>
                             </div>
-                            <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                            <div className="bg-[#0B1121] p-4 rounded-xl border border-slate-800 shadow-sm">
                               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Tax</p>
-                              <p className="font-black text-slate-900">EGP {credit.tax.toLocaleString()}</p>
+                              <p className="font-black text-white">EGP {credit.tax.toLocaleString()}</p>
                             </div>
-                            <div className="bg-red-50 p-4 rounded-xl border border-red-100 shadow-sm">
-                              <p className="text-xs font-bold text-red-400 uppercase tracking-wider mb-1">Remaining</p>
-                              <p className="font-black text-red-600">EGP {remaining.toLocaleString()}</p>
+                            <div className="bg-rose-950/30 p-4 rounded-xl border border-rose-900/50 shadow-sm">
+                              <p className="text-xs font-bold text-rose-400 uppercase tracking-wider mb-1">Remaining</p>
+                              <p className="font-black text-rose-400">EGP {remaining.toLocaleString()}</p>
                             </div>
-                            <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                            <div className="bg-[#0B1121] p-4 rounded-xl border border-slate-800 shadow-sm">
                               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Type</p>
-                              <p className="font-bold text-slate-900 flex items-center gap-2">
-                                {credit.onSalesOnly ? <><Building size={14} className="text-violet-500"/> Sales Only</> : <><CreditCard size={14} className="text-indigo-500"/> Standard</>}
+                              <p className="font-bold text-white flex items-center gap-2">
+                                {credit.onSalesOnly ? <><Building size={14} className="text-violet-400"/> Sales Only</> : <><CreditCard size={14} className="text-indigo-400"/> Standard</>}
                               </p>
                             </div>
                           </div>
 
-                          <div className="flex justify-between items-center border-t border-slate-200 pt-6 mb-4">
-                            <h4 className="font-bold text-slate-900 flex items-center gap-2">
+                          <div className="flex justify-between items-center border-t border-slate-800 pt-6 mb-4">
+                            <h4 className="font-bold text-white flex items-center gap-2">
                               <Banknote className="text-slate-400"/> Payment History
                             </h4>
                             {credit.status !== "paid" && (
                               <button
                                 onClick={() => handleOpenPaymentModal(credit)}
-                                className="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md hover:bg-slate-800 hover:-translate-y-0.5 transition-all flex items-center gap-2"
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md hover:-translate-y-0.5 transition-all flex items-center gap-2"
                               >
                                 <Plus size={16} /> Record Payment
                               </button>
@@ -2137,14 +2160,14 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                           {creditHistories[credit.id] && creditHistories[credit.id].length > 0 ? (
                             <div className="space-y-2">
                               {creditHistories[credit.id].map((payment, idx) => (
-                                <div key={idx} className="flex justify-between items-center bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
+                                <div key={idx} className="flex justify-between items-center bg-[#0B1121] p-3.5 rounded-xl border border-slate-800 shadow-sm">
                                   <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+                                    <div className="w-10 h-10 rounded-full bg-emerald-950/60 border border-emerald-800/60 flex items-center justify-center text-emerald-400">
                                       <CheckCircle size={18} />
                                     </div>
                                     <div>
-                                      <p className="font-bold text-slate-900 font-mono tracking-tight">EGP {Number(payment.amount).toLocaleString()}</p>
-                                      <p className="text-xs font-medium text-slate-500 flex items-center gap-1"><Calendar size={12}/> {payment.date} <span className="px-1 text-slate-300">•</span> {payment.method?.toUpperCase()}</p>
+                                      <p className="font-bold text-white font-mono tracking-tight">EGP {Number(payment.amount).toLocaleString()}</p>
+                                      <p className="text-xs font-medium text-slate-400 flex items-center gap-1"><Calendar size={12}/> {payment.date} <span className="px-1 text-slate-600">•</span> {payment.method?.toUpperCase()}</p>
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-2">
@@ -2157,36 +2180,36 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                                             newTab.document.close();
                                           }
                                         }}
-                                        className="text-xs font-bold px-3 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded-full hover:bg-blue-100 transition-colors flex items-center gap-1"
+                                        className="text-xs font-bold px-3 py-1 bg-blue-950/60 text-blue-400 border border-blue-800/60 rounded-full hover:bg-blue-900/60 transition-colors flex items-center gap-1"
                                       >
                                         <FileText size={12}/> Receipt
                                       </button>
                                     )}
-                                    <span className="text-xs font-bold px-3 py-1 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-full">Paid</span>
+                                    <span className="text-xs font-bold px-3 py-1 bg-emerald-950/60 text-emerald-400 border border-emerald-800/60 rounded-full">Paid</span>
                                   </div>
                                 </div>
                               ))}
-                              <div className="flex justify-between items-center pt-4 mt-2 border-t border-slate-200">
-                                <span className="text-sm font-bold text-slate-500 uppercase tracking-wider">Total Paid</span>
-                                <span className="text-lg font-black text-emerald-600 tracking-tight">EGP {credit.paidAmount.toLocaleString()}</span>
+                              <div className="flex justify-between items-center pt-4 mt-2 border-t border-slate-800">
+                                <span className="text-sm font-bold text-slate-400 uppercase tracking-wider">Total Paid</span>
+                                <span className="text-lg font-black text-emerald-400 tracking-tight">EGP {credit.paidAmount.toLocaleString()}</span>
                               </div>
                             </div>
                           ) : (
-                            <div className="text-center py-8 bg-white rounded-xl border border-dashed border-slate-300">
-                              <p className="text-sm font-bold text-slate-400">No payments recorded yet</p>
+                            <div className="text-center py-8 bg-[#0B1121] rounded-xl border border-dashed border-slate-800">
+                              <p className="text-sm font-bold text-slate-500">No payments recorded yet</p>
                             </div>
                           )}
 
                           {/* PO Items & Image Area */}
-                          <div className="border-t border-slate-200 pt-6 mt-6">
+                          <div className="border-t border-slate-800 pt-6 mt-6">
                             <div className="flex justify-between items-center mb-4">
-                              <h4 className="font-bold text-slate-900 flex items-center gap-2">
+                              <h4 className="font-bold text-white flex items-center gap-2">
                                 <ImageIcon className="text-slate-400"/> Purchase Order Details
                               </h4>
                               {(!credit.items || credit.items.length === 0) && !credit.poImageUrl && (
                                 <button
                                   onClick={() => setSelectedCreditForPoUpload(credit)}
-                                  className="text-indigo-600 bg-indigo-50 px-4 py-2 rounded-xl text-sm font-bold hover:bg-indigo-100 transition-colors"
+                                  className="text-indigo-400 bg-indigo-950/60 border border-indigo-800/60 px-4 py-2 rounded-xl text-sm font-bold hover:bg-indigo-900/60 transition-colors"
                                 >
                                   + Add PO
                                 </button>
@@ -2194,9 +2217,9 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                             </div>
 
                             {credit.items && credit.items.length > 0 && (
-                              <div className="overflow-x-auto border border-slate-100 bg-white rounded-2xl mb-6 shadow-sm">
+                              <div className="overflow-x-auto border border-slate-800 bg-[#0B1121] rounded-2xl mb-6 shadow-sm">
                                 <table className="w-full text-sm text-left">
-                                  <thead className="text-xs text-slate-500 bg-slate-50 border-b border-slate-100 uppercase font-bold">
+                                  <thead className="text-xs text-slate-400 bg-slate-950 border-b border-slate-800 uppercase font-bold">
                                     <tr>
                                       <th className="px-4 py-3">Barcode</th>
                                       <th className="px-4 py-3">Description</th>
@@ -2207,12 +2230,12 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                                   </thead>
                                   <tbody>
                                     {credit.items.map((item: any, idx: number) => (
-                                      <tr key={idx} className="border-b border-slate-50 last:border-0 font-medium">
-                                        <td className="px-4 py-3 text-slate-500">{item.barcode || "N/A"}</td>
-                                        <td className="px-4 py-3 text-slate-900">{item.description || "N/A"}</td>
-                                        <td className="px-4 py-3 text-center text-slate-900">{item.quantity}</td>
-                                        <td className="px-4 py-3 text-right text-slate-900">{Number(item.unitPrice).toFixed(2)}</td>
-                                        <td className="px-4 py-3 text-right font-bold text-slate-900">{(item.quantity * item.unitPrice).toFixed(2)}</td>
+                                      <tr key={idx} className="border-b border-slate-850 last:border-0 font-medium">
+                                        <td className="px-4 py-3 text-slate-400">{item.barcode || "N/A"}</td>
+                                        <td className="px-4 py-3 text-white">{item.description || "N/A"}</td>
+                                        <td className="px-4 py-3 text-center text-white">{item.quantity}</td>
+                                        <td className="px-4 py-3 text-right text-slate-200">{Number(item.unitPrice).toFixed(2)}</td>
+                                        <td className="px-4 py-3 text-right font-bold text-white">{(item.quantity * item.unitPrice).toFixed(2)}</td>
                                       </tr>
                                     ))}
                                   </tbody>
@@ -2223,8 +2246,7 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                             {credit.poImageUrl && (
                               <div className="mt-4">
                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Scanned PO Image</p>
-                                <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white flex justify-center p-2 shadow-sm">
-                                  { }
+                                <div className="border border-slate-800 rounded-2xl overflow-hidden bg-[#0B1121] flex justify-center p-2 shadow-sm">
                                   <img 
                                     src={credit.poImageUrl} 
                                     alt="PO Document" 
@@ -2235,8 +2257,8 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                             )}
                             
                             {(!credit.items || credit.items.length === 0) && !credit.poImageUrl && (
-                              <div className="text-center py-6 bg-white rounded-xl border border-dashed border-slate-300">
-                                <p className="text-sm font-bold text-slate-400">No PO attached</p>
+                              <div className="text-center py-6 bg-[#0B1121] rounded-xl border border-dashed border-slate-800">
+                                <p className="text-sm font-bold text-slate-500">No PO attached</p>
                               </div>
                             )}
                           </div>
@@ -2250,10 +2272,10 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
           </AnimatePresence>
 
           {filteredCredits.length === 0 && (
-            <div className="text-center py-16 bg-white/50 backdrop-blur-sm rounded-3xl border border-slate-200 border-dashed">
-              <AlertCircle className="mx-auto text-slate-300 mb-3" size={48} />
-              <p className="text-slate-500 font-bold text-lg">No credits found.</p>
-              <p className="text-slate-400 text-sm">Try adjusting your search or filters.</p>
+            <div className="text-center py-16 bg-[#0B1121] rounded-3xl border border-slate-800 border-dashed">
+              <AlertCircle className="mx-auto text-slate-600 mb-3" size={48} />
+              <p className="text-slate-300 font-bold text-lg">No credits found.</p>
+              <p className="text-slate-500 text-sm">Try adjusting your search or filters.</p>
             </div>
           )}
 
@@ -2293,102 +2315,102 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 z-50"
+            className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-50"
           >
             <motion.div 
               initial={{ scale: 0.95, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
-              className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[95vh]"
+              className="bg-[#0B1121] text-slate-100 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl border border-slate-800 flex flex-col max-h-[95vh]"
             >
-              <div className="flex justify-between items-center p-6 border-b border-indigo-100 bg-gradient-to-r from-indigo-50 to-blue-50" dir={isAr ? "rtl" : "ltr"}>
+              <div className="flex justify-between items-center p-6 border-b border-slate-800 bg-slate-900/60" dir={isAr ? "rtl" : "ltr"}>
                 <div>
-                  <h2 className="text-2xl font-black text-indigo-900 tracking-tight">
+                  <h2 className="text-2xl font-black text-white tracking-tight">
                     {isAr ? "تسجيل آجل / مديونية جديدة" : "Record New Credit"}
                   </h2>
-                  <p className="text-xs font-bold text-indigo-600/70 mt-1 uppercase tracking-wider">
+                  <p className="text-xs font-bold text-indigo-400 mt-1 uppercase tracking-wider">
                     {isAr ? "ادخل البيانات أو اسحب صورة أمر الشراء" : "Fill in details or upload PO"}
                   </p>
                 </div>
-                <button onClick={() => setShowAddModal(false)} className="p-2 bg-white/60 hover:bg-white text-indigo-400 hover:text-indigo-600 rounded-full transition-all shadow-sm cursor-pointer">
+                <button onClick={() => setShowAddModal(false)} className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-full transition-all shadow-sm cursor-pointer">
                   <X size={20} />
                 </button>
               </div>
 
               <form onSubmit={handleAddCredit} className="flex flex-col flex-1 min-h-0" dir={isAr ? "rtl" : "ltr"}>
-                <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+                <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
                   <div 
                   onDrop={handleDrop}
                   onDragOver={handleDragOver}
-                  className={`mb-6 border-2 border-dashed rounded-3xl p-8 text-center transition-all duration-300 ${isProcessingPo ? 'border-indigo-500 bg-indigo-50/50 scale-[0.98]' : 'border-indigo-200 hover:border-indigo-400 bg-indigo-50/30 hover:bg-indigo-50/60'}`}
+                  className={`border-2 border-dashed rounded-3xl p-8 text-center transition-all duration-300 ${isProcessingPo ? 'border-indigo-500 bg-indigo-950/30 scale-[0.98]' : 'border-slate-700 hover:border-indigo-500 bg-slate-950/60 hover:bg-slate-900/60'}`}
                 >
                   {isProcessingPo ? (
-                    <div className="flex flex-col items-center justify-center gap-3 text-indigo-600">
-                      <div className="p-3 bg-indigo-100 rounded-full mb-2">
+                    <div className="flex flex-col items-center justify-center gap-3 text-indigo-400">
+                      <div className="p-3 bg-indigo-950 rounded-full mb-2 border border-indigo-800">
                         <Loader2 className="h-8 w-8 animate-spin" />
                       </div>
-                      <span className="font-black text-lg tracking-tight">{isAr ? "جاري قراءة أمر الشراء بالذكاء الاصطناعي..." : "Reading Purchase Order..."}</span>
-                      <span className="text-sm font-medium text-indigo-500/80">{isAr ? "سيتم استخراج البيانات تلقائياً" : "Extracting details automatically"}</span>
+                      <span className="font-black text-lg tracking-tight text-white">{isAr ? "جاري قراءة أمر الشراء بالذكاء الاصطناعي..." : "Reading Purchase Order..."}</span>
+                      <span className="text-sm font-medium text-indigo-400/80">{isAr ? "سيتم استخراج البيانات تلقائياً" : "Extracting details automatically"}</span>
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center justify-center gap-3 text-indigo-900/60">
-                      <div className="p-4 bg-white shadow-sm rounded-full mb-2 text-indigo-500">
+                    <div className="flex flex-col items-center justify-center gap-3 text-slate-400">
+                      <div className="p-4 bg-slate-900 border border-slate-800 shadow-sm rounded-full mb-2 text-indigo-400">
                         <ImageIcon className="h-8 w-8" />
                       </div>
-                      <span className="font-black text-lg text-indigo-900 tracking-tight">{isAr ? "اسحب صورة امر الشراء أو الفاتورة هنا" : "Paste or Drop PO Image Here"}</span>
-                      <span className="text-sm font-medium">{isAr ? "سيتم استخراج كافة البيانات بالذكاء الاصطناعي" : "We'll automatically extract the details using AI"}</span>
+                      <span className="font-black text-lg text-white tracking-tight">{isAr ? "اسحب صورة امر الشراء أو الفاتورة هنا" : "Paste or Drop PO Image Here"}</span>
+                      <span className="text-sm font-medium text-slate-400">{isAr ? "سيتم استخراج كافة البيانات بالذكاء الاصطناعي" : "We'll automatically extract the details using AI"}</span>
                       <button
                         type="button"
                         onClick={handlePastePoImageButtonClick}
-                        className="mt-3 flex items-center gap-2 px-5 py-2.5 bg-white border border-indigo-100 hover:border-indigo-300 hover:shadow-md text-indigo-700 font-bold rounded-xl transition-all text-sm group cursor-pointer"
+                        className="mt-3 flex items-center gap-2 px-5 py-2.5 bg-slate-900 border border-slate-700 hover:border-indigo-500 hover:shadow-md text-indigo-300 font-bold rounded-xl transition-all text-sm group cursor-pointer"
                       >
-                        <ClipboardPaste size={16} className="text-indigo-400 group-hover:text-indigo-600 transition-colors" />
+                        <ClipboardPaste size={16} className="text-indigo-400 group-hover:text-indigo-300 transition-colors" />
                         {isAr ? "لصق من الحافظة" : "Paste from Clipboard"}
                       </button>
                     </div>
                   )}
                 </div>
 
-                <div className="bg-slate-50/50 p-5 rounded-3xl border border-slate-100 mb-6">
+                <div className="bg-slate-950/60 p-5 rounded-3xl border border-slate-800">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
                     <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "رقم الفاتورة * " : "Invoice # *"}</label>
-                    <input required type="text" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} />
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "رقم الفاتورة * " : "Invoice # *"}</label>
+                    <input required type="text" className="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 focus:border-indigo-500 transition-all outline-none font-medium text-white placeholder:text-slate-500" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "رقم أمر الشراء (PO)" : "PO #"}</label>
-                    <input type="text" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={poNumber} onChange={(e) => setPoNumber(e.target.value)} />
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "رقم أمر الشراء (PO)" : "PO #"}</label>
+                    <input type="text" className="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 focus:border-indigo-500 transition-all outline-none font-medium text-white placeholder:text-slate-500" value={poNumber} onChange={(e) => setPoNumber(e.target.value)} />
                   </div>
                   <div>
                     <div className="flex justify-between items-center mb-1">
-                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">{isAr ? "الشركة / المورد *" : "Company *"}</label>
-                      <button type="button" onClick={() => setShowAddSupplier(true)} className="text-[10px] text-indigo-600 font-bold hover:underline flex items-center gap-1 cursor-pointer">
+                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">{isAr ? "الشركة / المورد *" : "Company *"}</label>
+                      <button type="button" onClick={() => setShowAddSupplier(true)} className="text-[10px] text-indigo-400 font-bold hover:underline flex items-center gap-1 cursor-pointer">
                         {isAr ? "+ مورد جديد" : "+ New Supplier"}
                       </button>
                     </div>
-                    <select required className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={companyName} onChange={(e) => setCompanyName(e.target.value)}>
-                      <option value="">{isAr ? "-- اختر المورد --" : "Select a supplier..."}</option>
-                      {suppliers.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                    <select required className="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 focus:border-indigo-500 transition-all outline-none font-medium text-white" value={companyName} onChange={(e) => setCompanyName(e.target.value)}>
+                      <option value="" className="bg-slate-900">{isAr ? "-- اختر المورد --" : "Select a supplier..."}</option>
+                      {suppliers.map(s => <option key={s.id} value={s.name} className="bg-slate-900">{s.name}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "المبلغ المستحق (قبل الضريبة) *" : "Amount Due (Before Tax) *"}</label>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "المبلغ المستحق (قبل الضريبة) *" : "Amount Due (Before Tax) *"}</label>
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">EGP</span>
-                      <input required type="number" step="0.01" className="w-full pl-12 pr-4 p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-black text-slate-900" value={amountDue} onChange={(e) => setAmountDue(e.target.value)} />
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">EGP</span>
+                      <input required type="number" step="0.01" className="w-full pl-12 pr-4 p-3 rounded-xl bg-slate-900 border border-slate-700 focus:border-indigo-500 transition-all outline-none font-black text-white" value={amountDue} onChange={(e) => setAmountDue(e.target.value)} />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "قيمة الضريبة" : "Tax Amount"}</label>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "قيمة الضريبة" : "Tax Amount"}</label>
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">EGP</span>
-                      <input type="number" step="0.01" className="w-full pl-12 pr-4 p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-bold text-slate-900" value={tax} onChange={(e) => setTax(e.target.value)} />
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">EGP</span>
+                      <input type="number" step="0.01" className="w-full pl-12 pr-4 p-3 rounded-xl bg-slate-900 border border-slate-700 focus:border-indigo-500 transition-all outline-none font-bold text-white" value={tax} onChange={(e) => setTax(e.target.value)} />
                     </div>
                   </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "تاريخ التحصيل المتوقع" : "Collection Date"}</label>
-                      <input required type="date" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={collectionDate} onChange={(e) => setCollectionDate(e.target.value)} />
+                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "تاريخ التحصيل المتوقع" : "Collection Date"}</label>
+                      <input required type="date" className="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 focus:border-indigo-500 transition-all outline-none font-medium text-white" value={collectionDate} onChange={(e) => setCollectionDate(e.target.value)} />
                       <div className="flex gap-2 mt-2 flex-wrap">
                         {[14, 15, 30, 45].map(days => (
                           <button 
@@ -2399,7 +2421,7 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                               d.setDate(d.getDate() + days);
                               setCollectionDate(d.toISOString().split('T')[0]);
                             }}
-                            className="text-[10px] font-bold px-2 py-1 bg-indigo-50 text-indigo-700 rounded hover:bg-indigo-100 transition-colors cursor-pointer"
+                            className="text-[10px] font-bold px-2.5 py-1 bg-indigo-950/80 border border-indigo-800/60 text-indigo-300 rounded-lg hover:bg-indigo-900 transition-colors cursor-pointer"
                           >
                             +{days} {isAr ? "يوم" : "Days"}
                           </button>
@@ -2408,16 +2430,16 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                     </div>
 
                   {/* Total Sum Preview Box (Amount Due + Tax) */}
-                  <div className="md:col-span-2 p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/20 border border-emerald-200/80 dark:border-emerald-800/40 flex items-center justify-between shadow-xs transition-all">
+                  <div className="md:col-span-2 p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/40 to-teal-950/30 border border-emerald-800/40 flex items-center justify-between shadow-xs transition-all">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-base shadow-xs shrink-0">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-base shadow-xs shrink-0">
                         <Calculator size={18} />
                       </div>
                       <div>
-                        <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider block">
+                        <span className="text-[11px] font-bold text-emerald-300 uppercase tracking-wider block">
                           {isAr ? "إجمالي المبلغ المستحق (شامل الضريبة)" : "Total Amount Due (Incl. Tax)"}
                         </span>
-                        <span className="text-xs text-emerald-700/80 dark:text-emerald-400/80 font-medium">
+                        <span className="text-xs text-emerald-400/80 font-medium">
                           {(parseFloat(tax) || 0) > 0 ? (
                             isAr 
                               ? `${(parseFloat(amountDue) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} + ${(parseFloat(tax) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ضريبة`
@@ -2429,7 +2451,7 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono tracking-tight">
+                      <div className="text-lg sm:text-xl font-black text-emerald-400 font-mono tracking-tight">
                         EGP {((parseFloat(amountDue) || 0) + (parseFloat(tax) || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </div>
                     </div>
@@ -2438,24 +2460,24 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
               </div>
 
                 {poItems && poItems.length > 0 && (
-                  <div className="mb-8">
-                    <h4 className="text-sm font-bold text-slate-700 mb-2">{isAr ? "الأصناف المستخرجة" : "Extracted PO Items"}</h4>
-                    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-300 mb-2">{isAr ? "الأصناف المستخرجة" : "Extracted PO Items"}</h4>
+                    <div className="bg-[#0B1121] rounded-xl border border-slate-800 overflow-hidden shadow-sm">
                       <div className="max-h-48 overflow-y-auto custom-scrollbar">
                         <table className="w-full text-left text-sm" dir={isAr ? "rtl" : "ltr"}>
-                          <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
+                          <thead className="bg-slate-950 border-b border-slate-800 sticky top-0">
                             <tr>
-                              <th className="p-3 font-bold text-slate-500 uppercase text-[10px] tracking-wider">{isAr ? "الوصف" : "Description"}</th>
-                              <th className="p-3 font-bold text-slate-500 uppercase text-[10px] tracking-wider text-center">{isAr ? "الكمية" : "Qty"}</th>
-                              <th className="p-3 font-bold text-slate-500 uppercase text-[10px] tracking-wider text-right">{isAr ? "السعر" : "Price"}</th>
+                              <th className="p-3 font-bold text-slate-400 uppercase text-[10px] tracking-wider">{isAr ? "الوصف" : "Description"}</th>
+                              <th className="p-3 font-bold text-slate-400 uppercase text-[10px] tracking-wider text-center">{isAr ? "الكمية" : "Qty"}</th>
+                              <th className="p-3 font-bold text-slate-400 uppercase text-[10px] tracking-wider text-right">{isAr ? "السعر" : "Price"}</th>
                             </tr>
                           </thead>
                           <tbody>
                             {poItems.map((item, idx) => (
-                              <tr key={idx} className="border-b border-slate-100 last:border-0 hover:bg-indigo-50/50 transition-colors">
-                                <td className="p-3 text-slate-900 font-medium text-xs">{item.description || item.barcode || 'Unknown Item'}</td>
-                                <td className="p-3 text-slate-600 font-bold text-xs text-center">{item.quantity || 0}</td>
-                                <td className="p-3 text-indigo-600 font-bold text-xs text-right whitespace-nowrap">{item.unitPrice ? `${item.unitPrice} EGP` : '-'}</td>
+                              <tr key={idx} className="border-b border-slate-800/60 last:border-0 hover:bg-slate-900/60 transition-colors">
+                                <td className="p-3 text-white font-medium text-xs">{item.description || item.barcode || 'Unknown Item'}</td>
+                                <td className="p-3 text-slate-300 font-bold text-xs text-center">{item.quantity || 0}</td>
+                                <td className="p-3 text-indigo-400 font-bold text-xs text-right whitespace-nowrap">{item.unitPrice ? `${item.unitPrice} EGP` : '-'}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -2464,35 +2486,35 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                     </div>
                   </div>
                 )}
-                <div className="flex items-center gap-6 mb-8 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <div className="flex items-center gap-6 bg-slate-950/60 p-4 rounded-xl border border-slate-800">
                   <label className="flex items-center gap-3 cursor-pointer group">
                     <div className="relative flex items-center justify-center">
                       <input type="checkbox" checked={onSalesOnly} onChange={(e) => setOnSalesOnly(e.target.checked)} className="peer sr-only" />
-                      <div className="w-6 h-6 rounded-md border-2 border-slate-300 bg-white peer-checked:bg-indigo-500 peer-checked:border-indigo-500 transition-colors"></div>
+                      <div className="w-6 h-6 rounded-md border-2 border-slate-700 bg-slate-900 peer-checked:bg-indigo-600 peer-checked:border-indigo-600 transition-colors"></div>
                       <CheckCircle size={14} className="absolute text-white opacity-0 peer-checked:opacity-100 transition-opacity" />
                     </div>
-                    <span className="text-slate-700 font-bold group-hover:text-slate-900 transition-colors">{isAr ? "مبيعات فقط" : "On Sales Only"}</span>
+                    <span className="text-slate-300 font-bold group-hover:text-white transition-colors">{isAr ? "مبيعات فقط" : "On Sales Only"}</span>
                   </label>
                   <label className="flex items-center gap-3 cursor-pointer group">
                     <div className="relative flex items-center justify-center">
                       <input type="checkbox" checked={isTaxable} onChange={(e) => setIsTaxable(e.target.checked)} className="peer sr-only" />
-                      <div className="w-6 h-6 rounded-md border-2 border-slate-300 bg-white peer-checked:bg-indigo-500 peer-checked:border-indigo-500 transition-colors"></div>
+                      <div className="w-6 h-6 rounded-md border-2 border-slate-700 bg-slate-900 peer-checked:bg-indigo-600 peer-checked:border-indigo-600 transition-colors"></div>
                       <CheckCircle size={14} className="absolute text-white opacity-0 peer-checked:opacity-100 transition-opacity" />
                     </div>
-                    <span className="text-slate-700 font-bold group-hover:text-slate-900 transition-colors">{isAr ? "خاضع للضريبة؟" : "Is Taxable?"}</span>
+                    <span className="text-slate-300 font-bold group-hover:text-white transition-colors">{isAr ? "خاضع للضريبة؟" : "Is Taxable?"}</span>
                   </label>
                 </div>
 
-                <div className="mb-8">
+                <div>
                   <div className="flex justify-between items-center mb-2">
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">{isAr ? "توقيع المدير المسؤول *" : "Manager Signature *"}</label>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">{isAr ? "توقيع المدير المسؤول *" : "Manager Signature *"}</label>
                     {(managerSignature || hasSigned) && (
-                      <button type="button" onClick={() => { sigPadRef.current?.clear(); setHasSigned(false); setManagerSignature(""); }} className="text-[10px] bg-red-50 text-red-600 px-2 py-1 rounded font-bold uppercase hover:bg-red-100 transition-colors">
+                      <button type="button" onClick={() => { sigPadRef.current?.clear(); setHasSigned(false); setManagerSignature(""); }} className="text-[10px] bg-rose-950/60 border border-rose-800/60 text-rose-300 px-2 py-1 rounded font-bold uppercase hover:bg-rose-900/60 transition-colors">
                         {isAr ? "مسح التوقيع" : "Clear Signature"}
                       </button>
                     )}
                   </div>
-                  <div className="border border-slate-200 bg-slate-50 rounded-xl overflow-hidden relative shadow-inner" style={{ height: "150px" }}>
+                  <div className="border border-slate-700 bg-slate-950 rounded-xl overflow-hidden relative shadow-inner" style={{ height: "150px" }}>
                     {managerSignature && !hasSigned ? (
                       <img src={managerSignature} alt="Saved Signature" className="w-full h-full object-contain p-4" />
                     ) : (
@@ -2512,8 +2534,8 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                 </div>
 
                 </div>
-                <div className="flex justify-end gap-3 p-6 border-t border-slate-100 bg-slate-50 mt-auto">
-                  <button type="button" onClick={() => setShowAddModal(false)} className="px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 hover:text-slate-900 transition-all shadow-sm cursor-pointer">{isAr ? "إلغاء" : "Cancel"}</button>
+                <div className="flex justify-end gap-3 p-6 border-t border-slate-800 bg-slate-900/60 mt-auto">
+                  <button type="button" onClick={() => setShowAddModal(false)} className="px-6 py-3 bg-slate-800 border border-slate-700 text-slate-300 rounded-xl font-bold hover:bg-slate-700 hover:text-white transition-all shadow-sm cursor-pointer">{isAr ? "إلغاء" : "Cancel"}</button>
                   <button type="submit" disabled={isSubmitting} className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 shadow-md shadow-indigo-600/20 hover:shadow-indigo-600/40 hover:-translate-y-0.5 transition-all cursor-pointer">
                     {isSubmitting && <Loader2 size={18} className="animate-spin" />}
                     {isAr ? "حفظ الدين" : "Save Credit"}
@@ -2532,76 +2554,76 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 z-50"
+            className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-50"
           >
             <motion.div 
               initial={{ scale: 0.95, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
-              className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[95vh] relative"
+              className="bg-[#0B1121] text-slate-100 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-slate-800 flex flex-col max-h-[95vh] relative"
             >
               {/* Skeuomorphic Overlays */}
               {isCoinDropping && (
-                <div className="absolute inset-0 z-[100] flex items-center justify-center bg-white/90 backdrop-blur-sm">
+                <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm">
                   <CoinDropWallet isDropping={isCoinDropping} onComplete={() => setShowPaymentModal(false)} />
                 </div>
               )}
               {isReceiptPrinting && (
-                <div className="absolute inset-0 z-[100] flex items-center justify-center bg-white/90 backdrop-blur-sm">
+                <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm">
                   <PosReceiptPrinter isPrinting={isReceiptPrinting} />
                 </div>
               )}
-              <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50/50" dir={isAr ? "rtl" : "ltr"}>
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight">{isAr ? "تحصيل مديونية / آجل" : "Make Payment"}</h2>
-                <button onClick={() => setShowPaymentModal(false)} className="p-2 hover:bg-slate-200 text-slate-400 hover:text-slate-600 rounded-full transition-colors cursor-pointer">
+              <div className="flex justify-between items-center p-6 border-b border-slate-800 bg-slate-900/60" dir={isAr ? "rtl" : "ltr"}>
+                <h2 className="text-2xl font-black text-white tracking-tight">{isAr ? "تحصيل مديونية / آجل" : "Make Payment"}</h2>
+                <button onClick={() => setShowPaymentModal(false)} className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-full transition-colors cursor-pointer">
                   <X size={20} />
                 </button>
               </div>
 
               <form onSubmit={handleProcessPayment} className="flex flex-col flex-1 min-h-0" dir={isAr ? "rtl" : "ltr"}>
-                <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
-                  <div className="bg-gradient-to-br from-indigo-50 to-blue-50 p-5 rounded-2xl border border-indigo-100/50 mb-6 shadow-inner">
+                <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+                  <div className="bg-gradient-to-br from-slate-900 to-indigo-950/40 p-5 rounded-2xl border border-indigo-900/50 shadow-inner">
                   <p className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-1">{isAr ? "تحصيل لحساب" : "Paying For"}</p>
-                  <p className="text-lg text-indigo-900 font-black tracking-tight">{selectedCreditForPayment.companyName}</p>
-                  <p className="text-sm font-medium text-indigo-600/80 mb-4 flex items-center gap-1"><FileText size={14}/> {isAr ? "فاتورة رقم:" : "Inv:"} {selectedCreditForPayment.invoiceNumber}</p>
+                  <p className="text-lg text-white font-black tracking-tight">{selectedCreditForPayment.companyName}</p>
+                  <p className="text-sm font-medium text-slate-400 mb-4 flex items-center gap-1"><FileText size={14}/> {isAr ? "فاتورة رقم:" : "Inv:"} {selectedCreditForPayment.invoiceNumber}</p>
                   
-                  <div className="bg-white/60 p-3 rounded-xl border border-indigo-100/50 flex justify-between items-center backdrop-blur-sm">
-                    <span className="text-sm font-bold text-indigo-900/60 uppercase tracking-wide">{isAr ? "المبلغ المتبقي" : "Remaining Balance"}</span>
-                    <span className="text-2xl font-black text-indigo-600 font-mono tracking-tight">EGP {((selectedCreditForPayment.amountDue + selectedCreditForPayment.tax) - selectedCreditForPayment.paidAmount).toLocaleString()}</span>
+                  <div className="bg-[#0B1121] p-3 rounded-xl border border-slate-800 flex justify-between items-center">
+                    <span className="text-sm font-bold text-slate-400 uppercase tracking-wide">{isAr ? "المبلغ المتبقي" : "Remaining Balance"}</span>
+                    <span className="text-2xl font-black text-indigo-400 font-mono tracking-tight">EGP {((selectedCreditForPayment.amountDue + selectedCreditForPayment.tax) - selectedCreditForPayment.paidAmount).toLocaleString()}</span>
                   </div>
                 </div>
 
-                <div className="space-y-4 mb-8">
+                <div className="space-y-4 mb-2">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "التاريخ *" : "Date *"}</label>
-                      <input required type="date" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-bold text-slate-900" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
+                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "التاريخ *" : "Date *"}</label>
+                      <input required type="date" className="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 focus:border-indigo-500 transition-all outline-none font-bold text-white" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "الوقت *" : "Time *"}</label>
-                      <input required type="time" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-bold text-slate-900" value={paymentTime} onChange={(e) => setPaymentTime(e.target.value)} />
+                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "الوقت *" : "Time *"}</label>
+                      <input required type="time" className="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 focus:border-indigo-500 transition-all outline-none font-bold text-white" value={paymentTime} onChange={(e) => setPaymentTime(e.target.value)} />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "طريقة التحصيل *" : "Payment Method *"}</label>
-                    <select className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none font-bold text-slate-900 appearance-none cursor-pointer" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "طريقة التحصيل *" : "Payment Method *"}</label>
+                    <select className="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 focus:border-indigo-500 transition-all outline-none font-bold text-white appearance-none cursor-pointer" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
                       <option value="cash">{isAr ? "💵 كاش (نقداً)" : "💵 Cash / نقدي"}</option>
                       <option value="bank_transfer">{isAr ? "🏦 تحويل بنكي" : "🏦 Bank Transfer / تحويل بنكي"}</option>
                       <option value="visa">{isAr ? "💳 فيزا (بطاقة)" : "💳 Visa / فيزا"}</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "المبلغ المحصل *" : "Amount to Pay *"}</label>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "المبلغ المحصل *" : "Amount to Pay *"}</label>
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-black">EGP</span>
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-black">EGP</span>
                       <input 
                         required 
                         type="number" 
                         step="0.01" 
-                        min="0.01"
+                        min="0.01" 
                         placeholder="0.00" 
-                        className="w-full pl-16 pr-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:bg-white focus:border-indigo-500 transition-all outline-none font-black text-slate-900 text-lg font-mono" 
+                        className="w-full pl-16 pr-4 py-3 rounded-xl bg-slate-900 border border-slate-700 focus:border-indigo-500 transition-all outline-none font-black text-white text-lg font-mono" 
                         value={paymentAmount} 
                         onChange={(e) => setPaymentAmount(e.target.value)} 
                       />
@@ -2609,8 +2631,8 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                   </div>
 
                   {paymentMethod === 'bank_transfer' && (
-                    <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 mb-8 mt-2">
-                      <label className="block text-xs font-bold text-blue-600 uppercase tracking-wider mb-2">{isAr ? "إيصال التحويل البنكي *" : "Bank Transfer Receipt *"}</label>
+                    <div className="bg-blue-950/40 p-4 rounded-xl border border-blue-900/60 mb-4 mt-2">
+                      <label className="block text-xs font-bold text-blue-300 uppercase tracking-wider mb-2">{isAr ? "إيصال التحويل البنكي *" : "Bank Transfer Receipt *"}</label>
                       <div className="flex flex-col gap-2">
                         <input 
                           type="file" 
@@ -2620,17 +2642,17 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                               setBankTransferFile(e.target.files[0]);
                             }
                           }}
-                          className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200"
+                          className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-900/80 file:text-blue-300 hover:file:bg-blue-800"
                         />
                         {bankTransferFile ? (
-                          <p className="text-xs font-medium text-blue-800 break-all bg-blue-100/50 p-2 rounded-lg border border-blue-200 inline-flex items-center gap-1"><CheckCircle2 size={12}/> {bankTransferFile.name}</p>
+                          <p className="text-xs font-medium text-blue-300 break-all bg-blue-900/50 p-2 rounded-lg border border-blue-800 inline-flex items-center gap-1"><CheckCircle2 size={12}/> {bankTransferFile.name}</p>
                         ) : (
                           <div className="flex items-center gap-2 mt-1">
-                            <span className="text-[10px] text-blue-500">{isAr ? "أو:" : "Or: "}</span>
+                            <span className="text-[10px] text-blue-400">{isAr ? "أو:" : "Or: "}</span>
                             <button 
                               type="button" 
                               onClick={handlePasteBankReceipt}
-                              className="text-[10px] text-blue-600 bg-blue-100 hover:bg-blue-200 px-2 py-1 rounded flex items-center gap-1 transition-colors border border-blue-200 cursor-pointer"
+                              className="text-[10px] text-blue-300 bg-blue-900/60 hover:bg-blue-800 px-2 py-1 rounded flex items-center gap-1 transition-colors border border-blue-800 cursor-pointer"
                             >
                               <ClipboardPaste size={10}/> {isAr ? "لصق من الحافظة" : "Paste from Clipboard"}
                             </button>
@@ -2642,8 +2664,8 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                 </div>
 
                 </div>
-                <div className="flex justify-end gap-3 p-6 border-t border-slate-100 bg-slate-50 mt-auto">
-                  <button type="button" onClick={() => setShowPaymentModal(false)} className="px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 hover:text-slate-900 transition-all shadow-sm cursor-pointer">{isAr ? "إلغاء" : "Cancel"}</button>
+                <div className="flex justify-end gap-3 p-6 border-t border-slate-800 bg-slate-900/60 mt-auto">
+                  <button type="button" onClick={() => setShowPaymentModal(false)} className="px-6 py-3 bg-slate-800 border border-slate-700 text-slate-300 rounded-xl font-bold hover:bg-slate-700 hover:text-white transition-all shadow-sm cursor-pointer">{isAr ? "إلغاء" : "Cancel"}</button>
                   <button type="submit" disabled={isSubmitting} className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 shadow-md shadow-indigo-600/20 hover:shadow-indigo-600/40 hover:-translate-y-0.5 transition-all cursor-pointer">
                     {isSubmitting && <Loader2 size={18} className="animate-spin" />}
                     {isAr ? "تأكيد التحصيل" : "Confirm Payment"}
@@ -2661,34 +2683,34 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
           >
             <motion.div 
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl border border-slate-100 flex flex-col max-h-[95vh] overflow-y-auto custom-scrollbar"
+              className="bg-[#0B1121] text-slate-100 w-full max-w-sm rounded-2xl p-6 shadow-2xl border border-slate-800 flex flex-col max-h-[95vh] overflow-y-auto custom-scrollbar"
               dir={isAr ? "rtl" : "ltr"}
             >
-              <h3 className="text-xl font-black text-slate-900 mb-4 tracking-tight">{isAr ? "إضافة مورد جديد" : "Add New Supplier"}</h3>
+              <h3 className="text-xl font-black text-white mb-4 tracking-tight">{isAr ? "إضافة مورد جديد" : "Add New Supplier"}</h3>
               <input 
                 type="text" 
-                value={newSupplierName}
-                onChange={(e) => setNewSupplierName(e.target.value)}
-                placeholder={isAr ? "مثال: كوكاكولا مصر" : "e.g. COCA COLA EG"}
-                className="w-full border-none bg-slate-50 focus:ring-2 focus:ring-indigo-500/20 rounded-xl p-3 text-slate-900 font-medium mb-6 outline-none"
-                autoFocus
+                value={newSupplierName} 
+                onChange={(e) => setNewSupplierName(e.target.value)} 
+                placeholder={isAr ? "مثال: كوكاكولا مصر" : "e.g. COCA COLA EG"} 
+                className="w-full bg-slate-900 border border-slate-700 focus:border-indigo-500 rounded-xl p-3 text-white placeholder:text-slate-500 font-medium mb-6 outline-none" 
+                autoFocus 
               />
               <div className="flex gap-3 justify-end">
                 <button 
-                  onClick={() => setShowAddSupplier(false)}
-                  className="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                  onClick={() => setShowAddSupplier(false)} 
+                  className="px-4 py-2 bg-slate-800 text-slate-300 font-bold hover:bg-slate-700 rounded-xl transition-colors cursor-pointer"
                 >
                   {isAr ? "إلغاء" : "Cancel"}
                 </button>
                 <button 
-                  onClick={handleAddSupplier}
-                  disabled={!newSupplierName.trim()}
+                  onClick={handleAddSupplier} 
+                  disabled={!newSupplierName.trim()} 
                   className="px-5 py-2 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-sm cursor-pointer"
                 >
                   {isAr ? "حفظ المورد" : "Save Supplier"}
@@ -2705,27 +2727,27 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           >
             <motion.div 
               initial={{ scale: 0.95, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[95vh]"
+              className="bg-[#0B1121] text-slate-100 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-slate-800 flex flex-col max-h-[95vh]"
               dir={isAr ? "rtl" : "ltr"}
             >
-              <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50/50">
-                <h2 className="text-xl font-black text-slate-900 tracking-tight">{isAr ? "إضافة أمر شراء للدين" : "Add PO to Credit"}</h2>
+              <div className="flex justify-between items-center p-6 border-b border-slate-800 bg-slate-900/60">
+                <h2 className="text-xl font-black text-white tracking-tight">{isAr ? "إضافة أمر شراء للدين" : "Add PO to Credit"}</h2>
                 <button 
                   onClick={() => setSelectedCreditForPoUpload(null)} 
-                  className="p-2 hover:bg-slate-200 text-slate-400 hover:text-slate-600 rounded-full transition-colors cursor-pointer"
+                  className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-full transition-colors cursor-pointer"
                 >
                   <X size={20} />
                 </button>
               </div>
 
               <div className="p-6 overflow-y-auto custom-scrollbar flex-1 min-h-0">
-                <p className="text-sm text-slate-500 mb-6 font-medium">
+                <p className="text-sm text-slate-400 mb-6 font-medium">
                   {isAr 
                     ? "قم برفع أو سحب أو لصق صورة أمر الشراء. سيتم استخراج الأصناف وتحديثها تلقائياً بالذكاء الاصطناعي." 
                     : "Upload, drag-and-drop, or paste a purchase order image. We'll automatically extract the products and sync them with the catalog."}
@@ -2734,23 +2756,23 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                 <div 
                   onDrop={handleDrop}
                   onDragOver={handleDragOver}
-                  className={`border-2 border-dashed rounded-2xl p-8 text-center transition-colors ${uploadingPoToOldCredit ? 'border-indigo-500 bg-indigo-50/50' : 'border-slate-300 hover:border-indigo-400 bg-slate-50 hover:bg-slate-50/80 dark:bg-slate-800/50 dark:border-slate-700'}`}
+                  className={`border-2 border-dashed rounded-2xl p-8 text-center transition-colors ${uploadingPoToOldCredit ? 'border-indigo-500 bg-indigo-950/40' : 'border-slate-700 hover:border-indigo-500 bg-slate-950/60 hover:bg-slate-900/60'}`}
                 >
                   {uploadingPoToOldCredit ? (
-                    <div className="flex flex-col items-center justify-center gap-3 text-indigo-600">
+                    <div className="flex flex-col items-center justify-center gap-3 text-indigo-400">
                       <Loader2 className="h-10 w-10 animate-spin" />
-                      <span className="font-bold text-lg">{isAr ? "جاري معالجة المستند..." : "Processing Document..."}</span>
+                      <span className="font-bold text-lg text-white">{isAr ? "جاري معالجة المستند..." : "Processing Document..."}</span>
                       <span className="text-sm text-indigo-400">{isAr ? "استخراج الأصناف ومطابقتها..." : "Extracting details and syncing items..."}</span>
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center justify-center gap-3 text-slate-500">
-                      <ImageIcon className="h-12 w-12 text-slate-400" />
-                      <span className="font-bold text-lg">{isAr ? "اسحب صورة امر الشراء هنا" : "Paste or Drop PO Image Here"}</span>
-                      <span className="text-sm">{isAr ? "اضغط Ctrl+V / Cmd+V للصق مباشرة" : "Cmd+V / Ctrl+V to paste directly"}</span>
+                    <div className="flex flex-col items-center justify-center gap-3 text-slate-400">
+                      <ImageIcon className="h-12 w-12 text-slate-500" />
+                      <span className="font-bold text-lg text-white">{isAr ? "اسحب صورة امر الشراء هنا" : "Paste or Drop PO Image Here"}</span>
+                      <span className="text-sm text-slate-400">{isAr ? "اضغط Ctrl+V / Cmd+V للصق مباشرة" : "Cmd+V / Ctrl+V to paste directly"}</span>
                       <button
                         type="button"
                         onClick={handlePastePoImageButtonClick}
-                        className="mt-4 flex items-center gap-2 px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-colors text-sm cursor-pointer"
+                        className="mt-4 flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl transition-colors text-sm border border-slate-700 cursor-pointer"
                       >
                         <ClipboardPaste size={18} />
                         {isAr ? "لصق من الحافظة" : "Paste from Clipboard"}

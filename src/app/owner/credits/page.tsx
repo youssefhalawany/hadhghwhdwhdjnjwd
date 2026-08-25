@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
+import { safeSetLocalStorage, sanitizeCreditForCache } from "@/lib/storageUtils";
 import { collection, query, orderBy, limit, getDocs } from "firebase/firestore";
 import { PullToRefresh } from "@/components/MobileUX/PullToRefresh";
 import { showIsland } from "@/components/MobileUX/DynamicIsland";
@@ -18,15 +19,16 @@ const D = {
   textPrimary: "#f8fafc",
   textSecondary: "#94a3b8",
   textDim: "#64748b",
-  amber: "#f59e0b",
-  amberDim: "rgba(245, 158, 11, 0.1)",
-  amberBorder: "rgba(245, 158, 11, 0.25)",
-  emerald: "#10b981",
   cyan: "#22d3ee",
+  emerald: "#34d399",
+  amber: "#fbbf24",
+  rose: "#f43f5e",
+  indigo: "#818cf8",
 };
 
 export default function OwnerCreditsPage() {
   const { language: lang } = useLanguage();
+  const isAr = lang === "ar";
   const [loading, setLoading] = useState(true);
   const [credits, setCredits] = useState<any[]>([]);
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
@@ -41,9 +43,8 @@ export default function OwnerCreditsPage() {
       const snap = await getDocs(q);
       const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setCredits(data);
-      if (typeof window !== "undefined") {
-        localStorage.setItem('cached_detailed_credits', JSON.stringify(data.slice(0, 50)));
-      }
+      const cleanData = data.slice(0, 50).map(sanitizeCreditForCache);
+      safeSetLocalStorage('cached_detailed_credits', JSON.stringify(cleanData));
     } catch (err) {
       console.error(err);
     } finally {
@@ -51,7 +52,24 @@ export default function OwnerCreditsPage() {
     }
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    // Instant cache hydration
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem('cached_detailed_credits');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setCredits(parsed);
+            setLoading(false);
+          }
+        }
+      } catch (e) {
+        console.warn("Could not read cached credits:", e);
+      }
+    }
+    loadData();
+  }, []);
 
   const handleRefresh = async () => {
     if (navigator.vibrate) navigator.vibrate(50);

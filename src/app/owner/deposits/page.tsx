@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
+import { safeSetLocalStorage, sanitizeDepositForCache } from "@/lib/storageUtils";
 import { collection, query, orderBy, limit, getDocs } from "firebase/firestore";
 import { PullToRefresh } from "@/components/MobileUX/PullToRefresh";
 import { showIsland } from "@/components/MobileUX/DynamicIsland";
@@ -25,11 +26,14 @@ const D = {
   blue: "#60a5fa",
   blueDim: "rgba(96, 165, 250, 0.1)",
   blueBorder: "rgba(96, 165, 250, 0.25)",
-  emerald: "#10b981",
+  emerald: "#34d399",
   emeraldDim: "rgba(16, 185, 129, 0.1)",
   emeraldBorder: "rgba(16, 185, 129, 0.25)",
   greenDim: "rgba(16, 185, 129, 0.1)",
   greenBorder: "rgba(16, 185, 129, 0.25)",
+  amber: "#fbbf24",
+  rose: "#f43f5e",
+  indigo: "#818cf8",
 };
 
 export default function OwnerDepositsPage() {
@@ -41,15 +45,13 @@ export default function OwnerDepositsPage() {
   const [dateTo, setDateTo] = useState("");
 
   const loadData = async () => {
-    setLoading(true);
     try {
       const q = query(collection(db, "deposits"), orderBy("createdAt", "desc"), limit(300));
       const snap = await getDocs(q);
       const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setDeposits(data);
-      if (typeof window !== "undefined") {
-        localStorage.setItem('cached_detailed_deposits', JSON.stringify(data.slice(0, 50)));
-      }
+      const cleanData = data.slice(0, 50).map(sanitizeDepositForCache);
+      safeSetLocalStorage('cached_detailed_deposits', JSON.stringify(cleanData));
     } catch (err) {
       console.error(err);
     } finally {
@@ -57,7 +59,24 @@ export default function OwnerDepositsPage() {
     }
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    // Instant cache hydration
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem('cached_detailed_deposits');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setDeposits(parsed);
+            setLoading(false);
+          }
+        }
+      } catch (e) {
+        console.warn("Could not read cached deposits:", e);
+      }
+    }
+    loadData();
+  }, []);
 
   const handleRefresh = async () => {
     if (navigator.vibrate) navigator.vibrate(50);

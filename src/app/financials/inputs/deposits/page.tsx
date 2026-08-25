@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { db, auth } from "@/lib/firebase";
+import { safeSetLocalStorage, sanitizeDepositForCache } from "@/lib/storageUtils";
 import { dispatchNotificationSystem } from "@/lib/notifications";
 import { 
   collection, 
@@ -94,9 +95,8 @@ export default function DepositsPage() {
       data.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
       setDeposits(data);
-      if (typeof window !== "undefined") {
-        localStorage.setItem('cached_detailed_deposits', JSON.stringify(data.slice(0, 50)));
-      }
+      const cleanData = data.slice(0, 50).map(sanitizeDepositForCache);
+      safeSetLocalStorage('cached_detailed_deposits', JSON.stringify(cleanData));
       setLoading(false);
     }, (err: any) => {
       console.error(err);
