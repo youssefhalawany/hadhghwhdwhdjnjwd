@@ -206,6 +206,7 @@ export default function ManagerAuditPage() {
   const [expectedCash, setExpectedCash] = useState<string>("");
   const [expectedVisa, setExpectedVisa] = useState<string>("");
   const [auditShift, setAuditShift] = useState<string>("Morning");
+  const [auditDate, setAuditDate] = useState<string>("");
   const [coffeePercent, setCoffeePercent] = useState<string>("");
   const [cigarettePercent, setCigarettePercent] = useState<string>("");
   const [comments, setComments] = useState<string>("");
@@ -353,6 +354,12 @@ export default function ManagerAuditPage() {
     setSelectedReport(report);
     setCashierOverrideCash(String(report?.cashierCounts?.cash || "0"));
     setCashierOverrideVisa(String(report?.cashierCounts?.visa || "0"));
+    setAuditDate(report.cashierDetails?.date || new Date().toISOString().substring(0, 10));
+    
+    const rawShift = report.cashierDetails?.shift || "Morning";
+    const formattedShift = rawShift.charAt(0).toUpperCase() + rawShift.slice(1).toLowerCase();
+    const finalShift = ["Morning", "Noon", "Night"].includes(formattedShift) ? formattedShift : "Morning";
+
     // Populate form
     if (report.managerAudit) {
       setExpectedCash(String(report.managerAudit.expectedCash || ""));
@@ -361,14 +368,14 @@ export default function ManagerAuditPage() {
       setCigarettePercent(String(report.managerAudit.cigarettePercent || ""));
       setComments(report.managerAudit.comments || "");
       setManagerName(report.managerAudit.managerName || "");
-      setAuditShift(report.cashierDetails?.shift || "Morning");
+      setAuditShift(finalShift);
     } else {
       setExpectedCash("");
       setExpectedVisa("");
       setCoffeePercent("");
       setCigarettePercent("");
       setComments("");
-      setAuditShift(report.cashierDetails?.shift || "Morning");
+      setAuditShift(finalShift);
     }
     setManagerSignature("");
     setHasSigned(false);
@@ -403,10 +410,13 @@ export default function ManagerAuditPage() {
     setSubmitting(true);
     try {
       const reportRef = doc(db, "shift_reports", selectedReport.id);
+      const effectiveDate = auditDate || selectedReport?.cashierDetails?.date || new Date().toISOString().split('T')[0];
+      const effectiveShift = auditShift ? auditShift.toLowerCase() : (selectedReport?.cashierDetails?.shift?.toLowerCase() || "morning");
 
       await updateDoc(reportRef, {
         status: "approved",
-        "cashierDetails.shift": auditShift.toLowerCase(),
+        "cashierDetails.date": effectiveDate,
+        "cashierDetails.shift": effectiveShift,
         "cashierCounts.cash": Number(cashierOverrideCash) || 0,
         "cashierCounts.visa": Number(cashierOverrideVisa) || 0,
         "cashierCounts.total": (Number(cashierOverrideCash) || 0) + (Number(cashierOverrideVisa) || 0),
@@ -446,8 +456,8 @@ export default function ManagerAuditPage() {
         } else {
           // Fallback to finding by exact match of older records
           const qFallback = query(salesRef, 
-            where("date", "==", selectedReport?.cashierDetails?.date),
-            where("shift", "==", auditShift.toLowerCase()),
+            where("date", "==", selectedReport?.cashierDetails?.date || effectiveDate),
+            where("shift", "==", selectedReport?.cashierDetails?.shift?.toLowerCase() || effectiveShift),
             where("storeId", "==", selectedReport?.cashierDetails?.storeId),
             limit(1)
           );
@@ -461,10 +471,10 @@ export default function ManagerAuditPage() {
       const salesData = {
         cash: Number(expectedCash) || 0,
         cashierName: selectedReport?.cashierDetails?.name || "Unknown",
-        date: selectedReport?.cashierDetails?.date || new Date().toISOString().split('T')[0],
+        date: effectiveDate,
         notes: finalNotes ? finalNotes.trim() : "",
         overShort: calculateCashVariance() || 0,
-        shift: auditShift ? auditShift.toLowerCase() : (selectedReport?.cashierDetails?.shift?.toLowerCase() || "morning"),
+        shift: effectiveShift,
         storeId: selectedReport?.cashierDetails?.storeId || "Unknown",
         branchId: selectedReport?.branchId || currentBranch || "alamein4",
         visa: Number(expectedVisa) || 0,
@@ -484,17 +494,29 @@ export default function ManagerAuditPage() {
         });
       }
 
+      // Update local state
+      setSelectedReport((prev: any) => prev ? {
+        ...prev,
+        cashierDetails: {
+          ...prev.cashierDetails,
+          date: effectiveDate,
+          shift: effectiveShift
+        }
+      } : null);
+
       // Dispatch System & Ibrahim Notifications
       dispatchNotificationSystem({
         title: `✅ Shift Report Approved - ${selectedReport?.cashierDetails?.name || 'Cashier'}`,
-        body: `Approved By: ${managerName || 'Manager'} • Shift: ${auditShift}\nCash: EGP ${expectedCash} • Visa: EGP ${expectedVisa}\nOver/Short: EGP ${calculateCashVariance()}`,
+        body: `Approved By: ${managerName || 'Manager'} • Shift: ${auditShift} • Date: ${effectiveDate}\nCash: EGP ${expectedCash} • Visa: EGP ${expectedVisa}\nOver/Short: EGP ${calculateCashVariance()}`,
         type: "shift",
         url: `/shift-reports/view?id=${selectedReport.id}`,
         metadata: { cashierName: selectedReport?.cashierDetails?.name, managerName, status: "approved" }
       });
 
-      toast.success("Report Approved & Saved! Sales record created.");
-      setActiveTab("history");
+      toast.success(activeTab === "history" ? (isAr ? "تم تحديث الوردية وسجل المبيعات بنجاح!" : "Shift & Sales record updated!") : (isAr ? "تم اعتماد التقرير وحفظ سجل المبيعات!" : "Report Approved & Saved! Sales record created."));
+      if (activeTab === "pending") {
+        setActiveTab("history");
+      }
     } catch (error) {
       console.error("Error approving report:", error);
       toast.error("Failed to approve report.");
@@ -1281,25 +1303,31 @@ export default function ManagerAuditPage() {
                             </span>
                           )}
                         </h2>
-                        <p className="text-zinc-400 text-sm mt-1 flex flex-wrap items-center gap-2">
-                          <span>{selectedReport?.cashierDetails?.date}</span>
+                        <div className="text-zinc-400 text-sm mt-1.5 flex flex-wrap items-center gap-2">
+                          <div className="inline-flex items-center gap-1.5 bg-zinc-800/90 border border-zinc-700/80 rounded-lg px-2.5 py-1 text-xs text-white shadow-sm focus-within:border-rose-500 focus-within:ring-1 focus-within:ring-rose-500/30 transition-all">
+                            <Calendar className="h-3.5 w-3.5 text-rose-400 shrink-0" />
+                            <input
+                              type="date"
+                              value={auditDate}
+                              onChange={(e) => setAuditDate(e.target.value)}
+                              className="bg-transparent border-none text-white outline-none font-bold text-xs cursor-pointer [color-scheme:dark]"
+                              title={isAr ? "تعديل تاريخ الوردية" : "Edit Shift Date"}
+                            />
+                          </div>
                           <span className="text-zinc-600">•</span>
-                          {activeTab === "pending" ? (
-                            <select
-                              value={auditShift}
-                              onChange={(e) => setAuditShift(e.target.value)}
-                              className="bg-zinc-800 border border-zinc-600 text-white rounded px-2 py-0.5 outline-none font-bold text-xs focus:border-rose-500 transition-colors"
-                            >
-                              <option value="Morning">{isAr ? "الوردية الصباحية" : "Morning Shift"}</option>
-                              <option value="Noon">{isAr ? "الوردية المسائية" : "Noon Shift"}</option>
-                              <option value="Night">{isAr ? "الوردية الليلية" : "Night Shift"}</option>
-                            </select>
-                          ) : (
-                            <span>{selectedReport?.cashierDetails?.shift === "Morning" ? (isAr ? "الوردية الصباحية" : "Morning Shift") : selectedReport?.cashierDetails?.shift === "Night" ? (isAr ? "الوردية الليلية" : "Night Shift") : (isAr ? "الوردية المسائية" : "Noon Shift")}</span>
-                          )}
+                          <select
+                            value={auditShift}
+                            onChange={(e) => setAuditShift(e.target.value)}
+                            className="bg-zinc-800/90 border border-zinc-700/80 text-white rounded-lg px-2.5 py-1 outline-none font-bold text-xs focus:border-rose-500 focus:ring-1 focus:ring-rose-500/30 transition-all cursor-pointer shadow-sm"
+                            title={isAr ? "تعديل فترة الوردية" : "Edit Shift Period"}
+                          >
+                            <option value="Morning">{isAr ? "الوردية الصباحية" : "Morning Shift"}</option>
+                            <option value="Noon">{isAr ? "الوردية المسائية" : "Noon Shift"}</option>
+                            <option value="Night">{isAr ? "الوردية الليلية" : "Night Shift"}</option>
+                          </select>
                           <span className="text-zinc-600">•</span>
-                          <span>{selectedReport?.cashierDetails?.storeId}</span>
-                        </p>
+                          <span className="font-semibold text-zinc-300">{selectedReport?.cashierDetails?.storeId}</span>
+                        </div>
                         <p className="text-zinc-400 text-xs mt-1 font-semibold text-rose-400">
                           {selectedReport.cashierRole === 2 
                             ? (isAr ? "كاشير ثانٍ (تسليم نقدية فقط)" : "Cashier 2 (Money Only)") 
@@ -1907,9 +1935,9 @@ export default function ManagerAuditPage() {
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0', backgroundColor: '#fff' }}>
                         <div style={{ padding: '6px 15px', borderRight: '1px dotted #ccc', borderBottom: '1px dotted #ccc' }}><p style={{ fontSize: '9px', color: '#666666', textTransform: 'uppercase', margin: '0 0 2px' }}>Store ID</p><p style={{ fontSize: '11px', color: '#000000', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.storeId}</p></div>
-                        <div style={{ padding: '6px 15px', borderBottom: '1px dotted #ccc' }}><p style={{ fontSize: '9px', color: '#666666', textTransform: 'uppercase', margin: '0 0 2px' }}>Shift Period</p><p style={{ fontSize: '11px', color: '#000000', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.shift} Shift</p></div>
+                        <div style={{ padding: '6px 15px', borderBottom: '1px dotted #ccc' }}><p style={{ fontSize: '9px', color: '#666666', textTransform: 'uppercase', margin: '0 0 2px' }}>Shift Period</p><p style={{ fontSize: '11px', color: '#000000', fontWeight: 'bold', margin: 0 }}>{auditShift || selectedReport?.cashierDetails?.shift} Shift</p></div>
                         <div style={{ padding: '6px 15px', borderRight: '1px dotted #ccc', borderBottom: '1px dotted #ccc' }}><p style={{ fontSize: '9px', color: '#666666', textTransform: 'uppercase', margin: '0 0 2px' }}>Cashier Name</p><p style={{ fontSize: '11px', color: '#000000', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.name}</p></div>
-                        <div style={{ padding: '6px 15px', borderBottom: '1px dotted #ccc' }}><p style={{ fontSize: '9px', color: '#666666', textTransform: 'uppercase', margin: '0 0 2px' }}>Operating Date</p><p style={{ fontSize: '11px', color: '#000000', fontWeight: 'bold', margin: 0 }}>{selectedReport?.cashierDetails?.date}</p></div>
+                        <div style={{ padding: '6px 15px', borderBottom: '1px dotted #ccc' }}><p style={{ fontSize: '9px', color: '#666666', textTransform: 'uppercase', margin: '0 0 2px' }}>Operating Date</p><p style={{ fontSize: '11px', color: '#000000', fontWeight: 'bold', margin: 0 }}>{auditDate || selectedReport?.cashierDetails?.date}</p></div>
                         <div style={{ padding: '6px 15px', borderRight: '1px dotted #ccc' }}><p style={{ fontSize: '9px', color: '#666666', textTransform: 'uppercase', margin: '0 0 2px' }}>Cashier Role</p><p style={{ fontSize: '11px', color: '#000000', fontWeight: 'bold', margin: 0 }}>{selectedReport.cashierRole === 2 ? 'Cashier 2 (Money Only)' : 'Cashier 1 (Full)'}</p></div>
                         <div style={{ padding: '6px 15px' }}><p style={{ fontSize: '9px', color: '#666666', textTransform: 'uppercase', margin: '0 0 2px' }}>Timestamp</p><p style={{ fontSize: '11px', color: '#000000', fontWeight: 'bold', margin: 0 }}>{formatTimeMinus2Hours(selectedReport.createdAt)}</p></div>
                       </div>
