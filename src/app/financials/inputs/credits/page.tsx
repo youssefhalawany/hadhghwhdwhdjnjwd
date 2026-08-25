@@ -571,11 +571,13 @@ export default function CreditsPage() {
           status = "partial";
         } else if (status === "open" && d.collectionDate) {
           const cDate = new Date(d.collectionDate);
-          const today = new Date();
-          cDate.setHours(0, 0, 0, 0);
-          today.setHours(0, 0, 0, 0);
-          if (cDate < today) {
-            status = "overdue";
+          if (!isNaN(cDate.getTime())) {
+            const today = new Date();
+            cDate.setHours(0, 0, 0, 0);
+            today.setHours(0, 0, 0, 0);
+            if (cDate < today) {
+              status = "overdue";
+            }
           }
         }
 
@@ -1512,16 +1514,21 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
       const remaining = (c.amountDue + c.tax) - c.paidAmount;
       if (remaining <= 0) return;
 
-      const created = c.createdAt?.toDate ? c.createdAt.toDate() : new Date(c.createdAt);
-      const diffTime = Math.abs(now.getTime() - created.getTime());
+      const createdRaw = c.createdAt?.toDate ? c.createdAt.toDate() : (c.createdAt ? new Date(c.createdAt) : null);
+      const createdTime = createdRaw && !isNaN(createdRaw.getTime()) ? createdRaw.getTime() : now.getTime();
+      const diffTime = Math.abs(now.getTime() - createdTime);
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
       if (diffDays <= 15) age0_15 += remaining;
       else if (diffDays <= 30) age16_30 += remaining;
       else age30Plus += remaining;
 
-      const expectedDate = c.collectionDate ? new Date(c.collectionDate) : new Date(created.getTime() + 30 * 24 * 60 * 60 * 1000);
-      const expectedDateStr = expectedDate.toISOString().split("T")[0];
+      let expectedDateStr = "";
+      if (c.collectionDate && !isNaN(new Date(c.collectionDate).getTime())) {
+        expectedDateStr = new Date(c.collectionDate).toISOString().split("T")[0];
+      } else {
+        expectedDateStr = new Date(createdTime + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+      }
       if (!waterfallMap[expectedDateStr]) waterfallMap[expectedDateStr] = 0;
       waterfallMap[expectedDateStr] += remaining;
     });
@@ -1547,7 +1554,8 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
     
     const openInvoices = credits.filter(c => c.status !== "paid" && !c.onSalesOnly).map(c => {
       const remaining = (c.amountDue + c.tax) - c.paidAmount;
-      const created = c.createdAt?.toDate ? c.createdAt.toDate().getTime() : new Date(c.createdAt).getTime();
+      const createdRaw = c.createdAt?.toDate ? c.createdAt.toDate() : (c.createdAt ? new Date(c.createdAt) : null);
+      const created = createdRaw && !isNaN(createdRaw.getTime()) ? createdRaw.getTime() : Date.now();
       return { ...c, remaining, created };
     }).sort((a, b) => a.created - b.created);
 
@@ -1579,9 +1587,10 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
       totalDebt += total - c.paidAmount;
       
       if (c.status === 'paid' && c.payments && c.payments.length > 0) {
-        const created = c.createdAt?.toDate ? c.createdAt.toDate().getTime() : new Date(c.createdAt).getTime();
+        const createdRaw = c.createdAt?.toDate ? c.createdAt.toDate() : (c.createdAt ? new Date(c.createdAt) : null);
+        const created = createdRaw && !isNaN(createdRaw.getTime()) ? createdRaw.getTime() : Date.now();
         const lastPayment = c.payments[c.payments.length - 1];
-        const paidDate = new Date(lastPayment.date).getTime();
+        const paidDate = lastPayment?.date && !isNaN(new Date(lastPayment.date).getTime()) ? new Date(lastPayment.date).getTime() : Date.now();
         totalDaysToPay += (paidDate - created) / (1000 * 60 * 60 * 24);
         paidCount++;
       }
