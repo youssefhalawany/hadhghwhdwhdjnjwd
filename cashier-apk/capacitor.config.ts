@@ -7,7 +7,7 @@ const config: CapacitorConfig = {
   bundledWebRuntime: false,
   server: {
     // Vercel Live URL
-    url: 'https://hadhghwhdwhdjnjwd.vercel.app/cashier',
+    url: 'https://anh-zeta.vercel.app/cashier',
     cleartext: true,
   },
   android: {

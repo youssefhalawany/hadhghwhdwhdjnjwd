@@ -23,10 +23,11 @@ function createWindow() {
   const { dialog } = require('electron');
 
   // Load the live URL
-  mainWindow.loadURL('https://hadhghwhdwhdjnjwd.vercel.app/shift-reports/manager').catch((err) => {
+  mainWindow.loadURL('https://anh-zeta.vercel.app/shift-reports/manager').catch((err) => {
+    console.error('Failed to load online URL, trying again...', err);
     dialog.showErrorBox(
-      'Connection Error',
-      'Failed to connect to the cloud server at https://hadhghwhdwhdjnjwd.vercel.app/.\n\nPlease ensure your device is connected to the internet.'
+      'Server Connection Issue',
+      'Failed to connect to the cloud server at https://anh-zeta.vercel.app/.\n\nPlease ensure your device is connected to the internet.'
     );
   });
 

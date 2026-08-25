@@ -2,7 +2,7 @@ const { app, BrowserWindow, Menu, shell, Notification } = require("electron");
 const path = require("path");
 
 // The URL of your deployed Vercel app
-const APP_URL = "https://hadhghwhdwhdjnjwd.vercel.app";
+const APP_URL = "https://anh-zeta.vercel.app";
 
 let mainWindow;
 
