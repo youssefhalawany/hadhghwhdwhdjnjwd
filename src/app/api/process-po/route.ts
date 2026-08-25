@@ -6,10 +6,10 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 // High-speed model list with fast fallback
 async function generateFastPOExtraction(prompt: string, inlineData: any) {
   const modelsToTry = [
-    "gemini-1.5-flash",
-    "gemini-2.0-flash",
-    "gemini-1.5-flash-8b",
-    "gemini-1.5-pro"
+    "gemini-3.6-flash",
+    "gemini-3.5-flash-lite",
+    "gemma-4-26b-a4b-it",
+    "gemini-flash-latest"
   ];
   let lastError: any = null;
 
@@ -69,8 +69,8 @@ Extract the following information from the provided PO image and return ONLY a v
   "invoiceNumber": "Invoice number or Requisitioner value (empty string if not found)",
   "date": "PO Date in YYYY-MM-DD format (empty string if not found)",
   "companyName": "Supplier / Vendor name from To field (empty string if not found)",
-  "amount": 0.0, // Sub Total before tax as a number
-  "tax": 0.0, // Sales Tax as a number
+  "amount": 0.0,
+  "tax": 0.0,
   "items": [
     {
       "barcode": "Lookup Code string",
