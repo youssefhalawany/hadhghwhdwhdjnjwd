@@ -6,6 +6,27 @@ import { safeSetLocalStorage, sanitizeCreditForCache } from "@/lib/storageUtils"
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { syncProductsToMaster } from "@/lib/products-sync";
 import { dispatchNotificationSystem } from "@/lib/notifications";
+
+function safeToIsoDate(val: any, fallback?: Date): string {
+  try {
+    if (!val) {
+      return (fallback || new Date()).toISOString().split("T")[0];
+    }
+    if (val?.toDate && typeof val.toDate === "function") {
+      const d = val.toDate();
+      if (d instanceof Date && !isNaN(d.getTime())) {
+        return d.toISOString().split("T")[0];
+      }
+    }
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) {
+      return d.toISOString().split("T")[0];
+    }
+    return (fallback || new Date()).toISOString().split("T")[0];
+  } catch (_e) {
+    return new Date().toISOString().split("T")[0];
+  }
+}
 import {
   collection,
   addDoc,
@@ -1502,116 +1523,166 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
 
   // Derived Dashboard Data
   const dashboardData = useMemo(() => {
-    let age0_15 = 0;
-    let age16_30 = 0;
-    let age30Plus = 0;
-    const waterfallMap: Record<string, number> = {};
+    try {
+      let age0_15 = 0;
+      let age16_30 = 0;
+      let age30Plus = 0;
+      const waterfallMap: Record<string, number> = {};
+      const now = new Date();
 
-    const now = new Date();
+      credits.forEach(c => {
+        try {
+          if (!c || c.status === "paid" || c.onSalesOnly) return;
+          const remaining = (Number(c.amountDue || 0) + Number(c.tax || 0)) - Number(c.paidAmount || 0);
+          if (remaining <= 0) return;
 
-    credits.forEach(c => {
-      if (c.status === "paid" || c.onSalesOnly) return;
-      const remaining = (c.amountDue + c.tax) - c.paidAmount;
-      if (remaining <= 0) return;
+          let createdTime = now.getTime();
+          try {
+            if (c.createdAt?.toDate && typeof c.createdAt.toDate === "function") {
+              const dt = c.createdAt.toDate();
+              if (dt && !isNaN(dt.getTime())) createdTime = dt.getTime();
+            } else if (c.createdAt) {
+              const dt = new Date(c.createdAt);
+              if (dt && !isNaN(dt.getTime())) createdTime = dt.getTime();
+            }
+          } catch (_e) {}
 
-      const createdRaw = c.createdAt?.toDate ? c.createdAt.toDate() : (c.createdAt ? new Date(c.createdAt) : null);
-      const createdTime = createdRaw && !isNaN(createdRaw.getTime()) ? createdRaw.getTime() : now.getTime();
-      const diffTime = Math.abs(now.getTime() - createdTime);
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          const diffTime = Math.abs(now.getTime() - createdTime);
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-      if (diffDays <= 15) age0_15 += remaining;
-      else if (diffDays <= 30) age16_30 += remaining;
-      else age30Plus += remaining;
+          if (diffDays <= 15) age0_15 += remaining;
+          else if (diffDays <= 30) age16_30 += remaining;
+          else age30Plus += remaining;
 
-      let expectedDateStr = "";
-      if (c.collectionDate && !isNaN(new Date(c.collectionDate).getTime())) {
-        expectedDateStr = new Date(c.collectionDate).toISOString().split("T")[0];
-      } else {
-        expectedDateStr = new Date(createdTime + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
-      }
-      if (!waterfallMap[expectedDateStr]) waterfallMap[expectedDateStr] = 0;
-      waterfallMap[expectedDateStr] += remaining;
-    });
+          const expectedDateStr = safeToIsoDate(c.collectionDate || (createdTime + 30 * 24 * 60 * 60 * 1000));
+          if (!waterfallMap[expectedDateStr]) waterfallMap[expectedDateStr] = 0;
+          waterfallMap[expectedDateStr] += remaining;
+        } catch (_creditErr) {}
+      });
 
-    const agingChartData = [
-      { name: "0-15 Days", amount: age0_15, color: "#10b981" },
-      { name: "16-30 Days", amount: age16_30, color: "#eab308" },
-      { name: "30+ Days", amount: age30Plus, color: "#ef4444" }
-    ];
+      const agingChartData = [
+        { name: "0-15 Days", amount: age0_15, color: "#10b981" },
+        { name: "16-30 Days", amount: age16_30, color: "#eab308" },
+        { name: "30+ Days", amount: age30Plus, color: "#ef4444" }
+      ];
 
-    const waterfallChartData = Object.keys(waterfallMap).sort().slice(0, 30).map(date => {
-      return { date, amount: waterfallMap[date] };
-    });
+      const waterfallChartData = Object.keys(waterfallMap).sort().slice(0, 30).map(date => {
+        return { date, amount: waterfallMap[date] };
+      });
 
-    return { agingChartData, waterfallChartData };
+      return { agingChartData, waterfallChartData };
+    } catch (_dashboardErr) {
+      return {
+        agingChartData: [
+          { name: "0-15 Days", amount: 0, color: "#10b981" },
+          { name: "16-30 Days", amount: 0, color: "#eab308" },
+          { name: "30+ Days", amount: 0, color: "#ef4444" }
+        ],
+        waterfallChartData: []
+      };
+    }
   }, [credits]);
 
   // Smart Simulator Logic
   const simulatorResults = useMemo(() => {
-    if (!simulatorCash || isNaN(Number(simulatorCash))) return [];
-    let cash = Number(simulatorCash);
-    if (cash <= 0) return [];
-    
-    const openInvoices = credits.filter(c => c.status !== "paid" && !c.onSalesOnly).map(c => {
-      const remaining = (c.amountDue + c.tax) - c.paidAmount;
-      const createdRaw = c.createdAt?.toDate ? c.createdAt.toDate() : (c.createdAt ? new Date(c.createdAt) : null);
-      const created = createdRaw && !isNaN(createdRaw.getTime()) ? createdRaw.getTime() : Date.now();
-      return { ...c, remaining, created };
-    }).sort((a, b) => a.created - b.created);
+    try {
+      if (!simulatorCash || isNaN(Number(simulatorCash))) return [];
+      let cash = Number(simulatorCash);
+      if (cash <= 0) return [];
+      
+      const openInvoices = credits.filter(c => c && c.status !== "paid" && !c.onSalesOnly).map(c => {
+        const remaining = (Number(c.amountDue || 0) + Number(c.tax || 0)) - Number(c.paidAmount || 0);
+        let created = Date.now();
+        try {
+          if (c.createdAt?.toDate && typeof c.createdAt.toDate === "function") {
+            const dt = c.createdAt.toDate();
+            if (dt && !isNaN(dt.getTime())) created = dt.getTime();
+          } else if (c.createdAt) {
+            const dt = new Date(c.createdAt);
+            if (dt && !isNaN(dt.getTime())) created = dt.getTime();
+          }
+        } catch (_e) {}
+        return { ...c, remaining, created };
+      }).sort((a, b) => a.created - b.created);
 
-    const plan = [];
-    for (const inv of openInvoices) {
-      if (cash <= 0) break;
-      if (cash >= inv.remaining) {
-        plan.push({ credit: inv, payAmount: inv.remaining, type: "Full" });
-        cash -= inv.remaining;
-      } else {
-        plan.push({ credit: inv, payAmount: cash, type: "Partial" });
-        cash = 0;
+      const plan = [];
+      for (const inv of openInvoices) {
+        if (cash <= 0) break;
+        if (cash >= inv.remaining) {
+          plan.push({ credit: inv, payAmount: inv.remaining, type: "Full" });
+          cash -= inv.remaining;
+        } else {
+          plan.push({ credit: inv, payAmount: cash, type: "Partial" });
+          cash = 0;
+        }
       }
+      return plan;
+    } catch (_simErr) {
+      return [];
     }
-    return plan;
   }, [simulatorCash, credits]);
 
   const selectedSupplierData = useMemo(() => {
-    if (!selectedSupplierProfile) return null;
-    const supplierCredits = credits.filter(c => c.companyName === selectedSupplierProfile);
-    let totalVolume = 0;
-    let totalDebt = 0;
-    let totalDaysToPay = 0;
-    let paidCount = 0;
+    try {
+      if (!selectedSupplierProfile) return null;
+      const supplierCredits = credits.filter(c => c && c.companyName === selectedSupplierProfile);
+      let totalVolume = 0;
+      let totalDebt = 0;
+      let totalDaysToPay = 0;
+      let paidCount = 0;
 
-    supplierCredits.forEach(c => {
-      const total = c.amountDue + c.tax;
-      totalVolume += total;
-      totalDebt += total - c.paidAmount;
-      
-      if (c.status === 'paid' && c.payments && c.payments.length > 0) {
-        const createdRaw = c.createdAt?.toDate ? c.createdAt.toDate() : (c.createdAt ? new Date(c.createdAt) : null);
-        const created = createdRaw && !isNaN(createdRaw.getTime()) ? createdRaw.getTime() : Date.now();
-        const lastPayment = c.payments[c.payments.length - 1];
-        const paidDate = lastPayment?.date && !isNaN(new Date(lastPayment.date).getTime()) ? new Date(lastPayment.date).getTime() : Date.now();
-        totalDaysToPay += (paidDate - created) / (1000 * 60 * 60 * 24);
-        paidCount++;
-      }
-    });
+      supplierCredits.forEach(c => {
+        try {
+          const total = Number(c.amountDue || 0) + Number(c.tax || 0);
+          totalVolume += total;
+          totalDebt += total - Number(c.paidAmount || 0);
+          
+          if (c.status === 'paid' && c.payments && Array.isArray(c.payments) && c.payments.length > 0) {
+            let created = Date.now();
+            try {
+              if (c.createdAt?.toDate && typeof c.createdAt.toDate === "function") {
+                const dt = c.createdAt.toDate();
+                if (dt && !isNaN(dt.getTime())) created = dt.getTime();
+              } else if (c.createdAt) {
+                const dt = new Date(c.createdAt);
+                if (dt && !isNaN(dt.getTime())) created = dt.getTime();
+              }
+            } catch (_e) {}
 
-    const avgDaysToPay = paidCount > 0 ? totalDaysToPay / paidCount : 30;
-    const trustScore = Math.max(0, 100 - (avgDaysToPay > 30 ? (avgDaysToPay - 30) * 2 : 0) - (totalDebt > totalVolume * 0.5 ? 20 : 0));
+            const lastPayment = c.payments[c.payments.length - 1];
+            let paidDate = Date.now();
+            try {
+              if (lastPayment?.date) {
+                const dt = new Date(lastPayment.date);
+                if (!isNaN(dt.getTime())) paidDate = dt.getTime();
+              }
+            } catch (_e) {}
 
-    return {
-      name: selectedSupplierProfile,
-      totalVolume,
-      totalDebt,
-      avgDaysToPay: Math.round(avgDaysToPay),
-      trustScore: Math.round(trustScore),
-      radarData: [
-        { subject: 'Speed', A: Math.max(0, 100 - avgDaysToPay), fullMark: 100 },
-        { subject: 'Volume', A: Math.min(100, (totalVolume / 100000) * 100), fullMark: 100 },
-        { subject: 'Trust', A: trustScore, fullMark: 100 },
-        { subject: 'Health', A: 100 - ((totalDebt / (totalVolume || 1)) * 100), fullMark: 100 },
-      ]
-    };
+            totalDaysToPay += Math.max(0, (paidDate - created) / (1000 * 60 * 60 * 24));
+            paidCount++;
+          }
+        } catch (_supErr) {}
+      });
+
+      const avgDaysToPay = paidCount > 0 ? totalDaysToPay / paidCount : 30;
+      const trustScore = Math.max(0, 100 - (avgDaysToPay > 30 ? (avgDaysToPay - 30) * 2 : 0) - (totalDebt > totalVolume * 0.5 ? 20 : 0));
+
+      return {
+        name: selectedSupplierProfile,
+        totalVolume,
+        totalDebt,
+        avgDaysToPay: Math.round(avgDaysToPay),
+        trustScore: Math.round(trustScore),
+        radarData: [
+          { subject: 'Speed', A: Math.max(0, 100 - avgDaysToPay), fullMark: 100 },
+          { subject: 'Volume', A: Math.min(100, (totalVolume / 100000) * 100), fullMark: 100 },
+          { subject: 'Trust', A: trustScore, fullMark: 100 },
+          { subject: 'Health', A: 100 - ((totalDebt / (totalVolume || 1)) * 100), fullMark: 100 },
+        ]
+      };
+    } catch (_supDataErr) {
+      return null;
+    }
   }, [selectedSupplierProfile, credits]);
 
   const handleDragEnd = async (event: DragEndEvent) => {
