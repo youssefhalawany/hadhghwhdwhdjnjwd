@@ -15,7 +15,7 @@ import { X, Sparkles, Zap, Bell, Check, ArrowRight } from "lucide-react";
 import { ExpiryDeckGrid } from './ExpiryDeckGrid';
 import { WasteAnalyticsPanel } from './WasteAnalyticsPanel';
 import { POBatchIntake } from './POBatchIntake';
-import { BatchManagementView } from "./BatchManagementView";
+import { BatchManagementView, BatchPrintableReceipt } from "./BatchManagementView";
 
 
 export default function ExpiryAuditPage() {
@@ -609,6 +609,16 @@ export default function ExpiryAuditPage() {
             </div>
           </div>
         </div>
+      )}
+      {/* --- PRINT ONLY A4 BATCH RECEIPT (ISOLATED BATCH REPORT) --- */}
+      {printTarget === "batch" && selectedBatchForPrint && (
+        <BatchPrintableReceipt
+          batch={selectedBatchForPrint}
+          batchItems={allExpiries.filter(
+            (e) => e.batchId === selectedBatchForPrint.batchId || e.batchDocId === selectedBatchForPrint.id
+          )}
+          currentBranch={currentBranch}
+        />
       )}
       {/* --- END PRINT VIEW --- */}
 

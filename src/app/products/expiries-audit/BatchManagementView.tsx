@@ -52,7 +52,7 @@ interface Props {
 }
 
 // Robust SafeBarcode component ensuring numbers are visible and barcodes scan properly
-function SafeBarcode({
+export function SafeBarcode({
   value,
   width = 1.1,
   height = 26,
@@ -109,6 +109,211 @@ function SafeBarcode({
   }
 }
 
+// Top-level printable receipt component (must be rendered outside print:hidden)
+export function BatchPrintableReceipt({
+  batch,
+  batchItems,
+  currentBranch,
+}: {
+  batch: any;
+  batchItems: any[];
+  currentBranch: string;
+}) {
+  const totalUnits = batchItems.reduce((s, i) => s + (Number(i.quantity) || 0), 0) || batch.totalQuantityCount || 0;
+  const branchLabel = currentBranch === "all" ? "HQ Portal" : (currentBranch === "ola" ? "Ola El Koronfol" : "Alamein 4");
+  const qrPayload = JSON.stringify({
+    batchId: batch.batchId,
+    supplier: batch.supplier,
+    po: batch.invoiceNumber,
+    date: batch.invoiceDate || batch.createdAt,
+    itemsCount: batchItems.length,
+    units: totalUnits,
+    branch: branchLabel,
+  });
+
+  return (
+    <div id="batch-printable-receipt" className="hidden print:block w-full bg-white text-slate-900 font-sans" dir="ltr">
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 8mm !important;
+          }
+          body, html {
+            background: #ffffff !important;
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          main, .custom-scrollbar, #__next, div:not(#batch-printable-receipt):not(#batch-printable-receipt *) {
+            background: transparent !important;
+            background-color: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+          }
+          .print\\:hidden, nav, header, aside, .sidebar, footer, .no-print, #expiry-printable-report {
+            display: none !important;
+          }
+          #batch-printable-receipt {
+            display: block !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 auto !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            border: none !important;
+          }
+          table {
+            page-break-inside: auto;
+            width: 100% !important;
+            border-collapse: collapse !important;
+          }
+          tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
+          }
+          thead {
+            display: table-header-group;
+          }
+        }
+      `}} />
+
+      <div className="w-full space-y-4">
+        {/* Official Header */}
+        <div className="flex justify-between items-start border-b border-gray-300 pb-3">
+          <div>
+            <h1 className="text-xl font-black tracking-tight text-red-600 leading-none">CIRCLE K</h1>
+            <p className="text-[11px] font-bold text-gray-700 uppercase tracking-wider mt-1">
+              {branchLabel} — Operations Management
+            </p>
+            <p className="text-[9px] text-gray-500 font-mono mt-0.5">
+              OFFICIAL GOODS RECEIVING & EXPIRY BATCH RECORD
+            </p>
+          </div>
+          <div className="text-right flex flex-col items-end">
+            <h2 className="text-sm font-bold text-gray-900 tracking-tight">إذن استلام وتوثيق صلاحيات دفعة بضاعة</h2>
+            <div className="mt-1 bg-white p-0.5 rounded">
+              <SafeBarcode
+                value={batch.batchId}
+                width={1.2}
+                height={32}
+                fontSize={10}
+                displayValue={true}
+              />
+            </div>
+            <p className="text-[8px] text-gray-500 font-mono mt-0.5">Date: {new Date().toLocaleDateString('en-GB')} | {new Date().toLocaleTimeString()}</p>
+          </div>
+        </div>
+
+        {/* Batch Metadata Cards */}
+        <div className="grid grid-cols-4 gap-2 text-xs">
+          <div className="p-2 border border-gray-200 rounded">
+            <span className="text-[8px] text-gray-500 font-bold uppercase block">Supplier / المورد</span>
+            <span className="text-xs font-black text-gray-900 mt-0.5 block truncate">{batch.supplier}</span>
+          </div>
+          <div className="p-2 border border-gray-200 rounded">
+            <span className="text-[8px] text-gray-500 font-bold uppercase block">PO / Invoice #</span>
+            <span className="text-xs font-mono font-bold text-gray-900 mt-0.5 block">{batch.invoiceNumber || "N/A"}</span>
+          </div>
+          <div className="p-2 border border-gray-200 rounded">
+            <span className="text-[8px] text-gray-500 font-bold uppercase block">Receiving Date</span>
+            <span className="text-xs font-mono font-bold text-gray-900 mt-0.5 block">{batch.invoiceDate || batch.createdAt?.split("T")[0]}</span>
+          </div>
+          <div className="p-2 border border-gray-200 rounded text-right">
+            <span className="text-[8px] text-gray-500 font-bold uppercase block">Total Items & Units</span>
+            <span className="text-xs font-bold text-gray-900 mt-0.5 block">
+              {batchItems.length} Items ({totalUnits} Units)
+            </span>
+          </div>
+        </div>
+
+        {/* Line Items Table */}
+        <div className="w-full">
+          <table className="w-full text-left text-xs border border-gray-200">
+            <thead>
+              <tr className="border-b border-gray-300 bg-white">
+                <th className="p-1.5 font-bold text-gray-700 border-r border-gray-200 w-8 text-center">#</th>
+                <th className="p-1.5 font-bold text-gray-700 border-r border-gray-200">Product Name / اسم الصنف</th>
+                <th className="p-1.5 font-bold text-gray-700 border-r border-gray-200 text-center w-36">Barcode / الباركود</th>
+                <th className="p-1.5 font-bold text-gray-700 border-r border-gray-200 text-center w-16">Qty / الكمية</th>
+                <th className="p-1.5 font-bold text-gray-700 border-r border-gray-200 text-center w-20">Unit Cost</th>
+                <th className="p-1.5 font-bold text-gray-700 border-r border-gray-200 text-center w-24">Expiry Date</th>
+                <th className="p-1.5 font-bold text-gray-700 text-center w-20">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {batchItems.map((item, idx) => {
+                const days = item.expiryDate ? Math.ceil((new Date(item.expiryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0;
+                return (
+                  <tr key={item.id || idx} className="border-b border-gray-200 bg-white">
+                    <td className="p-1.5 text-[10px] font-mono text-gray-500 border-r border-gray-200 text-center align-middle">{idx + 1}</td>
+                    <td className="p-1.5 font-bold text-gray-900 border-r border-gray-200 align-middle">{item.itemName}</td>
+                    <td className="p-1 border-r border-gray-200 text-center align-middle">
+                      <SafeBarcode
+                        value={item.barcode}
+                        width={1.1}
+                        height={26}
+                        fontSize={9}
+                        displayValue={true}
+                      />
+                    </td>
+                    <td className="p-1.5 font-black text-gray-900 text-center border-r border-gray-200 align-middle">{item.quantity}</td>
+                    <td className="p-1.5 font-mono text-gray-700 text-center border-r border-gray-200 align-middle">{item.unitPrice ? `${item.unitPrice} EGP` : "-"}</td>
+                    <td className="p-1.5 font-mono font-bold text-red-600 border-r border-gray-200 text-center align-middle">{item.expiryDate || "-"}</td>
+                    <td className="p-1.5 uppercase font-bold text-[9px] text-center text-gray-700 align-middle">
+                      {days <= 0 ? "EXPIRED" : days <= 15 ? "15D WARNING" : "SAFE"}
+                    </td>
+                  </tr>
+                );
+              })}
+              {batchItems.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="p-6 text-center text-gray-500">No line items recorded for this batch.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Signatures & Stamp Section */}
+        <div className="pt-4 border-t border-gray-300 flex justify-between items-end text-xs" style={{ pageBreakInside: 'avoid' }}>
+          <div className="flex items-center gap-2">
+            <QRCode value={qrPayload} size={50} level="M" />
+            <div>
+              <p className="text-[8px] font-bold text-gray-600 font-mono">BATCH: {batch.batchId}</p>
+              <p className="text-[7px] text-gray-400 font-mono">VERIFIED BY ANH SYSTEM V2.0</p>
+            </div>
+          </div>
+
+          <div className="text-center w-40">
+            <p className="text-[8px] text-gray-400 uppercase mb-6">Store Receiving Manager</p>
+            <div className="border-t border-gray-400 pt-0.5">
+              <p className="text-[8px] font-bold text-gray-700">{batch.createdBy || "Authorized Officer"}</p>
+            </div>
+          </div>
+
+          <div className="text-center w-40">
+            <p className="text-[8px] text-gray-400 uppercase mb-6">Supplier Representative</p>
+            <div className="border-t border-gray-400 pt-0.5">
+              <p className="text-[8px] font-bold text-gray-700">Delivery Representative</p>
+            </div>
+          </div>
+
+          <div className="w-32 border border-gray-300 rounded p-1.5 text-center">
+            <p className="text-[7px] text-gray-400 uppercase">Quality Stamp</p>
+            <div className="h-4"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function BatchManagementView({
   batches,
   allExpiries,
@@ -122,7 +327,6 @@ export function BatchManagementView({
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedBatchForModal, setSelectedBatchForModal] = useState<BatchItem | null>(null);
-  const [selectedBatchForPrint, setSelectedBatchForPrint] = useState<BatchItem | null>(null);
   const [copiedBatchId, setCopiedBatchId] = useState<string | null>(null);
 
   // Filter batches
@@ -154,218 +358,17 @@ export function BatchManagementView({
 
   // Trigger print for a specific batch
   const handlePrintBatch = (batch: BatchItem) => {
-    setSelectedBatchForPrint(batch);
     if (onPrintBatch) {
       onPrintBatch(batch);
     } else {
       setTimeout(() => {
         window.print();
-      }, 150);
+      }, 200);
     }
   };
 
   return (
     <div className="w-full space-y-6" dir={isAr ? "rtl" : "ltr"}>
-      {/* Printable Batch Receipt A4 - Only appears in print dialog */}
-      {selectedBatchForPrint && (
-        <div id="batch-printable-receipt" className="hidden print:block w-full bg-white text-slate-900 font-sans" dir="ltr">
-          <style dangerouslySetInnerHTML={{ __html: `
-            @media print {
-              @page {
-                size: A4 portrait;
-                margin: 8mm !important;
-              }
-              body, html {
-                background: #ffffff !important;
-                background-color: #ffffff !important;
-                color: #000000 !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-              }
-              main, .custom-scrollbar, #__next, div:not(#batch-printable-receipt):not(#batch-printable-receipt *) {
-                background: transparent !important;
-                background-color: transparent !important;
-                border: none !important;
-                box-shadow: none !important;
-              }
-              .print\\:hidden, nav, header, aside, .sidebar, footer, .no-print, #expiry-printable-report {
-                display: none !important;
-              }
-              #batch-printable-receipt {
-                display: block !important;
-                width: 100% !important;
-                max-width: 100% !important;
-                margin: 0 auto !important;
-                padding: 0 !important;
-                background: #ffffff !important;
-                background-color: #ffffff !important;
-                color: #000000 !important;
-                border: none !important;
-              }
-              table {
-                page-break-inside: auto;
-                width: 100% !important;
-                border-collapse: collapse !important;
-              }
-              tr {
-                page-break-inside: avoid;
-                page-break-after: auto;
-              }
-              thead {
-                display: table-header-group;
-              }
-            }
-          `}} />
-
-          {(() => {
-            const batch = selectedBatchForPrint;
-            const batchItems = getBatchItems(batch);
-            const totalUnits = batchItems.reduce((s, i) => s + (Number(i.quantity) || 0), 0) || batch.totalQuantityCount || 0;
-            const branchLabel = currentBranch === "all" ? "HQ Portal" : (currentBranch === "ola" ? "Ola El Koronfol" : "Alamein 4");
-            const qrPayload = JSON.stringify({
-              batchId: batch.batchId,
-              supplier: batch.supplier,
-              po: batch.invoiceNumber,
-              date: batch.invoiceDate || batch.createdAt,
-              itemsCount: batchItems.length,
-              units: totalUnits,
-              branch: branchLabel,
-            });
-
-            return (
-              <div className="w-full space-y-4">
-                {/* Official Header */}
-                <div className="flex justify-between items-start border-b border-gray-300 pb-3">
-                  <div>
-                    <h1 className="text-xl font-black tracking-tight text-red-600 leading-none">CIRCLE K</h1>
-                    <p className="text-[11px] font-bold text-gray-700 uppercase tracking-wider mt-1">
-                      {branchLabel} — Operations Management
-                    </p>
-                    <p className="text-[9px] text-gray-500 font-mono mt-0.5">
-                      OFFICIAL GOODS RECEIVING & EXPIRY BATCH RECORD
-                    </p>
-                  </div>
-                  <div className="text-right flex flex-col items-end">
-                    <h2 className="text-sm font-bold text-gray-900 tracking-tight">إذن استلام وتوثيق صلاحيات دفعة بضاعة</h2>
-                    <div className="mt-1 bg-white p-0.5 rounded">
-                      <SafeBarcode
-                        value={batch.batchId}
-                        width={1.2}
-                        height={32}
-                        fontSize={10}
-                        displayValue={true}
-                      />
-                    </div>
-                    <p className="text-[8px] text-gray-500 font-mono mt-0.5">Date: {new Date().toLocaleDateString('en-GB')} | {new Date().toLocaleTimeString()}</p>
-                  </div>
-                </div>
-
-                {/* Batch Metadata Cards */}
-                <div className="grid grid-cols-4 gap-2 text-xs">
-                  <div className="p-2 border border-gray-200 rounded">
-                    <span className="text-[8px] text-gray-500 font-bold uppercase block">Supplier / المورد</span>
-                    <span className="text-xs font-black text-gray-900 mt-0.5 block truncate">{batch.supplier}</span>
-                  </div>
-                  <div className="p-2 border border-gray-200 rounded">
-                    <span className="text-[8px] text-gray-500 font-bold uppercase block">PO / Invoice #</span>
-                    <span className="text-xs font-mono font-bold text-gray-900 mt-0.5 block">{batch.invoiceNumber || "N/A"}</span>
-                  </div>
-                  <div className="p-2 border border-gray-200 rounded">
-                    <span className="text-[8px] text-gray-500 font-bold uppercase block">Receiving Date</span>
-                    <span className="text-xs font-mono font-bold text-gray-900 mt-0.5 block">{batch.invoiceDate || batch.createdAt?.split("T")[0]}</span>
-                  </div>
-                  <div className="p-2 border border-gray-200 rounded text-right">
-                    <span className="text-[8px] text-gray-500 font-bold uppercase block">Total Items & Units</span>
-                    <span className="text-xs font-bold text-gray-900 mt-0.5 block">
-                      {batchItems.length} Items ({totalUnits} Units)
-                    </span>
-                  </div>
-                </div>
-
-                {/* Line Items Table */}
-                <div className="w-full">
-                  <table className="w-full text-left text-xs border border-gray-200">
-                    <thead>
-                      <tr className="border-b border-gray-300 bg-white">
-                        <th className="p-1.5 font-bold text-gray-700 border-r border-gray-200 w-8 text-center">#</th>
-                        <th className="p-1.5 font-bold text-gray-700 border-r border-gray-200">Product Name / اسم الصنف</th>
-                        <th className="p-1.5 font-bold text-gray-700 border-r border-gray-200 text-center w-36">Barcode / الباركود</th>
-                        <th className="p-1.5 font-bold text-gray-700 border-r border-gray-200 text-center w-16">Qty / الكمية</th>
-                        <th className="p-1.5 font-bold text-gray-700 border-r border-gray-200 text-center w-20">Unit Cost</th>
-                        <th className="p-1.5 font-bold text-gray-700 border-r border-gray-200 text-center w-24">Expiry Date</th>
-                        <th className="p-1.5 font-bold text-gray-700 text-center w-20">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {batchItems.map((item, idx) => {
-                        const days = item.expiryDate ? Math.ceil((new Date(item.expiryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0;
-                        return (
-                          <tr key={item.id} className="border-b border-gray-200 bg-white">
-                            <td className="p-1.5 text-[10px] font-mono text-gray-500 border-r border-gray-200 text-center align-middle">{idx + 1}</td>
-                            <td className="p-1.5 font-bold text-gray-900 border-r border-gray-200 align-middle">{item.itemName}</td>
-                            <td className="p-1 border-r border-gray-200 text-center align-middle">
-                              <SafeBarcode
-                                value={item.barcode}
-                                width={1.1}
-                                height={26}
-                                fontSize={9}
-                                displayValue={true}
-                              />
-                            </td>
-                            <td className="p-1.5 font-black text-gray-900 text-center border-r border-gray-200 align-middle">{item.quantity}</td>
-                            <td className="p-1.5 font-mono text-gray-700 text-center border-r border-gray-200 align-middle">{item.unitPrice ? `${item.unitPrice} EGP` : "-"}</td>
-                            <td className="p-1.5 font-mono font-bold text-red-600 border-r border-gray-200 text-center align-middle">{item.expiryDate || "-"}</td>
-                            <td className="p-1.5 uppercase font-bold text-[9px] text-center text-gray-700 align-middle">
-                              {days <= 0 ? "EXPIRED" : days <= 15 ? "15D WARNING" : "SAFE"}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                      {batchItems.length === 0 && (
-                        <tr>
-                          <td colSpan={7} className="p-6 text-center text-gray-500">No line items recorded for this batch.</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Signatures & Stamp Section */}
-                <div className="pt-4 border-t border-gray-300 flex justify-between items-end text-xs" style={{ pageBreakInside: 'avoid' }}>
-                  <div className="flex items-center gap-2">
-                    <QRCode value={qrPayload} size={50} level="M" />
-                    <div>
-                      <p className="text-[8px] font-bold text-gray-600 font-mono">BATCH: {batch.batchId}</p>
-                      <p className="text-[7px] text-gray-400 font-mono">VERIFIED BY ANH SYSTEM V2.0</p>
-                    </div>
-                  </div>
-
-                  <div className="text-center w-40">
-                    <p className="text-[8px] text-gray-400 uppercase mb-6">Store Receiving Manager</p>
-                    <div className="border-t border-gray-400 pt-0.5">
-                      <p className="text-[8px] font-bold text-gray-700">{batch.createdBy || "Authorized Officer"}</p>
-                    </div>
-                  </div>
-
-                  <div className="text-center w-40">
-                    <p className="text-[8px] text-gray-400 uppercase mb-6">Supplier Representative</p>
-                    <div className="border-t border-gray-400 pt-0.5">
-                      <p className="text-[8px] font-bold text-gray-700">Delivery Representative</p>
-                    </div>
-                  </div>
-
-                  <div className="w-32 border border-gray-300 rounded p-1.5 text-center">
-                    <p className="text-[7px] text-gray-400 uppercase">Quality Stamp</p>
-                    <div className="h-4"></div>
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
-        </div>
-      )}
 
       {/* Top Search & Actions Bar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
