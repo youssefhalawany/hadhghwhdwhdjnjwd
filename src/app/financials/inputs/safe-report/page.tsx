@@ -1,15 +1,39 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useBranch } from "@/context/BranchContext";
-import { db } from "@/lib/firebase";
+import { useLanguage } from "@/context/LanguageContext";
+import { db, auth } from "@/lib/firebase";
 import { collection, query, where, getAggregateFromServer, sum, Timestamp } from "firebase/firestore";
-import { Printer, Loader2, Calendar, AlertTriangle, ExternalLink, TrendingUp } from "lucide-react";
+import { 
+  Printer, 
+  Loader2, 
+  Calendar, 
+  AlertTriangle, 
+  ExternalLink, 
+  TrendingUp, 
+  Building2, 
+  Wallet, 
+  Landmark, 
+  ArrowDownLeft, 
+  ArrowUpRight, 
+  Receipt, 
+  Users, 
+  DollarSign, 
+  ShieldCheck, 
+  CheckCircle2,
+  Sparkles,
+  FileSpreadsheet
+} from "lucide-react";
 import { PageTransition } from "@/components/PageTransition";
+import QRCode from "react-qr-code";
 import { toast } from "sonner";
 
 export default function SafeReportPage() {
   const { currentBranch } = useBranch();
+  const { language } = useLanguage();
+  const isAr = language === "ar";
+
   const [reportType, setReportType] = useState<"date" | "month" | "year">("date");
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
@@ -17,7 +41,7 @@ export default function SafeReportPage() {
   const [loading, setLoading] = useState(false);
   const [reportData, setReportData] = useState<any>(null);
   const [missingIndexes, setMissingIndexes] = useState<string[]>([]);
-  const [showStickyBar, setShowStickyBar] = useState(false);
+  const [managerName, setManagerName] = useState("Store Manager");
 
   // Quick date shortcuts
   const todayStr = new Date().toISOString().split("T")[0];
@@ -27,26 +51,53 @@ export default function SafeReportPage() {
   const lastMonthStr = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, "0")}`;
 
   useEffect(() => {
-    if (!reportData) { setShowStickyBar(false); return; }
-    const handleScroll = () => setShowStickyBar(window.scrollY > 350);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [reportData]);
+    const storedName = localStorage.getItem("circlek_user_name");
+    if (storedName) {
+      setManagerName(storedName);
+    } else {
+      const u = auth.currentUser;
+      if (u) {
+        setManagerName(u.displayName || u.email?.split("@")[0] || "Store Manager");
+      }
+    }
+  }, []);
 
-  const handlePrint = () => { if (reportData) window.print(); };
+  const handlePrint = () => {
+    if (reportData) {
+      window.print();
+    }
+  };
 
   const getBranchIds = (): string[] => {
-    if (currentBranch === "alamein4") return ["eL-alamein-4"];
-    if (currentBranch === "ola") return ["ola-el-koronfol"];
+    if (currentBranch === "alamein4") return ["alamein4", "eL-alamein-4", "el-alamein-4"];
+    if (currentBranch === "ola") return ["ola", "ola-el-koronfol"];
     if (currentBranch !== "all") return [currentBranch];
     return [];
   };
 
   const getBranchLabel = () => {
-    if (currentBranch === "all") return { en: "ALL BRANCHES — CONSOLIDATED", ar: "جميع الفروع — موحد" };
-    if (currentBranch === "alamein4") return { en: "EL ALAMEIN 4", ar: "العلمين 4" };
-    if (currentBranch === "ola") return { en: "OLA EL KORONFOL", ar: "أولا القرنفل" };
+    if (currentBranch === "all") return { en: "ALL BRANCHES — CONSOLIDATED", ar: "جميع الفروع — الموقف الموحد" };
+    if (currentBranch === "alamein4") return { en: "EL ALAMEIN 4 — FRANCHISE", ar: "فرع العلمين 4" };
+    if (currentBranch === "ola") return { en: "OLA EL KORONFOL — FRANCHISE", ar: "فرع أولا القرنفل" };
     return { en: String(currentBranch).toUpperCase(), ar: String(currentBranch) };
+  };
+
+  // Safe and Bank account numbers
+  const getAccountNumbers = () => {
+    if (currentBranch === "ola") {
+      return {
+        safeCode: "SAFE-OLA-02",
+        safeCodeAr: "خزنة فرع أولا القرنفل (رئيسية)",
+        bankAccount: "CIB-EGP-992014-OLA",
+        bankAccountAr: "البنك التجاري الدولي - CIB (أولا القرنفل)"
+      };
+    }
+    return {
+      safeCode: "SAFE-ALAMEIN-01",
+      safeCodeAr: "خزنة فرع العلمين 4 (رئيسية)",
+      bankAccount: "CIB-EGP-883021-ALM",
+      bankAccountAr: "البنك التجاري الدولي - CIB (العلمين 4)"
+    };
   };
 
   const fetchSumsForRange = async (
@@ -65,43 +116,39 @@ export default function SafeReportPage() {
         if (err.message?.includes("https://console.firebase.google.com")) {
           const urlMatch = err.message.match(/(https:\/\/console\.firebase\.google\.com[^\s]*)/);
           if (urlMatch) collectedUrls.add(urlMatch[0]);
-        } else { console.error("Query Error:", err); }
+        } else {
+          console.error("Query Error:", err);
+        }
         return null;
       }
     };
 
     let salesQ: any = collection(db, "sales");
     let cashPaymentsQ: any = query(collection(db, "cash_payments"), where("method", "==", "cash"));
-    let depositsToQ: any = query(collection(db, "deposits"), where("to", "==", "safe"));
-    let depositsFromQ: any = query(collection(db, "deposits"), where("from", "==", "safe"));
+    let depositsToSafeQ: any = query(collection(db, "deposits"), where("to", "==", "safe"));
+    let depositsFromSafeQ: any = query(collection(db, "deposits"), where("from", "==", "safe"));
     let payrollsQ: any = collection(db, "payroll_lines");
     let newLoansQ: any = query(collection(db, "adjustments"), where("type", "==", "loan"));
     let oldLoansQ: any = collection(db, "loans");
-    let oldCreditsCashQ: any = query(collection(db, "credit_payments"), where("method", "==", "cash"));
+    
+    // Bank Inflows & Outflows
     let cashPaymentsVisaQ: any = query(collection(db, "cash_payments"), where("method", "==", "visa"));
     let cashPaymentsBankTransferQ: any = query(collection(db, "cash_payments"), where("method", "==", "bank_transfer"));
     let cashPaymentsBankQ: any = query(collection(db, "cash_payments"), where("method", "==", "bank"));
-    let creditPaymentsVisaQ: any = query(collection(db, "credit_payments"), where("method", "==", "visa"));
-    let creditPaymentsBankTransferQ: any = query(collection(db, "credit_payments"), where("method", "==", "bank_transfer"));
-    let creditPaymentsBankQ: any = query(collection(db, "credit_payments"), where("method", "==", "bank"));
     let depositsToBankQ: any = query(collection(db, "deposits"), where("to", "==", "bank"));
     let depositsFromBankQ: any = query(collection(db, "deposits"), where("from", "==", "bank"));
 
     if (branchIds.length > 0) {
       salesQ = query(salesQ, where("storeId", "in", branchIds));
       cashPaymentsQ = query(cashPaymentsQ, where("storeId", "in", branchIds));
-      depositsToQ = query(depositsToQ, where("storeId", "in", branchIds));
-      depositsFromQ = query(depositsFromQ, where("storeId", "in", branchIds));
+      depositsToSafeQ = query(depositsToSafeQ, where("storeId", "in", branchIds));
+      depositsFromSafeQ = query(depositsFromSafeQ, where("storeId", "in", branchIds));
       payrollsQ = query(payrollsQ, where("storeId", "in", branchIds));
-      oldCreditsCashQ = query(oldCreditsCashQ, where("storeId", "in", branchIds));
       newLoansQ = query(newLoansQ, where("storeId", "in", branchIds));
       oldLoansQ = query(oldLoansQ, where("storeId", "in", branchIds));
       cashPaymentsVisaQ = query(cashPaymentsVisaQ, where("storeId", "in", branchIds));
       cashPaymentsBankTransferQ = query(cashPaymentsBankTransferQ, where("storeId", "in", branchIds));
       cashPaymentsBankQ = query(cashPaymentsBankQ, where("storeId", "in", branchIds));
-      creditPaymentsVisaQ = query(creditPaymentsVisaQ, where("storeId", "in", branchIds));
-      creditPaymentsBankTransferQ = query(creditPaymentsBankTransferQ, where("storeId", "in", branchIds));
-      creditPaymentsBankQ = query(creditPaymentsBankQ, where("storeId", "in", branchIds));
       depositsToBankQ = query(depositsToBankQ, where("storeId", "in", branchIds));
       depositsFromBankQ = query(depositsFromBankQ, where("storeId", "in", branchIds));
     }
@@ -109,17 +156,13 @@ export default function SafeReportPage() {
     if (isHistorical) {
       salesQ = query(salesQ, where("date", "<", startStr));
       cashPaymentsQ = query(cashPaymentsQ, where("date", "<", startStr));
-      depositsToQ = query(depositsToQ, where("date", "<", startStr));
-      depositsFromQ = query(depositsFromQ, where("date", "<", startStr));
+      depositsToSafeQ = query(depositsToSafeQ, where("date", "<", startStr));
+      depositsFromSafeQ = query(depositsFromSafeQ, where("date", "<", startStr));
       newLoansQ = query(newLoansQ, where("date", "<", startStr));
       oldLoansQ = query(oldLoansQ, where("date", "<", startStr));
-      oldCreditsCashQ = query(oldCreditsCashQ, where("date", "<", startStr));
       cashPaymentsVisaQ = query(cashPaymentsVisaQ, where("date", "<", startStr));
       cashPaymentsBankTransferQ = query(cashPaymentsBankTransferQ, where("date", "<", startStr));
       cashPaymentsBankQ = query(cashPaymentsBankQ, where("date", "<", startStr));
-      creditPaymentsVisaQ = query(creditPaymentsVisaQ, where("date", "<", startStr));
-      creditPaymentsBankTransferQ = query(creditPaymentsBankTransferQ, where("date", "<", startStr));
-      creditPaymentsBankQ = query(creditPaymentsBankQ, where("date", "<", startStr));
       depositsToBankQ = query(depositsToBankQ, where("date", "<", startStr));
       depositsFromBankQ = query(depositsFromBankQ, where("date", "<", startStr));
       const startTs = Timestamp.fromDate(new Date(`${startStr}T00:00:00`));
@@ -127,17 +170,13 @@ export default function SafeReportPage() {
     } else {
       salesQ = query(salesQ, where("date", ">=", startStr), where("date", "<=", endStr));
       cashPaymentsQ = query(cashPaymentsQ, where("date", ">=", startStr), where("date", "<=", endStr));
-      depositsToQ = query(depositsToQ, where("date", ">=", startStr), where("date", "<=", endStr));
-      depositsFromQ = query(depositsFromQ, where("date", ">=", startStr), where("date", "<=", endStr));
+      depositsToSafeQ = query(depositsToSafeQ, where("date", ">=", startStr), where("date", "<=", endStr));
+      depositsFromSafeQ = query(depositsFromSafeQ, where("date", ">=", startStr), where("date", "<=", endStr));
       newLoansQ = query(newLoansQ, where("date", ">=", startStr), where("date", "<=", endStr));
       oldLoansQ = query(oldLoansQ, where("date", ">=", startStr), where("date", "<=", endStr));
-      oldCreditsCashQ = query(oldCreditsCashQ, where("date", ">=", startStr), where("date", "<=", endStr));
       cashPaymentsVisaQ = query(cashPaymentsVisaQ, where("date", ">=", startStr), where("date", "<=", endStr));
       cashPaymentsBankTransferQ = query(cashPaymentsBankTransferQ, where("date", ">=", startStr), where("date", "<=", endStr));
       cashPaymentsBankQ = query(cashPaymentsBankQ, where("date", ">=", startStr), where("date", "<=", endStr));
-      creditPaymentsVisaQ = query(creditPaymentsVisaQ, where("date", ">=", startStr), where("date", "<=", endStr));
-      creditPaymentsBankTransferQ = query(creditPaymentsBankTransferQ, where("date", ">=", startStr), where("date", "<=", endStr));
-      creditPaymentsBankQ = query(creditPaymentsBankQ, where("date", ">=", startStr), where("date", "<=", endStr));
       depositsToBankQ = query(depositsToBankQ, where("date", ">=", startStr), where("date", "<=", endStr));
       depositsFromBankQ = query(depositsFromBankQ, where("date", ">=", startStr), where("date", "<=", endStr));
       const startTs = Timestamp.fromDate(new Date(`${startStr}T00:00:00`));
@@ -146,27 +185,23 @@ export default function SafeReportPage() {
     }
 
     const [
-      salesData, cashPaymentsData, depositsToData, depositsFromData, payrollsData,
-      newLoansData, oldLoansData, oldCreditsCashData, visaPaymentsData,
-      bankTransferPaymentsData, visaCreditsData, bankTransferCreditsData,
-      depositsToBankData, depositsFromBankData, cashPaymentsBankData, creditPaymentsBankData
+      salesData, cashPaymentsData, depositsToSafeData, depositsFromSafeData, payrollsData,
+      newLoansData, oldLoansData, visaPaymentsData,
+      bankTransferPaymentsData, cashPaymentsBankData,
+      depositsToBankData, depositsFromBankData
     ] = await Promise.all([
       safeSumAgg(salesQ, { cash: sum("cash"), overShort: sum("overShort"), visa: sum("visa") }),
       safeSumAgg(cashPaymentsQ, { val: sum("amount"), tax: sum("tax") }),
-      safeSumAgg(depositsToQ, { val: sum("amount") }),
-      safeSumAgg(depositsFromQ, { val: sum("amount") }),
+      safeSumAgg(depositsToSafeQ, { val: sum("amount") }),
+      safeSumAgg(depositsFromSafeQ, { val: sum("amount") }),
       safeSumAgg(payrollsQ, { val: sum("netPay") }),
       safeSumAgg(newLoansQ, { val: sum("amount") }),
       safeSumAgg(oldLoansQ, { val: sum("approved") }),
-      safeSumAgg(oldCreditsCashQ, { val: sum("amount") }),
       safeSumAgg(cashPaymentsVisaQ, { val: sum("amount"), tax: sum("tax") }),
       safeSumAgg(cashPaymentsBankTransferQ, { val: sum("amount"), tax: sum("tax") }),
-      safeSumAgg(creditPaymentsVisaQ, { val: sum("amount") }),
-      safeSumAgg(creditPaymentsBankTransferQ, { val: sum("amount") }),
+      safeSumAgg(cashPaymentsBankQ, { val: sum("amount"), tax: sum("tax") }),
       safeSumAgg(depositsToBankQ, { val: sum("amount") }),
       safeSumAgg(depositsFromBankQ, { val: sum("amount") }),
-      safeSumAgg(cashPaymentsBankQ, { val: sum("amount"), tax: sum("tax") }),
-      safeSumAgg(creditPaymentsBankQ, { val: sum("amount") }),
     ]);
 
     const overShort = salesData?.overShort || 0;
@@ -174,38 +209,58 @@ export default function SafeReportPage() {
     const visaSales = salesData?.visa || 0;
     const overAmount = overShort > 0 ? overShort : 0;
     const shortAmount = overShort < 0 ? Math.abs(overShort) : 0;
+    
     const totalCashPayments = cashPaymentsData?.val || 0;
     const totalCashTaxes = cashPaymentsData?.tax || 0;
-    const depositsToSafe = depositsToData?.val || 0;
-    const depositsFromSafe = depositsFromData?.val || 0;
+    const depositsToSafe = depositsToSafeData?.val || 0;
+    const depositsFromSafe = depositsFromSafeData?.val || 0;
     const totalPayrolls = payrollsData?.val || 0;
     const totalLoans = (newLoansData?.val || 0) + (oldLoansData?.val || 0);
-    const totalOldCreditsCash = oldCreditsCashData?.val || 0;
+
     const bankPayments = (visaPaymentsData?.val || 0) + (bankTransferPaymentsData?.val || 0) + (cashPaymentsBankData?.val || 0);
     const bankTaxes = (visaPaymentsData?.tax || 0) + (bankTransferPaymentsData?.tax || 0) + (cashPaymentsBankData?.tax || 0);
-    const bankCredits = (visaCreditsData?.val || 0) + (bankTransferCreditsData?.val || 0) + (creditPaymentsBankData?.val || 0);
     const depositsToBank = depositsToBankData?.val || 0;
     const depositsFromBank = depositsFromBankData?.val || 0;
 
     return {
-      salesCash, overAmount, shortAmount, visaSales,
-      totalCashPayments, totalCashTaxes, depositsToSafe, depositsFromSafe, totalPayrolls,
-      totalLoans, totalOldCreditsCash,
-      bankPayments, bankTaxes, bankCredits, depositsToBank, depositsFromBank,
+      salesCash, 
+      overAmount, 
+      shortAmount, 
+      visaSales,
+      totalCashPayments, 
+      totalCashTaxes, 
+      depositsToSafe, 
+      depositsFromSafe, 
+      totalPayrolls,
+      totalLoans, 
+      bankPayments, 
+      bankTaxes, 
+      depositsToBank, 
+      depositsFromBank,
     };
   };
 
   const calcBalances = (h: any, p: any) => {
     if (!h || !p) return { openingSafe: 0, openingBank: 0, closingSafe: 0, closingBank: 0 };
+    
     const openingSafe = (h.salesCash + h.overAmount + h.depositsToSafe)
-      - (h.shortAmount + h.totalCashPayments + h.totalCashTaxes + h.totalLoans + h.depositsFromSafe + h.totalOldCreditsCash + h.totalPayrolls);
+      - (h.shortAmount + h.totalCashPayments + h.totalCashTaxes + h.totalLoans + h.depositsFromSafe + h.totalPayrolls);
+      
     const openingBank = (h.visaSales + h.depositsToBank)
-      - (h.bankPayments + h.bankTaxes + h.bankCredits + h.depositsFromBank);
+      - (h.bankPayments + h.bankTaxes + h.depositsFromBank);
+
     const safeIn = p.salesCash + p.overAmount + p.depositsToSafe;
-    const safeOut = p.shortAmount + p.totalCashPayments + p.totalCashTaxes + p.totalLoans + p.depositsFromSafe + p.totalOldCreditsCash + p.totalPayrolls;
+    const safeOut = p.shortAmount + p.totalCashPayments + p.totalCashTaxes + p.totalLoans + p.depositsFromSafe + p.totalPayrolls;
+    
     const bankIn = p.visaSales + p.depositsToBank;
-    const bankOut = p.bankPayments + p.bankTaxes + p.bankCredits + p.depositsFromBank;
-    return { openingSafe, openingBank, closingSafe: openingSafe + safeIn - safeOut, closingBank: openingBank + bankIn - bankOut };
+    const bankOut = p.bankPayments + p.bankTaxes + p.depositsFromBank;
+    
+    return { 
+      openingSafe, 
+      openingBank, 
+      closingSafe: openingSafe + safeIn - safeOut, 
+      closingBank: openingBank + bankIn - bankOut 
+    };
   };
 
   const generateReport = async () => {
@@ -217,19 +272,28 @@ export default function SafeReportPage() {
 
     try {
       let startDateStr = "", endDateStr = "";
-      if (reportType === "date") { startDateStr = selectedDate; endDateStr = selectedDate; }
-      else if (reportType === "month") {
+      if (reportType === "date") { 
+        startDateStr = selectedDate; 
+        endDateStr = selectedDate; 
+      } else if (reportType === "month") {
         startDateStr = `${selectedMonth}-01`;
         const [yyyy, mm] = selectedMonth.split("-");
         endDateStr = `${selectedMonth}-${new Date(parseInt(yyyy), parseInt(mm), 0).getDate()}`;
-      } else { startDateStr = `${selectedYear}-01-01`; endDateStr = `${selectedYear}-12-31`; }
+      } else { 
+        startDateStr = `${selectedYear}-01-01`; 
+        endDateStr = `${selectedYear}-12-31`; 
+      }
 
       const [history, period] = await Promise.all([
         fetchSumsForRange(startDateStr, null, branchIds, collectedUrls),
         fetchSumsForRange(startDateStr, endDateStr, branchIds, collectedUrls),
       ]);
 
-      if (collectedUrls.size > 0) { setMissingIndexes(Array.from(collectedUrls)); setLoading(false); return; }
+      if (collectedUrls.size > 0) { 
+        setMissingIndexes(Array.from(collectedUrls)); 
+        setLoading(false); 
+        return; 
+      }
 
       const { openingSafe: openingSafeBalance, openingBank: openingBankBalance } = calcBalances(history, period);
 
@@ -267,130 +331,126 @@ export default function SafeReportPage() {
         trendData.push({
           label: d.toLocaleDateString("en-GB", { month: "short", year: "numeric" }),
           labelAr: d.toLocaleDateString("ar-EG", { month: "long", year: "numeric" }),
-          safeBalance: currBal.closingSafe, bankBalance: currBal.closingBank, isCurrent: true,
+          safeBalance: currBal.closingSafe, 
+          bankBalance: currBal.closingBank, 
+          isCurrent: true,
         });
       }
 
-      setReportData({ openingSafeBalance, openingBankBalance, period, startDateStr, endDateStr, trendData });
+      setReportData({ 
+        openingSafeBalance, 
+        openingBankBalance, 
+        period, 
+        startDateStr, 
+        endDateStr, 
+        trendData 
+      });
+      toast.success(isAr ? "تم توليد تقرير الخزنة والبنك بنجاح!" : "Safe & Bank report generated successfully!");
     } catch (err: any) {
       console.error(err);
       toast.error("Failed to generate report: " + err.message);
-    } finally { setLoading(false); }
+    } finally { 
+      setLoading(false); 
+    }
   };
+
+  // Auto generate on branch change or initial load
+  useEffect(() => {
+    generateReport();
+  }, [currentBranch]);
 
   // Computed display values
   const safeInflows  = reportData ? (reportData.period.salesCash + reportData.period.overAmount + reportData.period.depositsToSafe) : 0;
-  const safeOutflows = reportData ? (reportData.period.shortAmount + reportData.period.totalCashPayments + reportData.period.totalCashTaxes + reportData.period.totalLoans + reportData.period.depositsFromSafe + reportData.period.totalOldCreditsCash + reportData.period.totalPayrolls) : 0;
+  const safeOutflows = reportData ? (reportData.period.shortAmount + reportData.period.totalCashPayments + reportData.period.totalCashTaxes + reportData.period.totalLoans + reportData.period.depositsFromSafe + reportData.period.totalPayrolls) : 0;
   const closingSafe  = reportData ? reportData.openingSafeBalance + safeInflows - safeOutflows : 0;
+  
   const bankInflows  = reportData ? (reportData.period.visaSales + reportData.period.depositsToBank) : 0;
-  const bankOutflows = reportData ? (reportData.period.bankPayments + reportData.period.bankTaxes + reportData.period.bankCredits + reportData.period.depositsFromBank) : 0;
+  const bankOutflows = reportData ? (reportData.period.bankPayments + reportData.period.bankTaxes + reportData.period.depositsFromBank) : 0;
   const closingBank  = reportData ? reportData.openingBankBalance + bankInflows - bankOutflows : 0;
 
-  const fmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2 });
+  const fmt = (n: number) => (Number(n) || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const branchLabel = getBranchLabel();
-  const sectionNum = (n: number) => reportType === "month" ? ["I", "II", "III", "IV"][n] : ["I", "II", "III"][n];
+  const accounts = getAccountNumbers();
+
+  const qrPayload = JSON.stringify({
+    branch: branchLabel.en,
+    safeCode: accounts.safeCode,
+    closingSafe,
+    closingBank,
+    period: reportData ? (reportType === "date" ? reportData.startDateStr : `${reportData.startDateStr} to ${reportData.endDateStr}`) : todayStr,
+    generatedAt: new Date().toISOString(),
+    manager: managerName
+  });
 
   return (
     <PageTransition>
-      <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-6 pb-32">
-
+      <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-6 pb-32" dir={isAr ? "rtl" : "ltr"}>
+        
+        {/* Printable A4 View Styles */}
         <style dangerouslySetInnerHTML={{__html: `
           @media print {
-            body * { visibility: hidden; }
-            #print-area, #print-area * { visibility: visible; }
-            #print-area { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; font-size: 9px !important; }
-            .no-print { display: none !important; }
-            @page { size: A4; margin: 9mm; }
-
-            /* ── WATERMARK ── */
-            #print-area::before {
-              content: 'CONFIDENTIAL • سري';
-              position: fixed; top: 50%; left: 50%;
-              transform: translate(-50%, -50%) rotate(-45deg);
-              font-size: 56px; font-weight: 900; color: rgba(0,0,0,0.04);
-              z-index: 9999; pointer-events: none; white-space: nowrap;
-              letter-spacing: 0.08em; font-family: Arial, sans-serif;
+            @page {
+              size: A4 portrait;
+              margin: 8mm !important;
             }
-
-            /* ── INK SAVER: strip ALL colored backgrounds ── */
-            #print-area, #print-area * {
-              background: white !important;
-              color: black !important;
+            body, html {
+              background: #ffffff !important;
+              background-color: #ffffff !important;
+              color: #000000 !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            main, .custom-scrollbar, #__next, div:not(#safe-printable-a4):not(#safe-printable-a4 *) {
+              background: transparent !important;
+              background-color: transparent !important;
+              border: none !important;
               box-shadow: none !important;
-              text-shadow: none !important;
             }
-
-            /* ── Re-add minimal structure ── */
-            #print-area .pr-hdr-dark  { border-bottom: 3px solid black !important; border-top: 1px solid black !important; }
-            #print-area .pr-sec-hdr   { border-left: 3px solid black !important; background: #f0f0f0 !important; }
-            #print-area .pr-tbl-hdr   { background: #f0f0f0 !important; }
-            #print-area .pr-subtotal  { background: #e8e8e8 !important; }
-            #print-area .pr-inflow-hdr  { background: #e8ffe8 !important; }
-            #print-area .pr-outflow-hdr { background: #ffe8e8 !important; }
-            #print-area .pr-bank-in-hdr { background: #e8eeff !important; }
-            #print-area .pr-bank-out-hdr{ background: #ffe8f4 !important; }
-            #print-area .pr-closing   { border: 2px solid black !important; background: #f5f5f5 !important; }
-            #print-area .pr-alt-row   { background: #f9f9f9 !important; }
-
-            /* ── COMPACT SPACING for 2 pages ── */
-            #print-area td, #print-area th { padding: 2px 5px !important; font-size: 9px !important; }
-            #print-area h3 { font-size: 9.5px !important; padding: 3px 8px !important; margin: 0 !important; }
-            #print-area .px-9 { padding-left: 18px !important; padding-right: 18px !important; }
-            #print-area .py-6 { padding-top: 8px !important; padding-bottom: 8px !important; }
-            #print-area .space-y-7 > * + * { margin-top: 8px !important; }
-            #print-area .space-y-3 > * + * { margin-top: 4px !important; }
-            #print-area .p-4 { padding: 6px !important; }
-            #print-area .p-3 { padding: 5px !important; }
-            #print-area .py-1\\.5 { padding-top: 1.5px !important; padding-bottom: 1.5px !important; }
-            #print-area .pt-6 { padding-top: 8px !important; }
-            #print-area .mb-5 { margin-bottom: 8px !important; }
-            #print-area .grid-cols-4 { grid-template-columns: repeat(4,minmax(0,1fr)) !important; }
-
-            /* ── FORCE PAGE 2 ── */
-            .print-page-2 { break-before: page !important; page-break-before: always !important; }
+            .print\\:hidden, nav, header, aside, .sidebar, footer, .no-print {
+              display: none !important;
+            }
+            #safe-printable-a4 {
+              display: block !important;
+              width: 100% !important;
+              max-width: 100% !important;
+              margin: 0 auto !important;
+              padding: 0 !important;
+              background: #ffffff !important;
+              background-color: #ffffff !important;
+              color: #000000 !important;
+              border: none !important;
+            }
+            table {
+              page-break-inside: auto;
+              width: 100% !important;
+              border-collapse: collapse !important;
+            }
+            tr {
+              page-break-inside: avoid;
+              page-break-after: auto;
+            }
+            thead {
+              display: table-header-group;
+            }
           }
         `}} />
 
-        {/* ── STICKY BAR ── */}
-        {showStickyBar && reportData && (
-          <div className="fixed top-0 left-0 right-0 z-[100] bg-slate-900 text-white shadow-2xl border-b border-slate-700 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 no-print animate-in slide-in-from-top-1 duration-200">
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 hidden sm:block">Live Balance</span>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400">🏦 Safe</span>
-                <span className={`font-black text-sm tabular-nums ${closingSafe >= 0 ? "text-emerald-400" : "text-red-400"}`}>{fmt(closingSafe)}</span>
-              </div>
-              <div className="w-px h-4 bg-slate-600" />
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400">💳 Bank</span>
-                <span className={`font-black text-sm tabular-nums ${closingBank >= 0 ? "text-blue-400" : "text-red-400"}`}>{fmt(closingBank)}</span>
-              </div>
-              <div className="w-px h-4 bg-slate-600" />
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400">Σ Total</span>
-                <span className={`font-black text-sm tabular-nums ${(closingSafe + closingBank) >= 0 ? "text-white" : "text-red-400"}`}>{fmt(closingSafe + closingBank)}</span>
-              </div>
-            </div>
-            <button onClick={handlePrint} className="bg-white text-slate-900 text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 hover:bg-slate-100 active:scale-95 transition-all">
-              <Printer className="w-3 h-3" /> Print
-            </button>
-          </div>
-        )}
-
         {/* ── MISSING INDEXES ── */}
         {missingIndexes.length > 0 && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-6 shadow-sm no-print">
-            <div className="flex items-center gap-3 text-red-700 mb-4">
+          <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-6 shadow-sm no-print">
+            <div className="flex items-center gap-3 text-red-400 mb-4">
               <AlertTriangle className="w-8 h-8" />
               <div>
                 <h2 className="text-xl font-bold">Missing Firebase Indexes ({missingIndexes.length})</h2>
-                <p className="text-sm opacity-90 mt-1">Click every button below, wait for them to build, then generate again.</p>
+                <p className="text-xs text-slate-400 mt-1">Click every button below, wait for them to build in Firebase Console, then generate again.</p>
               </div>
             </div>
             <div className="flex flex-wrap gap-3">
               {missingIndexes.map((url, i) => (
                 <a key={i} href={url} target="_blank" rel="noreferrer"
-                  className="bg-white border border-red-300 text-red-700 hover:bg-red-100 px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-colors shadow-sm">
+                  className="bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors shadow-sm">
                   Create Index #{i + 1} <ExternalLink className="w-4 h-4" />
                 </a>
               ))}
@@ -398,409 +458,460 @@ export default function SafeReportPage() {
           </div>
         )}
 
-        {/* ── CONTROLS ── */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-border p-4 space-y-4 no-print">
+        {/* ── CONTROLS & FILTER BAR ── */}
+        <div className="bg-[#0B1121] rounded-3xl shadow-xl border border-slate-800 p-5 sm:p-6 space-y-4 no-print">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
+                <Wallet className="text-emerald-400" size={24} />
+                {isAr ? "تقرير رصيد الخزنة والبنك الرسمي" : "Official Safe & Bank Balance Statement"}
+              </h2>
+              <p className="text-xs text-slate-400 font-medium mt-1">
+                {isAr 
+                  ? "تسوية حسابات الخزينة النقدية ومطابقة إيرادات ومصروفات البنك مع الأرصدة الافتتاحية والختامية."
+                  : "Complete cash drawer & bank account reconciliations with verified opening and closing balances."}
+              </p>
+            </div>
 
-          {/* Quick Shortcuts */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-1">Quick Select:</span>
-            {[
-              { label: "Today", onClick: () => { setReportType("date"); setSelectedDate(todayStr); }, color: "bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700" },
-              { label: "Yesterday", onClick: () => { setReportType("date"); setSelectedDate(yesterdayStr); }, color: "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700" },
-              { label: "This Month", onClick: () => { setReportType("month"); setSelectedMonth(thisMonthStr); }, color: "bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700" },
-              { label: "Last Month", onClick: () => { setReportType("month"); setSelectedMonth(lastMonthStr); }, color: "bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-700" },
-            ].map(b => (
-              <button key={b.label} onClick={b.onClick} className={`border px-3 py-1 rounded-full text-xs font-bold transition-all active:scale-95 ${b.color}`}>{b.label}</button>
-            ))}
+            <div className="flex items-center gap-2">
+              {reportData && (
+                <button 
+                  onClick={handlePrint}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-black text-xs flex items-center gap-2 shadow-lg shadow-red-600/30 transition-all cursor-pointer active:scale-95"
+                >
+                  <Printer size={16} /> {isAr ? "طباعة التقرير A4" : "Print A4 Statement"}
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Main Row */}
-          <div className="flex flex-wrap items-end gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 mb-1">Report Type</label>
+          {/* Shortcuts & Date Selectors */}
+          <div className="flex flex-wrap items-center justify-between gap-4 pt-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider">{isAr ? "فترات سريعة:" : "Quick Periods:"}</span>
+              {[
+                { label: isAr ? "اليوم" : "Today", onClick: () => { setReportType("date"); setSelectedDate(todayStr); } },
+                { label: isAr ? "أمس" : "Yesterday", onClick: () => { setReportType("date"); setSelectedDate(yesterdayStr); } },
+                { label: isAr ? "هذا الشهر" : "This Month", onClick: () => { setReportType("month"); setSelectedMonth(thisMonthStr); } },
+                { label: isAr ? "الشهر السابق" : "Last Month", onClick: () => { setReportType("month"); setSelectedMonth(lastMonthStr); } },
+              ].map(b => (
+                <button 
+                  key={b.label} 
+                  onClick={b.onClick} 
+                  className="border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                >
+                  {b.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
               <select
-                className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={reportType} onChange={(e: any) => setReportType(e.target.value)}
+                className="bg-[#070C18] border border-slate-800 rounded-xl px-3 py-2 text-xs font-bold text-white focus:border-indigo-500 outline-none"
+                value={reportType} 
+                onChange={(e: any) => setReportType(e.target.value)}
               >
-                <option value="date">Daily / Specific Date</option>
-                <option value="month">Monthly</option>
-                <option value="year">Yearly</option>
+                <option value="date">{isAr ? "يومي / تاريخ محدد" : "Daily / Specific Date"}</option>
+                <option value="month">{isAr ? "شهري" : "Monthly"}</option>
+                <option value="year">{isAr ? "سنوي" : "Yearly"}</option>
               </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 mb-1">Select Period</label>
-              {reportType === "date" && <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />}
-              {reportType === "month" && <input type="month" value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />}
-              {reportType === "year" && <input type="number" min="2020" max="2100" value={selectedYear} onChange={e => setSelectedYear(e.target.value)} className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm w-24 focus:outline-none focus:ring-2 focus:ring-blue-500" />}
-            </div>
-            <button onClick={generateReport} disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg text-sm flex items-center gap-2 transition-colors disabled:opacity-50 active:scale-95">
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Calendar className="w-4 h-4" />}
-              {loading ? "Generating…" : "Generate Report"}
-            </button>
-            {reportData && (
-              <button onClick={handlePrint}
-                className="ml-auto bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold py-2 px-4 rounded-lg text-sm flex items-center gap-2 transition-colors active:scale-95">
-                <Printer className="w-4 h-4" /> Print Report
+
+              {reportType === "date" && (
+                <input 
+                  type="date" 
+                  value={selectedDate} 
+                  onChange={e => setSelectedDate(e.target.value)} 
+                  className="bg-[#070C18] border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono font-bold text-white focus:border-indigo-500 outline-none" 
+                />
+              )}
+              {reportType === "month" && (
+                <input 
+                  type="month" 
+                  value={selectedMonth} 
+                  onChange={e => setSelectedMonth(e.target.value)} 
+                  className="bg-[#070C18] border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono font-bold text-white focus:border-indigo-500 outline-none" 
+                />
+              )}
+              {reportType === "year" && (
+                <input 
+                  type="number" 
+                  min="2020" 
+                  max="2100" 
+                  value={selectedYear} 
+                  onChange={e => setSelectedYear(e.target.value)} 
+                  className="bg-[#070C18] border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono font-bold text-white w-24 focus:border-indigo-500 outline-none" 
+                />
+              )}
+
+              <button 
+                onClick={generateReport} 
+                disabled={loading}
+                className="bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold py-2 px-4 rounded-xl text-xs flex items-center gap-2 transition-all disabled:opacity-50 active:scale-95 shadow-md shadow-indigo-600/30 cursor-pointer"
+              >
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Calendar className="w-4 h-4" />}
+                {loading ? (isAr ? "جاري الحساب..." : "Calculating...") : (isAr ? "تحديث التقرير" : "Update Statement")}
               </button>
-            )}
+            </div>
           </div>
         </div>
 
         {/* ══════════════════════════════════════════════════════════════════════
-            PRINT AREA
+            REPORT DISPLAY (Screen + Print Friendly)
         ══════════════════════════════════════════════════════════════════════ */}
         {reportData && (
-          <div id="print-area" className="bg-white text-black max-w-[860px] mx-auto shadow-2xl print:shadow-none border border-slate-300 font-sans text-[12.5px]">
-
-            {/* ── BILINGUAL HEADER ── */}
-            <div style={{ background: "#0f172a", padding: "18px 32px 14px" }} className="pr-hdr-dark flex items-center justify-between">
-              <div>
-                <div className="text-white font-black text-3xl tracking-tight leading-none">CIRCLE K</div>
-                <div style={{ color: "#64748b" }} className="text-[10px] font-bold uppercase tracking-[0.2em] mt-1">
-                  Financial Statement &nbsp;·&nbsp; البيان المالي
+          <div id="safe-printable-a4" className="w-full space-y-6">
+            
+            {/* Main Statement Card */}
+            <div className="bg-[#0B1121] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 text-slate-200">
+              
+              {/* Header Box */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-3xl font-black tracking-tight text-red-500 leading-none">CIRCLE K</h1>
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30">
+                      FRANCHISE OPERATIONS
+                    </span>
+                  </div>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
+                    Financial Statement &nbsp;·&nbsp; البيان المالي ومطابقة الخزينة
+                  </p>
                 </div>
-              </div>
-              <div className="text-right">
-                <div className="text-white font-bold text-xl leading-tight">Safe Balance Report</div>
-                <div style={{ color: "#34d399" }} className="text-[13px] font-bold leading-tight mt-0.5">تقرير رصيد الخزنة</div>
-                <div style={{ color: "#64748b" }} className="text-[10px] font-mono mt-1">
-                  {new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
-                  &nbsp;·&nbsp;
-                  {new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
-                </div>
-              </div>
-            </div>
-            {/* Red accent stripe */}
-            <div style={{ background: "linear-gradient(90deg,#dc2626,#ef4444,#dc2626)", height: "3px" }} />
 
-            <div className="px-9 py-6 space-y-7">
-
-              {/* ── META INFO ── */}
-              <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0" }} className="grid grid-cols-2 gap-4 rounded-lg p-4 text-[11.5px]">
-                {[
-                  ["Entity · الجهة", `${branchLabel.en}  ·  ${branchLabel.ar}`],
-                  ["Period · الفترة", reportType === "date" ? reportData.startDateStr : `${reportData.startDateStr}  →  ${reportData.endDateStr}`],
-                  ["Prepared By · أعده", "SYSTEM ADMIN  ·  إدارة النظام"],
-                  ["Currency · العملة", "EGP — الجنيه المصري"],
-                ].map(([label, value], i) => (
-                  <div key={i} className="flex items-start gap-2">
-                    <span style={{ color: "#64748b" }} className="font-black uppercase text-[9px] tracking-wider w-28 shrink-0 pt-0.5">{label}</span>
-                    <span className="font-bold">{value}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* ── SUMMARY CARDS ── */}
-              <div>
-                <div style={{ color: "#64748b" }} className="text-[9px] font-black uppercase tracking-[0.18em] mb-2">Executive Summary · الملخص التنفيذي</div>
-                <div className="grid grid-cols-4 gap-0 border-2 border-slate-900 divide-x-2 divide-slate-900 text-center overflow-hidden rounded-md">
-                  <div style={{ background: "#f0fdf4" }} className="p-3">
-                    <div style={{ color: "#166534" }} className="text-[8.5px] font-black uppercase tracking-wider mb-1">Safe Balance · رصيد الخزنة</div>
-                    <div style={{ color: closingSafe >= 0 ? "#15803d" : "#dc2626" }} className="text-lg font-black tabular-nums">{fmt(closingSafe)}</div>
-                  </div>
-                  <div style={{ background: "#eff6ff" }} className="p-3">
-                    <div style={{ color: "#1e40af" }} className="text-[8.5px] font-black uppercase tracking-wider mb-1">Bank Balance · رصيد البنك</div>
-                    <div style={{ color: closingBank >= 0 ? "#1d4ed8" : "#dc2626" }} className="text-lg font-black tabular-nums">{fmt(closingBank)}</div>
-                  </div>
-                  <div style={{ background: "#fef2f2" }} className="p-3">
-                    <div style={{ color: "#991b1b" }} className="text-[8.5px] font-black uppercase tracking-wider mb-1">Total Outflows · إجمالي الخارج</div>
-                    <div style={{ color: "#dc2626" }} className="text-lg font-black tabular-nums">{fmt(safeOutflows + bankOutflows)}</div>
-                  </div>
-                  <div style={{ background: (closingSafe + closingBank) >= 0 ? "#0f172a" : "#7f1d1d" }} className="p-3">
-                    <div style={{ color: "#94a3b8" }} className="text-[8.5px] font-black uppercase tracking-wider mb-1">Net Total · الإجمالي الصافي</div>
-                    <div className="text-lg font-black text-white tabular-nums">{fmt(closingSafe + closingBank)}</div>
-                  </div>
+                <div className="text-right">
+                  <h2 className="text-xl font-black text-white">Safe & Bank Balance Statement</h2>
+                  <p className="text-sm font-bold text-emerald-400">تقرير رصيد الخزنة وحساب البنك</p>
+                  <p className="text-[11px] font-mono text-slate-500 mt-0.5">
+                    {new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                    &nbsp;·&nbsp;
+                    {new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                  </p>
                 </div>
               </div>
 
-              {/* ── CASH FLOW BAR CHART ── */}
+              {/* Meta Grid Box */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 bg-[#070C18] border border-slate-800 rounded-2xl p-4 text-xs font-medium">
+                <div>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase block">{isAr ? "الجهة / الفرع:" : "Entity / Branch:"}</span>
+                  <span className="font-black text-white text-sm mt-0.5 block">{branchLabel.en} · {branchLabel.ar}</span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase block">{isAr ? "فترة التقرير:" : "Reporting Period:"}</span>
+                  <span className="font-bold text-indigo-300 font-mono text-xs mt-0.5 block">
+                    {reportType === "date" ? reportData.startDateStr : `${reportData.startDateStr}  →  ${reportData.endDateStr}`}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase block">{isAr ? "المسؤول / أعده:" : "Prepared By / Officer:"}</span>
+                  <span className="font-bold text-slate-200 mt-0.5 block">{managerName} (Store Manager)</span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase block">{isAr ? "كود الخزنة النقدية:" : "Safe Vault Code:"}</span>
+                  <span className="font-mono font-black text-emerald-400 mt-0.5 block">{accounts.safeCode} ({accounts.safeCodeAr})</span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase block">{isAr ? "الحساب البنكي المعتمد:" : "Bank Account Reference:"}</span>
+                  <span className="font-mono font-black text-blue-400 mt-0.5 block">{accounts.bankAccount}</span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase block">{isAr ? "العملة الرسمية:" : "Currency:"}</span>
+                  <span className="font-bold text-slate-300 mt-0.5 block">EGP — الجنيه المصري</span>
+                </div>
+              </div>
+
+              {/* Executive Summary 4 Cards Grid */}
               <div>
-                <div style={{ color: "#64748b" }} className="text-[9px] font-black uppercase tracking-[0.18em] mb-2">Cash Flow Visual · رسم بياني للتدفق النقدي</div>
-                <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0" }} className="rounded-lg p-4 space-y-3">
-                  {/* Safe bar */}
-                  {[
-                    { label: "🏦 Safe (الخزنة)", inAmt: safeInflows, outAmt: safeOutflows, inColor: "#16a34a", outColor: "#dc2626" },
-                    { label: "💳 Bank (البنك)", inAmt: bankInflows, outAmt: bankOutflows, inColor: "#2563eb", outColor: "#7c3aed" },
-                  ].map(bar => {
-                    const tot = Math.max(bar.inAmt + bar.outAmt, 1);
-                    const inPct = (bar.inAmt / tot * 100).toFixed(1);
-                    const outPct = (bar.outAmt / tot * 100).toFixed(1);
-                    return (
-                      <div key={bar.label}>
-                        <div className="flex justify-between text-[10px] font-bold mb-1">
-                          <span>{bar.label}</span>
-                          <span style={{ color: "#64748b" }}>{inPct}% In · {outPct}% Out</span>
-                        </div>
-                        <div className="flex h-6 rounded overflow-hidden" style={{ border: "1px solid #e2e8f0" }}>
-                          {bar.inAmt > 0 && (
-                            <div style={{ width: `${inPct}%`, background: bar.inColor }} className="flex items-center justify-center text-white text-[8px] font-black overflow-hidden">{fmt(bar.inAmt)}</div>
-                          )}
-                          {bar.outAmt > 0 && (
-                            <div style={{ width: `${outPct}%`, background: bar.outColor }} className="flex items-center justify-center text-white text-[8px] font-black overflow-hidden">{fmt(bar.outAmt)}</div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  <div className="flex flex-wrap gap-3 text-[9px] font-bold pt-1">
-                    {[
-                      { color: "#16a34a", label: "Safe In (داخل الخزنة)" },
-                      { color: "#dc2626", label: "Safe Out (خارج الخزنة)" },
-                      { color: "#2563eb", label: "Bank In (داخل البنك)" },
-                      { color: "#7c3aed", label: "Bank Out (خارج البنك)" },
-                    ].map(l => (
-                      <span key={l.label} className="flex items-center gap-1">
-                        <span style={{ background: l.color, width: 10, height: 8, display: "inline-block", borderRadius: 2 }} />
-                        {l.label}
-                      </span>
-                    ))}
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2 block">
+                  {isAr ? "الملخص التنفيذي للأرصدة" : "Executive Balance Summary"}
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                  
+                  {/* Safe Balance */}
+                  <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 text-center">
+                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-wider block flex items-center justify-center gap-1">
+                      <Wallet size={12} /> {isAr ? "رصيد الخزنة الفعلي" : "Safe Cash Balance"}
+                    </span>
+                    <span className={`text-2xl font-black font-mono mt-1.5 block tabular-nums ${closingSafe >= 0 ? "text-emerald-300" : "text-rose-400"}`}>
+                      {fmt(closingSafe)} <span className="text-xs font-sans">EGP</span>
+                    </span>
+                  </div>
+
+                  {/* Bank Balance */}
+                  <div className="bg-blue-500/10 border border-blue-500/30 rounded-2xl p-4 text-center">
+                    <span className="text-[10px] font-black text-blue-400 uppercase tracking-wider block flex items-center justify-center gap-1">
+                      <Landmark size={12} /> {isAr ? "رصيد البنك والفيزا" : "Bank & Visa Balance"}
+                    </span>
+                    <span className={`text-2xl font-black font-mono mt-1.5 block tabular-nums ${closingBank >= 0 ? "text-blue-300" : "text-rose-400"}`}>
+                      {fmt(closingBank)} <span className="text-xs font-sans">EGP</span>
+                    </span>
+                  </div>
+
+                  {/* Total Outflows */}
+                  <div className="bg-rose-500/10 border border-rose-500/30 rounded-2xl p-4 text-center">
+                    <span className="text-[10px] font-black text-rose-400 uppercase tracking-wider block flex items-center justify-center gap-1">
+                      <ArrowDownLeft size={12} /> {isAr ? "إجمالي المنصرف" : "Total Outflows"}
+                    </span>
+                    <span className="text-2xl font-black font-mono text-rose-300 mt-1.5 block tabular-nums">
+                      {fmt(safeOutflows + bankOutflows)} <span className="text-xs font-sans">EGP</span>
+                    </span>
+                  </div>
+
+                  {/* Net Combined Liquidity */}
+                  <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-2xl p-4 text-center">
+                    <span className="text-[10px] font-black text-indigo-300 uppercase tracking-wider block flex items-center justify-center gap-1">
+                      <ShieldCheck size={12} /> {isAr ? "صافي السيولة المجمعة" : "Net Combined Liquidity"}
+                    </span>
+                    <span className={`text-2xl font-black font-mono mt-1.5 block tabular-nums ${(closingSafe + closingBank) >= 0 ? "text-white" : "text-rose-400"}`}>
+                      {fmt(closingSafe + closingBank)} <span className="text-xs font-sans">EGP</span>
+                    </span>
                   </div>
                 </div>
               </div>
 
               {/* ── I. SAFE CASH LEDGER ── */}
-              <div className="space-y-3">
-                <h3 style={{ background: "#1e3a5f", color: "white" }} className="pr-sec-hdr text-[11px] font-black uppercase tracking-widest px-4 py-2 rounded">
-                  {sectionNum(0)}. Safe Cash Ledger · دفتر أستاذ الخزنة النقدية
-                </h3>
-
-                {/* A – Inflows */}
-                <div>
-                  <div style={{ background: "#dcfce7", color: "#166534" }} className="pr-inflow-hdr text-[9px] font-black uppercase tracking-wider px-3 py-1.5 rounded mb-1.5">
-                    A. Cash Inflows · التدفقات النقدية الداخلة ↑
-                  </div>
-                  <table className="w-full text-[11.5px] rounded overflow-hidden" style={{ border: "1px solid #e2e8f0" }}>
-                    <thead>
-                      <tr style={{ background: "#f0fdf4" }} className="pr-tbl-hdr">
-                        {["Description · البيان", "Notes · ملاحظات", "Amount (EGP) · المبلغ"].map((h, i) => (
-                          <th key={i} className={`py-1.5 px-3 font-black uppercase tracking-wider text-[8.5px] ${i === 2 ? "text-right w-36" : "text-left"}`}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      <tr style={{ background: "#fafafa" }}>
-                        <td className="py-1.5 px-3 font-semibold" style={{ color: "#475569" }}>Opening Balance · الرصيد الافتتاحي</td>
-                        <td className="py-1.5 px-3 text-[10px] italic" style={{ color: "#94a3b8" }}>Carried forward · منقول من السابق</td>
-                        <td className="py-1.5 px-3 text-right font-mono font-bold" style={{ color: "#64748b" }}>{fmt(reportData.openingSafeBalance)}</td>
-                      </tr>
-                      {[
-                        ["Sales Cash · المبيعات النقدية", "Physical cash from shifts · نقدية الوردية", reportData.period.salesCash],
-                        ["Over Amount · مبلغ الزيادة", "Drawer surplus · زيادة الصندوق", reportData.period.overAmount],
-                        ["Deposits to Safe · إيداعات إلى الخزنة", "Cash injected from bank · تحويل من البنك", reportData.period.depositsToSafe],
-                      ].map(([d, n, v]) => (
-                        <tr key={String(d)}>
-                          <td className="py-1.5 px-3">{d}</td>
-                          <td className="py-1.5 px-3 text-[10px] italic" style={{ color: "#94a3b8" }}>{n}</td>
-                          <td className="py-1.5 px-3 text-right font-mono">{fmt(Number(v))}</td>
-                        </tr>
-                      ))}
-                      <tr style={{ background: "#dcfce7" }} className="pr-subtotal">
-                        <td colSpan={2} className="py-2 px-3 text-right font-black uppercase tracking-wider text-[9px]" style={{ color: "#166534" }}>Subtotal Inflows · المجموع الفرعي الداخل</td>
-                        <td className="py-2 px-3 text-right font-mono font-black" style={{ color: "#166534" }}>{fmt(safeInflows)}</td>
-                      </tr>
-                    </tbody>
-                  </table>
+              <div className="space-y-4 pt-2">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                  <h3 className="text-base font-black text-white flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-mono">I</span>
+                    {isAr ? "دفتر أستاذ الخزنة النقدية (Safe Cash Ledger)" : "Safe Cash Ledger & Drawer Reconciliation"}
+                  </h3>
+                  <span className="text-xs font-mono font-bold text-emerald-400">{accounts.safeCode}</span>
                 </div>
 
-                {/* B – Outflows */}
-                <div>
-                  <div style={{ background: "#fee2e2", color: "#991b1b" }} className="pr-outflow-hdr text-[9px] font-black uppercase tracking-wider px-3 py-1.5 rounded mb-1.5">
-                    B. Cash Outflows · التدفقات النقدية الخارجة ↓
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  
+                  {/* Safe Inflows */}
+                  <div className="bg-[#070C18] border border-slate-800 rounded-2xl p-4 space-y-3">
+                    <div className="flex items-center justify-between text-xs font-black text-emerald-400 border-b border-slate-800/80 pb-2">
+                      <span className="flex items-center gap-1"><ArrowUpRight size={14} /> {isAr ? "أ. الوارد النقدي للخزنة (Inflows)" : "A. Safe Cash Inflows"}</span>
+                      <span className="font-mono">{fmt(safeInflows)} EGP</span>
+                    </div>
+
+                    <div className="space-y-2 text-xs">
+                      <div className="flex items-center justify-between py-1 border-b border-slate-800/50">
+                        <span className="text-slate-400">{isAr ? "الرصيد الافتتاحي المنقول" : "Opening Balance (Carried Over)"}</span>
+                        <span className="font-mono font-bold text-slate-300">{fmt(reportData.openingSafeBalance)}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between py-1 border-b border-slate-800/50">
+                        <span className="text-slate-400">{isAr ? "مبيعات الكاش من الورديات" : "Physical Sales Cash"}</span>
+                        <span className="font-mono font-bold text-white">{fmt(reportData.period.salesCash)}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between py-1 border-b border-slate-800/50">
+                        <span className="text-slate-400">{isAr ? "مبلغ الزيادة بالصندوق (Over Amount)" : "Drawer Surplus Overages"}</span>
+                        <span className="font-mono font-bold text-emerald-400">{fmt(reportData.period.overAmount)}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between py-1">
+                        <span className="text-slate-400">{isAr ? "إيداعات وتغذية نقدية للخزنة" : "Deposits & Cash Injections to Safe"}</span>
+                        <span className="font-mono font-bold text-indigo-300">{fmt(reportData.period.depositsToSafe)}</span>
+                      </div>
+                    </div>
                   </div>
-                  <table className="w-full text-[11.5px] rounded overflow-hidden" style={{ border: "1px solid #e2e8f0" }}>
-                    <thead>
-                      <tr style={{ background: "#fef2f2" }} className="pr-tbl-hdr">
-                        {["Description · البيان", "Notes · ملاحظات", "Amount (EGP) · المبلغ"].map((h, i) => (
-                          <th key={i} className={`py-1.5 px-3 font-black uppercase tracking-wider text-[8.5px] ${i === 2 ? "text-right w-36" : "text-left"}`}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {[
-                        ["Short Amount · مبلغ العجز", "Drawer shortages · عجز الصندوق", reportData.period.shortAmount],
-                        ["General Expenses (Cash) · مصاريف عامة (نقدي)", "Direct safe expenditures · مدفوعات من الخزنة", reportData.period.totalCashPayments],
-                        ["Taxes Paid (Cash) · الضرائب (نقدي)", "Tax on invoices · ضريبة الفواتير", reportData.period.totalCashTaxes],
-                        ["Loans Disbursed · قروض ممنوحة", "Employee loans · قروض الموظفين", reportData.period.totalLoans],
-                        ["Deposits (Safe→Bank) · إيداعات (الخزنة←البنك)", "Cash transferred to bank · تحويل للبنك", reportData.period.depositsFromSafe],
-                        ["Credit Settlements (Cash) · تسوية ائتمان (نقدي)", "Old debts in cash · ديون قديمة نقداً", reportData.period.totalOldCreditsCash],
-                        ["Payroll Disbursements · صرف الرواتب", "Salaries from safe · رواتب من الخزنة", reportData.period.totalPayrolls],
-                      ].map(([d, n, v]) => (
-                        <tr key={String(d)}>
-                          <td className="py-1.5 px-3">{d}</td>
-                          <td className="py-1.5 px-3 text-[10px] italic" style={{ color: "#94a3b8" }}>{n}</td>
-                          <td className="py-1.5 px-3 text-right font-mono">{fmt(Number(v))}</td>
-                        </tr>
-                      ))}
-                      <tr style={{ background: "#fee2e2" }} className="pr-subtotal">
-                        <td colSpan={2} className="py-2 px-3 text-right font-black uppercase tracking-wider text-[9px]" style={{ color: "#991b1b" }}>Subtotal Outflows · المجموع الفرعي الخارج</td>
-                        <td className="py-2 px-3 text-right font-mono font-black" style={{ color: "#991b1b" }}>{fmt(safeOutflows)}</td>
-                      </tr>
-                    </tbody>
-                  </table>
+
+                  {/* Safe Outflows */}
+                  <div className="bg-[#070C18] border border-slate-800 rounded-2xl p-4 space-y-3">
+                    <div className="flex items-center justify-between text-xs font-black text-rose-400 border-b border-slate-800/80 pb-2">
+                      <span className="flex items-center gap-1"><ArrowDownLeft size={14} /> {isAr ? "ب. المنصرف النقدي من الخزنة (Outflows)" : "B. Safe Cash Outflows"}</span>
+                      <span className="font-mono">{fmt(safeOutflows)} EGP</span>
+                    </div>
+
+                    <div className="space-y-2 text-xs">
+                      <div className="flex items-center justify-between py-1 border-b border-slate-800/50">
+                        <span className="text-slate-400">{isAr ? "مبلغ العجز بالصندوق (Shortage)" : "Drawer Cash Shortages"}</span>
+                        <span className="font-mono font-bold text-rose-400">{fmt(reportData.period.shortAmount)}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between py-1 border-b border-slate-800/50">
+                        <span className="text-slate-400">{isAr ? "مصروفات وفواتير نقدية" : "Cash Expenses & Invoices"}</span>
+                        <span className="font-mono font-bold text-white">{fmt(reportData.period.totalCashPayments)}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between py-1 border-b border-slate-800/50">
+                        <span className="text-slate-400">{isAr ? "ضريبة القيمة المضافة المسددة نقداً" : "Cash VAT / Taxes"}</span>
+                        <span className="font-mono font-bold text-slate-300">{fmt(reportData.period.totalCashTaxes)}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between py-1 border-b border-slate-800/50">
+                        <span className="text-slate-400">{isAr ? "سلف وعهد الموظفين" : "Staff Loans & Advances"}</span>
+                        <span className="font-mono font-bold text-amber-300">{fmt(reportData.period.totalLoans)}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between py-1 border-b border-slate-800/50">
+                        <span className="text-slate-400">{isAr ? "مسحوبات الرواتب نقداً" : "Cash Payroll Disbursements"}</span>
+                        <span className="font-mono font-bold text-indigo-300">{fmt(reportData.period.totalPayrolls)}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between py-1">
+                        <span className="text-slate-400">{isAr ? "تحويلات نقدية مسحوبة للبنك" : "Cash Transferred from Safe to Bank"}</span>
+                        <span className="font-mono font-bold text-blue-300">{fmt(reportData.period.depositsFromSafe)}</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Closing Safe Balance */}
-                <div style={{ background: closingSafe >= 0 ? "#0f172a" : "#7f1d1d" }} className="pr-closing rounded-lg p-4 text-center">
-                  <div className="font-mono text-[9.5px] mb-1" style={{ color: "#64748b" }}>
-                    {fmt(reportData.openingSafeBalance)} (Opening) + {fmt(safeInflows)} (In) − {fmt(safeOutflows)} (Out)
+                {/* Closing Safe Result Pill */}
+                <div className="bg-[#070C18] border border-emerald-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+                  <div className="text-xs text-slate-400">
+                    <span className="font-mono">{fmt(reportData.openingSafeBalance)}</span> (Opening) + <span className="font-mono">{fmt(safeInflows)}</span> (In) − <span className="font-mono">{fmt(safeOutflows)}</span> (Out)
                   </div>
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#94a3b8" }}>Closing Safe Balance · الرصيد الختامي للخزنة = </span>
-                    <span className="text-2xl font-black text-white"> {fmt(closingSafe)} EGP</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black text-slate-300 uppercase tracking-wider">
+                      {isAr ? "الرصيد الختامي للخزنة:" : "Closing Safe Balance:"}
+                    </span>
+                    <span className="text-xl font-black font-mono text-emerald-400">{fmt(closingSafe)} EGP</span>
                   </div>
                 </div>
               </div>
 
-              {/* ── II. BANK / VISA LEDGER — PAGE 2 ── */}
-              <div className="space-y-3 print-page-2">
-                <h3 style={{ background: "#1e3a5f", color: "white" }} className="pr-sec-hdr text-[11px] font-black uppercase tracking-widest px-4 py-2 rounded">
-                  {sectionNum(1)}. Bank / Visa Ledger · دفتر أستاذ البنك والفيزا
-                </h3>
-                <table className="w-full text-[11.5px] rounded overflow-hidden" style={{ border: "1px solid #e2e8f0" }}>
-                  <thead>
-                    <tr style={{ background: "#eff6ff" }} className="pr-tbl-hdr">
-                      {["Description · البيان", "Notes · ملاحظات", "Amount (EGP) · المبلغ"].map((h, i) => (
-                        <th key={i} className={`py-1.5 px-3 font-black uppercase tracking-wider text-[8.5px] ${i === 2 ? "text-right w-36" : "text-left"}`}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    <tr style={{ background: "#dbeafe" }}>
-                      <td colSpan={3} className="py-1 px-3 font-black uppercase text-[9px] tracking-widest" style={{ color: "#1e40af" }}>A. Bank Inflows · التدفقات البنكية الداخلة ↑</td>
-                    </tr>
-                    <tr style={{ background: "#fafafa" }}>
-                      <td className="py-1.5 px-3 pl-5 font-semibold" style={{ color: "#475569" }}>Opening Balance · الرصيد الافتتاحي</td>
-                      <td className="py-1.5 px-3 text-[10px] italic" style={{ color: "#94a3b8" }}>Carried forward · منقول من السابق</td>
-                      <td className="py-1.5 px-3 text-right font-mono font-bold" style={{ color: "#64748b" }}>{fmt(reportData.openingBankBalance)}</td>
-                    </tr>
-                    {[
-                      ["Sales Visa · مبيعات الفيزا", "Card terminal settlements · مبيعات البطاقات", reportData.period.visaSales],
-                      ["Deposits to Bank · إيداعات للبنك", "Cash deposited to bank · نقد أودع في البنك", reportData.period.depositsToBank],
-                    ].map(([d, n, v], i) => (
-                      <tr key={String(d)}>
-                        <td className="py-1.5 px-3 pl-5">{d}</td>
-                        <td className="py-1.5 px-3 text-[10px] italic" style={{ color: "#94a3b8" }}>{n}</td>
-                        <td className="py-1.5 px-3 text-right font-mono">{fmt(Number(v))}</td>
-                      </tr>
-                    ))}
-                    <tr style={{ background: "#dbeafe" }}>
-                      <td colSpan={2} className="py-1.5 px-3 text-right font-bold text-[9px] uppercase tracking-wider" style={{ color: "#1e40af" }}>Subtotal Bank Inflows · مجموع الداخل</td>
-                      <td className="py-1.5 px-3 text-right font-mono font-black" style={{ color: "#1e40af" }}>{fmt(bankInflows)}</td>
-                    </tr>
+              {/* ── II. BANK & VISA LEDGER ── */}
+              <div className="space-y-4 pt-4 border-t border-slate-800">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                  <h3 className="text-base font-black text-white flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30 text-xs font-mono">II</span>
+                    {isAr ? "دفتر أستاذ الحساب البنكي والفيزا (Bank & Visa Ledger)" : "Bank Account & Card Terminal Ledger"}
+                  </h3>
+                  <span className="text-xs font-mono font-bold text-blue-400">{accounts.bankAccount}</span>
+                </div>
 
-                    <tr style={{ background: "#fce7f3" }}>
-                      <td colSpan={3} className="py-1 px-3 font-black uppercase text-[9px] tracking-widest" style={{ color: "#9d174d" }}>B. Bank Outflows · التدفقات البنكية الخارجة ↓</td>
-                    </tr>
-                    {[
-                      ["Bank Payments · مدفوعات بنكية", "Transfers & visa expenses · تحويلات ومصاريف", reportData.period.bankPayments],
-                      ["Taxes Paid (Bank) · الضرائب (بنك)", "Tax on bank payments · ضريبة المدفوعات البنكية", reportData.period.bankTaxes],
-                      ["Credit Payments (Bank) · مدفوعات الائتمان (بنك)", "Debts settled via bank · ديون سددت بالبنك", reportData.period.bankCredits],
-                      ["Deposits from Bank · سحوبات من البنك", "Funds withdrawn from bank · سحب من البنك", reportData.period.depositsFromBank],
-                    ].map(([d, n, v], i) => (
-                      <tr key={String(d)}>
-                        <td className="py-1.5 px-3 pl-5">{d}</td>
-                        <td className="py-1.5 px-3 text-[10px] italic" style={{ color: "#94a3b8" }}>{n}</td>
-                        <td className="py-1.5 px-3 text-right font-mono">{fmt(Number(v))}</td>
-                      </tr>
-                    ))}
-                    <tr style={{ background: closingBank >= 0 ? "#0f172a" : "#7f1d1d", color: "white" }}>
-                      <td colSpan={2} className="py-2.5 px-3 text-right font-black uppercase tracking-widest text-[9px]" style={{ color: "#94a3b8" }}>Closing Bank Balance · الرصيد الختامي للبنك</td>
-                      <td className="py-2.5 px-3 text-right font-mono font-black text-xl">{fmt(closingBank)}</td>
-                    </tr>
-                  </tbody>
-                </table>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  
+                  {/* Bank Inflows */}
+                  <div className="bg-[#070C18] border border-slate-800 rounded-2xl p-4 space-y-3">
+                    <div className="flex items-center justify-between text-xs font-black text-blue-400 border-b border-slate-800/80 pb-2">
+                      <span className="flex items-center gap-1"><ArrowUpRight size={14} /> {isAr ? "أ. الوارد البنكي (Bank Inflows)" : "A. Bank Inflows"}</span>
+                      <span className="font-mono">{fmt(bankInflows)} EGP</span>
+                    </div>
+
+                    <div className="space-y-2 text-xs">
+                      <div className="flex items-center justify-between py-1 border-b border-slate-800/50">
+                        <span className="text-slate-400">{isAr ? "رصيد البنك الافتتاحي المنقول" : "Opening Bank Balance"}</span>
+                        <span className="font-mono font-bold text-slate-300">{fmt(reportData.openingBankBalance)}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between py-1 border-b border-slate-800/50">
+                        <span className="text-slate-400">{isAr ? "مبيعات الفيزا وماكينات الدفع" : "POS Card / Visa Sales"}</span>
+                        <span className="font-mono font-bold text-white">{fmt(reportData.period.visaSales)}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between py-1">
+                        <span className="text-slate-400">{isAr ? "إيداعات وتحويلات نقدية واردة للبنك" : "Deposits & Transfers into Bank"}</span>
+                        <span className="font-mono font-bold text-blue-300">{fmt(reportData.period.depositsToBank)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bank Outflows */}
+                  <div className="bg-[#070C18] border border-slate-800 rounded-2xl p-4 space-y-3">
+                    <div className="flex items-center justify-between text-xs font-black text-purple-400 border-b border-slate-800/80 pb-2">
+                      <span className="flex items-center gap-1"><ArrowDownLeft size={14} /> {isAr ? "ب. المنصرف البنكي (Bank Outflows)" : "B. Bank Outflows"}</span>
+                      <span className="font-mono">{fmt(bankOutflows)} EGP</span>
+                    </div>
+
+                    <div className="space-y-2 text-xs">
+                      <div className="flex items-center justify-between py-1 border-b border-slate-800/50">
+                        <span className="text-slate-400">{isAr ? "مدفوعات ومصروفات بنكية وفيزا" : "Visa & Bank Transfer Payments"}</span>
+                        <span className="font-mono font-bold text-white">{fmt(reportData.period.bankPayments)}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between py-1 border-b border-slate-800/50">
+                        <span className="text-slate-400">{isAr ? "ضرائب مسددة بالبنك والفيزا" : "Taxes Paid via Bank/Visa"}</span>
+                        <span className="font-mono font-bold text-slate-300">{fmt(reportData.period.bankTaxes)}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between py-1">
+                        <span className="text-slate-400">{isAr ? "مسحوبات وتحويلات خارجة من البنك" : "Withdrawals / Outward Transfers"}</span>
+                        <span className="font-mono font-bold text-purple-300">{fmt(reportData.period.depositsFromBank)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Closing Bank Result Pill */}
+                <div className="bg-[#070C18] border border-blue-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+                  <div className="text-xs text-slate-400">
+                    <span className="font-mono">{fmt(reportData.openingBankBalance)}</span> (Opening) + <span className="font-mono">{fmt(bankInflows)}</span> (In) − <span className="font-mono">{fmt(bankOutflows)}</span> (Out)
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black text-slate-300 uppercase tracking-wider">
+                      {isAr ? "الرصيد الختامي للبنك:" : "Closing Bank Balance:"}
+                    </span>
+                    <span className="text-xl font-black font-mono text-blue-400">{fmt(closingBank)} EGP</span>
+                  </div>
+                </div>
               </div>
 
               {/* ── III. MONTH-OVER-MONTH TREND (monthly only) ── */}
               {reportType === "month" && reportData.trendData && reportData.trendData.length > 0 && (
-                <div className="space-y-3">
-                  <h3 style={{ background: "#1e3a5f", color: "white" }} className="text-[11px] font-black uppercase tracking-widest px-4 py-2 rounded flex items-center gap-2">
-                    <TrendingUp className="w-3.5 h-3.5" />
-                    {sectionNum(2)}. Month-over-Month Trend · الاتجاه الشهري
+                <div className="space-y-4 pt-4 border-t border-slate-800">
+                  <h3 className="text-base font-black text-white flex items-center gap-2">
+                    <TrendingUp className="text-amber-400" size={18} />
+                    {isAr ? "الاتجاه الشهري للسيولة (Month-over-Month Trend)" : "Month-over-Month Balance Trend"}
                   </h3>
-                  <table className="w-full text-[11.5px] rounded overflow-hidden" style={{ border: "1px solid #e2e8f0" }}>
-                    <thead>
-                      <tr style={{ background: "#f1f5f9" }}>
-                        {["Month · الشهر", "Safe Balance · رصيد الخزنة", "Bank Balance · رصيد البنك", "Total · الإجمالي"].map((h, i) => (
-                          <th key={i} className={`py-2 px-3 font-black uppercase tracking-wider text-[8.5px] ${i === 0 ? "text-left" : "text-right"}`}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {reportData.trendData.map((t: any, i: number) => (
-                        <tr key={i} style={t.isCurrent ? { background: "#1e3a5f", color: "white" } : { background: i % 2 === 0 ? "#f8fafc" : "white" }}>
-                          <td className="py-2 px-3 font-bold">
-                            {t.label}
-                            {t.isCurrent && <span style={{ background: "#fbbf24", color: "#000", fontSize: 7, padding: "1px 4px", borderRadius: 3, marginLeft: 4, fontWeight: 900 }}>CURRENT</span>}
-                            <div className="text-[9px] font-normal" style={{ color: t.isCurrent ? "#94a3b8" : "#94a3b8" }}>{t.labelAr}</div>
-                          </td>
-                          <td className={`py-2 px-3 text-right font-mono font-bold ${!t.isCurrent ? (t.safeBalance >= 0 ? "text-emerald-700" : "text-red-700") : ""}`}>{fmt(t.safeBalance)}</td>
-                          <td className={`py-2 px-3 text-right font-mono font-bold ${!t.isCurrent ? (t.bankBalance >= 0 ? "text-blue-700" : "text-red-700") : ""}`}>{fmt(t.bankBalance)}</td>
-                          <td className={`py-2 px-3 text-right font-mono font-black ${!t.isCurrent ? ((t.safeBalance + t.bankBalance) >= 0 ? "text-slate-800" : "text-red-700") : ""}`}>{fmt(t.safeBalance + t.bankBalance)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
 
-                  {/* Mini trend bars */}
-                  <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0" }} className="rounded-lg p-3 space-y-2">
-                    <div className="text-[9px] font-black uppercase tracking-wider" style={{ color: "#64748b" }}>Balance Trend · اتجاه الرصيد</div>
-                    {reportData.trendData.map((t: any, i: number) => {
-                      const maxVal = Math.max(...reportData.trendData.map((x: any) => Math.abs(x.safeBalance + x.bankBalance)), 1);
-                      const pct = Math.min(Math.abs(t.safeBalance + t.bankBalance) / maxVal * 100, 100).toFixed(1);
-                      const isPos = (t.safeBalance + t.bankBalance) >= 0;
-                      return (
-                        <div key={i} className="flex items-center gap-2">
-                          <span className="text-[9px] font-bold w-16 shrink-0">{t.label}</span>
-                          <div className="flex-1 h-4 rounded overflow-hidden" style={{ background: "#e2e8f0" }}>
-                            <div style={{ width: `${pct}%`, background: t.isCurrent ? "#1e3a5f" : isPos ? "#16a34a" : "#dc2626", transition: "width 0.3s" }} className="h-full rounded" />
-                          </div>
-                          <span className="text-[9px] font-black w-28 text-right tabular-nums">{fmt(t.safeBalance + t.bankBalance)}</span>
-                        </div>
-                      );
-                    })}
+                  <div className="overflow-x-auto">
+                    <table className={`w-full text-xs ${isAr ? "text-right" : "text-left"}`}>
+                      <thead>
+                        <tr className="bg-[#070C18] border-b border-slate-800 text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                          <th className="p-3">{isAr ? "الشهر" : "Month"}</th>
+                          <th className="p-3 text-center">{isAr ? "رصيد الخزنة" : "Safe Balance"}</th>
+                          <th className="p-3 text-center">{isAr ? "رصيد البنك" : "Bank Balance"}</th>
+                          <th className="p-3 text-center">{isAr ? "صافي السيولة" : "Net Total"}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/60 font-medium">
+                        {reportData.trendData.map((t: any, i: number) => (
+                          <tr key={i} className={t.isCurrent ? "bg-indigo-500/10 font-bold" : "hover:bg-slate-800/30"}>
+                            <td className="p-3 font-bold text-white">
+                              {t.label} {t.isCurrent && <span className="ml-2 px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[9px] font-mono font-black">{isAr ? "الحالي" : "CURRENT"}</span>}
+                            </td>
+                            <td className={`p-3 text-center font-mono font-bold ${t.safeBalance >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                              {fmt(t.safeBalance)}
+                            </td>
+                            <td className={`p-3 text-center font-mono font-bold ${t.bankBalance >= 0 ? "text-blue-400" : "text-rose-400"}`}>
+                              {fmt(t.bankBalance)}
+                            </td>
+                            <td className="p-3 text-center font-mono font-black text-white">
+                              {fmt(t.safeBalance + t.bankBalance)} EGP
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               )}
 
-              {/* ── SIGNATURES ── */}
-              <div className="pt-6 border-t-4 border-slate-900">
-                <div className="text-[9px] font-black uppercase tracking-widest mb-5" style={{ color: "#64748b" }}>
-                  {sectionNum(reportType === "month" ? 3 : 2)}. Authorization & Signatures · التفويض والتوقيعات
-                </div>
-                <div className="grid grid-cols-3 gap-8">
-                  {[
-                    { en: "Safe Custodian", ar: "أمين الخزنة" },
-                    { en: "Finance Manager", ar: "مدير المالية" },
-                    { en: "Branch Manager", ar: "مدير الفرع" },
-                  ].map((sig, i) => (
-                    <div key={i}>
-                      <div style={{ borderBottom: "2px solid #0f172a", height: 52, marginBottom: 6 }} />
-                      <p className="text-[11px] font-black uppercase tracking-wider">{sig.en}</p>
-                      <p className="text-[11px] font-bold" style={{ color: "#475569" }}>{sig.ar}</p>
-                      <p className="text-[9px] uppercase mt-0.5" style={{ color: "#94a3b8" }}>Name & Signature · الاسم والتوقيع</p>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex justify-end mt-5">
-                  <div style={{ width: 140, height: 80, border: "2px dashed #94a3b8", borderRadius: 8 }} className="flex items-center justify-center">
-                    <span className="text-[9px] font-bold uppercase text-center" style={{ color: "#94a3b8" }}>Official Stamp<br />الختم الرسمي</span>
+              {/* ── OFFICIAL APPROVAL & SIGNATURES ── */}
+              <div className="pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-6 text-xs text-slate-400">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white rounded-xl">
+                    <QRCode value={qrPayload} size={54} level="L" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-white font-mono">{accounts.safeCode} / {accounts.bankAccount}</p>
+                    <p className="text-[10px] text-slate-400">AUTHENTICATED BY ANH SYSTEM V2.0</p>
+                    <p className="text-[9px] text-slate-500">{new Date().toLocaleString("en-GB")}</p>
                   </div>
                 </div>
-              </div>
 
-              {/* ── FOOTER ── */}
-              <div className="text-center pt-4 border-t border-slate-200 space-y-1">
-                <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: "#94a3b8" }}>
-                  CONFIDENTIAL · سري &nbsp;—&nbsp; Internal Use Only · للاستخدام الداخلي فقط
-                </p>
-                <p className="text-[9px]" style={{ color: "#94a3b8" }}>
-                  This is a system-generated report · هذا تقرير صادر عن النظام تلقائياً — no manual signature required if system-stamped.
-                </p>
-                <p className="font-mono text-[9px]" style={{ color: "#94a3b8" }}>
-                  Generated: {new Date().toLocaleString("en-GB")} &nbsp;|&nbsp; Circle K Franchise Management System
-                </p>
+                <div className="flex items-center gap-8 text-center">
+                  <div>
+                    <p className="text-[10px] text-slate-500 uppercase mb-4">{isAr ? "مدير الفرع المسئول" : "Store Manager"}</p>
+                    <p className="text-xs font-bold text-slate-200 border-t border-slate-700 pt-1">{managerName}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-[10px] text-slate-500 uppercase mb-4">{isAr ? "الإدارة المالية" : "Finance Controller"}</p>
+                    <p className="text-xs font-bold text-slate-200 border-t border-slate-700 pt-1">Circle K HQ Finance</p>
+                  </div>
+                </div>
               </div>
 
             </div>
