@@ -308,47 +308,74 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
       const effectiveBatchId = batchId || generateBatchId(vendorName, invoiceNumber);
       const nowIso = new Date().toISOString();
 
-      // 1. Batch Document Summary in `expiry_batches`
-      const batchDocRef = await addDoc(collection(db, "expiry_batches"), {
-        batchId: effectiveBatchId,
-        supplier: vendorName.trim(),
-        invoiceNumber: invoiceNumber || "N/A",
-        invoiceDate: invoiceDate || nowIso.split("T")[0],
-        totalItemsCount: items.length,
-        totalQuantityCount: items.reduce((sum, i) => sum + i.quantity, 0),
-        branchId: branch,
-        storeId: normalizedStoreId,
-        createdBy: managerName,
-        createdAt: nowIso,
-        poImageUrl: poImage ? "has_image" : null,
-        status: "active"
-      });
+      // Try Backend API (Admin SDK) first for 100% reliable persistence
+      let savedViaApi = false;
+      try {
+        const res = await fetch("/api/save-po-batch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            batchId: effectiveBatchId,
+            supplier: vendorName.trim(),
+            invoiceNumber: invoiceNumber || "N/A",
+            invoiceDate: invoiceDate || nowIso.split("T")[0],
+            items: items,
+            branchId: branch,
+            storeId: normalizedStoreId,
+            createdBy: managerName,
+            poImage: poImage ? "has_image" : null,
+          }),
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          savedViaApi = true;
+        }
+      } catch (apiErr) {
+        console.warn("API batch save fallback to client SDK:", apiErr);
+      }
 
-      // 2. Add each item to `expiries` collection
-      const promises = items.map(item => {
-        return addDoc(collection(db, "expiries"), {
-          itemName: item.itemName.trim(),
-          barcode: item.barcode?.trim() || "N/A",
-          quantity: Number(item.quantity) || 1,
-          initialQuantity: Number(item.quantity) || 1,
-          soldQuantity: 0,
-          unitPrice: Number(item.unitPrice) || 0,
-          expiryDate: item.expiryDate,
-          supplier: vendorName.trim(),
+      // If API route was skipped or failed, fallback to client Firestore SDK
+      if (!savedViaApi) {
+        const batchDocRef = await addDoc(collection(db, "expiry_batches"), {
           batchId: effectiveBatchId,
-          batchDocId: batchDocRef.id,
+          supplier: vendorName.trim(),
           invoiceNumber: invoiceNumber || "N/A",
-          poDate: invoiceDate || nowIso.split("T")[0],
+          invoiceDate: invoiceDate || nowIso.split("T")[0],
+          totalItemsCount: items.length,
+          totalQuantityCount: items.reduce((sum, i) => sum + i.quantity, 0),
           branchId: branch,
           storeId: normalizedStoreId,
-          status: "active", // active, near_expiry, expired, sold, pulled, pending_return
           createdBy: managerName,
           createdAt: nowIso,
-          notes: isAr ? `مستلم عبر فاتورة توريد: ${effectiveBatchId}` : `Received via PO batch: ${effectiveBatchId}`
+          poImageUrl: poImage ? "has_image" : null,
+          status: "active"
         });
-      });
 
-      await Promise.all(promises);
+        const promises = items.map(item => {
+          return addDoc(collection(db, "expiries"), {
+            itemName: item.itemName.trim(),
+            barcode: item.barcode?.trim() || "N/A",
+            quantity: Number(item.quantity) || 1,
+            initialQuantity: Number(item.quantity) || 1,
+            soldQuantity: 0,
+            unitPrice: Number(item.unitPrice) || 0,
+            expiryDate: item.expiryDate,
+            supplier: vendorName.trim(),
+            batchId: effectiveBatchId,
+            batchDocId: batchDocRef.id,
+            invoiceNumber: invoiceNumber || "N/A",
+            poDate: invoiceDate || nowIso.split("T")[0],
+            branchId: branch,
+            storeId: normalizedStoreId,
+            status: "active",
+            createdBy: managerName,
+            createdAt: nowIso,
+            notes: isAr ? `مستلم عبر فاتورة توريد: ${effectiveBatchId}` : `Received via PO batch: ${effectiveBatchId}`
+          });
+        });
+
+        await Promise.all(promises);
+      }
 
       const successToast = isAr 
         ? `🎉 تم تسجيل الدفعة (${effectiveBatchId}) بنجاح وإضافتها لقائمة الدفعات والرادار!` 
