@@ -418,141 +418,159 @@ export default function ExpiryAuditPage() {
     <div className="space-y-6 print:m-0 print:p-0 print:space-y-0">
       
       {/* --- PRINT ONLY A4 REPORT VIEW --- */}
-      <div className="hidden print:flex bg-white text-slate-900 w-full font-sans flex-col relative overflow-hidden" style={{ width: '210mm', minHeight: '297mm', margin: '0 auto', boxSizing: 'border-box', padding: '15mm' }} dir="rtl">
-        
-        {/* Micro-Typography Security Borders */}
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: 'none', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '4px', overflow: 'hidden' }} dir="ltr">
-          <div style={{ fontSize: '6px', color: '#cbd5e1', fontFamily: 'monospace', letterSpacing: '3px', whiteSpace: 'nowrap', opacity: 0.8 }}>
-            {Array(25).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
-          </div>
-          <div style={{ fontSize: '6px', color: '#cbd5e1', fontFamily: 'monospace', letterSpacing: '3px', whiteSpace: 'nowrap', opacity: 0.8 }}>
-            {Array(25).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
-          </div>
-        </div>
-        <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, zIndex: 1, pointerEvents: 'none', display: 'flex', flexDirection: 'column', padding: '4px', overflow: 'hidden', writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} dir="ltr">
-          <div style={{ fontSize: '6px', color: '#cbd5e1', fontFamily: 'monospace', letterSpacing: '3px', whiteSpace: 'nowrap', opacity: 0.8 }}>
-            {Array(35).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
-          </div>
-        </div>
-        <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: 'none', display: 'flex', flexDirection: 'column', padding: '4px', overflow: 'hidden', writingMode: 'vertical-rl' }} dir="ltr">
-          <div style={{ fontSize: '6px', color: '#cbd5e1', fontFamily: 'monospace', letterSpacing: '3px', whiteSpace: 'nowrap', opacity: 0.8 }}>
-            {Array(35).fill("ANH REPORTS INTERNAL USE ONLY • ").join("")}
-          </div>
-        </div>
+      <div id="expiry-printable-report" className="hidden print:block w-full bg-white text-slate-900 font-sans" dir="ltr">
+        <style dangerouslySetInnerHTML={{ __html: `
+          @media print {
+            @page {
+              size: A4 portrait;
+              margin: 10mm !important;
+            }
+            body, html {
+              background: #ffffff !important;
+              color: #000000 !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            .print\\:hidden, nav, header, aside, .sidebar {
+              display: none !important;
+            }
+            #expiry-printable-report {
+              display: block !important;
+              width: 100% !important;
+              max-width: 100% !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              background: white !important;
+              color: #0f172a !important;
+            }
+            table {
+              page-break-inside: auto;
+              width: 100% !important;
+            }
+            tr {
+              page-break-inside: avoid;
+              page-break-after: auto;
+            }
+            thead {
+              display: table-header-group;
+            }
+          }
+        `}} />
 
-        {/* Automated Digital Audit Stamp (Giant Watermark) */}
-        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-35deg)', fontSize: '80px', fontWeight: '900', color: 'rgba(239, 68, 68, 0.05)', zIndex: 5, whiteSpace: 'nowrap', pointerEvents: 'none', textTransform: 'uppercase', letterSpacing: '5px' }} dir="ltr">
-          EXPIRY DESTRUCTION
-        </div>
-
-        <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div className="w-full space-y-4">
           {/* Corporate Header */}
-          <div className="flex justify-between items-start border-b-4 border-slate-900 pb-4 mb-4" dir="ltr">
+          <div className="flex justify-between items-center border-b-4 border-slate-900 pb-3">
             <div className="flex items-center gap-3">
-              <div className="bg-red-600 text-white p-2 rounded-xl font-black text-3xl tracking-tighter w-12 h-12 flex items-center justify-center">K</div>
+              <div className="bg-red-600 text-white font-black text-3xl tracking-tighter w-12 h-12 rounded-xl flex items-center justify-center shadow-sm">
+                K
+              </div>
               <div>
-                <h1 className="text-2xl font-black uppercase tracking-tight leading-none">Circle K</h1>
-                <p className="text-xs font-bold text-slate-500 mt-1 uppercase tracking-widest">{currentBranch === "all" ? "HQ Portal" : (currentBranch === "ola" ? "Ola El Koronfol" : "Alamein 4")}</p>
+                <h1 className="text-2xl font-black uppercase tracking-tight leading-none text-slate-900">Circle K</h1>
+                <p className="text-xs font-bold text-slate-500 mt-1 uppercase tracking-widest">
+                  {currentBranch === "all" ? "HQ Portal" : (currentBranch === "ola" ? "Ola El Koronfol" : "Alamein 4")}
+                </p>
               </div>
             </div>
             <div className="text-right">
-              <h2 className="text-2xl font-black text-slate-900 tracking-tighter">تقرير الهوالك | EXPIRIES AUDIT</h2>
-              <p className="text-sm font-bold text-red-600 mt-1 uppercase tracking-widest">Official Record</p>
-              <p className="text-xs font-semibold text-slate-500 mt-1">Date: {new Date().toLocaleDateString()}</p>
+              <h2 className="text-xl font-black text-slate-900 tracking-tight">تقرير الهوالك وتواريخ الصلاحية</h2>
+              <p className="text-xs font-bold text-red-600 uppercase tracking-wider">Official Expiry & Destruction Audit Record</p>
+              <p className="text-[11px] font-semibold text-slate-500 mt-0.5">Date: {new Date().toLocaleDateString('en-GB')} | {new Date().toLocaleTimeString()}</p>
             </div>
           </div>
 
-          {/* AI Summary Sentence (Egyptian Arabic) */}
-          <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRight: '4px solid #ef4444', borderRadius: '8px', padding: '6px 10px', textAlign: 'right', marginBottom: '15px' }}>
-            <p style={{ margin: 0, fontSize: '10px', color: '#1e293b', lineHeight: 1.5, fontWeight: 'bold' }}>
-              <span style={{ color: '#ef4444', marginLeft: '6px' }}>✦</span>
-              {totalFilteredQuantity > 50 
-                ? `تحليل الهوالك: إجمالي الوحدات الهالكة (${totalFilteredQuantity} وحدة) رقم عالي ومحتاجين نراجع تواريخ الصلاحية على الرفوف أسرع من كده. لازم يتم إعدام البضاعة قدام مدير الفرع.`
-                : `تحليل الهوالك: إجمالي الوحدات الهالكة (${totalFilteredQuantity} وحدة) في المعدل الطبيعي. برجاء التأكد من إعدام البضاعة بشكل كامل قبل التوقيع.`}
-            </p>
+          {/* AI Audit Insight Bar */}
+          <div className="bg-slate-50 border-l-4 border-red-500 rounded-lg p-2.5 text-xs text-slate-800 font-bold flex items-center justify-between">
+            <span>
+              ✦ {totalFilteredQuantity > 50 
+                ? `تحليل الهوالك: إجمالي الوحدات المسجلة (${totalFilteredQuantity} قطعة) يتطلب سحب فوري وإعدام أمام مدير الفرع ومراجعة دورية لتواريخ الصلاحية.`
+                : `تحليل الهوالك: إجمالي الوحدات المسجلة (${totalFilteredQuantity} قطعة). يرجى التأكد من استكمال إجراءات الإعدام أو الارتجاع للمورد.`}
+            </span>
+            <span className="text-[10px] text-slate-500 font-mono">CODE: EXP-{Date.now().toString().slice(-6)}</span>
           </div>
 
-          {/* Print Summary */}
-          <div className="grid grid-cols-2 gap-4 mb-4 border-b-2 border-slate-200 pb-4">
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-              <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1" dir="ltr">Total Units Impacted</h3>
-              <p className="text-3xl font-black text-slate-900" dir="ltr">{totalFilteredQuantity} <span className="text-base text-slate-500 font-bold">Units</span></p>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Total Units</span>
+              <span className="text-2xl font-black text-slate-900 mt-0.5 block">{totalFilteredQuantity} <span className="text-xs font-bold text-slate-500">Units</span></span>
             </div>
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-right" dir="ltr">
-              <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Filters Applied</h3>
-              <p className="text-sm font-semibold text-slate-700">Status: {reportFilters.status.toUpperCase()}</p>
-              {reportFilters.supplier && <p className="text-sm font-semibold text-slate-700">Supplier: {reportFilters.supplier}</p>}
-              {reportFilters.startDate && <p className="text-sm font-semibold text-slate-700">From: {reportFilters.startDate}</p>}
-              {reportFilters.endDate && <p className="text-sm font-semibold text-slate-700">To: {reportFilters.endDate}</p>}
+            <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Status Filter</span>
+              <span className="text-sm font-black text-slate-800 mt-1 block uppercase">{reportFilters.status || "ALL"}</span>
+            </div>
+            <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-right">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Date Filter</span>
+              <span className="text-xs font-bold text-slate-700 mt-1 block">
+                {reportFilters.startDate || reportFilters.endDate ? `${reportFilters.startDate || 'Any'} → ${reportFilters.endDate || 'Any'}` : "All Records"}
+              </span>
             </div>
           </div>
 
-          {/* Print Table */}
-          <div className="mb-4 flex-1">
-            <table className="w-full text-left border-collapse border-2 border-slate-900 rounded-lg overflow-hidden" dir="ltr">
+          {/* Data Table */}
+          <div className="w-full">
+            <table className="w-full text-left border-collapse border border-slate-300 text-xs">
               <thead className="bg-slate-100">
-                <tr className="border-b-2 border-slate-900">
-                  <th className="py-2 px-2 text-[10px] font-black text-slate-500 uppercase tracking-widest border-r-2 border-slate-900">Barcode</th>
-                  <th className="py-2 px-2 text-[10px] font-black text-slate-500 uppercase tracking-widest border-r-2 border-slate-900">Item</th>
-                  <th className="py-2 px-2 text-[10px] font-black text-slate-500 uppercase tracking-widest border-r-2 border-slate-900">Supplier</th>
-                  <th className="py-2 px-2 text-[10px] font-black text-slate-500 uppercase tracking-widest border-r-2 border-slate-900">Status</th>
-                  <th className="py-2 px-2 text-[10px] font-black text-slate-500 uppercase tracking-widest border-r-2 border-slate-900">Expiry Date</th>
-                  <th className="py-2 px-2 text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">Qty</th>
+                <tr className="border-b-2 border-slate-800">
+                  <th className="p-2 font-black text-slate-700 uppercase tracking-wider border-r border-slate-300">#</th>
+                  <th className="p-2 font-black text-slate-700 uppercase tracking-wider border-r border-slate-300">Barcode</th>
+                  <th className="p-2 font-black text-slate-700 uppercase tracking-wider border-r border-slate-300">Product / Item Name</th>
+                  <th className="p-2 font-black text-slate-700 uppercase tracking-wider border-r border-slate-300">Supplier</th>
+                  <th className="p-2 font-black text-slate-700 uppercase tracking-wider border-r border-slate-300">Status</th>
+                  <th className="p-2 font-black text-slate-700 uppercase tracking-wider border-r border-slate-300">Expiry Date</th>
+                  <th className="p-2 font-black text-slate-700 uppercase tracking-wider text-center">Qty</th>
                 </tr>
               </thead>
-              <tbody className="divide-y border-slate-900">
-                {filteredReportItems.map(item => (
-                  <tr key={item.id}>
-                    <td className="py-1 px-2 font-mono font-bold text-[10px] text-slate-800 border-r-2 border-slate-900 tracking-wider">
-                      {item.barcode || "-"}
-                    </td>
-                    <td className="py-1 px-2 text-[10px] font-black text-slate-900 border-r-2 border-slate-900">
-                      {item.itemName}
-                    </td>
-                    <td className="py-1 px-2 text-[10px] font-bold text-slate-600 border-r-2 border-slate-900">{item.supplier || "-"}</td>
-                    <td className="py-1 px-2 text-[10px] font-bold text-slate-600 uppercase border-r-2 border-slate-900">{item.status}</td>
-                    <td className="py-1 px-2 text-[10px] font-mono text-red-600 font-bold border-r-2 border-slate-900">{item.expiryDate}</td>
-                    <td className="py-1 px-2 text-sm font-black text-slate-900 text-center">{item.quantity}</td>
+              <tbody className="divide-y divide-slate-200">
+                {filteredReportItems.map((item, idx) => (
+                  <tr key={item.id} className={idx % 2 === 0 ? "bg-white" : "bg-slate-50/60"}>
+                    <td className="p-2 text-[11px] font-mono text-slate-500 border-r border-slate-300">{idx + 1}</td>
+                    <td className="p-2 font-mono font-bold text-[11px] text-slate-800 border-r border-slate-300">{item.barcode || "-"}</td>
+                    <td className="p-2 font-bold text-slate-900 border-r border-slate-300">{item.itemName}</td>
+                    <td className="p-2 text-slate-700 border-r border-slate-300">{item.supplier || "-"}</td>
+                    <td className="p-2 font-bold uppercase text-[10px] text-slate-700 border-r border-slate-300">{item.status}</td>
+                    <td className="p-2 font-mono font-bold text-red-600 border-r border-slate-300">{item.expiryDate}</td>
+                    <td className="p-2 font-black text-slate-900 text-center">{item.quantity}</td>
                   </tr>
                 ))}
                 {filteredReportItems.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="py-10 text-center text-slate-500 font-bold">No records found for the selected filters.</td>
+                    <td colSpan={7} className="p-8 text-center text-slate-500 font-bold">No records found for the selected filters.</td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
 
-          {/* Print Footer / Signatures */}
-          <div className="mt-auto pt-4 border-t-2 border-slate-200 flex justify-between items-end break-inside-avoid" dir="ltr">
-            <div className="w-1/4">
-              <div className="bg-white p-1 border border-slate-200 rounded-lg inline-block shadow-sm">
-                <QRCode value={generateQRData()} size={60} level="L" />
+          {/* Signatures & Stamp Footer */}
+          <div className="pt-4 border-t-2 border-slate-300 flex justify-between items-end" style={{ pageBreakInside: 'avoid' }}>
+            <div className="flex items-center gap-3">
+              <div className="bg-white p-1 border border-slate-300 rounded shadow-sm">
+                <QRCode value={generateQRData()} size={54} level="L" />
               </div>
-              <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-1 text-center w-16">Scan Data</p>
+              <div>
+                <p className="text-[9px] font-black text-slate-700 uppercase tracking-wider">Digital Verification</p>
+                <p className="text-[8px] text-slate-500 font-mono">AUTH: {Date.now().toString().slice(-8)}</p>
+              </div>
             </div>
 
-            <div className="w-1/3 text-center relative px-2">
-              <p className="font-black text-slate-400 text-[10px] uppercase tracking-widest mb-8">Store Manager</p>
+            <div className="text-center w-48">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-8">Store Manager Signature</p>
               <div className="border-t-2 border-slate-900 pt-1">
-                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Authorized By</p>
+                <p className="text-[9px] font-bold text-slate-700 uppercase">Authorized Officer</p>
               </div>
             </div>
 
-            {/* Official Stamp Box for Destruction Witness */}
-            <div className="w-1/4 flex flex-col items-center justify-end mb-2">
-              <div className="w-full height-12 border-2 border-dashed border-slate-400 rounded-md flex flex-col items-center justify-center bg-slate-50 py-3">
-                <span className="text-[7px] font-black text-slate-400 uppercase text-center tracking-wider">Destruction<br/>Witness Stamp</span>
-              </div>
+            <div className="w-40 border-2 border-dashed border-slate-400 rounded-lg p-2 text-center bg-slate-50">
+              <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Destruction Witness Stamp</p>
+              <div className="h-6"></div>
             </div>
           </div>
 
-          {/* Advanced Digital Forensics Footer */}
-          <div className="border-t-2 border-slate-900 pt-1 text-center mt-4" dir="ltr">
-            <p className="text-[7px] text-slate-500 font-mono m-0 tracking-widest font-bold uppercase">
-              DOCUMENT EXP-{Date.now().toString().substring(5)} | VERIFIED: {new Date().toLocaleString('en-GB')} | SYSTEM: ANH PORTAL V2.0
-            </p>
+          {/* Document Footer */}
+          <div className="border-t border-slate-300 pt-1 text-center text-[8px] text-slate-400 font-mono uppercase tracking-wider" style={{ pageBreakInside: 'avoid' }}>
+            Circle K Franchise — ANH Operations Management Portal • Internal Expiry Control Document
           </div>
         </div>
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { 
   Upload, 
   Camera, 
@@ -21,7 +21,8 @@ import {
   Barcode as BarcodeIcon,
   ShieldCheck,
   Check,
-  Zap
+  Zap,
+  ClipboardPaste
 } from "lucide-react";
 import { collection, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -80,6 +81,63 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
     };
     reader.readAsDataURL(file);
   };
+
+  // Handle Paste from Clipboard button
+  const handlePasteFromClipboard = async () => {
+    try {
+      if (!navigator.clipboard?.read) {
+        toast.error(isAr ? "متصفحك لا يدعم قراءة الحافظة مباشرة، اضغط Ctrl+V أو Cmd+V" : "Clipboard reading not supported directly. Press Ctrl+V / Cmd+V.");
+        return;
+      }
+      const clipboardItems = await navigator.clipboard.read();
+      for (const item of clipboardItems) {
+        const imageType = item.types.find(type => type.startsWith("image/"));
+        if (imageType) {
+          const blob = await item.getType(imageType);
+          const reader = new FileReader();
+          reader.onload = () => {
+            const base64 = reader.result as string;
+            setPoImage(base64);
+            processPOWithAI(base64);
+          };
+          reader.readAsDataURL(blob);
+          toast.success(isAr ? "تم لصق صورة الفاتورة من الحافظة بنجاح!" : "PO image pasted from clipboard!");
+          return;
+        }
+      }
+      toast.error(isAr ? "لم يتم العثور على صورة في الحافظة. انسخ صورة أولاً ثم اضغط لصق." : "No image found in clipboard. Copy an image first.");
+    } catch (err: any) {
+      console.warn("Clipboard read error:", err);
+      toast.error(isAr ? "يرجى السماح بالوصول للحافظة أو استخدام اختصار Cmd+V / Ctrl+V" : "Please allow clipboard access or press Cmd+V / Ctrl+V");
+    }
+  };
+
+  // Global Ctrl+V / Cmd+V Paste Listener
+  useEffect(() => {
+    const handlePasteEvent = (e: ClipboardEvent) => {
+      const clipItems = e.clipboardData?.items;
+      if (!clipItems) return;
+      for (let i = 0; i < clipItems.length; i++) {
+        if (clipItems[i].type.startsWith("image/")) {
+          const file = clipItems[i].getAsFile();
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = () => {
+              const base64 = reader.result as string;
+              setPoImage(base64);
+              processPOWithAI(base64);
+            };
+            reader.readAsDataURL(file);
+            toast.success(isAr ? "تم لصق صورة الفاتورة تلقائياً!" : "PO image pasted!");
+            break;
+          }
+        }
+      }
+    };
+
+    window.addEventListener("paste", handlePasteEvent);
+    return () => window.removeEventListener("paste", handlePasteEvent);
+  }, [isAr]);
 
   // Call Gemini OCR API
   const processPOWithAI = async (base64Image: string) => {
@@ -321,24 +379,32 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
               </h2>
               <p className="text-sm text-slate-400 font-medium leading-relaxed">
                 {isAr 
-                  ? "ارفع أو صور فاتورة استلام البضاعة (PO / Delivery Note)، وسيقوم الذكاء الاصطناعي باستخراج الأصناف والكميات فوراً لتحديد تواريخ الصلاحية وتفعيل التنبيهات الذكية قبل 15 يوماً."
-                  : "Upload or photograph your supplier invoice (PO / Delivery Note). AI will instantly extract items, codes, and quantities to set expiry dates and activate 15-day smart alerts."}
+                  ? "ارفع، صور، أو الصق من الحافظة فاتورة استلام البضاعة (PO / Delivery Note)، وسيقوم الذكاء الاصطناعي باستخراج الأصناف والكميات فوراً لتحديد تواريخ الصلاحية وتفعيل التنبيهات الذكية قبل 15 يوماً."
+                  : "Upload, photograph, or paste from clipboard your supplier invoice (PO / Delivery Note). AI will instantly extract items, codes, and quantities to set expiry dates and activate 15-day smart alerts."}
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-extrabold text-sm shadow-xl shadow-indigo-600/30 flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all"
+                className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-extrabold text-sm shadow-xl shadow-indigo-600/30 flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all"
               >
-                <Upload size={18} /> {isAr ? "رفع صورة الفاتورة (PO)" : "Upload PO Invoice Image"}
+                <Upload size={18} /> {isAr ? "رفع صورة الفاتورة (PO)" : "Upload PO Image"}
+              </button>
+
+              <button
+                onClick={handlePasteFromClipboard}
+                className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-extrabold text-sm shadow-xl shadow-teal-600/30 flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all"
+                title={isAr ? "لصق من الحافظة أو اضغط Ctrl+V" : "Paste from clipboard or press Cmd+V / Ctrl+V"}
+              >
+                <ClipboardPaste size={18} /> {isAr ? "📋 لصق من الحافظة (Paste)" : "📋 Paste Clipboard"}
               </button>
 
               <button
                 onClick={() => cameraInputRef.current?.click()}
-                className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-sm flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all"
+                className="px-6 py-3.5 rounded-2xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-sm flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all"
               >
-                <Camera size={18} /> {isAr ? "التقاط صورة بالكاميرا" : "Take Photo with Camera"}
+                <Camera size={18} /> {isAr ? "التقاط صورة بالكاميرا" : "Take Photo"}
               </button>
 
               <button
@@ -358,9 +424,9 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
                     expiryDate: dStr,
                   }]);
                 }}
-                className="w-full sm:w-auto px-5 py-3.5 rounded-2xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white font-medium text-xs flex items-center justify-center gap-1 cursor-pointer transition-all"
+                className="px-5 py-3.5 rounded-2xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white font-medium text-xs flex items-center justify-center gap-1 cursor-pointer transition-all"
               >
-                <Plus size={16} /> {isAr ? "إدخال يدوي بدون صورة" : "Manual Entry without Image"}
+                <Plus size={16} /> {isAr ? "إدخال يدوي بدون صورة" : "Manual Entry"}
               </button>
             </div>
 
