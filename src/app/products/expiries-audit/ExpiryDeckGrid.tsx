@@ -9,7 +9,7 @@ import { playStampSound } from '@/lib/audioCues';
 interface ExpiryDeckGridProps {
   items: any[];
   searchQuery?: string;
-  onAuditAction: (item: any, action: "destroy" | "return") => Promise<void>;
+  onAuditAction: (item: any, action: "destroy" | "return" | "sold") => Promise<void>;
 }
 
 export function ExpiryDeckGrid({ items, searchQuery, onAuditAction }: ExpiryDeckGridProps) {
@@ -64,7 +64,7 @@ export function ExpiryDeckGrid({ items, searchQuery, onAuditAction }: ExpiryDeck
   );
 }
 
-function DeckStack({ group, onAuditAction }: { group: any[], onAuditAction: (item: any, action: "destroy" | "return") => Promise<void> }) {
+function DeckStack({ group, onAuditAction }: { group: any[], onAuditAction: (item: any, action: "destroy" | "return" | "sold") => Promise<void> }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -111,13 +111,12 @@ function SwipeableExpiryCard({ item, index, totalInGroup, isExpanded, onAuditAct
   if (diffDays <= 0) {
     statusColor = "bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.8)]";
     urgencyLevel = "critical";
-  } else if (diffDays <= 7) {
+  } else if (diffDays <= 15) {
     statusColor = "bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.6)]";
     urgencyLevel = "soon";
   }
 
-  
-  const handleButtonClick = async (e: React.MouseEvent, action: "destroy" | "return") => {
+  const handleButtonClick = async (e: React.MouseEvent, action: "destroy" | "return" | "sold") => {
     e.stopPropagation();
     if (isProcessing) return;
     setIsProcessing(true);
@@ -128,12 +127,18 @@ function SwipeableExpiryCard({ item, index, totalInGroup, isExpanded, onAuditAct
       controls.start({ x: 500, opacity: 0, transition: { duration: 0.5, delay: 0.8 } });
       await new Promise(r => setTimeout(r, 800));
       await onAuditAction(item, "destroy");
-    } else {
+    } else if (action === "return") {
       setStamp("APPROVED");
       setStampText("RETURNED");
       controls.start({ x: -500, opacity: 0, transition: { duration: 0.5, delay: 0.8 } });
       await new Promise(r => setTimeout(r, 800));
       await onAuditAction(item, "return");
+    } else if (action === "sold") {
+      setStamp("APPROVED");
+      setStampText("SOLD OUT");
+      controls.start({ y: -500, opacity: 0, transition: { duration: 0.5, delay: 0.8 } });
+      await new Promise(r => setTimeout(r, 800));
+      await onAuditAction(item, "sold");
     }
   };
 
@@ -177,7 +182,7 @@ function SwipeableExpiryCard({ item, index, totalInGroup, isExpanded, onAuditAct
       whileInView={{ scale, opacity, y: stackOffset }}
       exit={{ scale: 0.5, opacity: 0 }}
       style={{ zIndex }}
-      className={`absolute top-0 left-0 w-full h-[290px] bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden cursor-grab active:cursor-grabbing ${urgencyLevel === 'critical' ? 'shadow-[0_0_15px_rgba(239,68,68,0.3)]' : ''}`}
+      className={`absolute top-0 left-0 w-full h-[305px] bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden cursor-grab active:cursor-grabbing ${urgencyLevel === 'critical' ? 'shadow-[0_0_15px_rgba(239,68,68,0.3)]' : ''}`}
     >
       <RubberStamp stampType={stamp} stampText={stampText} className="w-full h-full absolute inset-0">
         <div className="p-4 sm:p-5 h-full flex flex-col justify-between">
@@ -188,16 +193,23 @@ function SwipeableExpiryCard({ item, index, totalInGroup, isExpanded, onAuditAct
                 {item.quantity} UNITS
               </div>
             </div>
-            <p className="text-xs font-mono text-slate-400 mb-4 tracking-wider">{item.barcode}</p>
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <p className="text-xs font-mono text-slate-400 tracking-wider truncate">{item.barcode || "N/A"}</p>
+              {item.batchId && (
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                  {item.batchId}
+                </span>
+              )}
+            </div>
             
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
-                <p className="text-[9px] uppercase font-bold text-slate-400 mb-1">Expiry Date</p>
-                <p className={`font-black ${diffDays <= 0 ? 'text-red-500' : 'text-slate-700 dark:text-slate-300'}`}>{item.expiryDate}</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                <p className="text-[9px] uppercase font-bold text-slate-400 mb-0.5">Expiry Date</p>
+                <p className={`font-black text-xs ${diffDays <= 0 ? 'text-red-500' : diffDays <= 15 ? 'text-amber-500' : 'text-slate-700 dark:text-slate-300'}`}>{item.expiryDate}</p>
               </div>
-              <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
-                <p className="text-[9px] uppercase font-bold text-slate-400 mb-1">Store / Branch</p>
-                <p className="font-bold text-xs text-slate-700 dark:text-slate-300 leading-tight">{item.storeId || "Unknown"}</p>
+              <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                <p className="text-[9px] uppercase font-bold text-slate-400 mb-0.5">Supplier</p>
+                <p className="font-bold text-xs text-slate-700 dark:text-slate-300 leading-tight truncate">{item.supplier || item.storeId || "Unknown"}</p>
               </div>
             </div>
           </div>
@@ -205,8 +217,8 @@ function SwipeableExpiryCard({ item, index, totalInGroup, isExpanded, onAuditAct
           <div>
             <div className="flex justify-between items-center mb-1 px-1">
               <span className="text-[10px] font-bold text-slate-400">Shelf Life Progress</span>
-              <span className={`text-[10px] font-black ${diffDays <= 0 ? 'text-red-500' : 'text-slate-500'}`}>
-                {diffDays <= 0 ? 'EXPIRED' : `${diffDays} Days`}
+              <span className={`text-[10px] font-black ${diffDays <= 0 ? 'text-red-500' : diffDays <= 15 ? 'text-amber-500 font-extrabold' : 'text-slate-500'}`}>
+                {diffDays <= 0 ? 'EXPIRED (Pull Immediately)' : diffDays <= 15 ? `⚠️ ${diffDays} Days Left` : `${diffDays} Days`}
               </span>
             </div>
             <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
@@ -217,20 +229,30 @@ function SwipeableExpiryCard({ item, index, totalInGroup, isExpanded, onAuditAct
               />
             </div>
             
-            <div className="flex justify-between mt-3 gap-2">
+            <div className="grid grid-cols-3 gap-1.5 mt-3">
+              <button 
+                onClick={(e) => handleButtonClick(e, "sold")}
+                disabled={isProcessing}
+                className="flex items-center justify-center gap-1 text-[11px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/40 py-1.5 rounded-lg transition-colors active:scale-95 disabled:opacity-50"
+                title="Mark all as sold"
+              >
+                Sold
+              </button>
               <button 
                 onClick={(e) => handleButtonClick(e, "return")}
                 disabled={isProcessing}
-                className="flex-1 flex items-center justify-center gap-1 text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 py-1.5 rounded-lg transition-colors active:scale-95 disabled:opacity-50"
+                className="flex items-center justify-center gap-1 text-[11px] font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 py-1.5 rounded-lg transition-colors active:scale-95 disabled:opacity-50"
+                title="Return to Supplier (RTV)"
               >
-                <ArchiveRestore size={14} /> Return
+                <ArchiveRestore size={12} /> Return
               </button>
               <button 
                 onClick={(e) => handleButtonClick(e, "destroy")}
                 disabled={isProcessing}
-                className="flex-1 flex items-center justify-center gap-1 text-xs font-bold text-red-500 bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-900/40 py-1.5 rounded-lg transition-colors active:scale-95 disabled:opacity-50"
+                className="flex items-center justify-center gap-1 text-[11px] font-bold text-red-500 bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-900/40 py-1.5 rounded-lg transition-colors active:scale-95 disabled:opacity-50"
+                title="Pull Expired"
               >
-                Pull <Trash2 size={14} />
+                Pull <Trash2 size={12} />
               </button>
             </div>
           </div>

@@ -11,9 +11,10 @@ import { useBranch } from "@/context/BranchContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { DataTable } from "@/components/ui/DataTable";
 import { PageTransition } from "@/components/PageTransition";
-import { X } from "lucide-react";
+import { X, Sparkles, Zap, Bell, Check, ArrowRight } from "lucide-react";
 import { ExpiryDeckGrid } from './ExpiryDeckGrid';
 import { WasteAnalyticsPanel } from './WasteAnalyticsPanel';
+import { POBatchIntake } from './POBatchIntake';
 
 
 export default function ExpiryAuditPage() {
@@ -23,7 +24,7 @@ export default function ExpiryAuditPage() {
   const [supplierReturns, setSupplierReturns] = useState<any[]>([]);
   const [alreadyExpired, setAlreadyExpired] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"active" | "pending" | "reports" | "already_expired" | "waste">("active");
+  const [activeTab, setActiveTab] = useState<"active" | "intake" | "pending" | "reports" | "already_expired" | "waste">("active");
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -106,22 +107,31 @@ export default function ExpiryAuditPage() {
   }, []);
 
   
-  const handleSwipeAction = async (item: any, action: "destroy" | "return") => {
+  const handleSwipeAction = async (item: any, action: "destroy" | "return" | "sold") => {
     try {
       if (action === "return") {
         await addDoc(collection(db, "supplier_returns"), {
           itemName: item.itemName,
-          barcode: item.barcode,
+          barcode: item.barcode || "N/A",
           quantity: item.quantity,
           supplier: item.supplier || "Unknown",
           createdAt: new Date().toISOString(),
           branchId: currentBranch || "master",
           status: "pending",
-          expiryId: item.id
+          expiryId: item.id,
+          batchId: item.batchId || null,
         });
         await updateDoc(doc(db, "expiries", item.id), { status: "pending_return" });
         setAllExpiries(prev => prev.map(i => i.id === item.id ? { ...i, status: "pending_return" } : i));
+      } else if (action === "sold") {
+        await updateDoc(doc(db, "expiries", item.id), { 
+          status: "sold", 
+          soldQuantity: item.quantity, 
+          soldAt: new Date().toISOString() 
+        });
+        setAllExpiries(prev => prev.map(i => i.id === item.id ? { ...i, status: "sold" } : i));
       } else {
+        // Pulled / Destroy
         await updateDoc(doc(db, "expiries", item.id), { status: "pulled" });
         setAllExpiries(prev => prev.map(i => i.id === item.id ? { ...i, status: "pulled" } : i));
       }
@@ -530,72 +540,176 @@ export default function ExpiryAuditPage() {
             </h1>
             <p className="text-muted-foreground mt-1 text-sm font-medium">Verify pulled items, adjust quantities, and generate destruction reports.</p>
           </div>
-          
-          <div className="flex bg-muted/50 p-1 rounded-xl border border-border">
-            <button 
-              onClick={() => { setActiveTab("active"); setSelectedExpiry(null); }}
-              className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === "active" ? "bg-background text-foreground shadow-sm border border-border" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              Active Tracker
-            </button>
-            <button 
-              onClick={() => setActiveTab("pending")}
-              className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === "pending" ? "bg-background text-foreground shadow-sm border border-border" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              Pending Audits
-              {pendingItems.length > 0 && <span className="ml-2 bg-red-500 text-white px-2 py-0.5 rounded-full text-xs">{pendingItems.length}</span>}
-            </button>
-            <button 
-              onClick={() => setActiveTab("reports")}
-              className={`flex-1 py-3 px-4 text-center font-bold text-sm transition-all whitespace-nowrap ${
-                activeTab === "reports" 
-                  ? "bg-foreground text-background shadow-md" 
-                  : "bg-transparent text-muted-foreground hover:bg-muted"
+
+          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            <button
+              onClick={() => setActiveTab("intake")}
+              className={`px-5 py-2.5 rounded-xl font-black text-sm flex items-center gap-2 cursor-pointer transition-all shadow-md active:scale-95 ${
+                activeTab === "intake"
+                  ? "bg-indigo-600 text-white shadow-indigo-600/30 ring-2 ring-indigo-400"
+                  : "bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-indigo-600/20"
               }`}
             >
-              {t("expiries_audit.tab_reports")}
+              <Sparkles size={16} /> + استلام دفعة PO (Scan)
             </button>
-            
-            <button 
-              onClick={() => setActiveTab("already_expired")}
-              className={`flex-1 py-3 px-4 text-center font-bold text-sm transition-all whitespace-nowrap ${
-                activeTab === "already_expired" 
-                  ? "bg-foreground text-background shadow-md" 
-                  : "bg-transparent text-muted-foreground hover:bg-muted"
-              }`}
-            >
-              Already Expired
-            </button>
-            <button 
-              onClick={() => setActiveTab("waste")}
-              className={`flex-1 py-3 px-4 text-center font-bold text-sm transition-all whitespace-nowrap ${
-                activeTab === "waste" 
-                  ? "bg-orange-600 text-white shadow-md" 
-                  : "bg-transparent text-muted-foreground hover:bg-muted"
-              }`}
-            >
-              🔥 Waste Cost
-            </button>
+
+            <div className="flex bg-muted/50 p-1 rounded-xl border border-border overflow-x-auto max-w-full">
+              <button 
+                onClick={() => { setActiveTab("active"); setSelectedExpiry(null); }}
+                className={`px-4 sm:px-6 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${activeTab === "active" ? "bg-background text-foreground shadow-sm border border-border" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                Active Tracker
+              </button>
+              <button 
+                onClick={() => setActiveTab("intake")}
+                className={`px-4 sm:px-5 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${activeTab === "intake" ? "bg-background text-indigo-400 shadow-sm border border-indigo-500/30" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                ⚡ PO Intake
+              </button>
+              <button 
+                onClick={() => setActiveTab("pending")}
+                className={`px-4 sm:px-5 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${activeTab === "pending" ? "bg-background text-foreground shadow-sm border border-border" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                Pending Audits
+                {pendingItems.length > 0 && <span className="ml-1.5 bg-red-500 text-white px-1.5 py-0.5 rounded-full text-xs">{pendingItems.length}</span>}
+              </button>
+              <button 
+                onClick={() => setActiveTab("reports")}
+                className={`py-2 px-4 text-center font-bold text-sm transition-all whitespace-nowrap ${
+                  activeTab === "reports" 
+                    ? "bg-foreground text-background shadow-md" 
+                    : "bg-transparent text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                {t("expiries_audit.tab_reports")}
+              </button>
+              
+              <button 
+                onClick={() => setActiveTab("already_expired")}
+                className={`py-2 px-4 text-center font-bold text-sm transition-all whitespace-nowrap ${
+                  activeTab === "already_expired" 
+                    ? "bg-foreground text-background shadow-md" 
+                    : "bg-transparent text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                Already Expired
+              </button>
+              <button 
+                onClick={() => setActiveTab("waste")}
+                className={`py-2 px-4 text-center font-bold text-sm transition-all whitespace-nowrap ${
+                  activeTab === "waste" 
+                    ? "bg-orange-600 text-white shadow-md" 
+                    : "bg-transparent text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                🔥 Waste Cost
+              </button>
+            </div>
           </div>
         </div>
 
         {loading ? (
           <div className="flex justify-center p-20"><div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-red-500"></div></div>
+        ) : activeTab === "intake" ? (
+          <POBatchIntake 
+            currentBranch={currentBranch} 
+            onBatchSaved={() => {
+              setActiveTab("active");
+              setSelectedExpiry(null);
+            }} 
+          />
         ) : activeTab === "active" ? (
-          <div className="space-y-8">
+          <div className="space-y-6">
+            {/* 15-Day Alert Banners */}
+            {(() => {
+              const activeList = items.filter(e => !["pulled", "audited", "pending_return", "returned", "damaged", "sold"].includes(e.status || ""));
+              const today = new Date();
+              today.setHours(0,0,0,0);
+              
+              const expiredList = activeList.filter(e => {
+                if (!e.expiryDate) return false;
+                const exp = new Date(e.expiryDate);
+                exp.setHours(0,0,0,0);
+                return exp.getTime() <= today.getTime();
+              });
+
+              const warning15DaysList = activeList.filter(e => {
+                if (!e.expiryDate) return false;
+                const exp = new Date(e.expiryDate);
+                exp.setHours(0,0,0,0);
+                const diffDays = Math.ceil((exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                return diffDays <= 15 && diffDays > 0;
+              });
+
+              return (
+                <div className="space-y-3">
+                  {expiredList.length > 0 && (
+                    <div className="p-4 sm:p-5 rounded-2xl bg-rose-500/10 border border-rose-500/30 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-pulse">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0">
+                          <AlertTriangle size={22} />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-black text-rose-400">
+                            🚨 تحذير عاجل: يوجد {expiredList.length} صنف منتهي الصلاحية على الرف!
+                          </h4>
+                          <p className="text-xs text-rose-300/80 mt-0.5">
+                            يجب على مدير الفرع سحب هذه الأصناف فوراً كـ (هالك / مرتجع) لمنع بيعها للعملاء.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setSearchQuery("EXPIRED")}
+                        className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-xs shadow-md transition-colors whitespace-nowrap cursor-pointer"
+                      >
+                        عرض الأصناف المنتهية
+                      </button>
+                    </div>
+                  )}
+
+                  {warning15DaysList.length > 0 && (
+                    <div className="p-4 sm:p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                          <Clock size={22} />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-black text-amber-400">
+                            ⚠️ رادار الـ 15 يوماً: {warning15DaysList.length} صنف يقترب من انتهاء الصلاحية!
+                          </h4>
+                          <p className="text-xs text-amber-300/80 mt-0.5">
+                            قم بعمل عروض ترويجية لتنشيط المبيعات أو تجهيز إذن ارتجاع للمورد (RTV) قبل انتهاء المهلة.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const firstWarn = warning15DaysList[0];
+                          if (firstWarn) setSearchQuery(firstWarn.itemName.split(" ")[0]);
+                        }}
+                        className="px-4 py-2 rounded-xl bg-amber-600/80 hover:bg-amber-600 text-white font-extrabold text-xs shadow-md transition-colors whitespace-nowrap cursor-pointer"
+                      >
+                        متابعة الأصناف المهددة
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* Top Dashboard Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="p-4 bg-card rounded-xl border border-border shadow-sm flex flex-col justify-between">
                 <span className="text-xs font-bold text-muted-foreground uppercase">Tracking</span>
                 <span className="text-3xl font-black text-blue-600 dark:text-blue-500 mt-2">
-                  {items.filter(e => !["pulled", "audited", "pending_return", "returned", "damaged"].includes(e.status || "")).length}
+                  {items.filter(e => !["pulled", "audited", "pending_return", "returned", "damaged", "sold"].includes(e.status || "")).length}
                 </span>
                 <span className="text-[10px] text-muted-foreground mt-1">Active items</span>
               </div>
               
               {(() => {
                 const expiredCount = items.filter(e => {
-                  if (["pulled", "audited", "pending_return", "returned", "damaged"].includes(e.status || "")) return false;
+                  if (["pulled", "audited", "pending_return", "returned", "damaged", "sold"].includes(e.status || "")) return false;
                   const exp = new Date(e.expiryDate);
                   exp.setHours(0,0,0,0);
                   const t = new Date();
@@ -615,20 +729,20 @@ export default function ExpiryAuditPage() {
 
               {(() => {
                 const soonCount = items.filter(e => {
-                  if (["pulled", "audited", "pending_return", "returned", "damaged"].includes(e.status || "")) return false;
+                  if (["pulled", "audited", "pending_return", "returned", "damaged", "sold"].includes(e.status || "")) return false;
+                  if (!e.expiryDate) return false;
                   const exp = new Date(e.expiryDate);
                   exp.setHours(0,0,0,0);
                   const t = new Date();
                   t.setHours(0,0,0,0);
-                  const tom = new Date(t);
-                  tom.setDate(tom.getDate() + 1);
-                  return exp.getTime() === t.getTime() || exp.getTime() === tom.getTime();
+                  const diffDays = Math.ceil((exp.getTime() - t.getTime()) / (1000 * 60 * 60 * 24));
+                  return diffDays <= 15 && diffDays > 0;
                 }).length;
                 return (
                   <div className="p-4 bg-card rounded-xl border border-border shadow-sm flex flex-col justify-between">
-                    <span className="text-xs font-bold text-muted-foreground uppercase">Expires 48h</span>
-                    <span className="text-3xl font-black text-orange-500 mt-2">{soonCount}</span>
-                    <span className="text-[10px] text-muted-foreground mt-1">Pull window close</span>
+                    <span className="text-xs font-bold text-muted-foreground uppercase">Expires 15 Days</span>
+                    <span className="text-3xl font-black text-amber-500 mt-2">{soonCount}</span>
+                    <span className="text-[10px] text-muted-foreground mt-1">Warning Window</span>
                   </div>
                 );
               })()}

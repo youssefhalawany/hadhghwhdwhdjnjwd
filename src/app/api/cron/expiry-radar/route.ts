@@ -24,6 +24,9 @@ if (!getApps().length) {
   }
 }
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function GET() {
   return handleExpiryRadar();
 }
@@ -38,78 +41,104 @@ async function handleExpiryRadar() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const sevenDaysFromNow = new Date();
-    sevenDaysFromNow.setDate(today.getDate() + 7);
-    sevenDaysFromNow.setHours(23, 59, 59, 999);
+    const fifteenDaysFromNow = new Date();
+    fifteenDaysFromNow.setDate(today.getDate() + 15);
+    fifteenDaysFromNow.setHours(23, 59, 59, 999);
 
     const expiriesSnap = await db.collection("expiries").get();
     
     const upcomingExpiries: any[] = [];
+    const expiredItems: any[] = [];
     
     expiriesSnap.forEach(doc => {
       const data = doc.data();
-      if (data.status === "removed" || data.status === "resolved") return;
+      if (["pulled", "audited", "pending_return", "returned", "damaged", "sold", "removed", "resolved"].includes(data.status || "")) return;
       if (!data.expiryDate) return;
 
       const expDate = new Date(data.expiryDate);
-      if (expDate >= today && expDate <= sevenDaysFromNow) {
+      expDate.setHours(0, 0, 0, 0);
+
+      if (expDate <= today) {
+        expiredItems.push({
+          id: doc.id,
+          itemName: data.itemName || "Product",
+          qty: data.quantity || 1,
+          expiryDate: data.expiryDate,
+          supplier: data.supplier || data.vendorName || "Supplier",
+          batchId: data.batchId || "N/A"
+        });
+      } else if (expDate <= fifteenDaysFromNow) {
         upcomingExpiries.push({
           id: doc.id,
           itemName: data.itemName || "Product",
           qty: data.quantity || 1,
           expiryDate: data.expiryDate,
-          supplier: data.supplier || "Supplier"
+          supplier: data.supplier || data.vendorName || "Supplier",
+          batchId: data.batchId || "N/A"
         });
       }
     });
 
-    if (upcomingExpiries.length === 0) {
-      return NextResponse.json({ success: true, message: "No items expiring within 7 days." });
+    if (upcomingExpiries.length === 0 && expiredItems.length === 0) {
+      return NextResponse.json({ success: true, message: "No items expiring within 15 days or expired." });
     }
 
     // Format clean professional notification summary
-    const itemCount = upcomingExpiries.length;
-    const sampleItems = upcomingExpiries.slice(0, 3).map(i => `${i.itemName} (x${i.qty})`).join(', ');
-    const title = `⚠️ 7-Day Expiry Radar — ${itemCount} Item${itemCount > 1 ? 's' : ''} Expiring Soon`;
-    const body = `${itemCount} product${itemCount > 1 ? 's' : ''} expiring within 7 days at Circle K (${sampleItems}${itemCount > 3 ? '...' : ''}). Put on discount or schedule supplier return.`;
-    const targetUrl = "/admin/product-lookup";
+    let title = "";
+    let body = "";
 
-    // Fetch Master FCM Token
-    const masterDoc = await db.collection("user_tokens").doc("master_youssef").get();
-    let sentFcm = false;
+    if (expiredItems.length > 0) {
+      const sampleExpired = expiredItems.slice(0, 2).map(i => `${i.itemName} (x${i.qty})`).join(', ');
+      title = `🚨 تنبيه سحب فوري: ${expiredItems.length} صنف منتهي الصلاحية!`;
+      body = `يوجد ${expiredItems.length} صنف منتهي (${sampleExpired}${expiredItems.length > 2 ? '...' : ''}). يلزم السحب الفوري من الرف.`;
+    } else {
+      const sampleSoon = upcomingExpiries.slice(0, 2).map(i => `${i.itemName} (x${i.qty})`).join(', ');
+      title = `⚠️ رادار الصلاحيات: ${upcomingExpiries.length} صنف ينتهي خلال 15 يوماً`;
+      body = `${upcomingExpiries.length} صنف يقترب من الانتهاء (${sampleSoon}${upcomingExpiries.length > 2 ? '...' : ''}). يرجى تنشيط المبيعات أو تجهيز المرتجع للمورد.`;
+    }
 
-    if (masterDoc.exists && masterDoc.data()?.fcmToken) {
-      const fcmToken = masterDoc.data()?.fcmToken;
-      try {
-        await getMessaging().send({
-          token: fcmToken,
-          notification: { title, body },
-          data: { title, body, url: targetUrl },
-          webpush: {
-            headers: { Urgency: "high" },
-            notification: {
-              title,
-              body,
-              icon: "/icon-manager.png",
-              badge: "/icons8-circled-k-50.png",
-              requireInteraction: true,
-              renotify: true,
-              tag: `expiry-radar-${Date.now()}`,
-              data: { url: targetUrl }
+    const targetUrl = "/products/expiries-audit";
+
+    // Fetch Master & Manager FCM Tokens
+    const tokensSnap = await db.collection("user_tokens").get();
+    let sentFcmCount = 0;
+
+    for (const doc of tokensSnap.docs) {
+      const fcmToken = doc.data()?.fcmToken;
+      if (fcmToken) {
+        try {
+          await getMessaging().send({
+            token: fcmToken,
+            notification: { title, body },
+            data: { title, body, url: targetUrl },
+            webpush: {
+              headers: { Urgency: "high" },
+              notification: {
+                title,
+                body,
+                icon: "/icon-manager.png",
+                badge: "/icons8-circled-k-50.png",
+                requireInteraction: true,
+                renotify: true,
+                tag: `expiry-radar-${Date.now()}`,
+                data: { url: targetUrl }
+              }
             }
-          }
-        });
-        sentFcm = true;
-      } catch (err) {
-        console.error("FCM dispatch error:", err);
+          });
+          sentFcmCount++;
+        } catch (err) {
+          console.error("FCM dispatch error for token:", err);
+        }
       }
     }
 
     return NextResponse.json({
       success: true,
-      expiringCount: itemCount,
-      fcmSent: sentFcm,
-      items: upcomingExpiries
+      expiringCount: upcomingExpiries.length,
+      expiredCount: expiredItems.length,
+      fcmSentCount: sentFcmCount,
+      upcoming: upcomingExpiries,
+      expired: expiredItems
     });
 
   } catch (error: any) {
