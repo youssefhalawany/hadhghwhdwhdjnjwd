@@ -70,7 +70,9 @@ import {
   Eye,
   EyeOff,
   Calculator,
-  Pencil
+  Pencil,
+  RefreshCw,
+  ExternalLink
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -341,7 +343,13 @@ export default function CreditsPage() {
   const [bankTransferFile, setBankTransferFile] = useState<File | null>(null);
 
   const [expandedCredits, setExpandedCredits] = useState<Record<string, boolean>>({});
+  const [creditPOItems, setCreditPOItems] = useState<Record<string, any[]>>({});
+  const [loadingHistories, setLoadingHistories] = useState<Record<string, boolean>>({});
   const [selectedCreditForPrint, setSelectedCreditForPrint] = useState<Credit | null>(null);
+  const [selectedPaymentForPrint, setSelectedPaymentForPrint] = useState<{ credit: Credit; payment: any } | null>(null);
+  const [isPrintingPayment, setIsPrintingPayment] = useState(false);
+  const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedCreditForView, setSelectedCreditForView] = useState<Credit | null>(null);
   const [savedCreditForQR, setSavedCreditForQR] = useState<Credit | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
@@ -650,36 +658,115 @@ export default function CreditsPage() {
     const isExpanding = !expandedCredits[id];
     setExpandedCredits(prev => ({ ...prev, [id]: isExpanding }));
 
-    if (isExpanding && !creditHistories[id]) {
+    if (isExpanding && (!creditHistories[id] || !creditPOItems[id])) {
+      setLoadingHistories(prev => ({ ...prev, [id]: true }));
       try {
-        const hQuery = query(collection(db, "credit_payments"), where("creditId", "==", id));
-        const snap = await getDocs(hQuery);
-        const history = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a: any, b: any) => {
+        const currentCredit = credits.find(c => c.id === id);
+        
+        // 1. Fetch payment histories in parallel from multiple sources
+        const historyPromises = [
+          getDocs(query(collection(db, "credit_payments"), where("creditId", "==", id))),
+          getDocs(query(collection(db, "cash_payments"), where("creditId", "==", id))),
+        ];
+
+        if (currentCredit?.invoiceNumber) {
+          historyPromises.push(
+            getDocs(query(collection(db, "credit_payments"), where("invoiceNumber", "==", currentCredit.invoiceNumber)))
+          );
+        }
+
+        const snapshots = await Promise.allSettled(historyPromises);
+        const allLoadedDocs: any[] = [];
+        const seenIds = new Set<string>();
+
+        snapshots.forEach(res => {
+          if (res.status === "fulfilled" && res.value && res.value.docs) {
+            res.value.docs.forEach(docSnap => {
+              if (!seenIds.has(docSnap.id)) {
+                seenIds.add(docSnap.id);
+                allLoadedDocs.push({ id: docSnap.id, ...docSnap.data() });
+              }
+            });
+          }
+        });
+
+        let finalHistory = allLoadedDocs;
+
+        // If no separate documents found, check embedded payments array
+        if (finalHistory.length === 0 && currentCredit?.payments && Array.isArray(currentCredit.payments) && currentCredit.payments.length > 0) {
+          finalHistory = currentCredit.payments;
+        }
+
+        // If still empty but the credit was marked as paid or has paidAmount > 0, generate an official recorded settlement item
+        if (finalHistory.length === 0 && currentCredit && (Number(currentCredit.paidAmount) > 0 || currentCredit.status === "paid")) {
+          const totalDue = Number(currentCredit.amountDue || 0) + Number(currentCredit.tax || 0);
+          const paidAmt = Number(currentCredit.paidAmount) > 0 ? Number(currentCredit.paidAmount) : totalDue;
+          finalHistory = [{
+            id: `settlement_${currentCredit.id}`,
+            amount: paidAmt,
+            date: currentCredit.collectionDate || currentCredit.date || new Date().toISOString().split("T")[0],
+            method: "Direct Settlement / سداد معتمد",
+            createdBy: currentCredit.createdBy || "Store Manager",
+            isSettlement: true
+          }];
+        }
+
+        // Sort by date / createdAt descending
+        finalHistory.sort((a: any, b: any) => {
           if (a.createdAt && b.createdAt) {
-            return b.createdAt.toMillis() - a.createdAt.toMillis();
+            const timeA = a.createdAt.toMillis ? a.createdAt.toMillis() : new Date(a.createdAt).getTime();
+            const timeB = b.createdAt.toMillis ? b.createdAt.toMillis() : new Date(b.createdAt).getTime();
+            return timeB - timeA;
           }
           return 0;
         });
-        setCreditHistories(prev => ({ ...prev, [id]: history }));
-        
-        // Recalculate true paid amount from history for accuracy
-        const calculatedPaid = history.reduce((sum, payment: any) => sum + Number(payment.amount || 0), 0);
-        if (calculatedPaid > 0) {
+
+        setCreditHistories(prev => ({ ...prev, [id]: finalHistory }));
+
+        // 2. Fetch PO items if not already on currentCredit.items
+        let items = currentCredit?.items || [];
+        if (items.length === 0 && currentCredit?.invoiceNumber) {
+          try {
+            const expSnap = await getDocs(
+              query(collection(db, "expiries"), where("invoiceNumber", "==", currentCredit.invoiceNumber))
+            );
+            if (!expSnap.empty) {
+              items = expSnap.docs.map(d => {
+                const ed = d.data();
+                return {
+                  barcode: ed.barcode || "N/A",
+                  description: ed.itemName || "Unnamed Item",
+                  quantity: ed.quantity || 1,
+                  unitPrice: ed.unitPrice || 0,
+                };
+              });
+            }
+          } catch (poErr) {
+            console.warn("Could not fetch PO items from expiries:", poErr);
+          }
+        }
+        setCreditPOItems(prev => ({ ...prev, [id]: items }));
+
+        // 3. Recalculate true paid amount from history for accuracy
+        const calculatedPaid = finalHistory.reduce((sum, payment: any) => sum + Number(payment.amount || 0), 0);
+        if (calculatedPaid > 0 && currentCredit) {
           setCredits(prev => prev.map(c => {
             if (c.id === id) {
               const newPaid = Math.max(c.paidAmount, calculatedPaid);
-              const totalDue = c.amountDue + c.tax;
+              const totalDue = (Number(c.amountDue) || 0) + (Number(c.tax) || 0);
               return { 
                 ...c, 
-                paidAmount: newPaid,
-                status: newPaid >= totalDue ? "paid" : c.status
+                paidAmount: newPaid, 
+                status: newPaid >= totalDue ? "paid" : c.status 
               };
             }
             return c;
           }));
         }
       } catch (err) {
-        console.error("Failed to load history for credit", id, err);
+        console.error("Failed to load details for credit", id, err);
+      } finally {
+        setLoadingHistories(prev => ({ ...prev, [id]: false }));
       }
     }
   };
@@ -1434,6 +1521,82 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
     setTimeout(tryPrint, 100);
   }, [isPrinting, selectedCreditForPrint]);
 
+  const handlePrintPaymentReceipt = (credit: Credit, payment: any) => {
+    setSelectedPaymentForPrint({ credit, payment });
+    setIsPrintingPayment(true);
+  };
+
+  // useEffect: print payment receipt voucher iframe
+  useEffect(() => {
+    if (!isPrintingPayment || !selectedPaymentForPrint) return;
+
+    let attempts = 0;
+    const maxAttempts = 20;
+
+    const tryPrintPayment = () => {
+      attempts++;
+      const wrapper = document.getElementById("single-payment-print-wrapper");
+      if (!wrapper) {
+        if (attempts < maxAttempts) {
+          setTimeout(tryPrintPayment, 100);
+          return;
+        }
+        toast.error("Could not prepare payment receipt for printing.");
+        setIsPrintingPayment(false);
+        return;
+      }
+
+      let iframe = document.getElementById("payment-print-iframe") as HTMLIFrameElement;
+      if (iframe) iframe.remove();
+      iframe = document.createElement("iframe");
+      iframe.id = "payment-print-iframe";
+      iframe.style.position = "fixed";
+      iframe.style.right = "0";
+      iframe.style.bottom = "0";
+      iframe.style.width = "0px";
+      iframe.style.height = "0px";
+      iframe.style.border = "0";
+      document.body.appendChild(iframe);
+
+      const receiptHtml = wrapper.innerHTML;
+      const iframeDoc = iframe.contentWindow?.document;
+      if (!iframeDoc) {
+        toast.error("Could not open print window.");
+        setIsPrintingPayment(false);
+        return;
+      }
+
+      iframeDoc.open();
+      iframeDoc.write(`<!DOCTYPE html>
+<html>
+<head>
+<title>Payment Receipt Voucher</title>
+<style>
+@page { size: A4 portrait; margin: 0; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+</style>
+</head>
+<body>${receiptHtml}</body>
+</html>`);
+      iframeDoc.close();
+
+      setTimeout(() => {
+        try {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+          toast.success("Payment receipt print dialog opened!");
+        } catch (e) {
+          console.error("Print payment receipt failed:", e);
+          toast.error("Print failed. Please try again.");
+        }
+        setIsPrintingPayment(false);
+      }, 400);
+    };
+
+    setTimeout(tryPrintPayment, 150);
+  }, [isPrintingPayment, selectedPaymentForPrint]);
+
   const generateBulkPDF = async () => {
     if (selectedBulkItems.size === 0) return;
     setIsGeneratingBulkPDF(true);
@@ -1793,6 +1956,20 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
               </p>
             </div>
             <div className="flex items-center gap-3">
+              <button 
+                onClick={async () => {
+                  setIsRefreshing(true);
+                  await fetchCredits();
+                  setIsRefreshing(false);
+                  toast.success(isAr ? "تم تحديث البيانات بنجاح!" : "Credits refreshed!");
+                }}
+                disabled={isRefreshing}
+                className="flex items-center gap-2 bg-slate-800/60 backdrop-blur-md border border-slate-700/60 text-slate-300 px-3.5 py-2.5 rounded-xl font-semibold shadow-sm hover:bg-slate-700 hover:text-white transition-all cursor-pointer disabled:opacity-50"
+                title={isAr ? "تحديث فوري" : "Fast Refresh"}
+              >
+                <RefreshCw size={16} className={isRefreshing ? "animate-spin text-indigo-400" : ""} />
+                <span className="hidden sm:inline">{isAr ? "تحديث" : "Refresh"}</span>
+              </button>
               <button className="flex items-center gap-2 bg-slate-800/60 backdrop-blur-md border border-slate-700/60 text-slate-300 px-4 py-2.5 rounded-xl font-semibold shadow-sm hover:bg-slate-700 hover:border-slate-600 transition-all">
                 <FileDown size={18} /> {isAr ? "تصدير" : "Export"}
               </button>
@@ -2219,99 +2396,140 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                             </div>
                           </div>
 
+                          {/* Payment History Section */}
                           <div className="flex justify-between items-center border-t border-slate-800 pt-6 mb-4">
                             <h4 className="font-bold text-white flex items-center gap-2">
-                              <Banknote className="text-slate-400"/> Payment History
+                              <Banknote className="text-emerald-400"/> {isAr ? "سجل المدفوعات والتسويات" : "Payment History"}
+                              {creditHistories[credit.id] && creditHistories[credit.id].length > 0 && (
+                                <span className="text-xs font-mono bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 px-2 py-0.5 rounded-full font-bold">
+                                  {creditHistories[credit.id].length}
+                                </span>
+                              )}
                             </h4>
                             {credit.status !== "paid" && (
                               <button
                                 onClick={() => handleOpenPaymentModal(credit)}
-                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md hover:-translate-y-0.5 transition-all flex items-center gap-2"
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md hover:-translate-y-0.5 transition-all flex items-center gap-1.5 cursor-pointer"
                               >
-                                <Plus size={16} /> Record Payment
+                                <Plus size={15} /> {isAr ? "تسجيل سداد" : "Record Payment"}
                               </button>
                             )}
                           </div>
                           
-                          {creditHistories[credit.id] && creditHistories[credit.id].length > 0 ? (
+                          {loadingHistories[credit.id] ? (
+                            <div className="flex justify-center items-center py-8 bg-[#0B1121] rounded-xl border border-slate-800">
+                              <Loader2 className="animate-spin text-indigo-400 mr-2" size={20} />
+                              <span className="text-xs text-slate-400 font-medium">{isAr ? "جاري تحميل سجل السداد والأصناف..." : "Loading payments & PO items..."}</span>
+                            </div>
+                          ) : creditHistories[credit.id] && creditHistories[credit.id].length > 0 ? (
                             <div className="space-y-2">
-                              {creditHistories[credit.id].map((payment, idx) => (
-                                <div key={idx} className="flex justify-between items-center bg-[#0B1121] p-3.5 rounded-xl border border-slate-800 shadow-sm">
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-emerald-950/60 border border-emerald-800/60 flex items-center justify-center text-emerald-400">
-                                      <CheckCircle size={18} />
+                              {creditHistories[credit.id].map((payment, idx) => {
+                                const receiptImg = payment.bankTransferReceiptUrl || payment.receiptUrl;
+                                return (
+                                  <div key={payment.id || idx} className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-[#0B1121] p-3.5 rounded-xl border border-slate-800 shadow-sm gap-3 hover:border-slate-700 transition-colors">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-10 h-10 rounded-full bg-emerald-950/60 border border-emerald-800/60 flex items-center justify-center text-emerald-400 shrink-0">
+                                        <CheckCircle size={18} />
+                                      </div>
+                                      <div>
+                                        <p className="font-bold text-white font-mono tracking-tight text-base">
+                                          EGP {Number(payment.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                        </p>
+                                        <p className="text-xs font-medium text-slate-400 flex items-center gap-1.5 flex-wrap">
+                                          <Calendar size={12}/> <span>{payment.date || "Completed"}</span> 
+                                          <span className="text-slate-600">•</span> 
+                                          <span className="uppercase font-semibold text-slate-300">{payment.method || "CASH"}</span>
+                                          {payment.createdBy && (
+                                            <>
+                                              <span className="text-slate-600">•</span>
+                                              <span className="text-slate-500 font-mono text-[11px]">{payment.createdBy.split('@')[0]}</span>
+                                            </>
+                                          )}
+                                        </p>
+                                      </div>
                                     </div>
-                                    <div>
-                                      <p className="font-bold text-white font-mono tracking-tight">EGP {Number(payment.amount).toLocaleString()}</p>
-                                      <p className="text-xs font-medium text-slate-400 flex items-center gap-1"><Calendar size={12}/> {payment.date} <span className="px-1 text-slate-600">•</span> {payment.method?.toUpperCase()}</p>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    {payment.bankTransferReceiptUrl && (
-                                      <button 
-                                        onClick={() => {
-                                          const newTab = window.open();
-                                          if (newTab) {
-                                            newTab.document.write(`<!DOCTYPE html><html><head><title>Bank Transfer Receipt</title></head><body style="margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #0f172a;"><img src="${payment.bankTransferReceiptUrl}" style="max-width: 100%; max-height: 100vh; object-fit: contain;" /></body></html>`);
-                                            newTab.document.close();
-                                          }
-                                        }}
-                                        className="text-xs font-bold px-3 py-1 bg-blue-950/60 text-blue-400 border border-blue-800/60 rounded-full hover:bg-blue-900/60 transition-colors flex items-center gap-1"
+                                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                                      {receiptImg && (
+                                        <button 
+                                          onClick={() => setPreviewImage({ url: receiptImg, title: `Payment Receipt - Inv #${credit.invoiceNumber || ""}` })}
+                                          className="text-xs font-bold px-3 py-1.5 bg-blue-950/60 text-blue-400 border border-blue-800/60 rounded-xl hover:bg-blue-900/60 transition-colors flex items-center gap-1.5 cursor-pointer"
+                                          title="View Receipt Image"
+                                        >
+                                          <FileText size={13}/> {isAr ? "عرض الإيصال" : "Receipt"}
+                                        </button>
+                                      )}
+                                      <button
+                                        onClick={() => handlePrintPaymentReceipt(credit, payment)}
+                                        className="text-xs font-bold px-3 py-1.5 bg-indigo-950/60 text-indigo-300 border border-indigo-800/60 rounded-xl hover:bg-indigo-900/60 hover:text-white transition-colors flex items-center gap-1.5 cursor-pointer"
+                                        title={isAr ? "طباعة إيصال السداد الرسمي" : "Print Official Payment Voucher"}
                                       >
-                                        <FileText size={12}/> Receipt
+                                        <Printer size={13}/> {isAr ? "طباعة الإيصال" : "Print Receipt"}
                                       </button>
-                                    )}
-                                    <span className="text-xs font-bold px-3 py-1 bg-emerald-950/60 text-emerald-400 border border-emerald-800/60 rounded-full">Paid</span>
+                                      <span className="text-xs font-bold px-2.5 py-1 bg-emerald-950/60 text-emerald-400 border border-emerald-800/60 rounded-full flex items-center gap-1">
+                                        <CheckCircle size={12}/> {isAr ? "مسدد" : "Paid"}
+                                      </span>
+                                    </div>
                                   </div>
-                                </div>
-                              ))}
-                              <div className="flex justify-between items-center pt-4 mt-2 border-t border-slate-800">
-                                <span className="text-sm font-bold text-slate-400 uppercase tracking-wider">Total Paid</span>
-                                <span className="text-lg font-black text-emerald-400 tracking-tight">EGP {credit.paidAmount.toLocaleString()}</span>
+                                );
+                              })}
+                              <div className="flex justify-between items-center pt-4 mt-2 border-t border-slate-800/80 px-1">
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{isAr ? "إجمالي المسدد" : "Total Paid"}</span>
+                                <span className="text-base font-black text-emerald-400 tracking-tight font-mono">EGP {credit.paidAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                               </div>
                             </div>
                           ) : (
                             <div className="text-center py-8 bg-[#0B1121] rounded-xl border border-dashed border-slate-800">
-                              <p className="text-sm font-bold text-slate-500">No payments recorded yet</p>
+                              <p className="text-sm font-bold text-slate-500">{isAr ? "لا توجد مدفوعات مسجلة حتى الآن" : "No payments recorded yet"}</p>
                             </div>
                           )}
 
                           {/* PO Items & Image Area */}
                           <div className="border-t border-slate-800 pt-6 mt-6">
                             <div className="flex justify-between items-center mb-4">
-                              <h4 className="font-bold text-white flex items-center gap-2">
-                                <ImageIcon className="text-slate-400"/> Purchase Order Details
-                              </h4>
-                              {(!credit.items || credit.items.length === 0) && !credit.poImageUrl && (
+                              <div className="flex items-center gap-2">
+                                <ImageIcon className="text-indigo-400" size={18} />
+                                <h4 className="font-bold text-white text-base">
+                                  {isAr ? "تفاصيل أمر الشراء والأصناف (PO Items)" : "Purchase Order Details"}
+                                </h4>
+                                {credit.poNumber && (
+                                  <span className="text-xs font-mono bg-indigo-950 text-indigo-300 border border-indigo-800/60 px-2 py-0.5 rounded-full font-bold">
+                                    PO: {credit.poNumber}
+                                  </span>
+                                )}
+                              </div>
+                              {(!creditPOItems[credit.id] || creditPOItems[credit.id].length === 0) && !credit.poImageUrl && (
                                 <button
                                   onClick={() => setSelectedCreditForPoUpload(credit)}
-                                  className="text-indigo-400 bg-indigo-950/60 border border-indigo-800/60 px-4 py-2 rounded-xl text-sm font-bold hover:bg-indigo-900/60 transition-colors"
+                                  className="text-indigo-400 bg-indigo-950/60 border border-indigo-800/60 px-3.5 py-1.5 rounded-xl text-xs font-bold hover:bg-indigo-900/60 transition-colors flex items-center gap-1 cursor-pointer"
                                 >
-                                  + Add PO
+                                  <Plus size={14}/> {isAr ? "إرفاق PO / فاتورة" : "+ Add PO"}
                                 </button>
                               )}
                             </div>
 
-                            {credit.items && credit.items.length > 0 && (
-                              <div className="overflow-x-auto border border-slate-800 bg-[#0B1121] rounded-2xl mb-6 shadow-sm">
+                            {/* PO Items Table */}
+                            {creditPOItems[credit.id] && creditPOItems[credit.id].length > 0 && (
+                              <div className="overflow-x-auto border border-slate-800 bg-[#0B1121] rounded-2xl mb-5 shadow-sm">
                                 <table className="w-full text-sm text-left">
-                                  <thead className="text-xs text-slate-400 bg-slate-950 border-b border-slate-800 uppercase font-bold">
+                                  <thead className="text-xs text-slate-400 bg-slate-950/80 border-b border-slate-800 uppercase font-bold tracking-wider">
                                     <tr>
+                                      <th className="px-4 py-3">#</th>
                                       <th className="px-4 py-3">Barcode</th>
-                                      <th className="px-4 py-3">Description</th>
+                                      <th className="px-4 py-3">Description / اسم الصنف</th>
                                       <th className="px-4 py-3 text-center">Qty</th>
                                       <th className="px-4 py-3 text-right">Unit Price</th>
                                       <th className="px-4 py-3 text-right">Total</th>
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {credit.items.map((item: any, idx: number) => (
-                                      <tr key={idx} className="border-b border-slate-850 last:border-0 font-medium">
-                                        <td className="px-4 py-3 text-slate-400">{item.barcode || "N/A"}</td>
-                                        <td className="px-4 py-3 text-white">{item.description || "N/A"}</td>
-                                        <td className="px-4 py-3 text-center text-white">{item.quantity}</td>
-                                        <td className="px-4 py-3 text-right text-slate-200">{Number(item.unitPrice).toFixed(2)}</td>
-                                        <td className="px-4 py-3 text-right font-bold text-white">{(item.quantity * item.unitPrice).toFixed(2)}</td>
+                                    {creditPOItems[credit.id].map((item: any, idx: number) => (
+                                      <tr key={idx} className="border-b border-slate-850/60 last:border-0 font-medium hover:bg-slate-900/40 transition-colors">
+                                        <td className="px-4 py-2.5 text-xs text-slate-500 font-mono">{idx + 1}</td>
+                                        <td className="px-4 py-2.5 text-slate-400 font-mono text-xs">{item.barcode || "N/A"}</td>
+                                        <td className="px-4 py-2.5 text-white font-bold">{item.description || item.itemName || "N/A"}</td>
+                                        <td className="px-4 py-2.5 text-center text-indigo-300 font-bold">{item.quantity}</td>
+                                        <td className="px-4 py-2.5 text-right text-slate-300 font-mono">{Number(item.unitPrice || 0).toFixed(2)}</td>
+                                        <td className="px-4 py-2.5 text-right font-bold text-emerald-400 font-mono">{(Number(item.quantity || 1) * Number(item.unitPrice || 0)).toFixed(2)}</td>
                                       </tr>
                                     ))}
                                   </tbody>
@@ -2319,22 +2537,44 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                               </div>
                             )}
 
-                            {credit.poImageUrl && (
+                            {/* Scanned PO Image Preview & Gallery */}
+                            {(credit.poImageUrl || credit.poUrl || (credit.poUrls && credit.poUrls.length > 0)) && (
                               <div className="mt-4">
-                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Scanned PO Image</p>
-                                <div className="border border-slate-800 rounded-2xl overflow-hidden bg-[#0B1121] flex justify-center p-2 shadow-sm">
-                                  <img 
-                                    src={credit.poImageUrl} 
-                                    alt="PO Document" 
-                                    className="max-w-full h-auto object-contain max-h-[600px] rounded-xl"
-                                  />
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                                  <ImageIcon size={14} className="text-indigo-400" />
+                                  {isAr ? "مرفقات ومستندات الفاتورة وأمر الشراء" : "Scanned PO & Invoice Documents"}
+                                </p>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                                  {[
+                                    ...(credit.poImageUrl ? [credit.poImageUrl] : []),
+                                    ...(credit.poUrl ? [credit.poUrl] : []),
+                                    ...(credit.poUrls || []),
+                                    ...(credit.invoiceUrl ? [credit.invoiceUrl] : []),
+                                    ...(credit.invoiceUrls || [])
+                                  ].filter((v, i, a) => a.indexOf(v) === i).map((imgUrl, imgIdx) => (
+                                    <div 
+                                      key={imgIdx}
+                                      onClick={() => setPreviewImage({ url: imgUrl, title: `Document ${imgIdx + 1} - ${credit.companyName}` })}
+                                      className="relative group border border-slate-800 rounded-2xl overflow-hidden bg-[#0B1121] aspect-video cursor-pointer hover:border-indigo-500/80 transition-all shadow-md"
+                                    >
+                                      <img 
+                                        src={imgUrl} 
+                                        alt={`PO Doc ${imgIdx + 1}`} 
+                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                      />
+                                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity">
+                                        <Eye size={18} className="text-white" />
+                                        <span className="text-xs font-bold text-white">{isAr ? "عرض" : "View"}</span>
+                                      </div>
+                                    </div>
+                                  ))}
                                 </div>
                               </div>
                             )}
                             
-                            {(!credit.items || credit.items.length === 0) && !credit.poImageUrl && (
+                            {(!creditPOItems[credit.id] || creditPOItems[credit.id].length === 0) && !credit.poImageUrl && !credit.poUrl && (!credit.poUrls || credit.poUrls.length === 0) && (
                               <div className="text-center py-6 bg-[#0B1121] rounded-xl border border-dashed border-slate-800">
-                                <p className="text-sm font-bold text-slate-500">No PO attached</p>
+                                <p className="text-xs font-bold text-slate-500">{isAr ? "لا يوجد أمر شراء أو أصناف مرفقة" : "No PO items or documents attached"}</p>
                               </div>
                             )}
                           </div>
@@ -3639,6 +3879,214 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
         </div>
       </div>
     ); })()}
+
+    {/* Printable Single Payment Receipt Voucher */}
+    {selectedPaymentForPrint && (() => {
+      const { credit, payment } = selectedPaymentForPrint;
+      const isOlaBranch = (credit.storeId || currentBranch || "").toLowerCase().includes("ola");
+      const branchNameDisplay = isOlaBranch ? "Ola El Koronfol" : "El Alamein 4";
+      const branchNameHeaderDisplay = isOlaBranch ? "CIRCLE K OLA EL KORONFOL" : "CIRCLE K EL-ALAMEIN 4";
+      const totalDue = Number(credit.amountDue || 0) + Number(credit.tax || 0);
+      const paidThisPayment = Number(payment.amount || 0);
+      const cumulativePaid = Number(credit.paidAmount || 0);
+      const remainingBalance = Math.max(0, totalDue - cumulativePaid);
+      const refId = payment.id ? (payment.id.startsWith("settlement_") ? `SETTLE-${payment.id.slice(-6)}` : `PAY-${payment.id.slice(0, 8).toUpperCase()}`) : `PAY-${Date.now().toString().slice(-6)}`;
+
+      const qrValue = JSON.stringify({
+        ref: refId,
+        supplier: credit.companyName,
+        inv: credit.invoiceNumber,
+        paid: paidThisPayment,
+        date: payment.date || new Date().toISOString().split("T")[0],
+        branch: branchNameDisplay,
+        status: "OFFICIALLY_SETTLED"
+      });
+
+      return (
+        <div id="single-payment-print-wrapper" style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+          <div id="print-payment-container" style={{ width: '794px', minHeight: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
+            
+            {/* Official Header */}
+            <div style={{ padding: '20px 30px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #000', position: 'relative', zIndex: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <div style={{ width: '50px', height: '50px', border: '2px solid #000', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#dc2626' }}>
+                  <span style={{ fontSize: '30px', fontWeight: 'bold', color: '#fff', lineHeight: 1 }}>K</span>
+                </div>
+                <div>
+                  <h1 style={{ fontSize: '20px', fontWeight: 'bold', color: '#000', margin: 0, textTransform: 'uppercase', letterSpacing: '-0.5px' }}>{branchNameHeaderDisplay}</h1>
+                  <p style={{ fontSize: '12px', color: '#333', margin: '2px 0 0', fontWeight: 'bold' }}>CREDIT PAYMENT RECEIPT VOUCHER</p>
+                </div>
+              </div>
+              <div style={{ textAlign: 'right', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: `2px solid #000`, borderRadius: '8px', padding: '6px 10px', minWidth: '70px' }}>
+                  <p style={{ margin: '0 0 2px', fontSize: '10px', fontWeight: 'bold', color: '#333', textTransform: 'uppercase', letterSpacing: '0.5px', lineHeight: 1 }}>REF #</p>
+                  <p style={{ margin: 0, fontSize: '12px', fontWeight: 'bold', color: '#000', lineHeight: 1, fontFamily: 'monospace' }}>{refId}</p>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', borderLeft: '1px solid #ccc', paddingLeft: '10px' }}>
+                  <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#000' }} dir="rtl">إيصال سداد دفعة آجلة</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Official Confirmation Text */}
+            <div style={{ padding: '25px 30px 10px', textAlign: 'right', direction: 'rtl' }}>
+              <p style={{ margin: 0, fontSize: '14px', lineHeight: '1.6', color: '#000', fontWeight: 'bold' }}>
+                تُقر إدارة الفرع بأنه قد تم استلام وتسجيل دفعة السداد الموضحة تفاصيلها أدناه لصالح المورد المذكور، وتعتبر هذه الوثيقة إشعاراً رسمياً بالسداد والتسوية المالية:
+              </p>
+            </div>
+
+            {/* Main Financial Payment Highlight Box */}
+            <div style={{ padding: '0 30px', marginBottom: '20px' }}>
+              <div style={{ backgroundColor: '#f0fdf4', border: '2px solid #16a34a', borderRadius: '8px', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <span style={{ fontSize: '11px', color: '#166534', fontWeight: 'bold', textTransform: 'uppercase', display: 'block' }}>Payment Amount / المبلغ المسدد</span>
+                  <div style={{ fontSize: '28px', fontWeight: '900', color: '#15803d', fontFamily: 'monospace', marginTop: '2px' }}>
+                    EGP {paidThisPayment.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <span style={{ fontSize: '11px', color: '#166534', fontWeight: 'bold', textTransform: 'uppercase', display: 'block' }}>Payment Method / طريقة السداد</span>
+                  <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#14532d', textTransform: 'uppercase', marginTop: '2px' }}>
+                    {payment.method || 'CASH / نقدي'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Credit & Supplier Details Grid */}
+            <div style={{ padding: '0 30px', marginBottom: '20px' }}>
+              <div style={{ border: '2px solid #000', borderRadius: '4px', overflow: 'hidden' }}>
+                {/* Row 1 */}
+                <div style={{ display: 'flex', borderBottom: '1px solid #000', backgroundColor: '#f9f9f9' }}>
+                  <div style={{ flex: 1, padding: '10px 15px', borderRight: '1px solid #000' }}>
+                    <span style={{ fontSize: '10px', color: '#666', textTransform: 'uppercase', fontWeight: 'bold', display: 'block' }}>Supplier Company / المورد</span>
+                    <span style={{ fontSize: '15px', fontWeight: 'bold', color: '#000', display: 'block', marginTop: '2px' }}>{credit.companyName}</span>
+                  </div>
+                  <div style={{ flex: 1, padding: '10px 15px' }}>
+                    <span style={{ fontSize: '10px', color: '#666', textTransform: 'uppercase', fontWeight: 'bold', display: 'block' }}>Payment Date / تاريخ السداد</span>
+                    <span style={{ fontSize: '15px', fontWeight: 'bold', color: '#000', display: 'block', marginTop: '2px' }}>{payment.date || new Date().toISOString().split("T")[0]}</span>
+                  </div>
+                </div>
+                {/* Row 2 */}
+                <div style={{ display: 'flex', borderBottom: '1px solid #000' }}>
+                  <div style={{ flex: 1, padding: '10px 15px', borderRight: '1px solid #000' }}>
+                    <span style={{ fontSize: '10px', color: '#666', textTransform: 'uppercase', fontWeight: 'bold', display: 'block' }}>Invoice # / رقم الفاتورة</span>
+                    <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#000', fontFamily: 'monospace', display: 'block', marginTop: '2px' }}>{credit.invoiceNumber || '-'}</span>
+                  </div>
+                  <div style={{ flex: 1, padding: '10px 15px' }}>
+                    <span style={{ fontSize: '10px', color: '#666', textTransform: 'uppercase', fontWeight: 'bold', display: 'block' }}>PO # / رقم أمر الشراء</span>
+                    <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#000', fontFamily: 'monospace', display: 'block', marginTop: '2px' }}>{credit.poNumber || '-'}</span>
+                  </div>
+                </div>
+                {/* Row 3: Account Balance Position */}
+                <div style={{ display: 'flex', backgroundColor: '#fcfcfc' }}>
+                  <div style={{ flex: 1, padding: '10px 15px', borderRight: '1px solid #000' }}>
+                    <span style={{ fontSize: '10px', color: '#666', textTransform: 'uppercase', fontWeight: 'bold', display: 'block' }}>Total Invoice Due</span>
+                    <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#000' }}>EGP {totalDue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  <div style={{ flex: 1, padding: '10px 15px', borderRight: '1px solid #000' }}>
+                    <span style={{ fontSize: '10px', color: '#666', textTransform: 'uppercase', fontWeight: 'bold', display: 'block' }}>Total Cumulative Paid</span>
+                    <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#16a34a' }}>EGP {cumulativePaid.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  <div style={{ flex: 1, padding: '10px 15px' }}>
+                    <span style={{ fontSize: '10px', color: '#666', textTransform: 'uppercase', fontWeight: 'bold', display: 'block' }}>Remaining Balance</span>
+                    <span style={{ fontSize: '13px', fontWeight: 'bold', color: remainingBalance > 0 ? '#dc2626' : '#16a34a' }}>
+                      EGP {remainingBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Stamp & Verification QR */}
+            <div style={{ padding: '10px 30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <QRCode value={qrValue} size={64} level="M" />
+                <div>
+                  <p style={{ margin: 0, fontSize: '9px', fontWeight: 'bold', color: '#000', fontFamily: 'monospace' }}>DOC ID: {refId}</p>
+                  <p style={{ margin: '2px 0 0', fontSize: '8px', color: '#666' }}>SYSTEM VERIFIED TRANSACTION</p>
+                </div>
+              </div>
+
+              <div style={{ transform: 'rotate(-5deg)', opacity: 0.9 }}>
+                <div style={{ border: '4px solid #16a34a', borderRadius: '50%', width: '130px', height: '130px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#16a34a' }}>
+                  <span style={{ fontSize: '14px', fontWeight: '900', letterSpacing: '1px', textTransform: 'uppercase' }}>PAID</span>
+                  <span style={{ fontSize: '14px', fontWeight: '900', borderBottom: '1px solid #16a34a', paddingBottom: '2px', marginBottom: '2px' }}>تم السداد</span>
+                  <span style={{ fontSize: '8px', fontWeight: 'bold' }}>{payment.date || new Date().toISOString().split("T")[0]}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Signatures */}
+            <div style={{ marginTop: 'auto', padding: '20px 30px 30px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #ccc', paddingTop: '15px' }}>
+                <div style={{ width: '200px', textAlign: 'center' }}>
+                  <p style={{ fontSize: '10px', color: '#666', textTransform: 'uppercase', marginBottom: '40px', fontWeight: 'bold' }}>Store Receiving Officer</p>
+                  <div style={{ borderTop: '1px solid #000', paddingTop: '4px' }}>
+                    <p style={{ fontSize: '10px', fontWeight: 'bold', margin: 0 }}>{payment.createdBy || credit.createdBy || "Authorized Officer"}</p>
+                  </div>
+                </div>
+
+                <div style={{ width: '200px', textAlign: 'center' }}>
+                  <p style={{ fontSize: '10px', color: '#666', textTransform: 'uppercase', marginBottom: '40px', fontWeight: 'bold' }}>Supplier Representative</p>
+                  <div style={{ borderTop: '1px solid #000', paddingTop: '4px' }}>
+                    <p style={{ fontSize: '10px', fontWeight: 'bold', margin: 0 }}>Receiver Signature</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div style={{ marginTop: '20px', borderTop: '1px solid #000', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <p style={{ fontSize: '8px', color: '#555', fontFamily: 'monospace', margin: 0 }}>
+                  TRANSACTION ID: {refId} | GENERATED: {new Date().toLocaleString()} | ANH ENTERPRISE PORTAL
+                </p>
+                <p style={{ fontSize: '9px', fontWeight: 'bold', margin: 0 }}>PAGE 1 OF 1</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      );
+    })()}
+
+    {/* In-App Image Preview Modal */}
+    {previewImage && (
+      <div className="fixed inset-0 z-[120] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="bg-[#0B1121] border border-slate-800 rounded-3xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
+          <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-[#070C18]">
+            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+              <ImageIcon size={16} className="text-indigo-400" />
+              {previewImage.title}
+            </h3>
+            <div className="flex items-center gap-2">
+              <a
+                href={previewImage.url}
+                target="_blank"
+                rel="noreferrer"
+                download
+                className="p-2 text-slate-400 hover:text-indigo-400 hover:bg-slate-800 rounded-xl transition-colors"
+                title="Open in new tab / Download"
+              >
+                <ExternalLink size={16} />
+              </a>
+              <button
+                onClick={() => setPreviewImage(null)}
+                className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          </div>
+          <div className="p-4 flex-1 overflow-auto flex items-center justify-center bg-black/40">
+            <img 
+              src={previewImage.url} 
+              alt={previewImage.title}
+              className="max-w-full max-h-[75vh] object-contain rounded-xl shadow-lg"
+            />
+          </div>
+        </div>
+      </div>
+    )}
 
     {selectedCreditForPrint && (() => {
       const urls = selectedCreditForPrint.poUrls && selectedCreditForPrint.poUrls.length > 0 
