@@ -22,6 +22,8 @@ const D = {
   cyan: "#22d3ee",
   emerald: "#34d399",
   amber: "#fbbf24",
+  amberDim: "rgba(251, 191, 36, 0.15)",
+  amberBorder: "rgba(251, 191, 36, 0.3)",
   rose: "#f43f5e",
   indigo: "#818cf8",
 };

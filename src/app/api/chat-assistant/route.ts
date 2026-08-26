@@ -404,7 +404,7 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
           if (adminDb) {
             try {
               const snapshot = await adminDb.collection("shift_reports").limit(50).get();
-              snapshot.forEach(doc => {
+              snapshot.forEach((doc: any) => {
                 const data = doc.data();
                 if (data.branchId === branchId || data.branchId === altBranch) {
                   audits.push(data);
@@ -418,7 +418,7 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
           if (audits.length === 0) {
             try {
               const snap = await getDocs(query(collection(db, "shift_reports"), limit(50)));
-              snap.forEach(doc => {
+              snap.forEach((doc: any) => {
                 const data = doc.data();
                 if (data.branchId === branchId || data.branchId === altBranch) {
                   audits.push(data);
@@ -462,7 +462,7 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
           if (adminDb) {
             try {
               const snapshot = await adminDb.collection("expiries").limit(200).get();
-              snapshot.forEach(doc => processExpiryDoc(doc.data()));
+              snapshot.forEach((doc: any) => processExpiryDoc(doc.data()));
             } catch (err) {
               console.warn("adminDb expiries query failed, trying client db:", err);
             }

@@ -9,7 +9,7 @@ export async function GET() {
     let ibrahimDoc: any = null;
     const found: any[] = [];
 
-    usersSnap.forEach(doc => {
+    usersSnap.forEach((doc: any) => {
       const data = doc.data();
       const email = (data.email || "").toLowerCase();
       const name = (data.displayName || data.name || "").toLowerCase();
