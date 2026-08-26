@@ -4,8 +4,10 @@ import { productsDb, db } from "@/lib/firebase";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { doc, getDoc, collection, query, where, orderBy, limit, getDocs } from "firebase/firestore";
 
+const GEMINI_KEY = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
+
 // Initialize Gemini
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+const genAI = new GoogleGenerativeAI(GEMINI_KEY);
 
 // In-memory cache to save Firebase reads
 const cache = {
@@ -116,7 +118,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: "Message is required" }, { status: 400 });
     }
 
-    if (!process.env.GEMINI_API_KEY) {
+    if (!GEMINI_KEY) {
       return NextResponse.json({ success: false, error: "GEMINI_API_KEY is not configured" }, { status: 500 });
     }
 
