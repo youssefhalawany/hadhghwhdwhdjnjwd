@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { collection, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useLanguage } from "@/context/LanguageContext";
 import toast from "react-hot-toast";
 
 interface ExtractedItem {
@@ -42,6 +43,9 @@ interface Props {
 }
 
 export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
+  const { language } = useLanguage();
+  const isAr = language === "ar";
+
   const [poImage, setPoImage] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [vendorName, setVendorName] = useState("");
@@ -80,7 +84,10 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
   // Call Gemini OCR API
   const processPOWithAI = async (base64Image: string) => {
     setIsScanning(true);
-    toast.loading("جاري قراءة الفاتورة واستخراج الأصناف بالذكاء الاصطناعي...", { id: "po-scan" });
+    const loadingMsg = isAr 
+      ? "جاري قراءة الفاتورة واستخراج الأصناف بالذكاء الاصطناعي..." 
+      : "Extracting invoice data and items with Vision AI...";
+    toast.loading(loadingMsg, { id: "po-scan" });
 
     try {
       const res = await fetch("/api/process-po", {
@@ -91,10 +98,10 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
 
       const data = await res.json();
       if (!res.ok || data.error) {
-        throw new Error(data.error || "فشل في قراءة الفاتورة");
+        throw new Error(data.error || (isAr ? "فشل في قراءة الفاتورة" : "Failed to extract PO details"));
       }
 
-      const extractedSupplier = data.companyName || "مورد عام";
+      const extractedSupplier = data.companyName || (isAr ? "مورد عام" : "General Vendor");
       const extractedInvNum = data.invoiceNumber || data.poNumber || `PO-${Date.now().toString().slice(-6)}`;
       const extractedDate = data.date || new Date().toISOString().split("T")[0];
 
@@ -113,7 +120,7 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
       const rawItems = Array.isArray(data.items) ? data.items : [];
       const formattedItems: ExtractedItem[] = rawItems.map((item: any, idx: number) => ({
         id: `item-${Date.now()}-${idx}`,
-        itemName: item.description || item.name || `صنف ${idx + 1}`,
+        itemName: item.description || item.name || (isAr ? `صنف ${idx + 1}` : `Item ${idx + 1}`),
         barcode: item.barcode || "N/A",
         quantity: Math.max(1, Number(item.quantity) || 1),
         unitPrice: Number(item.unitPrice) || 0,
@@ -121,10 +128,9 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
       }));
 
       if (formattedItems.length === 0) {
-        // Add 1 blank item if none extracted
         formattedItems.push({
           id: `item-${Date.now()}-0`,
-          itemName: "صنف مستلم",
+          itemName: isAr ? "صنف مستلم" : "Received Item",
           barcode: "N/A",
           quantity: 1,
           expiryDate: defaultExpStr,
@@ -132,13 +138,19 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
       }
 
       setItems(formattedItems);
-      toast.success(`تم استخراج ${formattedItems.length} صنف بنجاح!`, { id: "po-scan" });
+      const successMsg = isAr 
+        ? `تم استخراج ${formattedItems.length} صنف بنجاح!` 
+        : `Successfully extracted ${formattedItems.length} items!`;
+      toast.success(successMsg, { id: "po-scan" });
     } catch (err: any) {
       console.error(err);
-      toast.error(err.message || "حدث خطأ أثناء قراءة الفاتورة، يمكنك إدخال البيانات يدوياً", { id: "po-scan" });
+      const errorMsg = isAr 
+        ? "حدث خطأ أثناء قراءة الفاتورة، يمكنك إدخال البيانات يدوياً" 
+        : "Could not auto-extract invoice. You can enter details manually.";
+      toast.error(err.message || errorMsg, { id: "po-scan" });
       
       // Fallback manual defaults
-      setVendorName("مورد عام");
+      setVendorName(isAr ? "مورد عام" : "General Vendor");
       setBatchId(generateBatchId("GENERAL"));
       const defaultExp = new Date();
       defaultExp.setDate(defaultExp.getDate() + 60);
@@ -163,7 +175,7 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
     const dateStr = target.toISOString().split("T")[0];
     setMasterExpiryDate(dateStr);
     setItems(prev => prev.map(item => ({ ...item, expiryDate: dateStr })));
-    toast.success(`تم تعيين الصلاحية لجميع الأصناف (+${days} يوم)`);
+    toast.success(isAr ? `تم تعيين الصلاحية لجميع الأصناف (+${days} يوم)` : `Applied expiry (+${days} days) to all items`);
   };
 
   // Update item field
@@ -188,7 +200,7 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
   // Remove row
   const removeItem = (id: string) => {
     if (items.length <= 1) {
-      toast.error("يجب وجود صنف واحد على الأقل في الدفعة");
+      toast.error(isAr ? "يجب وجود صنف واحد على الأقل في الدفعة" : "At least one item is required in the batch");
       return;
     }
     setItems(prev => prev.filter(item => item.id !== id));
@@ -197,28 +209,28 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
   // Save all items to Firestore `expiries` collection & batch log
   const handleSaveBatch = async () => {
     if (!vendorName.trim()) {
-      toast.error("يرجى إدخال اسم المورد / الشركة");
+      toast.error(isAr ? "يرجى إدخال اسم المورد / الشركة" : "Please enter the supplier / vendor name");
       return;
     }
     if (items.length === 0) {
-      toast.error("لا توجد أصناف لحفظها");
+      toast.error(isAr ? "لا توجد أصناف لحفظها" : "No items to save");
       return;
     }
 
     const invalidItem = items.find(i => !i.itemName.trim() || !i.expiryDate);
     if (invalidItem) {
-      toast.error("يرجى التأكد من اسم الصنف وتاريخ الصلاحية لجميع الأصناف");
+      toast.error(isAr ? "يرجى التأكد من اسم الصنف وتاريخ الصلاحية لجميع الأصناف" : "Please verify item name and expiry date for all rows");
       return;
     }
 
     setIsSaving(true);
-    const saveToast = toast.loading("جاري حفظ وتوثيق الدفعة في رادار الصلاحيات...");
+    const saveToast = toast.loading(isAr ? "جاري حفظ وتوثيق الدفعة في رادار الصلاحيات..." : "Saving batch into Expiry Radar...");
 
     try {
       const branch = currentBranch === "all" ? "alamein4" : currentBranch;
       const normalizedStoreId = branch === "alamein4" ? "eL-alamein-4" : branch === "ola" ? "ola-el-koronfol" : branch;
       const savedUserStr = typeof window !== "undefined" ? localStorage.getItem("active_cashier_session") : null;
-      let managerName = "المدير المسؤول";
+      let managerName = isAr ? "المدير المسؤول" : "Store Manager";
       if (savedUserStr) {
         try {
           const u = JSON.parse(savedUserStr);
@@ -265,13 +277,16 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
           status: "active", // active, near_expiry, expired, sold, pulled, pending_return
           createdBy: managerName,
           createdAt: nowIso,
-          notes: `مستلم عبر فاتورة توريد: ${effectiveBatchId}`
+          notes: isAr ? `مستلم عبر فاتورة توريد: ${effectiveBatchId}` : `Received via PO batch: ${effectiveBatchId}`
         });
       });
 
       await Promise.all(promises);
 
-      toast.success(`🎉 تم تسجيل الدفعة (${effectiveBatchId}) بنجاح وإضافتها لرادار الصلاحيات!`, { id: saveToast });
+      const successToast = isAr 
+        ? `🎉 تم تسجيل الدفعة (${effectiveBatchId}) بنجاح وإضافتها لرادار الصلاحيات!` 
+        : `🎉 Batch (${effectiveBatchId}) registered and added to Expiry Radar!`;
+      toast.success(successToast, { id: saveToast });
       
       // Reset form
       setPoImage(null);
@@ -284,14 +299,14 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
       onBatchSaved();
     } catch (err: any) {
       console.error("Save Batch Error:", err);
-      toast.error(err.message || "حدث خطأ أثناء حفظ الدفعة", { id: saveToast });
+      toast.error(err.message || (isAr ? "حدث خطأ أثناء حفظ الدفعة" : "Failed to save batch"), { id: saveToast });
     } finally {
       setIsSaving(false);
     }
   };
 
   return (
-    <div className="w-full space-y-6">
+    <div className="w-full space-y-6" dir={isAr ? "rtl" : "ltr"}>
       {/* Top Banner / Upload Zone */}
       {!poImage && (
         <div className="bg-[#0B1121] border border-slate-800 rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden text-center">
@@ -302,10 +317,12 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
 
             <div className="space-y-2">
               <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                استلام دفعة بضاعة جديدة بالذكاء الاصطناعي
+                {isAr ? "استلام دفعة بضاعة جديدة بالذكاء الاصطناعي" : "AI PO Batch Intake & Expiry Ingestion"}
               </h2>
               <p className="text-sm text-slate-400 font-medium leading-relaxed">
-                ارفع أو صور فاتورة استلام البضاعة (PO / Delivery Note)، وسيقوم الذكاء الاصطناعي باستخراج الأصناف والكميات فوراً لتحديد تواريخ الصلاحية وتفعيل التنبيهات الذكية قبل 15 يوماً.
+                {isAr 
+                  ? "ارفع أو صور فاتورة استلام البضاعة (PO / Delivery Note)، وسيقوم الذكاء الاصطناعي باستخراج الأصناف والكميات فوراً لتحديد تواريخ الصلاحية وتفعيل التنبيهات الذكية قبل 15 يوماً."
+                  : "Upload or photograph your supplier invoice (PO / Delivery Note). AI will instantly extract items, codes, and quantities to set expiry dates and activate 15-day smart alerts."}
               </p>
             </div>
 
@@ -314,20 +331,20 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
                 onClick={() => fileInputRef.current?.click()}
                 className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-extrabold text-sm shadow-xl shadow-indigo-600/30 flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all"
               >
-                <Upload size={18} /> رفع صورة الفاتورة (PO)
+                <Upload size={18} /> {isAr ? "رفع صورة الفاتورة (PO)" : "Upload PO Invoice Image"}
               </button>
 
               <button
                 onClick={() => cameraInputRef.current?.click()}
                 className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-sm flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all"
               >
-                <Camera size={18} /> التقاط صورة بالكاميرا
+                <Camera size={18} /> {isAr ? "التقاط صورة بالكاميرا" : "Take Photo with Camera"}
               </button>
 
               <button
                 onClick={() => {
                   setPoImage("manual");
-                  setVendorName("مورد عام");
+                  setVendorName(isAr ? "مورد عام" : "General Vendor");
                   setBatchId(generateBatchId("MANUAL"));
                   const d = new Date();
                   d.setDate(d.getDate() + 60);
@@ -343,7 +360,7 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
                 }}
                 className="w-full sm:w-auto px-5 py-3.5 rounded-2xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white font-medium text-xs flex items-center justify-center gap-1 cursor-pointer transition-all"
               >
-                <Plus size={16} /> إدخال يدوي بدون صورة
+                <Plus size={16} /> {isAr ? "إدخال يدوي بدون صورة" : "Manual Entry without Image"}
               </button>
             </div>
 
@@ -372,8 +389,14 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
           <div className="w-16 h-16 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto">
             <Loader2 size={32} className="animate-spin text-indigo-400" />
           </div>
-          <h3 className="text-xl font-black text-white">جاري تحليل بيانات الفاتورة واستخراج الأصناف...</h3>
-          <p className="text-sm text-slate-400">نستخدم محرك Vision فائق السرعة للتعرف على الأصناف والباركود والكميات.</p>
+          <h3 className="text-xl font-black text-white">
+            {isAr ? "جاري تحليل بيانات الفاتورة واستخراج الأصناف..." : "Analyzing invoice data and extracting line items..."}
+          </h3>
+          <p className="text-sm text-slate-400">
+            {isAr 
+              ? "نستخدم محرك Vision فائق السرعة للتعرف على الأصناف والباركود والكميات." 
+              : "Using ultra-fast Vision AI to extract items, barcodes, and quantities."}
+          </p>
         </div>
       )}
 
@@ -385,10 +408,10 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
               <div>
                 <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                  ⚡ توثيق استلام دفعة جديدة
+                  {isAr ? "⚡ توثيق استلام دفعة جديدة" : "⚡ New Batch Intake"}
                 </span>
                 <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight mt-1.5 flex items-center gap-2">
-                  <Package className="text-indigo-400" size={24} /> {batchId || "تفاصيل الدفعة"}
+                  <Package className="text-indigo-400" size={24} /> {batchId || (isAr ? "تفاصيل الدفعة" : "Batch Details")}
                 </h2>
               </div>
 
@@ -400,7 +423,7 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
                   }}
                   className="px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 hover:text-rose-400 text-xs font-bold transition-colors cursor-pointer"
                 >
-                  إعادة مسح فاتورة أخرى
+                  {isAr ? "إعادة مسح فاتورة أخرى" : "Scan Another Invoice"}
                 </button>
               </div>
             </div>
@@ -408,8 +431,8 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
             {/* Inputs Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               <div>
-                <label className="text-xs font-bold text-slate-400 mb-1.5 block flex items-center gap-1">
-                  <Building2 size={14} className="text-indigo-400" /> اسم المورد / الشركة:
+                <label className="text-xs font-bold text-slate-400 mb-1.5 flex items-center gap-1">
+                  <Building2 size={14} className="text-indigo-400" /> {isAr ? "اسم المورد / الشركة:" : "Supplier / Vendor Name:"}
                 </label>
                 <input
                   type="text"
@@ -418,27 +441,27 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
                     setVendorName(e.target.value);
                     setBatchId(generateBatchId(e.target.value));
                   }}
-                  placeholder="مثال: إيديتا، بيبسي، جهينة..."
+                  placeholder={isAr ? "مثال: إيديتا، بيبسي، جهينة..." : "e.g., Edita, Pepsi, Chipsy..."}
                   className="w-full bg-[#070C18] border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white font-bold focus:border-indigo-500 outline-none"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-400 mb-1.5 block flex items-center gap-1">
-                  <FileText size={14} className="text-indigo-400" /> رقم الفاتورة / إذن الاستلام:
+                <label className="text-xs font-bold text-slate-400 mb-1.5 flex items-center gap-1">
+                  <FileText size={14} className="text-indigo-400" /> {isAr ? "رقم الفاتورة / إذن الاستلام:" : "Invoice / PO Number:"}
                 </label>
                 <input
                   type="text"
                   value={invoiceNumber}
                   onChange={(e) => setInvoiceNumber(e.target.value)}
-                  placeholder="مثال: PO-98421"
+                  placeholder="e.g. PO-98421"
                   className="w-full bg-[#070C18] border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono font-bold focus:border-indigo-500 outline-none"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-400 mb-1.5 block flex items-center gap-1">
-                  <Calendar size={14} className="text-indigo-400" /> تاريخ التوريد والاستلام:
+                <label className="text-xs font-bold text-slate-400 mb-1.5 flex items-center gap-1">
+                  <Calendar size={14} className="text-indigo-400" /> {isAr ? "تاريخ التوريد والاستلام:" : "Delivery / Receiving Date:"}
                 </label>
                 <input
                   type="date"
@@ -449,8 +472,8 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-400 mb-1.5 block flex items-center gap-1">
-                  <Hash size={14} className="text-indigo-400" /> كود الدفعة المرجعي:
+                <label className="text-xs font-bold text-slate-400 mb-1.5 flex items-center gap-1">
+                  <Hash size={14} className="text-indigo-400" /> {isAr ? "كود الدفعة المرجعي:" : "Batch Reference Code:"}
                 </label>
                 <input
                   type="text"
@@ -467,7 +490,7 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
             <div className="flex items-center gap-2">
               <Zap size={18} className="text-amber-400" />
               <span className="text-xs font-black text-slate-200">
-                تعيين تاريخ صلاحية موحد لجميع الأصناف بضغطة واحدة:
+                {isAr ? "تعيين تاريخ صلاحية موحد لجميع الأصناف بضغطة واحدة:" : "Quick 1-Click Expiry Presets for All Items:"}
               </span>
             </div>
 
@@ -476,37 +499,37 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
                 onClick={() => applyPresetToAll(15)}
                 className="px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold transition-all cursor-pointer"
               >
-                +15 يوم
+                {isAr ? "+15 يوم" : "+15 Days"}
               </button>
               <button
                 onClick={() => applyPresetToAll(30)}
                 className="px-3 py-1.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-xs font-bold transition-all cursor-pointer"
               >
-                +30 يوم (شهر)
+                {isAr ? "+30 يوم (شهر)" : "+30 Days (1 Mo)"}
               </button>
               <button
                 onClick={() => applyPresetToAll(60)}
                 className="px-3 py-1.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-xs font-bold transition-all cursor-pointer"
               >
-                +60 يوم (شهرين)
+                {isAr ? "+60 يوم (شهرين)" : "+60 Days (2 Mo)"}
               </button>
               <button
                 onClick={() => applyPresetToAll(90)}
                 className="px-3 py-1.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-xs font-bold transition-all cursor-pointer"
               >
-                +90 يوم (3 شهور)
+                {isAr ? "+90 يوم (3 شهور)" : "+90 Days (3 Mo)"}
               </button>
               <button
                 onClick={() => applyPresetToAll(180)}
                 className="px-3 py-1.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-xs font-bold transition-all cursor-pointer"
               >
-                +6 شهور
+                {isAr ? "+6 شهور" : "+6 Months"}
               </button>
               <button
                 onClick={() => applyPresetToAll(365)}
                 className="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-bold transition-all cursor-pointer"
               >
-                +سنة كاملة
+                {isAr ? "+سنة كاملة" : "+1 Year"}
               </button>
             </div>
           </div>
@@ -515,28 +538,29 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
           <div className="bg-[#0B1121] border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
             <div className="p-4 sm:p-5 border-b border-slate-800/80 flex items-center justify-between">
               <h3 className="text-lg font-black text-white flex items-center gap-2">
-                <Package size={20} className="text-indigo-400" /> أصناف الدفعة المستلمة ({items.length})
+                <Package size={20} className="text-indigo-400" /> 
+                {isAr ? `أصناف الدفعة المستلمة (${items.length})` : `Batch Line Items (${items.length})`}
               </h3>
 
               <button
                 onClick={addItem}
                 className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
               >
-                <Plus size={16} /> إضافة صنف إضافي
+                <Plus size={16} /> {isAr ? "إضافة صنف إضافي" : "Add Extra Item"}
               </button>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-right text-sm">
+              <table className={`w-full text-sm ${isAr ? "text-right" : "text-left"}`}>
                 <thead>
                   <tr className="bg-[#070C18] border-b border-slate-800 text-[11px] font-black text-slate-400 uppercase tracking-wider">
                     <th className="p-4">#</th>
-                    <th className="p-4 min-w-[220px]">اسم الصنف / المنتج</th>
-                    <th className="p-4 min-w-[140px]">الباركود</th>
-                    <th className="p-4 min-w-[100px]">الكمية</th>
-                    <th className="p-4 min-w-[170px]">تاريخ الصلاحية</th>
-                    <th className="p-4 min-w-[120px]">حالة الرادار</th>
-                    <th className="p-4 text-center">إجراء</th>
+                    <th className="p-4 min-w-[220px]">{isAr ? "اسم الصنف / المنتج" : "Item / Product Name"}</th>
+                    <th className="p-4 min-w-[140px]">{isAr ? "الباركود" : "Barcode"}</th>
+                    <th className="p-4 min-w-[100px]">{isAr ? "الكمية" : "Quantity"}</th>
+                    <th className="p-4 min-w-[170px]">{isAr ? "تاريخ الصلاحية" : "Expiry Date"}</th>
+                    <th className="p-4 min-w-[120px]">{isAr ? "حالة الرادار" : "Radar Status"}</th>
+                    <th className="p-4 text-center">{isAr ? "إجراء" : "Action"}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
@@ -553,7 +577,7 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
                             type="text"
                             value={item.itemName}
                             onChange={(e) => updateItem(item.id, "itemName", e.target.value)}
-                            placeholder="اسم الصنف..."
+                            placeholder={isAr ? "اسم الصنف..." : "Item name..."}
                             className="w-full bg-[#070C18] border border-slate-800 rounded-xl px-3 py-2 text-sm text-white font-bold focus:border-indigo-500 outline-none"
                           />
                         </td>
@@ -562,7 +586,7 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
                             type="text"
                             value={item.barcode}
                             onChange={(e) => updateItem(item.id, "barcode", e.target.value)}
-                            placeholder="الباركود..."
+                            placeholder={isAr ? "الباركود..." : "Barcode..."}
                             className="w-full bg-[#070C18] border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-slate-300 font-bold focus:border-indigo-500 outline-none"
                           />
                         </td>
@@ -586,15 +610,15 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
                         <td className="p-4">
                           {isExpired ? (
                             <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30">
-                              <AlertTriangle size={12} /> منتهي
+                              <AlertTriangle size={12} /> {isAr ? "منتهي" : "Expired"}
                             </span>
                           ) : is15DaysWarning ? (
                             <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                              <Clock size={12} /> إنذار 15 يوم ({daysRemaining} يوم)
+                              <Clock size={12} /> {isAr ? `إنذار 15 يوم (${daysRemaining} يوم)` : `15d Alert (${daysRemaining}d)`}
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                              <Check size={12} /> آمن ({daysRemaining} يوم)
+                              <Check size={12} /> {isAr ? `آمن (${daysRemaining} يوم)` : `Safe (${daysRemaining}d)`}
                             </span>
                           )}
                         </td>
@@ -602,7 +626,7 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
                           <button
                             onClick={() => removeItem(item.id)}
                             className="p-2 rounded-xl text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
-                            title="حذف هذا الصنف"
+                            title={isAr ? "حذف هذا الصنف" : "Delete this item"}
                           >
                             <Trash2 size={16} />
                           </button>
@@ -619,7 +643,15 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
               <div className="text-xs text-slate-400 flex items-center gap-2">
                 <ShieldCheck size={16} className="text-emerald-400" />
                 <span>
-                  سيتم تسجيل <strong className="text-white">{items.length} صنف</strong> بإجمالي <strong className="text-white">{items.reduce((s, i) => s + i.quantity, 0)} قطعة</strong> تحت كود الدفعة <strong className="text-indigo-300 font-mono">{batchId}</strong>.
+                  {isAr ? (
+                    <>
+                      سيتم تسجيل <strong className="text-white">{items.length} صنف</strong> بإجمالي <strong className="text-white">{items.reduce((s, i) => s + i.quantity, 0)} قطعة</strong> تحت كود الدفعة <strong className="text-indigo-300 font-mono">{batchId}</strong>.
+                    </>
+                  ) : (
+                    <>
+                      Registering <strong className="text-white">{items.length} items</strong> ({items.reduce((s, i) => s + i.quantity, 0)} units total) under batch code <strong className="text-indigo-300 font-mono">{batchId}</strong>.
+                    </>
+                  )}
                 </span>
               </div>
 
@@ -632,7 +664,7 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
                   disabled={isSaving}
                   className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-colors cursor-pointer"
                 >
-                  إلغاء
+                  {isAr ? "إلغاء" : "Cancel"}
                 </button>
 
                 <button
@@ -641,7 +673,7 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
                   className="w-full sm:w-auto px-7 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all disabled:opacity-50"
                 >
                   {isSaving ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
-                  حفظ واعتماد الدفعة في السيستم
+                  {isAr ? "حفظ واعتماد الدفعة في السيستم" : "Save & Register Batch in System"}
                 </button>
               </div>
             </div>

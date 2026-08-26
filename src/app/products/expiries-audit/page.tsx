@@ -19,12 +19,15 @@ import { POBatchIntake } from './POBatchIntake';
 
 export default function ExpiryAuditPage() {
   const { currentBranch } = useBranch();
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
+  const isAr = language === "ar";
+
   const [allExpiries, setAllExpiries] = useState<any[]>([]);
   const [supplierReturns, setSupplierReturns] = useState<any[]>([]);
   const [alreadyExpired, setAlreadyExpired] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"active" | "intake" | "pending" | "reports" | "already_expired" | "waste">("active");
+  const [filterPreset, setFilterPreset] = useState<"all" | "expired" | "warning_15">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -312,13 +315,38 @@ export default function ExpiryAuditPage() {
     return inferred === currentBranch;
   });
 
-  const filteredExpiries = items.filter(item => 
-    ((item.itemName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (item.barcode || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (item.storeId || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (item.addedBy || "").toLowerCase().includes(searchQuery.toLowerCase())) &&
-    item.status !== "audited" && item.status !== "pending_return" && item.status !== "returned" && item.status !== "damaged"
-  );
+  const filteredExpiries = items.filter(item => {
+    if (["audited", "pending_return", "returned", "damaged", "sold"].includes(item.status || "")) return false;
+    
+    // Quick filter preset
+    if (filterPreset === "expired") {
+      const exp = new Date(item.expiryDate);
+      exp.setHours(0,0,0,0);
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      if (exp.getTime() > today.getTime()) return false;
+    } else if (filterPreset === "warning_15") {
+      const exp = new Date(item.expiryDate);
+      exp.setHours(0,0,0,0);
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      const diffDays = Math.ceil((exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays > 15 || diffDays <= 0) return false;
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const match = (item.itemName || "").toLowerCase().includes(q) ||
+                    (item.barcode || "").toLowerCase().includes(q) ||
+                    (item.storeId || "").toLowerCase().includes(q) ||
+                    (item.supplier || "").toLowerCase().includes(q) ||
+                    (item.batchId || "").toLowerCase().includes(q) ||
+                    (item.addedBy || "").toLowerCase().includes(q);
+      if (!match) return false;
+    }
+
+    return true;
+  });
 
   const pendingItems = items.filter(i => (i.status || "").toLowerCase() === "pulled" && (i.itemName || "").toLowerCase().includes((reportFilters.item || "").toLowerCase()));
   
@@ -536,9 +564,13 @@ export default function ExpiryAuditPage() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <div>
             <h1 className="text-3xl font-black tracking-tight flex items-center gap-3">
-              <ShieldCheck className="h-8 w-8 text-red-500" /> Damage & Expiry Audit
+              <ShieldCheck className="h-8 w-8 text-red-500" /> {isAr ? "مراجعة الهوالك ورادار الصلاحيات" : "Damage & Expiry Audit"}
             </h1>
-            <p className="text-muted-foreground mt-1 text-sm font-medium">Verify pulled items, adjust quantities, and generate destruction reports.</p>
+            <p className="text-muted-foreground mt-1 text-sm font-medium">
+              {isAr 
+                ? "متابعة تواريخ الصلاحية، توثيق السحب والإتلاف، واستلام فواتير التوريد بالذكاء الاصطناعي."
+                : "Verify pulled items, adjust quantities, scan PO batches, and track 15-day expiry lifecycles."}
+            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
@@ -550,27 +582,27 @@ export default function ExpiryAuditPage() {
                   : "bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-indigo-600/20"
               }`}
             >
-              <Sparkles size={16} /> + استلام دفعة PO (Scan)
+              <Sparkles size={16} /> {isAr ? "+ استلام دفعة PO (Scan)" : "+ Scan PO Batch"}
             </button>
 
             <div className="flex bg-muted/50 p-1 rounded-xl border border-border overflow-x-auto max-w-full">
               <button 
-                onClick={() => { setActiveTab("active"); setSelectedExpiry(null); }}
+                onClick={() => { setActiveTab("active"); setSelectedExpiry(null); setFilterPreset("all"); }}
                 className={`px-4 sm:px-6 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${activeTab === "active" ? "bg-background text-foreground shadow-sm border border-border" : "text-muted-foreground hover:text-foreground"}`}
               >
-                Active Tracker
+                {isAr ? "الرادار النشط" : "Active Tracker"}
               </button>
               <button 
                 onClick={() => setActiveTab("intake")}
                 className={`px-4 sm:px-5 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${activeTab === "intake" ? "bg-background text-indigo-400 shadow-sm border border-indigo-500/30" : "text-muted-foreground hover:text-foreground"}`}
               >
-                ⚡ PO Intake
+                {isAr ? "⚡ استلام دفعة PO" : "⚡ PO Intake"}
               </button>
               <button 
                 onClick={() => setActiveTab("pending")}
                 className={`px-4 sm:px-5 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${activeTab === "pending" ? "bg-background text-foreground shadow-sm border border-border" : "text-muted-foreground hover:text-foreground"}`}
               >
-                Pending Audits
+                {isAr ? "المعلقة للمراجعة" : "Pending Audits"}
                 {pendingItems.length > 0 && <span className="ml-1.5 bg-red-500 text-white px-1.5 py-0.5 rounded-full text-xs">{pendingItems.length}</span>}
               </button>
               <button 
@@ -581,7 +613,7 @@ export default function ExpiryAuditPage() {
                     : "bg-transparent text-muted-foreground hover:bg-muted"
                 }`}
               >
-                {t("expiries_audit.tab_reports")}
+                {isAr ? "التقارير" : t("expiries_audit.tab_reports")}
               </button>
               
               <button 
@@ -592,7 +624,7 @@ export default function ExpiryAuditPage() {
                     : "bg-transparent text-muted-foreground hover:bg-muted"
                 }`}
               >
-                Already Expired
+                {isAr ? "المنتهية والمسحوبة" : "Already Expired"}
               </button>
               <button 
                 onClick={() => setActiveTab("waste")}
@@ -602,7 +634,7 @@ export default function ExpiryAuditPage() {
                     : "bg-transparent text-muted-foreground hover:bg-muted"
                 }`}
               >
-                🔥 Waste Cost
+                {isAr ? "🔥 تحليلات الهالك" : "🔥 Waste Cost"}
               </button>
             </div>
           </div>
@@ -616,6 +648,7 @@ export default function ExpiryAuditPage() {
             onBatchSaved={() => {
               setActiveTab("active");
               setSelectedExpiry(null);
+              setFilterPreset("all");
             }} 
           />
         ) : activeTab === "active" ? (
@@ -651,18 +684,31 @@ export default function ExpiryAuditPage() {
                         </div>
                         <div>
                           <h4 className="text-sm font-black text-rose-400">
-                            🚨 تحذير عاجل: يوجد {expiredList.length} صنف منتهي الصلاحية على الرف!
+                            {isAr 
+                              ? `🚨 تحذير عاجل: يوجد ${expiredList.length} صنف منتهي الصلاحية على الرف!`
+                              : `🚨 Immediate Action Required: ${expiredList.length} expired item(s) on the shelf!`}
                           </h4>
                           <p className="text-xs text-rose-300/80 mt-0.5">
-                            يجب على مدير الفرع سحب هذه الأصناف فوراً كـ (هالك / مرتجع) لمنع بيعها للعملاء.
+                            {isAr 
+                              ? "يجب على مدير الفرع سحب هذه الأصناف فوراً كـ (هالك / مرتجع) لمنع بيعها للعملاء."
+                              : "Store manager must pull these items immediately as damaged/returns to prevent customer sales."}
                           </p>
                         </div>
                       </div>
                       <button
-                        onClick={() => setSearchQuery("EXPIRED")}
-                        className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-xs shadow-md transition-colors whitespace-nowrap cursor-pointer"
+                        onClick={() => {
+                          setFilterPreset(prev => prev === "expired" ? "all" : "expired");
+                          setSearchQuery("");
+                        }}
+                        className={`px-4 py-2 rounded-xl text-white font-extrabold text-xs shadow-md transition-colors whitespace-nowrap cursor-pointer ${
+                          filterPreset === "expired" 
+                            ? "bg-slate-700 hover:bg-slate-600 ring-2 ring-rose-400" 
+                            : "bg-rose-600 hover:bg-rose-500"
+                        }`}
                       >
-                        عرض الأصناف المنتهية
+                        {filterPreset === "expired" 
+                          ? (isAr ? "إلغاء التصفية (عرض الكل)" : "Clear Filter (Show All)")
+                          : (isAr ? "عرض الأصناف المنتهية" : "Show Expired Items")}
                       </button>
                     </div>
                   )}
@@ -675,21 +721,31 @@ export default function ExpiryAuditPage() {
                         </div>
                         <div>
                           <h4 className="text-sm font-black text-amber-400">
-                            ⚠️ رادار الـ 15 يوماً: {warning15DaysList.length} صنف يقترب من انتهاء الصلاحية!
+                            {isAr 
+                              ? `⚠️ رادار الـ 15 يوماً: ${warning15DaysList.length} صنف يقترب من انتهاء الصلاحية!`
+                              : `⚠️ 15-Day Radar: ${warning15DaysList.length} item(s) expiring within 15 days!`}
                           </h4>
                           <p className="text-xs text-amber-300/80 mt-0.5">
-                            قم بعمل عروض ترويجية لتنشيط المبيعات أو تجهيز إذن ارتجاع للمورد (RTV) قبل انتهاء المهلة.
+                            {isAr 
+                              ? "قم بعمل عروض ترويجية لتنشيط المبيعات أو تجهيز إذن ارتجاع للمورد (RTV) قبل انتهاء المهلة."
+                              : "Promote these items to accelerate sales or prepare supplier returns (RTV) before cutoff."}
                           </p>
                         </div>
                       </div>
                       <button
                         onClick={() => {
-                          const firstWarn = warning15DaysList[0];
-                          if (firstWarn) setSearchQuery(firstWarn.itemName.split(" ")[0]);
+                          setFilterPreset(prev => prev === "warning_15" ? "all" : "warning_15");
+                          setSearchQuery("");
                         }}
-                        className="px-4 py-2 rounded-xl bg-amber-600/80 hover:bg-amber-600 text-white font-extrabold text-xs shadow-md transition-colors whitespace-nowrap cursor-pointer"
+                        className={`px-4 py-2 rounded-xl text-white font-extrabold text-xs shadow-md transition-colors whitespace-nowrap cursor-pointer ${
+                          filterPreset === "warning_15" 
+                            ? "bg-slate-700 hover:bg-slate-600 ring-2 ring-amber-400" 
+                            : "bg-amber-600 hover:bg-amber-500"
+                        }`}
                       >
-                        متابعة الأصناف المهددة
+                        {filterPreset === "warning_15" 
+                          ? (isAr ? "إلغاء التصفية (عرض الكل)" : "Clear Filter (Show All)")
+                          : (isAr ? "متابعة الأصناف المهددة" : "View 15-Day Items")}
                       </button>
                     </div>
                   )}
@@ -697,14 +753,39 @@ export default function ExpiryAuditPage() {
               );
             })()}
 
+            {/* Active Filter Indicator Pill */}
+            {filterPreset !== "all" && (
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs font-bold">
+                <div className="flex items-center gap-2">
+                  <Sparkles size={16} className="text-indigo-400 animate-spin" />
+                  <span>
+                    {filterPreset === "expired" 
+                      ? (isAr ? `تصفية نشطة: عرض الأصناف المنتهية فقط (${filteredExpiries.length} صنف)` : `Active Filter: Showing expired items only (${filteredExpiries.length} items)`)
+                      : (isAr ? `تصفية نشطة: عرض أصناف إنذار الـ 15 يوماً فقط (${filteredExpiries.length} صنف)` : `Active Filter: Showing 15-day warning items only (${filteredExpiries.length} items)`)}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setFilterPreset("all")}
+                  className="px-3 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-[11px] font-extrabold transition-colors cursor-pointer"
+                >
+                  {isAr ? "✕ إلغاء التصفية" : "✕ Clear Filter"}
+                </button>
+              </div>
+            )}
+
             {/* Top Dashboard Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="p-4 bg-card rounded-xl border border-border shadow-sm flex flex-col justify-between">
-                <span className="text-xs font-bold text-muted-foreground uppercase">Tracking</span>
+              <div 
+                onClick={() => setFilterPreset("all")}
+                className={`p-4 bg-card rounded-xl border shadow-sm flex flex-col justify-between cursor-pointer transition-all ${
+                  filterPreset === "all" ? "border-blue-500 ring-1 ring-blue-500/30" : "border-border hover:border-slate-700"
+                }`}
+              >
+                <span className="text-xs font-bold text-muted-foreground uppercase">{isAr ? "الأصناف النشطة" : "Active Tracking"}</span>
                 <span className="text-3xl font-black text-blue-600 dark:text-blue-500 mt-2">
                   {items.filter(e => !["pulled", "audited", "pending_return", "returned", "damaged", "sold"].includes(e.status || "")).length}
                 </span>
-                <span className="text-[10px] text-muted-foreground mt-1">Active items</span>
+                <span className="text-[10px] text-muted-foreground mt-1">{isAr ? "صنف مسجل" : "Active items"}</span>
               </div>
               
               {(() => {
@@ -717,12 +798,17 @@ export default function ExpiryAuditPage() {
                   return exp < t;
                 }).length;
                 return (
-                  <div className="p-4 bg-card rounded-xl border border-border shadow-sm flex flex-col justify-between">
-                    <span className="text-xs font-bold text-muted-foreground uppercase">Expired</span>
+                  <div 
+                    onClick={() => setFilterPreset(prev => prev === "expired" ? "all" : "expired")}
+                    className={`p-4 bg-card rounded-xl border shadow-sm flex flex-col justify-between cursor-pointer transition-all ${
+                      filterPreset === "expired" ? "border-red-500 ring-1 ring-red-500/30 bg-red-500/5" : "border-border hover:border-slate-700"
+                    }`}
+                  >
+                    <span className="text-xs font-bold text-muted-foreground uppercase">{isAr ? "منتهي الصلاحية" : "Expired"}</span>
                     <span className={`text-3xl font-black mt-2 ${expiredCount > 0 ? "text-red-600 animate-pulse" : "text-muted-foreground"}`}>
                       {expiredCount}
                     </span>
-                    <span className="text-[10px] text-muted-foreground mt-1">Requires pulling</span>
+                    <span className="text-[10px] text-muted-foreground mt-1">{isAr ? "يلزم السحب" : "Requires pulling"}</span>
                   </div>
                 );
               })()}
@@ -739,20 +825,28 @@ export default function ExpiryAuditPage() {
                   return diffDays <= 15 && diffDays > 0;
                 }).length;
                 return (
-                  <div className="p-4 bg-card rounded-xl border border-border shadow-sm flex flex-col justify-between">
-                    <span className="text-xs font-bold text-muted-foreground uppercase">Expires 15 Days</span>
+                  <div 
+                    onClick={() => setFilterPreset(prev => prev === "warning_15" ? "all" : "warning_15")}
+                    className={`p-4 bg-card rounded-xl border shadow-sm flex flex-col justify-between cursor-pointer transition-all ${
+                      filterPreset === "warning_15" ? "border-amber-500 ring-1 ring-amber-500/30 bg-amber-500/5" : "border-border hover:border-slate-700"
+                    }`}
+                  >
+                    <span className="text-xs font-bold text-muted-foreground uppercase">{isAr ? "إنذار 15 يوم" : "Expires 15 Days"}</span>
                     <span className="text-3xl font-black text-amber-500 mt-2">{soonCount}</span>
-                    <span className="text-[10px] text-muted-foreground mt-1">Warning Window</span>
+                    <span className="text-[10px] text-muted-foreground mt-1">{isAr ? "نافذة التحذير" : "Warning Window"}</span>
                   </div>
                 );
               })()}
 
-              <div className="p-4 bg-card rounded-xl border border-border shadow-sm flex flex-col justify-between">
-                <span className="text-xs font-bold text-muted-foreground uppercase">Pulled</span>
+              <div 
+                onClick={() => setActiveTab("pending")}
+                className="p-4 bg-card rounded-xl border border-border hover:border-slate-700 shadow-sm flex flex-col justify-between cursor-pointer transition-all"
+              >
+                <span className="text-xs font-bold text-muted-foreground uppercase">{isAr ? "مسحوبة ومعلقة" : "Pulled"}</span>
                 <span className="text-3xl font-black text-emerald-600 dark:text-emerald-500 mt-2">
                   {items.filter(e => e.status === "pulled").length}
                 </span>
-                <span className="text-[10px] text-muted-foreground mt-1">Awaiting Audit</span>
+                <span className="text-[10px] text-muted-foreground mt-1">{isAr ? "بانتظار المراجعة" : "Awaiting Audit"}</span>
               </div>
             </div>
 
