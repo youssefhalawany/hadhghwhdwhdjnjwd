@@ -1198,16 +1198,20 @@ export default function CreditsPage() {
   const handleProcessPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCreditForPayment) return;
-    if (!paymentAmount || parseFloat(paymentAmount) <= 0) {
-      toast.error("Enter a valid payment amount");
+    
+    const pAmt = parseFloat(paymentAmount);
+    if (isNaN(pAmt) || pAmt <= 0) {
+      toast.error(isAr ? "يرجى إدخال مبلغ سداد صحيح" : "Enter a valid payment amount");
       return;
     }
 
     setIsSubmitting(true);
+    const saveToastId = toast.loading(isAr ? "جاري تسجيل السداد..." : "Processing payment...");
+
     try {
-      const pAmt = parseFloat(paymentAmount);
-      const newPaidAmount = selectedCreditForPayment.paidAmount + pAmt;
-      const totalDue = selectedCreditForPayment.amountDue + selectedCreditForPayment.tax;
+      const currentPaid = Number(selectedCreditForPayment.paidAmount) || 0;
+      const newPaidAmount = currentPaid + pAmt;
+      const totalDue = (Number(selectedCreditForPayment.amountDue) || 0) + (Number(selectedCreditForPayment.tax) || 0);
 
       let newStatus = selectedCreditForPayment.status;
       if (newPaidAmount >= totalDue) {
@@ -1216,57 +1220,91 @@ export default function CreditsPage() {
         newStatus = "partial";
       }
 
-      // 1. Update Credit Document
-      await updateDoc(doc(db, "credits", selectedCreditForPayment.id), {
-        paidAmount: newPaidAmount,
-        status: newStatus,
-        updatedAt: serverTimestamp()
-      });
-
+      // Step A: Prepare receipt image if bank transfer
       let bankTransferReceiptUrl = null;
-
       if (paymentMethod === 'bank_transfer' && bankTransferFile) {
-        toast.loading("Processing bank transfer receipt...", { id: "bank-upload" });
-        bankTransferReceiptUrl = await compressImage(bankTransferFile, 800, 0.6);
-        toast.dismiss("bank-upload");
+        try {
+          bankTransferReceiptUrl = await compressImage(bankTransferFile, 800, 0.6);
+        } catch (imgErr) {
+          console.warn("Failed to compress bank transfer receipt, continuing without image:", imgErr);
+        }
       }
 
-      // 2. Add to Cash Payments
-      const paymentRecord = {
-        amount: pAmt,
-        category: "credit",
-        categoryNote: `Credit Payment - Inv #${selectedCreditForPayment.invoiceNumber} - ${selectedCreditForPayment.companyName}`,
-        companyName: selectedCreditForPayment.companyName,
-        createdAt: serverTimestamp(),
-        createdBy: currentUser?.email || "unknown",
-        date: paymentDate,
-        description: `Credit Payment`,
-        invoiceNumber: selectedCreditForPayment.invoiceNumber,
-        isTaxable: Number(selectedCreditForPayment.tax) > 0,
-        method: paymentMethod,
-        poNumber: selectedCreditForPayment.poNumber,
-        poImageUrl: selectedCreditForPayment.poImageUrl || "",
-        supplierRepName: selectedCreditForPayment.supplierRepName || "",
-        supplierNationalId: selectedCreditForPayment.supplierNationalId || "",
-        items: selectedCreditForPayment.items || [],
-        storeId: branchIds.length > 0 && branchIds[0] !== "all" ? branchIds[0] : "eL-alamein-4",
-        tax: Number(selectedCreditForPayment.tax) || 0,
-        total: pAmt,
-        creditId: selectedCreditForPayment.id,
-        ...(bankTransferReceiptUrl ? { bankTransferReceiptUrl } : {})
-      };
-      await addDoc(collection(db, "cash_payments"), paymentRecord);
+      // Step B: Determine normalized storeId
+      const targetStoreId = selectedCreditForPayment.storeId || 
+        (branchIds.length > 0 && branchIds[0] !== "all" ? branchIds[0] : "eL-alamein-4");
 
-      // 3. Add to Credit Payments History
-      await addDoc(collection(db, "credit_payments"), {
-        creditId: selectedCreditForPayment.id,
-        amount: pAmt,
-        createdAt: serverTimestamp(),
-        createdBy: currentUser?.email || "unknown",
-        date: paymentDate,
-        method: paymentMethod,
-        ...(bankTransferReceiptUrl ? { bankTransferReceiptUrl } : {})
-      });
+      const userEmail = currentUser?.email || 
+        (typeof window !== "undefined" ? localStorage.getItem("circlek_email") || localStorage.getItem("circlek_role") : null) || 
+        "manager";
+
+      // Step C: Update Credit Document in Firestore
+      const creditUpdatePayload: any = {
+        paidAmount: newPaidAmount,
+        status: newStatus,
+        updatedAt: serverTimestamp(),
+      };
+      await updateDoc(doc(db, "credits", selectedCreditForPayment.id), creditUpdatePayload);
+
+      // Optimistically update local credit state immediately
+      setCredits(prev => prev.map(c => c.id === selectedCreditForPayment.id ? { 
+        ...c, 
+        paidAmount: newPaidAmount, 
+        status: newStatus as any 
+      } : c));
+
+      // Step D: Write cash_payments (wrapped safely so secondary writes don't fail user experience)
+      try {
+        const paymentRecord: any = {
+          amount: pAmt,
+          category: "credit",
+          categoryNote: `Credit Payment - Inv #${selectedCreditForPayment.invoiceNumber || ""} - ${selectedCreditForPayment.companyName || ""}`,
+          companyName: selectedCreditForPayment.companyName || "Unknown",
+          createdAt: serverTimestamp(),
+          createdBy: userEmail,
+          date: paymentDate || new Date().toISOString().split("T")[0],
+          description: `Credit Payment`,
+          invoiceNumber: selectedCreditForPayment.invoiceNumber || "",
+          isTaxable: Number(selectedCreditForPayment.tax) > 0,
+          method: paymentMethod,
+          poNumber: selectedCreditForPayment.poNumber || "",
+          poImageUrl: selectedCreditForPayment.poImageUrl || "",
+          supplierRepName: selectedCreditForPayment.supplierRepName || "",
+          supplierNationalId: selectedCreditForPayment.supplierNationalId || "",
+          items: selectedCreditForPayment.items || [],
+          storeId: targetStoreId,
+          tax: Number(selectedCreditForPayment.tax) || 0,
+          total: pAmt,
+          creditId: selectedCreditForPayment.id,
+        };
+        if (bankTransferReceiptUrl) {
+          paymentRecord.bankTransferReceiptUrl = bankTransferReceiptUrl;
+        }
+        await addDoc(collection(db, "cash_payments"), paymentRecord);
+      } catch (cashErr) {
+        console.warn("Could not write cash_payment log:", cashErr);
+      }
+
+      // Step E: Write credit_payments history
+      try {
+        const creditPaymentDoc: any = {
+          creditId: selectedCreditForPayment.id,
+          amount: pAmt,
+          storeId: targetStoreId,
+          companyName: selectedCreditForPayment.companyName || "",
+          invoiceNumber: selectedCreditForPayment.invoiceNumber || "",
+          createdAt: serverTimestamp(),
+          createdBy: userEmail,
+          date: paymentDate || new Date().toISOString().split("T")[0],
+          method: paymentMethod,
+        };
+        if (bankTransferReceiptUrl) {
+          creditPaymentDoc.bankTransferReceiptUrl = bankTransferReceiptUrl;
+        }
+        await addDoc(collection(db, "credit_payments"), creditPaymentDoc);
+      } catch (cpErr) {
+        console.warn("Could not write credit_payments history:", cpErr);
+      }
 
       // Trigger Skeuomorphic effects
       setIsCoinDropping(true);
@@ -1276,27 +1314,42 @@ export default function CreditsPage() {
         setTimeout(() => setIsReceiptPrinting(false), 3000);
       }, 1500);
 
-      // Refresh data
-      await fetchCredits();
+      // Dismiss loading toast and show success
+      toast.success(
+        isAr 
+          ? (newStatus === "paid" ? "تم سداد الدين بالكامل وتحديث الحالة إلى مدفوع!" : "تم تسجيل الدفعة بنجاح!") 
+          : (newStatus === "paid" ? "Credit fully paid and status updated!" : "Payment recorded successfully!"), 
+        { id: saveToastId }
+      );
       
-      // Refresh history if expanded
-      if (expandedCredits[selectedCreditForPayment.id]) {
-        const hQuery = query(collection(db, "credit_payments"), where("creditId", "==", selectedCreditForPayment.id));
-        const snap = await getDocs(hQuery);
-        const history = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a: any, b: any) => {
-          if (a.createdAt && b.createdAt) {
-            return b.createdAt.toMillis() - a.createdAt.toMillis();
-          }
-          return 0;
-        });
-        setCreditHistories(prev => ({ ...prev, [selectedCreditForPayment.id]: history }));
-      }
-      toast.success("Payment processed successfully!");
       setShowPaymentModal(false);
       setSelectedCreditForPayment(null);
-    } catch (error) {
+
+      // Step F: Refresh data in background without blocking or throwing
+      fetchCredits().catch(e => console.warn("Background fetch credits failed:", e));
+
+      // Refresh history if expanded
+      if (expandedCredits[selectedCreditForPayment.id]) {
+        try {
+          const hQuery = query(collection(db, "credit_payments"), where("creditId", "==", selectedCreditForPayment.id));
+          const snap = await getDocs(hQuery);
+          const history = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a: any, b: any) => {
+            if (a.createdAt && b.createdAt) {
+              return b.createdAt.toMillis() - a.createdAt.toMillis();
+            }
+            return 0;
+          });
+          setCreditHistories(prev => ({ ...prev, [selectedCreditForPayment.id]: history }));
+        } catch (hErr) {
+          console.warn("Could not refresh credit history:", hErr);
+        }
+      }
+    } catch (error: any) {
       console.error("Payment error:", error);
-      toast.error("Failed to process payment");
+      toast.error(
+        isAr ? `فشل تسجيل السداد: ${error.message || "خطأ غير متوقع"}` : `Failed to process payment: ${error.message || "Unexpected error"}`,
+        { id: saveToastId }
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -1698,13 +1751,24 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
     if (!credit) return;
     
     if (credit.status !== newStatus && ['open', 'pending', 'paid'].includes(newStatus)) {
-      setCredits(prev => prev.map(c => c.id === creditId ? { ...c, status: newStatus as any } : c));
+      const totalDue = (Number(credit.amountDue) || 0) + (Number(credit.tax) || 0);
+      const newPaidAmount = newStatus === "paid" ? totalDue : (newStatus === "open" && credit.paidAmount === 0 ? 0 : credit.paidAmount);
+      
+      setCredits(prev => prev.map(c => c.id === creditId ? { ...c, status: newStatus as any, paidAmount: newPaidAmount } : c));
       try {
-        await updateDoc(doc(db, "credits", creditId), { status: newStatus });
-        toast.success(`Invoice moved to ${newStatus}`);
-      } catch (e) {
-        toast.error("Failed to move invoice");
-        fetchCredits();
+        const updatePayload: any = { 
+          status: newStatus,
+          updatedAt: serverTimestamp()
+        };
+        if (newStatus === "paid") {
+          updatePayload.paidAmount = totalDue;
+        }
+        await updateDoc(doc(db, "credits", creditId), updatePayload);
+        toast.success(isAr ? `تم تحديث حالة الفاتورة إلى ${newStatus === 'paid' ? 'مدفوع' : newStatus}` : `Invoice moved to ${newStatus}`);
+      } catch (e: any) {
+        console.error("Failed to move invoice:", e);
+        toast.error(isAr ? `فشل نقل الفاتورة: ${e.message || "خطأ غير متوقع"}` : "Failed to move invoice");
+        fetchCredits().catch(() => {});
       }
     }
   };

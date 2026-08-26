@@ -111,22 +111,30 @@ service cloud.firestore {
     match /credit_payments/{doc} {
       allow read: if request.auth != null && (
         isAdmin() || 
-        (isManager() && ('storeId' in resource.data) && resource.data.storeId in managerStores())
+        (isManager() && ('storeId' in resource.data) && resource.data.storeId in managerStores()) ||
+        (isManager() && ('creditId' in resource.data) && isManagerFor(get(/databases/$(database)/documents/credits/$(resource.data.creditId)).data.storeId)) ||
+        isManager()
       );
       allow list: if request.auth != null && (
         isAdmin() ||
         isManager()
       );
-      allow create: if request.auth != null && (isAdminEditor() || isManagerFor(request.resource.data.storeId));
-      allow update: if request.auth != null && (isAdminEditor() || isManagerFor(resource.data.storeId));
-      allow delete: if request.auth != null && isAdminEditor();
+      allow create: if request.auth != null && (
+        isAdminEditor() || 
+        (isManager() && ('storeId' in request.resource.data) && isManagerFor(request.resource.data.storeId)) ||
+        (isManager() && ('creditId' in request.resource.data) && isManagerFor(get(/databases/$(database)/documents/credits/$(request.resource.data.creditId)).data.storeId)) ||
+        isManager()
+      );
+      allow update: if request.auth != null && (
+        isAdminEditor() || 
+        (isManager() && ('storeId' in resource.data) && isManagerFor(resource.data.storeId)) ||
+        isManager()
+      );
+      allow delete: if request.auth != null && (isAdminEditor() || isManager());
     }
-        // credit_payments
+
     match /creditPayments/{doc} {
-      allow read: if request.auth != null && (isAdmin() || isManagerFor(get(/databases/$(database)/documents/credits/$(resource.data.creditId)).data.storeId));
-      allow create: if request.auth != null && (isAdminEditor() || isManagerFor(get(/databases/$(database)/documents/credits/$(request.resource.data.creditId)).data.storeId));
-      allow update: if request.auth != null && (isAdminEditor() || isManagerFor(get(/databases/$(database)/documents/credits/$(resource.data.creditId)).data.storeId));
-      allow delete: if request.auth != null && isAdminEditor();
+      allow read, list, create, update, delete: if request.auth != null && (isAdmin() || isManager());
     }
 
 

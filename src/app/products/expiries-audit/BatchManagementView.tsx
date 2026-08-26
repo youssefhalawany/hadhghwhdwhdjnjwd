@@ -23,6 +23,7 @@ import {
   ShoppingBag
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
+import Barcode from "react-barcode";
 import QRCode from "react-qr-code";
 import toast from "react-hot-toast";
 
@@ -47,6 +48,65 @@ interface Props {
   currentBranch: string;
   onIntakeClick: () => void;
   onAuditAction: (item: any, action: "destroy" | "return" | "sold") => void;
+  onPrintBatch?: (batch: BatchItem) => void;
+}
+
+// Robust SafeBarcode component ensuring numbers are visible and barcodes scan properly
+function SafeBarcode({
+  value,
+  width = 1.1,
+  height = 26,
+  fontSize = 9,
+  displayValue = true,
+  className = "",
+}: {
+  value?: string | null;
+  width?: number;
+  height?: number;
+  fontSize?: number;
+  displayValue?: boolean;
+  className?: string;
+}) {
+  if (!value || value === "N/A" || value === "-" || !String(value).trim()) {
+    return <span className="text-gray-400 font-mono text-[10px]">-</span>;
+  }
+
+  const cleanValue = String(value).trim();
+  // Valid ASCII 0x20 to 0x7E for Code128
+  const isValidAscii = /^[\x20-\x7E]+$/.test(cleanValue);
+
+  if (!isValidAscii) {
+    return (
+      <span className="font-mono text-[10px] font-bold text-gray-800 tracking-wider">
+        {cleanValue}
+      </span>
+    );
+  }
+
+  try {
+    return (
+      <div className={`inline-flex flex-col items-center justify-center ${className}`}>
+        <Barcode
+          value={cleanValue}
+          format="CODE128"
+          width={width}
+          height={height}
+          fontSize={fontSize}
+          margin={0}
+          displayValue={displayValue}
+          font="monospace"
+          background="transparent"
+          lineColor="#000000"
+        />
+      </div>
+    );
+  } catch (err) {
+    return (
+      <span className="font-mono text-[10px] font-bold text-gray-800 tracking-wider">
+        {cleanValue}
+      </span>
+    );
+  }
 }
 
 export function BatchManagementView({
@@ -55,6 +115,7 @@ export function BatchManagementView({
   currentBranch,
   onIntakeClick,
   onAuditAction,
+  onPrintBatch,
 }: Props) {
   const { language } = useLanguage();
   const isAr = language === "ar";
@@ -94,9 +155,13 @@ export function BatchManagementView({
   // Trigger print for a specific batch
   const handlePrintBatch = (batch: BatchItem) => {
     setSelectedBatchForPrint(batch);
-    setTimeout(() => {
-      window.print();
-    }, 150);
+    if (onPrintBatch) {
+      onPrintBatch(batch);
+    } else {
+      setTimeout(() => {
+        window.print();
+      }, 150);
+    }
   };
 
   return (
@@ -125,7 +190,7 @@ export function BatchManagementView({
                 border: none !important;
                 box-shadow: none !important;
               }
-              .print\\:hidden, nav, header, aside, .sidebar, footer, .no-print {
+              .print\\:hidden, nav, header, aside, .sidebar, footer, .no-print, #expiry-printable-report {
                 display: none !important;
               }
               #batch-printable-receipt {
@@ -182,10 +247,18 @@ export function BatchManagementView({
                       OFFICIAL GOODS RECEIVING & EXPIRY BATCH RECORD
                     </p>
                   </div>
-                  <div className="text-right">
-                    <h2 className="text-base font-bold text-gray-900 tracking-tight">إذن استلام دفعة بضاعة وتوثيق الصلاحيات</h2>
-                    <p className="text-[11px] font-mono font-bold text-indigo-700 mt-0.5">{batch.batchId}</p>
-                    <p className="text-[9px] text-gray-500">Date: {new Date().toLocaleDateString('en-GB')} | {new Date().toLocaleTimeString()}</p>
+                  <div className="text-right flex flex-col items-end">
+                    <h2 className="text-sm font-bold text-gray-900 tracking-tight">إذن استلام وتوثيق صلاحيات دفعة بضاعة</h2>
+                    <div className="mt-1 bg-white p-0.5 rounded">
+                      <SafeBarcode
+                        value={batch.batchId}
+                        width={1.2}
+                        height={32}
+                        fontSize={10}
+                        displayValue={true}
+                      />
+                    </div>
+                    <p className="text-[8px] text-gray-500 font-mono mt-0.5">Date: {new Date().toLocaleDateString('en-GB')} | {new Date().toLocaleTimeString()}</p>
                   </div>
                 </div>
 
@@ -216,12 +289,12 @@ export function BatchManagementView({
                   <table className="w-full text-left text-xs border border-gray-200">
                     <thead>
                       <tr className="border-b border-gray-300 bg-white">
-                        <th className="p-1.5 font-bold text-gray-700 border-r border-gray-200 w-8">#</th>
+                        <th className="p-1.5 font-bold text-gray-700 border-r border-gray-200 w-8 text-center">#</th>
                         <th className="p-1.5 font-bold text-gray-700 border-r border-gray-200">Product Name / اسم الصنف</th>
-                        <th className="p-1.5 font-bold text-gray-700 border-r border-gray-200 w-28">Barcode / الكود</th>
+                        <th className="p-1.5 font-bold text-gray-700 border-r border-gray-200 text-center w-36">Barcode / الباركود</th>
                         <th className="p-1.5 font-bold text-gray-700 border-r border-gray-200 text-center w-16">Qty / الكمية</th>
                         <th className="p-1.5 font-bold text-gray-700 border-r border-gray-200 text-center w-20">Unit Cost</th>
-                        <th className="p-1.5 font-bold text-gray-700 border-r border-gray-200 w-28">Expiry Date</th>
+                        <th className="p-1.5 font-bold text-gray-700 border-r border-gray-200 text-center w-24">Expiry Date</th>
                         <th className="p-1.5 font-bold text-gray-700 text-center w-20">Status</th>
                       </tr>
                     </thead>
@@ -230,13 +303,21 @@ export function BatchManagementView({
                         const days = item.expiryDate ? Math.ceil((new Date(item.expiryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0;
                         return (
                           <tr key={item.id} className="border-b border-gray-200 bg-white">
-                            <td className="p-1.5 text-[10px] font-mono text-gray-500 border-r border-gray-200">{idx + 1}</td>
-                            <td className="p-1.5 font-bold text-gray-900 border-r border-gray-200">{item.itemName}</td>
-                            <td className="p-1.5 font-mono text-[10px] text-gray-700 border-r border-gray-200">{item.barcode || "-"}</td>
-                            <td className="p-1.5 font-black text-gray-900 text-center border-r border-gray-200">{item.quantity}</td>
-                            <td className="p-1.5 font-mono text-gray-700 text-center border-r border-gray-200">{item.unitPrice ? `${item.unitPrice} EGP` : "-"}</td>
-                            <td className="p-1.5 font-mono font-bold text-red-600 border-r border-gray-200">{item.expiryDate || "-"}</td>
-                            <td className="p-1.5 uppercase font-bold text-[9px] text-center text-gray-700">
+                            <td className="p-1.5 text-[10px] font-mono text-gray-500 border-r border-gray-200 text-center align-middle">{idx + 1}</td>
+                            <td className="p-1.5 font-bold text-gray-900 border-r border-gray-200 align-middle">{item.itemName}</td>
+                            <td className="p-1 border-r border-gray-200 text-center align-middle">
+                              <SafeBarcode
+                                value={item.barcode}
+                                width={1.1}
+                                height={26}
+                                fontSize={9}
+                                displayValue={true}
+                              />
+                            </td>
+                            <td className="p-1.5 font-black text-gray-900 text-center border-r border-gray-200 align-middle">{item.quantity}</td>
+                            <td className="p-1.5 font-mono text-gray-700 text-center border-r border-gray-200 align-middle">{item.unitPrice ? `${item.unitPrice} EGP` : "-"}</td>
+                            <td className="p-1.5 font-mono font-bold text-red-600 border-r border-gray-200 text-center align-middle">{item.expiryDate || "-"}</td>
+                            <td className="p-1.5 uppercase font-bold text-[9px] text-center text-gray-700 align-middle">
                               {days <= 0 ? "EXPIRED" : days <= 15 ? "15D WARNING" : "SAFE"}
                             </td>
                           </tr>
@@ -254,7 +335,7 @@ export function BatchManagementView({
                 {/* Signatures & Stamp Section */}
                 <div className="pt-4 border-t border-gray-300 flex justify-between items-end text-xs" style={{ pageBreakInside: 'avoid' }}>
                   <div className="flex items-center gap-2">
-                    <QRCode value={qrPayload} size={48} level="L" />
+                    <QRCode value={qrPayload} size={50} level="M" />
                     <div>
                       <p className="text-[8px] font-bold text-gray-600 font-mono">BATCH: {batch.batchId}</p>
                       <p className="text-[7px] text-gray-400 font-mono">VERIFIED BY ANH SYSTEM V2.0</p>
