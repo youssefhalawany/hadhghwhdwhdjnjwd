@@ -1403,16 +1403,16 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
   }
 
   return (
-    <div className="min-h-screen bg-[#09090B] text-slate-100 pb-20">
+    <div className="min-h-screen bg-[#09090B] text-slate-100 pb-28">
 
-      <div className="p-6 max-w-7xl mx-auto space-y-6">
+      <div className="p-1 sm:p-4 md:p-6 max-w-7xl mx-auto space-y-4 sm:space-y-6">
 
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-black text-white tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
               {isAr ? "إدارة ومراقبة المدفوعات" : "Payments Control"}
             </h1>
-            <p className="text-sm text-zinc-400 font-medium mt-1">
+            <p className="text-xs sm:text-sm text-zinc-400 font-medium mt-1">
               {isAr ? "متابعة وإدارة جميع مدفوعات ومصروفات الشركة والفرع." : "Track and manage all corporate outgoings."}
             </p>
           </div>
@@ -1608,88 +1608,17 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
           </div>
         </div>
 
-        {/* Mobile Cards Container (Strictly md:hidden) */}
-        <div className="md:hidden space-y-3">
-          {filteredPayments.length === 0 ? (
-            <div className="p-8 text-center text-slate-400 text-xs rounded-2xl bg-[#0B1121] border border-[#1E293B]">
-              No payment logs found for this period.
-            </div>
-          ) : (
-            filteredPayments.map((pay) => (
-              <div
-                key={pay.id}
-                className="p-4 rounded-2xl bg-[#0B1121] border border-[#1E293B] shadow-xl space-y-3 relative overflow-hidden"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-extrabold text-sm text-white tracking-tight capitalize truncate">
-                      {pay.companyName}
-                    </h3>
-                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-cyan-400 border border-cyan-500/20 whitespace-nowrap">
-                        {CATEGORY_EMOJIS[pay.category]} {pay.category}
-                      </span>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-emerald-400 border border-emerald-500/20 capitalize whitespace-nowrap">
-                        {METHOD_EMOJIS[pay.method] || "💵"} {pay.method?.replace('_', ' ') || 'cash'}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <span className="text-sm font-black font-mono text-rose-400 block">
-                      EGP {Number(pay.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                    </span>
-                    <p className="text-[10px] font-mono text-slate-400 mt-0.5">{pay.date}</p>
-                  </div>
-                </div>
-
-                {(pay.invoiceNumber || pay.poNumber) && (
-                  <div className="text-xs font-mono text-slate-400 bg-[#0F172A] p-2 rounded-xl border border-[#1E293B] flex items-center justify-between gap-2">
-                    {pay.invoiceNumber && <span className="truncate">Inv: #{pay.invoiceNumber}</span>}
-                    {pay.poNumber && <span className="truncate">PO: #{pay.poNumber}</span>}
-                  </div>
-                )}
-
-                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[#1E293B]">
-                  <span className="text-[10px] text-slate-400 font-mono shrink-0">
-                    ID: {pay.id.substring(0, 10)}...
-                  </span>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      onClick={() => {
-                        setSelectedPaymentForView(pay);
-                        playPrinterSound();
-                      }}
-                      className="px-2.5 py-1.5 rounded-xl bg-slate-800 text-slate-300 text-[11px] font-extrabold flex items-center gap-1 active:scale-95 transition-transform"
-                    >
-                      <Eye className="w-3.5 h-3.5 text-cyan-400" /> View
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSelectedPaymentForPrint(pay);
-                        setTimeout(() => generatePDF(pay), 500);
-                      }}
-                      className="px-2.5 py-1.5 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 text-[11px] font-black flex items-center gap-1 active:scale-95 transition-transform"
-                    >
-                      <Printer className="w-3.5 h-3.5" /> Voucher
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Desktop Data List (Strictly hidden md:block) */}
-        <div className="hidden md:block space-y-4">
+        {/* Data List for Mobile Portrait, Landscape & Desktop */}
+        <div className="space-y-3 sm:space-y-4">
           <AnimatePresence>
             {filteredPayments.map((pay, idx) => {
               const initials = pay.companyName ? pay.companyName.substring(0, 2).toUpperCase() : "NA";
               const colors = [
-                'bg-indigo-100 text-indigo-700 border-indigo-200',
-                'bg-rose-100 text-rose-700 border-rose-200',
-                'bg-emerald-100 text-emerald-700 border-emerald-200',
-                'bg-amber-100 text-amber-700 border-amber-200',
-                'bg-blue-100 text-blue-700 border-blue-200'
+                'bg-indigo-950/80 text-indigo-300 border-indigo-700/50',
+                'bg-rose-950/80 text-rose-300 border-rose-700/50',
+                'bg-emerald-950/80 text-emerald-300 border-emerald-700/50',
+                'bg-amber-950/80 text-amber-300 border-amber-700/50',
+                'bg-sky-950/80 text-sky-300 border-sky-700/50'
               ];
               const charCode = pay.companyName ? pay.companyName.charCodeAt(0) : 0;
               const avatarColor = colors[charCode % colors.length];
@@ -1700,39 +1629,39 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.2, delay: idx * 0.05 }}
+                  transition={{ duration: 0.2, delay: idx * 0.03 }}
                   key={pay.id}
-                  className={`bg-white dark:bg-slate-900 border rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden group ${selectedBulkItems.has(pay.id) ? 'border-blue-400 ring-1 ring-blue-400' : 'border-slate-200/60 dark:border-slate-800'}`}
+                  className={`bg-[#0B1121] border rounded-2xl shadow-lg hover:border-slate-700 transition-all overflow-hidden group ${selectedBulkItems.has(pay.id) ? 'border-blue-400 ring-1 ring-blue-400' : 'border-slate-800'}`}
                 >
-                  <div className="p-4 md:p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative">
-                    <div className="flex items-center gap-4 flex-1">
+                  <div className="p-3.5 sm:p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 md:gap-4 relative">
+                    <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0 w-full">
                       <input
                         type="checkbox"
                         checked={selectedBulkItems.has(pay.id)}
                         onChange={() => handleSelectBulkItem(pay.id)}
-                        className="w-5 h-5 rounded text-blue-600 cursor-pointer mr-2 flex-shrink-0"
+                        className="w-5 h-5 rounded text-blue-600 cursor-pointer mr-1 flex-shrink-0"
                       />
-                      <div className={`w-12 h-12 rounded-full border flex items-center justify-center font-black text-lg tracking-tight flex-shrink-0 ${avatarColor}`}>
+                      <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full border flex items-center justify-center font-black text-sm sm:text-lg tracking-tight flex-shrink-0 ${avatarColor}`}>
                         {initials}
                       </div>
-                      <div>
-                        <div className="flex items-center gap-3 mb-1">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
                           <button
                             onClick={() => setSelectedSupplierProfile(pay.companyName)}
-                            className="text-lg font-bold text-slate-900 dark:text-white capitalize tracking-tight hover:text-blue-600 dark:hover:text-blue-400 hover:underline text-left transition-colors flex items-center gap-1 group/name"
+                            className="text-base sm:text-lg font-bold text-white uppercase tracking-tight hover:text-blue-400 hover:underline text-left transition-colors truncate max-w-[200px] sm:max-w-none flex items-center gap-1 group/name"
                           >
                             {pay.companyName}
                             <ChevronRight className="w-4 h-4 opacity-0 group-hover/name:opacity-100 transition-opacity -ml-1" />
                           </button>
-                          <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                          <span className="bg-slate-800 text-slate-300 border border-slate-700 text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
                             {CATEGORY_EMOJIS[pay.category]} <span className="capitalize">{pay.category}</span>
                           </span>
-                          <span className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                          <span className="bg-emerald-950/50 text-emerald-400 border border-emerald-800/60 text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
                             {METHOD_EMOJIS[pay.method] || "💵"} <span className="capitalize">{pay.method?.replace('_', ' ') || 'cash'}</span>
                           </span>
                           {pay.isEdited && (
                             <span 
-                              className="bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60 text-xs px-2 py-0.5 rounded-full font-bold flex items-center gap-1 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
+                              className="bg-amber-950/40 text-amber-400 border border-amber-800/60 text-[10px] sm:text-xs px-2 py-0.5 rounded-full font-bold flex items-center gap-1 cursor-pointer hover:bg-amber-900/40 transition-colors"
                               title={pay.editHistory && pay.editHistory.length > 0 ? `Edited on ${new Date(pay.lastEditedAt).toLocaleDateString()}:\n${pay.editHistory[pay.editHistory.length - 1].summary}` : "Edited"}
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -1743,35 +1672,35 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                             </span>
                           )}
                         </div>
-                        <p className="text-sm font-medium text-slate-500 flex items-center gap-2">
+                        <p className="text-xs sm:text-sm font-medium text-slate-400 flex flex-wrap items-center gap-2">
                           <span className="text-slate-400">{pay.date}</span>
                           {(pay.invoiceNumber || pay.poNumber) && (
                             <>
-                              <span className="text-slate-300">•</span>
-                              {pay.invoiceNumber && `Inv: ${pay.invoiceNumber}`}
-                              {pay.invoiceNumber && pay.poNumber && " | "}
-                              {pay.poNumber && `PO: ${pay.poNumber}`}
+                              <span className="text-slate-600">•</span>
+                              {pay.invoiceNumber && <span>Inv: {pay.invoiceNumber}</span>}
+                              {pay.invoiceNumber && pay.poNumber && <span> | </span>}
+                              {pay.poNumber && <span>PO: {pay.poNumber}</span>}
                             </>
                           )}
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-slate-100 dark:border-slate-800 pt-3 md:pt-0">
-                      <div className="text-right">
-                        <p className="text-2xl font-black text-[#dc2626] tracking-tight font-mono">
-                          <span className="text-sm font-medium text-slate-400 dark:text-slate-500 mr-1">EGP</span>
+                    <div className="flex items-center gap-4 sm:gap-6 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-slate-800/80 pt-2.5 md:pt-0">
+                      <div className="text-left md:text-right">
+                        <p className="text-xl sm:text-2xl font-black text-rose-500 tracking-tight font-mono">
+                          <span className="text-xs sm:text-sm font-medium text-slate-400 mr-1">EGP</span>
                           {Number(pay.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </p>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 sm:gap-2">
                         {pay.category === "order" && (!pay.items || pay.items.length === 0) && !pay.poImageUrl && (
                           <button
                             onClick={() => setSelectedPaymentForPoUpload(pay)}
-                            className="text-xs font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 mr-2"
+                            className="text-xs font-bold bg-blue-900/30 text-blue-400 hover:bg-blue-900/50 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 mr-1"
                           >
-                            <Plus size={14} /> Add PO
+                            <Plus size={13} /> Add PO
                           </button>
                         )}
                         <button
@@ -1779,31 +1708,32 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                             setSelectedPaymentForView(pay);
                             playPrinterSound();
                           }}
-                          className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl transition-colors"
+                          className="p-2 sm:p-2.5 text-slate-400 hover:text-blue-400 hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
                           title="View Receipt"
                         >
-                          <Eye size={20} />
+                          <Eye size={19} />
                         </button>
                         <button
                           onClick={() => {
                             setSelectedPaymentForPrint(pay);
                             setTimeout(() => generatePDF(pay), 100);
                           }}
-                          className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl transition-colors"
+                          className="p-2 sm:p-2.5 text-slate-400 hover:text-blue-400 hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
+                          title="Print Voucher"
                         >
-                          <Download size={20} />
+                          <Download size={19} />
                         </button>
                         {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
                           <>
                             <button
                               onClick={() => handleOpenEditPayment(pay)}
-                              className="p-2.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded-xl transition-colors"
+                              className="p-2 sm:p-2.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
                               title={isAr ? "تعديل الفاتورة (خاص بالإدارة)" : "Edit Payment (Admin Only)"}
                             >
-                              <Pencil size={20} />
+                              <Pencil size={19} />
                             </button>
-                            <button onClick={() => handleDelete(pay.id)} className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-xl transition-colors" title={isAr ? "حذف السند" : "Delete Payment"}>
-                              <Trash2 size={20} />
+                            <button onClick={() => handleDelete(pay.id)} className="p-2 sm:p-2.5 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-xl transition-colors cursor-pointer" title={isAr ? "حذف السند" : "Delete Payment"}>
+                              <Trash2 size={19} />
                             </button>
                           </>
                         )}

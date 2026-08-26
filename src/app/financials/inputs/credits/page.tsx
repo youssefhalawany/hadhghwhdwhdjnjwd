@@ -1715,13 +1715,13 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
 
   return (
     <>
-      <div className="min-h-screen bg-[#09090B] text-slate-100 p-4 md:p-8 font-sans print:hidden">
-        <div className="max-w-[1400px] mx-auto space-y-8">
+      <div className="min-h-screen bg-[#09090B] text-slate-100 p-1 sm:p-4 md:p-8 font-sans print:hidden pb-28">
+        <div className="max-w-[1400px] mx-auto space-y-4 sm:space-y-8">
           
           {/* Header & Actions */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
-              <h1 className="text-3xl font-black text-white tracking-tight">
+              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
                 {isAr ? "إدارة الآجل والديون" : "Credits Management"}
               </h1>
               <p className="text-sm text-slate-400 font-medium mt-1">
@@ -1982,79 +1982,8 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
           </div>
         </div>
 
-        {/* Mobile Cards Container (Strictly md:hidden) */}
-        <div className="md:hidden space-y-3">
-          {filteredCredits.length === 0 ? (
-            <div className="p-8 text-center text-slate-400 text-xs rounded-2xl bg-[#0B1121] border border-slate-800">
-              No credit records found.
-            </div>
-          ) : (
-            filteredCredits.map((credit) => {
-              const totalDue = credit.amountDue + credit.tax;
-              const remaining = totalDue - credit.paidAmount;
-              const isPaid = remaining <= 0;
-
-              return (
-                <div
-                  key={credit.id}
-                  className="p-4 rounded-2xl bg-[#0B1121] border border-slate-800 shadow-xl space-y-3 relative overflow-hidden"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-extrabold text-sm text-white tracking-tight capitalize truncate">
-                        {credit.companyName}
-                      </h3>
-                      <p className="text-[10px] font-mono text-slate-400 mt-0.5 truncate">
-                        Date: {credit.date} {credit.invoiceNumber ? `• Inv: ${credit.invoiceNumber}` : ""}
-                      </p>
-                    </div>
-                    <span className={`text-xs font-black px-2.5 py-1 rounded-full border shrink-0 ${
-                      isPaid
-                        ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-                        : remaining < totalDue
-                        ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
-                        : "bg-rose-500/20 text-rose-400 border-rose-500/30"
-                    }`}>
-                      {isPaid ? "Paid" : remaining < totalDue ? "Partial" : "Open"}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 bg-[#0F172A] p-2.5 rounded-xl border border-slate-800">
-                    <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">Total Invoice</p>
-                      <p className="text-sm font-black font-mono text-slate-200 truncate">
-                        EGP {totalDue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">Remaining Debt</p>
-                      <p className={`text-sm font-black font-mono truncate ${remaining > 0 ? 'text-orange-400' : 'text-emerald-400'}`}>
-                        EGP {remaining.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800">
-                    <span className="text-[10px] text-slate-400 shrink-0">
-                      {(credit as any).dueDate ? `Due: ${(credit as any).dueDate}` : `Date: ${credit.date}`}
-                    </span>
-                    <button
-                      onClick={() => {
-                        setSelectedCreditForView(credit);
-                      }}
-                      className="px-2.5 py-1.5 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 text-[11px] font-black flex items-center gap-1 active:scale-95 transition-transform shrink-0"
-                    >
-                      <Eye className="w-3.5 h-3.5" /> Statement
-                    </button>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-
         {viewMode === 'list' && (
-          <div className="hidden md:flex items-center gap-3 px-2 mb-2">
+          <div className="flex items-center gap-3 px-2 mb-2">
             <input 
               type="checkbox" 
               className="w-5 h-5 rounded text-blue-600 cursor-pointer"
@@ -2062,15 +1991,15 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
               onChange={handleSelectAllBulkItems}
             />
             <h2 className="text-sm font-black text-slate-400 uppercase tracking-wider">
-              Select All ({filteredCredits.length})
+              ALL RECORDS ({filteredCredits.length})
             </h2>
           </div>
         )}
 
-        {/* Desktop Container (Strictly hidden md:block) */}
-        <div className="hidden md:block">
+        {/* Data List for Mobile Portrait, Landscape & Desktop */}
+        <div>
           {viewMode === 'list' ? (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
             <AnimatePresence>
               {filteredCredits.map((credit, idx) => {
               const isExpanded = expandedCredits[credit.id];
@@ -2094,44 +2023,44 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.2, delay: idx * 0.05 }}
+                  transition={{ duration: 0.2, delay: idx * 0.03 }}
                   key={credit.id} 
                   className={`bg-[#0B1121] border rounded-2xl shadow-lg hover:border-slate-700 transition-all overflow-hidden group ${selectedBulkItems.has(credit.id) ? 'border-indigo-500 ring-1 ring-indigo-500' : 'border-slate-800'}`}
                 >
                   {/* Row Summary */}
-                  <div className="p-4 md:p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative">
+                  <div className="p-3.5 sm:p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 md:gap-4 relative">
                     
                     {/* Left: Avatar + Details */}
-                    <div className="flex items-center gap-4 flex-1">
+                    <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0 w-full">
                       <input 
                         type="checkbox" 
                         checked={selectedBulkItems.has(credit.id)}
                         onChange={() => handleSelectBulkItem(credit.id)}
-                        className="w-5 h-5 rounded text-indigo-600 cursor-pointer mr-2 flex-shrink-0"
+                        className="w-5 h-5 rounded text-indigo-600 cursor-pointer mr-1 flex-shrink-0"
                       />
-                      <div className={`w-12 h-12 rounded-full border flex items-center justify-center font-black text-lg tracking-tight flex-shrink-0 ${avatarColor}`}>
+                      <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full border flex items-center justify-center font-black text-sm sm:text-lg tracking-tight flex-shrink-0 ${avatarColor}`}>
                         {initials}
                       </div>
-                      <div>
-                        <div className="flex items-center gap-3 mb-1">
-                          <button onClick={() => setSelectedSupplierProfile(credit.companyName)} className="text-lg font-bold text-white capitalize tracking-tight text-left hover:text-indigo-400 transition-colors underline decoration-dotted decoration-indigo-500/50 underline-offset-4">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                          <button onClick={() => setSelectedSupplierProfile(credit.companyName)} className="text-base sm:text-lg font-bold text-white uppercase tracking-tight text-left hover:text-indigo-400 transition-colors underline decoration-dotted decoration-indigo-500/50 underline-offset-4 truncate max-w-[200px] sm:max-w-none">
                             {credit.companyName}
                           </button>
                           
                           {/* Modern Badges */}
-                          {credit.status === 'paid' && <span className="bg-emerald-950/60 text-emerald-400 border border-emerald-800/60 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><CheckCircle size={12}/> Paid</span>}
-                          {credit.status === 'pending' && <span className="bg-blue-950/60 text-blue-400 border border-blue-800/60 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><Clock size={12}/> Pending</span>}
-                          {credit.status === 'partial' && <span className="bg-amber-950/60 text-amber-400 border border-amber-800/60 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><PieChart size={12}/> Partial</span>}
-                          {credit.status === 'overdue' && <span className="bg-rose-950/60 text-rose-400 border border-rose-800/60 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><AlertTriangle size={12}/> Overdue</span>}
-                          {credit.status === 'open' && <span className="bg-slate-800 text-slate-300 border border-slate-700 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><AlertCircle size={12}/> Open</span>}
+                          {credit.status === 'paid' && <span className="bg-emerald-950/60 text-emerald-400 border border-emerald-800/60 text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><CheckCircle size={12}/> Paid</span>}
+                          {credit.status === 'pending' && <span className="bg-blue-950/60 text-blue-400 border border-blue-800/60 text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><Clock size={12}/> Pending</span>}
+                          {credit.status === 'partial' && <span className="bg-amber-950/60 text-amber-400 border border-amber-800/60 text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><PieChart size={12}/> Partial</span>}
+                          {credit.status === 'overdue' && <span className="bg-rose-950/60 text-rose-400 border border-rose-800/60 text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><AlertTriangle size={12}/> Overdue</span>}
+                          {credit.status === 'open' && <span className="bg-slate-800 text-slate-300 border border-slate-700 text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><AlertCircle size={12}/> Open</span>}
 
                           {credit.onSalesOnly && (
-                            <span className="bg-violet-950/60 text-violet-400 border border-violet-800/60 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><Building size={12}/> Sales Only</span>
+                            <span className="bg-violet-950/60 text-violet-400 border border-violet-800/60 text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><Building size={12}/> Sales Only</span>
                           )}
 
                           {credit.isEdited && (
                             <span 
-                              className="bg-amber-950/50 text-amber-400 border border-amber-800/60 text-xs px-2 py-0.5 rounded-full font-bold flex items-center gap-1 cursor-pointer hover:bg-amber-900/50 transition-colors"
+                              className="bg-amber-950/50 text-amber-400 border border-amber-800/60 text-[10px] sm:text-xs px-2 py-0.5 rounded-full font-bold flex items-center gap-1 cursor-pointer hover:bg-amber-900/50 transition-colors"
                               title={credit.editHistory && credit.editHistory.length > 0 ? `Edited on ${new Date(credit.lastEditedAt!).toLocaleDateString()}:\n${credit.editHistory[credit.editHistory.length - 1].summary}` : "Edited"}
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -2142,53 +2071,54 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                             </span>
                           )}
                         </div>
-                        <p className="text-sm font-medium text-slate-400 flex items-center gap-2">
-                          <FileText size={14} className="text-slate-500" /> Inv: {credit.invoiceNumber} 
-                          {credit.poNumber && <><span className="text-slate-600">•</span> PO: {credit.poNumber}</>} 
-                          <span className="text-slate-600">•</span> Due: {credit.collectionDate}
+                        <p className="text-xs sm:text-sm font-medium text-slate-400 flex flex-wrap items-center gap-2">
+                          <span className="flex items-center gap-1"><FileText size={13} className="text-slate-500" /> Inv: {credit.invoiceNumber}</span>
+                          {credit.poNumber && <><span className="text-slate-600">•</span> <span>PO: {credit.poNumber}</span></>} 
+                          <span className="text-slate-600">•</span> <span>Due: {credit.collectionDate}</span>
                         </p>
                       </div>
                     </div>
 
                     {/* Right: Financials & Actions */}
-                    <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-slate-800 pt-3 md:pt-0">
-                      <div className="text-right">
-                        <p className="text-2xl font-black text-white tracking-tight font-mono">
-                          <span className="text-sm font-medium text-slate-500 mr-1">EGP</span>
+                    <div className="flex items-center gap-4 sm:gap-6 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-slate-800/80 pt-2.5 md:pt-0">
+                      <div className="text-left md:text-right">
+                        <p className="text-xl sm:text-2xl font-black text-rose-500 tracking-tight font-mono">
+                          <span className="text-xs sm:text-sm font-medium text-slate-400 mr-1">EGP</span>
                           {totalDue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </p>
-                        <p className="text-sm font-medium text-slate-400 flex items-center justify-end gap-1">
+                        <p className="text-xs sm:text-sm font-medium text-slate-400 flex items-center justify-start md:justify-end gap-1">
                           Paid: <span className="text-emerald-400 font-bold">{credit.paidAmount.toLocaleString()}</span>
                         </p>
                       </div>
                       
                       {/* Action Dropdown / Buttons */}
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => setSelectedCreditForView(credit)} className="p-2.5 text-slate-400 hover:text-indigo-400 hover:bg-slate-800/80 rounded-xl transition-colors">
-                          <Eye size={20} />
+                      <div className="flex items-center gap-1 sm:gap-2">
+                        <button onClick={() => setSelectedCreditForView(credit)} className="p-2 sm:p-2.5 text-slate-400 hover:text-indigo-400 hover:bg-slate-800/80 rounded-xl transition-colors cursor-pointer" title="View Statement">
+                          <Eye size={19} />
                         </button>
-                        <button onClick={() => handlePrintPdf(credit)} disabled={isPrinting} className="p-2.5 text-slate-400 hover:text-indigo-400 hover:bg-slate-800/80 rounded-xl transition-colors disabled:opacity-50">
-                          <Printer size={20} />
+                        <button onClick={() => handlePrintPdf(credit)} disabled={isPrinting} className="p-2 sm:p-2.5 text-slate-400 hover:text-indigo-400 hover:bg-slate-800/80 rounded-xl transition-colors disabled:opacity-50 cursor-pointer" title="Print Voucher">
+                          <Printer size={19} />
                         </button>
                         {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
                           <>
                             <button
                               onClick={() => handleOpenEditCredit(credit)}
-                              className="p-2.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800/80 rounded-xl transition-colors"
+                              className="p-2 sm:p-2.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800/80 rounded-xl transition-colors cursor-pointer"
                               title={isAr ? "تعديل الفاتورة (خاص بالإدارة)" : "Edit Credit (Admin Only)"}
                             >
-                              <Pencil size={20} />
+                              <Pencil size={19} />
                             </button>
-                            <button onClick={() => handleDeleteCredit(credit.id)} className="p-2.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800/80 rounded-xl transition-colors" title={isAr ? "حذف الدين" : "Delete Credit"}>
-                              <Trash2 size={20} />
+                            <button onClick={() => handleDeleteCredit(credit.id)} className="p-2 sm:p-2.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800/80 rounded-xl transition-colors cursor-pointer" title={isAr ? "حذف الدين" : "Delete Credit"}>
+                              <Trash2 size={19} />
                             </button>
                           </>
                         )}
                         <button
                           onClick={() => toggleExpand(credit.id)}
-                          className={`p-2.5 rounded-xl transition-colors ${isExpanded ? 'bg-indigo-950/80 text-indigo-400 border border-indigo-800/50' : 'text-slate-400 hover:bg-slate-800/80 hover:text-slate-200'}`}
+                          className={`p-2 sm:p-2.5 rounded-xl transition-colors cursor-pointer ${isExpanded ? 'bg-indigo-950/80 text-indigo-400 border border-indigo-800/50' : 'text-slate-400 hover:bg-slate-800/80 hover:text-slate-200'}`}
+                          title="Toggle Details"
                         >
-                          {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                          {isExpanded ? <ChevronUp size={19} /> : <ChevronDown size={19} />}
                         </button>
                       </div>
                     </div>
