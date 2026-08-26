@@ -15,6 +15,7 @@ import { X, Sparkles, Zap, Bell, Check, ArrowRight } from "lucide-react";
 import { ExpiryDeckGrid } from './ExpiryDeckGrid';
 import { WasteAnalyticsPanel } from './WasteAnalyticsPanel';
 import { POBatchIntake } from './POBatchIntake';
+import { BatchManagementView } from "./BatchManagementView";
 
 
 export default function ExpiryAuditPage() {
@@ -23,10 +24,11 @@ export default function ExpiryAuditPage() {
   const isAr = language === "ar";
 
   const [allExpiries, setAllExpiries] = useState<any[]>([]);
+  const [expiryBatches, setExpiryBatches] = useState<any[]>([]);
   const [supplierReturns, setSupplierReturns] = useState<any[]>([]);
   const [alreadyExpired, setAlreadyExpired] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"active" | "intake" | "pending" | "reports" | "already_expired" | "waste">("active");
+  const [activeTab, setActiveTab] = useState<"active" | "intake" | "batches" | "pending" | "reports" | "already_expired" | "waste">("active");
   const [filterPreset, setFilterPreset] = useState<"all" | "expired" | "warning_15">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = React.useRef<HTMLInputElement>(null);
@@ -65,9 +67,6 @@ export default function ExpiryAuditPage() {
   const [auditSoldQty, setAuditSoldQty] = useState<string>("0");
   const [auditAction, setAuditAction] = useState<"destroy" | "return">("destroy");
 
-  // Handover Modal State
-
-
   // Advanced Filters
   const [reportFilters, setReportFilters] = useState({
     status: "all", // all, active, pulled, audited
@@ -92,6 +91,13 @@ export default function ExpiryAuditPage() {
       setLoading(false);
     });
 
+    const qBatches = query(collection(db, "expiry_batches"), orderBy("createdAt", "desc"), limit(100));
+    const unsubscribeBatches = onSnapshot(qBatches, (snap) => {
+      setExpiryBatches(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => {
+      console.error("Error fetching batches:", error);
+    });
+
     const qReturns = query(collection(db, "supplier_returns"), orderBy("createdAt", "desc"), limit(100));
     const unsubscribeReturns = onSnapshot(qReturns, (snap) => {
       setSupplierReturns(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
@@ -104,6 +110,7 @@ export default function ExpiryAuditPage() {
 
     return () => {
       unsubscribe();
+      unsubscribeBatches();
       unsubscribeReturns();
       unsubscribeExpired();
     };
@@ -311,6 +318,17 @@ export default function ExpiryAuditPage() {
     if (bId === "alamein4" || bId === "ola") return bId === currentBranch;
     
     const storeStr = (i.storeId || "").toLowerCase();
+    const inferred = storeStr.includes("ola") || storeStr.includes("koronfol") ? "ola" : "alamein4";
+    return inferred === currentBranch;
+  });
+
+  const filteredBatches = expiryBatches.filter(b => {
+    let bId = (b.branchId || "").toLowerCase();
+    if (bId === "el-alamein-4" || bId === "el-alamein-4") bId = "alamein4";
+    if (bId === "ola-el-koronfol") bId = "ola";
+    if (currentBranch === "all") return true;
+    if (bId === "alamein4" || bId === "ola") return bId === currentBranch;
+    const storeStr = (b.storeId || "").toLowerCase();
     const inferred = storeStr.includes("ola") || storeStr.includes("koronfol") ? "ola" : "alamein4";
     return inferred === currentBranch;
   });
@@ -604,6 +622,17 @@ export default function ExpiryAuditPage() {
                 {isAr ? "⚡ استلام دفعة PO" : "⚡ PO Intake"}
               </button>
               <button 
+                onClick={() => { setActiveTab("batches"); setSelectedExpiry(null); }}
+                className={`px-4 sm:px-5 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${activeTab === "batches" ? "bg-background text-indigo-400 shadow-sm border border-indigo-500/30" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                <span>{isAr ? "📦 دفعات التوريد" : "📦 PO Batches"}</span>
+                {filteredBatches.length > 0 && (
+                  <span className="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-1.5 py-0.2 rounded-full text-xs font-mono">
+                    {filteredBatches.length}
+                  </span>
+                )}
+              </button>
+              <button 
                 onClick={() => setActiveTab("pending")}
                 className={`px-4 sm:px-5 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${activeTab === "pending" ? "bg-background text-foreground shadow-sm border border-border" : "text-muted-foreground hover:text-foreground"}`}
               >
@@ -647,11 +676,19 @@ export default function ExpiryAuditPage() {
 
         {loading ? (
           <div className="flex justify-center p-20"><div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-red-500"></div></div>
+        ) : activeTab === "batches" ? (
+          <BatchManagementView
+            batches={filteredBatches}
+            allExpiries={allExpiries}
+            currentBranch={currentBranch}
+            onIntakeClick={() => setActiveTab("intake")}
+            onAuditAction={handleSwipeAction}
+          />
         ) : activeTab === "intake" ? (
           <POBatchIntake 
             currentBranch={currentBranch} 
             onBatchSaved={() => {
-              setActiveTab("active");
+              setActiveTab("batches");
               setSelectedExpiry(null);
               setFilterPreset("all");
             }} 

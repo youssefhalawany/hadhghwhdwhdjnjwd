@@ -40,7 +40,7 @@ interface ExtractedItem {
 
 interface Props {
   currentBranch: string;
-  onBatchSaved: () => void;
+  onBatchSaved: (savedBatchId?: string) => void;
 }
 
 export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
@@ -60,12 +60,21 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  // Generate a clean Batch ID
-  const generateBatchId = (supplier: string) => {
-    const cleanSupplier = (supplier || "SUPPLIER").replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 8);
+  // Generate an enhanced Batch ID including Supplier, PO Number, Date, and Unique 3 digits
+  const generateBatchId = (supplier: string, poNum?: string) => {
+    const cleanSupplier = (supplier || "SUPP").replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 8) || "VENDOR";
+    let cleanPO = (poNum || "").replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+    if (!cleanPO || cleanPO === "NA") {
+      cleanPO = "PO" + Date.now().toString().slice(-4);
+    } else {
+      if (!cleanPO.startsWith("PO") && !cleanPO.startsWith("INV")) {
+        cleanPO = "PO" + cleanPO;
+      }
+      cleanPO = cleanPO.slice(0, 10);
+    }
     const dateStr = new Date().toISOString().split("T")[0].replace(/-/g, "");
     const rand = Math.floor(100 + Math.random() * 900);
-    return `BATCH-${cleanSupplier}-${dateStr}-${rand}`;
+    return `BATCH-${cleanSupplier}-${cleanPO}-${dateStr}-${rand}`;
   };
 
   // Convert File to Base64
@@ -166,7 +175,7 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
       setVendorName(extractedSupplier);
       setInvoiceNumber(extractedInvNum);
       setInvoiceDate(extractedDate);
-      setBatchId(generateBatchId(extractedSupplier));
+      setBatchId(generateBatchId(extractedSupplier, extractedInvNum));
 
       // Default expiry date: 60 days from now
       const defaultExp = new Date();
@@ -209,7 +218,7 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
       
       // Fallback manual defaults
       setVendorName(isAr ? "مورد عام" : "General Vendor");
-      setBatchId(generateBatchId("GENERAL"));
+      setBatchId(generateBatchId("GENERAL", "PO001"));
       const defaultExp = new Date();
       defaultExp.setDate(defaultExp.getDate() + 60);
       const defaultExpStr = defaultExp.toISOString().split("T")[0];
@@ -296,13 +305,13 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
         } catch {}
       }
 
-      const effectiveBatchId = batchId || generateBatchId(vendorName);
+      const effectiveBatchId = batchId || generateBatchId(vendorName, invoiceNumber);
       const nowIso = new Date().toISOString();
 
       // 1. Batch Document Summary in `expiry_batches`
       const batchDocRef = await addDoc(collection(db, "expiry_batches"), {
         batchId: effectiveBatchId,
-        supplier: vendorName,
+        supplier: vendorName.trim(),
         invoiceNumber: invoiceNumber || "N/A",
         invoiceDate: invoiceDate || nowIso.split("T")[0],
         totalItemsCount: items.length,
@@ -342,9 +351,9 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
       await Promise.all(promises);
 
       const successToast = isAr 
-        ? `🎉 تم تسجيل الدفعة (${effectiveBatchId}) بنجاح وإضافتها لرادار الصلاحيات!` 
-        : `🎉 Batch (${effectiveBatchId}) registered and added to Expiry Radar!`;
-      toast.success(successToast, { id: saveToast });
+        ? `🎉 تم تسجيل الدفعة (${effectiveBatchId}) بنجاح وإضافتها لقائمة الدفعات والرادار!` 
+        : `🎉 Batch (${effectiveBatchId}) successfully registered and added to Batches & Expiry Radar!`;
+      toast.success(successToast, { id: saveToast, duration: 4000 });
       
       // Reset form
       setPoImage(null);
@@ -353,8 +362,8 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
       setInvoiceNumber("");
       setBatchId("");
       
-      // Notify parent to switch to active view
-      onBatchSaved();
+      // Notify parent to switch to batches view with the saved batch
+      onBatchSaved(effectiveBatchId);
     } catch (err: any) {
       console.error("Save Batch Error:", err);
       toast.error(err.message || (isAr ? "حدث خطأ أثناء حفظ الدفعة" : "Failed to save batch"), { id: saveToast });
@@ -411,7 +420,7 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
                 onClick={() => {
                   setPoImage("manual");
                   setVendorName(isAr ? "مورد عام" : "General Vendor");
-                  setBatchId(generateBatchId("MANUAL"));
+                  setBatchId(generateBatchId("MANUAL", "PO001"));
                   const d = new Date();
                   d.setDate(d.getDate() + 60);
                   const dStr = d.toISOString().split("T")[0];
@@ -505,7 +514,7 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
                   value={vendorName}
                   onChange={(e) => {
                     setVendorName(e.target.value);
-                    setBatchId(generateBatchId(e.target.value));
+                    setBatchId(generateBatchId(e.target.value, invoiceNumber));
                   }}
                   placeholder={isAr ? "مثال: إيديتا، بيبسي، جهينة..." : "e.g., Edita, Pepsi, Chipsy..."}
                   className="w-full bg-[#070C18] border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white font-bold focus:border-indigo-500 outline-none"
@@ -519,7 +528,10 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
                 <input
                   type="text"
                   value={invoiceNumber}
-                  onChange={(e) => setInvoiceNumber(e.target.value)}
+                  onChange={(e) => {
+                    setInvoiceNumber(e.target.value);
+                    setBatchId(generateBatchId(vendorName, e.target.value));
+                  }}
                   placeholder="e.g. PO-98421"
                   className="w-full bg-[#070C18] border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono font-bold focus:border-indigo-500 outline-none"
                 />
@@ -539,7 +551,7 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
 
               <div>
                 <label className="text-xs font-bold text-slate-400 mb-1.5 flex items-center gap-1">
-                  <Hash size={14} className="text-indigo-400" /> {isAr ? "كود الدفعة المرجعي:" : "Batch Reference Code:"}
+                  <Hash size={14} className="text-indigo-400" /> {isAr ? "كود الدفعة المرجعي (Auto Batch #):" : "Batch Ref Code (Auto):"}
                 </label>
                 <input
                   type="text"
