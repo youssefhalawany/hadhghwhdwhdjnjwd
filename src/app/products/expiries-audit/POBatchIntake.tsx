@@ -159,16 +159,16 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
         throw new Error(data.error || (isAr ? "فشل في قراءة الفاتورة" : "Failed to extract PO details"));
       }
 
-      const extractedSupplier = data.companyName || (isAr ? "مورد عام" : "General Vendor");
-      const extractedInvNum = data.invoiceNumber || data.poNumber || `PO-${Date.now().toString().slice(-6)}`;
-      const extractedDate = data.date || new Date().toISOString().split("T")[0];
+      const extractedSupplier = data.companyName || data.supplier || data.vendor || data.supplierName || (isAr ? "مورد عام" : "General Vendor");
+      const extractedInvNum = data.invoiceNumber || data.poNumber || data.deliveryNote || `PO-${Date.now().toString().slice(-6)}`;
+      const extractedDate = data.date || data.invoiceDate || new Date().toISOString().split("T")[0];
 
       setVendorName(extractedSupplier);
       setInvoiceNumber(extractedInvNum);
       setInvoiceDate(extractedDate);
       setBatchId(generateBatchId(extractedSupplier));
 
-      // Default default expiry date: 60 days from now
+      // Default expiry date: 60 days from now
       const defaultExp = new Date();
       defaultExp.setDate(defaultExp.getDate() + 60);
       const defaultExpStr = defaultExp.toISOString().split("T")[0];
@@ -178,11 +178,11 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
       const rawItems = Array.isArray(data.items) ? data.items : [];
       const formattedItems: ExtractedItem[] = rawItems.map((item: any, idx: number) => ({
         id: `item-${Date.now()}-${idx}`,
-        itemName: item.description || item.name || (isAr ? `صنف ${idx + 1}` : `Item ${idx + 1}`),
-        barcode: item.barcode || "N/A",
-        quantity: Math.max(1, Number(item.quantity) || 1),
-        unitPrice: Number(item.unitPrice) || 0,
-        expiryDate: defaultExpStr,
+        itemName: item.description || item.itemName || item.name || item.item_name || item.productName || (isAr ? `صنف ${idx + 1}` : `Item ${idx + 1}`),
+        barcode: item.barcode || item.itemCode || item.code || item.sku || "N/A",
+        quantity: Math.max(1, Number(item.quantity || item.qty || item.count || 1)),
+        unitPrice: Number(item.unitPrice || item.price || item.cost || 0),
+        expiryDate: item.expiryDate && /^\d{4}-\d{2}-\d{2}$/.test(item.expiryDate) ? item.expiryDate : defaultExpStr,
       }));
 
       if (formattedItems.length === 0) {
@@ -197,8 +197,8 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
 
       setItems(formattedItems);
       const successMsg = isAr 
-        ? `تم استخراج ${formattedItems.length} صنف بنجاح!` 
-        : `Successfully extracted ${formattedItems.length} items!`;
+        ? `تم استخراج ${formattedItems.length} صنف بنجاح من الفاتورة!` 
+        : `Successfully extracted ${formattedItems.length} items from PO!`;
       toast.success(successMsg, { id: "po-scan" });
     } catch (err: any) {
       console.error(err);

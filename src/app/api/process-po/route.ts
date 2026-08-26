@@ -3,16 +3,18 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+export const maxDuration = 60;
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || Buffer.from("QVEuQWI4Uk42SVU0c1ZROGRHRE9OTWlvRnV3VWw2WkNMeEJLYkt3ZlZ2Rk5fUldNTWhpb1E=", "base64").toString("utf-8");
 const genAI = new GoogleGenerativeAI(GEMINI_KEY);
 
-// High-speed model list with fast fallback
-async function generateFastPOExtraction(prompt: string, inlineData: any) {
+// High-speed vision model list with graceful fallback
+async function generateFastPOExtraction(prompt: string, inlineData: { data: string; mimeType: string }) {
   const modelsToTry = [
+    "gemini-2.5-flash",
+    "gemini-3.5-flash",
     "gemini-3.6-flash",
-    "gemini-3.5-flash-lite",
-    "gemma-4-26b-a4b-it",
+    "gemini-2.5-pro",
     "gemini-flash-latest"
   ];
   let lastError: any = null;
@@ -26,17 +28,24 @@ async function generateFastPOExtraction(prompt: string, inlineData: any) {
           temperature: 0.1,
         }
       });
+      
       const result = await model.generateContent([
         prompt,
-        { inlineData }
+        {
+          inlineData: {
+            data: inlineData.data,
+            mimeType: inlineData.mimeType
+          }
+        }
       ]);
+      
       const text = result.response.text();
       if (text && text.trim().length > 0) {
         return text;
       }
     } catch (error: any) {
       lastError = error;
-      console.warn(`[PO Fast Scanner] Model ${modelName} failed, trying next:`, error?.message || error);
+      console.warn(`[PO Vision Scanner] Model ${modelName} failed, trying next:`, error?.message || error);
     }
   }
 
@@ -57,35 +66,53 @@ export async function POST(req: NextRequest) {
     }
 
     // Extract the base64 data and mime type
-    const matches = image.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-    if (!matches || matches.length !== 3) {
-      return NextResponse.json({ error: "Invalid image format. Must be base64 data URI." }, { status: 400 });
+    let mimeType = "image/jpeg";
+    let base64Data = image;
+
+    if (image.includes(";base64,")) {
+      const parts = image.split(";base64,");
+      const match = parts[0].match(/data:(.*)/);
+      if (match && match[1]) {
+        mimeType = match[1];
+      }
+      base64Data = parts[1];
     }
 
-    const mimeType = matches[1];
-    const base64Data = matches[2];
-
     const prompt = `
-You are an expert Purchase Order (PO) data extraction assistant.
-Extract the following information from the provided PO image and return ONLY a valid JSON object matching this schema:
+You are an expert Purchase Order (PO), Delivery Note (إذن تسليم / إذن صرف), and Supplier Invoice data extraction system for convenience retail stores (Circle K, FMCG suppliers).
+Analyze the provided document image thoroughly. Read both Arabic and English text accurately, including handwritten or printed receipts, thermal invoices, and delivery notes.
+
+Extract the following key fields:
+1. "companyName": Supplier or Vendor name (e.g. Edita, Pepsi, Chipsy, Juhayna, Americana, Domty, Kraft, Cadbury, Al-Rashidi, Halwani, etc.).
+2. "poNumber": PO Number, Delivery Note Number (رقم الإذن), or Document Reference (empty string if not found).
+3. "invoiceNumber": Invoice number (رقم الفاتورة) or Requisitioner value (empty string if not found).
+4. "date": Date of invoice / delivery in YYYY-MM-DD format (empty string if not found).
+5. "amount": Total invoice amount as number.
+6. "items": A list of all products / line items listed on the invoice. For each item extract:
+   - "description": Exact product / item name in Arabic or English (e.g., "كرواسون زعتر", "براونيز شوكولاتة", "مولتو ميني فراولة", "بيبسي كانز 330 مل", "شيبسي عائلي جبنة").
+   - "barcode": Product Barcode, SKU, or Lookup Code if visible on the table/line (e.g., "77714", "6223001234567"). If not printed on invoice, set to "N/A" or empty string.
+   - "quantity": Number of units / packages received (number, minimum 1). If given in cartons and pack size, calculate the total piece count.
+   - "unitPrice": Purchase price per unit if listed (number).
+   - "expiryDate": If an expiry date or production date is explicitly stated on the row, provide it in YYYY-MM-DD format, otherwise leave empty string.
+
+Return ONLY a valid JSON object matching this exact schema:
 {
-  "poNumber": "PO Number or Original PO Number string (empty string if not found)",
-  "invoiceNumber": "Invoice number or Requisitioner value (empty string if not found)",
-  "date": "PO Date in YYYY-MM-DD format (empty string if not found)",
-  "companyName": "Supplier / Vendor name from To field (empty string if not found)",
+  "companyName": "string",
+  "poNumber": "string",
+  "invoiceNumber": "string",
+  "date": "YYYY-MM-DD",
   "amount": 0.0,
   "tax": 0.0,
   "items": [
     {
-      "barcode": "Lookup Code string",
-      "quantity": 1.0,
-      "description": "Item name / description",
-      "unitPrice": 0.0
+      "description": "string",
+      "barcode": "string",
+      "quantity": 1,
+      "unitPrice": 0.0,
+      "expiryDate": "YYYY-MM-DD"
     }
   ]
 }
-
-Return ONLY pure valid JSON without markdown wrapping.
 `;
 
     const responseText = await generateFastPOExtraction(prompt, { data: base64Data, mimeType });
@@ -105,7 +132,7 @@ Return ONLY pure valid JSON without markdown wrapping.
     
     const parsedData = JSON.parse(jsonStr.trim());
 
-    // Fix date format if it's DD/MM/YYYY to YYYY-MM-DD
+    // Normalize date format if it's DD/MM/YYYY to YYYY-MM-DD
     if (parsedData.date && /^\d{2}\/\d{2}\/\d{4}$/.test(parsedData.date)) {
       const parts = parsedData.date.split('/');
       parsedData.date = parts[2] + '-' + parts[1] + '-' + parts[0];
