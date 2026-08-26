@@ -202,12 +202,8 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
     // Active verified working Gemini models in order of current availability
     const MODEL_CANDIDATES = [
       "gemini-3.6-flash",
-      "gemini-3-flash-preview",
-      "gemma-4-31b-it",
-      "gemini-3.1-flash-lite",
-      "gemma-4-26b-a4b-it",
-      "gemini-3.5-flash",
-      "gemini-3.7-flash"
+      "gemini-3.5-flash-lite",
+      "gemma-4-26b-a4b-it"
     ];
     
     let result: any = null;
@@ -245,7 +241,7 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
 
     if (!result) {
       // Fallback: try generating content directly without tools if startChat/tools failed
-      for (const fallbackModel of ["gemini-3.6-flash", "gemini-3-flash-preview", "gemma-4-31b-it", "gemini-3.1-flash-lite"]) {
+      for (const fallbackModel of ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemma-4-26b-a4b-it"]) {
         try {
           const directModel = genAI.getGenerativeModel({ model: fallbackModel });
           const directPrompt = `${systemInstruction}\n\nUser says: "${message}"\n\nPlease answer in your Egyptian assistant persona.`;
@@ -639,7 +635,7 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
         const answerPrompt = `${systemInstruction}\n\nUser Question: "${message}"\nDatabase information for '${call.name}':\n${JSON.stringify(apiResponse, null, 2)}\n\nPlease provide your helpful answer to the user in your Egyptian assistant persona based on this data.`;
         
         let toolGenerated = false;
-        for (const genModelName of ["gemini-3.6-flash", "gemini-3-flash-preview", "gemma-4-31b-it", "gemini-3.1-flash-lite"]) {
+        for (const genModelName of ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemma-4-26b-a4b-it"]) {
           try {
             const finalModel = genAI.getGenerativeModel({ model: genModelName });
             result = await finalModel.generateContent(answerPrompt);
@@ -669,12 +665,18 @@ If the user explicitly asks you to "draw", "plot", or "chart" data (e.g. "إرس
 
     let responseText = "";
     try {
-      responseText = result?.response?.text ? result.response.text() : "";
+      if (result?.response?.text && typeof result.response.text === "function") {
+        responseText = result.response.text();
+      }
     } catch (textErr) {
       console.warn("Failed to get response.text(), extracting candidate text:", textErr);
+    }
+
+    if (!responseText) {
       const candidate = result?.response?.candidates?.[0];
-      if (candidate?.content?.parts?.[0]?.text) {
-        responseText = candidate.content.parts[0].text;
+      if (candidate?.content?.parts) {
+        const textParts = candidate.content.parts.filter((p: any) => p.text).map((p: any) => p.text);
+        responseText = textParts.join("\n");
       }
     }
 
