@@ -33,7 +33,13 @@ import {
   BarChart3,
   CheckCircle,
   Camera,
-  Upload
+  Upload,
+  FileCheck2,
+  FileText,
+  AlertCircle,
+  Calendar,
+  Building2,
+  DollarSign
 } from "lucide-react";
 import { toast } from "sonner";
 import { onAuthStateChanged } from "firebase/auth";
@@ -79,6 +85,20 @@ export default function EmployeesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
   const [isUploadingID, setIsUploadingID] = useState(false);
+
+  // Print Mode & Termination Clearance State
+  const [printDocumentType, setPrintDocumentType] = useState<"contract" | "termination">("contract");
+  const [showTerminationModal, setShowTerminationModal] = useState(false);
+  const [terminationEmp, setTerminationEmp] = useState<Employee | null>(null);
+  const [terminationData, setTerminationData] = useState({
+    terminationDate: new Date().toISOString().split("T")[0],
+    reason: "استقالة اختيارية برغبة العامل الصريحة",
+    settlementAmount: 0,
+    leaveCompensation: 0,
+    paidInFull: true,
+    custodyCleared: true,
+    notes: ""
+  });
 
   const contractRef = useRef<HTMLDivElement>(null);
 
@@ -243,12 +263,109 @@ export default function EmployeesPage() {
     }
   };
 
+  // Arabic Number to Words Converter for Egyptian Pounds (Tafqeet)
+  const numberToArabicWords = (num: number): string => {
+    if (!num || num === 0) return "صفر جنيه مصري";
+    const ones = ["", "واحد", "اثنان", "ثلاثة", "أربعة", "خمسة", "ستة", "سبعة", "ثمانية", "تسعة", "عشرة", "أحد عشر", "اثنا عشر", "ثلاثة عشر", "أربعة عشر", "خمسة عشر", "ستة عشر", "سبعة عشر", "ثمانية عشر", "تسعة عشر"];
+    const tens = ["", "", "عشرون", "ثلاثون", "أربعون", "خمسون", "ستون", "سبعون", "ثمانون", "تسعون"];
+    const hundreds = ["", "مائة", "مائتان", "ثلاثمائة", "أربعمائة", "خمسمائة", "ستمائة", "سبعمائة", "ثمانمائة", "تسعمائة"];
+
+    const convertHundreds = (n: number): string => {
+      let res = "";
+      const h = Math.floor(n / 100);
+      const remainder = n % 100;
+      if (h > 0) res += hundreds[h];
+      if (remainder > 0) {
+        if (res) res += " و";
+        if (remainder < 20) {
+          res += ones[remainder];
+        } else {
+          const o = remainder % 10;
+          const t = Math.floor(remainder / 10);
+          if (o > 0) res += ones[o] + " و";
+          res += tens[t];
+        }
+      }
+      return res;
+    };
+
+    const thousands = Math.floor(num / 1000);
+    const remainderAfterThousand = num % 1000;
+    let result = "";
+
+    if (thousands > 0) {
+      if (thousands === 1) result += "ألف";
+      else if (thousands === 2) result += "ألفان";
+      else if (thousands >= 3 && thousands <= 10) result += convertHundreds(thousands) + " آلاف";
+      else result += convertHundreds(thousands) + " ألف";
+    }
+
+    if (remainderAfterThousand > 0) {
+      if (result) result += " و";
+      result += convertHundreds(remainderAfterThousand);
+    }
+
+    return result + " جنيه مصري";
+  };
+
+  const getBranchInfo = (emp?: Employee | null, branchId?: string) => {
+    const sid = (emp?.storeId || "").toLowerCase();
+    const isOla = sid.includes("ola") || sid.includes("koronfol") || sid.includes("anh") || branchId === "ola";
+    
+    if (isOla) {
+      return {
+        companyTitleAr: "شركة اي ان اتش للتجارة (ش.ذ.م.م)",
+        companySubtitleEn: "ANH Trading L.L.C",
+        companyPartyName: "شركة اي ان اتش للتجارة (فرع أولا القرنفل - التجمع الخامس)",
+        branchTitleAr: "فرع أولا القرنفل - التجمع الخامس",
+        branchCityAr: "القاهرة الجديدة",
+        taxId: "654-321-987",
+        commReg: "78910"
+      };
+    } else {
+      return {
+        companyTitleAr: "الشركة المصرية للتجارة والتوكيلات (ش.م.م)",
+        companySubtitleEn: "El Masreya for Trade - Circle K Franchise",
+        companyPartyName: "الشركة المصرية للتجارة (فرع العلمين 4 - سيركل كي)",
+        branchTitleAr: "فرع العلمين 4 - مارينا الساحل الشمالي",
+        branchCityAr: "الساحل الشمالي",
+        taxId: "123-456-789",
+        commReg: "123456"
+      };
+    }
+  };
+
+  const handleOpenTerminationModal = (emp: Employee) => {
+    setTerminationEmp(emp);
+    setTerminationData({
+      terminationDate: new Date().toISOString().split("T")[0],
+      reason: "استقالة اختيارية برغبة العامل الصريحة",
+      settlementAmount: 0,
+      leaveCompensation: 0,
+      paidInFull: true,
+      custodyCleared: true,
+      notes: ""
+    });
+    setShowTerminationModal(true);
+  };
+
   const handlePrintContract = async (emp: Employee) => {
+    setPrintDocumentType("contract");
     setSelectedEmployee(emp);
-    // Give state time to render the print container
     setTimeout(() => {
       window.print();
     }, 200);
+  };
+
+  const handlePrintTermination = (emp?: Employee) => {
+    const target = emp || terminationEmp || selectedEmployee;
+    if (!target) return;
+    setPrintDocumentType("termination");
+    setSelectedEmployee(target);
+    setShowTerminationModal(false);
+    setTimeout(() => {
+      window.print();
+    }, 250);
   };
 
   const filtered = useMemo(() => {
@@ -424,8 +541,19 @@ export default function EmployeesPage() {
                             <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{emp.position}</p>
                           </div>
                         </div>
-                        {/* Status Dot */}
-                        <div className="shrink-0 pl-2">
+                        {/* Status Dot and Quick Actions */}
+                        <div className="shrink-0 flex items-center gap-1.5 pl-2">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenTerminationModal(emp);
+                            }}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-all"
+                            title="Termination Clearance / إخلاء طرف ومخالصة"
+                          >
+                            <FileCheck2 size={16} />
+                          </button>
                           <div className={`w-3 h-3 rounded-full ${emp.status === 'active' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]'}`}></div>
                         </div>
                       </div>
@@ -444,13 +572,22 @@ export default function EmployeesPage() {
                     <div className="absolute inset-0 bg-black/10 backdrop-blur-[2px]"></div>
                     
                     {/* Action Buttons floating top right */}
-                    <div className="absolute top-6 right-6 flex items-center gap-3">
+                    <div className="absolute top-6 right-6 flex items-center gap-2.5 flex-wrap justify-end">
                       <button 
                         onClick={() => handleOpenEdit(activeEmp)}
                         className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white p-3 rounded-2xl transition-all shadow-sm"
                         title="Edit Details"
                       >
                         <Edit size={18} />
+                      </button>
+                      <button 
+                        onClick={() => handleOpenTerminationModal(activeEmp)}
+                        className="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white px-4 py-3 rounded-2xl font-bold text-sm transition-all shadow-lg hover:shadow-rose-600/30 active:scale-95"
+                        title="Termination & Clearance / مخالصة نهائية وإخلاء طرف"
+                      >
+                        <FileCheck2 size={16} />
+                        <span>Termination Clearance</span>
+                        <span className="text-[11px] bg-rose-800/80 px-1.5 py-0.5 rounded text-white/90">مخالصة</span>
                       </button>
                       <button 
                         onClick={() => handlePrintContract(activeEmp)}
@@ -526,6 +663,30 @@ export default function EmployeesPage() {
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Age & Gender</p>
                         <p className="text-2xl font-black text-slate-800 dark:text-white">{activeEmp.age}y / {activeEmp.gender}</p>
                       </div>
+                    </div>
+
+                    {/* Exit & Legal Clearance Card */}
+                    <div className="p-4 sm:p-5 rounded-3xl border border-rose-200 dark:border-rose-900/40 bg-gradient-to-r from-rose-50/70 via-orange-50/40 to-transparent dark:from-rose-950/20 dark:via-orange-950/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+                      <div className="flex items-center gap-3.5">
+                        <div className="p-3 bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 rounded-2xl shrink-0">
+                          <FileCheck2 size={22} />
+                        </div>
+                        <div>
+                          <h4 className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100">
+                            Employee Exit & Legal Termination Clearance (مخالصة نهائية وإخلاء طرف)
+                          </h4>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                            Official Egyptian Labor Law release: certifies that the branch owes the employee nothing, he owes nothing, and custody is fully cleared.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenTerminationModal(activeEmp)}
+                        className="shrink-0 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-rose-600/20 flex items-center gap-2"
+                      >
+                        <FileCheck2 size={15} /> Issue Clearance Paper
+                      </button>
                     </div>
 
                     <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Personal Info</h3>
@@ -782,28 +943,387 @@ export default function EmployeesPage() {
         </div>
       )}
 
+      {/* TERMINATION & CLEARANCE MODAL */}
+      {showTerminationModal && terminationEmp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 print:hidden overflow-y-auto">
+          <div className="bg-white dark:bg-[#121212] border border-border w-full max-w-2xl rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 relative max-h-[90vh] overflow-y-auto custom-scrollbar my-8">
+            <div className="flex justify-between items-start border-b border-border pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 rounded-2xl">
+                  <FileCheck2 size={24} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    إصدار إقرار مخالصة وإخلاء طرف قانوني
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Official Egyptian Labor Law compliant Discharge, Liabilities Release & Job Clearance
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowTerminationModal(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Employee Preview Summary Card */}
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 flex items-center justify-between">
+              <div>
+                <p className="font-bold text-slate-800 dark:text-white text-base">{terminationEmp.name}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-mono">
+                  ID: {terminationEmp.nationalId || "No National ID"} • {terminationEmp.position} • Branch: {terminationEmp.storeId || currentBranch}
+                </p>
+              </div>
+              <span className="px-3 py-1 bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-400 font-bold text-xs rounded-lg uppercase">
+                Exit Clearance
+              </span>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">
+                    تاريخ ترك العمل (Termination Date)
+                  </label>
+                  <input 
+                    type="date"
+                    value={terminationData.terminationDate}
+                    onChange={e => setTerminationData({ ...terminationData, terminationDate: e.target.value })}
+                    className="w-full p-3 bg-slate-100 dark:bg-black/20 border border-transparent focus:border-rose-500 rounded-xl font-bold text-sm outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">
+                    سبب انتهاء العمل (Exit Reason)
+                  </label>
+                  <select
+                    value={terminationData.reason}
+                    onChange={e => setTerminationData({ ...terminationData, reason: e.target.value })}
+                    className="w-full p-3 bg-slate-100 dark:bg-black/20 border border-transparent focus:border-rose-500 rounded-xl font-bold text-sm outline-none cursor-pointer"
+                  >
+                    <option value="استقالة اختيارية برغبة العامل الصريحة">استقالة اختيارية برغبة العامل (Resignation)</option>
+                    <option value="انتهاء مدة عقد العمل المحدد دون تجديد">انتهاء مدة العقد المحدد (Contract Expiry)</option>
+                    <option value="إنهاء علاقة العمل بالتراضي والاتفاق المشترك">إنهاء بالتراضي والاتفاق (Mutual Agreement)</option>
+                    <option value="ترك العمل بناءً على طلبه لظروف خاصة">ترك العمل لظروف خاصة (Personal Reasons)</option>
+                    <option value="عدم اجتياز فترة الاختبار بنجاح">فسخ خلال فترة الاختبار (Probation Period)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">
+                    صافي مبلغ التصفية المالية المستلم (EGP)
+                  </label>
+                  <input 
+                    type="number"
+                    value={terminationData.settlementAmount}
+                    onChange={e => setTerminationData({ ...terminationData, settlementAmount: Number(e.target.value) })}
+                    placeholder="0"
+                    className="w-full p-3 bg-slate-100 dark:bg-black/20 border border-transparent focus:border-rose-500 rounded-xl font-bold text-sm outline-none"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    {terminationData.settlementAmount > 0 
+                      ? numberToArabicWords(terminationData.settlementAmount) 
+                      : "تم استلام كافة المستحقات بالكامل حتى تاريخه"}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">
+                    مقابل رصيد الإجازات المستحقة (EGP)
+                  </label>
+                  <input 
+                    type="number"
+                    value={terminationData.leaveCompensation}
+                    onChange={e => setTerminationData({ ...terminationData, leaveCompensation: Number(e.target.value) })}
+                    placeholder="0"
+                    className="w-full p-3 bg-slate-100 dark:bg-black/20 border border-transparent focus:border-rose-500 rounded-xl font-bold text-sm outline-none"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    {terminationData.leaveCompensation > 0 
+                      ? numberToArabicWords(terminationData.leaveCompensation) 
+                      : "تم استنفاد الإجازات بالكامل أو متضمنة بالتصفية"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Custody & Clearances Verification Box */}
+              <div className="p-4 rounded-2xl border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50/50 dark:bg-emerald-950/20 space-y-2.5">
+                <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-bold text-xs uppercase tracking-wider">
+                  <CheckCircle size={16} /> شروط المخالصة وإبراء الذمة القانونية (Egyptian Labor Law)
+                </div>
+                <div className="space-y-2 text-xs text-slate-700 dark:text-slate-300">
+                  <label className="flex items-center gap-2.5 cursor-pointer font-medium">
+                    <input 
+                      type="checkbox" 
+                      checked={terminationData.paidInFull} 
+                      onChange={e => setTerminationData({ ...terminationData, paidInFull: e.target.checked })}
+                      className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+                    />
+                    <span>إقرار العامل باستلام كامل الأجور والبدلات والإضافي ومكافأة نهاية الخدمة (لا يطلب الفرع بأي شيء)</span>
+                  </label>
+                  <label className="flex items-center gap-2.5 cursor-pointer font-medium">
+                    <input 
+                      type="checkbox" 
+                      checked={terminationData.custodyCleared} 
+                      onChange={e => setTerminationData({ ...terminationData, custodyCleared: e.target.checked })}
+                      className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+                    />
+                    <span>تسليم كافة العهد: عهدة نقدية، مفاتيح الفرع والخزينة، الزي الرسمي، وبطاقات التشغيل (الفرع لا يطلبه بأي شيء)</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-4 pt-4 border-t border-border">
+              <button
+                type="button"
+                onClick={() => setShowTerminationModal(false)}
+                className="flex-1 py-3.5 border border-border rounded-xl font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition text-sm"
+              >
+                إلغاء (Cancel)
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePrintTermination(terminationEmp)}
+                className="flex-1 py-3.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold transition flex items-center justify-center gap-2 text-sm shadow-lg shadow-rose-600/20"
+              >
+                <Printer size={18} />
+                طباعة وثيقة المخالصة الرسمية (Print Clearance)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
 
       {/* HIDDEN CONTRACT PRINT CONTAINER */}
       <div 
         ref={contractRef}
         className="hidden print:block bg-white text-black print-contract"
-        style={{ width: "100%", padding: 0, boxSizing: "border-box", direction: "rtl", fontFamily: "Arial, 'Segoe UI', Tahoma, sans-serif", fontSize: "16px", lineHeight: "2" }}
+        style={{ width: "100%", padding: 0, boxSizing: "border-box", direction: "rtl", fontFamily: "'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif" }}
       >
         <style type="text/css" media="print">
           {`
-            @page { size: A4 portrait; margin: 15mm; }
-            .content-wrapper { padding-bottom: 20px; }
+            @page { size: A4 portrait; margin: ${printDocumentType === 'termination' ? '8mm 12mm' : '15mm'}; }
+            .content-wrapper { padding-bottom: 10px; }
           `}
         </style>
 
         {selectedEmployee && (() => {
-          const sid = (selectedEmployee.storeId || "").toLowerCase();
-          const isOla = sid.includes("ola") || sid.includes("koronfol") || sid.includes("anh") || currentBranch === "ola";
-          const companyTitleAr = isOla ? "شركة اي ان اتش للتجارة" : "الشركة المصرية للتجارة";
-          const companySubtitleEn = isOla ? "ANH Trading" : "Circle K Franchise - Egypt";
-          const companyPartyName = isOla ? "شركة اي ان اتش للتجارة (ANH)" : "الشركة المصرية للتجارة (El Masreya for Trade - Circle K)";
+          const branchInfo = getBranchInfo(selectedEmployee, currentBranch);
+          const companyTitleAr = branchInfo.companyTitleAr;
+          const companySubtitleEn = branchInfo.companySubtitleEn;
+          const companyPartyName = branchInfo.companyPartyName;
+          const branchTitleAr = branchInfo.branchTitleAr;
 
+          // IF PRINTING TERMINATION CLEARANCE (EGYPTIAN LABOR LAW 100% LEGAL)
+          if (printDocumentType === 'termination') {
+            const dateObj = new Date(terminationData.terminationDate || Date.now());
+            const dateFormattedAr = dateObj.toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+            const dayNameAr = dateObj.toLocaleDateString('ar-EG', { weekday: 'long' });
+
+            return (
+              <div className="content-wrapper" style={{ maxWidth: "820px", margin: "0 auto", color: "#000", fontFamily: "'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif", fontSize: "11px", lineHeight: "1.45" }}>
+                
+                {/* Official Letterhead Header */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2.5px solid #000", paddingBottom: "6px", marginBottom: "8px" }}>
+                  <div style={{ textAlign: "right" }}>
+                    <h1 style={{ fontSize: "17px", fontWeight: "900", margin: 0, color: "#000" }}>{companyTitleAr}</h1>
+                    <h2 style={{ fontSize: "11px", margin: "1px 0 0 0", color: "#333", fontWeight: "bold" }}>{branchTitleAr}</h2>
+                    <p style={{ margin: "2px 0 0 0", fontSize: "9.5px", color: "#555" }}>
+                      سجل تجاري (س.ت): {branchInfo.commReg} | بطاقة ضريبية (ب.ض): {branchInfo.taxId}
+                    </p>
+                  </div>
+
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ border: "1.5px solid #000", borderRadius: "6px", padding: "3px 10px", backgroundColor: "#f8fafc" }}>
+                      <span style={{ fontSize: "11px", fontWeight: "900", color: "#000", display: "block" }}>جمهورية مصر العربية</span>
+                      <span style={{ fontSize: "9px", color: "#475569", fontWeight: "bold" }}>إدارة الموارد البشرية والشؤون القانونية</span>
+                    </div>
+                  </div>
+
+                  <div style={{ textAlign: "left", fontSize: "10px", lineHeight: "1.4" }}>
+                    <div><span style={{ fontWeight: "bold" }}>التاريخ:</span> {dateFormattedAr}</div>
+                    <div><span style={{ fontWeight: "bold" }}>الموافق:</span> {dayNameAr}</div>
+                    <div><span style={{ fontWeight: "bold" }}>رقم الوثيقة:</span> <span style={{ fontFamily: "monospace", fontWeight: "bold" }}>TRM-{(selectedEmployee.id || "000").slice(-6).toUpperCase()}</span></div>
+                  </div>
+                </div>
+
+                {/* Formal Title Banner */}
+                <div style={{ textAlign: "center", borderTop: "2px solid #000", borderBottom: "2px solid #000", padding: "5px 0", marginBottom: "10px", backgroundColor: "#f8fafc" }}>
+                  <h2 style={{ fontSize: "17px", fontWeight: "900", margin: "0 0 1px 0", color: "#000" }}>
+                    إقرار مخالصة نهائية تامة وإبراء ذمة شامل واستلام كافة المستحقات وخلو طرف
+                  </h2>
+                  <h3 style={{ fontSize: "10px", margin: 0, fontWeight: "bold", color: "#333", letterSpacing: "0.5px" }}>
+                    FULL & FINAL SETTLEMENT, DISCHARGE OF LIABILITIES & MUTUAL JOB CLEARANCE RECEIPT
+                  </h3>
+                  <p style={{ fontSize: "9px", margin: "2px 0 0 0", color: "#444", fontWeight: "600" }}>
+                    صادر ومحرر وفقاً لأحكام قانون العمل المصري رقم 12 لسنة 2003 وتعديلاته وأحكام القانون المدني المصري
+                  </p>
+                </div>
+
+                {/* Parties Table */}
+                <table style={{ width: "100%", fontSize: "10.5px", borderCollapse: "collapse", marginBottom: "8px", border: "1.5px solid #000" }}>
+                  <tbody>
+                    <tr style={{ backgroundColor: "#f1f5f9" }}>
+                      <td style={{ padding: "4px 6px", fontWeight: "bold", width: "16%", border: "1px solid #000" }}>الطرف الأول (المنشأة):</td>
+                      <td style={{ padding: "4px 6px", width: "34%", border: "1px solid #000" }}>{companyPartyName}</td>
+                      <td style={{ padding: "4px 6px", fontWeight: "bold", width: "16%", border: "1px solid #000" }}>الفرع ومقر العمل:</td>
+                      <td style={{ padding: "4px 6px", width: "34%", border: "1px solid #000" }}>{branchTitleAr}</td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "4px 6px", fontWeight: "bold", border: "1px solid #000" }}>الطرف الثاني (العامل المقر):</td>
+                      <td style={{ padding: "4px 6px", fontWeight: "bold", fontSize: "11px", border: "1px solid #000" }}>{selectedEmployee.name}</td>
+                      <td style={{ padding: "4px 6px", fontWeight: "bold", border: "1px solid #000" }}>الرقم القومي (14 رقماً):</td>
+                      <td style={{ padding: "4px 6px", fontFamily: "monospace", letterSpacing: "1.5px", fontWeight: "bold", fontSize: "11.5px", border: "1px solid #000" }}>
+                        {selectedEmployee.nationalId || "----------------"}
+                      </td>
+                    </tr>
+                    <tr style={{ backgroundColor: "#f8fafc" }}>
+                      <td style={{ padding: "4px 6px", fontWeight: "bold", border: "1px solid #000" }}>المسمى الوظيفي:</td>
+                      <td style={{ padding: "4px 6px", border: "1px solid #000" }}>{selectedEmployee.position}</td>
+                      <td style={{ padding: "4px 6px", fontWeight: "bold", border: "1px solid #000" }}>تاريخ بدء العمل:</td>
+                      <td style={{ padding: "4px 6px", border: "1px solid #000" }}>{selectedEmployee.startDate || "---"}</td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "4px 6px", fontWeight: "bold", border: "1px solid #000" }}>تاريخ انتهاء العمل الفعلي:</td>
+                      <td style={{ padding: "4px 6px", fontWeight: "bold", color: "#b91c1c", border: "1px solid #000" }}>{terminationData.terminationDate}</td>
+                      <td style={{ padding: "4px 6px", fontWeight: "bold", border: "1px solid #000" }}>سبب انتهاء علاقة العمل:</td>
+                      <td style={{ padding: "4px 6px", fontWeight: "bold", border: "1px solid #000" }}>{terminationData.reason}</td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                {/* Legal Provisions (Strict & 100% Comprehensive Egyptian Labor Law) */}
+                <div style={{ fontSize: "10px", lineHeight: "1.45", textAlign: "justify", marginBottom: "8px" }}>
+                  <p style={{ margin: "0 0 5px 0", fontWeight: "bold" }}>
+                    أقر أنا العامل الموقع أدناه بكامل أهليتي القانونية والشرعية للتصرف، وبإرادتي الحرة الواعية الخالية من أي إكراه أو تدليس أو لبس، بالآتي:
+                  </p>
+
+                  <div style={{ marginBottom: "5px", paddingRight: "6px", borderRight: "2px solid #000" }}>
+                    <strong style={{ fontSize: "10.5px" }}>أولاً: المخالصة المالية التامة واستلام كافة المستحقات العمالية:</strong>
+                    <br/>
+                    أقر بأنني تسلمت من إدارة الشركة والفرع المذكور كامل كافة مستحقاتي المالية والعمالية عن كامل مدة خدمتي وحتى تاريخ ترك العمل الموضح أعلاه، وتشمل الأجور والرواتب الأساسية والمتغيرة، ومقابل ساعات العمل الإضافية، والبدلات بكافة مسمياتها، والمكافآت، والحوافز، ومقابل رصيد الإجازات السنوية المستحقة قانوناً وغير المستنفذة، ومكافأة نهاية الخدمة، وأية مستحقات أو حقوق مقررة بموجب عقد العمل أو اللوائح الداخلية أو قانون العمل المصري رقم 12 لسنة 2003 وتعديلاته، وأنه لم يعد لي في ذمة الشركة أو فروعها أو إدارتها أو ملاكها أي حق أو مستحق مالي أو عيني أو تعويضي كائن ما كان.
+                    {terminationData.settlementAmount > 0 ? (
+                      <div style={{ margin: "2px 0", padding: "2px 6px", backgroundColor: "#f1f5f9", border: "1px dashed #64748b", fontWeight: "bold" }}>
+                        صافي المبلغ المستلم عند التصفية: {terminationData.settlementAmount.toLocaleString()} جنيه مصري (فقط {numberToArabicWords(terminationData.settlementAmount)} لا غير).
+                      </div>
+                    ) : (
+                      <div style={{ margin: "2px 0", padding: "2px 6px", backgroundColor: "#f1f5f9", border: "1px dashed #64748b", fontWeight: "bold" }}>
+                        تم استلام وتسوية كافة المستحقات المالية والرواتب بالكامل حتى تاريخ ترك العمل دون أي تأخير أو متبقي.
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ marginBottom: "5px", paddingRight: "6px", borderRight: "2px solid #000" }}>
+                    <strong style={{ fontSize: "10.5px" }}>ثانياً: براءة ذمة الشركة وإدارتها إبراءً عاماً شاملاً مانعاً وباتاً والتنازل عن الدعاوى:</strong>
+                    <br/>
+                    بناءً على استلامي لكامل حقوقي، تعتبر ذمة الشركة والفرع وممثليهما القانونيين وملاكها بريئة تماماً براءة تامة ونهائية وشاملة ومانعة من أي التزام أو دين أو مطالبة ناشئة عن علاقة العمل أو إنهائها. وأقر بالتنازل الصريح والبات غير المشروط عن أية شكاوى أو دعاوى عمالية أو مدنية أو قضائية رُفعت أو قد تُرفع مستقبلاً أمام مكاتب العمل أو المحاكم العمالية أو المدنية أو الجنائية، ويعد هذا الإقرار مخالصة نهائية باتة وحجة قاطعة مانعة لأي نزاع.
+                  </div>
+
+                  <div style={{ marginBottom: "5px", paddingRight: "6px", borderRight: "2px solid #000" }}>
+                    <strong style={{ fontSize: "10.5px" }}>ثالثاً: تسليم العهد وخلو الطرف العيني والمالي المتبادل (Zero Liabilities):</strong>
+                    <br/>
+                    أقر بأنني قمت بتسليم كافة العهد والأمانات التي كانت في حيازتي أو تحت مسؤوليتي الوظيفية كاملة وسليمة دون أي نقص أو تلف، وتشمل: (العهد النقدية، فروق الخزينة ونقاط البيع، مفاتيح الفرع والأبواب والخزائن، بطاقات التشغيل وكروت POS وID Badge، ماكينات وأجهزة التشغيل، الزي الرسمي Uniform، وأية سجلات أو وثائق خاصة بالمنشأة)، وأنه لا توجد في ذمتي أية مبالغ أو قروض أو سلفيات مستحقة للشركة.
+                    وبالمقابل، تقر إدارة الفرع والشركة بخلو طرف العامل المذكور تماماً وإبراء ذمته العينية والمالية دون أي قيد أو شرط، وأنه لا يدين للمنشأة بأي شيء.
+                  </div>
+
+                  <div style={{ marginBottom: "5px", paddingRight: "6px", borderRight: "2px solid #000" }}>
+                    <strong style={{ fontSize: "10.5px" }}>رابعاً: التعهد بالسرية التامة وعدم الإضرار بمصالح المنشأة:</strong>
+                    <br/>
+                    أتعهد بالالتزام المستمر بالمحافظة التامة على سرية كافة البيانات والمعلومات التجارية والتشغيلية وأسرار العمل والعملاء الخاصة بالشركة وعدم إفشائها أو استخدامها بما يضر بمصالح المنشأة، تحت طائلة المساءلة القانونية الجنائية والمدنية طبقاً لنص المادة 310 من قانون العقوبات المصري.
+                  </div>
+                </div>
+
+                {/* Official Signatures & Fingerprint Block */}
+                <div style={{ border: "1.5px solid #000", padding: "6px 8px", backgroundColor: "#fff", pageBreakInside: "avoid" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
+                    
+                    {/* Employee Signature Box */}
+                    <div style={{ flex: 1.2, border: "1px solid #cbd5e1", borderRadius: "6px", padding: "6px 8px", backgroundColor: "#f8fafc" }}>
+                      <div style={{ fontWeight: "bold", fontSize: "10.5px", borderBottom: "1.5px solid #000", paddingBottom: "2px", marginBottom: "4px", display: "flex", justifyContent: "space-between" }}>
+                        <span>المُقر بما فيه (العامل / الموظف)</span>
+                        <span style={{ fontSize: "9px", color: "#64748b" }}>Employee Release</span>
+                      </div>
+                      <div style={{ fontSize: "9.5px", lineHeight: "1.5" }}>
+                        <div><strong>الاسم رباعياً:</strong> {selectedEmployee.name}</div>
+                        <div><strong>الرقم القومي:</strong> <span style={{ fontFamily: "monospace", letterSpacing: "1px", fontWeight: "bold" }}>{selectedEmployee.nationalId || "----------------"}</span></div>
+                        <div style={{ display: "flex", alignItems: "center", marginTop: "3px" }}>
+                          <strong style={{ width: "55px" }}>التوقيع:</strong>
+                          <div style={{ flex: 1, borderBottom: "1px dotted #000", height: "18px" }}></div>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", marginTop: "3px" }}>
+                          <strong style={{ width: "55px" }}>التاريخ:</strong>
+                          <div style={{ flex: 1, borderBottom: "1px dotted #000", height: "16px" }}></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Official Right Thumbprint Box */}
+                    <div style={{ width: "115px", textAlign: "center", border: "1.5px solid #000", borderRadius: "6px", padding: "5px 3px", backgroundColor: "#fafafa" }}>
+                      <div style={{ fontSize: "9px", fontWeight: "bold", color: "#000", marginBottom: "3px" }}>
+                        بصمة إبهام اليد اليمنى
+                      </div>
+                      <div style={{ width: "70px", height: "75px", border: "1.5px dashed #475569", margin: "0 auto", borderRadius: "6px", display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8", fontSize: "9px" }}>
+                        (محل البصمة)
+                      </div>
+                      <div style={{ fontSize: "8px", color: "#64748b", marginTop: "2px" }}>
+                        Right Thumbprint
+                      </div>
+                    </div>
+
+                    {/* Store Manager Signoff */}
+                    <div style={{ flex: 1, border: "1px solid #cbd5e1", borderRadius: "6px", padding: "6px 8px", backgroundColor: "#f8fafc" }}>
+                      <div style={{ fontWeight: "bold", fontSize: "10.5px", borderBottom: "1.5px solid #000", paddingBottom: "2px", marginBottom: "4px", display: "flex", justifyContent: "space-between" }}>
+                        <span>مدير الفرع (المستلم والمصفي)</span>
+                        <span style={{ fontSize: "9px", color: "#64748b" }}>Store Manager</span>
+                      </div>
+                      <div style={{ fontSize: "9.5px", lineHeight: "1.5" }}>
+                        <div><strong>الصفة:</strong> مدير فرع {branchTitleAr}</div>
+                        <div><strong>إخلاء العهد:</strong> تم تسليم كافة العهد بالكامل</div>
+                        <div style={{ display: "flex", alignItems: "center", marginTop: "3px" }}>
+                          <strong style={{ width: "45px" }}>التوقيع:</strong>
+                          <div style={{ flex: 1, borderBottom: "1px dotted #000", height: "18px" }}></div>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", marginTop: "3px" }}>
+                          <strong style={{ width: "45px" }}>التاريخ:</strong>
+                          <div style={{ flex: 1, borderBottom: "1px dotted #000", height: "16px" }}></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Company Seal Box */}
+                    <div style={{ width: "115px", textAlign: "center", border: "1px solid #cbd5e1", borderRadius: "6px", padding: "5px 3px", backgroundColor: "#f8fafc" }}>
+                      <div style={{ fontSize: "9px", fontWeight: "bold", color: "#000", marginBottom: "3px" }}>
+                        اعتماد وخاتم الشركة
+                      </div>
+                      <div style={{ width: "70px", height: "70px", border: "1.5px dashed #94a3b8", borderRadius: "50%", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8", fontSize: "8.5px" }}>
+                        خاتم المنشأة الرسمي
+                      </div>
+                      <div style={{ fontSize: "8px", color: "#64748b", marginTop: "3px" }}>
+                        Company Seal
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+
+                <div style={{ textAlign: "center", marginTop: "8px", fontSize: "9px", fontWeight: "bold", color: "#666" }}>
+                  --- وثيقة مخالصة رسمية معتمدة وفقاً لأحكام قانون العمل المصري رقم 12 لسنة 2003 ---
+                </div>
+
+              </div>
+            );
+          }
+
+          // DEFAULT: PRINT CONTRACT
           return (
           <div className="content-wrapper" style={{ maxWidth: "800px", margin: "0 auto", color: "#000", fontFamily: "'Cairo', 'Tajawal', system-ui, sans-serif" }}>
             
