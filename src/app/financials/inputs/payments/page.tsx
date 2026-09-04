@@ -57,6 +57,7 @@ import {
   collection,
   addDoc,
   getDocs,
+  getDoc,
   query,
   orderBy,
   serverTimestamp,
@@ -932,6 +933,42 @@ export default function PaymentsRedesignPage() {
       await deleteDoc(doc(db, "cash_payments", id));
       setPayments(payments.filter(p => p.id !== id));
 
+      // Cascade delete from credit_payments and update parent credits document if linked
+      if (paymentItem?.creditId || paymentItem?.category === "credit") {
+        const cId = paymentItem.creditId;
+        const pAmt = Number(paymentItem.amount || paymentItem.total || 0);
+
+        try {
+          // Delete any duplicate/linked docs in credit_payments
+          if (cId) {
+            const cpSnap = await getDocs(query(collection(db, "credit_payments"), where("creditId", "==", cId)));
+            cpSnap.docs.forEach(d => {
+              const dData = d.data();
+              if (Math.abs(Number(dData.amount || 0) - pAmt) < 2) {
+                deleteDoc(d.ref).catch(() => {});
+              }
+            });
+
+            // Update parent credit document
+            const creditDocRef = doc(db, "credits", cId);
+            const creditSnap = await getDoc(creditDocRef);
+            if (creditSnap.exists()) {
+              const cData = creditSnap.data();
+              const totalDue = Number(cData.amountDue || 0) + Number(cData.tax || 0);
+              const newPaidAmount = Math.max(0, Number(cData.paidAmount || 0) - pAmt);
+              const newStatus = newPaidAmount >= totalDue && totalDue > 0 ? "paid" : "open";
+              await updateDoc(creditDocRef, {
+                paidAmount: newPaidAmount,
+                status: newStatus,
+                updatedAt: serverTimestamp()
+              });
+            }
+          }
+        } catch (cascadeErr) {
+          console.warn("Failed to cascade credit updates upon deleting payment:", cascadeErr);
+        }
+      }
+
       const role = typeof window !== "undefined" ? (localStorage.getItem("circlek_role") || "manager") : "manager";
       dbService.logAction(
         auth.currentUser?.email || "Unknown User",
@@ -1067,6 +1104,33 @@ export default function PaymentsRedesignPage() {
       };
 
       await updateDoc(doc(db, "cash_payments", editingPayment.id), updatedPayload);
+
+      // If linked to a credit, adjust parent credit paidAmount and status
+      if (editingPayment.creditId || editingPayment.category === "credit") {
+        const cId = editingPayment.creditId;
+        const oldTotal = Number(editingPayment.amount || editingPayment.total || 0);
+        const diff = newTotal - oldTotal;
+
+        if (cId && diff !== 0) {
+          try {
+            const creditDocRef = doc(db, "credits", cId);
+            const creditSnap = await getDoc(creditDocRef);
+            if (creditSnap.exists()) {
+              const cData = creditSnap.data();
+              const totalDue = Number(cData.amountDue || 0) + Number(cData.tax || 0);
+              const newPaidAmount = Math.max(0, Number(cData.paidAmount || 0) + diff);
+              const newStatus = newPaidAmount >= totalDue && totalDue > 0 ? "paid" : "open";
+              await updateDoc(creditDocRef, {
+                paidAmount: newPaidAmount,
+                status: newStatus,
+                updatedAt: serverTimestamp()
+              });
+            }
+          } catch (cascadeErr) {
+            console.warn("Failed to cascade credit updates upon editing payment:", cascadeErr);
+          }
+        }
+      }
 
       // Update local state
       const updatedDoc = { ...editingPayment, ...updatedPayload };

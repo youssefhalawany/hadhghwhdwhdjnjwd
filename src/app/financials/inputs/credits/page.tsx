@@ -690,7 +690,29 @@ export default function CreditsPage() {
           }
         });
 
-        let finalHistory = allLoadedDocs;
+        // Deduplicate payment records between credit_payments and cash_payments
+        const deduplicatedDocs: any[] = [];
+        const seenSignatures = new Set<string>();
+
+        // Prioritize richer cash_payments records
+        allLoadedDocs.sort((a, b) => {
+          const aWeight = (a.category === "credit" || a.items || a.description) ? 1 : 0;
+          const bWeight = (b.category === "credit" || b.items || b.description) ? 1 : 0;
+          return bWeight - aWeight;
+        });
+
+        allLoadedDocs.forEach(docItem => {
+          const docDate = docItem.date || (docItem.createdAt && typeof docItem.createdAt.toDate === 'function' ? docItem.createdAt.toDate().toISOString().substring(0, 10) : "");
+          const docAmount = Math.round(Number(docItem.amount || docItem.total || 0));
+          const docMethod = (docItem.method || "cash").toLowerCase();
+          const sig = `${docDate}_${docAmount}_${docMethod}`;
+          if (!seenSignatures.has(sig)) {
+            seenSignatures.add(sig);
+            deduplicatedDocs.push(docItem);
+          }
+        });
+
+        let finalHistory = deduplicatedDocs;
 
         // If no separate documents found, check embedded payments array
         if (finalHistory.length === 0 && currentCredit?.payments && Array.isArray(currentCredit.payments) && currentCredit.payments.length > 0) {
@@ -908,6 +930,90 @@ export default function CreditsPage() {
     } catch (error) {
       console.error("Error deleting credit:", error);
       toast.error("Failed to delete.");
+    }
+  };
+
+  const handleDeleteCreditPayment = async (credit: Credit, payment: any) => {
+    const role = typeof window !== "undefined" ? localStorage.getItem("circlek_role") : null;
+    if (role === "manager") {
+      toast.error(isAr ? "غير مصرح. حذف الدفعات متاح للمسؤول فقط." : "Unauthorized. Only Admin can delete payments.");
+      return;
+    }
+
+    const pAmt = Number(payment.amount || payment.total || 0);
+    if (!confirm(isAr 
+      ? `هل أنت متأكد من حذف هذه الدفعة بقيمة EGP ${pAmt.toLocaleString()}؟` 
+      : `Are you sure you want to delete this payment of EGP ${pAmt.toLocaleString()}?`)) {
+      return;
+    }
+
+    try {
+      // 1. Delete from cash_payments and credit_payments by ID
+      if (payment.id) {
+        try { await deleteDoc(doc(db, "cash_payments", payment.id)); } catch (e) {}
+        try { await deleteDoc(doc(db, "credit_payments", payment.id)); } catch (e) {}
+      }
+
+      // Also clean any duplicates with same creditId & date & amount
+      try {
+        const [cpSnap, cashSnap] = await Promise.all([
+          getDocs(query(collection(db, "credit_payments"), where("creditId", "==", credit.id))),
+          getDocs(query(collection(db, "cash_payments"), where("creditId", "==", credit.id)))
+        ]);
+        cpSnap.docs.forEach(d => {
+          const dData = d.data();
+          if (Math.abs(Number(dData.amount || 0) - pAmt) < 2) {
+            deleteDoc(d.ref).catch(() => {});
+          }
+        });
+        cashSnap.docs.forEach(d => {
+          const dData = d.data();
+          if (Math.abs(Number(dData.amount || 0) - pAmt) < 2) {
+            deleteDoc(d.ref).catch(() => {});
+          }
+        });
+      } catch (e) {
+        console.warn("Cleanup error:", e);
+      }
+
+      // 2. Recalculate Credit paidAmount & status
+      const totalDue = Number(credit.amountDue || 0) + Number(credit.tax || 0);
+      const newPaidAmount = Math.max(0, Number(credit.paidAmount || 0) - pAmt);
+      const newStatus = newPaidAmount >= totalDue && totalDue > 0 ? "paid" : "open";
+
+      await updateDoc(doc(db, "credits", credit.id), {
+        paidAmount: newPaidAmount,
+        status: newStatus,
+        updatedAt: serverTimestamp()
+      });
+
+      // 3. Update local state
+      setCredits(prev => prev.map(c => c.id === credit.id ? {
+        ...c,
+        paidAmount: newPaidAmount,
+        status: newStatus as any
+      } : c));
+
+      setCreditHistories(prev => ({
+        ...prev,
+        [credit.id]: (prev[credit.id] || []).filter((p: any) => p.id !== payment.id)
+      }));
+
+      // 4. Log Action
+      const editorEmail = currentUser?.email || auth.currentUser?.email || "Admin";
+      dbService.logAction(
+        editorEmail,
+        currentUser?.displayName || "Admin",
+        role || "admin",
+        "Delete Credit Payment",
+        `Credit ID: ${credit.id}, Inv: ${credit.invoiceNumber || "N/A"}, Amount: EGP ${pAmt}`,
+        "Deleted"
+      ).catch(() => {});
+
+      toast.success(isAr ? "تم حذف الدفعة وتحديث حساب الفاتورة بنجاح!" : "Payment deleted and credit balance updated successfully!");
+    } catch (err: any) {
+      console.error("Failed to delete payment:", err);
+      toast.error(isAr ? "فشل حذف الدفعة" : "Failed to delete payment.");
     }
   };
 
@@ -1340,7 +1446,7 @@ export default function CreditsPage() {
         status: newStatus as any 
       } : c));
 
-      // Step D: Write cash_payments (wrapped safely so secondary writes don't fail user experience)
+      // Step D: Write cash_payments (single source of truth for payments ledger)
       try {
         const paymentRecord: any = {
           amount: pAmt,
@@ -1372,27 +1478,6 @@ export default function CreditsPage() {
         console.warn("Could not write cash_payment log:", cashErr);
       }
 
-      // Step E: Write credit_payments history
-      try {
-        const creditPaymentDoc: any = {
-          creditId: selectedCreditForPayment.id,
-          amount: pAmt,
-          storeId: targetStoreId,
-          companyName: selectedCreditForPayment.companyName || "",
-          invoiceNumber: selectedCreditForPayment.invoiceNumber || "",
-          createdAt: serverTimestamp(),
-          createdBy: userEmail,
-          date: paymentDate || new Date().toISOString().split("T")[0],
-          method: paymentMethod,
-        };
-        if (bankTransferReceiptUrl) {
-          creditPaymentDoc.bankTransferReceiptUrl = bankTransferReceiptUrl;
-        }
-        await addDoc(collection(db, "credit_payments"), creditPaymentDoc);
-      } catch (cpErr) {
-        console.warn("Could not write credit_payments history:", cpErr);
-      }
-
       // Trigger Skeuomorphic effects
       setIsCoinDropping(true);
       setTimeout(() => {
@@ -1412,21 +1497,29 @@ export default function CreditsPage() {
       setShowPaymentModal(false);
       setSelectedCreditForPayment(null);
 
-      // Step F: Refresh data in background without blocking or throwing
+      // Step E: Refresh data in background without blocking or throwing
       fetchCredits().catch(e => console.warn("Background fetch credits failed:", e));
 
       // Refresh history if expanded
       if (expandedCredits[selectedCreditForPayment.id]) {
         try {
-          const hQuery = query(collection(db, "credit_payments"), where("creditId", "==", selectedCreditForPayment.id));
-          const snap = await getDocs(hQuery);
-          const history = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a: any, b: any) => {
-            if (a.createdAt && b.createdAt) {
-              return b.createdAt.toMillis() - a.createdAt.toMillis();
+          const [cpSnap, cashSnap] = await Promise.all([
+            getDocs(query(collection(db, "credit_payments"), where("creditId", "==", selectedCreditForPayment.id))),
+            getDocs(query(collection(db, "cash_payments"), where("creditId", "==", selectedCreditForPayment.id)))
+          ]);
+          const combined: any[] = [];
+          const seen = new Set<string>();
+          [...cashSnap.docs, ...cpSnap.docs].forEach(d => {
+            const data = d.data();
+            const dDate = data.date || "";
+            const dAmt = Math.round(Number(data.amount || data.total || 0));
+            const sig = `${dDate}_${dAmt}`;
+            if (!seen.has(sig)) {
+              seen.add(sig);
+              combined.push({ id: d.id, ...data });
             }
-            return 0;
           });
-          setCreditHistories(prev => ({ ...prev, [selectedCreditForPayment.id]: history }));
+          setCreditHistories(prev => ({ ...prev, [selectedCreditForPayment.id]: combined }));
         } catch (hErr) {
           console.warn("Could not refresh credit history:", hErr);
         }
@@ -2465,6 +2558,15 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                                       >
                                         <Printer size={13}/> {isAr ? "طباعة الإيصال" : "Print Receipt"}
                                       </button>
+                                      {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && !payment.isSettlement && (
+                                        <button
+                                          onClick={() => handleDeleteCreditPayment(credit, payment)}
+                                          className="text-xs font-bold p-1.5 bg-rose-950/40 text-rose-400 border border-rose-800/50 rounded-xl hover:bg-rose-900/50 hover:text-rose-300 transition-colors flex items-center gap-1 cursor-pointer"
+                                          title={isAr ? "حذف الدفعة" : "Delete Payment"}
+                                        >
+                                          <Trash2 size={13} />
+                                        </button>
+                                      )}
                                       <span className="text-xs font-bold px-2.5 py-1 bg-emerald-950/60 text-emerald-400 border border-emerald-800/60 rounded-full flex items-center gap-1">
                                         <CheckCircle size={12}/> {isAr ? "مسدد" : "Paid"}
                                       </span>

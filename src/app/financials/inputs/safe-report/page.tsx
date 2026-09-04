@@ -1,18 +1,15 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useBranch } from "@/context/BranchContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { db, auth } from "@/lib/firebase";
-import { collection, query, where, getAggregateFromServer, sum, Timestamp } from "firebase/firestore";
+import { collection, getDocs, query, where } from "firebase/firestore";
 import { 
   Printer, 
   Loader2, 
   Calendar, 
-  AlertTriangle, 
-  ExternalLink, 
   TrendingUp, 
-  Building2, 
   Wallet, 
   Landmark, 
   ArrowDownLeft, 
@@ -22,12 +19,57 @@ import {
   DollarSign, 
   ShieldCheck, 
   CheckCircle2,
-  Sparkles,
-  FileSpreadsheet
+  ChevronDown,
+  ChevronUp,
+  FileSpreadsheet,
+  Info,
+  Layers,
+  Sparkles
 } from "lucide-react";
 import { PageTransition } from "@/components/PageTransition";
 import QRCode from "react-qr-code";
 import { toast } from "sonner";
+
+// Universal date normalizer: handles ISO strings, YYYY-MM-DD, DD/MM/YYYY, Timestamps
+function normalizeDate(val: any): string | null {
+  if (!val) return null;
+  if (typeof val === "string") {
+    if (/^\d{4}-\d{2}-\d{2}/.test(val)) {
+      return val.slice(0, 10);
+    }
+    const dmy = val.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (dmy) {
+      const [_, d, m, y] = dmy;
+      return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+    }
+    const parsed = new Date(val);
+    if (!isNaN(parsed.getTime())) {
+      return parsed.toISOString().slice(0, 10);
+    }
+  }
+  if (val && typeof val.toDate === "function") {
+    return val.toDate().toISOString().slice(0, 10);
+  }
+  if (val && typeof val._seconds === "number") {
+    return new Date(val._seconds * 1000).toISOString().slice(0, 10);
+  }
+  if (val && typeof val.seconds === "number") {
+    return new Date(val.seconds * 1000).toISOString().slice(0, 10);
+  }
+  if (val instanceof Date && !isNaN(val.getTime())) {
+    return val.toISOString().slice(0, 10);
+  }
+  return null;
+}
+
+// Case-insensitive branch matcher that handles all alias formats
+function matchesBranch(docData: any, currentBranch: string): boolean {
+  if (!currentBranch || currentBranch === "all") return true;
+  const docBranch = (docData.storeId || docData.branchId || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const target = currentBranch.toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (!docBranch) return true; // Include records without branch so legacy data is never lost
+  return docBranch.includes(target) || target.includes(docBranch);
+}
 
 export default function SafeReportPage() {
   const { currentBranch } = useBranch();
@@ -40,7 +82,7 @@ export default function SafeReportPage() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const [loading, setLoading] = useState(false);
   const [reportData, setReportData] = useState<any>(null);
-  const [missingIndexes, setMissingIndexes] = useState<string[]>([]);
+  const [showItemized, setShowItemized] = useState(false);
   const [managerName, setManagerName] = useState("Store Manager");
 
   // Quick date shortcuts
@@ -68,13 +110,6 @@ export default function SafeReportPage() {
     }
   };
 
-  const getBranchIds = (): string[] => {
-    if (currentBranch === "alamein4") return ["alamein4", "eL-alamein-4", "el-alamein-4"];
-    if (currentBranch === "ola") return ["ola", "ola-el-koronfol"];
-    if (currentBranch !== "all") return [currentBranch];
-    return [];
-  };
-
   const getBranchLabel = () => {
     if (currentBranch === "all") return { en: "ALL BRANCHES — CONSOLIDATED", ar: "جميع الفروع — الموقف الموحد" };
     if (currentBranch === "alamein4") return { en: "EL ALAMEIN 4 — FRANCHISE", ar: "فرع العلمين 4" };
@@ -82,7 +117,6 @@ export default function SafeReportPage() {
     return { en: String(currentBranch).toUpperCase(), ar: String(currentBranch) };
   };
 
-  // Safe and Bank account numbers
   const getAccountNumbers = () => {
     if (currentBranch === "ola") {
       return {
@@ -100,175 +134,423 @@ export default function SafeReportPage() {
     };
   };
 
-  const fetchSumsForRange = async (
-    startStr: string,
-    endStr: string | null,
-    branchIds: string[],
-    collectedUrls: Set<string>
-  ) => {
-    const isHistorical = endStr === null;
-
-    const safeSumAgg = async (q: any, sumFields: Record<string, ReturnType<typeof sum>>): Promise<any> => {
+  // Safe Document Fetching: avoids fragile compound indexes
+  const fetchAllFinancialDocs = async () => {
+    const safeGetDocs = async (collectionName: string) => {
       try {
-        const agg = await getAggregateFromServer(q, sumFields);
-        return agg.data();
-      } catch (err: any) {
-        if (err.message?.includes("https://console.firebase.google.com")) {
-          const urlMatch = err.message.match(/(https:\/\/console\.firebase\.google\.com[^\s]*)/);
-          if (urlMatch) collectedUrls.add(urlMatch[0]);
-        } else {
-          console.error("Query Error:", err);
-        }
-        return null;
+        const snap = await getDocs(collection(db, collectionName));
+        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      } catch (e: any) {
+        console.warn(`Could not read ${collectionName}:`, e?.message);
+        return [];
       }
     };
 
-    let salesQ: any = collection(db, "sales");
-    let cashPaymentsQ: any = query(collection(db, "cash_payments"), where("method", "==", "cash"));
-    let depositsToSafeQ: any = query(collection(db, "deposits"), where("to", "==", "safe"));
-    let depositsFromSafeQ: any = query(collection(db, "deposits"), where("from", "==", "safe"));
-    let payrollsQ: any = collection(db, "payroll_lines");
-    let newLoansQ: any = query(collection(db, "adjustments"), where("type", "==", "loan"));
-    let oldLoansQ: any = collection(db, "loans");
-    
-    // Bank Inflows & Outflows
-    let cashPaymentsVisaQ: any = query(collection(db, "cash_payments"), where("method", "==", "visa"));
-    let cashPaymentsBankTransferQ: any = query(collection(db, "cash_payments"), where("method", "==", "bank_transfer"));
-    let cashPaymentsBankQ: any = query(collection(db, "cash_payments"), where("method", "==", "bank"));
-    let depositsToBankQ: any = query(collection(db, "deposits"), where("to", "==", "bank"));
-    let depositsFromBankQ: any = query(collection(db, "deposits"), where("from", "==", "bank"));
-
-    if (branchIds.length > 0) {
-      salesQ = query(salesQ, where("storeId", "in", branchIds));
-      cashPaymentsQ = query(cashPaymentsQ, where("storeId", "in", branchIds));
-      depositsToSafeQ = query(depositsToSafeQ, where("storeId", "in", branchIds));
-      depositsFromSafeQ = query(depositsFromSafeQ, where("storeId", "in", branchIds));
-      payrollsQ = query(payrollsQ, where("storeId", "in", branchIds));
-      newLoansQ = query(newLoansQ, where("storeId", "in", branchIds));
-      oldLoansQ = query(oldLoansQ, where("storeId", "in", branchIds));
-      cashPaymentsVisaQ = query(cashPaymentsVisaQ, where("storeId", "in", branchIds));
-      cashPaymentsBankTransferQ = query(cashPaymentsBankTransferQ, where("storeId", "in", branchIds));
-      cashPaymentsBankQ = query(cashPaymentsBankQ, where("storeId", "in", branchIds));
-      depositsToBankQ = query(depositsToBankQ, where("storeId", "in", branchIds));
-      depositsFromBankQ = query(depositsFromBankQ, where("storeId", "in", branchIds));
-    }
-
-    if (isHistorical) {
-      salesQ = query(salesQ, where("date", "<", startStr));
-      cashPaymentsQ = query(cashPaymentsQ, where("date", "<", startStr));
-      depositsToSafeQ = query(depositsToSafeQ, where("date", "<", startStr));
-      depositsFromSafeQ = query(depositsFromSafeQ, where("date", "<", startStr));
-      newLoansQ = query(newLoansQ, where("date", "<", startStr));
-      oldLoansQ = query(oldLoansQ, where("date", "<", startStr));
-      cashPaymentsVisaQ = query(cashPaymentsVisaQ, where("date", "<", startStr));
-      cashPaymentsBankTransferQ = query(cashPaymentsBankTransferQ, where("date", "<", startStr));
-      cashPaymentsBankQ = query(cashPaymentsBankQ, where("date", "<", startStr));
-      depositsToBankQ = query(depositsToBankQ, where("date", "<", startStr));
-      depositsFromBankQ = query(depositsFromBankQ, where("date", "<", startStr));
-      const startTs = Timestamp.fromDate(new Date(`${startStr}T00:00:00`));
-      payrollsQ = query(payrollsQ, where("createdAt", "<", startTs));
-    } else {
-      salesQ = query(salesQ, where("date", ">=", startStr), where("date", "<=", endStr));
-      cashPaymentsQ = query(cashPaymentsQ, where("date", ">=", startStr), where("date", "<=", endStr));
-      depositsToSafeQ = query(depositsToSafeQ, where("date", ">=", startStr), where("date", "<=", endStr));
-      depositsFromSafeQ = query(depositsFromSafeQ, where("date", ">=", startStr), where("date", "<=", endStr));
-      newLoansQ = query(newLoansQ, where("date", ">=", startStr), where("date", "<=", endStr));
-      oldLoansQ = query(oldLoansQ, where("date", ">=", startStr), where("date", "<=", endStr));
-      cashPaymentsVisaQ = query(cashPaymentsVisaQ, where("date", ">=", startStr), where("date", "<=", endStr));
-      cashPaymentsBankTransferQ = query(cashPaymentsBankTransferQ, where("date", ">=", startStr), where("date", "<=", endStr));
-      cashPaymentsBankQ = query(cashPaymentsBankQ, where("date", ">=", startStr), where("date", "<=", endStr));
-      depositsToBankQ = query(depositsToBankQ, where("date", ">=", startStr), where("date", "<=", endStr));
-      depositsFromBankQ = query(depositsFromBankQ, where("date", ">=", startStr), where("date", "<=", endStr));
-      const startTs = Timestamp.fromDate(new Date(`${startStr}T00:00:00`));
-      const endTs = Timestamp.fromDate(new Date(`${endStr!}T23:59:59`));
-      payrollsQ = query(payrollsQ, where("createdAt", ">=", startTs), where("createdAt", "<=", endTs));
-    }
-
     const [
-      salesData, cashPaymentsData, depositsToSafeData, depositsFromSafeData, payrollsData,
-      newLoansData, oldLoansData, visaPaymentsData,
-      bankTransferPaymentsData, cashPaymentsBankData,
-      depositsToBankData, depositsFromBankData
+      salesRaw,
+      cashPaymentsRaw,
+      creditPaymentsRaw,
+      depositsRaw,
+      payrollsRaw,
+      adjustmentsRaw,
+      loansRaw
     ] = await Promise.all([
-      safeSumAgg(salesQ, { cash: sum("cash"), overShort: sum("overShort"), visa: sum("visa") }),
-      safeSumAgg(cashPaymentsQ, { val: sum("amount"), tax: sum("tax") }),
-      safeSumAgg(depositsToSafeQ, { val: sum("amount") }),
-      safeSumAgg(depositsFromSafeQ, { val: sum("amount") }),
-      safeSumAgg(payrollsQ, { val: sum("netPay") }),
-      safeSumAgg(newLoansQ, { val: sum("amount") }),
-      safeSumAgg(oldLoansQ, { val: sum("approved") }),
-      safeSumAgg(cashPaymentsVisaQ, { val: sum("amount"), tax: sum("tax") }),
-      safeSumAgg(cashPaymentsBankTransferQ, { val: sum("amount"), tax: sum("tax") }),
-      safeSumAgg(cashPaymentsBankQ, { val: sum("amount"), tax: sum("tax") }),
-      safeSumAgg(depositsToBankQ, { val: sum("amount") }),
-      safeSumAgg(depositsFromBankQ, { val: sum("amount") }),
+      safeGetDocs("sales"),
+      safeGetDocs("cash_payments"),
+      safeGetDocs("credit_payments"),
+      safeGetDocs("deposits"),
+      safeGetDocs("payroll_lines"),
+      safeGetDocs("adjustments"),
+      safeGetDocs("loans")
     ]);
 
-    const overShort = salesData?.overShort || 0;
-    const salesCash = salesData?.cash || 0;
-    const visaSales = salesData?.visa || 0;
-    const overAmount = overShort > 0 ? overShort : 0;
-    const shortAmount = overShort < 0 ? Math.abs(overShort) : 0;
-    
-    const totalCashPayments = cashPaymentsData?.val || 0;
-    const totalCashTaxes = cashPaymentsData?.tax || 0;
-    const depositsToSafe = depositsToSafeData?.val || 0;
-    const depositsFromSafe = depositsFromSafeData?.val || 0;
-    const totalPayrolls = payrollsData?.val || 0;
-    const totalLoans = (newLoansData?.val || 0) + (oldLoansData?.val || 0);
-
-    const bankPayments = (visaPaymentsData?.val || 0) + (bankTransferPaymentsData?.val || 0) + (cashPaymentsBankData?.val || 0);
-    const bankTaxes = (visaPaymentsData?.tax || 0) + (bankTransferPaymentsData?.tax || 0) + (cashPaymentsBankData?.tax || 0);
-    const depositsToBank = depositsToBankData?.val || 0;
-    const depositsFromBank = depositsFromBankData?.val || 0;
+    // Deduplicate credit_payments against cash_payments (so neither missed nor double counted)
+    const uniqueCreditPayments: any[] = [];
+    creditPaymentsRaw.forEach((cp: any) => {
+      const cpAmt = Math.round(Number(cp.amount || cp.total || 0));
+      const cpDate = normalizeDate(cp.date || cp.createdAt);
+      const cpMethod = (cp.method || "cash").toLowerCase();
+      const isDup = cashPaymentsRaw.some((cash: any) => {
+        const kAmt = Math.round(Number(cash.amount || cash.total || 0));
+        const kDate = normalizeDate(cash.date || cash.createdAt);
+        const kMethod = (cash.method || "cash").toLowerCase();
+        return (
+          (cash.creditId && cash.creditId === cp.creditId) ||
+          (cp.invoiceNumber && cash.invoiceNumber && cp.invoiceNumber === cash.invoiceNumber) ||
+          (kAmt === cpAmt && kDate === cpDate && kMethod === cpMethod)
+        );
+      });
+      if (!isDup) uniqueCreditPayments.push(cp);
+    });
 
     return {
-      salesCash, 
-      overAmount, 
-      shortAmount, 
-      visaSales,
-      totalCashPayments, 
-      totalCashTaxes, 
-      depositsToSafe, 
-      depositsFromSafe, 
-      totalPayrolls,
-      totalLoans, 
-      bankPayments, 
-      bankTaxes, 
-      depositsToBank, 
-      depositsFromBank,
+      sales: salesRaw,
+      cashPayments: cashPaymentsRaw,
+      uniqueCreditPayments,
+      deposits: depositsRaw,
+      payrolls: payrollsRaw,
+      adjustments: adjustmentsRaw,
+      loans: loansRaw
     };
   };
 
-  const calcBalances = (h: any, p: any) => {
-    if (!h || !p) return { openingSafe: 0, openingBank: 0, closingSafe: 0, closingBank: 0 };
-    
-    const openingSafe = (h.salesCash + h.overAmount + h.depositsToSafe)
-      - (h.shortAmount + h.totalCashPayments + h.totalCashTaxes + h.totalLoans + h.depositsFromSafe + h.totalPayrolls);
-      
-    const openingBank = (h.visaSales + h.depositsToBank)
-      - (h.bankPayments + h.bankTaxes + h.depositsFromBank);
+  const calculateLedger = (
+    docs: any,
+    startDateStr: string,
+    endDateStr: string,
+    targetBranch: string
+  ) => {
+    let openingSafe = 0;
+    let openingBank = 0;
 
-    const safeIn = p.salesCash + p.overAmount + p.depositsToSafe;
-    const safeOut = p.shortAmount + p.totalCashPayments + p.totalCashTaxes + p.totalLoans + p.depositsFromSafe + p.totalPayrolls;
-    
-    const bankIn = p.visaSales + p.depositsToBank;
-    const bankOut = p.bankPayments + p.bankTaxes + p.depositsFromBank;
-    
-    return { 
-      openingSafe, 
-      openingBank, 
-      closingSafe: openingSafe + safeIn - safeOut, 
-      closingBank: openingBank + bankIn - bankOut 
+    let periodSalesCash = 0;
+    let periodSalesVisa = 0;
+    let periodOverAmount = 0;
+    let periodShortAmount = 0;
+
+    let periodCashPayments = 0;
+    let periodCashTax = 0;
+    let periodBankPayments = 0;
+    let periodBankTax = 0;
+
+    let periodDepositsToSafe = 0;
+    let periodDepositsFromSafe = 0;
+    let periodDepositsToBank = 0;
+    let periodDepositsFromBank = 0;
+
+    let periodPayrolls = 0;
+    let periodLoans = 0;
+
+    // Itemized list of period transactions for auditability
+    const itemizedTransactions: any[] = [];
+
+    // 1. SALES
+    docs.sales.forEach((s: any) => {
+      if (!matchesBranch(s, targetBranch)) return;
+      const d = normalizeDate(s.date || s.createdAt);
+      if (!d) return;
+
+      const cash = Number(s.cash || 0);
+      const visa = Number(s.visa || 0);
+      const os = Number(s.overShort || 0);
+      const over = os > 0 ? os : 0;
+      const short = os < 0 ? Math.abs(os) : 0;
+
+      if (d < startDateStr) {
+        openingSafe += (cash + over - short);
+        openingBank += visa;
+      } else if (d >= startDateStr && d <= endDateStr) {
+        periodSalesCash += cash;
+        periodSalesVisa += visa;
+        periodOverAmount += over;
+        periodShortAmount += short;
+
+        itemizedTransactions.push({
+          id: s.id,
+          date: d,
+          category: "sales",
+          titleEn: `Shift Sales Cash (${s.shift || "Day"})`,
+          titleAr: `مبيعات وردية نقدية (${s.shift || "يومي"})`,
+          safeChange: cash + over - short,
+          bankChange: visa,
+          details: `Cash: ${cash.toLocaleString()} | Visa: ${visa.toLocaleString()}${os !== 0 ? ` | Over/Short: ${os}` : ""}`
+        });
+      }
+    });
+
+    // 2. CASH & EXPENSE PAYMENTS
+    docs.cashPayments.forEach((p: any) => {
+      if (!matchesBranch(p, targetBranch)) return;
+      const d = normalizeDate(p.date || p.createdAt);
+      if (!d) return;
+
+      const method = (p.method || "cash").toLowerCase();
+      const amt = Number(p.amount || p.total || 0);
+      const tax = Number(p.tax || 0);
+      const totalOut = amt + tax;
+
+      if (method === "cash") {
+        if (d < startDateStr) {
+          openingSafe -= totalOut;
+        } else if (d >= startDateStr && d <= endDateStr) {
+          periodCashPayments += amt;
+          periodCashTax += tax;
+
+          itemizedTransactions.push({
+            id: p.id,
+            date: d,
+            category: "expense_cash",
+            titleEn: p.companyName || p.description || p.category || "Cash Expense",
+            titleAr: p.companyName || p.description || "مصروف نقدي",
+            safeChange: -totalOut,
+            bankChange: 0,
+            details: `Invoice: ${p.invoiceNumber || "N/A"} | Amt: ${amt.toLocaleString()}${tax > 0 ? ` + Tax: ${tax}` : ""}`
+          });
+        }
+      } else if (["visa", "bank_transfer", "bank"].includes(method)) {
+        if (d < startDateStr) {
+          openingBank -= totalOut;
+        } else if (d >= startDateStr && d <= endDateStr) {
+          periodBankPayments += amt;
+          periodBankTax += tax;
+
+          itemizedTransactions.push({
+            id: p.id,
+            date: d,
+            category: "expense_bank",
+            titleEn: p.companyName || p.description || p.category || "Bank Payment",
+            titleAr: p.companyName || p.description || "مدفوعات بنكية",
+            safeChange: 0,
+            bankChange: -totalOut,
+            details: `Method: ${method} | Invoice: ${p.invoiceNumber || "N/A"} | Amt: ${amt.toLocaleString()}`
+          });
+        }
+      }
+    });
+
+    // 3. UNIQUE CREDIT SETTLEMENTS (Deduplicated)
+    docs.uniqueCreditPayments.forEach((p: any) => {
+      if (!matchesBranch(p, targetBranch)) return;
+      const d = normalizeDate(p.date || p.createdAt);
+      if (!d) return;
+
+      const method = (p.method || "cash").toLowerCase();
+      const amt = Number(p.amount || p.total || 0);
+
+      if (method === "cash") {
+        if (d < startDateStr) {
+          openingSafe -= amt;
+        } else if (d >= startDateStr && d <= endDateStr) {
+          periodCashPayments += amt;
+
+          itemizedTransactions.push({
+            id: p.id,
+            date: d,
+            category: "credit_settlement_cash",
+            titleEn: p.companyName || "Supplier Credit Settlement (Cash)",
+            titleAr: p.companyName || "سداد آجل نقدي",
+            safeChange: -amt,
+            bankChange: 0,
+            details: `Credit ID: ${p.creditId || "N/A"} | Amt: ${amt.toLocaleString()}`
+          });
+        }
+      } else if (["visa", "bank_transfer", "bank"].includes(method)) {
+        if (d < startDateStr) {
+          openingBank -= amt;
+        } else if (d >= startDateStr && d <= endDateStr) {
+          periodBankPayments += amt;
+
+          itemizedTransactions.push({
+            id: p.id,
+            date: d,
+            category: "credit_settlement_bank",
+            titleEn: p.companyName || "Supplier Credit Settlement (Bank)",
+            titleAr: p.companyName || "سداد آجل بنكي",
+            safeChange: 0,
+            bankChange: -amt,
+            details: `Method: ${method} | Credit ID: ${p.creditId || "N/A"} | Amt: ${amt.toLocaleString()}`
+          });
+        }
+      }
+    });
+
+    // 4. DEPOSITS & FUND MOVEMENTS
+    docs.deposits.forEach((dep: any) => {
+      if (!matchesBranch(dep, targetBranch)) return;
+      const d = normalizeDate(dep.date || dep.createdAt);
+      if (!d) return;
+
+      const amt = Number(dep.amount || 0);
+      const from = (dep.from || "").toLowerCase();
+      const to = (dep.to || "").toLowerCase();
+
+      // Safe Movements
+      if (to === "safe") {
+        if (d < startDateStr) openingSafe += amt;
+        else if (d >= startDateStr && d <= endDateStr) {
+          periodDepositsToSafe += amt;
+          itemizedTransactions.push({
+            id: dep.id,
+            date: d,
+            category: "deposit_in_safe",
+            titleEn: `Cash Injection to Safe (From: ${dep.from || "Owner"})`,
+            titleAr: `تغذية نقدية بالخزنة (من: ${dep.from || "المالك"})`,
+            safeChange: amt,
+            bankChange: 0,
+            details: `Deposit: ${amt.toLocaleString()} EGP`
+          });
+        }
+      }
+      if (from === "safe") {
+        if (d < startDateStr) openingSafe -= amt;
+        else if (d >= startDateStr && d <= endDateStr) {
+          periodDepositsFromSafe += amt;
+          itemizedTransactions.push({
+            id: dep.id,
+            date: d,
+            category: "deposit_out_safe",
+            titleEn: `Cash Transferred from Safe (To: ${dep.to || "Bank/Owner"})`,
+            titleAr: `تحويل نقدي خارج من الخزنة (إلى: ${dep.to || "البنك/المالك"})`,
+            safeChange: -amt,
+            bankChange: to === "bank" ? amt : 0,
+            details: `Transfer: ${amt.toLocaleString()} EGP`
+          });
+        }
+      }
+
+      // Bank Movements
+      if (to === "bank") {
+        if (d < startDateStr) openingBank += amt;
+        else if (d >= startDateStr && d <= endDateStr) {
+          periodDepositsToBank += amt;
+          // Avoid duplicate entry if it was safe-to-bank
+          if (from !== "safe") {
+            itemizedTransactions.push({
+              id: dep.id,
+              date: d,
+              category: "deposit_in_bank",
+              titleEn: `Deposit into Bank Account (From: ${dep.from || "Owner"})`,
+              titleAr: `إيداع بنكي وارد (من: ${dep.from || "المالك"})`,
+              safeChange: 0,
+              bankChange: amt,
+              details: `Deposit: ${amt.toLocaleString()} EGP`
+            });
+          }
+        }
+      }
+      if (from === "bank") {
+        if (d < startDateStr) openingBank -= amt;
+        else if (d >= startDateStr && d <= endDateStr) {
+          periodDepositsFromBank += amt;
+          itemizedTransactions.push({
+            id: dep.id,
+            date: d,
+            category: "deposit_out_bank",
+            titleEn: `Withdrawal / Transfer from Bank (To: ${dep.to || "Owner"})`,
+            titleAr: `مسحوبات / تحويل من البنك (إلى: ${dep.to || "المالك"})`,
+            safeChange: to === "safe" ? amt : 0,
+            bankChange: -amt,
+            details: `Withdrawal: ${amt.toLocaleString()} EGP`
+          });
+        }
+      }
+    });
+
+    // 5. PAYROLL DISBURSEMENTS (CASH)
+    docs.payrolls.forEach((pr: any) => {
+      if (!matchesBranch(pr, targetBranch)) return;
+      const d = normalizeDate(pr.createdAt || pr.date);
+      if (!d) return;
+
+      const amt = Number(pr.netPay || pr.amount || 0);
+      if (d < startDateStr) {
+        openingSafe -= amt;
+      } else if (d >= startDateStr && d <= endDateStr) {
+        periodPayrolls += amt;
+        itemizedTransactions.push({
+          id: pr.id,
+          date: d,
+          category: "payroll",
+          titleEn: `Staff Payroll: ${pr.employeeName || pr.name || "Employee"}`,
+          titleAr: `راتب موظف: ${pr.employeeName || pr.name || "موظف"}`,
+          safeChange: -amt,
+          bankChange: 0,
+          details: `Net Pay: ${amt.toLocaleString()} EGP`
+        });
+      }
+    });
+
+    // 6. STAFF LOANS & ADVANCES
+    docs.adjustments.forEach((adj: any) => {
+      if (adj.type === "loan") {
+        if (!matchesBranch(adj, targetBranch)) return;
+        const d = normalizeDate(adj.date || adj.createdAt);
+        const amt = Number(adj.amount || 0);
+        if (!d || d < startDateStr) {
+          openingSafe -= amt;
+        } else if (d >= startDateStr && d <= endDateStr) {
+          periodLoans += amt;
+          itemizedTransactions.push({
+            id: adj.id,
+            date: d || startDateStr,
+            category: "loan",
+            titleEn: `Staff Loan: ${adj.employeeName || "Employee Advance"}`,
+            titleAr: `سلفة موظف: ${adj.employeeName || "سلفة"}`,
+            safeChange: -amt,
+            bankChange: 0,
+            details: `Amount: ${amt.toLocaleString()} EGP`
+          });
+        }
+      }
+    });
+
+    docs.loans.forEach((ln: any) => {
+      if (!matchesBranch(ln, targetBranch)) return;
+      const d = normalizeDate(ln.date || ln.createdAt);
+      const amt = Number(ln.approved || ln.amount || 0);
+      if (!d || d < startDateStr) {
+        openingSafe -= amt;
+      } else if (d >= startDateStr && d <= endDateStr) {
+        periodLoans += amt;
+        itemizedTransactions.push({
+          id: ln.id,
+          date: d || startDateStr,
+          category: "loan",
+          titleEn: `Staff Loan / Advance: ${ln.employeeName || "Employee"}`,
+          titleAr: `سلفة موظف: ${ln.employeeName || "موظف"}`,
+          safeChange: -amt,
+          bankChange: 0,
+          details: `Amount: ${amt.toLocaleString()} EGP`
+        });
+      }
+    });
+
+    // Sort itemized transactions by date descending
+    itemizedTransactions.sort((a, b) => b.date.localeCompare(a.date));
+
+    // Calculate Final Balanced Sums
+    const safeInflows = periodSalesCash + periodOverAmount + periodDepositsToSafe;
+    const safeOutflows = periodShortAmount + periodCashPayments + periodCashTax + periodDepositsFromSafe + periodPayrolls + periodLoans;
+    const closingSafe = openingSafe + safeInflows - safeOutflows;
+
+    const bankInflows = periodSalesVisa + periodDepositsToBank;
+    const bankOutflows = periodBankPayments + periodBankTax + periodDepositsFromBank;
+    const closingBank = openingBank + bankInflows - bankOutflows;
+
+    return {
+      startDateStr,
+      endDateStr,
+      openingSafe,
+      openingBank,
+      safeInflows,
+      safeOutflows,
+      closingSafe,
+      bankInflows,
+      bankOutflows,
+      closingBank,
+      itemizedTransactions,
+      period: {
+        salesCash: periodSalesCash,
+        overAmount: periodOverAmount,
+        shortAmount: periodShortAmount,
+        depositsToSafe: periodDepositsToSafe,
+        totalCashPayments: periodCashPayments,
+        totalCashTaxes: periodCashTax,
+        depositsFromSafe: periodDepositsFromSafe,
+        totalPayrolls: periodPayrolls,
+        totalLoans: periodLoans,
+        visaSales: periodSalesVisa,
+        depositsToBank: periodDepositsToBank,
+        bankPayments: periodBankPayments,
+        bankTaxes: periodBankTax,
+        depositsFromBank: periodDepositsFromBank
+      }
     };
   };
 
   const generateReport = async () => {
     setLoading(true);
     setReportData(null);
-    setMissingIndexes([]);
-    const collectedUrls = new Set<string>();
-    const branchIds = getBranchIds();
 
     try {
       let startDateStr = "", endDateStr = "";
@@ -284,20 +566,10 @@ export default function SafeReportPage() {
         endDateStr = `${selectedYear}-12-31`; 
       }
 
-      const [history, period] = await Promise.all([
-        fetchSumsForRange(startDateStr, null, branchIds, collectedUrls),
-        fetchSumsForRange(startDateStr, endDateStr, branchIds, collectedUrls),
-      ]);
+      const allDocs = await fetchAllFinancialDocs();
+      const result = calculateLedger(allDocs, startDateStr, endDateStr, currentBranch);
 
-      if (collectedUrls.size > 0) { 
-        setMissingIndexes(Array.from(collectedUrls)); 
-        setLoading(false); 
-        return; 
-      }
-
-      const { openingSafe: openingSafeBalance, openingBank: openingBankBalance } = calcBalances(history, period);
-
-      // Month-over-month trend (monthly only)
+      // Month-over-month trend (monthly view only)
       let trendData: any[] = [];
       if (reportType === "month") {
         const [yyyy, mm] = selectedMonth.split("-").map(Number);
@@ -313,39 +585,32 @@ export default function SafeReportPage() {
           };
         });
 
-        const trendResults = await Promise.all(
-          trendMonths.map(tm => Promise.all([
-            fetchSumsForRange(tm.start, null, branchIds, collectedUrls),
-            fetchSumsForRange(tm.start, tm.end, branchIds, collectedUrls),
-          ]))
-        );
-
-        trendData = trendMonths.map((tm, i) => {
-          const [th, tp] = trendResults[i];
-          const b = calcBalances(th, tp);
-          return { label: tm.label, labelAr: tm.labelAr, safeBalance: b.closingSafe, bankBalance: b.closingBank };
+        trendData = trendMonths.map(tm => {
+          const mRes = calculateLedger(allDocs, tm.start, tm.end, currentBranch);
+          return {
+            label: tm.label,
+            labelAr: tm.labelAr,
+            safeBalance: mRes.closingSafe,
+            bankBalance: mRes.closingBank
+          };
         });
 
-        const currBal = calcBalances(history, period);
         const d = new Date(yyyy, mm - 1, 1);
         trendData.push({
           label: d.toLocaleDateString("en-GB", { month: "short", year: "numeric" }),
           labelAr: d.toLocaleDateString("ar-EG", { month: "long", year: "numeric" }),
-          safeBalance: currBal.closingSafe, 
-          bankBalance: currBal.closingBank, 
-          isCurrent: true,
+          safeBalance: result.closingSafe,
+          bankBalance: result.closingBank,
+          isCurrent: true
         });
       }
 
-      setReportData({ 
-        openingSafeBalance, 
-        openingBankBalance, 
-        period, 
-        startDateStr, 
-        endDateStr, 
-        trendData 
+      setReportData({
+        ...result,
+        trendData
       });
-      toast.success(isAr ? "تم توليد تقرير الخزنة والبنك بنجاح!" : "Safe & Bank report generated successfully!");
+
+      toast.success(isAr ? "تم إعداد تقرير الخزنة والبنك بدقة تامة!" : "Safe & Bank statement generated accurately!");
     } catch (err: any) {
       console.error(err);
       toast.error("Failed to generate report: " + err.message);
@@ -359,18 +624,16 @@ export default function SafeReportPage() {
     generateReport();
   }, [currentBranch]);
 
-  // Computed display values
-  const safeInflows  = reportData ? (reportData.period.salesCash + reportData.period.overAmount + reportData.period.depositsToSafe) : 0;
-  const safeOutflows = reportData ? (reportData.period.shortAmount + reportData.period.totalCashPayments + reportData.period.totalCashTaxes + reportData.period.totalLoans + reportData.period.depositsFromSafe + reportData.period.totalPayrolls) : 0;
-  const closingSafe  = reportData ? reportData.openingSafeBalance + safeInflows - safeOutflows : 0;
-  
-  const bankInflows  = reportData ? (reportData.period.visaSales + reportData.period.depositsToBank) : 0;
-  const bankOutflows = reportData ? (reportData.period.bankPayments + reportData.period.bankTaxes + reportData.period.depositsFromBank) : 0;
-  const closingBank  = reportData ? reportData.openingBankBalance + bankInflows - bankOutflows : 0;
-
   const fmt = (n: number) => (Number(n) || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const branchLabel = getBranchLabel();
   const accounts = getAccountNumbers();
+
+  const closingSafe = reportData ? reportData.closingSafe : 0;
+  const closingBank = reportData ? reportData.closingBank : 0;
+  const safeInflows = reportData ? reportData.safeInflows : 0;
+  const safeOutflows = reportData ? reportData.safeOutflows : 0;
+  const bankInflows = reportData ? reportData.bankInflows : 0;
+  const bankOutflows = reportData ? reportData.bankOutflows : 0;
 
   const qrPayload = JSON.stringify({
     branch: branchLabel.en,
@@ -437,27 +700,6 @@ export default function SafeReportPage() {
           }
         `}} />
 
-        {/* ── MISSING INDEXES ── */}
-        {missingIndexes.length > 0 && (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-6 shadow-sm no-print">
-            <div className="flex items-center gap-3 text-red-400 mb-4">
-              <AlertTriangle className="w-8 h-8" />
-              <div>
-                <h2 className="text-xl font-bold">Missing Firebase Indexes ({missingIndexes.length})</h2>
-                <p className="text-xs text-slate-400 mt-1">Click every button below, wait for them to build in Firebase Console, then generate again.</p>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              {missingIndexes.map((url, i) => (
-                <a key={i} href={url} target="_blank" rel="noreferrer"
-                  className="bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors shadow-sm">
-                  Create Index #{i + 1} <ExternalLink className="w-4 h-4" />
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* ── CONTROLS & FILTER BAR ── */}
         <div className="bg-[#0B1121] rounded-3xl shadow-xl border border-slate-800 p-5 sm:p-6 space-y-4 no-print">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
@@ -468,8 +710,8 @@ export default function SafeReportPage() {
               </h2>
               <p className="text-xs text-slate-400 font-medium mt-1">
                 {isAr 
-                  ? "تسوية حسابات الخزينة النقدية ومطابقة إيرادات ومصروفات البنك مع الأرصدة الافتتاحية والختامية."
-                  : "Complete cash drawer & bank account reconciliations with verified opening and closing balances."}
+                  ? "تسوية نقدية شاملة ومطابقة دقيقة لكافة الإيرادات، المصروفات، السلف، وحساب البنك لكل يوم."
+                  : "Verified cash drawer & bank account reconciliations with accurate opening & closing balances for all days."}
               </p>
             </div>
 
@@ -549,7 +791,7 @@ export default function SafeReportPage() {
                 className="bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold py-2 px-4 rounded-xl text-xs flex items-center gap-2 transition-all disabled:opacity-50 active:scale-95 shadow-md shadow-indigo-600/30 cursor-pointer"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Calendar className="w-4 h-4" />}
-                {loading ? (isAr ? "جاري الحساب..." : "Calculating...") : (isAr ? "تحديث التقرير" : "Update Statement")}
+                {loading ? (isAr ? "جاري الحساب بدقة..." : "Calculating...") : (isAr ? "تحديث التقرير" : "Update Statement")}
               </button>
             </div>
           </div>
@@ -695,7 +937,7 @@ export default function SafeReportPage() {
                     <div className="space-y-2 text-xs">
                       <div className="flex items-center justify-between py-1 border-b border-slate-800/50">
                         <span className="text-slate-400">{isAr ? "الرصيد الافتتاحي المنقول" : "Opening Balance (Carried Over)"}</span>
-                        <span className="font-mono font-bold text-slate-300">{fmt(reportData.openingSafeBalance)}</span>
+                        <span className="font-mono font-bold text-slate-300">{fmt(reportData.openingSafe)}</span>
                       </div>
 
                       <div className="flex items-center justify-between py-1 border-b border-slate-800/50">
@@ -729,7 +971,7 @@ export default function SafeReportPage() {
                       </div>
 
                       <div className="flex items-center justify-between py-1 border-b border-slate-800/50">
-                        <span className="text-slate-400">{isAr ? "مصروفات وفواتير نقدية" : "Cash Expenses & Invoices"}</span>
+                        <span className="text-slate-400">{isAr ? "مصروفات وفواتير وسداد نقدي" : "Cash Expenses & Settlements"}</span>
                         <span className="font-mono font-bold text-white">{fmt(reportData.period.totalCashPayments)}</span>
                       </div>
 
@@ -749,7 +991,7 @@ export default function SafeReportPage() {
                       </div>
 
                       <div className="flex items-center justify-between py-1">
-                        <span className="text-slate-400">{isAr ? "تحويلات نقدية مسحوبة للبنك" : "Cash Transferred from Safe to Bank"}</span>
+                        <span className="text-slate-400">{isAr ? "تحويلات نقدية مسحوبة للبنك والمالك" : "Cash Transferred Out of Safe"}</span>
                         <span className="font-mono font-bold text-blue-300">{fmt(reportData.period.depositsFromSafe)}</span>
                       </div>
                     </div>
@@ -759,7 +1001,7 @@ export default function SafeReportPage() {
                 {/* Closing Safe Result Pill */}
                 <div className="bg-[#070C18] border border-emerald-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
                   <div className="text-xs text-slate-400">
-                    <span className="font-mono">{fmt(reportData.openingSafeBalance)}</span> (Opening) + <span className="font-mono">{fmt(safeInflows)}</span> (In) − <span className="font-mono">{fmt(safeOutflows)}</span> (Out)
+                    <span className="font-mono">{fmt(reportData.openingSafe)}</span> (Opening) + <span className="font-mono">{fmt(safeInflows)}</span> (In) − <span className="font-mono">{fmt(safeOutflows)}</span> (Out)
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-black text-slate-300 uppercase tracking-wider">
@@ -792,7 +1034,7 @@ export default function SafeReportPage() {
                     <div className="space-y-2 text-xs">
                       <div className="flex items-center justify-between py-1 border-b border-slate-800/50">
                         <span className="text-slate-400">{isAr ? "رصيد البنك الافتتاحي المنقول" : "Opening Bank Balance"}</span>
-                        <span className="font-mono font-bold text-slate-300">{fmt(reportData.openingBankBalance)}</span>
+                        <span className="font-mono font-bold text-slate-300">{fmt(reportData.openingBank)}</span>
                       </div>
 
                       <div className="flex items-center justify-between py-1 border-b border-slate-800/50">
@@ -836,7 +1078,7 @@ export default function SafeReportPage() {
                 {/* Closing Bank Result Pill */}
                 <div className="bg-[#070C18] border border-blue-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
                   <div className="text-xs text-slate-400">
-                    <span className="font-mono">{fmt(reportData.openingBankBalance)}</span> (Opening) + <span className="font-mono">{fmt(bankInflows)}</span> (In) − <span className="font-mono">{fmt(bankOutflows)}</span> (Out)
+                    <span className="font-mono">{fmt(reportData.openingBank)}</span> (Opening) + <span className="font-mono">{fmt(bankInflows)}</span> (In) − <span className="font-mono">{fmt(bankOutflows)}</span> (Out)
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-black text-slate-300 uppercase tracking-wider">
@@ -885,6 +1127,67 @@ export default function SafeReportPage() {
                       </tbody>
                     </table>
                   </div>
+                </div>
+              )}
+
+              {/* ── IV. AUDIT DRILL-DOWN: ITEMIZED TRANSACTIONS FOR SELECTED PERIOD ── */}
+              {reportData.itemizedTransactions && reportData.itemizedTransactions.length > 0 && (
+                <div className="space-y-4 pt-4 border-t border-slate-800 no-print">
+                  <div className="flex items-center justify-between">
+                    <button
+                      onClick={() => setShowItemized(!showItemized)}
+                      className="flex items-center gap-2 text-sm font-extrabold text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
+                    >
+                      <Layers size={16} />
+                      <span>
+                        {isAr 
+                          ? (showItemized ? "إخفاء التفاصيل والعمليات الفردية للفترة" : `عرض كشف العمليات التفصيلي (${reportData.itemizedTransactions.length} عملية)`)
+                          : (showItemized ? "Hide Itemized Period Transactions" : `View Itemized Period Transactions (${reportData.itemizedTransactions.length} items)`)
+                        }
+                      </span>
+                      {showItemized ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    </button>
+                    <span className="text-[11px] text-slate-500 font-mono">
+                      {reportData.itemizedTransactions.length} records in {reportType === "date" ? reportData.startDateStr : `${reportData.startDateStr} → ${reportData.endDateStr}`}
+                    </span>
+                  </div>
+
+                  {showItemized && (
+                    <div className="bg-[#070C18] border border-slate-800 rounded-2xl p-4 overflow-x-auto space-y-2">
+                      <table className={`w-full text-xs ${isAr ? "text-right" : "text-left"}`}>
+                        <thead>
+                          <tr className="border-b border-slate-800 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                            <th className="p-2.5">{isAr ? "التاريخ" : "Date"}</th>
+                            <th className="p-2.5">{isAr ? "البيان / المعاملة" : "Transaction / Description"}</th>
+                            <th className="p-2.5">{isAr ? "تفاصيل إضافية" : "Details"}</th>
+                            <th className="p-2.5 text-right">{isAr ? "حركة الخزنة" : "Safe Impact"}</th>
+                            <th className="p-2.5 text-right">{isAr ? "حركة البنك" : "Bank Impact"}</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800/50 font-medium text-slate-300">
+                          {reportData.itemizedTransactions.map((tx: any, idx: number) => (
+                            <tr key={idx} className="hover:bg-slate-800/30 transition-colors">
+                              <td className="p-2.5 font-mono text-slate-400 whitespace-nowrap">{tx.date}</td>
+                              <td className="p-2.5 font-bold text-white whitespace-nowrap">
+                                {isAr ? tx.titleAr : tx.titleEn}
+                              </td>
+                              <td className="p-2.5 text-[11px] text-slate-400 whitespace-nowrap">{tx.details}</td>
+                              <td className={`p-2.5 text-right font-mono font-bold whitespace-nowrap ${
+                                tx.safeChange > 0 ? "text-emerald-400" : tx.safeChange < 0 ? "text-rose-400" : "text-slate-500"
+                              }`}>
+                                {tx.safeChange !== 0 ? `${tx.safeChange > 0 ? "+" : ""}${fmt(tx.safeChange)}` : "—"}
+                              </td>
+                              <td className={`p-2.5 text-right font-mono font-bold whitespace-nowrap ${
+                                tx.bankChange > 0 ? "text-blue-400" : tx.bankChange < 0 ? "text-purple-400" : "text-slate-500"
+                              }`}>
+                                {tx.bankChange !== 0 ? `${tx.bankChange > 0 ? "+" : ""}${fmt(tx.bankChange)}` : "—"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               )}
 
