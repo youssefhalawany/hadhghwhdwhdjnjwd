@@ -47,7 +47,7 @@ export default function FinancialInputsLayout({ children }: { children: React.Re
             scrollbarWidth: 'none',
             msOverflowStyle: 'none'
           }} 
-          className="shadow-lg rounded-2xl p-1.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth w-full md:flex-nowrap"
+          className="shadow-lg rounded-2xl p-1.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth w-full md:flex-nowrap print:hidden no-print"
         >
           {tabs.map(tab => {
             const isActive = pathname === tab.href;

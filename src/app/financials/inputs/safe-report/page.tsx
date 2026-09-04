@@ -694,7 +694,7 @@ export default function SafeReportPage() {
           @media print {
             @page {
               size: A4 portrait;
-              margin: 10mm 12mm 10mm 12mm !important;
+              margin: 6mm 8mm 6mm 8mm !important;
             }
             *, *::before, *::after {
               box-sizing: border-box !important;
@@ -708,15 +708,27 @@ export default function SafeReportPage() {
               color: #0f172a !important;
               margin: 0 !important;
               padding: 0 !important;
+              font-size: 11px !important;
+              line-height: 1.25 !important;
               font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+            }
+            /* Hide all outer portal chrome, banners, layout tab bar, headers */
+            header, nav, aside, footer, .sidebar, .no-print, [role="navigation"], .shadow-lg.rounded-2xl.p-1\\.5 {
+              display: none !important;
+            }
+            /* Target layout wrapper tabs directly */
+            div:has(> a[href="/financials/inputs/safe-report"]) {
+              display: none !important;
             }
             main, .custom-scrollbar, #__next, div:not(#safe-printable-a4):not(#safe-printable-a4 *) {
               background: transparent !important;
               background-color: transparent !important;
               border: none !important;
               box-shadow: none !important;
+              margin: 0 !important;
+              padding: 0 !important;
             }
-            .print\\:hidden, nav, header, aside, .sidebar, footer, .no-print, button {
+            .print\\:hidden, button {
               display: none !important;
             }
             #safe-printable-a4 {
@@ -729,33 +741,37 @@ export default function SafeReportPage() {
               background-color: #ffffff !important;
               color: #0f172a !important;
               border: none !important;
+              page-break-after: avoid !important;
+              page-break-inside: avoid !important;
             }
-            /* Corporate container reset for printing */
+            /* Clean Corporate Sheet optimized for 1 Page */
             .corporate-sheet {
               background: #ffffff !important;
               background-color: #ffffff !important;
               border: 1.5px solid #0f172a !important;
-              border-radius: 8px !important;
+              border-radius: 6px !important;
               box-shadow: none !important;
-              padding: 16px 20px !important;
+              padding: 10px 14px !important;
               color: #0f172a !important;
+              margin: 0 auto !important;
             }
             .corporate-header {
               border-bottom: 2px solid #0f172a !important;
-              padding-bottom: 12px !important;
-              margin-bottom: 14px !important;
+              padding-bottom: 6px !important;
+              margin-bottom: 8px !important;
             }
             .corporate-box {
               background-color: #f8fafc !important;
               border: 1px solid #cbd5e1 !important;
-              border-radius: 6px !important;
+              border-radius: 4px !important;
               color: #0f172a !important;
+              padding: 6px 8px !important;
             }
             .corporate-kpi {
               border: 1px solid #94a3b8 !important;
-              border-radius: 6px !important;
+              border-radius: 4px !important;
               background-color: #f8fafc !important;
-              padding: 10px 8px !important;
+              padding: 6px 4px !important;
             }
             .corporate-kpi.safe-card {
               border-top: 3px solid #059669 !important;
@@ -805,27 +821,48 @@ export default function SafeReportPage() {
             .border-slate-800, .border-slate-800\\/80, .border-slate-800\\/50, .divide-slate-800\\/50 {
               border-color: #cbd5e1 !important;
             }
-            /* Table formatting */
-            table {
-              page-break-inside: auto;
-              width: 100% !important;
-              border-collapse: collapse !important;
+            /* Compact print spacing to guarantee 1 page */
+            .space-y-6 {
+              margin-top: 0 !important;
             }
-            tr {
-              page-break-inside: avoid;
-              page-break-after: auto;
+            .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+              margin-top: 6px !important;
             }
-            thead {
-              display: table-header-group;
+            .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+              margin-top: 4px !important;
             }
-            th {
-              color: #0f172a !important;
-              background-color: #f1f5f9 !important;
-              border-bottom: 1.5px solid #94a3b8 !important;
+            .space-y-3 > :not([hidden]) ~ :not([hidden]) {
+              margin-top: 3px !important;
             }
-            td {
-              color: #1e293b !important;
-              border-bottom: 1px solid #e2e8f0 !important;
+            .space-y-2 > :not([hidden]) ~ :not([hidden]) {
+              margin-top: 2px !important;
+            }
+            .pt-6, .pt-4, .pt-2 {
+              padding-top: 4px !important;
+            }
+            .pb-5, .pb-4 {
+              padding-bottom: 4px !important;
+            }
+            .text-3xl {
+              font-size: 18px !important;
+            }
+            .text-2xl {
+              font-size: 15px !important;
+            }
+            .text-xl {
+              font-size: 13px !important;
+            }
+            .text-base {
+              font-size: 12px !important;
+            }
+            .text-sm {
+              font-size: 10px !important;
+            }
+            .text-xs {
+              font-size: 9.5px !important;
+            }
+            .text-\\[10px\\], .text-\\[11px\\], .text-\\[9px\\] {
+              font-size: 8.5px !important;
             }
             .print-avoid-break {
               page-break-inside: avoid !important;
@@ -1326,10 +1363,10 @@ export default function SafeReportPage() {
               )}
 
               {/* ── OFFICIAL APPROVAL & SIGNATURES ── */}
-              <div className="pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-6 text-xs text-slate-400">
+              <div className="pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400 print-avoid-break">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-white rounded-xl">
-                    <QRCode value={qrPayload} size={54} level="L" />
+                  <div className="p-1.5 bg-white rounded-xl">
+                    <QRCode value={qrPayload} size={48} level="L" />
                   </div>
                   <div>
                     <p className="font-bold text-white font-mono">{accounts.safeCode} / {accounts.bankAccount}</p>
