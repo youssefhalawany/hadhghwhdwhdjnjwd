@@ -1111,8 +1111,12 @@ export default function EmployeesPage() {
       >
         <style type="text/css" media="print">
           {`
-            @page { size: A4 portrait; margin: ${printDocumentType === 'termination' ? '8mm 12mm' : '15mm'}; }
-            .content-wrapper { padding-bottom: 10px; }
+            @page { 
+              size: A4 portrait; 
+              margin: ${printDocumentType === 'termination' ? '12mm 15mm 10mm 15mm' : '15mm'}; 
+            }
+            .content-wrapper { padding: 0; margin: 0 auto; }
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           `}
         </style>
 
@@ -1130,193 +1134,209 @@ export default function EmployeesPage() {
             const dayNameAr = dateObj.toLocaleDateString('ar-EG', { weekday: 'long' });
 
             return (
-              <div className="content-wrapper" style={{ maxWidth: "820px", margin: "0 auto", color: "#000", fontFamily: "'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif", fontSize: "11px", lineHeight: "1.45" }}>
+              <div className="content-wrapper" style={{ width: "100%", maxWidth: "100%", margin: "0 auto", color: "#000", fontFamily: "'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif", fontSize: "12px", lineHeight: "1.6" }}>
                 
                 {/* Official Letterhead Header */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2.5px solid #000", paddingBottom: "6px", marginBottom: "8px" }}>
-                  <div style={{ textAlign: "right" }}>
-                    <h1 style={{ fontSize: "17px", fontWeight: "900", margin: 0, color: "#000" }}>{companyTitleAr}</h1>
-                    <h2 style={{ fontSize: "11px", margin: "1px 0 0 0", color: "#333", fontWeight: "bold" }}>{branchTitleAr}</h2>
-                    <p style={{ margin: "2px 0 0 0", fontSize: "9.5px", color: "#555" }}>
-                      سجل تجاري (س.ت): {branchInfo.commReg} | بطاقة ضريبية (ب.ض): {branchInfo.taxId}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2.5px solid #0f172a", paddingBottom: "10px", marginBottom: "12px" }}>
+                  <div style={{ textAlign: "right", flex: 1.3 }}>
+                    <h1 style={{ fontSize: "19px", fontWeight: "900", margin: 0, color: "#0f172a", letterSpacing: "0.3px" }}>{companyTitleAr}</h1>
+                    <h2 style={{ fontSize: "12.5px", margin: "3px 0 0 0", color: "#334155", fontWeight: "bold" }}>{branchTitleAr}</h2>
+                    <p style={{ margin: "4px 0 0 0", fontSize: "10.5px", color: "#64748b" }}>
+                      سجل تجاري (س.ت): <strong style={{ color: "#1e293b" }}>{branchInfo.commReg}</strong> | بطاقة ضريبية (ب.ض): <strong style={{ color: "#1e293b" }}>{branchInfo.taxId}</strong>
                     </p>
                   </div>
 
-                  <div style={{ textAlign: "center" }}>
-                    <div style={{ border: "1.5px solid #000", borderRadius: "6px", padding: "3px 10px", backgroundColor: "#f8fafc" }}>
-                      <span style={{ fontSize: "11px", fontWeight: "900", color: "#000", display: "block" }}>جمهورية مصر العربية</span>
-                      <span style={{ fontSize: "9px", color: "#475569", fontWeight: "bold" }}>إدارة الموارد البشرية والشؤون القانونية</span>
+                  <div style={{ textAlign: "center", flex: 1, padding: "0 10px" }}>
+                    <div style={{ border: "1.5px solid #0f172a", borderRadius: "8px", padding: "6px 12px", backgroundColor: "#f8fafc" }}>
+                      <span style={{ fontSize: "12px", fontWeight: "900", color: "#0f172a", display: "block" }}>جمهورية مصر العربية</span>
+                      <span style={{ fontSize: "10.5px", color: "#475569", fontWeight: "bold", display: "block", marginTop: "1px" }}>قطاع علاقات العمل والتشغيل</span>
+                      <span style={{ fontSize: "9.5px", color: "#64748b", display: "block" }}>إدارة الموارد البشرية والشؤون القانونية</span>
                     </div>
                   </div>
 
-                  <div style={{ textAlign: "left", fontSize: "10px", lineHeight: "1.4" }}>
-                    <div><span style={{ fontWeight: "bold" }}>التاريخ:</span> {dateFormattedAr}</div>
-                    <div><span style={{ fontWeight: "bold" }}>الموافق:</span> {dayNameAr}</div>
-                    <div><span style={{ fontWeight: "bold" }}>رقم الوثيقة:</span> <span style={{ fontFamily: "monospace", fontWeight: "bold" }}>TRM-{(selectedEmployee.id || "000").slice(-6).toUpperCase()}</span></div>
+                  <div style={{ textAlign: "left", flex: 1.1, fontSize: "11px", lineHeight: "1.6" }}>
+                    <div style={{ border: "1px solid #cbd5e1", borderRadius: "8px", padding: "6px 10px", backgroundColor: "#f8fafc" }}>
+                      <div><span style={{ color: "#64748b", fontWeight: "bold" }}>التاريخ:</span> <strong style={{ color: "#0f172a" }}>{dateFormattedAr}</strong></div>
+                      <div><span style={{ color: "#64748b", fontWeight: "bold" }}>الموافق:</span> <strong style={{ color: "#0f172a" }}>{dayNameAr}</strong></div>
+                      <div><span style={{ color: "#64748b", fontWeight: "bold" }}>كود الوثيقة:</span> <strong style={{ fontFamily: "monospace", letterSpacing: "1px", color: "#0f172a" }}>TRM-{(selectedEmployee.id || "000").slice(-6).toUpperCase()}</strong></div>
+                    </div>
                   </div>
                 </div>
 
                 {/* Formal Title Banner */}
-                <div style={{ textAlign: "center", borderTop: "2px solid #000", borderBottom: "2px solid #000", padding: "5px 0", marginBottom: "10px", backgroundColor: "#f8fafc" }}>
-                  <h2 style={{ fontSize: "17px", fontWeight: "900", margin: "0 0 1px 0", color: "#000" }}>
+                <div style={{ textAlign: "center", borderTop: "2.5px solid #0f172a", borderBottom: "2.5px solid #0f172a", padding: "8px 10px", marginBottom: "14px", backgroundColor: "#f8fafc" }}>
+                  <h2 style={{ fontSize: "19px", fontWeight: "900", margin: "0 0 2px 0", color: "#0f172a", letterSpacing: "0.5px" }}>
                     إقرار مخالصة نهائية تامة وإبراء ذمة شامل واستلام كافة المستحقات وخلو طرف
                   </h2>
-                  <h3 style={{ fontSize: "10px", margin: 0, fontWeight: "bold", color: "#333", letterSpacing: "0.5px" }}>
-                    FULL & FINAL SETTLEMENT, DISCHARGE OF LIABILITIES & MUTUAL JOB CLEARANCE RECEIPT
+                  <h3 style={{ fontSize: "11px", margin: "2px 0 0 0", fontWeight: "bold", color: "#334155", letterSpacing: "0.8px" }}>
+                    FULL & FINAL SETTLEMENT, DISCHARGE OF LIABILITIES & MUTUAL JOB CLEARANCE
                   </h3>
-                  <p style={{ fontSize: "9px", margin: "2px 0 0 0", color: "#444", fontWeight: "600" }}>
-                    صادر ومحرر وفقاً لأحكام قانون العمل المصري رقم 12 لسنة 2003 وتعديلاته وأحكام القانون المدني المصري
+                  <p style={{ fontSize: "10px", margin: "3px 0 0 0", color: "#64748b", fontWeight: "600" }}>
+                    صادر ومحرر سنداً لأحكام قانون العمل المصري رقم 12 لسنة 2003 وتعديلاته وأحكام القانون المدني المصري
                   </p>
                 </div>
 
                 {/* Parties Table */}
-                <table style={{ width: "100%", fontSize: "10.5px", borderCollapse: "collapse", marginBottom: "8px", border: "1.5px solid #000" }}>
+                <table style={{ width: "100%", fontSize: "11.5px", borderCollapse: "collapse", marginBottom: "14px", border: "1.5px solid #0f172a" }}>
                   <tbody>
                     <tr style={{ backgroundColor: "#f1f5f9" }}>
-                      <td style={{ padding: "4px 6px", fontWeight: "bold", width: "16%", border: "1px solid #000" }}>الطرف الأول (المنشأة):</td>
-                      <td style={{ padding: "4px 6px", width: "34%", border: "1px solid #000" }}>{companyPartyName}</td>
-                      <td style={{ padding: "4px 6px", fontWeight: "bold", width: "16%", border: "1px solid #000" }}>الفرع ومقر العمل:</td>
-                      <td style={{ padding: "4px 6px", width: "34%", border: "1px solid #000" }}>{branchTitleAr}</td>
+                      <td style={{ padding: "6px 10px", fontWeight: "800", width: "18%", border: "1px solid #cbd5e1", color: "#1e293b" }}>صاحب العمل (المنشأة):</td>
+                      <td style={{ padding: "6px 10px", width: "32%", border: "1px solid #cbd5e1", fontWeight: "600" }}>{companyPartyName}</td>
+                      <td style={{ padding: "6px 10px", fontWeight: "800", width: "18%", border: "1px solid #cbd5e1", color: "#1e293b" }}>الفرع ومقر العمل:</td>
+                      <td style={{ padding: "6px 10px", width: "32%", border: "1px solid #cbd5e1", fontWeight: "600" }}>{branchTitleAr}</td>
                     </tr>
                     <tr>
-                      <td style={{ padding: "4px 6px", fontWeight: "bold", border: "1px solid #000" }}>الطرف الثاني (العامل المقر):</td>
-                      <td style={{ padding: "4px 6px", fontWeight: "bold", fontSize: "11px", border: "1px solid #000" }}>{selectedEmployee.name}</td>
-                      <td style={{ padding: "4px 6px", fontWeight: "bold", border: "1px solid #000" }}>الرقم القومي (14 رقماً):</td>
-                      <td style={{ padding: "4px 6px", fontFamily: "monospace", letterSpacing: "1.5px", fontWeight: "bold", fontSize: "11.5px", border: "1px solid #000" }}>
+                      <td style={{ padding: "6px 10px", fontWeight: "800", border: "1px solid #cbd5e1", color: "#1e293b" }}>الطرف الثاني (العامل المُقر):</td>
+                      <td style={{ padding: "6px 10px", fontWeight: "900", fontSize: "12.5px", border: "1px solid #cbd5e1", color: "#0f172a" }}>{selectedEmployee.name}</td>
+                      <td style={{ padding: "6px 10px", fontWeight: "800", border: "1px solid #cbd5e1", color: "#1e293b" }}>الرقم القومي (14 رقماً):</td>
+                      <td style={{ padding: "6px 10px", fontFamily: "monospace", letterSpacing: "2px", fontWeight: "900", fontSize: "13px", border: "1px solid #cbd5e1", color: "#0f172a" }}>
                         {selectedEmployee.nationalId || "----------------"}
                       </td>
                     </tr>
                     <tr style={{ backgroundColor: "#f8fafc" }}>
-                      <td style={{ padding: "4px 6px", fontWeight: "bold", border: "1px solid #000" }}>المسمى الوظيفي:</td>
-                      <td style={{ padding: "4px 6px", border: "1px solid #000" }}>{selectedEmployee.position}</td>
-                      <td style={{ padding: "4px 6px", fontWeight: "bold", border: "1px solid #000" }}>تاريخ بدء العمل:</td>
-                      <td style={{ padding: "4px 6px", border: "1px solid #000" }}>{selectedEmployee.startDate || "---"}</td>
+                      <td style={{ padding: "6px 10px", fontWeight: "800", border: "1px solid #cbd5e1", color: "#1e293b" }}>المسمى الوظيفي:</td>
+                      <td style={{ padding: "6px 10px", border: "1px solid #cbd5e1", fontWeight: "600" }}>{selectedEmployee.position}</td>
+                      <td style={{ padding: "6px 10px", fontWeight: "800", border: "1px solid #cbd5e1", color: "#1e293b" }}>تاريخ بدء العمل:</td>
+                      <td style={{ padding: "6px 10px", border: "1px solid #cbd5e1", fontWeight: "600" }}>{selectedEmployee.startDate || "---"}</td>
                     </tr>
                     <tr>
-                      <td style={{ padding: "4px 6px", fontWeight: "bold", border: "1px solid #000" }}>تاريخ انتهاء العمل الفعلي:</td>
-                      <td style={{ padding: "4px 6px", fontWeight: "bold", color: "#b91c1c", border: "1px solid #000" }}>{terminationData.terminationDate}</td>
-                      <td style={{ padding: "4px 6px", fontWeight: "bold", border: "1px solid #000" }}>سبب انتهاء علاقة العمل:</td>
-                      <td style={{ padding: "4px 6px", fontWeight: "bold", border: "1px solid #000" }}>{terminationData.reason}</td>
+                      <td style={{ padding: "6px 10px", fontWeight: "800", border: "1px solid #cbd5e1", color: "#1e293b" }}>تاريخ انتهاء الخدمة:</td>
+                      <td style={{ padding: "6px 10px", fontWeight: "900", color: "#b91c1c", border: "1px solid #cbd5e1", fontSize: "12px" }}>{terminationData.terminationDate}</td>
+                      <td style={{ padding: "6px 10px", fontWeight: "800", border: "1px solid #cbd5e1", color: "#1e293b" }}>سبب انتهاء علاقة العمل:</td>
+                      <td style={{ padding: "6px 10px", fontWeight: "700", border: "1px solid #cbd5e1", color: "#0f172a" }}>{terminationData.reason}</td>
                     </tr>
                   </tbody>
                 </table>
 
-                {/* Legal Provisions (Strict & 100% Comprehensive Egyptian Labor Law) */}
-                <div style={{ fontSize: "10px", lineHeight: "1.45", textAlign: "justify", marginBottom: "8px" }}>
-                  <p style={{ margin: "0 0 5px 0", fontWeight: "bold" }}>
-                    أقر أنا العامل الموقع أدناه بكامل أهليتي القانونية والشرعية للتصرف، وبإرادتي الحرة الواعية الخالية من أي إكراه أو تدليس أو لبس، بالآتي:
+                {/* Legal Provisions */}
+                <div style={{ fontSize: "11.5px", lineHeight: "1.65", textAlign: "justify", marginBottom: "14px" }}>
+                  <p style={{ margin: "0 0 8px 0", fontWeight: "bold", color: "#0f172a" }}>
+                    أقر أنا العامل الموقع أدناه، بكامل أهليتي القانونية والشرعية المعتبرة للتصرف، وبإرادتي الحرة الواعية الخالية من أي إكراه أو غلط أو تدليس، بالآتي:
                   </p>
 
-                  <div style={{ marginBottom: "5px", paddingRight: "6px", borderRight: "2px solid #000" }}>
-                    <strong style={{ fontSize: "10.5px" }}>أولاً: المخالصة المالية التامة واستلام كافة المستحقات العمالية:</strong>
-                    <br/>
-                    أقر بأنني تسلمت من إدارة الشركة والفرع المذكور كامل كافة مستحقاتي المالية والعمالية عن كامل مدة خدمتي وحتى تاريخ ترك العمل الموضح أعلاه، وتشمل الأجور والرواتب الأساسية والمتغيرة، ومقابل ساعات العمل الإضافية، والبدلات بكافة مسمياتها، والمكافآت، والحوافز، ومقابل رصيد الإجازات السنوية المستحقة قانوناً وغير المستنفذة، ومكافأة نهاية الخدمة، وأية مستحقات أو حقوق مقررة بموجب عقد العمل أو اللوائح الداخلية أو قانون العمل المصري رقم 12 لسنة 2003 وتعديلاته، وأنه لم يعد لي في ذمة الشركة أو فروعها أو إدارتها أو ملاكها أي حق أو مستحق مالي أو عيني أو تعويضي كائن ما كان.
+                  <div style={{ marginBottom: "8px", paddingRight: "10px", borderRight: "3px solid #0f172a" }}>
+                    <strong style={{ fontSize: "12px", color: "#0f172a" }}>أولاً: المخالصة المالية التامة واستلام كافة المستحقات العمالية:</strong>
+                    <div style={{ marginTop: "2px" }}>
+                      أقر بأنني تسلمت من إدارة الشركة والفرع المذكور كامل كافة مستحقاتي المالية والعمالية عن كامل مدة خدمتي وحتى تاريخ ترك العمل الموضح أعلاه، وتشمل الأجور والرواتب الأساسية والمتغيرة، ومقابل ساعات العمل الإضافية، والبدلات بكافة مسمياتها، والمكافآت، والحوافز، ومقابل رصيد الإجازات السنوية المستحقة قانوناً وغير المستنفذة، ومكافأة نهاية الخدمة، وأية حقوق أو مستحقات أخرى مقررة بموجب عقد العمل أو لوائح المنشأة أو قانون العمل المصري رقم 12 لسنة 2003 وتعديلاته، وأنه لم يعد لي في ذمة الشركة أو فروعها أو إدارتها أو ملاكها أي حق أو مستحق مالي أو عيني أو تعويضي كائناً ما كان سببه أو مسماه.
+                    </div>
                     {terminationData.settlementAmount > 0 ? (
-                      <div style={{ margin: "2px 0", padding: "2px 6px", backgroundColor: "#f1f5f9", border: "1px dashed #64748b", fontWeight: "bold" }}>
-                        صافي المبلغ المستلم عند التصفية: {terminationData.settlementAmount.toLocaleString()} جنيه مصري (فقط {numberToArabicWords(terminationData.settlementAmount)} لا غير).
+                      <div style={{ margin: "4px 0", padding: "4px 10px", backgroundColor: "#f1f5f9", border: "1px dashed #64748b", borderRadius: "4px", fontWeight: "bold", fontSize: "11.5px" }}>
+                        صافي المبلغ المستلم عند التصفية: <span style={{ color: "#059669" }}>{terminationData.settlementAmount.toLocaleString()} جنيه مصري</span> (فقط {numberToArabicWords(terminationData.settlementAmount)} لا غير).
                       </div>
                     ) : (
-                      <div style={{ margin: "2px 0", padding: "2px 6px", backgroundColor: "#f1f5f9", border: "1px dashed #64748b", fontWeight: "bold" }}>
+                      <div style={{ margin: "4px 0", padding: "4px 10px", backgroundColor: "#f1f5f9", border: "1px dashed #64748b", borderRadius: "4px", fontWeight: "bold", fontSize: "11.5px" }}>
                         تم استلام وتسوية كافة المستحقات المالية والرواتب بالكامل حتى تاريخ ترك العمل دون أي تأخير أو متبقي.
                       </div>
                     )}
                   </div>
 
-                  <div style={{ marginBottom: "5px", paddingRight: "6px", borderRight: "2px solid #000" }}>
-                    <strong style={{ fontSize: "10.5px" }}>ثانياً: براءة ذمة الشركة وإدارتها إبراءً عاماً شاملاً مانعاً وباتاً والتنازل عن الدعاوى:</strong>
-                    <br/>
-                    بناءً على استلامي لكامل حقوقي، تعتبر ذمة الشركة والفرع وممثليهما القانونيين وملاكها بريئة تماماً براءة تامة ونهائية وشاملة ومانعة من أي التزام أو دين أو مطالبة ناشئة عن علاقة العمل أو إنهائها. وأقر بالتنازل الصريح والبات غير المشروط عن أية شكاوى أو دعاوى عمالية أو مدنية أو قضائية رُفعت أو قد تُرفع مستقبلاً أمام مكاتب العمل أو المحاكم العمالية أو المدنية أو الجنائية، ويعد هذا الإقرار مخالصة نهائية باتة وحجة قاطعة مانعة لأي نزاع.
+                  <div style={{ marginBottom: "8px", paddingRight: "10px", borderRight: "3px solid #0f172a" }}>
+                    <strong style={{ fontSize: "12px", color: "#0f172a" }}>ثانياً: براءة ذمة الشركة وإدارتها إبراءً عاماً شاملاً مانعاً وباتاً والتنازل عن الدعاوى:</strong>
+                    <div style={{ marginTop: "2px" }}>
+                      بناءً على استلامي لكامل حقوقي، تعتبر ذمة الشركة والفرع وممثليهما القانونيين وملاكها بريئة تماماً براءة تامة ونهائية وشاملة ومانعة من أي التزام أو دين أو مطالبة ناشئة عن علاقة العمل أو إنهائها. وأقر بالتنازل الصريح والبات غير المشروط عن أية شكاوى أو دعاوى عمالية أو مدنية أو قضائية رُفعت أو قد تُرفع مستقبلاً أمام مكاتب العمل أو المحاكم العمالية أو المدنية أو الجنائية، ويعد هذا الإقرار مخالصة نهائية باتة وسنداً قاطعاً مانعاً لأي نزاع.
+                    </div>
                   </div>
 
-                  <div style={{ marginBottom: "5px", paddingRight: "6px", borderRight: "2px solid #000" }}>
-                    <strong style={{ fontSize: "10.5px" }}>ثالثاً: تسليم العهد وخلو الطرف العيني والمالي المتبادل (Zero Liabilities):</strong>
-                    <br/>
-                    أقر بأنني قمت بتسليم كافة العهد والأمانات التي كانت في حيازتي أو تحت مسؤوليتي الوظيفية كاملة وسليمة دون أي نقص أو تلف، وتشمل: (العهد النقدية، فروق الخزينة ونقاط البيع، مفاتيح الفرع والأبواب والخزائن، بطاقات التشغيل وكروت POS وID Badge، ماكينات وأجهزة التشغيل، الزي الرسمي Uniform، وأية سجلات أو وثائق خاصة بالمنشأة)، وأنه لا توجد في ذمتي أية مبالغ أو قروض أو سلفيات مستحقة للشركة.
-                    وبالمقابل، تقر إدارة الفرع والشركة بخلو طرف العامل المذكور تماماً وإبراء ذمته العينية والمالية دون أي قيد أو شرط، وأنه لا يدين للمنشأة بأي شيء.
+                  <div style={{ marginBottom: "8px", paddingRight: "10px", borderRight: "3px solid #0f172a" }}>
+                    <strong style={{ fontSize: "12px", color: "#0f172a" }}>ثالثاً: تسليم العهد وخلو الطرف العيني والمالي المتبادل (Zero Liabilities):</strong>
+                    <div style={{ marginTop: "2px" }}>
+                      أقر بأنني قمت بتسليم كافة العهد والأمانات التي كانت في حيازتي أو تحت مسؤوليتي الوظيفية كاملة وسليمة دون أي نقص أو تلف، وتشمل: (العهد النقدية وفروق الخزينة ونقاط البيع، مفاتيح الفرع والأبواب والخزائن، بطاقات التشغيل وكروت POS وID Badge، ماكينات وأجهزة التشغيل، الزي الرسمي Uniform، وأية سجلات أو وثائق خاصة بالمنشأة)، وأنه لا توجد في ذمتي أية مبالغ أو قروض أو سلفيات مستحقة للشركة. وبالمقابل، تقر إدارة الفرع والشركة بخلو طرف العامل المذكور تماماً وإبراء ذمته العينية والمالية دون أي قيد أو شرط، وأنه لا يدين للمنشأة بأي شيء.
+                    </div>
                   </div>
 
-                  <div style={{ marginBottom: "5px", paddingRight: "6px", borderRight: "2px solid #000" }}>
-                    <strong style={{ fontSize: "10.5px" }}>رابعاً: التعهد بالسرية التامة وعدم الإضرار بمصالح المنشأة:</strong>
-                    <br/>
-                    أتعهد بالالتزام المستمر بالمحافظة التامة على سرية كافة البيانات والمعلومات التجارية والتشغيلية وأسرار العمل والعملاء الخاصة بالشركة وعدم إفشائها أو استخدامها بما يضر بمصالح المنشأة، تحت طائلة المساءلة القانونية الجنائية والمدنية طبقاً لنص المادة 310 من قانون العقوبات المصري.
+                  <div style={{ marginBottom: "8px", paddingRight: "10px", borderRight: "3px solid #0f172a" }}>
+                    <strong style={{ fontSize: "12px", color: "#0f172a" }}>رابعاً: التعهد بالسرية التامة وعدم الإضرار بمصالح المنشأة:</strong>
+                    <div style={{ marginTop: "2px" }}>
+                      أتعهد بالالتزام المستمر بالمحافظة التامة على سرية كافة البيانات والمعلومات التجارية والتشغيلية وأسرار العمل والعملاء الخاصة بالشركة وعدم إفشائها أو استخدامها بما يضر بمصالح المنشأة، تحت طائلة المساءلة القانونية الجنائية والمدنية طبقاً لنص المادة 310 من قانون العقوبات المصري.
+                    </div>
                   </div>
                 </div>
 
                 {/* Official Signatures & Fingerprint Block */}
-                <div style={{ border: "1.5px solid #000", padding: "6px 8px", backgroundColor: "#fff", pageBreakInside: "avoid" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
+                <div style={{ border: "2px solid #0f172a", borderRadius: "8px", padding: "10px 12px", backgroundColor: "#fff", pageBreakInside: "avoid", marginBottom: "10px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "stretch", gap: "12px" }}>
                     
                     {/* Employee Signature Box */}
-                    <div style={{ flex: 1.2, border: "1px solid #cbd5e1", borderRadius: "6px", padding: "6px 8px", backgroundColor: "#f8fafc" }}>
-                      <div style={{ fontWeight: "bold", fontSize: "10.5px", borderBottom: "1.5px solid #000", paddingBottom: "2px", marginBottom: "4px", display: "flex", justifyContent: "space-between" }}>
-                        <span>المُقر بما فيه (العامل / الموظف)</span>
-                        <span style={{ fontSize: "9px", color: "#64748b" }}>Employee Release</span>
-                      </div>
-                      <div style={{ fontSize: "9.5px", lineHeight: "1.5" }}>
-                        <div><strong>الاسم رباعياً:</strong> {selectedEmployee.name}</div>
-                        <div><strong>الرقم القومي:</strong> <span style={{ fontFamily: "monospace", letterSpacing: "1px", fontWeight: "bold" }}>{selectedEmployee.nationalId || "----------------"}</span></div>
-                        <div style={{ display: "flex", alignItems: "center", marginTop: "3px" }}>
-                          <strong style={{ width: "55px" }}>التوقيع:</strong>
-                          <div style={{ flex: 1, borderBottom: "1px dotted #000", height: "18px" }}></div>
+                    <div style={{ flex: 1.3, border: "1px solid #cbd5e1", borderRadius: "6px", padding: "8px 10px", backgroundColor: "#f8fafc", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                      <div>
+                        <div style={{ fontWeight: "900", fontSize: "11.5px", borderBottom: "1.5px solid #0f172a", paddingBottom: "3px", marginBottom: "6px", display: "flex", justifyContent: "space-between", color: "#0f172a" }}>
+                          <span>المُقر بما فيه (العامل / الموظف)</span>
+                          <span style={{ fontSize: "9.5px", color: "#64748b" }}>Employee Receipt & Release</span>
                         </div>
-                        <div style={{ display: "flex", alignItems: "center", marginTop: "3px" }}>
-                          <strong style={{ width: "55px" }}>التاريخ:</strong>
-                          <div style={{ flex: 1, borderBottom: "1px dotted #000", height: "16px" }}></div>
+                        <div style={{ fontSize: "10.5px", lineHeight: "1.6" }}>
+                          <div><strong>الاسم:</strong> {selectedEmployee.name}</div>
+                          <div><strong>الرقم القومي:</strong> <span style={{ fontFamily: "monospace", letterSpacing: "1px", fontWeight: "bold" }}>{selectedEmployee.nationalId || "----------------"}</span></div>
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ display: "flex", alignItems: "flex-end", marginTop: "10px" }}>
+                          <strong style={{ width: "55px", fontSize: "11px" }}>التوقيع:</strong>
+                          <div style={{ flex: 1, borderBottom: "1.5px dotted #0f172a", height: "24px" }}></div>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "flex-end", marginTop: "8px" }}>
+                          <strong style={{ width: "55px", fontSize: "11px" }}>التاريخ:</strong>
+                          <div style={{ flex: 1, borderBottom: "1.5px dotted #0f172a", height: "20px" }}></div>
                         </div>
                       </div>
                     </div>
 
                     {/* Official Right Thumbprint Box */}
-                    <div style={{ width: "115px", textAlign: "center", border: "1.5px solid #000", borderRadius: "6px", padding: "5px 3px", backgroundColor: "#fafafa" }}>
-                      <div style={{ fontSize: "9px", fontWeight: "bold", color: "#000", marginBottom: "3px" }}>
+                    <div style={{ width: "125px", textAlign: "center", border: "1.5px solid #0f172a", borderRadius: "6px", padding: "6px 6px", backgroundColor: "#fafafa", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                      <div style={{ fontSize: "10px", fontWeight: "900", color: "#0f172a" }}>
                         بصمة إبهام اليد اليمنى
                       </div>
-                      <div style={{ width: "70px", height: "75px", border: "1.5px dashed #475569", margin: "0 auto", borderRadius: "6px", display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8", fontSize: "9px" }}>
+                      <div style={{ width: "85px", height: "95px", border: "2px dashed #475569", margin: "4px auto", borderRadius: "6px", display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8", fontSize: "9.5px", backgroundColor: "#fff" }}>
                         (محل البصمة)
                       </div>
-                      <div style={{ fontSize: "8px", color: "#64748b", marginTop: "2px" }}>
+                      <div style={{ fontSize: "8.5px", color: "#64748b", fontWeight: "bold" }}>
                         Right Thumbprint
                       </div>
                     </div>
 
                     {/* Store Manager Signoff */}
-                    <div style={{ flex: 1, border: "1px solid #cbd5e1", borderRadius: "6px", padding: "6px 8px", backgroundColor: "#f8fafc" }}>
-                      <div style={{ fontWeight: "bold", fontSize: "10.5px", borderBottom: "1.5px solid #000", paddingBottom: "2px", marginBottom: "4px", display: "flex", justifyContent: "space-between" }}>
-                        <span>مدير الفرع (المستلم والمصفي)</span>
-                        <span style={{ fontSize: "9px", color: "#64748b" }}>Store Manager</span>
-                      </div>
-                      <div style={{ fontSize: "9.5px", lineHeight: "1.5" }}>
-                        <div><strong>الصفة:</strong> مدير فرع {branchTitleAr}</div>
-                        <div><strong>إخلاء العهد:</strong> تم تسليم كافة العهد بالكامل</div>
-                        <div style={{ display: "flex", alignItems: "center", marginTop: "3px" }}>
-                          <strong style={{ width: "45px" }}>التوقيع:</strong>
-                          <div style={{ flex: 1, borderBottom: "1px dotted #000", height: "18px" }}></div>
+                    <div style={{ flex: 1.1, border: "1px solid #cbd5e1", borderRadius: "6px", padding: "8px 10px", backgroundColor: "#f8fafc", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                      <div>
+                        <div style={{ fontWeight: "900", fontSize: "11.5px", borderBottom: "1.5px solid #0f172a", paddingBottom: "3px", marginBottom: "6px", display: "flex", justifyContent: "space-between", color: "#0f172a" }}>
+                          <span>مدير الفرع (المستلم والمصفي)</span>
+                          <span style={{ fontSize: "9.5px", color: "#64748b" }}>Store Manager</span>
                         </div>
-                        <div style={{ display: "flex", alignItems: "center", marginTop: "3px" }}>
-                          <strong style={{ width: "45px" }}>التاريخ:</strong>
-                          <div style={{ flex: 1, borderBottom: "1px dotted #000", height: "16px" }}></div>
+                        <div style={{ fontSize: "10.5px", lineHeight: "1.6" }}>
+                          <div><strong>الصفة:</strong> مدير فرع {branchTitleAr}</div>
+                          <div><strong>حالة العهد:</strong> <span style={{ color: "#059669", fontWeight: "bold" }}>تم تسليم كافة العهد بالكامل</span></div>
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ display: "flex", alignItems: "flex-end", marginTop: "10px" }}>
+                          <strong style={{ width: "50px", fontSize: "11px" }}>التوقيع:</strong>
+                          <div style={{ flex: 1, borderBottom: "1.5px dotted #0f172a", height: "24px" }}></div>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "flex-end", marginTop: "8px" }}>
+                          <strong style={{ width: "50px", fontSize: "11px" }}>التاريخ:</strong>
+                          <div style={{ flex: 1, borderBottom: "1.5px dotted #0f172a", height: "20px" }}></div>
                         </div>
                       </div>
                     </div>
 
                     {/* Company Seal Box */}
-                    <div style={{ width: "115px", textAlign: "center", border: "1px solid #cbd5e1", borderRadius: "6px", padding: "5px 3px", backgroundColor: "#f8fafc" }}>
-                      <div style={{ fontSize: "9px", fontWeight: "bold", color: "#000", marginBottom: "3px" }}>
+                    <div style={{ width: "125px", textAlign: "center", border: "1px solid #cbd5e1", borderRadius: "6px", padding: "6px 6px", backgroundColor: "#f8fafc", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                      <div style={{ fontSize: "10px", fontWeight: "900", color: "#0f172a" }}>
                         اعتماد وخاتم الشركة
                       </div>
-                      <div style={{ width: "70px", height: "70px", border: "1.5px dashed #94a3b8", borderRadius: "50%", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8", fontSize: "8.5px" }}>
+                      <div style={{ width: "85px", height: "85px", border: "1.5px dashed #94a3b8", borderRadius: "50%", margin: "8px auto", display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8", fontSize: "9.5px", backgroundColor: "#fff" }}>
                         خاتم المنشأة الرسمي
                       </div>
-                      <div style={{ fontSize: "8px", color: "#64748b", marginTop: "3px" }}>
-                        Company Seal
+                      <div style={{ fontSize: "8.5px", color: "#64748b", fontWeight: "bold" }}>
+                        Official Stamp
                       </div>
                     </div>
 
                   </div>
                 </div>
 
-                <div style={{ textAlign: "center", marginTop: "8px", fontSize: "9px", fontWeight: "bold", color: "#666" }}>
-                  --- وثيقة مخالصة رسمية معتمدة وفقاً لأحكام قانون العمل المصري رقم 12 لسنة 2003 ---
+                {/* Official Legal Footer */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #cbd5e1", paddingTop: "5px", fontSize: "9.5px", color: "#64748b", fontWeight: "bold" }}>
+                  <span>وثيقة قانونية رسمية معتمدة وفقاً للمادتين (6) و (125) من قانون العمل المصري رقم 12 لسنة 2003</span>
+                  <span>(نسخة أصلية موثقة لملف خدمة العامل بالفرع)</span>
                 </div>
 
               </div>
