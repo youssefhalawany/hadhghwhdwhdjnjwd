@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useBranch } from "@/context/BranchContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { db, auth } from "@/lib/firebase";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
 import { 
   Printer, 
   Loader2, 
@@ -153,7 +153,8 @@ export default function SafeReportPage() {
       depositsRaw,
       payrollsRaw,
       adjustmentsRaw,
-      loansRaw
+      loansRaw,
+      employeesRaw
     ] = await Promise.all([
       safeGetDocs("sales"),
       safeGetDocs("cash_payments"),
@@ -161,8 +162,17 @@ export default function SafeReportPage() {
       safeGetDocs("deposits"),
       safeGetDocs("payroll_lines"),
       safeGetDocs("adjustments"),
-      safeGetDocs("loans")
+      safeGetDocs("loans"),
+      safeGetDocs("employees")
     ]);
+
+    // Build employees map by ID
+    const employeesMap: Record<string, string> = {};
+    employeesRaw.forEach((emp: any) => {
+      if (emp.id && emp.name) {
+        employeesMap[emp.id] = emp.name;
+      }
+    });
 
     // Deduplicate credit_payments against cash_payments (so neither missed nor double counted)
     const uniqueCreditPayments: any[] = [];
@@ -190,7 +200,8 @@ export default function SafeReportPage() {
       deposits: depositsRaw,
       payrolls: payrollsRaw,
       adjustments: adjustmentsRaw,
-      loans: loansRaw
+      loans: loansRaw,
+      employeesMap
     };
   };
 
@@ -219,6 +230,7 @@ export default function SafeReportPage() {
     let periodDepositsFromBank = 0;
 
     let periodPayrolls = 0;
+    let periodBankPayrolls = 0;
     let periodLoans = 0;
 
     // Itemized list of period transactions for auditability
@@ -403,7 +415,6 @@ export default function SafeReportPage() {
         if (d < startDateStr) openingBank += amt;
         else if (d >= startDateStr && d <= endDateStr) {
           periodDepositsToBank += amt;
-          // Avoid duplicate entry if it was safe-to-bank
           if (from !== "safe") {
             itemizedTransactions.push({
               id: dep.id,
@@ -436,27 +447,50 @@ export default function SafeReportPage() {
       }
     });
 
-    // 5. PAYROLL DISBURSEMENTS (CASH)
+    // 5. PAYROLL DISBURSEMENTS (PRIORITIZE postedToFinanceAt, with employee names)
     docs.payrolls.forEach((pr: any) => {
       if (!matchesBranch(pr, targetBranch)) return;
-      const d = normalizeDate(pr.createdAt || pr.date);
+      // Critical fix: The actual safe disbursement date is postedToFinanceAt / paidDate, NOT the draft createdAt
+      const d = normalizeDate(pr.postedToFinanceAt || pr.paidDate || pr.date || pr.createdAt);
       if (!d) return;
 
       const amt = Number(pr.netPay || pr.amount || 0);
-      if (d < startDateStr) {
-        openingSafe -= amt;
-      } else if (d >= startDateStr && d <= endDateStr) {
-        periodPayrolls += amt;
-        itemizedTransactions.push({
-          id: pr.id,
-          date: d,
-          category: "payroll",
-          titleEn: `Staff Payroll: ${pr.employeeName || pr.name || "Employee"}`,
-          titleAr: `راتب موظف: ${pr.employeeName || pr.name || "موظف"}`,
-          safeChange: -amt,
-          bankChange: 0,
-          details: `Net Pay: ${amt.toLocaleString()} EGP`
-        });
+      const method = (pr.paymentMethod || pr.method || "cash").toLowerCase();
+      const empName = pr.employeeName || pr.name || docs.employeesMap[pr.employeeId] || (isAr ? "موظف" : "Employee");
+
+      if (method === "cash") {
+        if (d < startDateStr) {
+          openingSafe -= amt;
+        } else if (d >= startDateStr && d <= endDateStr) {
+          periodPayrolls += amt;
+          itemizedTransactions.push({
+            id: pr.id,
+            date: d,
+            category: "payroll",
+            titleEn: `Staff Payroll (Cash): ${empName}`,
+            titleAr: `راتب موظف (نقداً): ${empName}`,
+            safeChange: -amt,
+            bankChange: 0,
+            details: `Month: ${pr.month || "N/A"} | Net Pay: ${amt.toLocaleString()} EGP`
+          });
+        }
+      } else {
+        // Paid via Bank Transfer / Visa
+        if (d < startDateStr) {
+          openingBank -= amt;
+        } else if (d >= startDateStr && d <= endDateStr) {
+          periodBankPayrolls += amt;
+          itemizedTransactions.push({
+            id: pr.id,
+            date: d,
+            category: "payroll_bank",
+            titleEn: `Staff Payroll (Bank): ${empName}`,
+            titleAr: `راتب موظف (بنكي): ${empName}`,
+            safeChange: 0,
+            bankChange: -amt,
+            details: `Month: ${pr.month || "N/A"} | Net Pay: ${amt.toLocaleString()} EGP`
+          });
+        }
       }
     });
 
@@ -466,6 +500,8 @@ export default function SafeReportPage() {
         if (!matchesBranch(adj, targetBranch)) return;
         const d = normalizeDate(adj.date || adj.createdAt);
         const amt = Number(adj.amount || 0);
+        const empName = adj.employeeName || adj.name || docs.employeesMap[adj.employeeId] || (isAr ? "موظف" : "Employee");
+
         if (!d || d < startDateStr) {
           openingSafe -= amt;
         } else if (d >= startDateStr && d <= endDateStr) {
@@ -474,11 +510,11 @@ export default function SafeReportPage() {
             id: adj.id,
             date: d || startDateStr,
             category: "loan",
-            titleEn: `Staff Loan: ${adj.employeeName || "Employee Advance"}`,
-            titleAr: `سلفة موظف: ${adj.employeeName || "سلفة"}`,
+            titleEn: `Staff Loan / Advance: ${empName}`,
+            titleAr: `سلفة موظف: ${empName}`,
             safeChange: -amt,
             bankChange: 0,
-            details: `Amount: ${amt.toLocaleString()} EGP`
+            details: `Reason: ${adj.reason || "Advance"} | Amount: ${amt.toLocaleString()} EGP`
           });
         }
       }
@@ -488,6 +524,8 @@ export default function SafeReportPage() {
       if (!matchesBranch(ln, targetBranch)) return;
       const d = normalizeDate(ln.date || ln.createdAt);
       const amt = Number(ln.approved || ln.amount || 0);
+      const empName = ln.employeeName || ln.name || docs.employeesMap[ln.employeeId] || (isAr ? "موظف" : "Employee");
+
       if (!d || d < startDateStr) {
         openingSafe -= amt;
       } else if (d >= startDateStr && d <= endDateStr) {
@@ -496,11 +534,11 @@ export default function SafeReportPage() {
           id: ln.id,
           date: d || startDateStr,
           category: "loan",
-          titleEn: `Staff Loan / Advance: ${ln.employeeName || "Employee"}`,
-          titleAr: `سلفة موظف: ${ln.employeeName || "موظف"}`,
+          titleEn: `Staff Loan / Advance: ${empName}`,
+          titleAr: `سلفة موظف: ${empName}`,
           safeChange: -amt,
           bankChange: 0,
-          details: `Amount: ${amt.toLocaleString()} EGP`
+          details: `Reason: ${ln.reason || "Advance"} | Amount: ${amt.toLocaleString()} EGP`
         });
       }
     });
@@ -514,7 +552,7 @@ export default function SafeReportPage() {
     const closingSafe = openingSafe + safeInflows - safeOutflows;
 
     const bankInflows = periodSalesVisa + periodDepositsToBank;
-    const bankOutflows = periodBankPayments + periodBankTax + periodDepositsFromBank;
+    const bankOutflows = periodBankPayments + periodBankTax + periodDepositsFromBank + periodBankPayrolls;
     const closingBank = openingBank + bankInflows - bankOutflows;
 
     return {
@@ -710,7 +748,7 @@ export default function SafeReportPage() {
               </h2>
               <p className="text-xs text-slate-400 font-medium mt-1">
                 {isAr 
-                  ? "تسوية نقدية شاملة ومطابقة دقيقة لكافة الإيرادات، المصروفات، السلف، وحساب البنك لكل يوم."
+                  ? "تسوية نقدية شاملة ومطابقة دقيقة لكافة الإيرادات، المصروفات، السلف، مسحوبات الرواتب، وحساب البنك لكل يوم."
                   : "Verified cash drawer & bank account reconciliations with accurate opening & closing balances for all days."}
               </p>
             </div>
