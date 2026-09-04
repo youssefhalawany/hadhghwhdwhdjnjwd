@@ -108,6 +108,35 @@ export default function AdminPayrollPage() {
   const [showPaidModal, setShowPaidModal] = useState<PayrollRecord | null>(null);
   const [paidDate, setPaidDate] = useState<string>(new Date().toISOString().split("T")[0]);
 
+  // Edit Paid Payroll State
+  const [editingPaidRecord, setEditingPaidRecord] = useState<PayrollRecord | null>(null);
+  const [paidEditForm, setPaidEditForm] = useState<{
+    days: number;
+    standardPay: number;
+    overtime: number;
+    bonus: number;
+    deductions: number;
+    loanThisMonth: number;
+    insurance: number;
+    paymentMethod: 'cash' | 'bank' | 'cheque';
+    month: string;
+    paidDateInput: string;
+    customStandardPay: boolean;
+  }>({
+    days: 30,
+    standardPay: 0,
+    overtime: 0,
+    bonus: 0,
+    deductions: 0,
+    loanThisMonth: 0,
+    insurance: 0,
+    paymentMethod: 'cash',
+    month: '',
+    paidDateInput: new Date().toISOString().split("T")[0],
+    customStandardPay: false
+  });
+  const [isSavingPaid, setIsSavingPaid] = useState(false);
+
   const [currentDate, setCurrentDate] = useState("");
 
   const [isPrinting, setIsPrinting] = useState(false);
@@ -580,6 +609,121 @@ export default function AdminPayrollPage() {
       toast.success("Draft deleted");
     } catch (err: any) {
       toast.error("Failed to delete draft: " + err.message);
+    }
+  };
+
+  // Helper to normalize any date into YYYY-MM-DD for date inputs
+  const getValidDateInput = (val: any): string => {
+    if (!val) return new Date().toISOString().split("T")[0];
+    if (typeof val === "string") {
+      if (/^\d{4}-\d{2}-\d{2}/.test(val)) return val.slice(0, 10);
+      const dmy = val.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      if (dmy) {
+        const [_, d, m, y] = dmy;
+        return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+      }
+      const parsed = new Date(val);
+      if (!isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+    }
+    if (val && typeof val.toDate === "function") {
+      return val.toDate().toISOString().slice(0, 10);
+    }
+    if (val && typeof val._seconds === "number") {
+      return new Date(val._seconds * 1000).toISOString().slice(0, 10);
+    }
+    if (val && typeof val.seconds === "number") {
+      return new Date(val.seconds * 1000).toISOString().slice(0, 10);
+    }
+    return new Date().toISOString().split("T")[0];
+  };
+
+  const handleOpenEditPaid = (record: PayrollRecord) => {
+    const dateInput = getValidDateInput(record.postedToFinanceAt || record.createdAt);
+    setEditingPaidRecord(record);
+    setPaidEditForm({
+      days: record.days ?? 30,
+      standardPay: record.standardPay ?? 0,
+      overtime: record.overtime ?? 0,
+      bonus: record.bonus ?? 0,
+      deductions: record.deductions ?? 0,
+      loanThisMonth: record.loanThisMonth ?? 0,
+      insurance: record.insurance ?? 0,
+      paymentMethod: record.paymentMethod || 'cash',
+      month: record.month || '',
+      paidDateInput: dateInput,
+      customStandardPay: false
+    });
+  };
+
+  const calcPaidFormPays = () => {
+    if (!editingPaidRecord) return { standardPay: 0, netPay: 0, baseSalary: 3000 };
+    const emp = employees.find(e => e.id === editingPaidRecord.employeeId);
+    const base = Number(emp?.baseSalary) || Number(emp?.salary) || 3000;
+    const days = Number(paidEditForm.days) || 0;
+    
+    const standardPay = paidEditForm.customStandardPay 
+      ? (Number(paidEditForm.standardPay) || 0) 
+      : Math.round((base / 30) * days);
+
+    const netPay = standardPay 
+      + (Number(paidEditForm.overtime) || 0) 
+      + (Number(paidEditForm.bonus) || 0) 
+      - (Number(paidEditForm.deductions) || 0) 
+      - (Number(paidEditForm.loanThisMonth) || 0) 
+      - (Number(paidEditForm.insurance) || 0);
+
+    return { standardPay, netPay, baseSalary: base };
+  };
+
+  const handleSavePaidRecord = async () => {
+    if (!editingPaidRecord?.id) return;
+    setIsSavingPaid(true);
+    try {
+      const { standardPay, netPay } = calcPaidFormPays();
+      
+      let postedToFinanceAt = editingPaidRecord.postedToFinanceAt;
+      if (paidEditForm.paidDateInput) {
+        const dateObj = new Date(paidEditForm.paidDateInput + "T12:00:00");
+        postedToFinanceAt = dateObj.toLocaleString('en-GB', { timeZone: 'Africa/Cairo' });
+      }
+
+      await updateDoc(doc(db, "payroll_lines", editingPaidRecord.id), {
+        days: Number(paidEditForm.days) || 0,
+        standardPay,
+        overtime: Number(paidEditForm.overtime) || 0,
+        bonus: Number(paidEditForm.bonus) || 0,
+        deductions: Number(paidEditForm.deductions) || 0,
+        loanThisMonth: Number(paidEditForm.loanThisMonth) || 0,
+        insurance: Number(paidEditForm.insurance) || 0,
+        paymentMethod: paidEditForm.paymentMethod,
+        month: paidEditForm.month,
+        netPay,
+        postedToFinanceAt,
+        updatedAt: new Date().toLocaleString('en-GB', { timeZone: 'Africa/Cairo' }),
+        updatedBy: currentUserEmail
+      });
+
+      toast.success("Paid payroll record updated successfully");
+      setEditingPaidRecord(null);
+    } catch (err: any) {
+      toast.error("Failed to update payroll record: " + err.message);
+    } finally {
+      setIsSavingPaid(false);
+    }
+  };
+
+  const handleDeletePaidRecord = async () => {
+    if (!editingPaidRecord?.id) return;
+    if (!confirm("Are you sure you want to permanently delete this paid payroll record? This action cannot be undone and will affect financial reports.")) return;
+    setIsSavingPaid(true);
+    try {
+      await deleteDoc(doc(db, "payroll_lines", editingPaidRecord.id));
+      toast.success("Paid payroll record deleted");
+      setEditingPaidRecord(null);
+    } catch (err: any) {
+      toast.error("Failed to delete record: " + err.message);
+    } finally {
+      setIsSavingPaid(false);
     }
   };
 
@@ -1080,20 +1224,30 @@ export default function AdminPayrollPage() {
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-500">{String(d.createdBy || "")}</td>
                       <td className="px-4 py-3 text-right">
-                        <button
-                          onClick={() => setPrintPayslipRecord(d)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 hover:text-indigo-600 transition-colors shadow-sm"
-                        >
-                          <Printer className="w-3.5 h-3.5" />
-                          Print Payslip
-                        </button>
+                        <div className="flex justify-end items-center gap-2">
+                          <button
+                            onClick={() => handleOpenEditPaid(d)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors shadow-sm"
+                            title="Edit Paid Payroll Record"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => setPrintPayslipRecord(d)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-indigo-600 transition-colors shadow-sm"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                            Print Payslip
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
                 })}
                 {filteredLines.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-slate-500">No paid history found.</td>
+                    <td colSpan={6} className="px-4 py-8 text-center text-slate-500">No paid history found.</td>
                   </tr>
                 )}
               </tbody>
@@ -1140,6 +1294,247 @@ export default function AdminPayrollPage() {
         </div>
       </div>
     )}
+
+    {/* EDIT PAID PAYROLL MODAL */}
+    {editingPaidRecord && (() => {
+      const emp = employees.find(e => e.id === editingPaidRecord.employeeId);
+      const { standardPay: calcStd, netPay: calcNet, baseSalary } = calcPaidFormPays();
+
+      return (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 print:hidden overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200 my-8">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-start">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="p-2 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 rounded-xl">
+                    <Pencil className="w-5 h-5" />
+                  </span>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-xl font-black text-slate-800 dark:text-white">
+                        Edit Paid Payroll Record
+                      </h3>
+                      <span className="px-2 py-0.5 text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400 rounded-full">
+                        PAID RECORD
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Employee: <strong className="text-slate-800 dark:text-slate-200">{emp?.name || editingPaidRecord.employeeId}</strong> • Branch: {emp?.storeId || editingPaidRecord.storeId || 'N/A'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <button 
+                onClick={() => setEditingPaidRecord(null)}
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+              {/* Top row: Month, Payment Date, Payment Method */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                    Payroll Month
+                  </label>
+                  <input 
+                    type="month" 
+                    value={paidEditForm.month}
+                    onChange={e => setPaidEditForm({ ...paidEditForm, month: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                    Disbursement Date
+                  </label>
+                  <input 
+                    type="date" 
+                    value={paidEditForm.paidDateInput}
+                    onChange={e => setPaidEditForm({ ...paidEditForm, paidDateInput: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                    Payment Method
+                  </label>
+                  <select 
+                    value={paidEditForm.paymentMethod}
+                    onChange={e => setPaidEditForm({ ...paidEditForm, paymentMethod: e.target.value as any })}
+                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium capitalize"
+                  >
+                    <option value="cash">Cash (Safe / الخزنة)</option>
+                    <option value="bank">Bank (Bank Misr / بنك مصر)</option>
+                    <option value="cheque">Cheque (شيك)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Salary & Days Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 bg-slate-50 dark:bg-slate-950/60 rounded-2xl border border-slate-100 dark:border-slate-800">
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                    Base Salary (Contract)
+                  </label>
+                  <div className="p-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono text-slate-600 dark:text-slate-300 font-bold">
+                    {baseSalary.toLocaleString()} EGP
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                    Days Worked
+                  </label>
+                  <input 
+                    type="number" 
+                    value={paidEditForm.days}
+                    onChange={e => setPaidEditForm({ ...paidEditForm, days: Number(e.target.value), customStandardPay: false })}
+                    className="w-full p-2.5 bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800 rounded-xl text-sm font-bold text-indigo-700 dark:text-indigo-400"
+                  />
+                </div>
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Standard Pay
+                    </label>
+                    <button 
+                      type="button" 
+                      onClick={() => setPaidEditForm(f => ({ ...f, customStandardPay: !f.customStandardPay, standardPay: calcStd }))}
+                      className="text-[10px] text-indigo-600 hover:underline"
+                    >
+                      {paidEditForm.customStandardPay ? "Auto-calculate" : "Manual override"}
+                    </button>
+                  </div>
+                  {paidEditForm.customStandardPay ? (
+                    <input 
+                      type="number" 
+                      value={paidEditForm.standardPay}
+                      onChange={e => setPaidEditForm({ ...paidEditForm, standardPay: Number(e.target.value) })}
+                      className="w-full p-2.5 bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 rounded-xl text-sm font-bold text-amber-700 dark:text-amber-400"
+                    />
+                  ) : (
+                    <div className="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-mono font-bold text-slate-800 dark:text-slate-200">
+                      {calcStd.toLocaleString()} EGP
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Additions and Deductions */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block mb-1">
+                    + Overtime (EGP)
+                  </label>
+                  <input 
+                    type="number" 
+                    value={paidEditForm.overtime}
+                    onChange={e => setPaidEditForm({ ...paidEditForm, overtime: Number(e.target.value) })}
+                    className="w-full p-2.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block mb-1">
+                    + Bonus (EGP)
+                  </label>
+                  <input 
+                    type="number" 
+                    value={paidEditForm.bonus}
+                    onChange={e => setPaidEditForm({ ...paidEditForm, bonus: Number(e.target.value) })}
+                    className="w-full p-2.5 bg-white dark:bg-slate-950 border border-emerald-200 dark:border-emerald-800 rounded-xl text-sm font-semibold text-emerald-600"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-red-500 uppercase tracking-wider block mb-1">
+                    - Deductions (EGP)
+                  </label>
+                  <input 
+                    type="number" 
+                    value={paidEditForm.deductions}
+                    onChange={e => setPaidEditForm({ ...paidEditForm, deductions: Number(e.target.value) })}
+                    className="w-full p-2.5 bg-white dark:bg-slate-950 border border-red-200 dark:border-red-800 rounded-xl text-sm font-semibold text-red-600"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-orange-500 uppercase tracking-wider block mb-1">
+                    - Loan (EGP)
+                  </label>
+                  <input 
+                    type="number" 
+                    value={paidEditForm.loanThisMonth}
+                    onChange={e => setPaidEditForm({ ...paidEditForm, loanThisMonth: Number(e.target.value) })}
+                    className="w-full p-2.5 bg-white dark:bg-slate-950 border border-orange-200 dark:border-orange-800 rounded-xl text-sm font-semibold text-orange-600"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                    - Insurance (EGP)
+                  </label>
+                  <input 
+                    type="number" 
+                    value={paidEditForm.insurance}
+                    onChange={e => setPaidEditForm({ ...paidEditForm, insurance: Number(e.target.value) })}
+                    className="w-full p-2.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-semibold"
+                  />
+                </div>
+              </div>
+
+              {/* Net Pay Highlight Banner */}
+              <div className="p-4 bg-gradient-to-r from-indigo-500/10 via-emerald-500/10 to-transparent border border-indigo-100 dark:border-indigo-900/40 rounded-2xl flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Recalculated Net Paid Amount
+                  </span>
+                  <div className="text-xs text-slate-400 mt-0.5">
+                    Standard ({calcStd.toLocaleString()}) + Overtime ({paidEditForm.overtime}) + Bonus ({paidEditForm.bonus}) - Deductions ({Number(paidEditForm.deductions) + Number(paidEditForm.loanThisMonth) + Number(paidEditForm.insurance)})
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl sm:text-3xl font-black font-mono text-emerald-600 dark:text-emerald-400">
+                    {calcNet.toLocaleString()} <span className="text-sm font-sans font-bold">EGP</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 flex flex-col sm:flex-row justify-between items-center gap-3">
+              <button
+                type="button"
+                onClick={handleDeletePaidRecord}
+                disabled={isSavingPaid}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/40 rounded-xl transition-colors disabled:opacity-50"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete Record
+              </button>
+
+              <div className="w-full sm:w-auto flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setEditingPaidRecord(null)}
+                  disabled={isSavingPaid}
+                  className="flex-1 sm:flex-none px-5 py-2.5 text-xs font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSavePaidRecord}
+                  disabled={isSavingPaid}
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-6 py-2.5 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md transition-all disabled:opacity-50"
+                >
+                  <Save className="w-4 h-4" />
+                  {isSavingPaid ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    })()}
 
     {/* PRINTABLE REPORT */}
     <div className={`hidden ${printPayslipRecord || isBatchPrinting ? 'hidden' : 'print:block'} w-full text-black bg-white`} style={{ fontFamily: "Arial, sans-serif", fontSize: "11px" }}>
