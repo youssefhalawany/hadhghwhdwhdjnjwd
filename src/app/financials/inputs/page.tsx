@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { collection, query, where, getAggregateFromServer, sum, orderBy, limit, onSnapshot } from "firebase/firestore";
+import { collection, query, where, getDocs, orderBy, limit, onSnapshot } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { Wallet, Landmark, Loader2, AlertTriangle, ShieldCheck, ExternalLink, TrendingUp, DollarSign, ShieldAlert, Package, Activity, CheckCircle, Clock } from "lucide-react";
 import { useBranch } from "@/context/BranchContext";
@@ -113,155 +113,208 @@ export default function FinancialInputsOverview() {
     return () => unsubscribe();
   }, [currentBranch]);
 
+  // Helper function to normalize dates from timestamps/strings
+  const normalizeDate = (val: any): string | null => {
+    if (!val) return null;
+    if (typeof val === "string") {
+      if (/^\d{4}-\d{2}-\d{2}/.test(val)) return val.slice(0, 10);
+      const dmy = val.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      if (dmy) {
+        const [_, d, m, y] = dmy;
+        return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+      }
+      const parsed = new Date(val);
+      if (!isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+    }
+    if (val && typeof val.toDate === "function") return val.toDate().toISOString().slice(0, 10);
+    if (val && typeof val._seconds === "number") return new Date(val._seconds * 1000).toISOString().slice(0, 10);
+    if (val && typeof val.seconds === "number") return new Date(val.seconds * 1000).toISOString().slice(0, 10);
+    if (val instanceof Date && !isNaN(val.getTime())) return val.toISOString().slice(0, 10);
+    return null;
+  };
+
+  // Branch matching identical to Safe Report
+  const matchesBranch = (docData: any, targetBranch: string): boolean => {
+    if (!targetBranch || targetBranch === "all") return true;
+    const docBranch = (docData.storeId || docData.branchId || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const target = targetBranch.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (!docBranch) return true;
+    return docBranch.includes(target) || target.includes(docBranch);
+  };
+
   useEffect(() => {
     async function fetchStats() {
       setLoading(true);
       setMissingIndexes([]);
-      
-      const collectedUrls = new Set<string>();
 
       try {
-        const branchIds: string[] = [];
-        if (currentBranch === "all") {
-          // No filter
-        } else if (currentBranch === "alamein4") {
-          branchIds.push("alamein4", "eL-alamein-4");
-        } else if (currentBranch === "ola") {
-          branchIds.push("ola", "ola-el-koronfol");
-        } else {
-          branchIds.push(currentBranch);
-        }
-
-        // --- ZERO READ: aggregate sums on the server ---
-        
-        let salesQ: any = collection(db, "sales");
-        let cashPaymentsQ: any = query(collection(db, "cash_payments"), where("method", "==", "cash"));
-        let depositsToQ: any = query(collection(db, "deposits"), where("to", "==", "safe"));
-        let depositsFromQ: any = query(collection(db, "deposits"), where("from", "==", "safe"));
-        let payrollsQ: any = collection(db, "payroll_lines");
-        let newLoansQ: any = query(collection(db, "adjustments"), where("type", "==", "loan"));
-        let oldLoansQ: any = collection(db, "loans");
-        let oldCreditsCashQ: any = query(collection(db, "credit_payments"), where("method", "==", "cash"));
-        
-        // Bank Queries
-        let cashPaymentsVisaQ: any = query(collection(db, "cash_payments"), where("method", "==", "visa"));
-        let cashPaymentsBankTransferQ: any = query(collection(db, "cash_payments"), where("method", "==", "bank_transfer"));
-        let cashPaymentsBankQ: any = query(collection(db, "cash_payments"), where("method", "==", "bank"));
-        let creditPaymentsVisaQ: any = query(collection(db, "credit_payments"), where("method", "==", "visa"));
-        let creditPaymentsBankTransferQ: any = query(collection(db, "credit_payments"), where("method", "==", "bank_transfer"));
-        let creditPaymentsBankQ: any = query(collection(db, "credit_payments"), where("method", "==", "bank"));
-        let depositsToBankQ: any = query(collection(db, "deposits"), where("to", "==", "bank"));
-        let depositsFromBankQ: any = query(collection(db, "deposits"), where("from", "==", "bank"));
-
-        // If manager, we MUST filter by storeId or Firestore rules will reject with Permission Denied
-        if (branchIds.length > 0) {
-          salesQ = query(salesQ, where("storeId", "in", branchIds));
-          cashPaymentsQ = query(cashPaymentsQ, where("storeId", "in", branchIds));
-          depositsToQ = query(depositsToQ, where("storeId", "in", branchIds));
-          depositsFromQ = query(depositsFromQ, where("storeId", "in", branchIds));
-          payrollsQ = query(payrollsQ, where("storeId", "in", branchIds));
-          oldCreditsCashQ = query(oldCreditsCashQ, where("storeId", "in", branchIds));
-          newLoansQ = query(newLoansQ, where("storeId", "in", branchIds));
-          oldLoansQ = query(oldLoansQ, where("storeId", "in", branchIds));
-          
-          cashPaymentsVisaQ = query(cashPaymentsVisaQ, where("storeId", "in", branchIds));
-          cashPaymentsBankTransferQ = query(cashPaymentsBankTransferQ, where("storeId", "in", branchIds));
-          cashPaymentsBankQ = query(cashPaymentsBankQ, where("storeId", "in", branchIds));
-          creditPaymentsVisaQ = query(creditPaymentsVisaQ, where("storeId", "in", branchIds));
-          creditPaymentsBankTransferQ = query(creditPaymentsBankTransferQ, where("storeId", "in", branchIds));
-          creditPaymentsBankQ = query(creditPaymentsBankQ, where("storeId", "in", branchIds));
-          depositsToBankQ = query(depositsToBankQ, where("storeId", "in", branchIds));
-          depositsFromBankQ = query(depositsFromBankQ, where("storeId", "in", branchIds));
-        }
-
-        // Helper for safe fetching
-        const safeSumAgg = async (q: any, sumFields: Record<string, ReturnType<typeof sum>>, name: string): Promise<any> => {
+        const safeGetDocs = async (collectionName: string) => {
           try {
-            const agg = await getAggregateFromServer(q, sumFields);
-            return agg.data();
-          } catch (err: any) {
-            if (err.message?.includes("https://console.firebase.google.com")) {
-              const urlMatch = err.message.match(/(https:\/\/console\.firebase\.google\.com[^\s]*)/);
-              if (urlMatch) collectedUrls.add(urlMatch[0]);
-            } else {
-              console.error(`Query Error [${name}]:`, err);
-            }
-            return null;
+            const snap = await getDocs(collection(db, collectionName));
+            return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          } catch (e: any) {
+            console.warn(`Could not read ${collectionName}:`, e?.message);
+            return [];
           }
         };
 
         const [
-          salesData, cashPaymentsData, depositsToData, depositsFromData, payrollsData,
-          newLoansData, oldLoansData, oldCreditsCashData, visaPaymentsData,
-          bankTransferPaymentsData, visaCreditsData, bankTransferCreditsData, depositsToBankData, depositsFromBankData, visaTaxData, bankTransferTaxData, cashTaxData, cashPaymentsBankData, creditPaymentsBankData, bankTaxData] = await Promise.all([
-          safeSumAgg(salesQ, { cash: sum("cash"), overShort: sum("overShort"), visa: sum("visa") }, "sales"),
-          safeSumAgg(cashPaymentsQ, { val: sum("amount") }, "cash_payments"),
-          safeSumAgg(depositsToQ, { val: sum("amount") }, "deposits_to_safe"),
-          safeSumAgg(depositsFromQ, { val: sum("amount") }, "deposits_from_safe"),
-          safeSumAgg(payrollsQ, { val: sum("netPay") }, "payroll_lines"),
-          safeSumAgg(newLoansQ, { val: sum("amount") }, "adjustments_loans"),
-          safeSumAgg(oldLoansQ, { val: sum("approved") }, "loans"),
-          safeSumAgg(oldCreditsCashQ, { val: sum("amount") }, "credit_payments_cash"),
-          safeSumAgg(cashPaymentsVisaQ, { val: sum("amount") }, "cash_payments_visa"),
-          safeSumAgg(cashPaymentsBankTransferQ, { val: sum("amount") }, "cash_payments_bank_transfer"),
-          safeSumAgg(creditPaymentsVisaQ, { val: sum("amount") }, "credit_payments_visa"),
-          safeSumAgg(creditPaymentsBankTransferQ, { val: sum("amount") }, "credit_payments_bank_transfer"),
-          safeSumAgg(depositsToBankQ, { val: sum("amount") }, "deposits_to_bank"),
-          safeSumAgg(depositsFromBankQ, { val: sum("amount") }, "deposits_from_bank"),
-          safeSumAgg(cashPaymentsVisaQ, { val: sum("tax") }, "cash_payments_visa_tax"),
-          safeSumAgg(cashPaymentsBankTransferQ, { val: sum("tax") }, "cash_payments_bank_transfer_tax"),
-          safeSumAgg(cashPaymentsQ, { val: sum("tax") }, "cash_payments_tax"),
-          safeSumAgg(cashPaymentsBankQ, { val: sum("amount") }, "cash_payments_bank"),
-          safeSumAgg(creditPaymentsBankQ, { val: sum("amount") }, "credit_payments_bank"),
-          safeSumAgg(cashPaymentsBankQ, { val: sum("tax") }, "cash_payments_bank_tax")
+          salesRaw,
+          cashPaymentsRaw,
+          creditPaymentsRaw,
+          depositsRaw,
+          payrollsRaw,
+          adjustmentsRaw,
+          loansRaw
+        ] = await Promise.all([
+          safeGetDocs("sales"),
+          safeGetDocs("cash_payments"),
+          safeGetDocs("credit_payments"),
+          safeGetDocs("deposits"),
+          safeGetDocs("payroll_lines"),
+          safeGetDocs("adjustments"),
+          safeGetDocs("loans")
         ]);
 
-        if (collectedUrls.size > 0) {
-          setMissingIndexes(Array.from(collectedUrls));
-          setLoading(false);
-          return;
-        }
+        // Deduplicate credit_payments against cash_payments (exact match with safe-report)
+        const uniqueCreditPayments: any[] = [];
+        creditPaymentsRaw.forEach((cp: any) => {
+          const cpAmt = Math.round(Number(cp.amount || cp.total || 0));
+          const cpDate = normalizeDate(cp.date || cp.createdAt);
+          const cpMethod = (cp.method || "cash").toLowerCase();
+          const isDup = cashPaymentsRaw.some((cash: any) => {
+            const kAmt = Math.round(Number(cash.amount || cash.total || 0));
+            const kDate = normalizeDate(cash.date || cash.createdAt);
+            const kMethod = (cash.method || "cash").toLowerCase();
+            return (
+              (cash.creditId && cash.creditId === cp.creditId) ||
+              (cp.invoiceNumber && cash.invoiceNumber && cp.invoiceNumber === cash.invoiceNumber) ||
+              (kAmt === cpAmt && kDate === cpDate && kMethod === cpMethod)
+            );
+          });
+          if (!isDup) uniqueCreditPayments.push(cp);
+        });
 
-        const totalSales = (salesData?.cash || 0) + (salesData?.overShort || 0);
-        const totalVisaSales = salesData?.visa || 0;
+        // Compute Lifetime Ledger
+        let totalSalesCash = 0;
+        let totalOverAmount = 0;
+        let totalShortAmount = 0;
+        let totalVisaSales = 0;
 
-        const totalCashPayments = cashPaymentsData?.val || 0;
-        const depositsToSafe = depositsToData?.val || 0;
-        const depositsFromSafe = depositsFromData?.val || 0;
-        const totalPayrolls = payrollsData?.val || 0;
-        const totalNewLoans = newLoansData?.val || 0;
-        const totalOldLoans = oldLoansData?.val || 0;
-        const totalLoans = totalNewLoans + totalOldLoans;
-        const totalOldCreditsCash = oldCreditsCashData?.val || 0;
-        const totalTaxPaid = cashTaxData?.val || 0;
+        let totalCashPayments = 0;
+        let totalCashTaxPaid = 0;
+        let totalBankPayments = 0;
+        let totalBankTaxPaid = 0;
 
-        const totalVisaPayments = visaPaymentsData?.val || 0;
-        const totalBankTransferPayments = bankTransferPaymentsData?.val || 0;
-        const totalBankOnlyPayments = cashPaymentsBankData?.val || 0;
-        const totalBankPayments = totalVisaPayments + totalBankTransferPayments + totalBankOnlyPayments;
+        let depositsToSafe = 0;
+        let depositsFromSafe = 0;
+        let depositsToBank = 0;
+        let depositsFromBank = 0;
 
-        const totalVisaTax = visaTaxData?.val || 0;
-        const totalBankTransferTax = bankTransferTaxData?.val || 0;
-        const totalBankOnlyTax = bankTaxData?.val || 0;
-        const totalBankTaxPaid = totalVisaTax + totalBankTransferTax + totalBankOnlyTax;
+        let totalPayrolls = 0;
+        let totalBankPayrolls = 0;
+        let totalLoans = 0;
 
-        const totalVisaCredits = visaCreditsData?.val || 0;
-        const totalBankTransferCredits = bankTransferCreditsData?.val || 0;
-        const totalBankOnlyCredits = creditPaymentsBankData?.val || 0;
-        const totalBankCredits = totalVisaCredits + totalBankTransferCredits + totalBankOnlyCredits;
+        // 1. Sales
+        salesRaw.forEach((s: any) => {
+          if (!matchesBranch(s, currentBranch)) return;
+          const cash = Number(s.cash || 0);
+          const visa = Number(s.visa || 0);
+          const os = Number(s.overShort || 0);
+          const over = os > 0 ? os : 0;
+          const short = os < 0 ? Math.abs(os) : 0;
 
-        const depositsToBank = depositsToBankData?.val || 0;
-        const depositsFromBank = depositsFromBankData?.val || 0;
+          totalSalesCash += cash;
+          totalOverAmount += over;
+          totalShortAmount += short;
+          totalVisaSales += visa;
+        });
 
-        const safeMoney = totalSales - totalCashPayments + depositsToSafe - depositsFromSafe - totalPayrolls - totalLoans - totalOldCreditsCash - totalTaxPaid;
-        const bankMoney = totalVisaSales - totalBankPayments - totalBankTaxPaid - totalBankCredits + depositsToBank - depositsFromBank;
+        // 2. Cash Payments & Expenses
+        cashPaymentsRaw.forEach((p: any) => {
+          if (!matchesBranch(p, currentBranch)) return;
+          const method = (p.method || "cash").toLowerCase();
+          const amt = Number(p.amount || p.total || 0);
+          const tax = Number(p.tax || 0);
+
+          if (method === "cash") {
+            totalCashPayments += amt;
+            totalCashTaxPaid += tax;
+          } else if (["visa", "bank_transfer", "bank"].includes(method)) {
+            totalBankPayments += amt;
+            totalBankTaxPaid += tax;
+          }
+        });
+
+        // 3. Unique Credit Settlements
+        uniqueCreditPayments.forEach((p: any) => {
+          if (!matchesBranch(p, currentBranch)) return;
+          const method = (p.method || "cash").toLowerCase();
+          const amt = Number(p.amount || p.total || 0);
+
+          if (method === "cash") {
+            totalCashPayments += amt;
+          } else if (["visa", "bank_transfer", "bank"].includes(method)) {
+            totalBankPayments += amt;
+          }
+        });
+
+        // 4. Deposits
+        depositsRaw.forEach((dep: any) => {
+          if (!matchesBranch(dep, currentBranch)) return;
+          const amt = Number(dep.amount || 0);
+          const from = (dep.from || "").toLowerCase();
+          const to = (dep.to || "").toLowerCase();
+
+          if (to === "safe") depositsToSafe += amt;
+          if (from === "safe") depositsFromSafe += amt;
+          if (to === "bank") depositsToBank += amt;
+          if (from === "bank") depositsFromBank += amt;
+        });
+
+        // 5. Payrolls (Net pay disbursed from safe or bank)
+        payrollsRaw.forEach((pr: any) => {
+          if (!matchesBranch(pr, currentBranch)) return;
+          const amt = Number(pr.netPay || pr.amount || 0);
+          const method = (pr.paymentMethod || pr.method || "cash").toLowerCase();
+
+          if (method === "cash") {
+            totalPayrolls += amt;
+          } else {
+            totalBankPayrolls += amt;
+          }
+        });
+
+        // 6. Adjustments (Loans)
+        adjustmentsRaw.forEach((adj: any) => {
+          if (adj.type === "loan") {
+            if (!matchesBranch(adj, currentBranch)) return;
+            totalLoans += Number(adj.amount || 0);
+          }
+        });
+
+        // 7. Legacy Loans
+        loansRaw.forEach((ln: any) => {
+          if (!matchesBranch(ln, currentBranch)) return;
+          totalLoans += Number(ln.approved || ln.amount || 0);
+        });
+
+        // Reconciled Balances identical to Safe Report closing balances
+        const safeInflows = totalSalesCash + totalOverAmount + depositsToSafe;
+        const safeOutflows = totalShortAmount + totalCashPayments + totalCashTaxPaid + depositsFromSafe + totalPayrolls + totalLoans;
+        const safeMoney = safeInflows - safeOutflows;
+
+        const bankInflows = totalVisaSales + depositsToBank;
+        const bankOutflows = totalBankPayments + totalBankTaxPaid + depositsFromBank + totalBankPayrolls;
+        const bankMoney = bankInflows - bankOutflows;
+
+        const netCashSales = totalSalesCash + totalOverAmount - totalShortAmount;
 
         if (typeof window !== "undefined") {
           localStorage.setItem(`cached_safe_balance_${currentBranch}`, safeMoney.toString());
           localStorage.setItem(`cached_bank_balance_${currentBranch}`, bankMoney.toString());
           localStorage.setItem(`cached_total_cash_payments_${currentBranch}`, totalCashPayments.toString());
           localStorage.setItem(`cached_total_bank_payments_${currentBranch}`, totalBankPayments.toString());
-          localStorage.setItem(`cached_total_credits_collected_${currentBranch}`, (totalOldCreditsCash + totalBankCredits).toString());
           localStorage.setItem(`cached_total_payrolls_loans_${currentBranch}`, (totalPayrolls + totalLoans).toString());
           localStorage.setItem(`cached_deposits_out_safe_${currentBranch}`, depositsFromSafe.toString());
           localStorage.setItem(`cached_deposits_in_safe_${currentBranch}`, depositsToSafe.toString());
@@ -270,25 +323,25 @@ export default function FinancialInputsOverview() {
         }
 
         setStats({
-          totalSales,
+          totalSales: netCashSales,
           totalCashPayments,
           depositsToSafe,
           depositsFromSafe,
           totalPayrolls,
           totalLoans,
-          totalOldCreditsCash,
-          totalTaxPaid,
+          totalOldCreditsCash: 0,
+          totalTaxPaid: totalCashTaxPaid,
           safeMoney,
           totalVisaSales,
           totalBankPayments,
           depositsToBank,
           depositsFromBank,
-          totalBankCredits,
+          totalBankCredits: 0,
           totalBankTaxPaid,
           bankMoney
         });
       } catch (err: any) {
-        console.error("Aggregate fetch error:", err);
+        console.error("Ledger calculation error:", err);
       } finally {
         setLoading(false);
       }
