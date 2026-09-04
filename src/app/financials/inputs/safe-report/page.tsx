@@ -1260,9 +1260,9 @@ export default function SafeReportPage() {
                 </div>
               </div>
 
-              {/* ── III. MONTH-OVER-MONTH TREND (monthly only) ── */}
+              {/* ── III. MONTH-OVER-MONTH TREND (monthly only, screen only) ── */}
               {reportType === "month" && reportData.trendData && reportData.trendData.length > 0 && (
-                <div className="space-y-4 pt-4 border-t border-slate-800">
+                <div className="space-y-4 pt-4 border-t border-slate-800 no-print">
                   <h3 className="text-base font-black text-white flex items-center gap-2">
                     <TrendingUp className="text-amber-400" size={18} />
                     {isAr ? "الاتجاه الشهري للسيولة (Month-over-Month Trend)" : "Month-over-Month Balance Trend"}
@@ -1301,7 +1301,7 @@ export default function SafeReportPage() {
                 </div>
               )}
 
-              {/* ── IV. AUDIT DRILL-DOWN: ITEMIZED TRANSACTIONS FOR SELECTED PERIOD ── */}
+              {/* ── IV. AUDIT DRILL-DOWN: ITEMIZED TRANSACTIONS FOR SELECTED PERIOD (screen only) ── */}
               {reportData.itemizedTransactions && reportData.itemizedTransactions.length > 0 && (
                 <div className="space-y-4 pt-4 border-t border-slate-800 no-print">
                   <div className="flex items-center justify-between">
@@ -1363,27 +1363,26 @@ export default function SafeReportPage() {
               )}
 
               {/* ── OFFICIAL APPROVAL & SIGNATURES ── */}
-              <div className="pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400 print-avoid-break">
-                <div className="flex items-center gap-3">
-                  <div className="p-1.5 bg-white rounded-xl">
-                    <QRCode value={qrPayload} size={48} level="L" />
+              <div className="pt-2 border-t border-slate-800 flex flex-row items-center justify-between gap-4 text-[10px] text-slate-400 print-avoid-break">
+                <div className="flex items-center gap-2">
+                  <div className="p-1 bg-white rounded-lg">
+                    <QRCode value={qrPayload} size={36} level="L" />
                   </div>
                   <div>
-                    <p className="font-bold text-white font-mono">{accounts.safeCode} / {accounts.bankAccount}</p>
-                    <p className="text-[10px] text-slate-400">AUTHENTICATED BY ANH SYSTEM V2.0</p>
-                    <p className="text-[9px] text-slate-500">{new Date().toLocaleString("en-GB")}</p>
+                    <p className="font-bold text-white font-mono text-[10px]">{accounts.safeCode} / {accounts.bankAccount}</p>
+                    <p className="text-[8.5px] text-slate-400">AUTHENTICATED BY ANH SYSTEM V2.0 &nbsp;·&nbsp; {new Date().toLocaleDateString("en-GB")}</p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-8 text-center">
+                <div className="flex items-center gap-6 text-center">
                   <div>
-                    <p className="text-[10px] text-slate-500 uppercase mb-4">{isAr ? "مدير الفرع المسئول" : "Store Manager"}</p>
-                    <p className="text-xs font-bold text-slate-200 border-t border-slate-700 pt-1">{managerName}</p>
+                    <p className="text-[8.5px] text-slate-500 uppercase mb-2">{isAr ? "مدير الفرع المسئول" : "Store Manager"}</p>
+                    <p className="text-[10px] font-bold text-slate-200 border-t border-slate-700 pt-0.5">{managerName}</p>
                   </div>
 
                   <div>
-                    <p className="text-[10px] text-slate-500 uppercase mb-4">{isAr ? "الإدارة المالية" : "Finance Controller"}</p>
-                    <p className="text-xs font-bold text-slate-200 border-t border-slate-700 pt-1">Circle K HQ Finance</p>
+                    <p className="text-[8.5px] text-slate-500 uppercase mb-2">{isAr ? "الإدارة المالية" : "Finance Controller"}</p>
+                    <p className="text-[10px] font-bold text-slate-200 border-t border-slate-700 pt-0.5">Circle K HQ Finance</p>
                   </div>
                 </div>
               </div>
