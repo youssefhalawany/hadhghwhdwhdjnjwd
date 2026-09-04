@@ -122,15 +122,17 @@ export default function SafeReportPage() {
       return {
         safeCode: "SAFE-OLA-02",
         safeCodeAr: "خزنة فرع أولا القرنفل (رئيسية)",
-        bankAccount: "CIB-EGP-992014-OLA",
-        bankAccountAr: "البنك التجاري الدولي - CIB (أولا القرنفل)"
+        bankAccount: "BM-EGP-992014-OLA",
+        bankName: "Banque Misr",
+        bankAccountAr: "بنك مصر - Banque Misr (فرع أولا القرنفل)"
       };
     }
     return {
       safeCode: "SAFE-ALAMEIN-01",
       safeCodeAr: "خزنة فرع العلمين 4 (رئيسية)",
-      bankAccount: "CIB-EGP-883021-ALM",
-      bankAccountAr: "البنك التجاري الدولي - CIB (العلمين 4)"
+      bankAccount: "BM-EGP-883021-ALM",
+      bankName: "Banque Misr",
+      bankAccountAr: "بنك مصر - Banque Misr (فرع العلمين 4)"
     };
   };
 
@@ -692,16 +694,21 @@ export default function SafeReportPage() {
           @media print {
             @page {
               size: A4 portrait;
-              margin: 8mm !important;
+              margin: 10mm 12mm 10mm 12mm !important;
+            }
+            *, *::before, *::after {
+              box-sizing: border-box !important;
+              text-shadow: none !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
             }
             body, html {
               background: #ffffff !important;
               background-color: #ffffff !important;
-              color: #000000 !important;
+              color: #0f172a !important;
               margin: 0 !important;
               padding: 0 !important;
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
             }
             main, .custom-scrollbar, #__next, div:not(#safe-printable-a4):not(#safe-printable-a4 *) {
               background: transparent !important;
@@ -709,20 +716,96 @@ export default function SafeReportPage() {
               border: none !important;
               box-shadow: none !important;
             }
-            .print\\:hidden, nav, header, aside, .sidebar, footer, .no-print {
+            .print\\:hidden, nav, header, aside, .sidebar, footer, .no-print, button {
               display: none !important;
             }
             #safe-printable-a4 {
               display: block !important;
               width: 100% !important;
               max-width: 100% !important;
-              margin: 0 auto !important;
+              margin: 0 !important;
               padding: 0 !important;
               background: #ffffff !important;
               background-color: #ffffff !important;
-              color: #000000 !important;
+              color: #0f172a !important;
               border: none !important;
             }
+            /* Corporate container reset for printing */
+            .corporate-sheet {
+              background: #ffffff !important;
+              background-color: #ffffff !important;
+              border: 1.5px solid #0f172a !important;
+              border-radius: 8px !important;
+              box-shadow: none !important;
+              padding: 16px 20px !important;
+              color: #0f172a !important;
+            }
+            .corporate-header {
+              border-bottom: 2px solid #0f172a !important;
+              padding-bottom: 12px !important;
+              margin-bottom: 14px !important;
+            }
+            .corporate-box {
+              background-color: #f8fafc !important;
+              border: 1px solid #cbd5e1 !important;
+              border-radius: 6px !important;
+              color: #0f172a !important;
+            }
+            .corporate-kpi {
+              border: 1px solid #94a3b8 !important;
+              border-radius: 6px !important;
+              background-color: #f8fafc !important;
+              padding: 10px 8px !important;
+            }
+            .corporate-kpi.safe-card {
+              border-top: 3px solid #059669 !important;
+              background-color: #f0fdf4 !important;
+            }
+            .corporate-kpi.bank-card {
+              border-top: 3px solid #2563eb !important;
+              background-color: #eff6ff !important;
+            }
+            .corporate-kpi.outflow-card {
+              border-top: 3px solid #dc2626 !important;
+              background-color: #fef2f2 !important;
+            }
+            .corporate-kpi.net-card {
+              border-top: 3px solid #0f172a !important;
+              background-color: #f8fafc !important;
+            }
+            /* Text overrides for crisp printing */
+            .text-white {
+              color: #0f172a !important;
+            }
+            .text-slate-200, .text-slate-300, .text-slate-400 {
+              color: #334155 !important;
+            }
+            .text-slate-500 {
+              color: #64748b !important;
+            }
+            .text-emerald-400, .text-emerald-300 {
+              color: #047857 !important;
+            }
+            .text-blue-400, .text-blue-300 {
+              color: #1d4ed8 !important;
+            }
+            .text-indigo-400, .text-indigo-300 {
+              color: #4338ca !important;
+            }
+            .text-rose-400, .text-rose-300 {
+              color: #b91c1c !important;
+            }
+            .text-amber-400, .text-amber-300 {
+              color: #b45309 !important;
+            }
+            .text-purple-400, .text-purple-300 {
+              color: #6b21a8 !important;
+            }
+            /* Borders inside corporate sheet */
+            .border-slate-800, .border-slate-800\\/80, .border-slate-800\\/50, .divide-slate-800\\/50 {
+              border-color: #cbd5e1 !important;
+            }
+            /* Table formatting */
             table {
               page-break-inside: auto;
               width: 100% !important;
@@ -734,6 +817,19 @@ export default function SafeReportPage() {
             }
             thead {
               display: table-header-group;
+            }
+            th {
+              color: #0f172a !important;
+              background-color: #f1f5f9 !important;
+              border-bottom: 1.5px solid #94a3b8 !important;
+            }
+            td {
+              color: #1e293b !important;
+              border-bottom: 1px solid #e2e8f0 !important;
+            }
+            .print-avoid-break {
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
             }
           }
         `}} />
@@ -842,10 +938,10 @@ export default function SafeReportPage() {
           <div id="safe-printable-a4" className="w-full space-y-6">
             
             {/* Main Statement Card */}
-            <div className="bg-[#0B1121] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 text-slate-200">
+            <div className="corporate-sheet bg-[#0B1121] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 text-slate-200">
               
               {/* Header Box */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+              <div className="corporate-header flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
                 <div>
                   <div className="flex items-center gap-2">
                     <h1 className="text-3xl font-black tracking-tight text-red-500 leading-none">CIRCLE K</h1>
@@ -870,7 +966,7 @@ export default function SafeReportPage() {
               </div>
 
               {/* Meta Grid Box */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 bg-[#070C18] border border-slate-800 rounded-2xl p-4 text-xs font-medium">
+              <div className="corporate-box grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 bg-[#070C18] border border-slate-800 rounded-2xl p-4 text-xs font-medium">
                 <div>
                   <span className="text-[10px] font-bold text-slate-500 uppercase block">{isAr ? "الجهة / الفرع:" : "Entity / Branch:"}</span>
                   <span className="font-black text-white text-sm mt-0.5 block">{branchLabel.en} · {branchLabel.ar}</span>
@@ -894,8 +990,8 @@ export default function SafeReportPage() {
                 </div>
 
                 <div>
-                  <span className="text-[10px] font-bold text-slate-500 uppercase block">{isAr ? "الحساب البنكي المعتمد:" : "Bank Account Reference:"}</span>
-                  <span className="font-mono font-black text-blue-400 mt-0.5 block">{accounts.bankAccount}</span>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase block">{isAr ? "الحساب البنكي المعتمد (بنك مصر):" : "Bank Account (Banque Misr):"}</span>
+                  <span className="font-mono font-black text-blue-400 mt-0.5 block">{accounts.bankAccount} ({accounts.bankName})</span>
                 </div>
 
                 <div>
@@ -905,14 +1001,14 @@ export default function SafeReportPage() {
               </div>
 
               {/* Executive Summary 4 Cards Grid */}
-              <div>
+              <div className="print-avoid-break">
                 <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2 block">
                   {isAr ? "الملخص التنفيذي للأرصدة" : "Executive Balance Summary"}
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                   
                   {/* Safe Balance */}
-                  <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 text-center">
+                  <div className="corporate-kpi safe-card bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 text-center">
                     <span className="text-[10px] font-black text-emerald-400 uppercase tracking-wider block flex items-center justify-center gap-1">
                       <Wallet size={12} /> {isAr ? "رصيد الخزنة الفعلي" : "Safe Cash Balance"}
                     </span>
@@ -922,9 +1018,9 @@ export default function SafeReportPage() {
                   </div>
 
                   {/* Bank Balance */}
-                  <div className="bg-blue-500/10 border border-blue-500/30 rounded-2xl p-4 text-center">
+                  <div className="corporate-kpi bank-card bg-blue-500/10 border border-blue-500/30 rounded-2xl p-4 text-center">
                     <span className="text-[10px] font-black text-blue-400 uppercase tracking-wider block flex items-center justify-center gap-1">
-                      <Landmark size={12} /> {isAr ? "رصيد البنك والفيزا" : "Bank & Visa Balance"}
+                      <Landmark size={12} /> {isAr ? "رصيد بنك مصر والفيزا" : "Bank & Visa Balance (Banque Misr)"}
                     </span>
                     <span className={`text-2xl font-black font-mono mt-1.5 block tabular-nums ${closingBank >= 0 ? "text-blue-300" : "text-rose-400"}`}>
                       {fmt(closingBank)} <span className="text-xs font-sans">EGP</span>
@@ -932,7 +1028,7 @@ export default function SafeReportPage() {
                   </div>
 
                   {/* Total Outflows */}
-                  <div className="bg-rose-500/10 border border-rose-500/30 rounded-2xl p-4 text-center">
+                  <div className="corporate-kpi outflow-card bg-rose-500/10 border border-rose-500/30 rounded-2xl p-4 text-center">
                     <span className="text-[10px] font-black text-rose-400 uppercase tracking-wider block flex items-center justify-center gap-1">
                       <ArrowDownLeft size={12} /> {isAr ? "إجمالي المنصرف" : "Total Outflows"}
                     </span>
@@ -942,7 +1038,7 @@ export default function SafeReportPage() {
                   </div>
 
                   {/* Net Combined Liquidity */}
-                  <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-2xl p-4 text-center">
+                  <div className="corporate-kpi net-card bg-indigo-500/10 border border-indigo-500/30 rounded-2xl p-4 text-center">
                     <span className="text-[10px] font-black text-indigo-300 uppercase tracking-wider block flex items-center justify-center gap-1">
                       <ShieldCheck size={12} /> {isAr ? "صافي السيولة المجمعة" : "Net Combined Liquidity"}
                     </span>
@@ -954,7 +1050,7 @@ export default function SafeReportPage() {
               </div>
 
               {/* ── I. SAFE CASH LEDGER ── */}
-              <div className="space-y-4 pt-2">
+              <div className="space-y-4 pt-2 print-avoid-break">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                   <h3 className="text-base font-black text-white flex items-center gap-2">
                     <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-mono">I</span>
@@ -966,7 +1062,7 @@ export default function SafeReportPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   
                   {/* Safe Inflows */}
-                  <div className="bg-[#070C18] border border-slate-800 rounded-2xl p-4 space-y-3">
+                  <div className="corporate-box bg-[#070C18] border border-slate-800 rounded-2xl p-4 space-y-3">
                     <div className="flex items-center justify-between text-xs font-black text-emerald-400 border-b border-slate-800/80 pb-2">
                       <span className="flex items-center gap-1"><ArrowUpRight size={14} /> {isAr ? "أ. الوارد النقدي للخزنة (Inflows)" : "A. Safe Cash Inflows"}</span>
                       <span className="font-mono">{fmt(safeInflows)} EGP</span>
@@ -996,7 +1092,7 @@ export default function SafeReportPage() {
                   </div>
 
                   {/* Safe Outflows */}
-                  <div className="bg-[#070C18] border border-slate-800 rounded-2xl p-4 space-y-3">
+                  <div className="corporate-box bg-[#070C18] border border-slate-800 rounded-2xl p-4 space-y-3">
                     <div className="flex items-center justify-between text-xs font-black text-rose-400 border-b border-slate-800/80 pb-2">
                       <span className="flex items-center gap-1"><ArrowDownLeft size={14} /> {isAr ? "ب. المنصرف النقدي من الخزنة (Outflows)" : "B. Safe Cash Outflows"}</span>
                       <span className="font-mono">{fmt(safeOutflows)} EGP</span>
@@ -1037,7 +1133,7 @@ export default function SafeReportPage() {
                 </div>
 
                 {/* Closing Safe Result Pill */}
-                <div className="bg-[#070C18] border border-emerald-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+                <div className="corporate-box bg-[#070C18] border border-emerald-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
                   <div className="text-xs text-slate-400">
                     <span className="font-mono">{fmt(reportData.openingSafe)}</span> (Opening) + <span className="font-mono">{fmt(safeInflows)}</span> (In) − <span className="font-mono">{fmt(safeOutflows)}</span> (Out)
                   </div>
@@ -1051,19 +1147,19 @@ export default function SafeReportPage() {
               </div>
 
               {/* ── II. BANK & VISA LEDGER ── */}
-              <div className="space-y-4 pt-4 border-t border-slate-800">
+              <div className="space-y-4 pt-4 border-t border-slate-800 print-avoid-break">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                   <h3 className="text-base font-black text-white flex items-center gap-2">
                     <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30 text-xs font-mono">II</span>
-                    {isAr ? "دفتر أستاذ الحساب البنكي والفيزا (Bank & Visa Ledger)" : "Bank Account & Card Terminal Ledger"}
+                    {isAr ? "دفتر أستاذ حساب بنك مصر والفيزا (Banque Misr Ledger)" : "Banque Misr & Card Terminal Ledger"}
                   </h3>
-                  <span className="text-xs font-mono font-bold text-blue-400">{accounts.bankAccount}</span>
+                  <span className="text-xs font-mono font-bold text-blue-400">{accounts.bankAccount} (Banque Misr)</span>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   
                   {/* Bank Inflows */}
-                  <div className="bg-[#070C18] border border-slate-800 rounded-2xl p-4 space-y-3">
+                  <div className="corporate-box bg-[#070C18] border border-slate-800 rounded-2xl p-4 space-y-3">
                     <div className="flex items-center justify-between text-xs font-black text-blue-400 border-b border-slate-800/80 pb-2">
                       <span className="flex items-center gap-1"><ArrowUpRight size={14} /> {isAr ? "أ. الوارد البنكي (Bank Inflows)" : "A. Bank Inflows"}</span>
                       <span className="font-mono">{fmt(bankInflows)} EGP</span>
@@ -1088,7 +1184,7 @@ export default function SafeReportPage() {
                   </div>
 
                   {/* Bank Outflows */}
-                  <div className="bg-[#070C18] border border-slate-800 rounded-2xl p-4 space-y-3">
+                  <div className="corporate-box bg-[#070C18] border border-slate-800 rounded-2xl p-4 space-y-3">
                     <div className="flex items-center justify-between text-xs font-black text-purple-400 border-b border-slate-800/80 pb-2">
                       <span className="flex items-center gap-1"><ArrowDownLeft size={14} /> {isAr ? "ب. المنصرف البنكي (Bank Outflows)" : "B. Bank Outflows"}</span>
                       <span className="font-mono">{fmt(bankOutflows)} EGP</span>
@@ -1114,13 +1210,13 @@ export default function SafeReportPage() {
                 </div>
 
                 {/* Closing Bank Result Pill */}
-                <div className="bg-[#070C18] border border-blue-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+                <div className="corporate-box bg-[#070C18] border border-blue-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
                   <div className="text-xs text-slate-400">
                     <span className="font-mono">{fmt(reportData.openingBank)}</span> (Opening) + <span className="font-mono">{fmt(bankInflows)}</span> (In) − <span className="font-mono">{fmt(bankOutflows)}</span> (Out)
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-black text-slate-300 uppercase tracking-wider">
-                      {isAr ? "الرصيد الختامي للبنك:" : "Closing Bank Balance:"}
+                      {isAr ? "الرصيد الختامي للبنك (بنك مصر):" : "Closing Bank Balance (Banque Misr):"}
                     </span>
                     <span className="text-xl font-black font-mono text-blue-400">{fmt(closingBank)} EGP</span>
                   </div>
