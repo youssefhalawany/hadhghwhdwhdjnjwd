@@ -681,7 +681,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
               }
               if (navigator.serviceWorker) {
                 navigator.serviceWorker.getRegistrations().then((registrations) => {
-                  for (let registration of registrations) {
+                  for (const registration of registrations) {
                     registration.unregister();
                   }
                 });
@@ -965,6 +965,11 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   };
 
   const navItems = [
+    {
+      name: language === "ar" ? "الرئيسية (المركز)" : "Command Center", 
+      href: "/", 
+      icon: LayoutDashboard 
+    },
     {
       name: language === "ar" ? "إبراهيم (مساعد)" : "Ibrahim (AI)", href: "/ai-assistant", icon: Bot
     },
