@@ -829,23 +829,51 @@ export default function VIPBentoEnterprisePortal() {
           {/* ======================================================== */}
           <div className="lg:col-span-4 xl:col-span-3 space-y-6">
             
-            {/* Keynote Title Block */}
-            <div className="space-y-4">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-red-500/10 to-rose-500/10 border border-red-500/20 text-rose-400 text-xs font-black tracking-wider uppercase">
-                <Sparkles className="w-3.5 h-3.5" />
-                {isAr ? "منصة القيادة المتكاملة" : "Command Hub OS"}
+            {/* Keynote Title Block / Personalized Executive Welcome */}
+            <div className="space-y-3">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-red-500/10 via-rose-500/10 to-amber-500/10 border border-rose-500/20 text-rose-400 text-xs font-black tracking-wider uppercase">
+                <Sparkles className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
+                <span>
+                  {time 
+                    ? (time.getHours() < 12 
+                        ? (isAr ? "صباح الخير" : "Good Morning") 
+                        : time.getHours() < 17 
+                          ? (isAr ? "مساء الخير" : "Good Afternoon") 
+                          : (isAr ? "مساء الخير" : "Good Evening"))
+                    : (isAr ? "أهلاً بك" : "Welcome Back")}
+                </span>
+                <span className="w-1 h-1 rounded-full bg-rose-400" />
+                <span className="text-[10px] text-slate-400 font-mono capitalize">{userRole}</span>
               </div>
 
-              <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight leading-tight">
-                {isAr ? "منظومة إدارة الفرع المركزية" : "Circle K Key Operations"}
-              </h1>
+              <div>
+                <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight leading-tight">
+                  {isAr ? (
+                    <>
+                      أهلاً بك،{" "}
+                      <span className="bg-gradient-to-r from-rose-400 via-red-300 to-amber-300 bg-clip-text text-transparent">
+                        {userName || "القائد"}
+                      </span>{" "}
+                      👋
+                    </>
+                  ) : (
+                    <>
+                      Welcome,{" "}
+                      <span className="bg-gradient-to-r from-rose-400 via-red-300 to-amber-300 bg-clip-text text-transparent">
+                        {userName || "Commander"}
+                      </span>{" "}
+                      👋
+                    </>
+                  )}
+                </h1>
 
-              <p className="text-sm text-slate-400 leading-relaxed font-normal">
-                {isAr 
-                  ? "لوحة تحكم تنفيذية تجمع كافة عمليات الماليات، الرقابة على المخزون، الشفتات، الموارد البشرية، وتأمينات النظام." 
-                  : "All-in-one executive portal powering retail analytics, safe drops, inventory safeguards, employee masterfiles, and system control."
-                }
-              </p>
+                <p className="text-xs sm:text-sm text-slate-400 leading-relaxed font-normal mt-2">
+                  {isAr 
+                    ? "مركز القيادة التنفيذي • كافة عمليات ومبيعات الفرع، تدقيق الخزائن، والمخزون متزامنة وتعمل بكفاءة تامة." 
+                    : "Executive Command Hub • All franchise operations, safe vault balances, inventory alerts, and team rosters are live."
+                  }
+                </p>
+              </div>
             </div>
 
             {/* REAL OPERATIONAL TELEMETRY CARDS (EXPIRED, VOIDS, ACTIVE STAFF, OFF TODAY) */}
