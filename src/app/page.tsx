@@ -5,6 +5,7 @@ import Link from "next/link";
 import { 
   Wallet, 
   TrendingUp, 
+  TrendingDown, 
   FileText, 
   Activity, 
   CalendarDays, 
@@ -88,6 +89,24 @@ const BRANCH_NAMES_AR: Record<string, string> = {
   all: "كافة الفروع",
 };
 
+interface DayTrendPoint {
+  date: string;
+  dayName: string;
+  dayNameAr: string;
+  displayDate: string;
+  total: number;
+  cash: number;
+  visa: number;
+}
+
+const matchesBranch = (docData: any, targetBranch: string): boolean => {
+  if (!targetBranch || targetBranch === "all") return true;
+  const docBranch = (docData.storeId || docData.branchId || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const target = targetBranch.toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (!docBranch) return true;
+  return docBranch.includes(target) || target.includes(docBranch);
+};
+
 export default function VIPBentoEnterprisePortal() {
   const { currentBranch, setBranch } = useBranch();
   const { language, setLanguage } = useLanguage();
@@ -111,6 +130,14 @@ export default function VIPBentoEnterprisePortal() {
   const [connectedDevices, setConnectedDevices] = useState<number>(3);
   const [safeBalance, setSafeBalance] = useState<number>(0);
   const [bankBalance, setBankBalance] = useState<number>(0);
+
+  // Real 7-Day Sales Telemetry State
+  const [weeklySales, setWeeklySales] = useState<DayTrendPoint[]>([]);
+  const [weeklyTotalSales, setWeeklyTotalSales] = useState<number>(0);
+  const [weeklyAvgSales, setWeeklyAvgSales] = useState<number>(0);
+  const [weeklyTrendPct, setWeeklyTrendPct] = useState<number>(0);
+  const [salesLoading, setSalesLoading] = useState<boolean>(true);
+  const [hoveredDay, setHoveredDay] = useState<DayTrendPoint | null>(null);
 
   const fmt = (n: number) =>
     new Intl.NumberFormat("en-EG", {
@@ -182,6 +209,19 @@ export default function VIPBentoEnterprisePortal() {
               const parsed = JSON.parse(stats);
               if (parsed.safeMoney !== undefined) setSafeBalance(parsed.safeMoney);
               if (parsed.bankMoney !== undefined) setBankBalance(parsed.bankMoney);
+            }
+          }
+
+          // Hydrate weekly sales from cache
+          const cachedSales = localStorage.getItem(`cached_weekly_sales_${currentBranch}`);
+          if (cachedSales) {
+            const parsed = JSON.parse(cachedSales);
+            if (parsed.points && Array.isArray(parsed.points)) {
+              setWeeklySales(parsed.points);
+              setWeeklyTotalSales(parsed.sumTotal || 0);
+              setWeeklyAvgSales(parsed.avg || 0);
+              setWeeklyTrendPct(parsed.pct || 0);
+              setSalesLoading(false);
             }
           }
         } catch (e) {}
@@ -259,6 +299,116 @@ export default function VIPBentoEnterprisePortal() {
       if (snap.docs.length > 0) setConnectedDevices(snap.docs.length);
     }, () => {});
 
+    // 7. Real 7-Day Sales Telemetry
+    const salesQ = query(collection(db, "sales"), limit(250));
+    const unsubSales = onSnapshot(salesQ, (snap) => {
+      const rawSales = snap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+      const branchSales = rawSales.filter(s => matchesBranch(s, currentBranch));
+
+      const salesByDate = new Map<string, { cash: number; visa: number; total: number }>();
+      branchSales.forEach(s => {
+        let sDate = s.date;
+        if (!sDate && s.createdAt?.toDate) {
+          sDate = s.createdAt.toDate().toISOString().split("T")[0];
+        }
+        if (!sDate || typeof sDate !== "string") return;
+        sDate = sDate.trim().substring(0, 10);
+
+        if (!salesByDate.has(sDate)) {
+          salesByDate.set(sDate, { cash: 0, visa: 0, total: 0 });
+        }
+        const rec = salesByDate.get(sDate)!;
+        const c = Number(s.cash || 0);
+        const v = Number(s.visa || 0);
+        rec.cash += c;
+        rec.visa += v;
+        rec.total += c + v;
+      });
+
+      const today = new Date();
+      const dayNamesEn = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      const dayNamesAr = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+
+      // Check if any sales exist in the last 7 calendar days
+      let anchorDate = new Date(today);
+      const recordedDates = Array.from(salesByDate.keys()).sort();
+      let hasRecentSales = false;
+      for (let i = 0; i < 7; i++) {
+        const testD = new Date(today);
+        testD.setDate(today.getDate() - i);
+        const y = testD.getFullYear();
+        const m = String(testD.getMonth() + 1).padStart(2, "0");
+        const d = String(testD.getDate()).padStart(2, "0");
+        if (salesByDate.has(`${y}-${m}-${d}`)) {
+          hasRecentSales = true;
+          break;
+        }
+      }
+
+      // If no sales in current calendar week, anchor to latest recorded shift date
+      if (!hasRecentSales && recordedDates.length > 0) {
+        const latestStr = recordedDates[recordedDates.length - 1];
+        const parts = latestStr.split("-").map(Number);
+        if (parts.length === 3 && !isNaN(parts[0])) {
+          anchorDate = new Date(parts[0], parts[1] - 1, parts[2]);
+        }
+      }
+
+      const points: DayTrendPoint[] = [];
+      let sumTotal = 0;
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(anchorDate);
+        d.setDate(anchorDate.getDate() - i);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const dayNum = String(d.getDate()).padStart(2, "0");
+        const dStr = `${y}-${m}-${dayNum}`;
+
+        const dayData = salesByDate.get(dStr) || { cash: 0, visa: 0, total: 0 };
+        sumTotal += dayData.total;
+        points.push({
+          date: dStr,
+          dayName: dayNamesEn[d.getDay()],
+          dayNameAr: dayNamesAr[d.getDay()],
+          displayDate: `${dayNum}/${m}`,
+          total: dayData.total,
+          cash: dayData.cash,
+          visa: dayData.visa
+        });
+      }
+
+      // Trend %: compare second half of week to first half
+      const firstHalf = (points[0].total + points[1].total + points[2].total) / 3;
+      const secondHalf = (points[3].total + points[4].total + points[5].total + points[6].total) / 4;
+      let pct = 0;
+      if (firstHalf > 0) {
+        pct = ((secondHalf - firstHalf) / firstHalf) * 100;
+      } else if (secondHalf > 0) {
+        pct = 100;
+      }
+
+      const avg = sumTotal > 0 ? Math.round(sumTotal / 7) : 0;
+      const roundedPct = Math.round(pct * 10) / 10;
+
+      setWeeklySales(points);
+      setWeeklyTotalSales(sumTotal);
+      setWeeklyAvgSales(avg);
+      setWeeklyTrendPct(roundedPct);
+      setSalesLoading(false);
+
+      try {
+        localStorage.setItem(`cached_weekly_sales_${currentBranch}`, JSON.stringify({
+          points,
+          sumTotal,
+          avg,
+          pct: roundedPct
+        }));
+      } catch (e) {}
+    }, (err) => {
+      console.warn("Weekly sales listener error:", err);
+      setSalesLoading(false);
+    });
+
     return () => {
       unsubVoids();
       unsubExp();
@@ -266,8 +416,46 @@ export default function VIPBentoEnterprisePortal() {
       unsubOos();
       unsubEmp();
       unsubDev();
+      unsubSales();
     };
   }, [currentBranch]);
+
+  // Real 7-Day Sales SVG Curve & Telemetry Math
+  const { svgCurve, svgArea, chartPoints } = useMemo(() => {
+    if (weeklySales.length === 0) {
+      return { svgCurve: "", svgArea: "", chartPoints: [] };
+    }
+
+    const values = weeklySales.map(p => p.total);
+    const max = Math.max(...values, 1);
+    const width = 500;
+    const height = 75;
+    const paddingX = 20;
+    const paddingY = 14;
+    const usableW = width - paddingX * 2;
+    const usableH = height - paddingY * 2;
+
+    const pts = weeklySales.map((p, i) => {
+      const x = paddingX + (i / (weeklySales.length - 1)) * usableW;
+      const ratio = max > 0 ? p.total / max : 0;
+      const y = (height - paddingY) - ratio * usableH;
+      return { x, y, ...p };
+    });
+
+    let curve = `M ${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const curr = pts[i];
+      const next = pts[i + 1];
+      const cpX = ((curr.x + next.x) / 2).toFixed(1);
+      curve += ` C ${cpX},${curr.y.toFixed(1)} ${cpX},${next.y.toFixed(1)} ${next.x.toFixed(1)},${next.y.toFixed(1)}`;
+    }
+
+    const lastPt = pts[pts.length - 1];
+    const firstPt = pts[0];
+    const area = `${curve} L ${lastPt.x.toFixed(1)},${height} L ${firstPt.x.toFixed(1)},${height} Z`;
+
+    return { svgCurve: curve, svgArea: area, chartPoints: pts };
+  }, [weeklySales]);
 
   // Is Admin/Owner: True unless explicitly and strictly a non-admin role
   const isAdmin = useMemo(() => {
@@ -1227,39 +1415,208 @@ export default function VIPBentoEnterprisePortal() {
 
                       </div>
 
-                      {/* Interactive Telemetry Chart Waveform */}
-                      <div className="p-3.5 rounded-2xl bg-[#0b0b0e] border border-white/[0.06] mb-5">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
-                              {isAr ? "حركة المبيعات والتدفق المالي" : "Weekly Revenue Flow Telemetry"}
-                            </span>
-                            <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.2 rounded-full border border-emerald-500/20">
-                              +14.8% Flow
-                            </span>
+                      {/* Real 7-Day Sales Trend Telemetry */}
+                      <div className="p-4 rounded-2xl bg-[#0b0b0e] border border-white/[0.08] mb-5 relative overflow-hidden group/chart">
+                        {/* Radiant subtle glow */}
+                        <div className="absolute top-0 right-1/4 w-40 h-20 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+                        {/* Telemetry Header */}
+                        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center">
+                              {weeklyTrendPct >= 0 ? (
+                                <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                              ) : (
+                                <TrendingDown className="w-3.5 h-3.5 text-rose-400" />
+                              )}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[11px] font-black text-white uppercase tracking-wider">
+                                  {isAr ? "مؤشر مبيعات آخر 7 أيام" : "7-Day Sales Revenue Trend"}
+                                </span>
+                                <span
+                                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
+                                    weeklyTrendPct >= 0
+                                      ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/30"
+                                      : "text-rose-400 bg-rose-500/10 border-rose-500/30"
+                                  }`}
+                                >
+                                  <span
+                                    className={`w-1.5 h-1.5 rounded-full animate-pulse ${
+                                      weeklyTrendPct >= 0 ? "bg-emerald-400" : "bg-rose-400"
+                                    }`}
+                                  />
+                                  {weeklyTrendPct >= 0 ? `+${weeklyTrendPct}% Flow` : `${weeklyTrendPct}% Flow`}
+                                </span>
+                              </div>
+                              <span className="text-[10px] text-slate-400 block mt-0.5">
+                                {isAr ? "بيانات حية مباشرة من تقفيلات الوردية والـ POS" : "Live telemetry computed from verified shift sales"}
+                              </span>
+                            </div>
                           </div>
-                          <TrendingUp className="w-4 h-4 text-emerald-400" />
+
+                          {/* 7-Day Volume & Average */}
+                          <div className="flex items-center gap-3">
+                            <div className="text-right">
+                              <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-medium">
+                                {isAr ? "إجمالي الأسبوع" : "7-Day Total"}
+                              </span>
+                              <span className="text-xs font-black text-emerald-400 font-mono">
+                                {salesLoading && weeklySales.length === 0 ? "..." : `${fmt(weeklyTotalSales)} EGP`}
+                              </span>
+                            </div>
+                            <div className="h-6 w-px bg-white/[0.08]" />
+                            <Link
+                              href="/financials/inputs/sales"
+                              prefetch={true}
+                              className="text-[11px] font-bold text-slate-300 hover:text-emerald-400 flex items-center gap-1 transition-colors p-1.5 rounded-lg hover:bg-white/[0.04]"
+                              title={isAr ? "عرض جدول المبيعات التفصيلي" : "View detailed sales register"}
+                            >
+                              <span>{isAr ? "المبيعات" : "Sales"}</span>
+                              <ArrowUpRight className="w-3.5 h-3.5 text-slate-400" />
+                            </Link>
+                          </div>
                         </div>
 
-                        <div className="h-10 w-full">
-                          <svg className="w-full h-full" viewBox="0 0 500 80" preserveAspectRatio="none">
-                            <defs>
-                              <linearGradient id="emeraldHeroGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                                <stop offset="0%" stopColor="#10b981" stopOpacity="0.35" />
-                                <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
-                              </linearGradient>
-                            </defs>
-                            <path
-                              d="M 0,60 Q 60,20 120,45 T 240,15 T 360,40 T 440,10 T 500,5 L 500,80 L 0,80 Z"
-                              fill="url(#emeraldHeroGrad)"
-                            />
-                            <path
-                              d="M 0,60 Q 60,20 120,45 T 240,15 T 360,40 T 440,10 T 500,5"
-                              fill="none"
-                              stroke="#10b981"
-                              strokeWidth="2.5"
-                            />
-                          </svg>
+                        {/* Interactive Real SVG Waveform */}
+                        <div className="relative h-20 w-full mb-3">
+                          {salesLoading && weeklySales.length === 0 ? (
+                            <div className="h-full w-full flex items-center justify-center">
+                              <div className="w-5 h-5 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+                            </div>
+                          ) : (
+                            <svg className="w-full h-full overflow-visible" viewBox="0 0 500 75" preserveAspectRatio="none">
+                              <defs>
+                                <linearGradient id="realSalesHeroGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.40" />
+                                  <stop offset="60%" stopColor="#10b981" stopOpacity="0.10" />
+                                  <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+                                </linearGradient>
+                                <filter id="salesGlow" x="-20%" y="-20%" width="140%" height="140%">
+                                  <feGaussianBlur stdDeviation="2" result="blur" />
+                                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                                </filter>
+                              </defs>
+
+                              {/* Baseline grid line */}
+                              <line x1="15" y1="61" x2="485" y2="61" stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
+
+                              {/* Real Area Fill */}
+                              {svgArea && (
+                                <path
+                                  d={svgArea}
+                                  fill="url(#realSalesHeroGrad)"
+                                  className="transition-all duration-700 ease-out"
+                                />
+                              )}
+
+                              {/* Real Curve Stroke */}
+                              {svgCurve && (
+                                <path
+                                  d={svgCurve}
+                                  fill="none"
+                                  stroke="#10b981"
+                                  strokeWidth="2.8"
+                                  strokeLinecap="round"
+                                  filter="url(#salesGlow)"
+                                  className="transition-all duration-700 ease-out"
+                                />
+                              )}
+
+                              {/* Real Interactive Data Points */}
+                              {chartPoints.map((pt, idx) => {
+                                const isHovered = hoveredDay?.date === pt.date;
+                                const isLatest = idx === chartPoints.length - 1;
+                                return (
+                                  <g key={pt.date} className="cursor-pointer" onMouseEnter={() => setHoveredDay(pt)} onMouseLeave={() => setHoveredDay(null)}>
+                                    {/* Invisible larger hit target */}
+                                    <circle cx={pt.x} cy={pt.y} r="12" fill="transparent" />
+                                    
+                                    {/* Pulse ring on latest day */}
+                                    {isLatest && (
+                                      <circle
+                                        cx={pt.x}
+                                        cy={pt.y}
+                                        r="7"
+                                        fill="none"
+                                        stroke="#10b981"
+                                        strokeWidth="1.5"
+                                        className="animate-ping opacity-75"
+                                      />
+                                    )}
+
+                                    {/* Solid node */}
+                                    <circle
+                                      cx={pt.x}
+                                      cy={pt.y}
+                                      r={isHovered ? 5.5 : 3.5}
+                                      fill={isHovered ? "#34d399" : "#10b981"}
+                                      stroke="#0b0b0e"
+                                      strokeWidth="2"
+                                      className="transition-all duration-200"
+                                    />
+                                  </g>
+                                );
+                              })}
+                            </svg>
+                          )}
+
+                          {/* Hover Tooltip Overlay */}
+                          {hoveredDay && (
+                            <div className="absolute top-0 right-2 pointer-events-none bg-[#16161d] border border-emerald-500/40 rounded-xl px-3 py-1.5 shadow-2xl z-20 flex items-center gap-3 text-xs animate-in fade-in duration-150">
+                              <div>
+                                <span className="text-[10px] text-slate-400 block font-medium">
+                                  {isAr ? hoveredDay.dayNameAr : hoveredDay.dayName} ({hoveredDay.displayDate})
+                                </span>
+                                <span className="font-black text-emerald-400 font-mono">
+                                  {fmt(hoveredDay.total)} EGP
+                                </span>
+                              </div>
+                              <div className="h-5 w-px bg-white/10" />
+                              <div className="text-[10px] text-slate-400 space-y-0.5">
+                                <div><span className="text-slate-500">Cash:</span> {fmt(hoveredDay.cash)}</div>
+                                <div><span className="text-slate-500">Visa:</span> {fmt(hoveredDay.visa)}</div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 7 Days Labels & Values Grid */}
+                        <div className="grid grid-cols-7 gap-1 pt-2 border-t border-white/[0.05]">
+                          {weeklySales.map((item, idx) => {
+                            const isHovered = hoveredDay?.date === item.date;
+                            const isToday = idx === weeklySales.length - 1;
+                            return (
+                              <button
+                                key={item.date}
+                                onMouseEnter={() => setHoveredDay(item)}
+                                onMouseLeave={() => setHoveredDay(null)}
+                                onClick={() => setHoveredDay(isHovered ? null : item)}
+                                className={`flex flex-col items-center py-1 px-0.5 rounded-lg transition-all text-center ${
+                                  isHovered
+                                    ? "bg-emerald-500/20 border border-emerald-500/40 scale-105"
+                                    : isToday
+                                    ? "bg-white/[0.04] border border-emerald-500/20"
+                                    : "hover:bg-white/[0.03]"
+                                }`}
+                              >
+                                <span className={`text-[10px] font-bold ${isToday ? "text-emerald-400" : "text-slate-400"}`}>
+                                  {isAr ? item.dayNameAr : item.dayName}
+                                </span>
+                                <span className="text-[9px] text-slate-500 font-mono">
+                                  {item.displayDate}
+                                </span>
+                                <span className="text-[10px] font-black text-white font-mono mt-0.5 truncate w-full px-0.5">
+                                  {item.total > 0
+                                    ? item.total >= 1000
+                                      ? `${(item.total / 1000).toFixed(1)}k`
+                                      : `${Math.round(item.total)}`
+                                    : "0"}
+                                </span>
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
 
