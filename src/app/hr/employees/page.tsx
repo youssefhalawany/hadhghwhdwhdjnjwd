@@ -55,13 +55,33 @@ import {
   ChevronDown,
   HandCoins,
   ScrollText,
-  BadgeAlert
+  BadgeAlert,
+  Gift,
+  Cake,
+  ArrowRightLeft,
+  TrendingUp,
+  MessageCircle
 } from "lucide-react";
 import { toast } from "sonner";
 import { onAuthStateChanged } from "firebase/auth";
 import { useBranch } from "@/context/BranchContext";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+
+export interface CareerEvent {
+  id: string;
+  date: string;
+  type: "transfer" | "promotion" | "salary_change" | "hire";
+  title: string;
+  fromBranch?: string;
+  toBranch?: string;
+  fromPosition?: string;
+  toPosition?: string;
+  fromSalary?: number;
+  toSalary?: number;
+  notes?: string;
+  createdBy?: string;
+}
 
 interface Employee {
   id: string;
@@ -94,8 +114,12 @@ interface Employee {
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   emergencyContactRelation?: string;
+  socialInsuranceNumber?: string;
+  careerHistory?: CareerEvent[];
   createdAt?: any;
   createdBy?: string;
+  updatedAt?: any;
+  updatedBy?: string;
 }
 
 const POSITIONS = ["Barista", "Cashier", "Manager", "Assistant Manager", "Supervisor"];
@@ -125,7 +149,7 @@ export default function EmployeesPage() {
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
   // Print Mode & Termination Clearance State
-  const [printDocumentType, setPrintDocumentType] = useState<"contract" | "termination" | "folder_cover" | "salary_letter" | "experience_cert" | "bank_mandate">("contract");
+  const [printDocumentType, setPrintDocumentType] = useState<"contract" | "termination" | "folder_cover" | "salary_letter" | "experience_cert" | "bank_mandate" | "social_insurance_1" | "social_insurance_6">("contract");
   const [showTerminationModal, setShowTerminationModal] = useState(false);
   const [showLettersMenu, setShowLettersMenu] = useState(false);
   const [terminationEmp, setTerminationEmp] = useState<Employee | null>(null);
@@ -146,6 +170,22 @@ export default function EmployeesPage() {
   const [loanAmount, setLoanAmount] = useState<number>(500);
   const [loanNotes, setLoanNotes] = useState<string>("");
   const [isSubmittingLoan, setIsSubmittingLoan] = useState(false);
+
+  // Career Transfers & Promotions state
+  const [showCareerModal, setShowCareerModal] = useState(false);
+  const [careerMode, setCareerMode] = useState<"transfer" | "promotion">("transfer");
+  const [careerTargetBranch, setCareerTargetBranch] = useState<string>("ola");
+  const [careerTargetPosition, setCareerTargetPosition] = useState<string>("Cashier");
+  const [careerTargetSalary, setCareerTargetSalary] = useState<number>(0);
+  const [careerEffectiveDate, setCareerEffectiveDate] = useState<string>(new Date().toISOString().split("T")[0]);
+  const [careerNotes, setCareerNotes] = useState<string>("");
+  const [isSubmittingCareer, setIsSubmittingCareer] = useState(false);
+
+  // Milestone Celebration Bonus state
+  const [showBonusModal, setShowBonusModal] = useState(false);
+  const [bonusAmount, setBonusAmount] = useState<number>(500);
+  const [bonusReason, setBonusReason] = useState<string>("مكافأة تميز وسنوية عمل");
+  const [isSubmittingBonus, setIsSubmittingBonus] = useState(false);
 
   const contractRef = useRef<HTMLDivElement>(null);
 
@@ -613,8 +653,11 @@ export default function EmployeesPage() {
         companyPartyName: "ايه ان اتش للتجارة (فرع أولا القرنفل - التجمع الخامس)",
         branchTitleAr: "فرع أولا القرنفل - التجمع الخامس",
         branchCityAr: "القاهرة الجديدة",
-        taxId: "754-563-844",
-        commReg: "216727"
+        storeAddress: "شارع التسعين الشمالي، كمبوند القرنفل، التجمع الخامس، القاهرة الجديدة",
+        taxId: "756-563-844",
+        commReg: "216727",
+        companyInsuranceNumber: "7565638",
+        socialInsuranceOffice: "مكتب تأمينات القاهرة الجديدة (التجمع الخامس)"
       };
     } else {
       return {
@@ -623,8 +666,11 @@ export default function EmployeesPage() {
         companyPartyName: "الشركة المصرية للتجارة (فرع العلمين 4 - سيركل كي)",
         branchTitleAr: "فرع العلمين 4 - مارينا الساحل الشمالي",
         branchCityAr: "الساحل الشمالي",
+        storeAddress: "طريق الإسكندرية - مطروح الساحلي، أمام بوابة مارينا 4، العلمين",
         taxId: "123-456-789",
-        commReg: "123456"
+        commReg: "123456",
+        companyInsuranceNumber: "1234567",
+        socialInsuranceOffice: "مكتب تأمينات مطروح والساحل الشمالي"
       };
     }
   };
@@ -698,6 +744,28 @@ export default function EmployeesPage() {
     const target = emp || activeEmp || selectedEmployee;
     if (!target) return;
     setPrintDocumentType("bank_mandate");
+    setSelectedEmployee(target);
+    setShowLettersMenu(false);
+    setTimeout(() => {
+      window.print();
+    }, 250);
+  };
+
+  const handlePrintSocialInsurance1 = (emp?: Employee) => {
+    const target = emp || selectedEmployee;
+    if (!target) return;
+    setPrintDocumentType("social_insurance_1");
+    setSelectedEmployee(target);
+    setShowLettersMenu(false);
+    setTimeout(() => {
+      window.print();
+    }, 250);
+  };
+
+  const handlePrintSocialInsurance6 = (emp?: Employee) => {
+    const target = emp || selectedEmployee;
+    if (!target) return;
+    setPrintDocumentType("social_insurance_6");
     setSelectedEmployee(target);
     setShowLettersMenu(false);
     setTimeout(() => {
@@ -910,6 +978,99 @@ export default function EmployeesPage() {
     };
   };
 
+  const getMilestoneCelebrationStatus = (emp?: Employee | null) => {
+    if (!emp) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // 1. Birthday Milestone
+    let birthDateObj: Date | null = null;
+    if (emp.birthDate) {
+      birthDateObj = new Date(emp.birthDate);
+    } else if (emp.nationalId && emp.nationalId.length === 14 && /^\d+$/.test(emp.nationalId)) {
+      const nid = emp.nationalId;
+      const century = nid[0] === '2' ? '19' : nid[0] === '3' ? '20' : '';
+      if (century) {
+        const dobStr = `${century}${nid.slice(1, 3)}-${nid.slice(3, 5)}-${nid.slice(5, 7)}`;
+        const parsed = new Date(dobStr);
+        if (!isNaN(parsed.getTime())) birthDateObj = parsed;
+      }
+    }
+
+    let birthdayInfo = null;
+    if (birthDateObj && !isNaN(birthDateObj.getTime())) {
+      const thisYearBirthday = new Date(today.getFullYear(), birthDateObj.getMonth(), birthDateObj.getDate());
+      thisYearBirthday.setHours(0, 0, 0, 0);
+      let nextBirthday = thisYearBirthday;
+      if (thisYearBirthday.getTime() < today.getTime()) {
+        nextBirthday = new Date(today.getFullYear() + 1, birthDateObj.getMonth(), birthDateObj.getDate());
+        nextBirthday.setHours(0, 0, 0, 0);
+      }
+      const daysToBirthday = Math.ceil((nextBirthday.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      const turningAge = today.getFullYear() - birthDateObj.getFullYear() + (thisYearBirthday.getTime() < today.getTime() ? 1 : 0);
+
+      birthdayInfo = {
+        dateStr: birthDateObj.toLocaleDateString('ar-EG', { month: 'long', day: 'numeric' }),
+        turningAge,
+        daysToBirthday,
+        isToday: daysToBirthday === 0,
+        isUpcoming: daysToBirthday > 0 && daysToBirthday <= 7
+      };
+    }
+
+    // 2. Work Anniversary Milestone
+    let anniversaryInfo = null;
+    if (emp.startDate) {
+      const startObj = new Date(emp.startDate);
+      if (!isNaN(startObj.getTime())) {
+        startObj.setHours(0, 0, 0, 0);
+        const yearsCompleted = today.getFullYear() - startObj.getFullYear();
+        const thisYearAnniversary = new Date(today.getFullYear(), startObj.getMonth(), startObj.getDate());
+        thisYearAnniversary.setHours(0, 0, 0, 0);
+        let nextAnniversary = thisYearAnniversary;
+        if (thisYearAnniversary.getTime() < today.getTime()) {
+          nextAnniversary = new Date(today.getFullYear() + 1, startObj.getMonth(), startObj.getDate());
+          nextAnniversary.setHours(0, 0, 0, 0);
+        }
+        const daysToAnniversary = Math.ceil((nextAnniversary.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        const milestoneYears = yearsCompleted + (thisYearAnniversary.getTime() < today.getTime() ? 1 : 0);
+
+        if (startObj.getTime() <= today.getTime()) {
+          anniversaryInfo = {
+            startDateStr: startObj.toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' }),
+            milestoneYears,
+            daysToAnniversary,
+            isToday: daysToAnniversary === 0 && milestoneYears > 0,
+            isUpcoming: daysToAnniversary > 0 && daysToAnniversary <= 7 && milestoneYears > 0
+          };
+        }
+      }
+    }
+
+    return { birthdayInfo, anniversaryInfo };
+  };
+
+  const handleSendWhatsAppGreeting = (emp: Employee, type: "birthday" | "anniversary", customMsg?: string) => {
+    const rawPhone = (emp.phone || "").replace(/\D/g, "");
+    let cleanPhone = rawPhone;
+    if (cleanPhone.startsWith("01")) {
+      cleanPhone = "2" + cleanPhone; // Egypt country code +20
+    }
+    const branchInfo = getBranchInfo(emp, currentBranch);
+    const company = branchInfo.companyTitleAr || "ايه ان اتش للتجارة";
+
+    let text = "";
+    if (type === "birthday") {
+      text = `كل عام وأنت بألف خير يا ${emp.name} بمناسبة عيد ميلادك السعيد! 🎂✨\nتتمنى لك إدارة شركة ${company} عاماً مليئاً بالصحة والنجاح والتوفيق الدائم معنا. 🎉💐`;
+    } else {
+      text = `ألف مبروك يا ${emp.name} بمناسبة ذكرى التحاقك بالعمل في ${company}! 🏅👏\nنشكرك على إخلاصك وتفانيك المستمر في أداء واجباتك ونتمنى لك دوام التقدم والازدهار في مسيرتك المهنية معنا. 🌟`;
+    }
+
+    if (customMsg) text = customMsg;
+    const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
+    window.open(url, "_blank");
+  };
+
   // Loans fetcher when activeEmployeeId changes
   useEffect(() => {
     if (!activeEmployeeId) {
@@ -1043,6 +1204,135 @@ export default function EmployeesPage() {
   }, [filtered, activeEmployeeId]);
 
   const activeEmp = employees.find(e => e.id === activeEmployeeId) || null;
+
+  const handleOpenCareerModal = (mode: "transfer" | "promotion") => {
+    if (isManager) {
+      toast.error("Managers are not authorized to transfer or promote employees.");
+      return;
+    }
+    if (!activeEmp) return;
+    setCareerMode(mode);
+    setCareerTargetBranch(activeEmp.storeId?.toLowerCase().includes("ola") ? "alamein4" : "ola");
+    setCareerTargetPosition(activeEmp.position || "Cashier");
+    setCareerTargetSalary(activeEmp.baseSalary || 0);
+    setCareerEffectiveDate(new Date().toISOString().split("T")[0]);
+    setCareerNotes("");
+    setShowCareerModal(true);
+  };
+
+  const handleSubmitCareer = async (e?: React.FormEvent) => {
+    if (e && 'preventDefault' in e) e.preventDefault();
+    if (!activeEmp) return;
+    if (isManager) {
+      toast.error("Managers are not authorized to transfer or promote employees.");
+      return;
+    }
+    setIsSubmittingCareer(true);
+    try {
+      const eventId = `CE-${Date.now()}`;
+      let newEvent: CareerEvent;
+      const updates: Partial<Employee> = {
+        updatedAt: serverTimestamp(),
+        updatedBy: currentUser?.email || "admin"
+      };
+
+      if (careerMode === "transfer") {
+        newEvent = {
+          id: eventId,
+          date: careerEffectiveDate || new Date().toISOString().split("T")[0],
+          type: "transfer",
+          title: careerTargetBranch === "ola" ? "نقل إلى فرع أولا القرنفل (التجمع الخامس)" : "نقل إلى فرع العلمين 4 (مارينا الساحل)",
+          fromBranch: activeEmp.storeId || currentBranch || "alamein4",
+          toBranch: careerTargetBranch,
+          notes: careerNotes || "قرار نقل إداري بين فروع الشركة",
+          createdBy: currentUser?.email || "admin"
+        };
+        updates.storeId = careerTargetBranch === "ola" ? "ola" : "eL-alamein-4";
+      } else {
+        newEvent = {
+          id: eventId,
+          date: careerEffectiveDate || new Date().toISOString().split("T")[0],
+          type: "promotion",
+          title: `ترقية إلى وظيفة: ${careerTargetPosition}`,
+          fromPosition: activeEmp.position,
+          toPosition: careerTargetPosition,
+          fromSalary: activeEmp.baseSalary || 0,
+          toSalary: Number(careerTargetSalary) || activeEmp.baseSalary || 0,
+          notes: careerNotes || "ترقية وظيفية وتعديل مسمى وراتب",
+          createdBy: currentUser?.email || "admin"
+        };
+        updates.position = careerTargetPosition;
+        if (Number(careerTargetSalary) > 0) {
+          updates.baseSalary = Number(careerTargetSalary);
+        }
+      }
+
+      const updatedHistory = [newEvent, ...(activeEmp.careerHistory || [])];
+      updates.careerHistory = updatedHistory;
+
+      await updateDoc(doc(db, "employees", activeEmp.id), updates);
+      toast.success(careerMode === "transfer" ? "تم نقل الموظف بنجاح وتحديث بيانات الفرع!" : "تمت ترقية الموظف وتعديل بياناته الوظيفية بنجاح!");
+      setShowCareerModal(false);
+      setCareerNotes("");
+
+      // Update local state
+      setEmployees(prev => prev.map(emp => emp.id === activeEmp.id ? { ...emp, ...updates } : emp));
+      if (selectedEmployee?.id === activeEmp.id) {
+        setSelectedEmployee(prev => prev ? { ...prev, ...updates } : null);
+      }
+    } catch (err) {
+      console.error("Failed to submit career event:", err);
+      toast.error("Failed to update employee career status");
+    } finally {
+      setIsSubmittingCareer(false);
+    }
+  };
+
+  const handleOpenBonusModal = () => {
+    if (isManager) {
+      toast.error("Managers are not authorized to award bonuses.");
+      return;
+    }
+    if (!activeEmp) return;
+    setBonusAmount(500);
+    setBonusReason("مكافأة تميز وسنوية عمل / عيد ميلاد");
+    setShowBonusModal(true);
+  };
+
+  const handleSubmitBonus = async (e?: React.FormEvent) => {
+    if (e && 'preventDefault' in e) e.preventDefault();
+    if (!activeEmp) return;
+    if (isManager) {
+      toast.error("Managers are not authorized to award bonuses.");
+      return;
+    }
+    setIsSubmittingBonus(true);
+    try {
+      const payload = {
+        employeeId: activeEmp.id,
+        employeeName: activeEmp.name,
+        amount: Number(bonusAmount),
+        type: "bonus",
+        reason: bonusReason || "مكافأة مناسبات / أداء متميز",
+        date: new Date().toISOString().split("T")[0],
+        month: new Date().toISOString().slice(0, 7),
+        storeId: activeEmp.storeId || currentBranch || "alamein4",
+        status: "approved",
+        createdAt: serverTimestamp(),
+        createdBy: currentUser?.email || "admin"
+      };
+
+      await addDoc(collection(db, "adjustments"), payload);
+      toast.success(`تم صرف مكافأة قدرها ${Number(bonusAmount).toLocaleString()} ج.م وقيدها بحسابات الموظف!`);
+      setShowBonusModal(false);
+      setBonusReason("مكافأة تميز وحسن سير وسلوك");
+    } catch (err) {
+      console.error("Failed to grant bonus:", err);
+      toast.error("Failed to grant bonus");
+    } finally {
+      setIsSubmittingBonus(false);
+    }
+  };
 
   const colorGradients = [
     "from-blue-500 to-cyan-400",
@@ -1308,6 +1598,32 @@ export default function EmployeesPage() {
                               </span>
                               <Printer size={13} className="text-slate-400" />
                             </button>
+                            <div className="h-px bg-slate-100 dark:border-white/5 my-1" />
+                            <div className="px-3 py-1 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                              التأمينات الاجتماعية (قانون 148 لسنة 2019)
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handlePrintSocialInsurance1(activeEmp)}
+                              className="w-full text-right px-3 py-2.5 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-950/40 text-slate-800 dark:text-slate-100 flex items-center justify-between text-xs font-bold transition group"
+                            >
+                              <span className="flex items-center gap-2">
+                                <FileText size={15} className="text-amber-600 group-hover:scale-110 transition" />
+                                <span>استمارة 1 تأمينات (س1 - اشتراك جديد)</span>
+                              </span>
+                              <Printer size={13} className="text-slate-400" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handlePrintSocialInsurance6(activeEmp)}
+                              className="w-full text-right px-3 py-2.5 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-800 dark:text-slate-100 flex items-center justify-between text-xs font-bold transition group"
+                            >
+                              <span className="flex items-center gap-2">
+                                <FileText size={15} className="text-rose-600 group-hover:scale-110 transition" />
+                                <span>استمارة 6 تأمينات (س6 - إنهاء خدمة)</span>
+                              </span>
+                              <Printer size={13} className="text-slate-400" />
+                            </button>
                           </div>
                         )}
                       </div>
@@ -1409,15 +1725,174 @@ export default function EmployeesPage() {
                       </div>
 
                       {!isManager && (
-                        <button
-                          onClick={() => handleDelete(activeEmp.id)}
-                          className="p-3 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-2xl transition border border-transparent hover:border-rose-100 dark:hover:border-rose-900/30"
-                          title="Delete Employee"
-                        >
-                          <Trash2 size={20} />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenCareerModal("transfer")}
+                            className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 rounded-2xl text-xs font-bold transition border border-indigo-200 dark:border-indigo-800/40 cursor-pointer"
+                            title="Branch Transfer / نقل فرع"
+                          >
+                            <ArrowRightLeft size={15} />
+                            <span>نقل فرع</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenCareerModal("promotion")}
+                            className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 rounded-2xl text-xs font-bold transition border border-emerald-200 dark:border-emerald-800/40 cursor-pointer"
+                            title="Promotion & Raise / ترقية وتعديل راتب"
+                          >
+                            <TrendingUp size={15} />
+                            <span>ترقية / مسمى</span>
+                          </button>
+                          <button
+                            onClick={() => handleDelete(activeEmp.id)}
+                            className="p-3 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-2xl transition border border-transparent hover:border-rose-100 dark:hover:border-rose-900/30 cursor-pointer"
+                            title="Delete Employee"
+                          >
+                            <Trash2 size={20} />
+                          </button>
+                        </div>
                       )}
                     </div>
+
+                    {/* MILESTONE CELEBRATIONS (BIRTHDAYS & WORK ANNIVERSARIES) */}
+                    {(() => {
+                      const m = getMilestoneCelebrationStatus(activeEmp);
+                      if (!m || (!m.birthdayInfo && !m.anniversaryInfo)) return null;
+                      const { birthdayInfo, anniversaryInfo } = m;
+
+                      return (
+                        <div className="mb-8 p-5 rounded-3xl bg-gradient-to-br from-amber-500/10 via-purple-500/5 to-pink-500/10 border border-amber-500/20 shadow-sm relative overflow-hidden">
+                          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-9 h-9 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                                <Gift size={20} />
+                              </div>
+                              <div>
+                                <h3 className="text-sm font-black text-slate-800 dark:text-white">
+                                  Milestone Celebrations & Recognition (أعياد الميلاد والسنوية وتكريم العاملين)
+                                </h3>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                                  متابعة المناسبات السعيدة لتعزيز ولاء العاملين وتحفيزهم
+                                </p>
+                              </div>
+                            </div>
+                            {!isManager && (
+                              <button
+                                type="button"
+                                onClick={handleOpenBonusModal}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-black shadow-md shadow-amber-500/20 active:scale-95 transition cursor-pointer"
+                              >
+                                <Award size={14} />
+                                <span>صرف مكافأة تميز / مناسبة</span>
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {/* Birthday Box */}
+                            {birthdayInfo ? (
+                              <div className={`p-4 rounded-2xl border transition flex items-center justify-between ${
+                                birthdayInfo.isToday
+                                  ? "bg-pink-500/15 border-pink-500/40 text-pink-700 dark:text-pink-300 shadow-sm"
+                                  : birthdayInfo.isUpcoming
+                                    ? "bg-amber-500/15 border-amber-500/30 text-amber-700 dark:text-amber-300"
+                                    : "bg-white/60 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200"
+                              }`}>
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-2xl bg-pink-500/20 text-pink-600 dark:text-pink-400 flex items-center justify-center">
+                                    <Cake size={20} />
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-black">عيد الميلاد ({birthdayInfo.dateStr})</span>
+                                      {birthdayInfo.isToday && (
+                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-pink-500 text-white animate-pulse">
+                                          اليوم! 🎉
+                                        </span>
+                                      )}
+                                      {birthdayInfo.isUpcoming && (
+                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                                          خلال {birthdayInfo.daysToBirthday} يوم
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                      {birthdayInfo.isToday
+                                        ? `يتم اليوم عامه الـ ${birthdayInfo.turningAge}، نتمنى له عاماً سعيداً!`
+                                        : `متبقي ${birthdayInfo.daysToBirthday} يوم ليكمل ${birthdayInfo.turningAge} سنة`}
+                                    </p>
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSendWhatsAppGreeting(activeEmp, "birthday")}
+                                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow transition active:scale-95 cursor-pointer shrink-0"
+                                  title="تهنئة واتساب"
+                                >
+                                  <MessageCircle size={15} />
+                                  <span className="hidden sm:inline">تهنئة واتساب</span>
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="p-4 rounded-2xl border border-dashed border-slate-200 dark:border-white/10 text-slate-400 text-xs flex items-center justify-center">
+                                تاريخ الميلاد غير مسجل (سجل الرقم القومي لحساب تلقائي)
+                              </div>
+                            )}
+
+                            {/* Work Anniversary Box */}
+                            {anniversaryInfo ? (
+                              <div className={`p-4 rounded-2xl border transition flex items-center justify-between ${
+                                anniversaryInfo.isToday
+                                  ? "bg-purple-500/15 border-purple-500/40 text-purple-700 dark:text-purple-300 shadow-sm"
+                                  : anniversaryInfo.isUpcoming
+                                    ? "bg-indigo-500/15 border-indigo-500/30 text-indigo-700 dark:text-indigo-300"
+                                    : "bg-white/60 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200"
+                              }`}>
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-2xl bg-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+                                    <Award size={20} />
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-black">سنوية العمل في الشركة</span>
+                                      {anniversaryInfo.isToday && (
+                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-600 text-white animate-pulse">
+                                          اليوم! 🌟
+                                        </span>
+                                      )}
+                                      {anniversaryInfo.isUpcoming && (
+                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-500/20 text-indigo-600 dark:text-indigo-400">
+                                          خلال {anniversaryInfo.daysToAnniversary} يوم
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                      {anniversaryInfo.isToday
+                                        ? `يُتم اليوم ${anniversaryInfo.milestoneYears} سنوات من العطاء والولاء!`
+                                        : `يكمل ${anniversaryInfo.milestoneYears} سنوات عمل خلال ${anniversaryInfo.daysToAnniversary} يوم`}
+                                    </p>
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSendWhatsAppGreeting(activeEmp, "anniversary")}
+                                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow transition active:scale-95 cursor-pointer shrink-0"
+                                  title="تهنئة واتساب"
+                                >
+                                  <MessageCircle size={15} />
+                                  <span className="hidden sm:inline">تهنئة سنوية</span>
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="p-4 rounded-2xl border border-dashed border-slate-200 dark:border-white/10 text-slate-400 text-xs flex items-center justify-center">
+                                تاريخ بدء العمل غير مسجل
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* 1. HEALTH CERTIFICATE & COMPLIANCE TRACKER */}
                     {(() => {
@@ -1656,6 +2131,81 @@ export default function EmployeesPage() {
                       )}
                     </div>
 
+                    {/* CAREER JOURNEY & PROMOTIONS TIMELINE */}
+                    <div className="mb-8 p-6 rounded-3xl bg-white/50 dark:bg-black/20 border border-slate-100 dark:border-white/5 shadow-sm">
+                      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                            <TrendingUp size={18} />
+                          </div>
+                          <div>
+                            <h3 className="text-sm font-black text-slate-800 dark:text-white">
+                              Career Journey & Branch Transfers (سجل التنقلات والترقيات الوظيفية)
+                            </h3>
+                            <p className="text-[11px] text-slate-400">
+                              تاريخ التدرج الوظيفي، التنقل بين الفروع، وتعديلات الرواتب
+                            </p>
+                          </div>
+                        </div>
+
+                        {!isManager && (
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenCareerModal("transfer")}
+                              className="px-3 py-1.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <ArrowRightLeft size={14} />
+                              <span>نقل فرع</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenCareerModal("promotion")}
+                              className="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <TrendingUp size={14} />
+                              <span>ترقية</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {(!activeEmp.careerHistory || activeEmp.careerHistory.length === 0) ? (
+                        <div className="py-6 text-center text-xs text-slate-400 font-medium bg-slate-50 dark:bg-white/[0.02] rounded-2xl border border-dashed border-slate-200 dark:border-white/10">
+                          لا توجد تنقلات أو ترقيات مسجلة بعد. الموظف في موقعه الحالي منذ تاريخ التعيين ({activeEmp.startDate || "غير محدد"}).
+                        </div>
+                      ) : (
+                        <div className="space-y-3 relative before:absolute before:inset-y-0 before:right-4 before:w-0.5 before:bg-slate-200 dark:before:bg-white/10 pr-6">
+                          {activeEmp.careerHistory.map((item, idx) => (
+                            <div key={item.id || idx} className="relative bg-white dark:bg-[#121216] p-3.5 rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-xs text-right">
+                              <span className={`absolute -right-7 top-4 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-black ${
+                                item.type === "promotion" ? "bg-emerald-500" : "bg-indigo-500"
+                              }`} />
+                              <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-black ${
+                                  item.type === "promotion"
+                                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
+                                    : "bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300"
+                                }`}>
+                                  {item.type === "promotion" ? "ترقية وظيفية" : "نقل فرع"}
+                                </span>
+                                <span className="font-mono text-xs text-slate-400">{item.date}</span>
+                              </div>
+                              <h5 className="font-bold text-xs text-slate-800 dark:text-white mb-0.5">{item.title}</h5>
+                              {item.type === "promotion" && item.toSalary && (
+                                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-mono font-bold">
+                                  تعديل الراتب: من {fmtCurrency(item.fromSalary || 0)} إلى {fmtCurrency(item.toSalary)}
+                                </p>
+                              )}
+                              {item.notes && (
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">{item.notes}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
                     {/* Data Grid */}
                     <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Financial & Employment Details</h3>
                     <div className="grid grid-cols-2 xl:grid-cols-3 gap-4 mb-8">
@@ -1882,6 +2432,228 @@ export default function EmployeesPage() {
                 <span>تأكيد صرف السلفة</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* CAREER / TRANSFER / PROMOTION MODAL */}
+      {showCareerModal && activeEmp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-[#121212] border border-border w-full max-w-lg rounded-3xl p-6 shadow-2xl space-y-5 relative">
+            <div className="flex justify-between items-start border-b border-border pb-4">
+              <div className="flex items-center gap-3">
+                <div className={`p-2.5 rounded-2xl ${
+                  careerMode === "transfer"
+                    ? "bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400"
+                    : "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400"
+                }`}>
+                  {careerMode === "transfer" ? <ArrowRightLeft size={22} /> : <TrendingUp size={22} />}
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                    {careerMode === "transfer" ? "نقل موظف إلى فرع آخر" : "ترقية موظف وتعديل مسمى وراتب"}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {activeEmp.name} — الوظيفة الحالية: {activeEmp.position} ({activeEmp.storeId?.toLowerCase().includes("ola") ? "فرع أولا القرنفل" : "فرع العلمين 4"})
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowCareerModal(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitCareer} className="space-y-4">
+              {careerMode === "transfer" ? (
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1.5">
+                    الفرع المنقول إليه *
+                  </label>
+                  <select
+                    value={careerTargetBranch}
+                    onChange={(e) => setCareerTargetBranch(e.target.value)}
+                    className="w-full p-3 rounded-xl border border-border bg-background text-sm font-bold focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                  >
+                    <option value="ola">فرع أولا القرنفل (القاهرة الجديدة - التجمع الخامس)</option>
+                    <option value="alamein4">فرع العلمين 4 (الساحل الشمالي - مارينا)</option>
+                  </select>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1.5">
+                      المسمى الوظيفي الجديد (New Position) *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={careerTargetPosition}
+                      onChange={(e) => setCareerTargetPosition(e.target.value)}
+                      placeholder="e.g. Senior Cashier / Assistant Branch Manager"
+                      className="w-full p-3 rounded-xl border border-border bg-background text-sm font-bold focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1.5">
+                      الراتب الأساسي الجديد (جنيه مصري) *
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min={0}
+                        required
+                        value={careerTargetSalary || ""}
+                        onChange={(e) => setCareerTargetSalary(Number(e.target.value))}
+                        className="w-full pl-4 pr-12 py-3 rounded-xl border border-border bg-background text-base font-mono font-bold focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition"
+                      />
+                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                        ج.م
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1.5">
+                  تاريخ سريان القرار *
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={careerEffectiveDate}
+                  onChange={(e) => setCareerEffectiveDate(e.target.value)}
+                  className="w-full p-3 rounded-xl border border-border bg-background text-sm font-mono focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1.5">
+                  ملاحظات أو أسباب القرار الإداري
+                </label>
+                <textarea
+                  rows={2}
+                  value={careerNotes}
+                  onChange={(e) => setCareerNotes(e.target.value)}
+                  placeholder={careerMode === "transfer" ? "مثال: انتداب لموسم الصيف أو نقل دائم لتغطية احتياجات الفرع..." : "مثال: ترقية استثنائية نظراً للأداء المتميز وتحقيق المستهدف..."}
+                  className="w-full p-3 rounded-xl border border-border bg-background text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition resize-none"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCareerModal(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-border font-bold text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingCareer}
+                  className={`flex-1 py-2.5 rounded-xl text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer ${
+                    careerMode === "transfer"
+                      ? "bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/20"
+                      : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20"
+                  }`}
+                >
+                  {isSubmittingCareer ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle size={15} />}
+                  <span>{careerMode === "transfer" ? "تأكيد النقل وحفظ السجل" : "تأكيد الترقية وتحديث الراتب"}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MILESTONE BONUS MODAL */}
+      {showBonusModal && activeEmp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-[#121212] border border-border w-full max-w-md rounded-3xl p-6 shadow-2xl space-y-5 relative">
+            <div className="flex justify-between items-start border-b border-border pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 rounded-2xl">
+                  <Award size={22} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                    صرف مكافأة مناسبة / تميز
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {activeEmp.name} — تقدير سنوية العمل أو عيد الميلاد
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowBonusModal(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitBonus} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1.5">
+                  قيمة المكافأة (جنيه مصري) *
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min={50}
+                    required
+                    value={bonusAmount || ""}
+                    onChange={(e) => setBonusAmount(Number(e.target.value))}
+                    className="w-full pl-4 pr-12 py-3 rounded-xl border border-border bg-background text-lg font-mono font-black focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition"
+                  />
+                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                    ج.م
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1.5">
+                  بيان سبب صرف المكافأة
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={bonusReason}
+                  onChange={(e) => setBonusReason(e.target.value)}
+                  placeholder="مثال: مكافأة تقديرية بمناسبة إتمام سنة من العطاء..."
+                  className="w-full p-3 rounded-xl border border-border bg-background text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition"
+                />
+              </div>
+
+              <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-700 dark:text-amber-300 flex items-start gap-2">
+                <Gift size={15} className="shrink-0 mt-0.5" />
+                <span>
+                  سيتم تسجيل هذه المكافأة كبند مستحق إضافي في تسوية المرتبات الشهرية للموظف.
+                </span>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowBonusModal(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-border font-bold text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingBonus || !bonusAmount || bonusAmount <= 0}
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                >
+                  {isSubmittingBonus ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle size={15} />}
+                  <span>تأكيد اعتماد وصرف المكافأة</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -2521,11 +3293,11 @@ export default function EmployeesPage() {
           {`
             @page { 
               size: A4 portrait; 
-              margin: ${printDocumentType === 'termination' ? '8mm 12mm 8mm 12mm !important' : printDocumentType === 'folder_cover' ? '8mm 10mm 8mm 10mm !important' : (printDocumentType === 'salary_letter' || printDocumentType === 'experience_cert' || printDocumentType === 'bank_mandate') ? '10mm 14mm 10mm 14mm !important' : '15mm'}; 
+              margin: ${printDocumentType === 'termination' ? '8mm 12mm 8mm 12mm !important' : printDocumentType === 'folder_cover' ? '8mm 10mm 8mm 10mm !important' : (printDocumentType === 'salary_letter' || printDocumentType === 'experience_cert' || printDocumentType === 'bank_mandate' || printDocumentType === 'social_insurance_1' || printDocumentType === 'social_insurance_6') ? '8mm 10mm 8mm 10mm !important' : '15mm'}; 
             }
             .content-wrapper { padding: 0; margin: 0 auto; }
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            ${printDocumentType === 'termination' || printDocumentType === 'folder_cover' || printDocumentType === 'salary_letter' || printDocumentType === 'experience_cert' || printDocumentType === 'bank_mandate' ? `
+            ${printDocumentType === 'termination' || printDocumentType === 'folder_cover' || printDocumentType === 'salary_letter' || printDocumentType === 'experience_cert' || printDocumentType === 'bank_mandate' || printDocumentType === 'social_insurance_1' || printDocumentType === 'social_insurance_6' ? `
               html, body {
                 height: 100% !important;
                 margin: 0 !important;
@@ -2537,7 +3309,7 @@ export default function EmployeesPage() {
                 margin: 0 !important;
                 height: 100% !important;
               }
-              .termination-page, .folder-cover-page, .salary-letter-page, .experience-cert-page, .bank-mandate-page {
+              .termination-page, .folder-cover-page, .salary-letter-page, .experience-cert-page, .bank-mandate-page, .social-insurance-page-1, .social-insurance-page-6 {
                 height: 277mm !important;
                 max-height: 277mm !important;
                 display: flex !important;
@@ -4092,6 +4864,685 @@ export default function EmployeesPage() {
                   }}>
                     <span>{companyTitleAr} - إدارة الرواتب والشؤون الإدارية والمالية</span>
                     <span>سجل تجاري: {branchInfo.commReg} | بطاقة ضريبية: {branchInfo.taxId}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          // IF PRINTING SOCIAL INSURANCE FORM 1 (استمارة 1 تأمينات اجتماعية - طلب اشتراك مؤمن عليه)
+          if (printDocumentType === 'social_insurance_1') {
+            const todayFormatted = new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+            const nidChars = (selectedEmployee.nationalId || "").padEnd(14, " ").slice(0, 14).split("");
+            const comprehensiveWage = (selectedEmployee.baseSalary || 0) + (selectedEmployee.insurance || 0);
+
+            return (
+              <div
+                className="content-wrapper social-insurance-page-1"
+                style={{
+                  width: "100%",
+                  maxWidth: "100%",
+                  height: "277mm",
+                  maxHeight: "277mm",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  color: "#0f172a",
+                  fontFamily: "'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif",
+                  padding: "6mm 8mm",
+                  boxSizing: "border-box"
+                }}
+              >
+                {/* 1. GOVERNMENT & OFFICIAL AUTHORITY HEADER */}
+                <div>
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "1.4fr 1.8fr 1.4fr",
+                    gap: "8px",
+                    alignItems: "center",
+                    borderBottom: "2.5px solid #0f172a",
+                    paddingBottom: "6px",
+                    marginBottom: "8px"
+                  }}>
+                    {/* Right: State & Ministry */}
+                    <div style={{ textAlign: "right", fontSize: "10px", lineHeight: "1.4", color: "#1e293b" }}>
+                      <div style={{ fontWeight: "900", fontSize: "11px" }}>جمهورية مصر العربية</div>
+                      <div>وزارة التضامن الاجتماعي</div>
+                      <div style={{ fontWeight: "bold" }}>الهيئة القومية للتأمين الاجتماعي</div>
+                      <div style={{ fontSize: "9px", color: "#475569" }}>صندوق العاملين بقطاع الأعمال العام والخاص</div>
+                    </div>
+
+                    {/* Center: Form Title Badge */}
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{
+                        border: "2px solid #0f172a",
+                        borderRadius: "8px",
+                        padding: "4px 10px",
+                        background: "#f8fafc"
+                      }}>
+                        <div style={{ fontSize: "14px", fontWeight: "900", color: "#0f172a" }}>
+                          استمارة رقم (1) تأمينات اجتماعية
+                        </div>
+                        <div style={{ fontSize: "10.5px", fontWeight: "bold", color: "#334155" }}>
+                          طلب اشتراك مؤمن عليه (قطاع خاص)
+                        </div>
+                        <div style={{ fontSize: "8px", color: "#64748b", marginTop: "1px" }}>
+                          طبقاً لأحكام قانون التأمينات الاجتماعية والمعاشات رقم 148 لسنة 2019
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Left: Office & Codes */}
+                    <div style={{ textAlign: "left", fontSize: "9.5px", lineHeight: "1.5", color: "#1e293b", fontFamily: "monospace" }}>
+                      <div><strong style={{ fontFamily: "'Cairo', sans-serif" }}>المكتب المختص:</strong> {branchInfo.socialInsuranceOffice}</div>
+                      <div><strong style={{ fontFamily: "'Cairo', sans-serif" }}>رقم المنشأة:</strong> <span style={{ fontWeight: "bold", color: "#1e3a8a", fontSize: "11px" }}>{branchInfo.companyInsuranceNumber}</span></div>
+                      <div><strong style={{ fontFamily: "'Cairo', sans-serif" }}>كود القطاع:</strong> 3 (قطاع خاص)</div>
+                      <div><strong style={{ fontFamily: "'Cairo', sans-serif" }}>التاريخ:</strong> {todayFormatted}</div>
+                    </div>
+                  </div>
+
+                  {/* 2. SECTION 1: EMPLOYER / FACILITY DETAILS (بيانات صاحب العمل والمنشأة) */}
+                  <div style={{ marginBottom: "8px" }}>
+                    <div style={{
+                      background: "#0f172a",
+                      color: "#fff",
+                      fontSize: "10.5px",
+                      fontWeight: "bold",
+                      padding: "3px 8px",
+                      borderRadius: "4px 4px 0 0",
+                      display: "flex",
+                      justifyContent: "space-between"
+                    }}>
+                      <span>أولاً: بيانات صاحب العمل والمنشأة (القطاع الخاص)</span>
+                      <span>رمز النشاط: تجارة التجزئة والمواد الغذائية</span>
+                    </div>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px", background: "#f8fafc" }}>
+                      <tbody>
+                        <tr>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", width: "18%", background: "#f1f5f9", fontWeight: "bold" }}>اسم المنشأة القانوني:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", width: "42%", fontWeight: "bold", color: "#0f172a" }}>{companyTitleAr} ({companySubtitleEn})</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", width: "18%", background: "#f1f5f9", fontWeight: "bold" }}>الرقم التأميني للمنشأة:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", width: "22%", fontFamily: "monospace", fontWeight: "bold", color: "#1e3a8a", fontSize: "11px" }}>{branchInfo.companyInsuranceNumber}</td>
+                        </tr>
+                        <tr>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", background: "#f1f5f9", fontWeight: "bold" }}>رقم السجل التجاري:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", fontFamily: "monospace", fontWeight: "bold" }}>{branchInfo.commReg}</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", background: "#f1f5f9", fontWeight: "bold" }}>رقم البطاقة الضريبية:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", fontFamily: "monospace", fontWeight: "bold" }}>{branchInfo.taxId}</td>
+                        </tr>
+                        <tr>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", background: "#f1f5f9", fontWeight: "bold" }}>عنوان موقع العمل / الفرع:</td>
+                          <td colSpan={3} style={{ border: "1px solid #cbd5e1", padding: "4px 6px" }}>{branchInfo.storeAddress} ({branchTitleAr})</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* 3. SECTION 2: INSURED EMPLOYEE DETAILS (بيانات المؤمن عليه) */}
+                  <div style={{ marginBottom: "8px" }}>
+                    <div style={{
+                      background: "#1e3a8a",
+                      color: "#fff",
+                      fontSize: "10.5px",
+                      fontWeight: "bold",
+                      padding: "3px 8px",
+                      borderRadius: "4px 4px 0 0",
+                      display: "flex",
+                      justifyContent: "space-between"
+                    }}>
+                      <span>ثانياً: بيانات المؤمن عليه (العامل)</span>
+                      <span>وفقاً لبطاقة الرقم القومي سارية المفعول</span>
+                    </div>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px", background: "#f8fafc" }}>
+                      <tbody>
+                        <tr>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", width: "18%", background: "#f1f5f9", fontWeight: "bold" }}>اسم المؤمن عليه رباعياً:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", width: "42%", fontWeight: "900", color: "#0f172a", fontSize: "11px" }}>{selectedEmployee.name}</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", width: "18%", background: "#f1f5f9", fontWeight: "bold" }}>الرقم التأميني للعامل:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", width: "22%", fontFamily: "monospace", fontWeight: "bold" }}>
+                            {selectedEmployee.socialInsuranceNumber || "طلب استخراج رقم تأميني جديد"}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", background: "#f1f5f9", fontWeight: "bold" }}>الرقم القومي (14 رقم):</td>
+                          <td colSpan={3} style={{ border: "1px solid #cbd5e1", padding: "4px 6px" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+                              {nidChars.map((ch, i) => (
+                                <span
+                                  key={i}
+                                  style={{
+                                    display: "inline-block",
+                                    width: "20px",
+                                    height: "22px",
+                                    border: "1.5px solid #475569",
+                                    borderRadius: "3px",
+                                    textAlign: "center",
+                                    lineHeight: "20px",
+                                    fontSize: "12px",
+                                    fontWeight: "bold",
+                                    fontFamily: "monospace",
+                                    background: "#fff"
+                                  }}
+                                >
+                                  {ch.trim() || "-"}
+                                </span>
+                              ))}
+                              <span style={{ fontSize: "9px", color: "#64748b", marginRight: "8px" }}>(من واقع بطاقة الرقم القومي)</span>
+                            </div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", background: "#f1f5f9", fontWeight: "bold" }}>تاريخ ومحل الميلاد:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px" }}>{selectedEmployee.birthDate || "-"} — جمهورية مصر العربية</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", background: "#f1f5f9", fontWeight: "bold" }}>الجنس والجنسية:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px" }}>{selectedEmployee.gender === 'female' ? 'أنثى' : 'ذكر'} — مصري الجنسية</td>
+                        </tr>
+                        <tr>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", background: "#f1f5f9", fontWeight: "bold" }}>المهنة والوظيفة المثبتة:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", fontWeight: "bold", color: "#0f172a" }}>{selectedEmployee.position}</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", background: "#f1f5f9", fontWeight: "bold" }}>تاريخ بدء العمل الفعلي:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", fontFamily: "monospace", fontWeight: "bold" }}>{selectedEmployee.startDate || "محدد بالعقد"}</td>
+                        </tr>
+                        <tr>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", background: "#f1f5f9", fontWeight: "bold" }}>محل إقامة المؤمن عليه:</td>
+                          <td colSpan={3} style={{ border: "1px solid #cbd5e1", padding: "4px 6px" }}>{selectedEmployee.address || "مدون بالبطاقة القومية"} — هاتف: {selectedEmployee.phone || "-"}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* 4. SECTION 3: WAGE & CONTRIBUTION BRACKETS (بيانات الأجر واشتراك التأمين) */}
+                  <div style={{ marginBottom: "8px" }}>
+                    <div style={{
+                      background: "#047857",
+                      color: "#fff",
+                      fontSize: "10.5px",
+                      fontWeight: "bold",
+                      padding: "3px 8px",
+                      borderRadius: "4px 4px 0 0",
+                      display: "flex",
+                      justifyContent: "space-between"
+                    }}>
+                      <span>ثالثاً: بيانات أجور الاشتراك التأميني (جنيه مصري)</span>
+                      <span>وفقاً للحد الأدنى والأقصى لأجر الاشتراك بقانون 148 لسنة 2019</span>
+                    </div>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px", background: "#f8fafc" }}>
+                      <thead>
+                        <tr style={{ background: "#f1f5f9", textAlign: "center", fontWeight: "bold" }}>
+                          <th style={{ border: "1px solid #cbd5e1", padding: "4px" }}>أجر الاشتراك الشهري</th>
+                          <th style={{ border: "1px solid #cbd5e1", padding: "4px" }}>الأجر الشامل التعاقدي</th>
+                          <th style={{ border: "1px solid #cbd5e1", padding: "4px" }}>حصة المؤمن عليه (11%)</th>
+                          <th style={{ border: "1px solid #cbd5e1", padding: "4px" }}>حصة المنشأة (18.75%)</th>
+                          <th style={{ border: "1px solid #cbd5e1", padding: "4px" }}>إجمالي الاشتراك التأميني (29.75%)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr style={{ textAlign: "center", fontFamily: "monospace", fontSize: "11px", fontWeight: "bold" }}>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "5px", color: "#0f172a" }}>{(selectedEmployee.baseSalary || 0).toLocaleString()} ج.م</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "5px", color: "#047857" }}>{comprehensiveWage.toLocaleString()} ج.م</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "5px", color: "#b91c1c" }}>{(selectedEmployee.insurance || 0).toLocaleString()} ج.م</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "5px", color: "#1e3a8a" }}>{Math.round((selectedEmployee.baseSalary || 0) * 0.1875).toLocaleString()} ج.م</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "5px", color: "#0f172a", background: "#ecfdf5" }}>
+                            {Math.round((selectedEmployee.baseSalary || 0) * 0.2975).toLocaleString()} ج.م
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* 5. STATUTORY DECLARATIONS (إقرار العامل وصاحب العمل) */}
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "8px",
+                    fontSize: "9.5px",
+                    lineHeight: "1.5",
+                    marginBottom: "8px"
+                  }}>
+                    {/* Employee declaration */}
+                    <div style={{ border: "1px solid #cbd5e1", borderRadius: "6px", padding: "6px 8px", background: "#f8fafc" }}>
+                      <div style={{ fontWeight: "bold", color: "#0f172a", borderBottom: "1px dashed #cbd5e1", paddingBottom: "2px", marginBottom: "4px" }}>
+                        إقرار المؤمن عليه (العامل):
+                      </div>
+                      <div>
+                        أقر أنا الموقع أدناه بصحة كافة البيانات الواردة بهذه الاستمارة وبأنني التحقت بالعمل لدى المنشأة المذكورة في التاريخ الموضح بعاليه، وأتعهد بإخطار الهيئة بأي تعديل يطرأ على حالتي.
+                      </div>
+                      <div style={{ marginTop: "14px", display: "flex", justifyContent: "space-between" }}>
+                        <span>اسم العامل: <strong>{selectedEmployee.name}</strong></span>
+                        <span>التوقيع: ............................</span>
+                      </div>
+                    </div>
+
+                    {/* Employer declaration */}
+                    <div style={{ border: "1px solid #cbd5e1", borderRadius: "6px", padding: "6px 8px", background: "#f8fafc" }}>
+                      <div style={{ fontWeight: "bold", color: "#0f172a", borderBottom: "1px dashed #cbd5e1", paddingBottom: "2px", marginBottom: "4px" }}>
+                        إقرار صاحب العمل / المنشأة:
+                      </div>
+                      <div>
+                        تقر شركة <strong>{companyTitleAr}</strong> بصحة بيانات العامل الموضح بعاليه وأنه يعمل بالمنشأة تحت إشرافها وإدارتها وتلتزم المنشأة بسداد الاشتراكات المستحقة وفقاً لأحكام القانون رقم 148 لسنة 2019.
+                      </div>
+                      <div style={{ marginTop: "14px", display: "flex", justifyContent: "space-between" }}>
+                        <span>صفة الموقع: <strong>المدير المسؤول</strong></span>
+                        <span>التوقيع: ............................</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 6. SIGNATURES, OFFICIAL STAMP & SOCIAL INSURANCE OFFICE AUDIT */}
+                <div>
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "1.3fr 1fr 1.7fr",
+                    gap: "8px",
+                    alignItems: "center",
+                    borderTop: "2px solid #0f172a",
+                    paddingTop: "6px",
+                    marginBottom: "6px"
+                  }}>
+                    {/* Employer Signatures */}
+                    <div style={{ textAlign: "center", fontSize: "9.5px" }}>
+                      <div style={{ fontWeight: "bold", color: "#0f172a" }}>مسؤول شؤون العاملين والرواتب:</div>
+                      <div style={{ color: "#64748b", margin: "2px 0 20px 0" }}>إدارة الموارد البشرية (HR)</div>
+                      <div>التوقيع والاعتماد: ............................</div>
+                    </div>
+
+                    {/* OFFICIAL OLA / ANH STAMP */}
+                    <div style={{ display: "flex", justifyContent: "center" }}>
+                      <div style={{
+                        width: "135px",
+                        height: "78px",
+                        border: "2px solid #1e3a8a",
+                        borderRadius: "8px",
+                        padding: "4px",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        textAlign: "center",
+                        background: "#eff6ff",
+                        color: "#1e3a8a",
+                        boxShadow: "inset 0 0 0 1px #1e3a8a"
+                      }}>
+                        <div style={{ fontSize: "10.5px", fontWeight: "900", lineHeight: "1.2" }}>{companyTitleAr}</div>
+                        <div style={{ fontSize: "8px", fontWeight: "800", textTransform: "uppercase" }}>{companySubtitleEn}</div>
+                        <div style={{ fontSize: "7.5px", fontWeight: "bold", fontFamily: "monospace", marginTop: "2px" }}>س.ت : {branchInfo.commReg}</div>
+                        <div style={{ fontSize: "7.5px", fontWeight: "bold", fontFamily: "monospace" }}>ب.ض : {branchInfo.taxId}</div>
+                        <div style={{ fontSize: "7.5px", fontWeight: "bold", fontFamily: "monospace" }}>تأمين : {branchInfo.companyInsuranceNumber}</div>
+                      </div>
+                    </div>
+
+                    {/* Authority Official Receipt Box (خاص باعتماد مكتب التأمينات الاجتماعية) */}
+                    <div style={{
+                      border: "1.5px dashed #475569",
+                      borderRadius: "6px",
+                      padding: "5px 8px",
+                      fontSize: "8.5px",
+                      lineHeight: "1.4",
+                      background: "#f1f5f9"
+                    }}>
+                      <div style={{ fontWeight: "bold", textAlign: "center", color: "#0f172a", borderBottom: "1px solid #cbd5e1", paddingBottom: "2px", marginBottom: "3px" }}>
+                        خاص بمكتب التأمينات الاجتماعية (للاستعمال الرسمي)
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span>رقم الوارد: ............................</span>
+                        <span>تاريخ الورود: .... / .... / 2026</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginTop: "3px" }}>
+                        <span>توقيع المراجع: .......................</span>
+                        <span>توقيع مدير المكتب: ...................</span>
+                      </div>
+                      <div style={{ textAlign: "center", color: "#64748b", marginTop: "3px", fontSize: "7.5px" }}>
+                        (خاتم شعار الجمهورية / مكتب التأمينات الاجتماعية المختص)
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Document Footer */}
+                  <div style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    borderTop: "1px solid #cbd5e1",
+                    paddingTop: "2px",
+                    fontSize: "8px",
+                    color: "#64748b",
+                    fontWeight: "bold"
+                  }}>
+                    <span>استمارة 1 تأمينات - نظام إدارة الموارد البشرية المعتمد لشركة {companyTitleAr}</span>
+                    <span>سجل تجاري: {branchInfo.commReg} | بطاقة ضريبية: {branchInfo.taxId} | رقم تأميني: {branchInfo.companyInsuranceNumber}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          // IF PRINTING SOCIAL INSURANCE FORM 6 (استمارة 6 تأمينات اجتماعية - إخطار انتهاء خدمة مؤمن عليه)
+          if (printDocumentType === 'social_insurance_6') {
+            const todayFormatted = new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+            const nidChars = (selectedEmployee.nationalId || "").padEnd(14, " ").slice(0, 14).split("");
+            const exitDateFormatted = terminationData?.terminationDate || selectedEmployee.contractEndDate || new Date().toISOString().split("T")[0];
+
+            return (
+              <div
+                className="content-wrapper social-insurance-page-6"
+                style={{
+                  width: "100%",
+                  maxWidth: "100%",
+                  height: "277mm",
+                  maxHeight: "277mm",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  color: "#0f172a",
+                  fontFamily: "'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif",
+                  padding: "6mm 8mm",
+                  boxSizing: "border-box"
+                }}
+              >
+                {/* 1. GOVERNMENT & OFFICIAL AUTHORITY HEADER */}
+                <div>
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "1.4fr 1.8fr 1.4fr",
+                    gap: "8px",
+                    alignItems: "center",
+                    borderBottom: "2.5px solid #0f172a",
+                    paddingBottom: "6px",
+                    marginBottom: "8px"
+                  }}>
+                    {/* Right: State & Ministry */}
+                    <div style={{ textAlign: "right", fontSize: "10px", lineHeight: "1.4", color: "#1e293b" }}>
+                      <div style={{ fontWeight: "900", fontSize: "11px" }}>جمهورية مصر العربية</div>
+                      <div>وزارة التضامن الاجتماعي</div>
+                      <div style={{ fontWeight: "bold" }}>الهيئة القومية للتأمين الاجتماعي</div>
+                      <div style={{ fontSize: "9px", color: "#475569" }}>صندوق العاملين بقطاع الأعمال العام والخاص</div>
+                    </div>
+
+                    {/* Center: Form Title Badge */}
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{
+                        border: "2px solid #b91c1c",
+                        borderRadius: "8px",
+                        padding: "4px 10px",
+                        background: "#fef2f2"
+                      }}>
+                        <div style={{ fontSize: "14px", fontWeight: "900", color: "#b91c1c" }}>
+                          استمارة رقم (6) تأمينات اجتماعية
+                        </div>
+                        <div style={{ fontSize: "10.5px", fontWeight: "bold", color: "#334155" }}>
+                          إخطار انتهاء خدمة مؤمن عليه (قطاع خاص)
+                        </div>
+                        <div style={{ fontSize: "8px", color: "#64748b", marginTop: "1px" }}>
+                          طبقاً لأحكام قانون التأمينات الاجتماعية والمعاشات رقم 148 لسنة 2019 وقانون العمل 12 لسنة 2003
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Left: Office & Codes */}
+                    <div style={{ textAlign: "left", fontSize: "9.5px", lineHeight: "1.5", color: "#1e293b", fontFamily: "monospace" }}>
+                      <div><strong style={{ fontFamily: "'Cairo', sans-serif" }}>المكتب المختص:</strong> {branchInfo.socialInsuranceOffice}</div>
+                      <div><strong style={{ fontFamily: "'Cairo', sans-serif" }}>رقم المنشأة:</strong> <span style={{ fontWeight: "bold", color: "#1e3a8a", fontSize: "11px" }}>{branchInfo.companyInsuranceNumber}</span></div>
+                      <div><strong style={{ fontFamily: "'Cairo', sans-serif" }}>كود الشطب:</strong> إنهاء خدمة</div>
+                      <div><strong style={{ fontFamily: "'Cairo', sans-serif" }}>التاريخ:</strong> {todayFormatted}</div>
+                    </div>
+                  </div>
+
+                  {/* 2. SECTION 1: EMPLOYER / FACILITY DETAILS (بيانات صاحب العمل والمنشأة) */}
+                  <div style={{ marginBottom: "8px" }}>
+                    <div style={{
+                      background: "#0f172a",
+                      color: "#fff",
+                      fontSize: "10.5px",
+                      fontWeight: "bold",
+                      padding: "3px 8px",
+                      borderRadius: "4px 4px 0 0",
+                      display: "flex",
+                      justifyContent: "space-between"
+                    }}>
+                      <span>أولاً: بيانات المنشأة وصاحب العمل</span>
+                      <span>قطاع خاص — كود رقم: 3</span>
+                    </div>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px", background: "#f8fafc" }}>
+                      <tbody>
+                        <tr>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", width: "18%", background: "#f1f5f9", fontWeight: "bold" }}>اسم المنشأة:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", width: "42%", fontWeight: "bold", color: "#0f172a" }}>{companyTitleAr} ({companySubtitleEn})</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", width: "18%", background: "#f1f5f9", fontWeight: "bold" }}>الرقم التأميني للمنشأة:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", width: "22%", fontFamily: "monospace", fontWeight: "bold", color: "#1e3a8a", fontSize: "11px" }}>{branchInfo.companyInsuranceNumber}</td>
+                        </tr>
+                        <tr>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", background: "#f1f5f9", fontWeight: "bold" }}>السجل التجاري:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", fontFamily: "monospace", fontWeight: "bold" }}>{branchInfo.commReg}</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", background: "#f1f5f9", fontWeight: "bold" }}>البطاقة الضريبية:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", fontFamily: "monospace", fontWeight: "bold" }}>{branchInfo.taxId}</td>
+                        </tr>
+                        <tr>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", background: "#f1f5f9", fontWeight: "bold" }}>مقر العمل التابع له:</td>
+                          <td colSpan={3} style={{ border: "1px solid #cbd5e1", padding: "4px 6px" }}>{branchInfo.storeAddress} ({branchTitleAr})</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* 3. SECTION 2: INSURED EMPLOYEE DETAILS (بيانات المؤمن عليه المنهي خدمته) */}
+                  <div style={{ marginBottom: "8px" }}>
+                    <div style={{
+                      background: "#b91c1c",
+                      color: "#fff",
+                      fontSize: "10.5px",
+                      fontWeight: "bold",
+                      padding: "3px 8px",
+                      borderRadius: "4px 4px 0 0",
+                      display: "flex",
+                      justifyContent: "space-between"
+                    }}>
+                      <span>ثانياً: بيانات المؤمن عليه المطلوب شطب اشتراكه</span>
+                      <span>سجلات العاملين بالقطاع الخاص</span>
+                    </div>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px", background: "#f8fafc" }}>
+                      <tbody>
+                        <tr>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", width: "18%", background: "#f1f5f9", fontWeight: "bold" }}>اسم المؤمن عليه:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", width: "42%", fontWeight: "900", color: "#0f172a", fontSize: "11px" }}>{selectedEmployee.name}</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", width: "18%", background: "#f1f5f9", fontWeight: "bold" }}>الرقم التأميني:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", width: "22%", fontFamily: "monospace", fontWeight: "bold" }}>
+                            {selectedEmployee.socialInsuranceNumber || "مسجل بسجلات الهيئة"}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", background: "#f1f5f9", fontWeight: "bold" }}>الرقم القومي (14 رقم):</td>
+                          <td colSpan={3} style={{ border: "1px solid #cbd5e1", padding: "4px 6px" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+                              {nidChars.map((ch, i) => (
+                                <span
+                                  key={i}
+                                  style={{
+                                    display: "inline-block",
+                                    width: "20px",
+                                    height: "22px",
+                                    border: "1.5px solid #475569",
+                                    borderRadius: "3px",
+                                    textAlign: "center",
+                                    lineHeight: "20px",
+                                    fontSize: "12px",
+                                    fontWeight: "bold",
+                                    fontFamily: "monospace",
+                                    background: "#fff"
+                                  }}
+                                >
+                                  {ch.trim() || "-"}
+                                </span>
+                              ))}
+                              <span style={{ fontSize: "9px", color: "#64748b", marginRight: "8px" }}>(مطابق لأصل بطاقة الرقم القومي)</span>
+                            </div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", background: "#f1f5f9", fontWeight: "bold" }}>المسمى والمهنة:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", fontWeight: "bold" }}>{selectedEmployee.position}</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", background: "#f1f5f9", fontWeight: "bold" }}>تاريخ بدء الاشتراك:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", fontFamily: "monospace" }}>{selectedEmployee.startDate || "تاريخ التعيين"}</td>
+                        </tr>
+                        <tr>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", background: "#fee2e2", fontWeight: "900", color: "#991b1b" }}>تاريخ انتهاء الخدمة الفعلي:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", fontFamily: "monospace", fontWeight: "900", color: "#b91c1c", fontSize: "11px" }}>
+                            {exitDateFormatted}
+                          </td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", background: "#f1f5f9", fontWeight: "bold" }}>آخر أجر اشتراك مسدد:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", fontFamily: "monospace", fontWeight: "bold" }}>
+                            {(selectedEmployee.baseSalary || 0).toLocaleString()} ج.م
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* 4. SECTION 3: STATUTORY REASON FOR TERMINATION (سبب انتهاء الخدمة وفقاً للقانون) */}
+                  <div style={{ marginBottom: "8px" }}>
+                    <div style={{
+                      background: "#334155",
+                      color: "#fff",
+                      fontSize: "10.5px",
+                      fontWeight: "bold",
+                      padding: "3px 8px",
+                      borderRadius: "4px 4px 0 0"
+                    }}>
+                      ثالثاً: سبب انتهاء الخدمة ومسوغات الشطب التأميني
+                    </div>
+                    <div style={{
+                      border: "1px solid #cbd5e1",
+                      borderTop: "none",
+                      padding: "8px 12px",
+                      background: "#f8fafc",
+                      fontSize: "10px",
+                      lineHeight: "1.8"
+                    }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+                        <div>
+                          <strong>[  {terminationData?.reason === 'resignation' ? 'X' : ' '}  ]</strong> 1. الاستقالة الصريحة برغبة العامل كتابياً (مادة 119 قانون 12 لسنة 2003).
+                        </div>
+                        <div>
+                          <strong>[  {terminationData?.reason === 'contract_end' || (!terminationData && selectedEmployee.contractEndDate) ? 'X' : ' '}  ]</strong> 2. انتهاء مدة عقد العمل محدد المدة دون تجديده (مادة 104 قانون 12).
+                        </div>
+                        <div>
+                          <strong>[  {terminationData?.reason === 'probation_fail' ? 'X' : ' '}  ]</strong> 3. عدم اجتياز فترة الاختبار بنجاح (المادة 32 من قانون العمل 12 لسنة 2003).
+                        </div>
+                        <div>
+                          <strong>[  {terminationData?.reason === 'mutual_agreement' ? 'X' : ' '}  ]</strong> 4. إنهاء التعاقد بالاتفاق والتراضي وخلو الطرف التام.
+                        </div>
+                        <div>
+                          <strong>[  {terminationData?.reason === 'job_abandonment' ? 'X' : ' '}  ]</strong> 5. الانقطاع عن العمل دون مسوغ مشروع مع استيفاء الإنذارات القانونية.
+                        </div>
+                        <div>
+                          <strong>[  {terminationData?.reason === 'other' ? 'X' : ' '}  ]</strong> 6. أسباب قانونية أخرى / بلوغ السن القانونية للمعاش.
+                        </div>
+                      </div>
+                      {terminationData?.notes && (
+                        <div style={{ marginTop: "4px", fontSize: "9.5px", color: "#475569", borderTop: "1px dashed #cbd5e1", paddingTop: "4px" }}>
+                          <strong>ملاحظات المنشأة:</strong> {terminationData.notes}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 5. STATUTORY UNDERTAKING & CLEARANCE */}
+                  <div style={{
+                    fontSize: "9.5px",
+                    lineHeight: "1.6",
+                    background: "#fef2f2",
+                    border: "1px solid #fecaca",
+                    borderRadius: "6px",
+                    padding: "6px 10px",
+                    marginBottom: "8px",
+                    color: "#991b1b"
+                  }}>
+                    <strong>إقرار المنشأة وصاحب العمل:</strong>
+                    <br />
+                    تقر شركة <strong>{companyTitleAr}</strong> بأن العامل المذكور قد انتهت علاقته التعاقدية بالمنشأة اعتباراً من تاريخ <strong>{exitDateFormatted}</strong> للأسباب المبينة بعاليه، وتتعهد المنشأة بسداد كافة الاشتراكات والمبالغ التأمينية المستحقة عن فترة خدمته وحتى تاريخ شطبه طبقاً لأحكام القانون رقم 148 لسنة 2019.
+                  </div>
+                </div>
+
+                {/* 6. SIGNATURES, OFFICIAL STAMP & SOCIAL INSURANCE OFFICE AUDIT */}
+                <div>
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "1.3fr 1fr 1.7fr",
+                    gap: "8px",
+                    alignItems: "center",
+                    borderTop: "2px solid #0f172a",
+                    paddingTop: "6px",
+                    marginBottom: "6px"
+                  }}>
+                    {/* Employer Signatures */}
+                    <div style={{ textAlign: "center", fontSize: "9.5px" }}>
+                      <div style={{ fontWeight: "bold", color: "#0f172a" }}>المدير العام / المسؤول:</div>
+                      <div style={{ color: "#64748b", margin: "2px 0 20px 0" }}>المفوض عن إدارة المنشأة</div>
+                      <div>التوقيع والاعتماد: ............................</div>
+                    </div>
+
+                    {/* OFFICIAL OLA / ANH STAMP */}
+                    <div style={{ display: "flex", justifyContent: "center" }}>
+                      <div style={{
+                        width: "135px",
+                        height: "78px",
+                        border: "2px solid #1e3a8a",
+                        borderRadius: "8px",
+                        padding: "4px",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        textAlign: "center",
+                        background: "#eff6ff",
+                        color: "#1e3a8a",
+                        boxShadow: "inset 0 0 0 1px #1e3a8a"
+                      }}>
+                        <div style={{ fontSize: "10.5px", fontWeight: "900", lineHeight: "1.2" }}>{companyTitleAr}</div>
+                        <div style={{ fontSize: "8px", fontWeight: "800", textTransform: "uppercase" }}>{companySubtitleEn}</div>
+                        <div style={{ fontSize: "7.5px", fontWeight: "bold", fontFamily: "monospace", marginTop: "2px" }}>س.ت : {branchInfo.commReg}</div>
+                        <div style={{ fontSize: "7.5px", fontWeight: "bold", fontFamily: "monospace" }}>ب.ض : {branchInfo.taxId}</div>
+                        <div style={{ fontSize: "7.5px", fontWeight: "bold", fontFamily: "monospace" }}>تأمين : {branchInfo.companyInsuranceNumber}</div>
+                      </div>
+                    </div>
+
+                    {/* Authority Official Receipt Box (خاص باعتماد مكتب التأمينات الاجتماعية) */}
+                    <div style={{
+                      border: "1.5px dashed #475569",
+                      borderRadius: "6px",
+                      padding: "5px 8px",
+                      fontSize: "8.5px",
+                      lineHeight: "1.4",
+                      background: "#f1f5f9"
+                    }}>
+                      <div style={{ fontWeight: "bold", textAlign: "center", color: "#0f172a", borderBottom: "1px solid #cbd5e1", paddingBottom: "2px", marginBottom: "3px" }}>
+                        خاص بمكتب التأمينات الاجتماعية (للاستعمال الرسمي)
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span>رقم وارد الشطب: ....................</span>
+                        <span>تاريخ الورود: .... / .... / 2026</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginTop: "3px" }}>
+                        <span>توقيع مراجع الشطب: ..............</span>
+                        <span>توقيع مدير المكتب: ..................</span>
+                      </div>
+                      <div style={{ textAlign: "center", color: "#64748b", marginTop: "3px", fontSize: "7.5px" }}>
+                        (خاتم شعار الجمهورية / شطب المؤمن عليه من سجلات المنشأة)
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Document Footer */}
+                  <div style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    borderTop: "1px solid #cbd5e1",
+                    paddingTop: "2px",
+                    fontSize: "8px",
+                    color: "#64748b",
+                    fontWeight: "bold"
+                  }}>
+                    <span>استمارة 6 تأمينات - نظام إدارة الموارد البشرية المعتمد لشركة {companyTitleAr}</span>
+                    <span>سجل تجاري: {branchInfo.commReg} | بطاقة ضريبية: {branchInfo.taxId} | رقم تأميني: {branchInfo.companyInsuranceNumber}</span>
                   </div>
                 </div>
               </div>
