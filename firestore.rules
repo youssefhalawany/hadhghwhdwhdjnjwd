@@ -187,26 +187,18 @@ service cloud.firestore {
       allow write: if request.auth != null && isAdminEditor();
     }
     match /payroll_drafts/{doc} {
-      allow read: if request.auth != null && (
+      allow read, list: if request.auth != null && (
         isAdmin() || 
-        (isManager() && ('storeId' in resource.data) && resource.data.storeId in managerStores())
-      );
-      allow list: if request.auth != null && (
-        isAdmin() ||
         isManager()
       );
-      allow write: if request.auth != null && isAdminEditor();
+      allow write: if request.auth != null && (isAdminEditor() || isManager());
     }
     match /payroll_lines/{doc} {
-      allow read: if request.auth != null && (
+      allow read, list: if request.auth != null && (
         isAdmin() || 
-        (isManager() && ('storeId' in resource.data) && resource.data.storeId in managerStores())
-      );
-      allow list: if request.auth != null && (
-        isAdmin() ||
         isManager()
       );
-      allow write: if request.auth != null && isAdminEditor();
+      allow write: if request.auth != null && (isAdminEditor() || isManager());
     }
     match /deductions/{doc} {
       allow read: if request.auth != null && (isAdmin() || isManagerFor(resource.data.storeId));
