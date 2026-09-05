@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useBranch, BranchId } from "@/context/BranchContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { triggerHapticFeedback } from "@/lib/pwaBadges";
-import { Store, Languages, Clock, Bell, LogOut, UserCheck, ShieldCheck, Sparkles } from "lucide-react";
+import { Store, Languages, Clock, Bell, LogOut, UserCheck, ShieldCheck, Sparkles, ArrowLeft } from "lucide-react";
 import { playPopSound } from "@/lib/sounds";
 import { toast } from "sonner";
 import { auth } from "@/lib/firebase";
@@ -27,6 +29,7 @@ const O = {
 };
 
 export function MobileHeader() {
+  const pathname = usePathname();
   const { currentBranch, setBranch, availableBranches } = useBranch();
   const { language, setLanguage } = useLanguage();
   const isAr = language === "ar";
@@ -278,6 +281,32 @@ export function MobileHeader() {
 
         {/* Action Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          {/* Back to Operations Hub Button (Mobile) */}
+          {pathname !== '/' && (
+            <Link
+              href="/"
+              prefetch={true}
+              style={{
+                height: 36,
+                padding: '0 10px',
+                borderRadius: 12,
+                background: 'rgba(225,29,72,0.18)',
+                border: '1px solid rgba(225,29,72,0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                color: '#FAFAFA',
+                fontSize: 11,
+                fontWeight: 800,
+                textDecoration: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              <ArrowLeft size={13} color="#FB7185" style={{ transform: isAr ? 'rotate(180deg)' : 'none' }} />
+              <span>{isAr ? "الرئيسية" : "Hub"}</span>
+            </Link>
+          )}
+
           {/* Notification Button */}
           <button
             onClick={handleNotificationToggle}

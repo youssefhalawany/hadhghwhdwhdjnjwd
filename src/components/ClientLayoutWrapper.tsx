@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Sun, Moon, Shield, Database, LayoutDashboard, FileText, Printer, ClipboardList, CheckCircle, Search, LogOut, User, Users, Menu, X, Bell, PackageX, Truck, CalendarDays, DollarSign, Activity, Wallet, Tag, Sparkles, Barcode, Briefcase, Clock, PackageMinus, Package, Bot, ShoppingCart, Box, Monitor } from "lucide-react";
+import { Sun, Moon, Shield, Database, LayoutDashboard, FileText, Printer, ClipboardList, CheckCircle, Search, LogOut, User, Users, Menu, X, Bell, PackageX, Truck, CalendarDays, DollarSign, Activity, Wallet, Tag, Sparkles, Barcode, Briefcase, Clock, PackageMinus, Package, Bot, ShoppingCart, Box, Monitor, ArrowLeft } from "lucide-react";
 import { auth, messaging, dbService, db } from "@/lib/firebase";
 import { getToken } from "firebase/messaging";
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile } from "firebase/auth";
@@ -1253,171 +1253,48 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     <div className="h-[100dvh] w-full flex bg-background text-foreground transition-colors duration-300 overflow-hidden print:overflow-visible print:h-auto">
       <GlobalReminders />
 
-      {/* Desktop Sidebar */}
-      {!pathname.startsWith('/cashier') && !pathname.startsWith('/owner') && (
-        <aside className="hidden lg:flex flex-col w-64 h-full z-50 flex-shrink-0 overflow-hidden print:hidden bg-card border-r border-border backdrop-blur-xl transition-colors duration-300">
-          <div className="p-4 flex flex-col gap-4 flex-shrink-0 border-b border-border">
-            <Link href="/" className="flex items-center gap-3">
-              {logoUrl ? (
-                <img src={logoUrl} alt="Store Logo" className="h-10 w-10 rounded-full object-cover border-2 shadow-md" style={{ borderColor: brandColor || '#F97316' }} />
-              ) : (
-                <div style={{ position: 'relative' }}>
-                  <div style={{ position: 'absolute', inset: -2, borderRadius: '50%', background: 'conic-gradient(from 0deg, #E11D48, #F97316, #FBBF24, #E11D48)', filter: 'blur(4px)', opacity: 0.35 }} />
-                  <div className="h-10 w-10 rounded-full flex items-center justify-center font-black text-white text-xl relative bg-zinc-900 border border-white/10">
-                    K
-                  </div>
-                </div>
-              )}
-              <div className="flex flex-col text-start">
-                <span className="font-extrabold tracking-[0.12em] text-base text-foreground">CIRCLE K</span>
-                <span className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground">
-                  {currentBranch === 'alamein4' ? (language === 'ar' ? 'بوابة العلمين 4' : 'El Alamein 4 Portal') : currentBranch === 'ola' ? (language === 'ar' ? 'بوابة علا القرنفل' : 'Ola El Koronfol Portal') : (language === 'ar' ? 'بوابة الفروع' : 'All Branches')}
-                </span>
-              </div>
-            </Link>
-          </div>
-
-          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar p-3 flex flex-col gap-1">
-            {navItems.map((item) => {
-              const isActive = item.href ? pathname === item.href : item.children?.some(child => pathname === child.href);
-              const Icon = item.icon;
-
-              if (item.children) {
-                return (
-                  <div key={item.name} className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2 px-3 py-2 text-[10px] font-black uppercase tracking-widest mt-3 text-muted-foreground/70">
-                      <span>{item.name}</span>
-                    </div>
-                    {item.children.map(child => {
-                      const isChildActive = pathname === child.href;
-                      return (
-                        <Link
-                          key={child.href}
-                          href={child.href}
-                          prefetch={true}
-                          className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                            isChildActive 
-                              ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-l-4 border-rose-500 font-bold'
-                              : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                          }`}
-                        >
-                          <child.icon className={`h-4 w-4 ${isChildActive ? 'scale-110 text-rose-500 drop-shadow-sm' : 'opacity-70 group-hover:opacity-100'}`} />
-                          <span>{child.name}</span>
-                          {child.name === t("nav.shift_audit") && pendingShiftCount > 0 && (
-                            <span className={`ml-auto bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-pulse ${hasAgedShifts ? 'shadow-rose-500/80' : ''}`}>
-                              {pendingShiftCount}
-                            </span>
-                          )}
-                          {child.name === t("nav.voids_returns") && pendingVoidCount > 0 && (
-                            <span className="ml-auto bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-pulse">
-                              {pendingVoidCount}
-                            </span>
-                          )}
-                          {child.name === t("nav.expiries") && pendingExpiriesCount > 0 && (
-                            <span className="ml-auto bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-pulse">
-                              {pendingExpiriesCount}
-                            </span>
-                          )}
-                          {(child.name === "Out of Stock" || child.name === "سجل النواقص") && pendingOosCount > 0 && (
-                            <span className="ml-auto bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-pulse">
-                              {pendingOosCount}
-                            </span>
-                          )}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                );
-              }
-
-              return (
-                <Link
-                  key={item.href || item.name}
-                  href={item.href!}
-                  prefetch={true}
-                  className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                    isActive 
-                      ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-l-4 border-rose-500 font-bold'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                  }`}
-                >
-                  <Icon className={`h-4 w-4 ${isActive ? 'scale-110 text-rose-500 drop-shadow-sm' : 'opacity-70 group-hover:opacity-100'}`} />
-                  {!item.isIconOnly && <span>{item.name}</span>}
-                  {item.name === t("nav.returns") && pendingReturnsCount > 0 && (
-                    <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse shadow-sm shadow-red-500/30">
-                      {pendingReturnsCount}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </div>
-
-          <div className="p-4 mt-auto border-t border-border">
-            <button
-              onClick={() => {
-                // Clean up device session before signing out
-                const sessionId = sessionStorage.getItem("device_session_id");
-                if (sessionId) {
-                  deleteDoc(doc(db, "active_sessions", sessionId)).catch(() => {});
-                  sessionStorage.removeItem("device_session_id");
-                }
-                signOut(auth);
-              }}
-              className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl text-sm font-bold transition-all duration-200 bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 cursor-pointer"
-            >
-              <LogOut className="h-4 w-4" /> {t("nav.sign_out")}
-            </button>
-          </div>
-        </aside>
-      )}
-
-      {/* Main Content Area */}
+      {/* Main Content Area - Full Desktop Width (No cramped left sidebar) */}
       <div className="flex-1 flex flex-col min-w-0 max-h-screen overflow-hidden print:max-h-none print:overflow-visible">
         {!pathname.startsWith('/cashier') && role !== 'cashier' && <MobileHeader />}
 
-        {/* Top Header */}
-        {!pathname.startsWith('/cashier') && !pathname.startsWith('/owner') && (
+        {/* Global Top Header - Displayed across all sub-pages with Back-to-Hub navigation */}
+        {!pathname.startsWith('/cashier') && !pathname.startsWith('/owner') && pathname !== '/' && (
           <header
-            className="flex-shrink-0 hidden md:flex items-center justify-between px-4 sm:px-6 z-40 print:hidden bg-card/90 backdrop-blur-xl border-b border-border transition-colors duration-300"
+            className="flex-shrink-0 hidden md:flex items-center justify-between px-4 sm:px-8 z-40 print:hidden bg-card/90 backdrop-blur-xl border-b border-border transition-colors duration-300"
             style={{
-              paddingTop: 'max(1rem, env(safe-area-inset-top))',
-              paddingBottom: '1rem',
+              paddingTop: 'max(0.75rem, env(safe-area-inset-top))',
+              paddingBottom: '0.75rem',
               minHeight: 'calc(4rem + env(safe-area-inset-top))',
             }}
           >
-
-            {/* Mobile Left: Logo & Hamburger */}
-            <div className="flex lg:hidden items-center gap-3">
-              <button
-                className="p-2 rounded-xl transition-all bg-muted border border-border text-muted-foreground hover:text-foreground"
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            {/* Global Back to Hub Navigation Button */}
+            <div className="flex items-center gap-3">
+              <Link
+                href="/"
+                prefetch={true}
+                className="group flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-red-600/15 via-rose-600/10 to-transparent border border-rose-500/30 hover:border-rose-500/60 hover:bg-rose-500/20 text-white transition-all shadow-md hover:shadow-rose-500/20 active:scale-95 cursor-pointer"
               >
-                {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-              </button>
-              <span className="font-extrabold tracking-[0.12em] text-sm text-foreground">CIRCLE K</span>
-            </div>
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-red-600 to-rose-700 flex items-center justify-center font-black text-white text-xs shadow-md group-hover:scale-105 transition-transform flex-shrink-0">
+                  CK
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <ArrowLeft className={`w-4 h-4 text-rose-400 group-hover:-translate-x-0.5 transition-transform flex-shrink-0 ${isAr ? "rotate-180" : ""}`} />
+                  <div className="flex flex-col text-left">
+                    <span className="text-xs font-black tracking-wide text-white group-hover:text-rose-300 transition-colors whitespace-nowrap">
+                      {isAr ? "العودة لبوابة العمليات (Hub)" : "Back to Operations Hub"}
+                    </span>
+                    <span className="text-[10px] text-slate-400 whitespace-nowrap">
+                      {isAr ? "الرئيسية وكافة الأقسام" : "All 31 Tools & Departments"}
+                    </span>
+                  </div>
+                </div>
+              </Link>
 
-            {/* Desktop Left: Breadcrumb or Greeting */}
-            <div className="hidden lg:flex items-center gap-6">
-              {userDoc && (
-                <div className="text-sm font-semibold text-muted-foreground">
-                  <span>{language === 'ar' ? 'مرحباً، ' : 'Welcome, '}<span className="text-lg font-extrabold text-foreground">{userDoc.displayName || user?.email?.split('@')[0]}</span></span>
-                </div>
-              )}
-              {currentDateTime && (
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-muted/60 border border-border">
-                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-xs font-bold text-muted-foreground">
-                    {currentDateTime.toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                  </span>
-                  <div className="w-px h-3 mx-1 bg-border"></div>
-                  <Clock className="h-4 w-4 text-rose-500" />
-                  <span className="text-xs font-black font-mono tracking-wider text-rose-600 dark:text-rose-400">
-                    {currentDateTime.toLocaleTimeString(language === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                  </span>
-                </div>
-              )}
+              {/* Current Route Breadcrumb Badge */}
+              <div className="hidden xl:flex items-center gap-2 text-xs font-semibold text-slate-400 px-3 py-1.5 rounded-xl bg-muted/40 border border-border">
+                <span className="text-slate-500 text-[10px] font-mono uppercase tracking-wider">{isAr ? "المسار:" : "Route:"}</span>
+                <span className="text-rose-400 font-mono text-[11px] font-bold">{pathname}</span>
+              </div>
             </div>
 
             {/* Right: Controls */}
@@ -1547,7 +1424,24 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                 <span className="text-[10px] font-black uppercase">{language === "en" ? "عربي" : "EN"}</span>
               </button>
 
-              </div>
+              {/* Sign Out Button */}
+              <button
+                onClick={() => {
+                  const sessionId = sessionStorage.getItem("device_session_id");
+                  if (sessionId) {
+                    deleteDoc(doc(db, "active_sessions", sessionId)).catch(() => {});
+                    sessionStorage.removeItem("device_session_id");
+                  }
+                  signOut(auth);
+                }}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 cursor-pointer flex items-center gap-1.5"
+                title={t("nav.sign_out")}
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{t("nav.sign_out")}</span>
+              </button>
+
+            </div>
           </header>
         )}
 
@@ -1649,10 +1543,10 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
           </div>
         )}
 
-        {/* Scrollable Main Content */}
-        <main className={`flex-grow overflow-y-auto custom-scrollbar flex flex-col bg-[#09090b] text-foreground ${(pathname.startsWith('/cashier') || pathname.startsWith('/owner')) ? '' : 'p-1.5 sm:p-6 lg:p-8'}`}>
+        {/* Scrollable Main Content - Widescreen & Expansive Alignment */}
+        <main className={`flex-grow overflow-y-auto custom-scrollbar flex flex-col bg-[#070709] text-foreground ${pathname === '/' ? 'p-0' : (pathname.startsWith('/cashier') || pathname.startsWith('/owner')) ? '' : 'p-3 sm:p-6 lg:p-8'}`}>
           <div
-            className={`flex-grow w-full max-w-7xl mx-auto ${(pathname.startsWith('/cashier') || pathname.startsWith('/owner')) ? 'h-full p-0 m-0 max-w-full' : ''}`}
+            className={`flex-grow w-full ${pathname === '/' ? 'max-w-full p-0 m-0' : (pathname.startsWith('/cashier') || pathname.startsWith('/owner')) ? 'h-full p-0 m-0 max-w-full' : 'max-w-[1720px] mx-auto'}`}
           >
             {children}
           </div>

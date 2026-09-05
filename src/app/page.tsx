@@ -45,14 +45,15 @@ import {
   Building2,
   Check,
   Zap,
-  Radio
+  Radio,
+  LogOut
 } from "lucide-react";
 import { useBranch, BRANCHES } from "@/context/BranchContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { auth, db } from "@/lib/firebase";
-import { onAuthStateChanged } from "firebase/auth";
-import { collection, query, where, onSnapshot, doc, getDoc, limit } from "firebase/firestore";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { collection, query, where, onSnapshot, doc, getDoc, limit, deleteDoc } from "firebase/firestore";
 
 interface ToolItem {
   id: string;
@@ -1006,6 +1007,23 @@ export default function VIPBentoEnterprisePortal() {
               className="px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-xs font-bold text-slate-300 hover:text-white transition-all cursor-pointer"
             >
               {isAr ? "English" : "العربية"}
+            </button>
+
+            {/* Sign Out Button */}
+            <button
+              onClick={() => {
+                const sessionId = sessionStorage.getItem("device_session_id");
+                if (sessionId) {
+                  deleteDoc(doc(db, "active_sessions", sessionId)).catch(() => {});
+                  sessionStorage.removeItem("device_session_id");
+                }
+                signOut(auth);
+              }}
+              className="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-xs font-bold text-rose-400 hover:text-rose-300 transition-all cursor-pointer flex items-center gap-1.5"
+              title={isAr ? "تسجيل الخروج" : "Sign Out"}
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{isAr ? "خروج" : "Logout"}</span>
             </button>
           </div>
 
