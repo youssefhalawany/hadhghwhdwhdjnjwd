@@ -1653,11 +1653,41 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
     }
   };
 
+  // Helper to extract first 3 names (الاسم الثلاثي) intelligently preserving compound names (e.g. عبد الرحمن, أبو الوفا)
+  const getThreePartName = (fullName: string): string => {
+    if (!fullName) return "";
+    const cleaned = fullName.trim().replace(/\s+/g, " ");
+    const tokens = cleaned.split(" ");
+    if (tokens.length <= 3) return cleaned;
+
+    const compoundPrefixes = new Set([
+      "عبد", "أبو", "ابو", "أم", "ام", "ابن", "آل", "سيف", "نور", "عز",
+      "جمال", "صلاح", "شمس", "علاء", "بهاء", "حسام", "فخر", "ضياء", "منة", "منه", "خير", "تقي", "هبة", "هبه"
+    ]);
+
+    const parts: string[] = [];
+    let i = 0;
+    while (i < tokens.length && parts.length < 3) {
+      const current = tokens[i];
+      const next = tokens[i + 1];
+
+      if (compoundPrefixes.has(current) && next) {
+        parts.push(`${current} ${next}`);
+        i += 2;
+      } else {
+        parts.push(current);
+        i += 1;
+      }
+    }
+
+    return parts.join(" ");
+  };
+
   const filtered = useMemo(() => {
-    return employees.filter((emp) => {
+    const list = employees.filter((emp) => {
       if (statusFilter !== "All Status" && emp.status !== statusFilter.toLowerCase()) return false;
       if (searchQuery) {
-        const q = searchQuery.toLowerCase();
+        const q = searchQuery.toLowerCase().trim();
         return (
           emp.name?.toLowerCase().includes(q) ||
           emp.nationalId?.toLowerCase().includes(q) ||
@@ -1665,6 +1695,24 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
         );
       }
       return true;
+    });
+
+    const statusPriority: Record<string, number> = {
+      active: 1,
+      suspended: 2,
+      left: 3,
+    };
+
+    return list.sort((a, b) => {
+      const priorityA = statusPriority[a.status?.toLowerCase()] || 99;
+      const priorityB = statusPriority[b.status?.toLowerCase()] || 99;
+
+      if (priorityA !== priorityB) {
+        return priorityA - priorityB;
+      }
+
+      // Within the same status, sort alphabetically
+      return (a.name || "").localeCompare(b.name || "", "ar");
     });
   }, [employees, statusFilter, searchQuery]);
 
@@ -1945,29 +1993,51 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                   filtered.map(emp => {
                     const isActive = activeEmployeeId === emp.id;
                     const grad = getColorGradient(emp.name);
+                    const shortName = getThreePartName(emp.name);
 
                     return (
                       <div
                         key={emp.id}
                         onClick={() => setActiveEmployeeId(emp.id)}
-                        className={`group cursor-pointer p-3 rounded-2xl flex items-center justify-between transition-all duration-300 ${isActive
-                            ? "bg-indigo-50 dark:bg-indigo-500/10 shadow-sm border border-indigo-100 dark:border-indigo-500/20"
-                            : "hover:bg-slate-100 dark:hover:bg-white/5 border border-transparent"
-                          }`}
+                        title={`الاسم الكامل الرسمي: ${emp.name}`}
+                        className={`group cursor-pointer p-3 rounded-2xl flex items-center justify-between transition-all duration-200 border ${
+                          isActive
+                            ? "bg-indigo-50 dark:bg-indigo-500/15 shadow-sm border-indigo-200 dark:border-indigo-500/40 ring-1 ring-indigo-500/20"
+                            : "hover:bg-slate-100 dark:hover:bg-white/5 border-transparent hover:border-slate-200/60 dark:hover:border-white/10"
+                        }`}
                       >
-                        <div className="flex items-center gap-3">
-                          <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${grad} flex items-center justify-center text-white font-black text-lg shadow-md shrink-0`}>
+                        <div className="flex items-center gap-3 min-w-0 pr-1">
+                          <div className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${grad} flex items-center justify-center text-white font-black text-base shadow-md shrink-0 relative`}>
                             {emp.name.charAt(0)}
+                            {emp.status === "active" && (
+                              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white dark:border-[#121216]" />
+                            )}
                           </div>
-                          <div className="overflow-hidden">
-                            <p className={`font-bold text-[15px] truncate leading-tight ${isActive ? "text-indigo-900 dark:text-indigo-200" : "text-slate-800 dark:text-slate-100"}`}>
-                              {emp.name}
+                          <div className="overflow-hidden min-w-0">
+                            <p className={`font-bold text-[14.5px] truncate leading-tight ${
+                              isActive ? "text-indigo-900 dark:text-indigo-200" : "text-slate-800 dark:text-slate-100"
+                            }`}>
+                              {shortName}
                             </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{emp.position}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
+                                {emp.position}
+                              </span>
+                              {emp.status !== "active" && (
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md leading-none ${
+                                  emp.status === "suspended"
+                                    ? "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-800/40"
+                                    : "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 border border-rose-300 dark:border-rose-800/40"
+                                }`}>
+                                  {emp.status === "suspended" ? "موقوف" : "ترك العمل"}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
+
                         {/* Status Dot and Quick Actions */}
-                        <div className="shrink-0 flex items-center gap-1.5 pl-2">
+                        <div className="shrink-0 flex items-center gap-1 pl-1">
                           <button
                             type="button"
                             onClick={(e) => {
@@ -1977,7 +2047,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                             className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-xl transition-all"
                             title="Print Folder Cover (A4) / طباعة غلاف ملف الموظف"
                           >
-                            <Printer size={16} />
+                            <Printer size={15} />
                           </button>
                           <button
                             type="button"
@@ -1988,17 +2058,18 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                             className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-all"
                             title="Termination Clearance / إخلاء طرف ومخالصة"
                           >
-                            <FileCheck2 size={16} />
+                            <FileCheck2 size={15} />
                           </button>
                           <div
-                            className={`w-3 h-3 rounded-full shrink-0 ${emp.status === 'active'
-                                ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]'
+                            className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                              emp.status === 'active'
+                                ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.7)]'
                                 : emp.status === 'suspended'
-                                  ? 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]'
-                                  : 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]'
-                              }`}
+                                  ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.7)]'
+                                  : 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.7)]'
+                            }`}
                             title={emp.status === 'active' ? 'Active / نشط' : emp.status === 'suspended' ? 'Suspended / موقوف' : 'Left / ترك العمل'}
-                          ></div>
+                          />
                         </div>
                       </div>
                     );
@@ -2150,6 +2221,17 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                   <div className="pt-16 px-6 sm:px-10 pb-10 flex-1 overflow-y-auto custom-scrollbar">
                     <div className="flex justify-between items-start mb-8">
                       <div>
+                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/50">
+                            <CheckCircle2 size={12} className="text-indigo-500" />
+                            الاسم الرسمي الكامل (Full Legal Name)
+                          </span>
+                          {activeEmp.nationalId && (
+                            <span className="text-xs text-slate-400 dark:text-slate-500 font-mono">
+                              (رقم قومي: {activeEmp.nationalId})
+                            </span>
+                          )}
+                        </div>
                         <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-2 tracking-tight drop-shadow-sm">{activeEmp.name}</h2>
                         <div className="flex items-center gap-4 flex-wrap">
                           <span className="text-slate-500 dark:text-slate-400 font-bold text-lg">{activeEmp.position}</span>
