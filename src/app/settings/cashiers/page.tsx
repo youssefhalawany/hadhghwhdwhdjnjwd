@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { db } from "@/lib/firebase";
+import React, { useState, useEffect, useMemo } from "react";
+import { db, auth } from "@/lib/firebase";
+import { onAuthStateChanged, User } from "firebase/auth";
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "firebase/firestore";
 import { Users, Trash2, PlusCircle, Lock, Store, Clock, Building, Dices } from "lucide-react";
 import { useBranch } from "@/context/BranchContext";
@@ -10,6 +11,21 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function CashierSettingsPage() {
   const { currentBranch, availableBranches } = useBranch();
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => setCurrentUser(u));
+    return () => unsub();
+  }, []);
+
+  const isManager = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    const role = localStorage.getItem("circlek_role");
+    const email = currentUser?.email?.toLowerCase() || "";
+    if (email.includes("halawany") || email.includes("admin") || email.includes("youssef")) return false;
+    return role === "manager";
+  }, [currentUser]);
+
   const [cashiers, setCashiers] = useState<any[]>([]);
   const [employeesList, setEmployeesList] = useState<any[]>([]);
   const [name, setName] = useState("");
@@ -28,6 +44,12 @@ export default function CashierSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isManager && editId) {
+      setEditId(null);
+    }
+  }, [isManager, editId]);
 
   const generateUniquePin = () => {
     let newPin = "";
@@ -87,6 +109,10 @@ export default function CashierSettingsPage() {
 
   const handleAddCashier = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (editId && isManager) {
+      toast.error("Managers are not authorized to edit cashiers.");
+      return;
+    }
     if (pin.length !== 4) {
       toast.error("PIN must be exactly 4 digits.");
       return;
@@ -136,6 +162,10 @@ export default function CashierSettingsPage() {
   };
 
   const handleEdit = (cashier: any) => {
+    if (isManager) {
+      toast.error("Managers are not authorized to edit cashiers.");
+      return;
+    }
     setEditId(cashier.id);
     setName(cashier.name);
     setStoreId(cashier.storeId);
@@ -147,6 +177,10 @@ export default function CashierSettingsPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (isManager) {
+      toast.error("Managers are not authorized to delete cashiers.");
+      return;
+    }
     toast.warning("Remove this cashier?", {
       action: {
         label: "Delete",
@@ -325,14 +359,16 @@ export default function CashierSettingsPage() {
                   <p className="text-xs bg-red-500/10 text-red-650 dark:text-red-400 font-mono px-2 py-0.5 rounded mt-2 inline-block border border-red-200/50 dark:border-red-905/30"><Lock className="h-3 w-3 inline-block -mt-0.5 mr-1" />PIN: ****</p>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => handleEdit(c)} className="px-3 py-1 text-xs font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 rounded-lg transition-colors border border-blue-200/50 dark:border-blue-905/30">
-                    Edit
-                  </button>
-                  {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
-<button onClick={() => handleDelete(c.id)} className="p-2 text-red-500 hover:bg-red-500/10 dark:hover:bg-red-500/20 rounded-lg transition-colors" title="Remove Cashier">
-                    <Trash2 className="h-5 w-5" />
-                  </button>
-)}
+                  {!isManager && (
+                    <button onClick={() => handleEdit(c)} className="px-3 py-1 text-xs font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 rounded-lg transition-colors border border-blue-200/50 dark:border-blue-905/30">
+                      Edit
+                    </button>
+                  )}
+                  {!isManager && (
+                    <button onClick={() => handleDelete(c.id)} className="p-2 text-red-500 hover:bg-red-500/10 dark:hover:bg-red-500/20 rounded-lg transition-colors" title="Remove Cashier">
+                      <Trash2 className="h-5 w-5" />
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

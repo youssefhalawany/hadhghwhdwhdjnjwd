@@ -171,7 +171,8 @@ service cloud.firestore {
     // ---------- HR (Admins and managers) ----------
     match /employees/{doc} {
       allow read, list: if request.auth != null && (isAdmin() || isManager());
-      allow create, update: if request.auth != null && (isAdminEditor() || isManager());
+      allow create: if request.auth != null && (isAdminEditor() || isManager());
+      allow update: if request.auth != null && isAdminEditor();
       allow delete: if request.auth != null && isAdminEditor();
     }
     match /loans/{doc} {

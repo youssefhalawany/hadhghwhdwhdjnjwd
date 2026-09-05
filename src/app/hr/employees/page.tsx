@@ -130,6 +130,14 @@ export default function EmployeesPage() {
     return () => unsub();
   }, []);
 
+  const isManager = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    const role = localStorage.getItem("circlek_role");
+    const email = currentUser?.email?.toLowerCase() || "";
+    if (email.includes("halawany") || email.includes("admin") || email.includes("youssef")) return false;
+    return role === "manager";
+  }, [currentUser]);
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -236,6 +244,10 @@ export default function EmployeesPage() {
   };
 
   const handleOpenEdit = (emp: Employee) => {
+    if (isManager) {
+      toast.error("Managers cannot edit employee details. Only administrators have edit access.");
+      return;
+    }
     setSelectedEmployee(emp);
     let birthDate = emp.birthDate || "";
     if (!birthDate && emp.nationalId && emp.nationalId.length === 14) {
@@ -258,6 +270,10 @@ export default function EmployeesPage() {
     e.preventDefault();
     if (!formData.name?.trim()) {
       toast.error("Name is required");
+      return;
+    }
+    if (selectedEmployee && isManager) {
+      toast.error("Managers are not authorized to edit employees. You can only add new employees.");
       return;
     }
     setIsSubmitting(true);
@@ -416,6 +432,10 @@ export default function EmployeesPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (isManager) {
+      toast.error("Managers are not authorized to delete employees.");
+      return;
+    }
     if (!window.confirm("Delete this employee? This cannot be undone.")) return;
     try {
       await deleteDoc(doc(db, "employees", id));
@@ -427,6 +447,10 @@ export default function EmployeesPage() {
   };
 
   const handleQuickStatusChange = async (employeeId: string, newStatus: "active" | "suspended" | "left") => {
+    if (isManager) {
+      toast.error("Managers are not authorized to change employee status.");
+      return;
+    }
     try {
       await updateDoc(doc(db, "employees", employeeId), {
         status: newStatus,
@@ -802,13 +826,15 @@ export default function EmployeesPage() {
                     
                     {/* Action Buttons floating top right */}
                     <div className="absolute top-6 right-6 flex items-center gap-2.5 flex-wrap justify-end">
-                      <button 
-                        onClick={() => handleOpenEdit(activeEmp)}
-                        className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white p-3 rounded-2xl transition-all shadow-sm"
-                        title="Edit Details"
-                      >
-                        <Edit size={18} />
-                      </button>
+                      {!isManager && (
+                        <button 
+                          onClick={() => handleOpenEdit(activeEmp)}
+                          className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white p-3 rounded-2xl transition-all shadow-sm"
+                          title="Edit Details"
+                        >
+                          <Edit size={18} />
+                        </button>
+                      )}
                       <button 
                         onClick={() => handlePrintFolderCover(activeEmp)}
                         disabled={isPrinting}
@@ -855,57 +881,69 @@ export default function EmployeesPage() {
                           <span className="text-slate-500 dark:text-slate-400 font-bold text-lg">{activeEmp.position}</span>
                           <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600 hidden sm:block"></span>
                           
-                          {/* Interactive Status Switcher (Active / Suspended / Left) */}
-                          <div className="flex items-center gap-1 bg-slate-100 dark:bg-white/5 p-1 rounded-2xl border border-slate-200/60 dark:border-white/10">
-                            <button
-                              type="button"
-                              onClick={() => handleQuickStatusChange(activeEmp.id, "active")}
-                              className={`px-3 py-1 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
-                                activeEmp.status === "active" 
-                                  ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/25" 
-                                  : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                              }`}
-                              title="Mark Active / تعيين كنشط بالخدمة"
-                            >
-                              ● Active
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleQuickStatusChange(activeEmp.id, "suspended")}
-                              className={`px-3 py-1 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
-                                activeEmp.status === "suspended" 
-                                  ? "bg-amber-500 text-white shadow-md shadow-amber-500/25" 
-                                  : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                              }`}
-                              title="Mark Suspended / تعيين كموقوف مؤقتاً"
-                            >
-                              ● Suspended
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleQuickStatusChange(activeEmp.id, "left")}
-                              className={`px-3 py-1 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
-                                activeEmp.status === "left" 
-                                  ? "bg-rose-500 text-white shadow-md shadow-rose-500/25" 
-                                  : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                              }`}
-                              title="Mark Left / تعيين كمنهي الخدمة أو ترك العمل"
-                            >
-                              ● Left
-                            </button>
-                          </div>
+                          {/* Status: Static Badge for Managers, Switcher for Admins */}
+                          {isManager ? (
+                            <span className={`px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider ${
+                              activeEmp.status === "active" 
+                                ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30" 
+                                : activeEmp.status === "suspended" 
+                                ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30" 
+                                : "bg-rose-500/15 text-rose-700 dark:text-rose-400 border border-rose-500/30"
+                            }`}>
+                              ● {activeEmp.status === "active" ? "Active" : activeEmp.status === "suspended" ? "Suspended" : "Left"}
+                            </span>
+                          ) : (
+                            <div className="flex items-center gap-1 bg-slate-100 dark:bg-white/5 p-1 rounded-2xl border border-slate-200/60 dark:border-white/10">
+                              <button
+                                type="button"
+                                onClick={() => handleQuickStatusChange(activeEmp.id, "active")}
+                                className={`px-3 py-1 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                                  activeEmp.status === "active" 
+                                    ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/25" 
+                                    : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                }`}
+                                title="Mark Active / تعيين كنشط بالخدمة"
+                              >
+                                ● Active
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleQuickStatusChange(activeEmp.id, "suspended")}
+                                className={`px-3 py-1 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                                  activeEmp.status === "suspended" 
+                                    ? "bg-amber-500 text-white shadow-md shadow-amber-500/25" 
+                                    : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                }`}
+                                title="Mark Suspended / تعيين كموقوف مؤقتاً"
+                              >
+                                ● Suspended
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleQuickStatusChange(activeEmp.id, "left")}
+                                className={`px-3 py-1 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                                  activeEmp.status === "left" 
+                                    ? "bg-rose-500 text-white shadow-md shadow-rose-500/25" 
+                                    : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                }`}
+                                title="Mark Left / تعيين كمنهي الخدمة أو ترك العمل"
+                              >
+                                ● Left
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                       
-                      {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
-<button 
-                        onClick={() => handleDelete(activeEmp.id)}
-                        className="p-3 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-2xl transition border border-transparent hover:border-rose-100 dark:hover:border-rose-900/30"
-                        title="Delete Employee"
-                      >
-                        <Trash2 size={20} />
-                      </button>
-)}
+                      {!isManager && (
+                        <button 
+                          onClick={() => handleDelete(activeEmp.id)}
+                          className="p-3 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-2xl transition border border-transparent hover:border-rose-100 dark:hover:border-rose-900/30"
+                          title="Delete Employee"
+                        >
+                          <Trash2 size={20} />
+                        </button>
+                      )}
                     </div>
 
                     {/* Data Grid */}
