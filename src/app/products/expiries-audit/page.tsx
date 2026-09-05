@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
-import { collection, query, getDocs, updateDoc, doc, orderBy, limit, addDoc, deleteDoc, onSnapshot } from "firebase/firestore";
-import { CheckCircle, AlertTriangle, Printer, Calendar, Search, Package, Clock, ShieldCheck, Trash2 } from "lucide-react";
+import { collection, query, getDocs, updateDoc, doc, orderBy, limit, addDoc, deleteDoc, onSnapshot, writeBatch } from "firebase/firestore";
+import { CheckCircle, AlertTriangle, Printer, Calendar, Search, Package, Clock, ShieldCheck, Trash2, Undo2, Layers } from "lucide-react";
+import { toast } from "sonner";
 import Barcode from "react-barcode";
 import QRCode from "react-qr-code";
 import Link from "next/link";
@@ -61,6 +62,16 @@ export default function ExpiryAuditPage() {
   const [editQuantity, setEditQuantity] = useState<number>(0);
   const [editDate, setEditDate] = useState<string>("");
   const [processing, setProcessing] = useState<string | null>(null);
+
+  // Bulk Audit State for Pending Tab
+  const [selectedPendingIds, setSelectedPendingIds] = useState<string[]>([]);
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+  const [bulkActionConfirm, setBulkActionConfirm] = useState<{
+    type: "destroy" | "return";
+    count: number;
+    totalQty: number;
+    items: any[];
+  } | null>(null);
 
   // Audit Modal State
   const [auditModalItem, setAuditModalItem] = useState<any | null>(null);
@@ -300,6 +311,156 @@ export default function ExpiryAuditPage() {
   
 
   
+
+  // --- BULK AUDIT LOGIC (BULK DESTROY / BULK RETURN) ---
+  const handleToggleSelectAllPending = () => {
+    if (selectedPendingIds.length === pendingItems.length) {
+      setSelectedPendingIds([]);
+    } else {
+      setSelectedPendingIds(pendingItems.map(i => i.id));
+    }
+  };
+
+  const handleToggleSelectPending = (id: string) => {
+    setSelectedPendingIds(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleOpenBulkConfirm = (type: "destroy" | "return") => {
+    const selectedItems = pendingItems.filter(i => selectedPendingIds.includes(i.id));
+    if (selectedItems.length === 0) {
+      toast.error(isAr ? "يرجى اختيار صنف واحد على الأقل أولاً" : "Please select at least one item first.");
+      return;
+    }
+    const totalQty = selectedItems.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+    setBulkActionConfirm({
+      type,
+      count: selectedItems.length,
+      totalQty,
+      items: selectedItems
+    });
+  };
+
+  const executeBulkAudit = async () => {
+    if (!bulkActionConfirm) return;
+    const { type, items: targetItems, totalQty } = bulkActionConfirm;
+    
+    setIsBulkProcessing(true);
+    try {
+      const savedUserStr = localStorage.getItem("active_cashier_session");
+      let managerEmail = "Unknown Manager";
+      if (savedUserStr) {
+        try {
+          const sessionData = JSON.parse(savedUserStr);
+          managerEmail = sessionData.email || sessionData.name || "Unknown Manager";
+        } catch {}
+      }
+
+      const todayStr = new Date().toISOString().split("T")[0];
+      const nowIso = new Date().toISOString();
+      const updatedItemIds = new Set<string>();
+
+      // Chunk items into batches of 200 (max 400 operations per batch, safe below Firestore 500 limit)
+      const chunkSize = 200;
+      for (let i = 0; i < targetItems.length; i += chunkSize) {
+        const chunk = targetItems.slice(i, i + chunkSize);
+        const batch = writeBatch(db);
+
+        for (const item of chunk) {
+          const currentQty = editingId === item.id ? editQuantity : (Number(item.quantity) || 0);
+          const currentDate = editingId === item.id ? editDate : item.expiryDate;
+
+          let targetBranch = currentBranch;
+          if (targetBranch === "all") {
+            if (item.branchId) {
+              targetBranch = item.branchId;
+            } else {
+              const storeStr = (item.storeId || "").toLowerCase();
+              targetBranch = storeStr.includes("ola") || storeStr.includes("koronfol") ? "ola" : "alamein4";
+            }
+          }
+
+          let normalizedStoreId = item.storeId || "Unknown Store";
+          if (targetBranch === "alamein4") normalizedStoreId = "eL-alamein-4";
+          else if (targetBranch === "ola") normalizedStoreId = "ola-el-koronfol";
+
+          const expiryRef = doc(db, "expiries", item.id);
+          const auditStatus = type === "return" ? "pending_return" : "audited";
+
+          batch.update(expiryRef, {
+            status: auditStatus,
+            quantity: currentQty,
+            soldQuantity: 0,
+            originalQuantity: Number(item.originalQuantity) || currentQty,
+            expiryDate: currentDate || todayStr,
+            auditedAt: nowIso,
+            auditedBy: managerEmail
+          });
+
+          if (type === "return") {
+            const returnRef = doc(collection(db, "supplier_returns"));
+            batch.set(returnRef, {
+              barcode: item.barcode || "1",
+              itemName: item.itemName || "Unknown Item",
+              category: item.category || "uncategorized",
+              supplier: item.supplier || "Unknown Supplier",
+              quantity: currentQty,
+              storeId: normalizedStoreId,
+              branchId: targetBranch || "alamein4",
+              status: "pending",
+              createdAt: nowIso,
+              createdBy: managerEmail,
+              expiryId: item.id
+            });
+          } else {
+            const destroyRef = doc(collection(db, "expired_items"));
+            batch.set(destroyRef, {
+              barcode: item.barcode || "1",
+              category: item.category || "uncategorized",
+              createdAt: nowIso,
+              createdBy: managerEmail,
+              date: todayStr,
+              name: item.itemName || "Unknown Item",
+              quantity: currentQty,
+              storeId: normalizedStoreId
+            });
+          }
+
+          updatedItemIds.add(item.id);
+        }
+
+        await batch.commit();
+      }
+
+      // Update local state: remove from pending list immediately
+      setAllExpiries(prev => prev.map(i => {
+        if (updatedItemIds.has(i.id)) {
+          return {
+            ...i,
+            status: type === "return" ? "pending_return" : "audited",
+            auditedAt: nowIso
+          };
+        }
+        return i;
+      }));
+
+      toast.success(
+        type === "return"
+          ? (isAr ? `تم تحويل ${targetItems.length} صنف (${totalQty} قطعة) إلى مرتجعات موردين بنجاح!` : `Successfully returned ${targetItems.length} items (${totalQty} units) to supplier!`)
+          : (isAr ? `تم إتلاف ${targetItems.length} صنف (${totalQty} قطعة) وتسجيلها بالهالك بنجاح!` : `Successfully destroyed ${targetItems.length} items (${totalQty} units)!`)
+      );
+
+      setSelectedPendingIds([]);
+      setBulkActionConfirm(null);
+      setEditingId(null);
+    } catch (err: any) {
+      console.error("Bulk audit error:", err);
+      toast.error((isAr ? "فشلت العملية الجماعية: " : "Failed to process bulk action: ") + (err?.message || "Unknown error"));
+    } finally {
+      setIsBulkProcessing(false);
+    }
+  };
 
   const handleAudit = (item: any) => {
     handleOpenAuditModal(item);
@@ -1120,15 +1281,94 @@ export default function ExpiryAuditPage() {
 
         ) : activeTab === "pending" ? (
           <div className="space-y-4">
-            <div className="relative w-full max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input 
-                type="text" 
-                placeholder="Search items by name..." 
-                value={reportFilters.item}
-                onChange={(e) => setReportFilters({...reportFilters, item: e.target.value})}
-                className="w-full bg-card border border-border rounded-xl pl-10 pr-4 py-3 text-sm focus:border-red-500 outline-none transition-colors"
-              />
+            {/* BULK SELECTION & SEARCH ACTION TOOLBAR */}
+            <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-card/60 backdrop-blur-sm border border-border p-3 rounded-2xl shadow-sm">
+              <div className="flex flex-wrap items-center gap-2 flex-1">
+                {/* Search input */}
+                <div className="relative flex-1 min-w-[200px] max-w-md">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input 
+                    type="text" 
+                    placeholder={isAr ? "بحث بالاسم..." : "Search items by name..."} 
+                    value={reportFilters.item}
+                    onChange={(e) => setReportFilters({...reportFilters, item: e.target.value})}
+                    className="w-full bg-background border border-border rounded-xl pl-9 pr-3 py-2 text-xs focus:border-red-500 outline-none transition-colors"
+                  />
+                </div>
+
+                {/* Select All Button */}
+                {pendingItems.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleToggleSelectAllPending}
+                    className="flex items-center gap-2 px-3 py-2 bg-muted hover:bg-muted/80 rounded-xl text-xs font-bold text-foreground transition-colors cursor-pointer"
+                  >
+                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                      selectedPendingIds.length > 0 && selectedPendingIds.length === pendingItems.length
+                        ? "bg-red-600 border-red-600 text-white"
+                        : selectedPendingIds.length > 0
+                          ? "bg-red-600/20 border-red-500 text-red-500"
+                          : "border-muted-foreground/40 bg-background"
+                    }`}>
+                      {selectedPendingIds.length > 0 && <Check className="w-3 h-3 stroke-[3]" />}
+                    </div>
+                    <span>
+                      {selectedPendingIds.length === pendingItems.length
+                        ? (isAr ? "إلغاء تحديد الكل" : "Deselect All")
+                        : (isAr ? `تحديد الكل (${pendingItems.length})` : `Select All (${pendingItems.length})`)}
+                    </span>
+                  </button>
+                )}
+
+                {/* Selected Count Indicator */}
+                {selectedPendingIds.length > 0 && (
+                  <div className="flex items-center gap-2 px-2.5 py-1 bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl text-xs font-bold animate-in fade-in duration-200">
+                    <span>{selectedPendingIds.length} {isAr ? "صنف محدد" : "Selected"}</span>
+                    <span className="text-[11px] opacity-80 font-mono">
+                      ({pendingItems.filter(i => selectedPendingIds.includes(i.id)).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)} {isAr ? "قطعة" : "Units"})
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Bulk Action Buttons */}
+              {selectedPendingIds.length > 0 ? (
+                <div className="flex items-center gap-2 self-end md:self-auto w-full md:w-auto">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenBulkConfirm("destroy")}
+                    disabled={isBulkProcessing}
+                    className="flex-1 md:flex-none px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-md shadow-red-600/25 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{isAr ? `إتلاف جماعي (${selectedPendingIds.length})` : `Bulk Destroy (${selectedPendingIds.length})`}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleOpenBulkConfirm("return")}
+                    disabled={isBulkProcessing}
+                    className="flex-1 md:flex-none px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/25 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <Undo2 className="w-3.5 h-3.5" />
+                    <span>{isAr ? `مرتجع جماعي (${selectedPendingIds.length})` : `Bulk Return (${selectedPendingIds.length})`}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPendingIds([])}
+                    className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl text-xs transition-colors cursor-pointer"
+                    title={isAr ? "إلغاء التحديد" : "Clear Selection"}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="text-xs text-muted-foreground hidden sm:flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-muted-foreground/60" />
+                  <span>{isAr ? "حدد الأصناف لإجراء إتلاف أو مرتجع جماعي" : "Select items to destroy or return in bulk"}</span>
+                </div>
+              )}
             </div>
 
             {pendingItems.length === 0 ? (
@@ -1139,76 +1379,157 @@ export default function ExpiryAuditPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {pendingItems.map(item => (
-                  <div key={item.id} className="glass-panel p-5 rounded-xl border border-border hover:border-red-500/30 transition-all flex flex-col justify-between group">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-3 bg-red-500/10 text-red-500 rounded-xl group-hover:scale-110 transition-transform">
-                          <Package className="h-6 w-6" />
+                {pendingItems.map(item => {
+                  const isSelected = selectedPendingIds.includes(item.id);
+                  return (
+                    <div 
+                      key={item.id} 
+                      className={`glass-panel p-5 rounded-xl border transition-all flex flex-col justify-between group relative ${
+                        isSelected 
+                          ? "border-red-500/80 ring-2 ring-red-500/30 bg-red-500/[0.03] shadow-lg shadow-red-500/5" 
+                          : "border-border hover:border-red-500/30"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-4 gap-3">
+                        <div className="flex items-center gap-3">
+                          {/* Selection Checkbox */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleSelectPending(item.id);
+                            }}
+                            className={`w-6 h-6 rounded-lg border flex items-center justify-center transition-all cursor-pointer flex-shrink-0 ${
+                              isSelected 
+                                ? "bg-red-600 border-red-600 text-white shadow-sm shadow-red-600/30 scale-105" 
+                                : "border-border bg-muted/40 hover:border-red-500/50 hover:bg-muted"
+                            }`}
+                            title={isSelected ? "Deselect item" : "Select item"}
+                          >
+                            {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                          </button>
+
+                          <div className={`p-3 rounded-xl transition-transform ${isSelected ? "bg-red-500/20 text-red-500 scale-105" : "bg-red-500/10 text-red-500 group-hover:scale-110"}`}>
+                            <Package className="h-6 w-6" />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-lg leading-tight">{item.itemName}</h4>
+                            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-1">
+                              <span className="bg-muted px-2 py-0.5 rounded-md font-mono">{item.barcode || "No Barcode"}</span>
+                              <span>Store: <span className="font-semibold text-foreground">{item.storeId || "Unknown"}</span></span>
+                              {item.supplier && (
+                                <span className="text-[11px] text-muted-foreground/80">• {item.supplier}</span>
+                              )}
+                            </div>
+                          </div>
                         </div>
+
+                        <span className="bg-amber-500/10 text-amber-500 border border-amber-500/20 px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider flex items-center gap-1 flex-shrink-0">
+                          <Clock className="h-3 w-3" /> PENDING AUDIT
+                        </span>
+                      </div>
+
+                      <div className="flex items-end justify-between border-t border-border pt-4 mt-2">
                         <div>
-                          <h4 className="font-bold text-lg">{item.itemName}</h4>
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                            <span className="bg-muted px-2 py-0.5 rounded-md font-mono">{item.barcode || "No Barcode"}</span>
-                            <span>Store: <span className="font-semibold text-foreground">{item.storeId || "Unknown"}</span></span>
-                          </div>
+                          <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Verify Quantity & Date</label>
+                          {editingId === item.id ? (
+                            <div className="flex items-center gap-2">
+                              <input 
+                                type="number" 
+                                min="0"
+                                value={editQuantity}
+                                onChange={(e) => setEditQuantity(Number(e.target.value))}
+                                className="w-16 bg-background border border-border rounded-lg p-2 text-sm font-bold text-center outline-none focus:border-red-500"
+                              />
+                              <input 
+                                type="date" 
+                                value={editDate}
+                                onChange={(e) => setEditDate(e.target.value)}
+                                className="bg-background border border-border rounded-lg p-2 text-sm font-bold outline-none focus:border-red-500"
+                              />
+                              <button 
+                                onClick={() => setEditingId(null)}
+                                className="text-xs text-muted-foreground hover:text-foreground underline ml-2"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-3">
+                              <span className="text-2xl font-black text-foreground">{item.quantity}</span>
+                              <span className="text-sm font-mono text-muted-foreground border-l border-border pl-3">{item.expiryDate}</span>
+                              <button 
+                                onClick={() => { setEditingId(item.id); setEditQuantity(item.quantity); setEditDate(item.expiryDate); }}
+                                className="text-xs text-blue-500 hover:text-blue-400 font-semibold ml-2 cursor-pointer"
+                              >
+                                Edit
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => handleAudit(item)}
+                            disabled={processing === item.id || isBulkProcessing}
+                            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-md shadow-red-500/20 transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                          >
+                            {processing === item.id ? <div className="animate-spin h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full" /> : <ShieldCheck className="h-3.5 w-3.5" />}
+                            Confirm Audit
+                          </button>
                         </div>
                       </div>
-                      <span className="bg-amber-500/10 text-amber-500 border border-amber-500/20 px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
-                        <Clock className="h-3 w-3" /> PENDING AUDIT
-                      </span>
                     </div>
+                  );
+                })}
+              </div>
+            )}
 
-                    <div className="flex items-end justify-between border-t border-border pt-4 mt-2">
-                      <div>
-                        <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Verify Quantity & Date</label>
-                        {editingId === item.id ? (
-                          <div className="flex items-center gap-2">
-                            <input 
-                              type="number" 
-                              min="0"
-                              value={editQuantity}
-                              onChange={(e) => setEditQuantity(Number(e.target.value))}
-                              className="w-16 bg-background border border-border rounded-lg p-2 text-sm font-bold text-center outline-none focus:border-red-500"
-                            />
-                            <input 
-                              type="date" 
-                              value={editDate}
-                              onChange={(e) => setEditDate(e.target.value)}
-                              className="bg-background border border-border rounded-lg p-2 text-sm font-bold outline-none focus:border-red-500"
-                            />
-                            <button 
-                              onClick={() => setEditingId(null)}
-                              className="text-xs text-muted-foreground hover:text-foreground underline ml-2"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-3">
-                            <span className="text-2xl font-black text-foreground">{item.quantity}</span>
-                            <span className="text-sm font-mono text-muted-foreground border-l border-border pl-3">{item.expiryDate}</span>
-                            <button 
-                              onClick={() => { setEditingId(item.id); setEditQuantity(item.quantity); setEditDate(item.expiryDate); }}
-                              className="text-xs text-blue-500 hover:text-blue-400 font-semibold ml-2"
-                            >
-                              Edit
-                            </button>
-                          </div>
-                        )}
-                      </div>
+            {/* FLOATING STICKY BULK ACTION BAR */}
+            {selectedPendingIds.length > 0 && (
+              <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 dark:bg-black/95 text-white backdrop-blur-md border border-white/20 px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 md:gap-4 animate-in slide-in-from-bottom-5">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+                  <span className="font-bold text-sm whitespace-nowrap">
+                    {selectedPendingIds.length} {isAr ? "صنف محدد" : "Selected"}
+                  </span>
+                  <span className="text-xs text-white/60 font-mono hidden sm:inline">
+                    ({pendingItems.filter(i => selectedPendingIds.includes(i.id)).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)} {isAr ? "قطعة" : "Units"})
+                  </span>
+                </div>
 
-                      <button 
-                        onClick={() => handleAudit(item)}
-                        disabled={processing === item.id}
-                        className="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-red-500/20 transition-all flex items-center gap-2 disabled:opacity-50"
-                      >
-                        {processing === item.id ? <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" /> : <ShieldCheck className="h-4 w-4" />}
-                        Confirm Audit
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                <div className="h-5 w-[1px] bg-white/20" />
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenBulkConfirm("destroy")}
+                    disabled={isBulkProcessing}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-red-600/30 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 whitespace-nowrap"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{isAr ? "إتلاف جماعي" : "Bulk Destroy"}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleOpenBulkConfirm("return")}
+                    disabled={isBulkProcessing}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-600/30 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 whitespace-nowrap"
+                  >
+                    <Undo2 className="w-3.5 h-3.5" />
+                    <span>{isAr ? "مرتجع جماعي" : "Bulk Return"}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPendingIds([])}
+                    className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-xl text-xs transition-colors cursor-pointer"
+                    title={isAr ? "إلغاء التحديد" : "Deselect All"}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -1494,6 +1815,192 @@ export default function ExpiryAuditPage() {
         </div>
       )}
 
+      {/* Bulk Action Confirmation Modal */}
+      {bulkActionConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/85 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="bg-card w-full max-w-xl rounded-3xl shadow-2xl border border-border/80 overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className={`p-6 border-b border-border flex justify-between items-start ${
+              bulkActionConfirm.type === "destroy" 
+                ? "bg-gradient-to-r from-red-500/10 via-red-500/5 to-transparent" 
+                : "bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent"
+            }`}>
+              <div className="flex items-center gap-3">
+                <div className={`p-3 rounded-2xl ${
+                  bulkActionConfirm.type === "destroy"
+                    ? "bg-red-500/20 text-red-500 border border-red-500/30 shadow-lg shadow-red-500/10"
+                    : "bg-amber-500/20 text-amber-500 border border-amber-500/30 shadow-lg shadow-amber-500/10"
+                }`}>
+                  {bulkActionConfirm.type === "destroy" ? (
+                    <Trash2 className="h-6 w-6 animate-pulse" />
+                  ) : (
+                    <Undo2 className="h-6 w-6 animate-pulse" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-foreground">
+                    {bulkActionConfirm.type === "destroy"
+                      ? (isAr ? "تأكيد إعدام الأصناف المحددة بالجملة" : "Confirm Bulk Destruction")
+                      : (isAr ? "تأكيد إرجاع الأصناف المحددة للمورد" : "Confirm Bulk Supplier Return")}
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {bulkActionConfirm.type === "destroy"
+                      ? (isAr ? "سيتم تسجيل الأصناف كمعدومة وإضافتها فوراً إلى سجل الهالك والخصم" : "Selected products will be marked as audited & logged in waste history")
+                      : (isAr ? "سيتم تحويل الأصناف المختارة إلى قائمة مرتجعات الموردين المعلقة" : "Selected products will be placed into pending supplier returns")}
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => !isBulkProcessing && setBulkActionConfirm(null)}
+                disabled={isBulkProcessing}
+                className="text-muted-foreground hover:text-foreground p-1 rounded-lg transition-colors disabled:opacity-40"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-5 overflow-y-auto flex-1">
+              {/* Summary Metric Badges */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-muted/40 border border-border/80 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
+                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                    {isAr ? "عدد الأصناف" : "Selected Products"}
+                  </span>
+                  <span className="text-2xl font-black text-foreground mt-1">
+                    {bulkActionConfirm.count}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {isAr ? "صنف فريد" : "Unique SKUs"}
+                  </span>
+                </div>
+
+                <div className={`border p-4 rounded-2xl flex flex-col items-center justify-center text-center ${
+                  bulkActionConfirm.type === "destroy"
+                    ? "bg-red-500/[0.05] border-red-500/30 text-red-500"
+                    : "bg-amber-500/[0.05] border-amber-500/30 text-amber-500"
+                }`}>
+                  <span className="text-xs font-bold opacity-80 uppercase tracking-wider">
+                    {isAr ? "إجمالي الكمية" : "Total Quantity"}
+                  </span>
+                  <span className="text-2xl font-black mt-1">
+                    {bulkActionConfirm.totalQty}
+                  </span>
+                  <span className="text-[11px] opacity-80">
+                    {isAr ? "قطعة / وحدة" : "Units Total"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Items List Preview */}
+              <div>
+                <div className="flex justify-between items-center mb-2 px-1">
+                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                    {isAr ? "قائمة الأصناف المحددة للتنفيذ:" : "Target Items Breakdown:"}
+                  </span>
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {bulkActionConfirm.items.length} {isAr ? "عنصر" : "items"}
+                  </span>
+                </div>
+
+                <div className="max-h-56 overflow-y-auto divide-y divide-border/50 rounded-2xl bg-muted/20 border border-border/80 p-2 space-y-1 custom-scrollbar">
+                  {bulkActionConfirm.items.map((item, idx) => (
+                    <div key={item.id || idx} className="py-2.5 px-3 flex items-center justify-between hover:bg-muted/40 rounded-xl transition-colors">
+                      <div className="flex items-center gap-3 min-w-0 pr-2">
+                        <span className="text-xs font-black text-muted-foreground/60 w-5">
+                          {idx + 1}.
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-foreground truncate">
+                            {item.itemName || "Item"}
+                          </p>
+                          <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5">
+                            <span className="font-mono bg-background px-1.5 py-0.5 rounded border border-border/60">
+                              {item.barcode || "N/A"}
+                            </span>
+                            {item.storeId && (
+                              <span className="truncate opacity-75">
+                                • {item.storeId}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="px-2.5 py-1 rounded-xl text-xs font-black bg-background border border-border shadow-sm text-foreground">
+                          {editingId === item.id ? editQuantity : (Number(item.quantity) || 0)} {isAr ? "قطعة" : "units"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Notice Warning Banner */}
+              <div className={`p-3.5 rounded-2xl border flex items-start gap-3 text-xs leading-relaxed ${
+                bulkActionConfirm.type === "destroy"
+                  ? "bg-red-500/10 border-red-500/20 text-red-400"
+                  : "bg-amber-500/10 border-amber-500/20 text-amber-400"
+              }`}>
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>
+                  {bulkActionConfirm.type === "destroy"
+                    ? (isAr 
+                        ? "تحذير: سيتم اعتماد الهالك وإزالته من المعاينات المعلقة فوراً وتحديث أرصدة التالف وسجل الهدر." 
+                        : "Notice: These items will immediately clear from Pending Audits and register in the Waste Cost tracking dashboard.")
+                    : (isAr 
+                        ? "ملاحظة: سيتم تحويل هذه الأصناف لقسم المرتجعات المعلقة للمورد لتسليمها لمندوب الشركة وتوثيق الاسترجاع." 
+                        : "Notice: These items will be routed to Supplier Returns pending clearance by the vendor representative.")}
+                </span>
+              </div>
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="p-4 bg-muted/40 border-t border-border flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setBulkActionConfirm(null)}
+                disabled={isBulkProcessing}
+                className="flex-1 px-4 py-3 bg-background border border-border rounded-xl font-bold text-sm hover:bg-muted transition-colors disabled:opacity-50"
+              >
+                {isAr ? "إلغاء وتراجع" : "Cancel"}
+              </button>
+
+              <button
+                type="button"
+                onClick={executeBulkAudit}
+                disabled={isBulkProcessing}
+                className={`flex-1 px-5 py-3 rounded-xl font-bold text-sm shadow-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 ${
+                  bulkActionConfirm.type === "destroy"
+                    ? "bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-600 text-white shadow-red-500/25"
+                    : "bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-500 text-white shadow-amber-500/25"
+                }`}
+              >
+                {isBulkProcessing ? (
+                  <>
+                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                    <span>{isAr ? "جارِ التنفيذ بالجملة..." : "Processing Batch..."}</span>
+                  </>
+                ) : (
+                  <>
+                    {bulkActionConfirm.type === "destroy" ? (
+                      <Trash2 className="h-4 w-4" />
+                    ) : (
+                      <Undo2 className="h-4 w-4" />
+                    )}
+                    <span>
+                      {bulkActionConfirm.type === "destroy"
+                        ? (isAr ? `تأكيد إعدام ${bulkActionConfirm.count} صنف` : `Execute Destroy (${bulkActionConfirm.count})`)
+                        : (isAr ? `تأكيد إرجاع ${bulkActionConfirm.count} صنف` : `Execute Return (${bulkActionConfirm.count})`)}
+                    </span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
     </PageTransition>
