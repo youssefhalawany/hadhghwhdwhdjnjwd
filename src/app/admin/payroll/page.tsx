@@ -82,7 +82,20 @@ const SlideToRun = ({ onComplete }: { onComplete: () => void }) => {
 export default function AdminPayrollPage() {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [currentUserEmail, setCurrentUserEmail] = useState("");
-  const { t } = useLanguage();
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const { t, language } = useLanguage();
+
+  const isManager = useMemo(() => {
+    const email = (currentUserEmail || "").toLowerCase();
+    if (email.includes("halawany") || email.includes("admin") || email.includes("youssef")) return false;
+    const storedRole = typeof window !== "undefined" ? localStorage.getItem("circlek_role") : null;
+    const effectiveRole = userRole || storedRole || "manager";
+    return effectiveRole === "manager" || effectiveRole === "manager_assistant";
+  }, [userRole, currentUserEmail]);
+
+  const canEditOrDelete = useMemo(() => {
+    return !isManager;
+  }, [isManager]);
   
   const [employees, setEmployees] = useState<any[]>([]);
   const [drafts, setDrafts] = useState<PayrollRecord[]>([]);
@@ -336,6 +349,7 @@ export default function AdminPayrollPage() {
         try {
           const userDoc = await getDoc(doc(db, "users", user.uid));
           const role = userDoc.exists() ? userDoc.data()?.role : null;
+          setUserRole(role || storedRole || "manager");
           const userEmail = (user.email || "").toLowerCase();
 
           const hasAccess = 
@@ -347,6 +361,7 @@ export default function AdminPayrollPage() {
 
           setIsAdmin(hasAccess);
         } catch {
+          setUserRole(storedRole || "manager");
           const userEmail = (user.email || "").toLowerCase();
           const hasAccess = 
             allowedRoles.includes(storedRole || "") ||
@@ -356,6 +371,7 @@ export default function AdminPayrollPage() {
           setIsAdmin(hasAccess);
         }
       } else {
+        setUserRole(storedRole || null);
         if (allowedRoles.includes(storedRole || "")) {
           setIsAdmin(true);
         } else {
@@ -544,6 +560,10 @@ export default function AdminPayrollPage() {
   };
 
   const handleEditDraft = (draft: PayrollRecord) => {
+    if (!canEditOrDelete) {
+      toast.error(language === "ar" ? "غير مصرح: للمديرين صلاحية إضافة الرواتب فقط دون إمكانية التعديل" : "Managers cannot edit payroll drafts. You can only add new entries.");
+      return;
+    }
     const emp = employees.find(e => e.id === draft.employeeId);
     setSelectedEmp(emp || { id: draft.employeeId, name: draft.employeeId });
     setEditingDraftId(draft.id || null);
@@ -569,6 +589,11 @@ export default function AdminPayrollPage() {
   };
 
   const handleSaveDraft = async () => {
+    if (editingDraftId && !canEditOrDelete) {
+      toast.error(language === "ar" ? "غير مصرح: للمديرين صلاحية إضافة الرواتب فقط دون إمكانية التعديل" : "Managers cannot edit existing drafts. You can only add new drafts.");
+      return;
+    }
+
     if (!selectedEmp || !editForm.employeeId) {
       toast.error("Please select an employee");
       return;
@@ -613,11 +638,19 @@ export default function AdminPayrollPage() {
   };
 
   const openMarkPaidModal = (draft: PayrollRecord) => {
+    if (!canEditOrDelete) {
+      toast.error(language === "ar" ? "اعتماد وصرف الرواتب مخصص للإدارة العليا فقط. يمكنك إضافة المسودات فقط" : "Approving and paying payroll is reserved for administrators.");
+      return;
+    }
     setShowPaidModal(draft);
     setPaidDate(new Date().toISOString().split("T")[0]);
   };
 
   const confirmMarkPaid = async () => {
+    if (!canEditOrDelete) {
+      toast.error("Managers cannot finalize payroll.");
+      return;
+    }
     if (!showPaidModal) return;
     const draft = showPaidModal;
 
@@ -713,6 +746,10 @@ export default function AdminPayrollPage() {
   };
 
   const deleteDraft = async (id: string) => {
+    if (!canEditOrDelete) {
+      toast.error(language === "ar" ? "غير مصرح: للمديرين صلاحية إضافة الرواتب فقط دون إمكانية الحذف" : "Managers cannot delete payroll drafts. You can only add new entries.");
+      return;
+    }
     if (!confirm("Delete this draft permanently?")) return;
     try {
       await deleteDoc(doc(db, "payroll_drafts", id));
@@ -748,6 +785,10 @@ export default function AdminPayrollPage() {
   };
 
   const handleOpenEditPaid = (record: PayrollRecord) => {
+    if (!canEditOrDelete) {
+      toast.error(language === "ar" ? "غير مصرح: للمديرين صلاحية إضافة الرواتب فقط دون إمكانية التعديل" : "Managers cannot edit paid payroll records.");
+      return;
+    }
     const dateInput = getValidDateInput(record.postedToFinanceAt || record.createdAt);
     setEditingPaidRecord(record);
     setPaidEditForm({
@@ -787,6 +828,10 @@ export default function AdminPayrollPage() {
 
   const handleSavePaidRecord = async () => {
     if (!editingPaidRecord?.id) return;
+    if (!canEditOrDelete) {
+      toast.error(language === "ar" ? "غير مصرح: للمديرين صلاحية إضافة الرواتب فقط دون إمكانية التعديل" : "Managers cannot edit payroll records.");
+      return;
+    }
     setIsSavingPaid(true);
     try {
       const { standardPay, netPay } = calcPaidFormPays();
@@ -824,6 +869,10 @@ export default function AdminPayrollPage() {
 
   const handleDeletePaidRecord = async () => {
     if (!editingPaidRecord?.id) return;
+    if (!canEditOrDelete) {
+      toast.error(language === "ar" ? "غير مصرح: للمديرين صلاحية إضافة الرواتب فقط دون إمكانية الحذف" : "Managers cannot delete payroll records.");
+      return;
+    }
     if (!confirm("Are you sure you want to permanently delete this paid payroll record? This action cannot be undone and will affect financial reports.")) return;
     setIsSavingPaid(true);
     try {
@@ -899,13 +948,19 @@ export default function AdminPayrollPage() {
     <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8 animate-in fade-in duration-500 pb-24 print:hidden">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
         <div>
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center gap-3 mb-2 flex-wrap">
             <div className="p-2.5 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 rounded-xl">
               <DollarSign className="w-6 h-6" strokeWidth={2.5} />
             </div>
             <h1 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight">
               {t("admin.payroll.title")}
             </h1>
+            {!canEditOrDelete && (
+              <span className="px-3 py-1 text-xs font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-800/60 rounded-xl flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
+                {language === "ar" ? "صلاحية المدير: إضافة فقط" : "Manager Mode: Add Only"}
+              </span>
+            )}
           </div>
           <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">{t("admin.payroll.subtitle")}</p>
         </div>
@@ -944,7 +999,7 @@ export default function AdminPayrollPage() {
                 className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
               >
                 <option value="">Select an employee...</option>
-                {employees.map(e => (
+                {employees.filter(e => e.status === 'active').map(e => (
                   <option key={e.id} value={e.id}>{e.name} ({e.position})</option>
                 ))}
               </select>

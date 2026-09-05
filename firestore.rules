@@ -191,14 +191,16 @@ service cloud.firestore {
         isAdmin() || 
         isManager()
       );
-      allow write: if request.auth != null && (isAdminEditor() || isManager());
+      allow create: if request.auth != null && (isAdminEditor() || isManager());
+      allow update, delete: if request.auth != null && isAdminEditor();
     }
     match /payroll_lines/{doc} {
       allow read, list: if request.auth != null && (
         isAdmin() || 
         isManager()
       );
-      allow write: if request.auth != null && (isAdminEditor() || isManager());
+      allow create: if request.auth != null && (isAdminEditor() || isManager());
+      allow update, delete: if request.auth != null && isAdminEditor();
     }
     match /deductions/{doc} {
       allow read: if request.auth != null && (isAdmin() || isManagerFor(resource.data.storeId));
