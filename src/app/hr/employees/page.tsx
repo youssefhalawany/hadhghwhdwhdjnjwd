@@ -58,6 +58,7 @@ interface Employee {
   status: "active" | "suspended" | "left" | string;
   storeId: string;
   address: string;
+  birthDate?: string;
   age: number;
   baseSalary: number;
   fulltime: boolean;
@@ -163,15 +164,63 @@ export default function EmployeesPage() {
     loadData();
   }, [currentBranch]);
 
+  // Accurate age calculation from Date of Birth string (YYYY-MM-DD)
+  const calculateAge = (dobString: string): number => {
+    if (!dobString) return 0;
+    const dob = new Date(dobString);
+    if (isNaN(dob.getTime())) return 0;
+    const today = new Date();
+    let calculatedAge = today.getFullYear() - dob.getFullYear();
+    const monthDiff = today.getMonth() - dob.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+      calculatedAge--;
+    }
+    return Math.max(0, calculatedAge);
+  };
+
+  const handleBirthDateChange = (dob: string) => {
+    const calculatedAge = calculateAge(dob);
+    setFormData(prev => ({ ...prev, birthDate: dob, age: calculatedAge }));
+  };
+
+  const handleNationalIdChange = (nid: string) => {
+    const cleanNid = nid.trim();
+    const update: Partial<Employee> = { nationalId: nid };
+
+    // If 14-digit Egyptian National ID, auto-decode birth date, age, and gender
+    if (cleanNid.length === 14 && /^\d+$/.test(cleanNid)) {
+      const century = cleanNid[0] === '2' ? '19' : cleanNid[0] === '3' ? '20' : '';
+      if (century) {
+        const yy = cleanNid.slice(1, 3);
+        const mm = cleanNid.slice(3, 5);
+        const dd = cleanNid.slice(5, 7);
+        const dobStr = `${century}${yy}-${mm}-${dd}`;
+        const dobObj = new Date(dobStr);
+        if (!isNaN(dobObj.getTime())) {
+          update.birthDate = dobStr;
+          update.age = calculateAge(dobStr);
+        }
+      }
+      // 13th digit: odd = Male, even = Female
+      const genderDigit = parseInt(cleanNid[12], 10);
+      if (!isNaN(genderDigit)) {
+        update.gender = genderDigit % 2 !== 0 ? "Male" : "Female";
+      }
+    }
+
+    setFormData(prev => ({ ...prev, ...update }));
+  };
+
   const handleOpenAdd = () => {
     setFormData({
       name: "",
       nationalId: "",
+      birthDate: "",
       position: "Barista",
       shiftTime: "Morning",
       status: "active",
       address: "",
-      age: 18,
+      age: 0,
       baseSalary: 0,
       fulltime: true,
       gender: "Male",
@@ -179,6 +228,7 @@ export default function EmployeesPage() {
       phone: "",
       chequeSignedNum: "",
       photoUrl: "",
+      nationalIdPhotoUrl: "",
       startDate: new Date().toISOString().split("T")[0]
     });
     setSelectedEmployee(null);
@@ -187,13 +237,22 @@ export default function EmployeesPage() {
 
   const handleOpenEdit = (emp: Employee) => {
     setSelectedEmployee(emp);
+    let birthDate = emp.birthDate || "";
+    if (!birthDate && emp.nationalId && emp.nationalId.length === 14) {
+      const nid = emp.nationalId;
+      const century = nid[0] === '2' ? '19' : nid[0] === '3' ? '20' : '';
+      if (century) {
+        birthDate = `${century}${nid.slice(1, 3)}-${nid.slice(3, 5)}-${nid.slice(5, 7)}`;
+      }
+    }
+    const age = emp.age || (birthDate ? calculateAge(birthDate) : 0);
     setFormData({
-      ...emp
+      ...emp,
+      birthDate,
+      age
     });
     setShowAddModal(true);
   };
-
-
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -206,8 +265,11 @@ export default function EmployeesPage() {
       const bId = currentBranch === "all" ? "alamein4" : currentBranch;
       const storeId = bId === "ola" ? "ola" : "eL-alamein-4";
 
+      const finalAge = formData.birthDate ? calculateAge(formData.birthDate) : (formData.age || 0);
+
       const payload = {
         ...formData,
+        age: finalAge,
         storeId,
         updatedAt: serverTimestamp(),
         updatedBy: currentUser?.email || "unknown"
@@ -1014,12 +1076,16 @@ export default function EmployeesPage() {
 
                 {/* National ID & Phone */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">National ID</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center justify-between">
+                    <span>National ID (الرقم القومي)</span>
+                    <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-normal">Auto-decodes DOB</span>
+                  </label>
                   <input
                     type="text"
                     value={formData.nationalId}
-                    onChange={e => setFormData({...formData, nationalId: e.target.value})}
+                    onChange={e => handleNationalIdChange(e.target.value)}
                     className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:border-indigo-500 font-mono tracking-wider"
+                    placeholder="14 Digits (14 رقم)"
                     maxLength={14}
                   />
                 </div>
@@ -1033,24 +1099,42 @@ export default function EmployeesPage() {
                   />
                 </div>
 
-                {/* Start Date & Age */}
+                {/* Start Date & Date of Birth */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Start Date</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Start Date (تاريخ استلام العمل)</label>
                   <input
                     type="date"
                     value={formData.startDate}
                     onChange={e => setFormData({...formData, startDate: e.target.value})}
-                    className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:border-indigo-500"
+                    className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:border-indigo-500 font-medium"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Age</label>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">
+                      Date of Birth (تاريخ الميلاد)
+                    </label>
+                    {formData.age ? (
+                      <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-800">
+                        {formData.age} سنة (محسوب)
+                      </span>
+                    ) : null}
+                  </div>
                   <input
-                    type="number"
-                    value={formData.age}
-                    onChange={e => setFormData({...formData, age: Number(e.target.value)})}
-                    className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:border-indigo-500"
+                    type="date"
+                    value={formData.birthDate || ""}
+                    onChange={e => handleBirthDateChange(e.target.value)}
+                    className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:border-indigo-500 font-medium"
                   />
+                  {formData.age ? (
+                    <p className="text-[11px] text-slate-400 mt-1 font-medium">
+                      السن المحسوب تلقائياً: <strong className="text-slate-700 dark:text-slate-200">{formData.age} عاماً</strong>
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      أدخل تاريخ الميلاد أو الرقم القومي لحساب السن تلقائياً
+                    </p>
+                  )}
                 </div>
 
                 {/* Shift & Fulltime */}
