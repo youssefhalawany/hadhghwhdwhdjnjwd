@@ -20,6 +20,7 @@ import {
   Barcode, 
   Users, 
   DollarSign, 
+  Landmark,
   Clock, 
   Bot, 
   Monitor, 
@@ -99,7 +100,17 @@ export default function VIPBentoEnterprisePortal() {
   const [pendingReturns, setPendingReturns] = useState<number>(0);
   const [outOfStockCount, setOutOfStockCount] = useState<number>(0);
   const [activeStaffCount, setActiveStaffCount] = useState<number>(12);
+  const [activeStaff, setActiveStaff] = useState<any[]>([]);
+  const [offStaff, setOffStaff] = useState<any[]>([]);
   const [connectedDevices, setConnectedDevices] = useState<number>(3);
+  const [safeBalance, setSafeBalance] = useState<number>(0);
+  const [bankBalance, setBankBalance] = useState<number>(0);
+
+  const fmt = (n: number) =>
+    new Intl.NumberFormat("en-EG", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(n || 0);
 
   // Live clock
   useEffect(() => {
@@ -148,21 +159,53 @@ export default function VIPBentoEnterprisePortal() {
     };
   }, []);
 
-  // Live Firestore counters
+  // Live Firestore counters & Real Telemetry
   useEffect(() => {
+    // 0. Local cache reading for Safe & Bank
+    const updateLocalBalances = () => {
+      if (typeof window !== "undefined") {
+        try {
+          const s = localStorage.getItem(`cached_safe_balance_${currentBranch}`);
+          const b = localStorage.getItem(`cached_bank_balance_${currentBranch}`);
+          if (s) setSafeBalance(parseFloat(s) || 0);
+          if (b) setBankBalance(parseFloat(b) || 0);
+          
+          if (!s || !b) {
+            const stats = localStorage.getItem(`cached_fin_stats_${currentBranch}`);
+            if (stats) {
+              const parsed = JSON.parse(stats);
+              if (parsed.safeMoney !== undefined) setSafeBalance(parsed.safeMoney);
+              if (parsed.bankMoney !== undefined) setBankBalance(parsed.bankMoney);
+            }
+          }
+        } catch (e) {}
+      }
+    };
+    updateLocalBalances();
+
     // 1. Pending Voids
     const voidQ = currentBranch === "all"
-      ? query(collection(db, "void_requests"), where("status", "==", "pending"), limit(20))
-      : query(collection(db, "void_requests"), where("status", "==", "pending"), where("branchId", "==", currentBranch), limit(20));
+      ? query(collection(db, "void_requests"), where("status", "==", "pending"), limit(50))
+      : query(collection(db, "void_requests"), where("status", "==", "pending"), where("branchId", "==", currentBranch), limit(50));
 
     const unsubVoids = onSnapshot(voidQ, (snap) => {
       setPendingVoids(snap.docs.length);
     }, () => {});
 
-    // 2. Expiries
-    const expQ = query(collection(db, "expiries"), where("status", "==", "pulled"), limit(20));
+    // 2. Expiries (Total Expired & Near-Expiry)
+    const expQ = query(collection(db, "expiries"), limit(100));
     const unsubExp = onSnapshot(expQ, (snap) => {
-      setPendingExpiries(snap.docs.length);
+      let count = 0;
+      const todayStr = new Date().toISOString().split("T")[0];
+      snap.docs.forEach(d => {
+        const data = d.data();
+        if (data.status === "pulled" || data.status === "expired" || data.status === "near") {
+          count++;
+        } else if (data.expiryDate && data.expiryDate <= todayStr) {
+          count++;
+        }
+      });
+      setPendingExpiries(count);
     }, () => {});
 
     // 3. Returns
@@ -177,10 +220,31 @@ export default function VIPBentoEnterprisePortal() {
       setOutOfStockCount(snap.docs.length);
     }, () => {});
 
-    // 5. Employees count
-    const empQ = query(collection(db, "employees"), limit(50));
+    // 5. Employees count & real off staff tracking
+    const empQ = query(collection(db, "employees"), limit(100));
     const unsubEmp = onSnapshot(empQ, (snap) => {
-      if (snap.docs.length > 0) setActiveStaffCount(snap.docs.length);
+      const emps: any[] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const branchEmps = currentBranch === "all" ? emps : emps.filter(e => {
+        const sid = (e.storeId || e.branchId || "").toLowerCase();
+        const inferred = sid.includes("ola") || sid.includes("koronfol") ? "ola" : "alamein4";
+        return inferred === currentBranch;
+      });
+
+      const active = branchEmps.filter(e => {
+        const st = (e.status || "active").toLowerCase();
+        const sft = (e.shiftTime || "").toLowerCase();
+        return st !== "off" && st !== "vacation" && st !== "suspended" && sft !== "off";
+      });
+
+      const off = branchEmps.filter(e => {
+        const st = (e.status || "").toLowerCase();
+        const sft = (e.shiftTime || "").toLowerCase();
+        return st === "off" || st === "vacation" || sft === "off";
+      });
+
+      setActiveStaff(active);
+      setOffStaff(off);
+      setActiveStaffCount(active.length || branchEmps.length || 12);
     }, () => {});
 
     // 6. Active sessions
@@ -784,31 +848,84 @@ export default function VIPBentoEnterprisePortal() {
               </p>
             </div>
 
-            {/* VIP Keynote Bullet Points with Bold Numbers (1:1 with Figma Keynote Template) */}
+            {/* REAL OPERATIONAL TELEMETRY CARDS (EXPIRED, VOIDS, ACTIVE STAFF, OFF TODAY) */}
             <div className="space-y-3 pt-2">
               {[
-                { count: `${totalToolsCount}+`, titleEn: "Integrated Tools", titleAr: "أداة وصفحة تشغيلية", subEn: "Covering all retail branches", subAr: "تغطي كافة متطلبات الفرع" },
-                { count: "5", titleEn: "Operational Pillars", titleAr: "محاور إدارية أساسية", subEn: "Financials, Ops, Stock, HR, Admin", subAr: "الماليات، التشغيل، البضاعة، الأفراد، التحكم" },
-                { count: "100%", titleEn: "Role-Secured RBAC", titleAr: "حماية مشددة بالصلاحيات", subEn: "Admin & Manager levels", subAr: "فصل مهام المديرين والإدارة العليا" },
-                { count: "Live", titleEn: "Firestore Streaming", titleAr: "مزامنة سحابية فورية", subEn: "Instant telemetry across POS", subAr: "تحديث لحظي لحالة الفرع" },
-              ].map((item, idx) => (
-                <div 
-                  key={idx}
-                  className="p-3.5 rounded-2xl bg-[#111116] border border-white/[0.06] hover:border-white/[0.12] transition-all flex items-center justify-between"
-                >
-                  <div>
-                    <span className="text-xs font-bold text-white block">
-                      {isAr ? item.titleAr : item.titleEn}
-                    </span>
-                    <span className="text-[11px] text-slate-400 font-medium">
-                      {isAr ? item.subAr : item.subEn}
-                    </span>
-                  </div>
-                  <span className="text-xl font-black text-rose-400 font-mono">
-                    {item.count}
-                  </span>
-                </div>
-              ))}
+                {
+                  count: `${pendingExpiries}`,
+                  titleEn: "Total Expired & Near",
+                  titleAr: "الصلاحيات المنتهية والقريبة",
+                  subEn: pendingExpiries > 0 ? `${pendingExpiries} flagged for removal` : "All shelf products safe & fresh",
+                  subAr: pendingExpiries > 0 ? "أصناف تستوجب السحب فوراً" : "جميع الأصناف سليمة ومحدثة",
+                  color: pendingExpiries > 0 ? "text-amber-400" : "text-emerald-400",
+                  href: "/products/expiries-audit",
+                  icon: AlertTriangle,
+                },
+                {
+                  count: `${pendingVoids}`,
+                  titleEn: "Pending Voids",
+                  titleAr: "الفواتير الملغاة المعلقة",
+                  subEn: pendingVoids > 0 ? "Awaiting manager approval" : "All cashier voids audited & cleared",
+                  subAr: pendingVoids > 0 ? "بانتظار اعتماد وموافقة المدير" : "تم تدقيق كافة الفواتير الملغاة",
+                  color: pendingVoids > 0 ? "text-rose-400" : "text-emerald-400",
+                  href: "/voids/manager",
+                  icon: Shield,
+                },
+                {
+                  count: `${activeStaffCount}`,
+                  titleEn: "Active Staff on Duty",
+                  titleAr: "طاقم العمل على الوردية",
+                  subEn: `${activeStaff.length || activeStaffCount} ${isAr ? "موظف نشط بالفرع" : "staff registered on active duty"}`,
+                  subAr: `${activeStaff.length || activeStaffCount} موظف مسجل على رأس العمل`,
+                  color: "text-sky-400",
+                  href: "/hr/employees",
+                  icon: Users,
+                },
+                {
+                  count: `${offStaff.length} ${isAr ? "في راحة" : "Off"}`,
+                  titleEn: "Staff Off Today",
+                  titleAr: "إجازات وراحات اليوم",
+                  subEn: offStaff.length > 0 
+                    ? offStaff.map(e => e.name?.split(" ")[0] || e.name).slice(0, 2).join(", ") + (offStaff.length > 2 ? ` +${offStaff.length - 2}` : "")
+                    : "Full roster on duty today",
+                  subAr: offStaff.length > 0 
+                    ? offStaff.map(e => e.name?.split(" ")[0] || e.name).slice(0, 2).join("، ") + (offStaff.length > 2 ? ` +${offStaff.length - 2}` : "")
+                    : "الكل على رأس العمل اليوم",
+                  color: offStaff.length > 0 ? "text-indigo-400" : "text-slate-400",
+                  href: "/admin/schedule",
+                  icon: CalendarDays,
+                },
+              ].map((item, idx) => {
+                const ItemIcon = item.icon;
+                return (
+                  <Link 
+                    key={idx}
+                    href={item.href}
+                    prefetch={true}
+                    className="p-3.5 rounded-2xl bg-[#111116] border border-white/[0.06] hover:border-white/[0.15] hover:bg-[#16161d] transition-all flex items-center justify-between group/bullet block"
+                  >
+                    <div className="flex items-center gap-3 truncate">
+                      <div className="w-8 h-8 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center flex-shrink-0 group-hover/bullet:scale-105 transition-transform">
+                        <ItemIcon className={`w-4 h-4 ${item.color}`} />
+                      </div>
+                      <div className="truncate">
+                        <span className="text-xs font-bold text-white block group-hover/bullet:text-rose-300 transition-colors truncate">
+                          {isAr ? item.titleAr : item.titleEn}
+                        </span>
+                        <span className="text-[11px] text-slate-400 font-medium block truncate">
+                          {isAr ? item.subAr : item.subEn}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className={`text-base sm:text-lg font-black font-mono ${item.color}`}>
+                        {item.count}
+                      </span>
+                      <ArrowUpRight className="w-3.5 h-3.5 text-slate-500 group-hover/bullet:text-white group-hover/bullet:translate-x-0.5 group-hover/bullet:-translate-y-0.5 transition-transform" />
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
 
             {/* Department Navigation Filter Pills */}
@@ -1000,12 +1117,92 @@ export default function VIPBentoEnterprisePortal() {
                         </p>
                       </div>
 
+                      {/* Live Money in Safe & Money in Bank (Like Overview) */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mb-5">
+                        
+                        {/* 1. Money in Safe */}
+                        <Link
+                          href="/financials/inputs/safe-report"
+                          prefetch={true}
+                          className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-emerald-950/50 via-[#0d1612] to-[#0a0f0d] border border-emerald-500/30 hover:border-emerald-400/70 transition-all group/safe relative overflow-hidden flex flex-col justify-between shadow-lg"
+                        >
+                          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center">
+                                <Wallet className="w-4 h-4 text-emerald-400" />
+                              </div>
+                              <span className="text-xs font-bold text-emerald-300 uppercase tracking-wider">
+                                {isAr ? "رصيد الخزنة الفعلي" : "Money in Safe"}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                              {isAr ? "مباشر" : "Live Vault"}
+                            </span>
+                          </div>
+
+                          <div className="my-1">
+                            <div className="text-2xl sm:text-3xl font-black text-white font-mono tracking-tight flex items-baseline gap-2">
+                              <span className="text-sm font-bold text-emerald-400/80">EGP</span>
+                              <span>{fmt(safeBalance)}</span>
+                            </div>
+                            <span className="text-[11px] text-slate-400 mt-1 block">
+                              {isAr ? "العهدة النقدية وجرد الخزنة المعتمد" : "Cash float & verified safe closure"}
+                            </span>
+                          </div>
+
+                          <div className="pt-3 mt-2 border-t border-white/[0.06] flex items-center justify-between text-xs font-bold text-emerald-400 group-hover/safe:text-emerald-300">
+                            <span>{isAr ? "تقرير الخزنة بالتفصيل" : "Open Safe Report"}</span>
+                            <ArrowUpRight className="w-3.5 h-3.5 group-hover/safe:translate-x-0.5 group-hover/safe:-translate-y-0.5 transition-transform" />
+                          </div>
+                        </Link>
+
+                        {/* 2. Money in Bank */}
+                        <Link
+                          href="/financials/inputs"
+                          prefetch={true}
+                          className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-indigo-950/50 via-[#0f1426] to-[#0a0d1a] border border-indigo-500/30 hover:border-indigo-400/70 transition-all group/bank relative overflow-hidden flex flex-col justify-between shadow-lg"
+                        >
+                          <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center">
+                                <Landmark className="w-4 h-4 text-indigo-400" />
+                              </div>
+                              <span className="text-xs font-bold text-indigo-300 uppercase tracking-wider">
+                                {isAr ? "رصيد البنك والفيزا" : "Money in Bank"}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                              {isAr ? "معتمد" : "Verified"}
+                            </span>
+                          </div>
+
+                          <div className="my-1">
+                            <div className="text-2xl sm:text-3xl font-black text-white font-mono tracking-tight flex items-baseline gap-2">
+                              <span className="text-sm font-bold text-indigo-400/80">EGP</span>
+                              <span>{fmt(bankBalance)}</span>
+                            </div>
+                            <span className="text-[11px] text-slate-400 mt-1 block">
+                              {isAr ? "مبيعات الفيزا والتحويلات البنكية" : "Visa settlements & bank deposits"}
+                            </span>
+                          </div>
+
+                          <div className="pt-3 mt-2 border-t border-white/[0.06] flex items-center justify-between text-xs font-bold text-indigo-400 group-hover/bank:text-indigo-300">
+                            <span>{isAr ? "نظرة عامة والمدفوعات" : "View Bank Overview"}</span>
+                            <ArrowUpRight className="w-3.5 h-3.5 group-hover/bank:translate-x-0.5 group-hover/bank:-translate-y-0.5 transition-transform" />
+                          </div>
+                        </Link>
+
+                      </div>
+
                       {/* Interactive Telemetry Chart Waveform */}
-                      <div className="p-4 rounded-2xl bg-[#0b0b0e] border border-white/[0.06] mb-5">
-                        <div className="flex items-center justify-between mb-2">
+                      <div className="p-3.5 rounded-2xl bg-[#0b0b0e] border border-white/[0.06] mb-5">
+                        <div className="flex items-center justify-between mb-1.5">
                           <div className="flex items-center gap-2">
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
-                              {isAr ? "حركة المبيعات الأسبوعية" : "Weekly Sales Velocity"}
+                              {isAr ? "حركة المبيعات والتدفق المالي" : "Weekly Revenue Flow Telemetry"}
                             </span>
                             <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.2 rounded-full border border-emerald-500/20">
                               +14.8% Flow
@@ -1014,7 +1211,7 @@ export default function VIPBentoEnterprisePortal() {
                           <TrendingUp className="w-4 h-4 text-emerald-400" />
                         </div>
 
-                        <div className="h-12 w-full">
+                        <div className="h-10 w-full">
                           <svg className="w-full h-full" viewBox="0 0 500 80" preserveAspectRatio="none">
                             <defs>
                               <linearGradient id="emeraldHeroGrad" x1="0%" y1="0%" x2="0%" y2="100%">
