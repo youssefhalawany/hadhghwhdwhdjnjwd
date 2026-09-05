@@ -16,29 +16,54 @@ export default function FinancialInputsOverview() {
   const { t, language } = useLanguage();
   const isAr = language === "ar";
   
-  const [stats, setStats] = useState({
-    safeMoney: 0,
-    totalSales: 0,
-    totalCashPayments: 0,
-    depositsToSafe: 0,
-    depositsFromSafe: 0,
-    totalPayrolls: 0,
-    totalLoans: 0,
-    totalOldCreditsCash: 0,
-    totalTaxPaid: 0,
+  const [stats, setStats] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem(`cached_fin_stats_${currentBranch}`);
+        if (cached) return JSON.parse(cached);
+      } catch (e) {}
+    }
+    return {
+      safeMoney: 0,
+      totalSales: 0,
+      totalCashPayments: 0,
+      depositsToSafe: 0,
+      depositsFromSafe: 0,
+      totalPayrolls: 0,
+      totalLoans: 0,
+      totalOldCreditsCash: 0,
+      totalTaxPaid: 0,
 
-    bankMoney: 0,
-    totalVisaSales: 0,
-    totalBankPayments: 0,
-    depositsToBank: 0,
-    depositsFromBank: 0,
-    totalBankCredits: 0,
-    totalBankTaxPaid: 0,
+      bankMoney: 0,
+      totalVisaSales: 0,
+      totalBankPayments: 0,
+      depositsToBank: 0,
+      depositsFromBank: 0,
+      totalBankCredits: 0,
+      totalBankTaxPaid: 0,
+    };
   });
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem(`cached_fin_stats_${currentBranch}`);
+        if (cached) return false;
+      } catch (e) {}
+    }
+    return true;
+  });
+  const [isSyncing, setIsSyncing] = useState(false);
   const [missingIndexes, setMissingIndexes] = useState<string[]>([]);
-  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [dashboardData, setDashboardData] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem(`cached_dashboard_data_${currentBranch}`);
+        if (cached) return JSON.parse(cached);
+      } catch (e) {}
+    }
+    return null;
+  });
   const [feed, setFeed] = useState<any[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [userName, setUserName] = useState("Manager");
@@ -76,7 +101,6 @@ export default function FinancialInputsOverview() {
     return isAr ? "الليلية" : "Night";
   };
 
-
   useEffect(() => {
     let active = true;
     const loadDashboard = async () => {
@@ -84,6 +108,11 @@ export default function FinancialInputsOverview() {
         const result = await fetchDashboardData(currentBranch);
         if (active) {
           setDashboardData(result);
+          if (typeof window !== "undefined") {
+            try {
+              localStorage.setItem(`cached_dashboard_data_${currentBranch}`, JSON.stringify(result));
+            } catch (e) {}
+          }
           if (result.missingIndexes && result.missingIndexes.length > 0) {
             setMissingIndexes(prev => Array.from(new Set([...prev, ...result.missingIndexes])));
           }
@@ -144,13 +173,20 @@ export default function FinancialInputsOverview() {
 
   useEffect(() => {
     async function fetchStats() {
-      setLoading(true);
+      const hasCached = typeof window !== "undefined" && !!localStorage.getItem(`cached_fin_stats_${currentBranch}`);
+      if (!hasCached) {
+        setLoading(true);
+      } else {
+        setIsSyncing(true);
+      }
       setMissingIndexes([]);
 
       try {
-        const safeGetDocs = async (collectionName: string) => {
+        const safeGetDocs = async (collectionName: string, queryLimit = 350) => {
           try {
-            const snap = await getDocs(collection(db, collectionName));
+            const colRef = collection(db, collectionName);
+            const q = query(colRef, limit(queryLimit));
+            const snap = await getDocs(q);
             return snap.docs.map(d => ({ id: d.id, ...d.data() }));
           } catch (e: any) {
             console.warn(`Could not read ${collectionName}:`, e?.message);
@@ -167,13 +203,13 @@ export default function FinancialInputsOverview() {
           adjustmentsRaw,
           loansRaw
         ] = await Promise.all([
-          safeGetDocs("sales"),
-          safeGetDocs("cash_payments"),
-          safeGetDocs("credit_payments"),
-          safeGetDocs("deposits"),
-          safeGetDocs("payroll_lines"),
-          safeGetDocs("adjustments"),
-          safeGetDocs("loans")
+          safeGetDocs("sales", 400),
+          safeGetDocs("cash_payments", 400),
+          safeGetDocs("credit_payments", 400),
+          safeGetDocs("deposits", 200),
+          safeGetDocs("payroll_lines", 200),
+          safeGetDocs("adjustments", 200),
+          safeGetDocs("loans", 200)
         ]);
 
         // Deduplicate credit_payments against cash_payments (exact match with safe-report)
@@ -320,30 +356,32 @@ export default function FinancialInputsOverview() {
           localStorage.setItem(`cached_deposits_in_safe_${currentBranch}`, depositsToSafe.toString());
           localStorage.setItem(`cached_deposits_out_bank_${currentBranch}`, depositsFromBank.toString());
           localStorage.setItem(`cached_deposits_in_bank_${currentBranch}`, depositsToBank.toString());
+          const finalStats = {
+            totalSales: netCashSales,
+            totalCashPayments,
+            depositsToSafe,
+            depositsFromSafe,
+            totalPayrolls,
+            totalLoans,
+            totalOldCreditsCash: 0,
+            totalTaxPaid: totalCashTaxPaid,
+            safeMoney,
+            totalVisaSales,
+            totalBankPayments,
+            depositsToBank,
+            depositsFromBank,
+            totalBankCredits: 0,
+            totalBankTaxPaid,
+            bankMoney
+          };
+          localStorage.setItem(`cached_fin_stats_${currentBranch}`, JSON.stringify(finalStats));
+          setStats(finalStats);
         }
-
-        setStats({
-          totalSales: netCashSales,
-          totalCashPayments,
-          depositsToSafe,
-          depositsFromSafe,
-          totalPayrolls,
-          totalLoans,
-          totalOldCreditsCash: 0,
-          totalTaxPaid: totalCashTaxPaid,
-          safeMoney,
-          totalVisaSales,
-          totalBankPayments,
-          depositsToBank,
-          depositsFromBank,
-          totalBankCredits: 0,
-          totalBankTaxPaid,
-          bankMoney
-        });
       } catch (err: any) {
         console.error("Ledger calculation error:", err);
       } finally {
         setLoading(false);
+        setIsSyncing(false);
       }
     }
     fetchStats();
@@ -400,7 +438,13 @@ export default function FinancialInputsOverview() {
   const { kpis, chartData, needsAttention } = dashboardData || {};
 
   return (
-    <div className="space-y-4 sm:space-y-8 pb-12">
+    <div className="space-y-4 sm:space-y-8 pb-12 relative">
+      {isSyncing && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#0A101D]/90 border border-cyan-500/30 text-cyan-400 text-xs font-bold shadow-2xl backdrop-blur-md animate-pulse pointer-events-none">
+          <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+          <span>{isAr ? "مزامنة لحظية..." : "Live cloud sync..."}</span>
+        </div>
+      )}
       
       {/* ---------------- COMMAND CENTER DASHBOARD ---------------- */}
       

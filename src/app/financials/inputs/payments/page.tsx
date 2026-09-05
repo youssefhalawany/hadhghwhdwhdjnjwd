@@ -171,10 +171,25 @@ export default function PaymentsRedesignPage() {
   }, [currentBranch]);
 
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  // Data state
-  const [payments, setPayments] = useState<any[]>([]);
+  const [payments, setPayments] = useState<any[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem('cached_detailed_payments');
+        if (cached) return JSON.parse(cached);
+      } catch (e) {}
+    }
+    return [];
+  });
+  const [loading, setLoading] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem('cached_detailed_payments');
+        if (cached && JSON.parse(cached).length > 0) return false;
+      } catch (e) {}
+    }
+    return true;
+  });
+  const [isSyncing, setIsSyncing] = useState(false);
   const [suppliers, setSuppliers] = useState<{ id: string; name: string }[]>([]);
 
   // Filters
@@ -468,7 +483,12 @@ export default function PaymentsRedesignPage() {
   }, [currentUser, currentBranch, monthFilter]);
 
   const fetchData = async () => {
-    setLoading(true);
+    const hasCached = typeof window !== "undefined" && !!localStorage.getItem('cached_detailed_payments');
+    if (!hasCached) {
+      setLoading(true);
+    } else {
+      setIsSyncing(true);
+    }
     try {
       // 1. Fetch Payments
       let q1;
@@ -480,15 +500,17 @@ export default function PaymentsRedesignPage() {
           : query(collection(db, "cash_payments"), where("date", ">=", monthStart), where("date", "<=", monthEnd), orderBy("date", "desc"));
       } else {
         q1 = branchIds.length > 0
-          ? query(collection(db, "cash_payments"), where("storeId", "in", branchIds), orderBy("date", "desc"), limit(500))
-          : query(collection(db, "cash_payments"), orderBy("date", "desc"), limit(500));
+          ? query(collection(db, "cash_payments"), where("storeId", "in", branchIds), orderBy("date", "desc"), limit(150))
+          : query(collection(db, "cash_payments"), orderBy("date", "desc"), limit(150));
       }
       const paySnapshot = await getDocs(q1);
       const loadedPayments = paySnapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
       setPayments(loadedPayments);
+      setLoading(false);
+
       if (typeof window !== "undefined") {
         try {
-          const cleanPayments = loadedPayments.slice(0, 50).map((p: any) => {
+          const cleanPayments = loadedPayments.slice(0, 100).map((p: any) => {
             const { invoiceUrls, invoiceUrl, photoUrls, ...rest } = p;
             return rest;
           });
@@ -507,10 +529,10 @@ export default function PaymentsRedesignPage() {
 
       setSuppliers(Array.from(uniqueSuppliers).sort().map((name, index) => ({ id: `sup_${index}`, name })));
 
-      // 3. Fetch Credits to calculate Outstanding Debt
+      // 3. Fetch Credits to calculate Outstanding Debt (capped to 150 to keep it lightning fast)
       const q2 = branchIds.length > 0
-        ? query(collection(db, "credits"), where("storeId", "in", branchIds), orderBy("createdAt", "desc"))
-        : query(collection(db, "credits"), orderBy("createdAt", "desc"));
+        ? query(collection(db, "credits"), where("storeId", "in", branchIds), orderBy("createdAt", "desc"), limit(150))
+        : query(collection(db, "credits"), orderBy("createdAt", "desc"), limit(150));
       try {
         const credSnapshot = await getDocs(q2);
         setCredits(credSnapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) })));
@@ -537,6 +559,7 @@ export default function PaymentsRedesignPage() {
       toast.error("Failed to load data: " + err.message);
     } finally {
       setLoading(false);
+      setIsSyncing(false);
     }
   };
 
@@ -1458,7 +1481,7 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
     }
   };
 
-  if (loading) {
+  if (loading && payments.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="h-12 w-12 animate-spin text-red-500" />
@@ -1467,7 +1490,13 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
   }
 
   return (
-    <div className="min-h-screen bg-[#09090B] text-slate-100 pb-28">
+    <div className="min-h-screen bg-[#09090B] text-slate-100 pb-28 relative">
+      {isSyncing && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#16161d]/90 border border-red-500/30 text-rose-400 text-xs font-bold shadow-2xl backdrop-blur-md animate-pulse pointer-events-none">
+          <span className="w-2 h-2 rounded-full bg-rose-400 animate-ping" />
+          <span>{isAr ? "مزامنة لحظية..." : "Live cloud sync..."}</span>
+        </div>
+      )}
 
       <div className="p-1 sm:p-4 md:p-6 max-w-7xl mx-auto space-y-4 sm:space-y-6">
 
@@ -2892,7 +2921,7 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                     <button onClick={async () => {
                       const text = `Dear ANH Management,\n\nPlease review the following payment transaction and its attached invoice.\n\n*🧾 Transaction Details:*\n• *Supplier:* ${selectedPaymentForView.companyName}\n• *Amount:* EGP ${Number(selectedPaymentForView.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}\n• *Date:* ${selectedPaymentForView.date}\n• *Payment Method:* ${selectedPaymentForView.method.toUpperCase()}\n• *Reference ID:* ${selectedPaymentForView.id}`;
 
-                      let filesToShare: File[] = [];
+                      const filesToShare: File[] = [];
                       try {
                         const urls = selectedPaymentForView.invoiceUrls && selectedPaymentForView.invoiceUrls.length > 0
                           ? selectedPaymentForView.invoiceUrls

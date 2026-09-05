@@ -256,8 +256,25 @@ export default function CreditsPage() {
   }, [currentBranch]);
   
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [credits, setCredits] = useState<Credit[]>([]);
+  const [credits, setCredits] = useState<Credit[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem('cached_detailed_credits');
+        if (cached) return JSON.parse(cached);
+      } catch (e) {}
+    }
+    return [];
+  });
+  const [loading, setLoading] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem('cached_detailed_credits');
+        if (cached && JSON.parse(cached).length > 0) return false;
+      } catch (e) {}
+    }
+    return true;
+  });
+  const [isSyncing, setIsSyncing] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [monthFilter, setMonthFilter] = useState("");
@@ -563,6 +580,12 @@ export default function CreditsPage() {
   const [creditHistories, setCreditHistories] = useState<Record<string, any[]>>({});
 
   const fetchCredits = async () => {
+    const hasCached = typeof window !== "undefined" && !!localStorage.getItem('cached_detailed_credits');
+    if (!hasCached) {
+      setLoading(true);
+    } else {
+      setIsSyncing(true);
+    }
     try {
       let q;
       if (monthFilter) {
@@ -575,8 +598,8 @@ export default function CreditsPage() {
           : query(collection(db, "credits"), where("createdAt", ">=", startDate), where("createdAt", "<=", endDate), orderBy("createdAt", "desc"));
       } else {
         q = branchIds.length > 0
-          ? query(collection(db, "credits"), where("storeId", "in", branchIds), orderBy("createdAt", "desc"), limit(500))
-          : query(collection(db, "credits"), orderBy("createdAt", "desc"), limit(500));
+          ? query(collection(db, "credits"), where("storeId", "in", branchIds), orderBy("createdAt", "desc"), limit(150))
+          : query(collection(db, "credits"), orderBy("createdAt", "desc"), limit(150));
       }
 
       const snapshot = await getDocs(q);
@@ -622,7 +645,7 @@ export default function CreditsPage() {
       setCredits(data);
 
       // Safe lightweight caching without heavy payloads (signatures, large base64 images)
-      const cleanData = data.slice(0, 50).map(sanitizeCreditForCache);
+      const cleanData = data.slice(0, 100).map(sanitizeCreditForCache);
       safeSetLocalStorage('cached_detailed_credits', JSON.stringify(cleanData));
 
       const uniqueSuppliers = new Set<string>();
@@ -651,6 +674,7 @@ export default function CreditsPage() {
       toast.error("Failed to load credits: " + err.message);
     } finally {
       setLoading(false);
+      setIsSyncing(false);
     }
   };
 
@@ -2029,13 +2053,19 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
     }
   };
 
-  if (loading) {
+  if (loading && credits.length === 0) {
     return <div className="flex h-screen items-center justify-center bg-[#09090B]"><Loader2 className="animate-spin text-indigo-500" size={48} /></div>;
   }
 
   return (
     <>
-      <div className="min-h-screen bg-[#09090B] text-slate-100 p-1 sm:p-4 md:p-8 font-sans print:hidden pb-28">
+      <div className="min-h-screen bg-[#09090B] text-slate-100 p-1 sm:p-4 md:p-8 font-sans print:hidden pb-28 relative">
+        {isSyncing && (
+          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#16161d]/90 border border-indigo-500/30 text-indigo-400 text-xs font-bold shadow-2xl backdrop-blur-md animate-pulse pointer-events-none">
+            <span className="w-2 h-2 rounded-full bg-indigo-400 animate-ping" />
+            <span>{isAr ? "مزامنة لحظية..." : "Live cloud sync..."}</span>
+          </div>
+        )}
         <div className="max-w-[1400px] mx-auto space-y-4 sm:space-y-8">
           
           {/* Header & Actions */}
