@@ -726,7 +726,7 @@ export default function VIPBentoEnterprisePortal() {
       gradient: "from-sky-500/20 via-blue-500/10 to-transparent",
       borderGlow: "border-sky-500/30 hover:border-sky-400/60",
       icon: Users,
-      adminOnly: true,
+      adminOnly: false,
       tools: [
         {
           id: "employees",

@@ -39,7 +39,9 @@ import {
   AlertCircle,
   Calendar,
   Building2,
-  DollarSign
+  DollarSign,
+  Clock,
+  UserX
 } from "lucide-react";
 import { toast } from "sonner";
 import { onAuthStateChanged } from "firebase/auth";
@@ -53,7 +55,7 @@ interface Employee {
   nationalId: string;
   position: string;
   shiftTime: string;
-  status: "active" | "suspended" | string;
+  status: "active" | "suspended" | "left" | string;
   storeId: string;
   address: string;
   age: number;
@@ -263,6 +265,30 @@ export default function EmployeesPage() {
     }
   };
 
+  const handleQuickStatusChange = async (employeeId: string, newStatus: "active" | "suspended" | "left") => {
+    try {
+      await updateDoc(doc(db, "employees", employeeId), {
+        status: newStatus,
+        updatedBy: currentUser?.email || "unknown",
+        updatedAt: serverTimestamp()
+      });
+      setEmployees(prev => prev.map(emp => emp.id === employeeId ? { ...emp, status: newStatus } : emp));
+      if (selectedEmployee?.id === employeeId) {
+        setSelectedEmployee(prev => prev ? { ...prev, status: newStatus } : null);
+      }
+      toast.success(
+        newStatus === "active" 
+          ? "Employee marked as Active (بالخدمة)" 
+          : newStatus === "suspended" 
+          ? "Employee marked as Suspended (موقوف مؤقتاً)" 
+          : "Employee marked as Left (ترك العمل / انتهت خدمته)"
+      );
+    } catch (err) {
+      console.error("Failed to update employee status:", err);
+      toast.error("Failed to update status");
+    }
+  };
+
   // Arabic Number to Words Converter for Egyptian Pounds (Tafqeet)
   const numberToArabicWords = (num: number): string => {
     if (!num || num === 0) return "صفر جنيه مصري";
@@ -394,6 +420,8 @@ export default function EmployeesPage() {
   }, [employees, statusFilter, searchQuery]);
 
   const activeCount = employees.filter((i) => i.status === "active").length;
+  const suspendedCount = employees.filter((i) => i.status === "suspended").length;
+  const leftCount = employees.filter((i) => i.status === "left").length;
   const fullTimeCount = employees.filter((i) => i.fulltime).length;
 
   const fmtCurrency = (n: number) => 
@@ -458,32 +486,41 @@ export default function EmployeesPage() {
           </div>
 
           {/* Metrics Top Bar */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-white/40 dark:border-white/10 rounded-3xl p-6 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div className="bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-white/40 dark:border-white/10 rounded-3xl p-5 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
               <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Active</p>
-                <p className="text-4xl font-black text-slate-800 dark:text-white">{activeCount}</p>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Active</p>
+                <p className="text-3xl font-black text-emerald-600 dark:text-emerald-400">{activeCount}</p>
               </div>
-              <div className="w-14 h-14 rounded-2xl bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform">
-                <Users size={28} />
+              <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform">
+                <Users size={24} />
               </div>
             </div>
-            <div className="bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-white/40 dark:border-white/10 rounded-3xl p-6 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
+            <div className="bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-white/40 dark:border-white/10 rounded-3xl p-5 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
+              <div>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Suspended</p>
+                <p className="text-3xl font-black text-amber-600 dark:text-amber-400">{suspendedCount}</p>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform">
+                <Clock size={24} />
+              </div>
+            </div>
+            <div className="bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-white/40 dark:border-white/10 rounded-3xl p-5 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
+              <div>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Left</p>
+                <p className="text-3xl font-black text-rose-600 dark:text-rose-400">{leftCount}</p>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-rose-100 dark:bg-rose-500/20 flex items-center justify-center text-rose-600 dark:text-rose-400 group-hover:scale-110 transition-transform">
+                <UserX size={24} />
+              </div>
+            </div>
+            <div className="bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-white/40 dark:border-white/10 rounded-3xl p-5 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
               <div>
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Employees</p>
-                <p className="text-4xl font-black text-slate-800 dark:text-white">{employees.length}</p>
+                <p className="text-3xl font-black text-slate-800 dark:text-white">{employees.length}</p>
               </div>
-              <div className="w-14 h-14 rounded-2xl bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">
-                <BarChart3 size={28} />
-              </div>
-            </div>
-            <div className="bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-white/40 dark:border-white/10 rounded-3xl p-6 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
-              <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Full-Time</p>
-                <p className="text-4xl font-black text-slate-800 dark:text-white">{fullTimeCount}</p>
-              </div>
-              <div className="w-14 h-14 rounded-2xl bg-purple-100 dark:bg-purple-500/20 flex items-center justify-center text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform">
-                <CheckCircle size={28} />
+              <div className="w-12 h-12 rounded-2xl bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">
+                <BarChart3 size={24} />
               </div>
             </div>
           </div>
@@ -513,8 +550,9 @@ export default function EmployeesPage() {
                     className="flex-1 bg-slate-100 dark:bg-black/20 text-sm font-bold p-3 rounded-2xl outline-none text-slate-700 dark:text-slate-200 border border-transparent focus:border-indigo-500/50 cursor-pointer"
                   >
                     <option>All Status</option>
-                    <option value="active">Active</option>
-                    <option value="suspended">Suspended</option>
+                    <option value="active">Active (نشط)</option>
+                    <option value="suspended">Suspended (موقوف)</option>
+                    <option value="left">Left (ترك العمل)</option>
                   </select>
                 </div>
               </div>
@@ -575,7 +613,16 @@ export default function EmployeesPage() {
                           >
                             <FileCheck2 size={16} />
                           </button>
-                          <div className={`w-3 h-3 rounded-full ${emp.status === 'active' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]'}`}></div>
+                          <div 
+                            className={`w-3 h-3 rounded-full shrink-0 ${
+                              emp.status === 'active' 
+                                ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' 
+                                : emp.status === 'suspended'
+                                ? 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]'
+                                : 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]'
+                            }`}
+                            title={emp.status === 'active' ? 'Active / نشط' : emp.status === 'suspended' ? 'Suspended / موقوف' : 'Left / ترك العمل'}
+                          ></div>
                         </div>
                       </div>
                     );
@@ -646,13 +693,46 @@ export default function EmployeesPage() {
                         <div className="flex items-center gap-4 flex-wrap">
                           <span className="text-slate-500 dark:text-slate-400 font-bold text-lg">{activeEmp.position}</span>
                           <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600 hidden sm:block"></span>
-                          <span className={`px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wider ${
-                            activeEmp.status === "active" 
-                              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400" 
-                              : "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400"
-                          }`}>
-                            {activeEmp.status}
-                          </span>
+                          
+                          {/* Interactive Status Switcher (Active / Suspended / Left) */}
+                          <div className="flex items-center gap-1 bg-slate-100 dark:bg-white/5 p-1 rounded-2xl border border-slate-200/60 dark:border-white/10">
+                            <button
+                              type="button"
+                              onClick={() => handleQuickStatusChange(activeEmp.id, "active")}
+                              className={`px-3 py-1 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                                activeEmp.status === "active" 
+                                  ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/25" 
+                                  : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                              }`}
+                              title="Mark Active / تعيين كنشط بالخدمة"
+                            >
+                              ● Active
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleQuickStatusChange(activeEmp.id, "suspended")}
+                              className={`px-3 py-1 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                                activeEmp.status === "suspended" 
+                                  ? "bg-amber-500 text-white shadow-md shadow-amber-500/25" 
+                                  : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                              }`}
+                              title="Mark Suspended / تعيين كموقوف مؤقتاً"
+                            >
+                              ● Suspended
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleQuickStatusChange(activeEmp.id, "left")}
+                              className={`px-3 py-1 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                                activeEmp.status === "left" 
+                                  ? "bg-rose-500 text-white shadow-md shadow-rose-500/25" 
+                                  : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                              }`}
+                              title="Mark Left / تعيين كمنهي الخدمة أو ترك العمل"
+                            >
+                              ● Left
+                            </button>
+                          </div>
                         </div>
                       </div>
                       
@@ -807,8 +887,9 @@ export default function EmployeesPage() {
                     onChange={e => setFormData({...formData, status: e.target.value})}
                     className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:border-indigo-500 font-bold"
                   >
-                    <option value="active">Active</option>
-                    <option value="suspended">Suspended</option>
+                    <option value="active">Active (على رأس العمل / نشط)</option>
+                    <option value="suspended">Suspended (موقوف مؤقتاً عن العمل)</option>
+                    <option value="left">Left (ترك العمل / انتهت خدمته)</option>
                   </select>
                 </div>
 
@@ -1603,13 +1684,13 @@ export default function EmployeesPage() {
                         <span style={{ 
                           fontSize: "9.5px", 
                           fontWeight: "800", 
-                          background: selectedEmployee.status === 'active' ? '#dcfce7' : '#fee2e2', 
-                          color: selectedEmployee.status === 'active' ? '#166534' : '#991b1b',
+                          background: selectedEmployee.status === 'active' ? '#dcfce7' : selectedEmployee.status === 'suspended' ? '#fef3c7' : '#fee2e2', 
+                          color: selectedEmployee.status === 'active' ? '#166534' : selectedEmployee.status === 'suspended' ? '#92400e' : '#991b1b',
                           padding: "2px 7px",
                           borderRadius: "4px",
-                          border: `1px solid ${selectedEmployee.status === 'active' ? '#86efac' : '#fca5a5'}`
+                          border: `1px solid ${selectedEmployee.status === 'active' ? '#86efac' : selectedEmployee.status === 'suspended' ? '#fcd34d' : '#fca5a5'}`
                         }}>
-                          {selectedEmployee.status === 'active' ? '● بالخدمة (Active)' : '● موقوف / منهي'}
+                          {selectedEmployee.status === 'active' ? '● بالخدمة (Active)' : selectedEmployee.status === 'suspended' ? '● موقوف مؤقتاً (Suspended)' : '● انتهت خدمته / ترك العمل (Left)'}
                         </span>
                         <span style={{ 
                           fontSize: "9.5px", 

@@ -1029,7 +1029,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     { name: "", href: "/cashier", icon: User, isIconOnly: true }
   ].filter(item => {
     const isManager = userDoc?.role === "manager" || role === "manager";
-    if (isManager && (item.name === t("nav.hr") || item.name === t("nav.admin"))) {
+    if (isManager && item.name === t("nav.admin")) {
       return false;
     }
     return true;
