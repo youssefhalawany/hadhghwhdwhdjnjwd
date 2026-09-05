@@ -127,6 +127,13 @@ export default function EmployeesPage() {
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => setCurrentUser(user));
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const s = params.get("status");
+      if (s) {
+        setStatusFilter(s.toLowerCase());
+      }
+    }
     return () => unsub();
   }, []);
 

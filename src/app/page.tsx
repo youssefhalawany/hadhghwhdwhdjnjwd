@@ -125,7 +125,7 @@ export default function VIPBentoEnterprisePortal() {
   const [pendingExpiries, setPendingExpiries] = useState<number>(0);
   const [pendingReturns, setPendingReturns] = useState<number>(0);
   const [outOfStockCount, setOutOfStockCount] = useState<number>(0);
-  const [activeStaffCount, setActiveStaffCount] = useState<number>(12);
+  const [activeStaffCount, setActiveStaffCount] = useState<number>(0);
   const [activeStaff, setActiveStaff] = useState<any[]>([]);
   const [offStaff, setOffStaff] = useState<any[]>([]);
   const [connectedDevices, setConnectedDevices] = useState<number>(3);
@@ -278,20 +278,19 @@ export default function VIPBentoEnterprisePortal() {
       });
 
       const active = branchEmps.filter(e => {
-        const st = (e.status || "active").toLowerCase();
-        const sft = (e.shiftTime || "").toLowerCase();
-        return st !== "off" && st !== "vacation" && st !== "suspended" && sft !== "off";
+        const st = (e.status || "active").toLowerCase().trim();
+        return st === "active";
       });
 
       const off = branchEmps.filter(e => {
-        const st = (e.status || "").toLowerCase();
-        const sft = (e.shiftTime || "").toLowerCase();
+        const st = (e.status || "").toLowerCase().trim();
+        const sft = (e.shiftTime || "").toLowerCase().trim();
         return st === "off" || st === "vacation" || sft === "off";
       });
 
       setActiveStaff(active);
       setOffStaff(off);
-      setActiveStaffCount(active.length || branchEmps.length || 12);
+      setActiveStaffCount(active.length);
     }, () => {});
 
     // 6. Active sessions
@@ -1111,10 +1110,10 @@ export default function VIPBentoEnterprisePortal() {
                   count: `${activeStaffCount}`,
                   titleEn: "Active Staff on Duty",
                   titleAr: "طاقم العمل على الوردية",
-                  subEn: `${activeStaff.length || activeStaffCount} ${isAr ? "موظف نشط بالفرع" : "staff registered on active duty"}`,
-                  subAr: `${activeStaff.length || activeStaffCount} موظف مسجل على رأس العمل`,
+                  subEn: `${activeStaffCount} ${isAr ? "موظف نشط بالفرع" : "staff registered on active duty"}`,
+                  subAr: `${activeStaffCount} موظف مسجل على رأس العمل`,
                   color: "text-sky-400",
-                  href: "/hr/employees",
+                  href: "/hr/employees?status=active",
                   icon: Users,
                 },
                 {
