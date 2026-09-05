@@ -82,8 +82,14 @@ interface Department {
   tools: ToolItem[];
 }
 
+const BRANCH_NAMES_AR: Record<string, string> = {
+  alamein4: "العلمين 4",
+  ola: "علا القرنفل",
+  all: "كافة الفروع",
+};
+
 export default function VIPBentoEnterprisePortal() {
-  const { currentBranch, setCurrentBranch } = useBranch();
+  const { currentBranch, setBranch } = useBranch();
   const { language, setLanguage } = useLanguage();
   const isAr = language === "ar";
   
@@ -272,11 +278,7 @@ export default function VIPBentoEnterprisePortal() {
     return r !== "manager";
   }, [userRole, userEmail]);
 
-  const branchObj = BRANCHES.find((b) => b.id === currentBranch) || {
-    id: "alamein4",
-    name: "El Alamein 4",
-    nameAr: "العلمين 4",
-  };
+  const branchObj = BRANCHES.find((b) => b.id === currentBranch) || BRANCHES[0];
 
   // 5 CORE DEPARTMENTS DEFINITION WITH ALL 31 TOOLS
   const departments: Department[] = useMemo(() => [
@@ -763,7 +765,7 @@ export default function VIPBentoEnterprisePortal() {
               </div>
               <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
                 <Building2 className="w-3.5 h-3.5 text-rose-400" />
-                <span>{isAr ? branchObj.nameAr : branchObj.name}</span>
+                <span>{isAr ? (BRANCH_NAMES_AR[branchObj.id] || branchObj.name) : branchObj.name}</span>
                 <span>•</span>
                 <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -790,14 +792,14 @@ export default function VIPBentoEnterprisePortal() {
                 return (
                   <button
                     key={b.id}
-                    onClick={() => setCurrentBranch(b.id)}
+                    onClick={() => setBranch(b.id)}
                     className={`px-3 py-1 rounded-lg font-bold transition-all ${
                       isSelected
                         ? "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-600/30"
                         : "text-slate-400 hover:text-white"
                     }`}
                   >
-                    {isAr ? b.nameAr : b.name.replace("El ", "")}
+                    {isAr ? (BRANCH_NAMES_AR[b.id] || b.name) : b.name.replace("El ", "")}
                   </button>
                 );
               })}
