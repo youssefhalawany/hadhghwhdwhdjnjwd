@@ -1888,21 +1888,27 @@ export default function EmployeesPage() {
 
       {/* Add / Edit Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-card border border-border rounded-3xl shadow-2xl w-full max-w-2xl my-8">
-            <div className="flex justify-between items-center p-6 border-b border-border">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-6 overflow-hidden">
+          <div className="bg-card border border-border rounded-3xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header (Fixed at top) */}
+            <div className="flex justify-between items-center px-6 py-4 sm:px-8 sm:py-5 border-b border-border shrink-0 bg-card z-10">
               <div>
                 <h2 className="text-xl font-black text-slate-900 dark:text-slate-50">
                   {selectedEmployee ? "Edit Employee" : "Add Employee"}
                 </h2>
-                {selectedEmployee && <p className="text-sm text-slate-500 mt-1">{selectedEmployee.name}</p>}
+                {selectedEmployee && <p className="text-xs text-slate-500 mt-0.5">{selectedEmployee.name}</p>}
               </div>
-              <button onClick={() => setShowAddModal(false)} className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition">
+              <button
+                type="button"
+                onClick={() => setShowAddModal(false)}
+                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition"
+              >
                 <X size={20} />
               </button>
             </div>
 
-            <form onSubmit={handleSave} className="p-6">
+            {/* Scrollable Form Body */}
+            <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-6 sm:p-8 custom-scrollbar flex flex-col justify-between">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 {/* Name */}
                 <div className="md:col-span-2">
