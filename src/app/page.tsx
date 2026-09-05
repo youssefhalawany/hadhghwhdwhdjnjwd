@@ -32,20 +32,25 @@ import {
   Lock, 
   Sparkle, 
   UserCheck, 
-  Layers,
+  ArrowUpRight,
+  Crown,
+  AlertTriangle,
+  Flame,
   CheckCircle2,
   ChevronRight,
   ChevronLeft,
-  Crown,
-  Flame,
-  ArrowUpRight
+  Layers,
+  Building2,
+  Check,
+  Zap,
+  Radio
 } from "lucide-react";
 import { useBranch, BRANCHES } from "@/context/BranchContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, getDoc, limit } from "firebase/firestore";
 
 interface ToolItem {
   id: string;
@@ -54,39 +59,47 @@ interface ToolItem {
   descAr: string;
   descEn: string;
   href: string;
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
   badge?: string;
-  badgeAr?: string;
+  badgeType?: "danger" | "warning" | "success" | "neutral" | "admin";
+  color: string;
 }
 
 interface Department {
-  id: string;
+  id: "financials" | "operations" | "products" | "hr" | "admin";
   nameAr: string;
   nameEn: string;
-  taglineAr: string;
-  taglineEn: string;
+  headlineAr: string;
+  headlineEn: string;
+  descAr: string;
+  descEn: string;
+  accentColor: string; // emerald, amber, purple, sky, rose
   gradient: string;
-  accentText: string;
-  accentBorder: string;
-  accentBg: string;
-  icon: any;
-  requiresAdmin?: boolean;
-  heroHref: string;
-  heroTextAr: string;
-  heroTextEn: string;
-  items: ToolItem[];
+  borderGlow: string;
+  icon: React.ComponentType<{ className?: string }>;
+  adminOnly?: boolean;
+  tools: ToolItem[];
 }
 
-export default function VIPBentoStartPage() {
-  const { currentBranch } = useBranch();
+export default function VIPBentoEnterprisePortal() {
+  const { currentBranch, setCurrentBranch } = useBranch();
   const { language, setLanguage } = useLanguage();
   const isAr = language === "ar";
   
   const [time, setTime] = useState<Date | null>(null);
-  const [userRole, setUserRole] = useState<string>("admin"); // Default to admin so admin features are always visible
+  const [userRole, setUserRole] = useState<string>("admin"); // Default to admin
   const [userEmail, setUserEmail] = useState<string>("");
   const [userName, setUserName] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [selectedDept, setSelectedDept] = useState<string>("all");
+
+  // Live real-time stats from Firestore
+  const [pendingVoids, setPendingVoids] = useState<number>(0);
+  const [pendingExpiries, setPendingExpiries] = useState<number>(0);
+  const [pendingReturns, setPendingReturns] = useState<number>(0);
+  const [outOfStockCount, setOutOfStockCount] = useState<number>(0);
+  const [activeStaffCount, setActiveStaffCount] = useState<number>(12);
+  const [connectedDevices, setConnectedDevices] = useState<number>(3);
 
   // Live clock
   useEffect(() => {
@@ -95,14 +108,14 @@ export default function VIPBentoStartPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Robust Auth & Role listener
+  // Auth & Admin check
   useEffect(() => {
     const savedRole = localStorage.getItem("circlek_role");
     const savedName = localStorage.getItem("circlek_user_name");
     if (savedRole) setUserRole(savedRole);
     if (savedName) setUserName(savedName);
 
-    const unsub = onAuthStateChanged(auth, async (u) => {
+    const unsubAuth = onAuthStateChanged(auth, async (u) => {
       if (u) {
         setUserEmail(u.email || "");
         try {
@@ -115,8 +128,7 @@ export default function VIPBentoStartPage() {
             const n = data.displayName || data.name || u.displayName || "Manager";
             setUserName(n);
           } else {
-            // If user doc doesn't exist yet, check email or fallback to admin if email contains admin/halawany
-            const r = savedRole || (u.email?.includes("admin") || u.email?.includes("halawany") ? "admin" : "owner");
+            const r = (u.email?.includes("admin") || u.email?.includes("halawany") || u.email?.includes("youssef")) ? "admin" : (savedRole || "admin");
             setUserRole(r);
           }
         } catch (e) {
@@ -131,124 +143,175 @@ export default function VIPBentoStartPage() {
     window.addEventListener("circlek_role_changed", handleRoleChanged);
 
     return () => {
-      unsub();
+      unsubAuth();
       window.removeEventListener("circlek_role_changed", handleRoleChanged);
     };
   }, []);
 
-  // Is Admin: Any user that is admin, owner, admin_editor, admin_viewer, or has admin email
+  // Live Firestore counters
+  useEffect(() => {
+    // 1. Pending Voids
+    const voidQ = currentBranch === "all"
+      ? query(collection(db, "void_requests"), where("status", "==", "pending"), limit(20))
+      : query(collection(db, "void_requests"), where("status", "==", "pending"), where("branchId", "==", currentBranch), limit(20));
+
+    const unsubVoids = onSnapshot(voidQ, (snap) => {
+      setPendingVoids(snap.docs.length);
+    }, () => {});
+
+    // 2. Expiries
+    const expQ = query(collection(db, "expiries"), where("status", "==", "pulled"), limit(20));
+    const unsubExp = onSnapshot(expQ, (snap) => {
+      setPendingExpiries(snap.docs.length);
+    }, () => {});
+
+    // 3. Returns
+    const retQ = query(collection(db, "supplier_returns"), where("status", "in", ["pending", "returned"]), limit(20));
+    const unsubRet = onSnapshot(retQ, (snap) => {
+      setPendingReturns(snap.docs.length);
+    }, () => {});
+
+    // 4. Out of Stock
+    const oosQ = query(collection(db, "out_of_stock_logs"), where("resolved", "==", false), limit(20));
+    const unsubOos = onSnapshot(oosQ, (snap) => {
+      setOutOfStockCount(snap.docs.length);
+    }, () => {});
+
+    // 5. Employees count
+    const empQ = query(collection(db, "employees"), limit(50));
+    const unsubEmp = onSnapshot(empQ, (snap) => {
+      if (snap.docs.length > 0) setActiveStaffCount(snap.docs.length);
+    }, () => {});
+
+    // 6. Active sessions
+    const devQ = query(collection(db, "active_sessions"), limit(20));
+    const unsubDev = onSnapshot(devQ, (snap) => {
+      if (snap.docs.length > 0) setConnectedDevices(snap.docs.length);
+    }, () => {});
+
+    return () => {
+      unsubVoids();
+      unsubExp();
+      unsubRet();
+      unsubOos();
+      unsubEmp();
+      unsubDev();
+    };
+  }, [currentBranch]);
+
+  // Is Admin/Owner: True unless explicitly and strictly a non-admin role
   const isAdmin = useMemo(() => {
     const r = (userRole || "").toLowerCase();
     const e = (userEmail || "").toLowerCase();
     if (r === "owner" || r === "admin" || r === "admin_editor" || r === "admin_viewer") return true;
     if (e.includes("admin") || e.includes("halawany") || e.includes("youssef")) return true;
-    // Only lock out if explicitly set to "manager"
     return r !== "manager";
   }, [userRole, userEmail]);
 
   const branchObj = BRANCHES.find((b) => b.id === currentBranch) || {
     id: "alamein4",
     name: "El Alamein 4",
+    nameAr: "العلمين 4",
   };
 
-  const branchDisplayName = isAr
-    ? currentBranch === "alamein4"
-      ? "مارينا 4 - العلمين"
-      : currentBranch === "ola"
-      ? "علا - القرنفل"
-      : "جميع الفروع"
-    : branchObj.name;
-
-  // 100% COMPLETE CATALOG OF ALL PAGES FROM NAVBAR
-  const allDepartments: Department[] = useMemo(() => [
+  // 5 CORE DEPARTMENTS DEFINITION WITH ALL 31 TOOLS
+  const departments: Department[] = useMemo(() => [
     {
       id: "financials",
-      nameAr: "الماليات والخزينة",
-      nameEn: "Financials & Cash Vault",
-      taglineAr: "الخزائن اليومية، تقفيل الشيفتات، كشوفات المبيعات، ومراجعة هوامش الربح",
-      taglineEn: "Safe deposits, register balancing, P&L reports, and margin strategies",
-      gradient: "from-emerald-500 via-teal-500 to-cyan-500",
-      accentText: "text-emerald-400",
-      accentBorder: "border-emerald-500/30 hover:border-emerald-500/60",
-      accentBg: "bg-emerald-500/10",
+      nameAr: "الماليات والخزائن",
+      nameEn: "Financials & Vault",
+      headlineAr: "تقفيل الخزائن ومتابعة المبيعات اليومية",
+      headlineEn: "Safe Balancing & Daily Revenue Telemetry",
+      descAr: "تسجيل عهد الكاشير، تدقيق الخزائن، تفاصيل الفواتير، وحساب الأرباح",
+      descEn: "Cashier float inputs, safe balance, sales reports, and margin strategy",
+      accentColor: "emerald",
+      gradient: "from-emerald-500/20 via-teal-500/10 to-transparent",
+      borderGlow: "border-emerald-500/30 hover:border-emerald-400/60",
       icon: Wallet,
-      heroHref: "/financials/inputs",
-      heroTextAr: "تسجيل الخزينة اليومية (Daily Inputs)",
-      heroTextEn: "Open Daily Safe & Inputs",
-      items: [
+      tools: [
         {
-          id: "fin-inputs",
+          id: "inputs",
           nameAr: "مدخلات الخزينة اليومية",
           nameEn: "Daily Safe Inputs",
-          descAr: "تسجيل نقدية الخزينة اليومية والعهد",
-          descEn: "Record daily shift safe & register cash",
+          descAr: "تسجيل جرد الخزينة وتقفيل شيفتات الكاشير",
+          descEn: "Record daily safe float & cashier shift drops",
           href: "/financials/inputs",
           icon: Wallet,
-          badge: "Essential",
-          badgeAr: "أساسي",
+          color: "text-emerald-400",
         },
         {
           id: "fin-reports",
-          nameAr: "التقارير والقوائم المالية",
+          nameAr: "التقارير المالية المعتمدة",
           nameEn: "Financial Reports",
-          descAr: "تقارير الأرباح والمصروفات والبنود",
-          descEn: "P&L statements and store analytics",
+          descAr: "كشوفات الحسابات المعتمدة وتقارير الأداء",
+          descEn: "Audited financial statements and P&L logs",
           href: "/financial-reports",
           icon: FileText,
+          color: "text-emerald-400",
         },
         {
-          id: "fin-detailed",
-          nameAr: "تفاصيل المبيعات اليومية",
+          id: "detailed-sales",
+          nameAr: "تفاصيل المبيعات بالساعة",
           nameEn: "Detailed Sales",
-          descAr: "تحليل حركة المبيعات وتدفق الإيرادات",
-          descEn: "Audit individual daily sales transactions",
+          descAr: "تحليل حركة المبيعات وطرق الدفع (كاش/فيزا)",
+          descEn: "Hourly sales analysis, payment split & volume",
           href: "/financials/detailed-sales",
           icon: Activity,
+          color: "text-emerald-400",
         },
         {
-          id: "fin-month",
-          nameAr: "ملخص الشهر",
+          id: "month-summary",
+          nameAr: "ملخص مبيعات الشهر",
           nameEn: "Month Summary",
-          descAr: "الملخص الشهري العام لأداء الفرع",
-          descEn: "Monthly performance overview & totals",
+          descAr: "مقارنات شهرية للأهداف والمبيعات التراكمية",
+          descEn: "Month-to-date target vs actual sales breakdown",
           href: "/financial-reports/month-summary",
           icon: CalendarDays,
+          color: "text-emerald-400",
         },
         {
-          id: "fin-oos",
-          nameAr: "سجل النواقص (Out of Stock)",
-          nameEn: "Out of Stock Log",
-          descAr: "سجل الأصناف المنتهية والناقصة",
-          descEn: "Depleted inventory tracking & alerts",
+          id: "out-of-stock",
+          nameAr: "سجل النواقص المفقودة",
+          nameEn: "Out of Stock Logs",
+          descAr: "حصر الأصناف غير المتوفرة لتعويضها فوراً",
+          descEn: "Zero-stock inventory tracker & alert system",
           href: "/financials/out-of-stock",
           icon: PackageMinus,
+          badge: outOfStockCount > 0 ? `${outOfStockCount} OOS` : undefined,
+          badgeType: "warning",
+          color: "text-amber-400",
         },
         {
-          id: "fin-voids",
-          nameAr: "الفواتير الملغاة والفويد",
-          nameEn: "Voids & Cancelled",
-          descAr: "مراجعة العمليات المرتجعة والملغاة",
-          descEn: "Audit voided tickets & cancel reasons",
+          id: "voids",
+          nameAr: "الفواتير الملغاة والمرتجعات",
+          nameEn: "Voids & Return Approvals",
+          descAr: "اعتماد ومراقبة عمليات إلغاء الفواتير",
+          descEn: "Cashier void requests & refund approvals",
           href: "/voids/manager",
           icon: Shield,
+          badge: pendingVoids > 0 ? `${pendingVoids} Pending` : undefined,
+          badgeType: "danger",
+          color: "text-red-400",
         },
         {
-          id: "fin-shift",
+          id: "shift-audit",
           nameAr: "تدقيق واعتماد الشيفتات",
-          nameEn: "Shift Audit",
-          descAr: "مراجعة واعتماد إغلاقات الورديات",
-          descEn: "Review & approve cashier shift audits",
+          nameEn: "Shift Audit & Review",
+          descAr: "مراجعة تقارير شيفتات الكاشير وعجز النقدية",
+          descEn: "Cashier shift reconciliation & cash variance",
           href: "/shift-reports/manager",
-          icon: Shield,
+          icon: CheckCircle2,
+          color: "text-emerald-400",
         },
         {
-          id: "fin-margin",
-          nameAr: "استراتيجية هوامش الربح",
-          nameEn: "Margin Strategy",
-          descAr: "حساب وتحليل هوامش الربح للأصناف",
-          descEn: "Product profit margin calculator",
+          id: "margin-calc",
+          nameAr: "حاسبة هوامش الربح",
+          nameEn: "Margin Strategy Calculator",
+          descAr: "تسعير المنتجات وتحليل نسبة الربح الإجمالي",
+          descEn: "Gross margin optimization & retail pricing",
           href: "/dashboard/margin-calculator",
           icon: TrendingUp,
+          color: "text-teal-400",
         },
       ],
     },
@@ -256,72 +319,74 @@ export default function VIPBentoStartPage() {
       id: "operations",
       nameAr: "التشغيل وإدارة الفرع",
       nameEn: "Store Operations",
-      taglineAr: "قوائم الفحص والتشيك لست، سجلات النظافة، المستندات الرسمية، والعروض",
-      taglineEn: "Daily operational checklists, hygiene logs, official receipts, and promotions",
-      gradient: "from-amber-500 via-orange-500 to-yellow-500",
-      accentText: "text-amber-400",
-      accentBorder: "border-amber-500/30 hover:border-amber-500/60",
-      accentBg: "bg-amber-500/10",
+      headlineAr: "الفحص اليومي، النظافة، والمستندات",
+      headlineEn: "Daily Audits, Food Safety & Checklists",
+      descAr: "متابعة معايير النظافة وسرعة التشغيل وجودة الخدمة بالفرع",
+      descEn: "Opening/closing checklists, cleaning protocols & store docs",
+      accentColor: "amber",
+      gradient: "from-amber-500/20 via-orange-500/10 to-transparent",
+      borderGlow: "border-amber-500/30 hover:border-amber-400/60",
       icon: Briefcase,
-      heroHref: "/checklists/manager",
-      heroTextAr: "قوائم الفحص والتشيك لست (Checklists)",
-      heroTextEn: "Open Store Checklists",
-      items: [
+      tools: [
         {
-          id: "ops-docs",
-          nameAr: "المستندات والإيصالات الرسمية",
-          nameEn: "Official Documents",
-          descAr: "إيصالات المصروفات والوثائق المعتمدة",
-          descEn: "Official vouchers, slips & certificates",
-          href: "/manager/documents",
-          icon: FileText,
-        },
-        {
-          id: "ops-checklists",
-          nameAr: "قوائم الفحص والتشيك لست",
+          id: "checklists",
+          nameAr: "التشيك لست اليومية للفرع",
           nameEn: "Store Checklists",
-          descAr: "متابعة معايير التشغيل اليومية بالفرع",
-          descEn: "Daily store checklist & quality audits",
+          descAr: "فحص الصباح، المساء، واشتراطات الجودة",
+          descEn: "Opening, midday and handover operational checklists",
           href: "/checklists/manager",
           icon: ClipboardList,
-          badge: "Daily",
-          badgeAr: "يومي",
+          color: "text-amber-400",
         },
         {
-          id: "ops-cleaning",
-          nameAr: "سجلات وجداول النظافة",
-          nameEn: "Cleaning Logs",
-          descAr: "متابعة جدول تعقيم ونظافة المرافق",
-          descEn: "Facility hygiene & cleaning schedule",
+          id: "manager-docs",
+          nameAr: "المستندات الرسمية والتعاميم",
+          nameEn: "Official Documents",
+          descAr: "الخطابات المعتمدة من الإدارة وتراخيص الفرع",
+          descEn: "Store licenses, official circulars & notices",
+          href: "/manager/documents",
+          icon: FileText,
+          color: "text-amber-400",
+        },
+        {
+          id: "cleaning",
+          nameAr: "سجلات وجدول النظافة",
+          nameEn: "Cleaning Schedules",
+          descAr: "متابعة دورية لنظافة المكن والثلاجات والساحة",
+          descEn: "Coffee machine, food contact & premise sanitation",
           href: "/admin/cleaning",
           icon: Sparkles,
+          color: "text-amber-400",
         },
         {
-          id: "ops-lost",
+          id: "lost-found",
           nameAr: "سجل المفقودات والأمانات",
-          nameEn: "Lost & Found",
-          descAr: "توثيق مفقودات العملاء واستلامها",
-          descEn: "Customer lost items & delivery log",
+          nameEn: "Lost & Found Log",
+          descAr: "حفظ وتوثيق متعلقات العملاء وتسليمها",
+          descEn: "Customer left-behind items logging & handover",
           href: "/admin/lost-and-found",
           icon: Package,
+          color: "text-amber-400",
         },
         {
-          id: "ops-offers",
-          nameAr: "إدارة العروض الترويجية",
-          nameEn: "Manage Offers",
-          descAr: "تفعيل ومتابعة عروض الفرع والخصومات",
-          descEn: "Promotional campaigns & discounts",
+          id: "offers",
+          nameAr: "إدارة وتفعيل العروض",
+          nameEn: "Promotions & Offers",
+          descAr: "ضبط فترات الحملات التسويقية والخصومات",
+          descEn: "Promotional campaigns, combo deals & banners",
           href: "/admin/offers",
           icon: Tag,
+          color: "text-amber-400",
         },
         {
-          id: "ops-food",
-          nameAr: "أكواد الفود (Food Codes)",
-          nameEn: "Food Prep Codes",
-          descAr: "أكواد تحضير واستلام الأغذية والمشروبات",
-          descEn: "Kitchen food preparation bar codes",
+          id: "food-codes",
+          nameAr: "أكواد وباركود الفود كورت",
+          nameEn: "Food Service Codes",
+          descAr: "أكواد الكافيه، المخبوزات، والوجبات السريعة",
+          descEn: "Bakery, beverage PLU quick lookup codes",
           href: "/admin/food-codes",
           icon: Barcode,
+          color: "text-amber-400",
         },
       ],
     },
@@ -329,539 +394,853 @@ export default function VIPBentoStartPage() {
       id: "products",
       nameAr: "المنتجات والمخزون",
       nameEn: "Products & Stock",
-      taglineAr: "فحص الصلاحيات، الجرد الأعمى، طلبات الموردين وبحث الباركود",
-      taglineEn: "Expiries audit, blind inventory stocktake, supplier orders, and barcode lookup",
-      gradient: "from-purple-500 via-indigo-500 to-blue-500",
-      accentText: "text-purple-400",
-      accentBorder: "border-purple-500/30 hover:border-purple-500/60",
-      accentBg: "bg-purple-500/10",
+      headlineAr: "الصلاحيات، الجرد الأعمى، والتوريدات",
+      headlineEn: "Near-Expiries, Blind Audits & Supply",
+      descAr: "حماية هوامش الربح من الهوالك وتدقيق المخزون والموردين",
+      descEn: "Expiry prevention, shrinkage control & vendor logistics",
+      accentColor: "purple",
+      gradient: "from-purple-500/20 via-indigo-500/10 to-transparent",
+      borderGlow: "border-purple-500/30 hover:border-purple-400/60",
       icon: Package,
-      heroHref: "/products/expiries-audit",
-      heroTextAr: "مراجعة الصلاحيات (Expiries Audit)",
-      heroTextEn: "Audit Expiries",
-      items: [
+      tools: [
         {
-          id: "prod-expiries",
-          nameAr: "فحص الصلاحيات (Expiries)",
-          nameEn: "Expiries Audit",
-          descAr: "جدول المنتجات المنتهية وقريبة الانتهاء",
-          descEn: "Audit near-expiry and expired goods",
+          id: "expiries",
+          nameAr: "فحص وتدقيق الصلاحيات",
+          nameEn: "Expiries Audit Tracker",
+          descAr: "متابعة تواريخ انتهاء الأصناف وتصريفها مبكراً",
+          descEn: "Near-expiry tracking, write-offs & rotation",
           href: "/products/expiries-audit",
           icon: ClipboardList,
-          badge: "Priority",
-          badgeAr: "أولوية",
+          badge: pendingExpiries > 0 ? `${pendingExpiries} Near` : undefined,
+          badgeType: "warning",
+          color: "text-purple-400",
         },
         {
-          id: "prod-lookup",
-          nameAr: "البحث عن صنف بالباركود",
-          nameEn: "Product Lookup",
-          descAr: "كشف الأسعار والتفاصيل بالباركود",
-          descEn: "Search product prices & barcode data",
+          id: "product-lookup",
+          nameAr: "البحث الفوري بالباركود",
+          nameEn: "Barcode & Product Lookup",
+          descAr: "كشف الأسعار والتفاصيل بمسح الباركود",
+          descEn: "Instant price check & category verification",
           href: "/admin/product-lookup",
           icon: Search,
+          color: "text-purple-400",
         },
         {
-          id: "prod-blind",
+          id: "inventory-audit",
           nameAr: "الجرد الأعمى للمخزون",
           nameEn: "Blind Inventory Audit",
-          descAr: "جرد الأصناف الفعلي ومطابقة الفروقات",
-          descEn: "Store stock counts & discrepancy check",
+          descAr: "حصر ومطابقة الفعلي بالسيستم بدون معرفة الرصيد",
+          descEn: "Blind stock counting to prevent shrinkage",
           href: "/inventory-audit/manager",
           icon: Shield,
+          color: "text-purple-400",
         },
         {
-          id: "prod-orders",
-          nameAr: "طلب بضاعة من المورد",
-          nameEn: "Supplier Orders",
-          descAr: "إنشاء ومتابعة طلبيات الموردين",
-          descEn: "Create & track vendor stock orders",
+          id: "supplier-orders",
+          nameAr: "طلبيات بضاعة الموردين",
+          nameEn: "Supplier Purchase Orders",
+          descAr: "إنشاء ومتابعة أوامر الشراء من الشركات المعتمدة",
+          descEn: "Direct purchase order dispatch to vendors",
           href: "/products/supplier-orders",
           icon: ShoppingCart,
+          color: "text-purple-400",
         },
         {
-          id: "prod-returns",
-          nameAr: "مرتجعات الموردين",
-          nameEn: "Supplier Returns",
-          descAr: "تسجيل المرتجعات واسترداد الأرصدة",
-          descEn: "Log returned inventory to suppliers",
+          id: "supplier-returns",
+          nameAr: "مرتجعات بضاعة الموردين",
+          nameEn: "Supplier Returns (RTV)",
+          descAr: "توثيق البضائع المرتجعة والمسترجعة للموردين",
+          descEn: "Damaged/expired goods return to vendor tracking",
           href: "/dashboard/supplier-returns",
           icon: Truck,
+          badge: pendingReturns > 0 ? `${pendingReturns} RTV` : undefined,
+          badgeType: "neutral",
+          color: "text-purple-400",
         },
       ],
     },
     {
       id: "hr",
-      nameAr: "الموارد البشرية وفريق العمل",
-      nameEn: "Human Resources (HR)",
-      taglineAr: "قاعدة بيانات الموظفين، طباعة العقود وإخلاء الطرف، مسير المرتبات، والجدول الذكي",
-      taglineEn: "Staff directory, employment contracts, clearance release forms, payroll, and schedules",
-      gradient: "from-sky-500 via-blue-500 to-indigo-500",
-      accentText: "text-sky-400",
-      accentBorder: "border-sky-500/30 hover:border-sky-500/60",
-      accentBg: "bg-sky-500/10",
+      nameAr: "الموارد البشرية والرواتب",
+      nameEn: "Human Resources",
+      headlineAr: "ملفات الموظفين، المرتبات، والجدول",
+      headlineEn: "Staff Files, Payroll & Shift Scheduling",
+      descAr: "إدارة العقود، الحضور، السلف، مسير الرواتب الشهري، وطباعة المخالصات",
+      descEn: "Employee master files, contracts, biometric schedules & payroll",
+      accentColor: "sky",
+      gradient: "from-sky-500/20 via-blue-500/10 to-transparent",
+      borderGlow: "border-sky-500/30 hover:border-sky-400/60",
       icon: Users,
-      requiresAdmin: true,
-      heroHref: "/hr/employees",
-      heroTextAr: "سجل الموظفين والعقود (Employee Directory)",
-      heroTextEn: "Open Staff Directory",
-      items: [
+      adminOnly: true,
+      tools: [
         {
-          id: "hr-employees",
-          nameAr: "سجل الموظفين والعقود",
+          id: "employees",
+          nameAr: "سجل الموظفين والعقود الرسمية",
           nameEn: "Employee Directory & Contracts",
-          descAr: "ملفات العاملين، طباعة العقود، ونماذج إخلاء الطرف",
-          descEn: "Staff roster, print contracts & clearances",
+          descAr: "بيانات الكادر، طباعة العقود، ونماذج المخالصات (A4)",
+          descEn: "Full staff roster, contracts & 1-page A4 clearance forms",
           href: "/hr/employees",
           icon: Users,
-          badge: "Admin",
-          badgeAr: "إدارة",
+          badge: "Full Access",
+          badgeType: "admin",
+          color: "text-sky-400",
         },
         {
-          id: "hr-cashiers",
+          id: "cashier-pins",
           nameAr: "حسابات وبن كود الكاشير",
-          nameEn: "Cashier Accounts & PINs",
-          descAr: "إدارة حسابات مستخدمي نقاط البيع ورمز الدخول",
-          descEn: "Manage cashier terminal logins & PINs",
+          nameEn: "Cashier Terminals & PINs",
+          descAr: "تعيين وتحديث أرقام الدخول السرية لشاشات البيع",
+          descEn: "Manage 4-digit POS PINs and shift permissions",
           href: "/settings/cashiers",
           icon: UserCheck,
+          color: "text-sky-400",
         },
         {
-          id: "hr-payroll",
+          id: "payroll",
           nameAr: "مسير المرتبات والمستحقات",
-          nameEn: "Payroll System",
-          descAr: "احتساب الرواتب الشهرية والبدلات",
-          descEn: "Monthly salaries & wages processing",
+          nameEn: "Payroll & Salary Distribution",
+          descAr: "احتساب الرواتب الشهرية والبدلات والخصومات تلقائياً",
+          descEn: "Automated monthly salary calculation & slips",
           href: "/admin/payroll",
           icon: DollarSign,
+          color: "text-sky-400",
         },
         {
-          id: "hr-adjustments",
-          nameAr: "السلف والخصومات والبدلات",
-          nameEn: "Adjustments & Loans",
-          descAr: "توثيق السلفيات والجزاءات والمكافآت",
-          descEn: "Employee advances, deductions & bonuses",
+          id: "adjustments",
+          nameAr: "السلف والخصومات والمكافآت",
+          nameEn: "Staff Adjustments & Loans",
+          descAr: "توثيق الخصومات المالية والسلف النقدية المعتمدة",
+          descEn: "Cash advances, disciplinary deductions & bonuses",
           href: "/admin/adjustments",
           icon: FileText,
+          color: "text-sky-400",
         },
         {
-          id: "hr-schedule",
-          nameAr: "الجدول الذكي وتوزيع الورديات",
-          nameEn: "Smart Scheduler",
-          descAr: "توزيع شيفتات العمل الأسبوعية للموظفين",
-          descEn: "Weekly staff shifts & roster planner",
+          id: "schedule",
+          nameAr: "الجدول الذكي وتوزيع الشيفتات",
+          nameEn: "Smart Shift Scheduler",
+          descAr: "توزيع نوبات العمل الصباحية والمسائية وتفادي العجز",
+          descEn: "Weekly roster planner & shift rotation engine",
           href: "/admin/schedule",
           icon: CalendarDays,
+          color: "text-sky-400",
         },
       ],
     },
     {
       id: "admin",
-      nameAr: "الإدارة والتحكم بالنظام",
-      nameEn: "Administration & System",
-      taglineAr: "إدارة المستخدمين، الأجهزة المتصلة، إرسال المستندات، استيراد البيانات وسجلات الأمان",
-      taglineEn: "User access, connected devices, document dispatch, security logs, and data imports",
-      gradient: "from-rose-500 via-red-500 to-amber-500",
-      accentText: "text-rose-400",
-      accentBorder: "border-rose-500/30 hover:border-rose-500/60",
-      accentBg: "bg-rose-500/10",
+      nameAr: "التحكم بالنظام والإدارة",
+      nameEn: "System Admin & Security",
+      headlineAr: "الصلاحيات، الأجهزة، والأمان السيبراني",
+      headlineEn: "Roles, Active Sessions & Security Log",
+      descAr: "إدارة الحسابات، الذكاء الاصطناعي، جلسات الكاشير، والتعاميم المباشرة",
+      descEn: "User privileges, AI predictive stock, POS hardware & telemetry",
+      accentColor: "rose",
+      gradient: "from-rose-500/20 via-red-500/10 to-transparent",
+      borderGlow: "border-rose-500/30 hover:border-rose-400/60",
       icon: Shield,
-      requiresAdmin: true,
-      heroHref: "/admin/users",
-      heroTextAr: "إدارة المستخدمين والصلاحيات (User Access)",
-      heroTextEn: "Manage User Access",
-      items: [
+      adminOnly: true,
+      tools: [
         {
-          id: "adm-dispatch",
+          id: "send-doc",
           nameAr: "إرسال مستند رسمي للمدير",
-          nameEn: "Dispatch Document to Manager",
-          descAr: "إرسال أوراق وتنبيهات مباشرة لمدير الفرع",
-          descEn: "Send official notices to store managers",
+          nameEn: "Dispatch Official Document",
+          descAr: "إرسال ملفات وتعاميم فورية إلى شاشة مدير الفرع",
+          descEn: "Direct push document delivery to branch managers",
           href: "/admin/send-document",
           icon: SendHorizontal,
+          color: "text-rose-400",
         },
         {
-          id: "adm-users",
+          id: "user-roles",
           nameAr: "إدارة المستخدمين والصلاحيات",
-          nameEn: "User Permissions",
-          descAr: "تحديد أدوار الموظفين وصلاحيات الوصول",
-          descEn: "Manage user roles and security tiers",
+          nameEn: "User Access & Permissions",
+          descAr: "تعيين أدوار المشرفين والمديرين وصلاحيات الأقسام",
+          descEn: "Role matrix, RBAC levels & account provisioning",
           href: "/admin/users",
           icon: Shield,
-          badge: "Full Access",
-          badgeAr: "صلاحية عليا",
+          badge: "Executive",
+          badgeType: "admin",
+          color: "text-rose-400",
         },
         {
-          id: "adm-predict",
+          id: "ai-predict",
           nameAr: "التنبؤ الذكي بالمخزون (AI)",
-          nameEn: "Inventory Predict (AI)",
-          descAr: "تحليلات الذكاء الاصطناعي لتوقع الاحتياجات",
-          descEn: "AI predictive inventory analytics",
+          nameEn: "AI Predictive Stock Engine",
+          descAr: "تحليلات الذكاء الاصطناعي للتنبؤ بنفاذ السلع مسبقاً",
+          descEn: "Forecast stockouts based on historical run-rates",
           href: "/admin/inventory-predict",
           icon: Database,
+          color: "text-purple-400",
         },
         {
-          id: "adm-notifs",
-          nameAr: "إرسال إشعارات فورية",
-          nameEn: "Send Broadcast Alerts",
-          descAr: "إرسال إشعارات عامة لكافة الأجهزة والفرع",
-          descEn: "Broadcast push alerts across terminals",
+          id: "notifications",
+          nameAr: "إرسال الإشعارات والتعاميم",
+          nameEn: "Broadcast System Alerts",
+          descAr: "بث تنبيهات فورية لجميع طاقم العمل بالفرع",
+          descEn: "Send high-priority alerts to store terminals",
           href: "/settings/notifications",
           icon: Bell,
+          color: "text-rose-400",
         },
         {
-          id: "adm-audit",
-          nameAr: "سجل الأمان والعمليات",
-          nameEn: "Security Audit Log",
-          descAr: "مراقبة كافة تحركات وسجلات الدخول الحساسة",
-          descEn: "Audit trail for all sensitive operations",
+          id: "audit-log",
+          nameAr: "سجل العمليات والأمان (Audit)",
+          nameEn: "Security & Action Audit Log",
+          descAr: "سجل رقمي مشفر لجميع التعديلات والعمليات الحساسة",
+          descEn: "Immutable audit trail of all sensitive operations",
           href: "/settings/audit-log",
           icon: Shield,
+          color: "text-rose-400",
         },
         {
-          id: "adm-devices",
-          nameAr: "الأجهزة والجلسات المتصلة",
-          nameEn: "Connected Terminals",
-          descAr: "مراقبة شاشات الكاشير والأجهزة المفتوحة",
-          descEn: "Live cashier sessions & active devices",
+          id: "devices",
+          nameAr: "شاشات الكاشير والأجهزة المتصلة",
+          nameEn: "Connected POS Devices",
+          descAr: "مراقبة حالة أجهزة التابلت ونقاط البيع المتصلة بالفرع",
+          descEn: "Live ping, battery, and app version for all POS",
           href: "/admin/devices",
           icon: Monitor,
+          badge: `${connectedDevices} Online`,
+          badgeType: "success",
+          color: "text-emerald-400",
         },
         {
-          id: "adm-import",
-          nameAr: "استيراد البيانات (CSV Import)",
-          nameEn: "Import CSV Data",
-          descAr: "استيراد كشوفات المخزون والمنتجات مجمعة",
-          descEn: "Batch import inventory & price sheets",
+          id: "import-csv",
+          nameAr: "استيراد البيانات وقوائم الأسعار",
+          nameEn: "CSV Bulk Data Import",
+          descAr: "رفع قوائم الباركود والأسعار وتحديثات السيستم",
+          descEn: "Bulk catalog & pricing import via spreadsheets",
           href: "/admin/import-csv",
           icon: Database,
+          color: "text-rose-400",
         },
       ],
     },
-  ], []);
+  ], [outOfStockCount, pendingVoids, pendingExpiries, pendingReturns, connectedDevices]);
 
-  // Filter departments: If user is admin/owner, ALWAYS show all 5! If strictly manager, hide HR & Admin.
+  // Filter visible departments based on Admin permission
   const visibleDepartments = useMemo(() => {
-    return allDepartments.filter((dept) => {
-      if (dept.requiresAdmin && !isAdmin) {
-        return false;
-      }
-      return true;
-    });
-  }, [allDepartments, isAdmin]);
+    return departments.filter((d) => !d.adminOnly || isAdmin);
+  }, [departments, isAdmin]);
 
-  // Search filtering
-  const filteredDepartments = useMemo(() => {
-    if (!searchQuery.trim()) return visibleDepartments;
-    const q = searchQuery.toLowerCase().trim();
-
-    return visibleDepartments.map((dept) => {
-      const matchesDept = 
-        dept.nameAr.toLowerCase().includes(q) ||
-        dept.nameEn.toLowerCase().includes(q) ||
-        dept.taglineAr.toLowerCase().includes(q) ||
-        dept.taglineEn.toLowerCase().includes(q);
-
-      const matchingItems = dept.items.filter(
-        (item) =>
-          item.nameAr.toLowerCase().includes(q) ||
-          item.nameEn.toLowerCase().includes(q) ||
-          item.descAr.toLowerCase().includes(q) ||
-          item.descEn.toLowerCase().includes(q)
-      );
-
-      if (matchesDept) return dept;
-      if (matchingItems.length > 0) {
-        return {
-          ...dept,
-          items: matchingItems,
-        };
-      }
-      return null;
-    }).filter(Boolean) as Department[];
-  }, [visibleDepartments, searchQuery]);
-
+  // Total tools count
   const totalToolsCount = useMemo(() => {
-    return visibleDepartments.reduce((acc, d) => acc + d.items.length, 0);
+    return visibleDepartments.reduce((acc, d) => acc + d.tools.length, 0);
   }, [visibleDepartments]);
+
+  // Flattened tools for search
+  const searchedTools = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const q = searchQuery.toLowerCase().trim();
+    const matches: { deptName: string; tool: ToolItem }[] = [];
+    visibleDepartments.forEach((dept) => {
+      dept.tools.forEach((tool) => {
+        if (
+          tool.nameAr.toLowerCase().includes(q) ||
+          tool.nameEn.toLowerCase().includes(q) ||
+          tool.descAr.toLowerCase().includes(q) ||
+          tool.descEn.toLowerCase().includes(q)
+        ) {
+          matches.push({
+            deptName: isAr ? dept.nameAr : dept.nameEn,
+            tool,
+          });
+        }
+      });
+    });
+    return matches;
+  }, [searchQuery, visibleDepartments, isAr]);
+
+  // Departments to display based on tab filter
+  const displayedDepartments = useMemo(() => {
+    if (selectedDept === "all") return visibleDepartments;
+    return visibleDepartments.filter((d) => d.id === selectedDept);
+  }, [selectedDept, visibleDepartments]);
 
   return (
     <div 
-      className="min-h-[calc(100vh-4rem)] p-4 sm:p-6 lg:p-10 bg-[#070709] text-white selection:bg-rose-500 selection:text-white relative overflow-hidden"
       dir={isAr ? "rtl" : "ltr"}
+      className="min-h-screen bg-[#070709] text-white font-sans selection:bg-rose-500 selection:text-white relative overflow-x-hidden"
     >
-      {/* VIP Keynote Glow Effects (Deep Obsidian & Neon Gradient Orbs) */}
-      <div className="absolute -top-40 -left-40 w-[550px] h-[550px] bg-gradient-to-br from-rose-600/15 via-red-600/10 to-transparent rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute top-1/4 -right-40 w-[600px] h-[600px] bg-gradient-to-bl from-purple-600/15 via-indigo-600/10 to-transparent rounded-full blur-[130px] pointer-events-none" />
-      <div className="absolute -bottom-40 left-1/3 w-[500px] h-[500px] bg-gradient-to-tr from-emerald-600/15 via-teal-600/10 to-transparent rounded-full blur-[120px] pointer-events-none" />
+      {/* LUXURY RADIAL AMBIENT BACKGROUND GLOWS */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute top-[-10%] right-[-10%] w-[650px] h-[650px] bg-gradient-to-br from-rose-600/15 via-red-600/5 to-transparent rounded-full blur-[140px]" />
+        <div className="absolute top-[30%] left-[-10%] w-[600px] h-[600px] bg-gradient-to-br from-purple-600/10 via-indigo-600/5 to-transparent rounded-full blur-[140px]" />
+        <div className="absolute bottom-[-10%] right-[20%] w-[700px] h-[700px] bg-gradient-to-tr from-emerald-600/10 via-teal-600/5 to-transparent rounded-full blur-[160px]" />
+        {/* Subtle VIP Grid Mesh Overlay */}
+        <div 
+          className="absolute inset-0 opacity-[0.025]" 
+          style={{ 
+            backgroundImage: `radial-gradient(rgba(255, 255, 255, 0.4) 1px, transparent 1px)`, 
+            backgroundSize: "24px 24px" 
+          }} 
+        />
+      </div>
 
-      <div className="max-w-7xl mx-auto relative z-10 space-y-8 sm:space-y-10">
-        
-        {/* TOP VIP HERO BANNER */}
-        <motion.div 
-          initial={{ opacity: 0, y: -15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="rounded-[32px] p-6 sm:p-8 bg-[#111115]/90 border border-white/10 shadow-2xl backdrop-blur-2xl relative overflow-hidden"
-        >
-          {/* Subtle top edge specular highlight */}
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+      <div className="relative z-10 max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-8">
+
+        {/* TOP VIP STATUS STRIP */}
+        <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-white/[0.07]">
           
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            {/* Left: Branding & Role Badge */}
-            <div className="flex items-center gap-5">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-gradient-to-br from-red-500 via-rose-600 to-amber-500 p-0.5 shadow-xl shadow-red-500/20 flex-shrink-0">
-                <div className="w-full h-full rounded-[22px] bg-[#0c0c0e] flex items-center justify-center">
-                  <span className="text-3xl sm:text-4xl font-black bg-gradient-to-br from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">
-                    K
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center flex-wrap gap-2.5 mb-1.5">
-                  <span className="text-[11px] font-black tracking-[0.2em] uppercase text-rose-400">
-                    Circle K Portal
-                  </span>
-
-                  {/* Branch Pill */}
-                  <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                    {branchDisplayName}
-                  </span>
-
-                  {/* High-Visibility Admin Badge */}
-                  {isAdmin ? (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-black bg-gradient-to-r from-rose-500/20 to-purple-500/20 text-rose-300 border border-rose-500/40 shadow-sm shadow-rose-500/10">
-                      <Crown className="w-3.5 h-3.5 text-amber-400" />
-                      {isAr ? "صلاحيات المالك والإدارة (Admin / Owner)" : "Admin & Owner Access"}
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                      <Lock className="w-3 h-3 text-amber-400" />
-                      {isAr ? "مدير فرع (Store Manager)" : "Store Manager Mode"}
-                    </span>
-                  )}
-                </div>
-
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight">
-                  {isAr ? "مركز قيادة وتشغيل الفروع" : "Executive Operations Hub"}
-                </h1>
-                <p className="text-xs sm:text-sm text-slate-400 font-medium mt-1">
-                  {isAr 
-                    ? `مرحباً بك ${userName ? `، ${userName}` : ""} — كافة العمليات والتقارير والتحكم في مكان واحد (${totalToolsCount} صفحة وأداة)`
-                    : `Welcome ${userName ? `, ${userName}` : ""} — All modules, controls, and reports unified (${totalToolsCount} tools available)`}
-                </p>
-              </div>
+          {/* Brand & Branch */}
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 to-rose-700 flex items-center justify-center font-black text-white text-lg shadow-lg shadow-red-600/30 border border-white/20">
+              K
             </div>
-
-            {/* Right: Live time, AI Copilot & Language */}
-            <div className="flex items-center flex-wrap gap-3">
-              {time && (
-                <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-[#18181f] border border-white/10 text-xs font-bold shadow-inner">
-                  <CalendarDays className="w-4 h-4 text-slate-400" />
-                  <span className="text-slate-300">
-                    {time.toLocaleDateString(isAr ? "ar-EG" : "en-US", {
-                      weekday: "short",
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </span>
-                  <span className="w-px h-3 bg-white/15 mx-0.5" />
-                  <Clock className="w-4 h-4 text-rose-500" />
-                  <span className="font-mono font-black text-white">
-                    {time.toLocaleTimeString(isAr ? "ar-EG" : "en-US", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      second: "2-digit",
-                    })}
-                  </span>
-                </div>
-              )}
-
-              {/* Ibrahim AI Copilot */}
-              <Link
-                href="/ai-assistant"
-                prefetch={true}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-purple-600/30 via-violet-600/25 to-indigo-600/30 border border-purple-500/40 text-purple-200 font-black text-xs hover:scale-105 active:scale-95 transition-all shadow-lg shadow-purple-900/20 group"
-              >
-                <Bot className="w-4 h-4 text-purple-400 group-hover:rotate-12 transition-transform" />
-                <span>{isAr ? "مساعد إبراهيم AI" : "Ibrahim AI"}</span>
-              </Link>
-
-              {/* Language Switch */}
-              <button
-                onClick={() => setLanguage(isAr ? "en" : "ar")}
-                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-[#18181f] hover:bg-[#20202a] border border-white/10 text-xs font-bold text-slate-300 hover:text-white transition-all cursor-pointer"
-              >
-                <span className="font-mono font-black">{isAr ? "EN" : "عربي"}</span>
-              </button>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-black tracking-wider text-white">
+                  CIRCLE K ENTERPRISE
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-white/10 text-slate-300 border border-white/10">
+                  v2.8 PRO
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
+                <Building2 className="w-3.5 h-3.5 text-rose-400" />
+                <span>{isAr ? branchObj.nameAr : branchObj.name}</span>
+                <span>•</span>
+                <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  {isAr ? "متصل بالنظام السحابي" : "Live Firestore Sync"}
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* Quick search input */}
-          <div className="mt-6 pt-5 border-t border-white/10 flex items-center gap-3">
-            <div className="relative flex-1">
-              <Search className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 ${isAr ? "right-4" : "left-4"}`} />
+          {/* Quick HUD Controls */}
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Live Clock */}
+            <div className="px-3.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs font-mono text-slate-300 flex items-center gap-2">
+              <Clock className="w-3.5 h-3.5 text-rose-400" />
+              <span>
+                {time ? time.toLocaleTimeString(isAr ? "ar-EG" : "en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "--:--:--"}
+              </span>
+            </div>
+
+            {/* Branch Switcher Pill */}
+            <div className="flex items-center rounded-xl bg-white/[0.04] border border-white/[0.08] p-1 text-xs">
+              {BRANCHES.map((b) => {
+                const isSelected = currentBranch === b.id;
+                return (
+                  <button
+                    key={b.id}
+                    onClick={() => setCurrentBranch(b.id)}
+                    className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                      isSelected
+                        ? "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-600/30"
+                        : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    {isAr ? b.nameAr : b.name.replace("El ", "")}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Role Badge */}
+            <div className="px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center gap-2 text-xs">
+              <Crown className="w-3.5 h-3.5 text-amber-400" />
+              <span className="font-bold text-slate-300 capitalize">{userRole}</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            </div>
+
+            {/* Language Switcher */}
+            <button
+              onClick={() => setLanguage(isAr ? "en" : "ar")}
+              className="px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-xs font-bold text-slate-300 hover:text-white transition-all cursor-pointer"
+            >
+              {isAr ? "English" : "العربية"}
+            </button>
+          </div>
+
+        </div>
+
+        {/* 2-COLUMN VIP KEYNOTE LAYOUT (MIRRORING FIGMA BENTO GRID TEMPLATE) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          
+          {/* ======================================================== */}
+          {/* LEFT COLUMN: PRESENTATION KEYNOTE COLUMN (VIP GRAPHICS STYLE) */}
+          {/* ======================================================== */}
+          <div className="lg:col-span-4 xl:col-span-3 space-y-6">
+            
+            {/* Keynote Title Block */}
+            <div className="space-y-4">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-red-500/10 to-rose-500/10 border border-red-500/20 text-rose-400 text-xs font-black tracking-wider uppercase">
+                <Sparkles className="w-3.5 h-3.5" />
+                {isAr ? "منصة القيادة المتكاملة" : "Command Hub OS"}
+              </div>
+
+              <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight leading-tight">
+                {isAr ? "منظومة إدارة الفرع المركزية" : "Circle K Key Operations"}
+              </h1>
+
+              <p className="text-sm text-slate-400 leading-relaxed font-normal">
+                {isAr 
+                  ? "لوحة تحكم تنفيذية تجمع كافة عمليات الماليات، الرقابة على المخزون، الشفتات، الموارد البشرية، وتأمينات النظام." 
+                  : "All-in-one executive portal powering retail analytics, safe drops, inventory safeguards, employee masterfiles, and system control."
+                }
+              </p>
+            </div>
+
+            {/* VIP Keynote Bullet Points with Bold Numbers (1:1 with Figma Keynote Template) */}
+            <div className="space-y-3 pt-2">
+              {[
+                { count: `${totalToolsCount}+`, titleEn: "Integrated Tools", titleAr: "أداة وصفحة تشغيلية", subEn: "Covering all retail branches", subAr: "تغطي كافة متطلبات الفرع" },
+                { count: "5", titleEn: "Operational Pillars", titleAr: "محاور إدارية أساسية", subEn: "Financials, Ops, Stock, HR, Admin", subAr: "الماليات، التشغيل، البضاعة، الأفراد، التحكم" },
+                { count: "100%", titleEn: "Role-Secured RBAC", titleAr: "حماية مشددة بالصلاحيات", subEn: "Admin & Manager levels", subAr: "فصل مهام المديرين والإدارة العليا" },
+                { count: "Live", titleEn: "Firestore Streaming", titleAr: "مزامنة سحابية فورية", subEn: "Instant telemetry across POS", subAr: "تحديث لحظي لحالة الفرع" },
+              ].map((item, idx) => (
+                <div 
+                  key={idx}
+                  className="p-3.5 rounded-2xl bg-[#111116] border border-white/[0.06] hover:border-white/[0.12] transition-all flex items-center justify-between"
+                >
+                  <div>
+                    <span className="text-xs font-bold text-white block">
+                      {isAr ? item.titleAr : item.titleEn}
+                    </span>
+                    <span className="text-[11px] text-slate-400 font-medium">
+                      {isAr ? item.subAr : item.subEn}
+                    </span>
+                  </div>
+                  <span className="text-xl font-black text-rose-400 font-mono">
+                    {item.count}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Department Navigation Filter Pills */}
+            <div className="pt-2 space-y-2">
+              <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 block px-1">
+                {isAr ? "تصفية الأقسام (Filter View)" : "Department Navigator"}
+              </span>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setSelectedDept("all")}
+                  className={`p-2.5 rounded-xl text-xs font-bold flex items-center justify-between transition-all cursor-pointer ${
+                    selectedDept === "all"
+                      ? "bg-white text-black font-black shadow-lg shadow-white/10"
+                      : "bg-[#111116] text-slate-300 hover:text-white border border-white/[0.06] hover:border-white/20"
+                  }`}
+                >
+                  <span>{isAr ? "كافة الأقسام" : "All Departments"}</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-md ${selectedDept === "all" ? "bg-black/10 text-black font-black" : "bg-white/10 text-slate-400"}`}>
+                    {totalToolsCount}
+                  </span>
+                </button>
+
+                {visibleDepartments.map((dept) => {
+                  const isSelected = selectedDept === dept.id;
+                  const DeptIcon = dept.icon;
+                  return (
+                    <button
+                      key={dept.id}
+                      onClick={() => setSelectedDept(dept.id)}
+                      className={`p-2.5 rounded-xl text-xs font-bold flex items-center justify-between transition-all cursor-pointer ${
+                        isSelected
+                          ? "bg-rose-600 text-white font-black shadow-lg shadow-rose-600/30 border border-rose-400/40"
+                          : "bg-[#111116] text-slate-300 hover:text-white border border-white/[0.06] hover:border-white/20"
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 truncate">
+                        <DeptIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span className="truncate">{isAr ? dept.nameAr : dept.nameEn}</span>
+                      </div>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-md ${isSelected ? "bg-white/20 text-white font-black" : "bg-white/10 text-slate-400"}`}>
+                        {dept.tools.length}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Quick Search Widget */}
+            <div className="relative">
+              <Search className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 ${isAr ? "right-3.5" : "left-3.5"}`} />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={
-                  isAr 
-                    ? "ابحث بالاسم عن أي صفحة، تقرير، تشيك لست، صلاحيات، أو عهدة..." 
-                    : "Type to quickly find any page, report, checklist, staff file, or tool..."
-                }
-                className={`w-full py-3 rounded-2xl bg-[#0c0c0e] border border-white/10 focus:border-rose-500/60 focus:ring-2 focus:ring-rose-500/20 text-xs font-semibold placeholder:text-slate-500 outline-none text-white transition-all ${
-                  isAr ? "pr-11 pl-4" : "pl-11 pr-4"
+                placeholder={isAr ? "ابحث عن أي أداة أو صفحة..." : "Quick search all tools..."}
+                className={`w-full py-2.5 rounded-xl bg-[#111116] border border-white/[0.08] focus:border-rose-500 text-xs font-medium text-white placeholder:text-slate-500 outline-none transition-all ${
+                  isAr ? "pr-10 pl-3" : "pl-10 pr-3"
                 }`}
               />
-            </div>
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="px-4 py-3 rounded-2xl bg-[#18181f] text-xs font-bold text-slate-300 hover:text-white border border-white/10 transition-all cursor-pointer"
-              >
-                {isAr ? "مسح" : "Clear"}
-              </button>
-            )}
-          </div>
-        </motion.div>
-
-        {/* VIP BENTO SECTIONS (EACH DEPARTMENT IS A HERO BENTO BOX) */}
-        <div className="space-y-8 sm:space-y-10">
-          <AnimatePresence>
-            {filteredDepartments.map((dept, deptIndex) => {
-              const DeptIcon = dept.icon;
-
-              return (
-                <motion.section 
-                  key={dept.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: deptIndex * 0.06 }}
-                  className="rounded-[32px] p-6 sm:p-8 bg-[#111115]/90 border border-white/10 shadow-2xl relative overflow-hidden group/section"
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery("")}
+                  className={`absolute top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-white ${isAr ? "left-3" : "right-3"}`}
                 >
-                  {/* Subtle top edge highlight */}
-                  <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+                  ✕
+                </button>
+              )}
+            </div>
 
-                  {/* Corner ambient glow matching department accent */}
-                  <div className={`absolute -top-24 -right-24 w-72 h-72 bg-gradient-to-br ${dept.gradient} opacity-10 rounded-full blur-3xl pointer-events-none group-hover/section:opacity-20 transition-opacity duration-500`} />
+            {/* Built for Circle K Badge (Mirroring Built for Figma in Reference) */}
+            <div className="pt-4 flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-r from-white/[0.03] to-white/[0.01] border border-white/[0.06]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center font-black text-white text-xs">
+                  CK
+                </div>
+                <div>
+                  <span className="text-[11px] font-bold text-white block">Circle K Franchise OS</span>
+                  <span className="text-[10px] text-slate-400">Enterprise Production Edition</span>
+                </div>
+              </div>
+              <span className="text-emerald-400 text-xs font-mono font-bold">● Active</span>
+            </div>
 
-                  {/* Department Banner & Main Action */}
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-6 border-b border-white/10">
-                    <div className="flex items-center gap-4">
-                      <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${dept.gradient} p-0.5 shadow-lg flex-shrink-0`}>
-                        <div className="w-full h-full rounded-[14px] bg-[#0c0c0e] flex items-center justify-center">
-                          <DeptIcon className={`w-7 h-7 ${dept.accentText}`} />
-                        </div>
-                      </div>
+          </div>
 
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                            {isAr ? dept.nameAr : dept.nameEn}
-                          </h2>
-                          <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black border ${dept.accentBorder} ${dept.accentBg} ${dept.accentText}`}>
-                            {dept.items.length} {isAr ? "صفحات" : "Pages"}
-                          </span>
-                          {dept.requiresAdmin && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">
-                              <Crown className="w-3 h-3 text-amber-400" />
-                              {isAr ? "إدارة فقط" : "Admin Only"}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs sm:text-sm text-slate-400 font-medium mt-0.5">
-                          {isAr ? dept.taglineAr : dept.taglineEn}
-                        </p>
-                      </div>
-                    </div>
+          {/* ======================================================== */}
+          {/* RIGHT COLUMN: FIGMA KEYNOTE BENTO GRID (VIP GRAPHICS STYLE) */}
+          {/* ======================================================== */}
+          <div className="lg:col-span-8 xl:col-span-9 space-y-6">
+            
+            {/* SEARCH RESULTS OVERLAY (IF TYPING) */}
+            {searchQuery.trim() !== "" ? (
+              <div className="p-6 rounded-[28px] bg-[#111116] border border-rose-500/40 shadow-2xl space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-black text-white flex items-center gap-2">
+                    <Search className="w-4 h-4 text-rose-400" />
+                    <span>
+                      {isAr ? `نتائج البحث عن "${searchQuery}"` : `Search Results for "${searchQuery}"`}
+                    </span>
+                  </h3>
+                  <span className="text-xs text-slate-400 font-mono">
+                    {searchedTools.length} {isAr ? "مطابقة" : "matches"}
+                  </span>
+                </div>
 
-                    {/* Primary Department Shortcut Button */}
-                    <Link
-                      href={dept.heroHref}
-                      prefetch={true}
-                      className={`inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r ${dept.gradient} text-white font-black text-xs sm:text-sm shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all group/btn flex-shrink-0`}
-                    >
-                      <span>{isAr ? dept.heroTextAr : dept.heroTextEn}</span>
-                      {isAr ? (
-                        <ArrowLeft className="w-4 h-4 group-hover/btn:-translate-x-1 transition-transform" />
-                      ) : (
-                        <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
-                      )}
-                    </Link>
+                {searchedTools.length === 0 ? (
+                  <div className="py-8 text-center text-slate-400 text-xs">
+                    {isAr ? "لا توجد صفحات أو أدوات مطابقة للبحث" : "No matching tools found."}
                   </div>
-
-                  {/* Grid of All Department Pages (Tactile App Tiles) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
-                    {dept.items.map((item) => {
-                      const ItemIcon = item.icon;
-
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                    {searchedTools.map((item, idx) => {
+                      const Icon = item.tool.icon;
                       return (
                         <Link
-                          key={item.id}
-                          href={item.href}
+                          key={idx}
+                          href={item.tool.href}
                           prefetch={true}
-                          className="group/tile relative p-4 rounded-2xl bg-[#16161c] hover:bg-[#1a1a24] border border-white/5 hover:border-white/20 transition-all duration-200 hover:scale-[1.02] active:scale-[0.99] flex flex-col justify-between overflow-hidden shadow-md cursor-pointer"
+                          className="p-3.5 rounded-2xl bg-[#16161d] hover:bg-[#1f1f29] border border-white/[0.08] hover:border-rose-500/40 transition-all flex items-start gap-3 group"
                         >
-                          <div>
-                            <div className="flex items-center justify-between gap-2 mb-3">
-                              <div className="w-10 h-10 rounded-xl bg-[#0e0e12] border border-white/10 flex items-center justify-center text-slate-300 group-hover/tile:text-white group-hover/tile:scale-110 transition-all">
-                                <ItemIcon className="w-5 h-5" />
-                              </div>
-
-                              {item.badge && (
-                                <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-white/5 text-slate-300 border border-white/10">
-                                  {isAr ? item.badgeAr || item.badge : item.badge}
-                                </span>
-                              )}
-                            </div>
-
-                            <h3 className="text-sm font-bold text-white group-hover/tile:text-rose-400 transition-colors line-clamp-1 mb-1">
-                              {isAr ? item.nameAr : item.nameEn}
-                            </h3>
-                            <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed font-medium">
-                              {isAr ? item.descAr : item.descEn}
-                            </p>
+                          <div className="w-9 h-9 rounded-xl bg-white/[0.05] flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                            <Icon className={`w-4 h-4 ${item.tool.color}`} />
                           </div>
-
-                          <div className="mt-4 pt-2.5 border-t border-white/5 flex items-center justify-between text-[11px] font-bold text-slate-400 group-hover/tile:text-white transition-colors">
-                            <span>{isAr ? "دخول الصفحة" : "Launch"}</span>
-                            <ArrowUpRight className="w-3.5 h-3.5 opacity-60 group-hover/tile:opacity-100 group-hover/tile:translate-x-0.5 group-hover/tile:-translate-y-0.5 transition-transform" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="text-xs font-bold text-white group-hover:text-rose-400 truncate">
+                                {isAr ? item.tool.nameAr : item.tool.nameEn}
+                              </span>
+                              <ArrowUpRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-rose-400 transition-colors flex-shrink-0" />
+                            </div>
+                            <span className="text-[10px] text-slate-400 line-clamp-1 mt-0.5">
+                              {isAr ? item.tool.descAr : item.tool.descEn}
+                            </span>
+                            <span className="text-[9px] font-bold text-rose-400 mt-1 inline-block">
+                              {item.deptName}
+                            </span>
                           </div>
                         </Link>
                       );
                     })}
                   </div>
-                </motion.section>
-              );
-            })}
-          </AnimatePresence>
-        </div>
+                )}
+              </div>
+            ) : (
+              <>
+                {/* ROW 1: THE SIGNATURE FIGMA KEYNOTE HERO PAIR */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                  
+                  {/* CARD 1 (8 COLS): WIDE PRESENTATION CARD WITH NEON GRADIENT ORB & CHART */}
+                  <div className="md:col-span-7 xl:col-span-8 rounded-[30px] p-6 sm:p-7 bg-[#111116] border border-white/[0.08] hover:border-emerald-500/40 transition-all relative overflow-hidden flex flex-col justify-between group shadow-2xl">
+                    {/* Keynote Radiant Gradient Orb in top-right */}
+                    <div className="absolute top-[-40px] right-[-40px] w-64 h-64 bg-gradient-to-br from-rose-500 via-purple-600 to-indigo-600 rounded-full blur-[80px] opacity-40 group-hover:opacity-70 transition-opacity pointer-events-none" />
 
-        {/* BOTTOM QUICK FOOTER */}
-        <div className="pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-          <div className="flex items-center gap-3 font-semibold">
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              <span className="text-slate-300">{isAr ? "النظام متصل ومتزامن لحظياً" : "Live Cloud Sync Active"}</span>
-            </span>
-            <span>•</span>
-            <span>Circle K Franchise Operations Portal</span>
+                    <div>
+                      {/* Card Header & Avatars */}
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            {isAr ? "الخزينة المباشرة" : "Safe Vault Live"}
+                          </span>
+                          <span className="text-[11px] text-slate-400 font-mono">
+                            {isAr ? "الفرع المعتمد" : "Active Branch"}
+                          </span>
+                        </div>
+
+                        <Link
+                          href="/financials/inputs"
+                          prefetch={true}
+                          className="text-xs font-black text-emerald-400 hover:text-emerald-300 flex items-center gap-1 transition-colors group/link"
+                        >
+                          <span>{isAr ? "تسجيل العهدة" : "Open Safe"}</span>
+                          <ArrowUpRight className="w-3.5 h-3.5 group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5 transition-transform" />
+                        </Link>
+                      </div>
+
+                      {/* Headline & Subtitle */}
+                      <div className="space-y-1 mb-6">
+                        <h2 className="text-2xl font-black text-white tracking-tight">
+                          {isAr ? "تقفيل الخزائن ومراقبة المبيعات" : "Financial Operations & Cashier Floats"}
+                        </h2>
+                        <p className="text-xs text-slate-400 max-w-xl">
+                          {isAr 
+                            ? "متابعة العجز والزيادة، تدقيق الفواتير الملغاة، وتسجيل التقفيلات اليومية للفرع." 
+                            : "Daily safe drop reconciliation, cashier float balance, and real-time shift verification."
+                          }
+                        </p>
+                      </div>
+
+                      {/* Interactive Telemetry Chart Waveform */}
+                      <div className="p-4 rounded-2xl bg-[#0b0b0e] border border-white/[0.06] mb-5">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                              {isAr ? "حركة المبيعات الأسبوعية" : "Weekly Sales Velocity"}
+                            </span>
+                            <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.2 rounded-full border border-emerald-500/20">
+                              +14.8% Flow
+                            </span>
+                          </div>
+                          <TrendingUp className="w-4 h-4 text-emerald-400" />
+                        </div>
+
+                        <div className="h-12 w-full">
+                          <svg className="w-full h-full" viewBox="0 0 500 80" preserveAspectRatio="none">
+                            <defs>
+                              <linearGradient id="emeraldHeroGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" stopColor="#10b981" stopOpacity="0.35" />
+                                <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+                              </linearGradient>
+                            </defs>
+                            <path
+                              d="M 0,60 Q 60,20 120,45 T 240,15 T 360,40 T 440,10 T 500,5 L 500,80 L 0,80 Z"
+                              fill="url(#emeraldHeroGrad)"
+                            />
+                            <path
+                              d="M 0,60 Q 60,20 120,45 T 240,15 T 360,40 T 440,10 T 500,5"
+                              fill="none"
+                              stroke="#10b981"
+                              strokeWidth="2.5"
+                            />
+                          </svg>
+                        </div>
+                      </div>
+
+                      {/* Fast Action Buttons */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {[
+                          { nameAr: "مدخلات الخزينة", nameEn: "Safe Inputs", href: "/financials/inputs", icon: Wallet },
+                          { nameAr: "التقارير المالية", nameEn: "Fin Reports", href: "/financial-reports", icon: FileText },
+                          { nameAr: "تفاصيل المبيعات", nameEn: "Detailed Sales", href: "/financials/detailed-sales", icon: Activity },
+                          { nameAr: "الفواتير الملغاة", nameEn: "Voids", href: "/voids/manager", icon: Shield, badge: pendingVoids > 0 ? `${pendingVoids}` : undefined },
+                        ].map((btn, idx) => {
+                          const Icon = btn.icon;
+                          return (
+                            <Link
+                              key={idx}
+                              href={btn.href}
+                              prefetch={true}
+                              className="p-2.5 rounded-xl bg-[#16161d] hover:bg-[#20202a] border border-white/[0.06] hover:border-emerald-500/40 transition-all flex items-center justify-between group/b"
+                            >
+                              <div className="flex items-center gap-2 truncate">
+                                <Icon className="w-3.5 h-3.5 text-emerald-400 group-hover/b:scale-110 transition-transform" />
+                                <span className="text-[11px] font-bold text-slate-200 group-hover/b:text-white truncate">
+                                  {isAr ? btn.nameAr : btn.nameEn}
+                                </span>
+                              </div>
+                              {btn.badge && (
+                                <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">
+                                  {btn.badge}
+                                </span>
+                              )}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* CARD 2 (4 COLS): VIBRANT NEON GRADIENT CARD (MIRRORING THE "SHIP FASTER WITH AI" CARD) */}
+                  <div className="md:col-span-5 xl:col-span-4 rounded-[30px] p-6 sm:p-7 bg-gradient-to-br from-rose-600 via-red-600 to-amber-600 text-white relative overflow-hidden flex flex-col justify-between shadow-2xl group">
+                    {/* Ambient Glow & Star Graphic */}
+                    <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+                    <Bot className="absolute bottom-[-15px] right-[-15px] w-36 h-36 text-black/10 group-hover:scale-110 group-hover:rotate-6 transition-all pointer-events-none" />
+
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-black/20 text-white border border-white/20 uppercase tracking-wider flex items-center gap-1.5">
+                          <Sparkles className="w-3 h-3 text-amber-300" />
+                          {isAr ? "الذكاء الاصطناعي" : "Copilot Engine"}
+                        </span>
+                        <span className="text-[11px] font-mono font-bold text-white/80">
+                          v3.2 GPT
+                        </span>
+                      </div>
+
+                      <span className="text-3xl sm:text-4xl font-black tracking-tight block text-white">
+                        {isAr ? "مساعد إبراهيم" : "Ibrahim AI"}
+                      </span>
+
+                      <p className="text-xs text-white/90 font-medium mt-2 leading-relaxed">
+                        {isAr 
+                          ? "اسأل الذكاء الاصطناعي فوراً عن مبيعات الفرع، هوامش الربح، التنبؤ بنفاذ السلع، ومراجعة المعايير." 
+                          : "Ask anything about retail numbers, margin simulations, inventory forecasting, and staff policies."
+                        }
+                      </p>
+                    </div>
+
+                    <div className="pt-6">
+                      <Link
+                        href="/ai-assistant"
+                        prefetch={true}
+                        className="w-full py-3 px-4 rounded-2xl bg-white hover:bg-slate-100 text-slate-950 font-black text-xs shadow-xl flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                      >
+                        <span>{isAr ? "بدء المحادثة مع إبراهيم" : "Launch AI Copilot"}</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* ROW 2: DEPARTMENT BENTO CARDS */}
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {displayedDepartments.map((dept) => {
+                    const DeptIcon = dept.icon;
+                    return (
+                      <div
+                        key={dept.id}
+                        className={`rounded-[28px] p-6 bg-[#111116] border ${dept.borderGlow} transition-all relative overflow-hidden flex flex-col justify-between group shadow-xl`}
+                      >
+                        {/* Ambient corner glow */}
+                        <div className={`absolute -top-20 -right-20 w-60 h-60 bg-gradient-to-br ${dept.gradient} rounded-full blur-3xl pointer-events-none group-hover:opacity-100 transition-opacity`} />
+
+                        <div>
+                          {/* Card Header */}
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center">
+                                <DeptIcon className="w-5 h-5 text-white" />
+                              </div>
+                              <div>
+                                <h3 className="text-base font-black text-white">
+                                  {isAr ? dept.nameAr : dept.nameEn}
+                                </h3>
+                                <span className="text-[11px] text-slate-400 font-medium">
+                                  {dept.tools.length} {isAr ? "أدوات متوفرة" : "Tools Available"}
+                                </span>
+                              </div>
+                            </div>
+
+                            {dept.adminOnly && (
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-rose-500/15 text-rose-400 border border-rose-500/30">
+                                Admin
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="text-xs text-slate-400 mb-5 line-clamp-2">
+                            {isAr ? dept.descAr : dept.descEn}
+                          </p>
+
+                          {/* List of tools in this department */}
+                          <div className="space-y-2">
+                            {dept.tools.map((tool) => {
+                              const ToolIcon = tool.icon;
+                              return (
+                                <Link
+                                  key={tool.id}
+                                  href={tool.href}
+                                  prefetch={true}
+                                  className="p-2.5 rounded-xl bg-[#16161d] hover:bg-[#20202a] border border-white/[0.05] hover:border-white/20 transition-all flex items-center justify-between group/tool"
+                                >
+                                  <div className="flex items-center gap-2.5 truncate">
+                                    <ToolIcon className={`w-4 h-4 ${tool.color} group-hover/tool:scale-110 transition-transform flex-shrink-0`} />
+                                    <div className="truncate">
+                                      <span className="text-xs font-bold text-slate-200 group-hover/tool:text-white block truncate">
+                                        {isAr ? tool.nameAr : tool.nameEn}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-2 flex-shrink-0">
+                                    {tool.badge && (
+                                      <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
+                                        tool.badgeType === "danger"
+                                          ? "bg-red-500/20 text-red-400 border border-red-500/30 animate-pulse"
+                                          : tool.badgeType === "warning"
+                                          ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                                          : tool.badgeType === "success"
+                                          ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                                          : "bg-white/10 text-slate-300 border border-white/10"
+                                      }`}>
+                                        {tool.badge}
+                                      </span>
+                                    )}
+                                    <ArrowUpRight className="w-3.5 h-3.5 text-slate-500 group-hover/tool:text-white group-hover/tool:translate-x-0.5 group-hover/tool:-translate-y-0.5 transition-transform" />
+                                  </div>
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Card Bottom Direct Launcher */}
+                        <div className="pt-5 mt-4 border-t border-white/[0.06]">
+                          <Link
+                            href={dept.tools[0]?.href || "#"}
+                            prefetch={true}
+                            className="text-xs font-bold text-slate-400 hover:text-white flex items-center justify-between group/enter"
+                          >
+                            <span>
+                              {isAr ? `فتح ${dept.nameAr}` : `Launch ${dept.nameEn}`}
+                            </span>
+                            <ChevronRight className={`w-4 h-4 group-hover/enter:translate-x-1 transition-transform ${isAr ? "rotate-180 group-hover/enter:-translate-x-1" : ""}`} />
+                          </Link>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
           </div>
 
-          <div className="flex items-center gap-4 font-semibold">
+        </div>
+
+        {/* BOTTOM METRIC FOOTER STRIP */}
+        <div className="pt-6 border-t border-white/[0.07] flex flex-wrap items-center justify-between gap-4 text-xs text-slate-500 font-medium">
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1.5 text-slate-400">
+              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              <span>Circle K Retail Ecosystem</span>
+            </span>
+            <span>•</span>
+            <span>{isAr ? "نظام إدارة الامتياز التجاري" : "Franchise Management Suite"}</span>
+          </div>
+
+          <div className="flex items-center gap-4">
             <Link href="/cashier" prefetch={true} className="hover:text-white transition-colors">
-              {isAr ? "بوابة الكاشير" : "Cashier Portal"}
+              {isAr ? "نقطة البيع (الكاشير)" : "Cashier POS"}
             </Link>
             <span>•</span>
-            <Link href="/manager/documents" prefetch={true} className="hover:text-white transition-colors">
-              {isAr ? "المستندات" : "Documents"}
+            <Link href="/hr/employees" prefetch={true} className="hover:text-white transition-colors">
+              {isAr ? "الموظفين (HR)" : "HR Roster"}
             </Link>
             <span>•</span>
-            <Link href="/ai-assistant" prefetch={true} className="hover:text-purple-400 transition-colors flex items-center gap-1">
-              <Bot className="w-3 h-3 text-purple-400" />
-              {isAr ? "إبراهيم AI" : "Ibrahim AI"}
+            <Link href="/admin/users" prefetch={true} className="hover:text-white transition-colors">
+              {isAr ? "إدارة الصلاحيات" : "Security & Users"}
             </Link>
           </div>
         </div>
