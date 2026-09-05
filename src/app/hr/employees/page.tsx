@@ -61,7 +61,10 @@ import {
   ArrowRightLeft,
   TrendingUp,
   MessageCircle,
-  MapPin
+  MapPin,
+  Share2,
+  ChevronRight,
+  Check
 } from "lucide-react";
 import { toast } from "sonner";
 import { onAuthStateChanged } from "firebase/auth";
@@ -357,7 +360,7 @@ export default function EmployeesPage() {
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
   // Print Mode & Termination Clearance State
-  const [printDocumentType, setPrintDocumentType] = useState<"contract" | "termination" | "folder_cover" | "salary_letter" | "experience_cert" | "bank_mandate" | "social_insurance_1" | "social_insurance_6">("contract");
+  const [printDocumentType, setPrintDocumentType] = useState<"contract" | "termination" | "folder_cover" | "salary_letter" | "experience_cert" | "bank_mandate" | "social_insurance_1" | "social_insurance_6" | "loan_contract" | "loan_receipt">("contract");
   const [showTerminationModal, setShowTerminationModal] = useState(false);
   const [showLettersMenu, setShowLettersMenu] = useState(false);
   const [terminationEmp, setTerminationEmp] = useState<Employee | null>(null);
@@ -375,9 +378,23 @@ export default function EmployeesPage() {
   const [empLoans, setEmpLoans] = useState<any[]>([]);
   const [loadingLoans, setLoadingLoans] = useState(false);
   const [showLoanModal, setShowLoanModal] = useState(false);
-  const [loanAmount, setLoanAmount] = useState<number>(500);
+  const [loanAmount, setLoanAmount] = useState<number>(1000);
+  const [loanInstallmentMonths, setLoanInstallmentMonths] = useState<number>(1);
+  const [loanCategory, setLoanCategory] = useState<"medical" | "education" | "family" | "seasonal" | "living" | "other">("living");
   const [loanNotes, setLoanNotes] = useState<string>("");
   const [isSubmittingLoan, setIsSubmittingLoan] = useState(false);
+
+  // Early Cash Payoff state
+  const [showEarlyPayoffModal, setShowEarlyPayoffModal] = useState(false);
+  const [activeLoanForPayoff, setActiveLoanForPayoff] = useState<any | null>(null);
+  const [payoffAmount, setPayoffAmount] = useState<number>(0);
+  const [payoffNotes, setPayoffNotes] = useState<string>("");
+  const [isSubmittingPayoff, setIsSubmittingPayoff] = useState(false);
+
+  // Selected loan for print & filter
+  const [selectedLoanForPrint, setSelectedLoanForPrint] = useState<any | null>(null);
+  const [loanFilter, setLoanFilter] = useState<"all" | "active" | "settled">("all");
+  const [expandedLoanId, setExpandedLoanId] = useState<string | null>(null);
 
   // Career Transfers & Promotions state
   const [showCareerModal, setShowCareerModal] = useState(false);
@@ -987,6 +1004,73 @@ export default function EmployeesPage() {
     }, 250);
   };
 
+  const loanCategoryLabels: Record<string, { label: string; icon: string }> = {
+    medical: { label: "حالات طبية وعلاجية طارئة", icon: "🏥" },
+    education: { label: "مصاريف مدرسية وجامعية", icon: "🎓" },
+    family: { label: "مناسبات عائلية وزواج", icon: "💍" },
+    seasonal: { label: "سلفة أعياد ومواسم", icon: "🌙" },
+    living: { label: "التزامات معيشية وسكنية", icon: "🏠" },
+    other: { label: "أسباب وظروف أخرى", icon: "📝" }
+  };
+
+  const handlePrintLoanContract = (loan: any, emp?: Employee) => {
+    const target = emp || employees.find(e => e.id === activeEmployeeId) || selectedEmployee;
+    if (!target) return;
+    setSelectedLoanForPrint(loan);
+    setPrintDocumentType("loan_contract");
+    setSelectedEmployee(target);
+    setTimeout(() => {
+      window.print();
+    }, 250);
+  };
+
+  const handlePrintLoanReceipt = (loan: any, emp?: Employee) => {
+    const target = emp || employees.find(e => e.id === activeEmployeeId) || selectedEmployee;
+    if (!target) return;
+    setSelectedLoanForPrint(loan);
+    setPrintDocumentType("loan_receipt");
+    setSelectedEmployee(target);
+    setTimeout(() => {
+      window.print();
+    }, 250);
+  };
+
+  const sendWhatsAppLoanStatement = (loan: any, emp?: Employee) => {
+    const target = emp || employees.find(e => e.id === activeEmployeeId) || selectedEmployee;
+    if (!target) return;
+    const originalAmt = Number(loan.amount || loan.approved || 0);
+    const settled = Number(loan.settledAmount !== undefined ? loan.settledAmount : (loan.settled ? originalAmt : 0));
+    const remaining = Number(loan.remainingBalance !== undefined ? loan.remainingBalance : Math.max(0, originalAmt - settled));
+    const monthly = Number(loan.monthlyInstallment || originalAmt);
+    const empPhone = target.phone || "";
+    const cleanPhone = empPhone.replace(/[^0-9]/g, "");
+    const formattedPhone = cleanPhone.startsWith("0") ? "2" + cleanPhone : cleanPhone;
+
+    const branchName = target.storeId === 'ola' ? 'فرع أولا القرنفل' : 'فرع العلمين 4';
+    const reasonText = loan.categoryLabel || loan.reason || "سلفة راتب";
+
+    const msg = `📋 *إشعار سلفة معتمدة - شركة ايه ان اتش للتجارة*
+الموظف: *${target.name}*
+الرقم القومي: ${target.nationalId || "-"}
+مكان العمل: ${branchName}
+━━━━━━━━━━━━━━━━━━━━
+💰 *بيانات السلفة وجدول الاستقطاع:*
+• إجمالي مبلغ السلفة: *${originalAmt.toLocaleString()} ج.م* (فقط ${numberToArabicWords(originalAmt)} لا غير)
+• نظام التقسيط: *${loan.installmentCount || 1} شهر/أشهر* (${monthly.toLocaleString()} ج.م / شهر)
+• تاريخ صرف السلفة: *${loan.date || "-"}*
+• بيان السلفة: *${reasonText}*
+━━━━━━━━━━━━━━━━━━━━
+📊 *الموقف المالي الفعلي:*
+• المسدد حتى تاريخه: *${settled.toLocaleString()} ج.م* ✅
+• الرصيد المتبقي ذمتكم: *${remaining.toLocaleString()} ج.م* ⏳
+• الحالة: *${remaining <= 0 ? "مسددة بالكامل (خالصة)" : "سارية وقيد الاستقطاع"}*
+━━━━━━━━━━━━━━━━━━━━
+_وفقاً لأحكام المادة (34) من قانون العمل رقم 12 لسنة 2003_
+*شركة إيه إن اتش للتجارة - إدارة الموارد البشرية*`;
+
+    window.open(`https://wa.me/${formattedPhone ? formattedPhone : ""}?text=${encodeURIComponent(msg)}`, "_blank");
+  };
+
   const getHealthCertStatus = (expiryDate?: string) => {
     if (!expiryDate) {
       return {
@@ -1331,17 +1415,42 @@ export default function EmployeesPage() {
   const loanStats = useMemo(() => {
     let totalBorrowed = 0;
     let totalSettled = 0;
+    let totalRemaining = 0;
+    let activeLoansCount = 0;
+    let nextMonthInstallmentDue = 0;
+
+    const now = new Date();
+    const nextMonthOffset = now.getDate() > 20 ? 1 : 0;
+    const nm = new Date(now.getFullYear(), now.getMonth() + nextMonthOffset, 1);
+    const nextMonthStr = `${nm.getFullYear()}-${String(nm.getMonth() + 1).padStart(2, "0")}`;
 
     empLoans.forEach(l => {
       const amt = Number(l.amount || l.approved || l.requested || 0);
       totalBorrowed += amt;
-      if (l.settled || l.status === "settled" || l.status === "applied") {
-        totalSettled += amt;
+      const isSettled = l.settled === true || l.status === "settled";
+      const settled = Number(l.settledAmount !== undefined ? l.settledAmount : (isSettled ? amt : 0));
+      totalSettled += settled;
+
+      const remaining = Number(l.remainingBalance !== undefined ? l.remainingBalance : Math.max(0, amt - settled));
+      if (remaining > 0 && !isSettled) {
+        totalRemaining += remaining;
+        activeLoansCount++;
+
+        if (Array.isArray(l.installments) && l.installments.length > 0) {
+          const inst = l.installments.find((i: any) => i.status === "pending");
+          if (inst) nextMonthInstallmentDue += Number(inst.amount) || 0;
+        } else if (l.monthlyInstallment) {
+          nextMonthInstallmentDue += Math.min(Number(l.monthlyInstallment), remaining);
+        } else {
+          nextMonthInstallmentDue += remaining;
+        }
       }
     });
 
-    const remainingBalance = Math.max(0, totalBorrowed - totalSettled);
-    return { totalBorrowed, totalSettled, remainingBalance };
+    const remainingBalance = totalRemaining;
+    const progressPercent = totalBorrowed > 0 ? Math.min(100, Math.round((totalSettled / totalBorrowed) * 100)) : 100;
+
+    return { totalBorrowed, totalSettled, remainingBalance, activeLoansCount, nextMonthInstallmentDue, progressPercent, nextMonthStr };
   }, [empLoans]);
 
   const handleCreateLoan = async (e?: React.FormEvent | Employee) => {
@@ -1355,34 +1464,192 @@ export default function EmployeesPage() {
     const targetEmp = (e && 'id' in e && e.id) ? e : employees.find(emp => emp.id === activeEmployeeId) || selectedEmployee;
     if (!targetEmp) return;
 
+    const amt = Number(loanAmount);
+    if (!amt || amt <= 0) {
+      toast.error("يرجى إدخال مبلغ سلفة صحيح");
+      return;
+    }
+
+    const months = Number(loanInstallmentMonths) || 1;
+    const monthlyInst = Math.round(amt / months);
+    const startD = new Date();
+    const firstMonthOffset = startD.getDate() > 20 ? 1 : 0;
+    const schedule: any[] = [];
+    for (let i = 0; i < months; i++) {
+      const mDate = new Date(startD.getFullYear(), startD.getMonth() + firstMonthOffset + i, 1);
+      const mStr = `${mDate.getFullYear()}-${String(mDate.getMonth() + 1).padStart(2, "0")}`;
+      const isLast = i === months - 1;
+      const instAmt = isLast 
+        ? (amt - (monthlyInst * (months - 1)))
+        : monthlyInst;
+      schedule.push({
+        month: mStr,
+        installmentNumber: i + 1,
+        amount: instAmt,
+        status: "pending"
+      });
+    }
+
     setIsSubmittingLoan(true);
     try {
+      const targetBranchId = targetEmp.storeId || currentBranch || "alamein4";
       const payload = {
         employeeId: targetEmp.id,
         employeeName: targetEmp.name,
-        amount: Number(loanAmount),
-        requested: Number(loanAmount),
-        approved: Number(loanAmount),
+        employeeNationalId: targetEmp.nationalId || "",
+        employeePosition: targetEmp.position || "",
+        amount: amt,
+        requested: amt,
+        approved: amt,
+        installmentCount: months,
+        monthlyInstallment: monthlyInst,
+        remainingBalance: amt,
+        settledAmount: 0,
+        settled: false,
+        status: "approved",
+        category: loanCategory,
+        categoryLabel: loanCategoryLabels[loanCategory]?.label || "سلفة نقدية",
+        reason: (loanCategoryLabels[loanCategory]?.label || "سلفة نقدية") + (loanNotes ? ` - ${loanNotes}` : ""),
+        notes: loanNotes || "سلفة راتب نقدية معتمدة",
         date: new Date().toISOString().split("T")[0],
         month: new Date().toISOString().slice(0, 7),
-        storeId: targetEmp.storeId || currentBranch || "alamein4",
-        status: "approved",
-        notes: loanNotes || "سلفة راتب نقدية معتمدة",
+        firstInstallmentMonth: schedule[0]?.month || new Date().toISOString().slice(0, 7),
+        storeId: targetBranchId,
+        disbursedFrom: "خزينة الفرع (Safe)",
+        installments: schedule,
+        repayments: [],
         type: "loan",
         createdAt: serverTimestamp(),
         createdBy: currentUser?.email || "admin"
       };
 
       const docRef = await addDoc(collection(db, "loans"), payload);
-      toast.success("Salary advance recorded successfully!");
+      toast.success("تم اعتماد وصرف السلفة وتخصيص الأقساط الشهرية بنجاح!");
       setShowLoanModal(false);
       setLoanNotes("");
-      setEmpLoans(prev => [{ id: docRef.id, ...payload }, ...prev]);
+      const newDoc = { id: docRef.id, ...payload };
+      setEmpLoans(prev => [newDoc, ...prev]);
+
+      // Pre-select for print
+      setSelectedLoanForPrint(newDoc);
     } catch (err) {
       console.error("Failed to record loan:", err);
-      toast.error("Failed to record loan");
+      toast.error("فشل تسجيل السلفة");
     } finally {
       setIsSubmittingLoan(false);
+    }
+  };
+
+  const handleEarlyPayoff = async () => {
+    if (!activeLoanForPayoff || !activeEmp) return;
+    const payAmt = Number(payoffAmount);
+    const maxPayable = Number(activeLoanForPayoff.remainingBalance !== undefined ? activeLoanForPayoff.remainingBalance : activeLoanForPayoff.amount);
+    if (payAmt <= 0) {
+      toast.error("يرجى إدخال مبلغ سداد صحيح");
+      return;
+    }
+    if (payAmt > maxPayable) {
+      toast.error(`المبلغ المطلوب سداده أكبر من الرصيد المتبقي (${maxPayable} ج.م)`);
+      return;
+    }
+
+    setIsSubmittingPayoff(true);
+    try {
+      const todayStr = new Date().toISOString().split("T")[0];
+      const targetBranchId = activeEmp.storeId || currentBranch || "alamein4";
+
+      // 1. Record cash deposit back into safe (Direct Safe recovery)
+      await addDoc(collection(db, "deposits"), {
+        amount: payAmt,
+        date: todayStr,
+        from: `سداد سلفة نقدي - ${activeEmp.name}`,
+        to: "safe",
+        note: `سداد نقدي معجل لسلفة (${activeLoanForPayoff.id}) - ${payoffNotes || "توريد بالخزينة"}`,
+        storeId: targetBranchId,
+        ownerName: activeEmp.name,
+        type: "loan_repayment",
+        loanId: activeLoanForPayoff.id,
+        employeeId: activeEmp.id,
+        createdAt: serverTimestamp(),
+        createdBy: currentUser?.email || "admin"
+      });
+
+      // 2. Compute updated balances
+      const curRem = Number(activeLoanForPayoff.remainingBalance !== undefined ? activeLoanForPayoff.remainingBalance : (activeLoanForPayoff.approved || activeLoanForPayoff.amount || 0));
+      const curSettled = Number(activeLoanForPayoff.settledAmount || 0);
+      const nextRem = Math.max(0, curRem - payAmt);
+      const nextSettled = curSettled + payAmt;
+      const isFullySettled = nextRem <= 0;
+
+      const repayments = Array.isArray(activeLoanForPayoff.repayments) ? [...activeLoanForPayoff.repayments] : [];
+      repayments.push({
+        date: todayStr,
+        amount: payAmt,
+        notes: payoffNotes || "سداد نقدي معجل للخزينة",
+        receivedBy: currentUser?.email || "admin"
+      });
+
+      // 3. Update installments array
+      let remainingPaymentToDistribute = payAmt;
+      let updatedInstallments = activeLoanForPayoff.installments;
+      if (Array.isArray(activeLoanForPayoff.installments)) {
+        updatedInstallments = activeLoanForPayoff.installments.map((inst: any) => {
+          if (inst.status === "pending" && remainingPaymentToDistribute > 0) {
+            if (remainingPaymentToDistribute >= inst.amount) {
+              remainingPaymentToDistribute -= inst.amount;
+              return { ...inst, status: "paid", paidAt: new Date().toISOString(), paymentMethod: "early_cash" };
+            } else {
+              const remInstAmt = inst.amount - remainingPaymentToDistribute;
+              remainingPaymentToDistribute = 0;
+              return { ...inst, amount: remInstAmt, originalAmount: inst.amount, note: `تم سداد ${payAmt} ج.م نقداً` };
+            }
+          }
+          return inst;
+        });
+      }
+
+      await updateDoc(doc(db, "loans", activeLoanForPayoff.id), {
+        remainingBalance: nextRem,
+        settledAmount: nextSettled,
+        settled: isFullySettled,
+        status: isFullySettled ? "settled" : "approved",
+        repayments,
+        installments: updatedInstallments || [],
+        lastEarlyPayoffDate: todayStr,
+        ...(isFullySettled && { settledAt: serverTimestamp() })
+      });
+
+      // 4. Update local state
+      const updatedLoan = {
+        ...activeLoanForPayoff,
+        remainingBalance: nextRem,
+        settledAmount: nextSettled,
+        settled: isFullySettled,
+        status: isFullySettled ? "settled" : "approved",
+        repayments,
+        installments: updatedInstallments
+      };
+
+      setEmpLoans(prev => prev.map(l => l.id === activeLoanForPayoff.id ? updatedLoan : l));
+
+      toast.success("تم توريد المبلغ للخزينة وتحديث رصيد السلفة بنجاح!");
+      setShowEarlyPayoffModal(false);
+      setPayoffAmount(0);
+      setPayoffNotes("");
+
+      // Set for receipt printing
+      setSelectedLoanForPrint({
+        ...updatedLoan,
+        receiptPaidAmount: payAmt,
+        receiptPreviousBalance: curRem,
+        receiptNewBalance: nextRem,
+        receiptDate: todayStr
+      });
+    } catch (err) {
+      console.error("Failed to record early payoff:", err);
+      toast.error("فشل تسجيل السداد المعجل");
+    } finally {
+      setIsSubmittingPayoff(false);
     }
   };
 
@@ -2259,88 +2526,332 @@ export default function EmployeesPage() {
                     })()}
 
                     {/* 3. LOANS & ADVANCES LIVE SUMMARY */}
-                    <div className="mb-8 p-5 rounded-3xl border border-slate-200 dark:border-white/10 bg-white/50 dark:bg-black/20 shadow-sm">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                    <div className="mb-8 p-6 rounded-3xl border border-slate-200 dark:border-white/10 bg-white/50 dark:bg-black/20 shadow-sm">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
                         <div>
-                          <h4 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
-                            <HandCoins size={16} className="text-emerald-600 dark:text-emerald-400" />
-                            <span>Loans & Advances Live Summary (سلف الموظف ومستحقاته)</span>
-                          </h4>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                            سجل السلف النقدية المقيدة على الموظف وخصومات الراتب المستحقة.
+                          <div className="flex items-center gap-2">
+                            <div className="p-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl">
+                              <HandCoins size={18} />
+                            </div>
+                            <h4 className="text-sm font-black text-slate-900 dark:text-white">
+                              Loans & Advances Management Suite (سلف الموظف ومستحقاته المقيدة)
+                            </h4>
+                          </div>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            سجل السلف النقدية، الأقساط المجدولة، والتفويضات الرسمية بالخصم وفقاً للمادة (34) من قانون العمل رقم 12 لسنة 2003.
                           </p>
                         </div>
                         {!isManager && (
                           <button
                             type="button"
-                            onClick={() => setShowLoanModal(true)}
-                            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+                            onClick={() => {
+                              setLoanAmount(1000);
+                              setLoanInstallmentMonths(1);
+                              setLoanCategory("living");
+                              setShowLoanModal(true);
+                            }}
+                            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
                           >
-                            <Plus size={15} /> صرف سلفة جديدة
+                            <Plus size={15} /> صرف سلفة جديدة معتمدة
                           </button>
                         )}
                       </div>
 
                       {/* Stat Tiles */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
                         <div className="p-3.5 rounded-2xl bg-white/80 dark:bg-white/5 border border-slate-100 dark:border-white/5">
-                          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">إجمالي السلف المنصرفة</p>
-                          <p className="text-lg font-black text-slate-800 dark:text-white font-mono">{fmtCurrency(loanStats.totalBorrowed)}</p>
+                          <p className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">إجمالي المنصرف</p>
+                          <p className="text-base sm:text-lg font-black text-slate-800 dark:text-white font-mono">{fmtCurrency(loanStats.totalBorrowed)}</p>
                         </div>
                         <div className="p-3.5 rounded-2xl bg-white/80 dark:bg-white/5 border border-slate-100 dark:border-white/5">
-                          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">المسدد والمخصوم</p>
-                          <p className="text-lg font-black text-emerald-600 dark:text-emerald-400 font-mono">{fmtCurrency(loanStats.totalSettled)}</p>
+                          <div className="flex items-center justify-between mb-0.5">
+                            <p className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider">المسدد والمخصوم</p>
+                            <span className="text-[9.5px] font-mono font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-md">
+                              {loanStats.progressPercent}%
+                            </span>
+                          </div>
+                          <p className="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400 font-mono">{fmtCurrency(loanStats.totalSettled)}</p>
                         </div>
                         <div className={`p-3.5 rounded-2xl border ${loanStats.remainingBalance > 0
                             ? "bg-rose-50/80 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/30"
-                            : "bg-white/80 dark:bg-white/5 border-slate-100 dark:border-white/5"
+                            : "bg-emerald-50/60 dark:bg-emerald-950/10 border-emerald-200 dark:border-emerald-900/30"
                           }`}>
-                          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">الرصيد المتبقي ذمته</p>
-                          <p className={`text-lg font-black font-mono ${loanStats.remainingBalance > 0 ? "text-rose-600 dark:text-rose-400" : "text-slate-800 dark:text-white"}`}>
+                          <div className="flex items-center justify-between mb-0.5">
+                            <p className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider">الرصيد المتبقي ذمته</p>
+                            <span className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded-md ${loanStats.remainingBalance > 0 ? "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300" : "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300"}`}>
+                              {loanStats.remainingBalance > 0 ? "ساري" : "خالص الذمة"}
+                            </span>
+                          </div>
+                          <p className={`text-base sm:text-lg font-black font-mono ${loanStats.remainingBalance > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>
                             {fmtCurrency(loanStats.remainingBalance)}
+                          </p>
+                        </div>
+                        <div className="p-3.5 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900/30">
+                          <p className="text-[10.5px] font-bold text-indigo-500 uppercase tracking-wider mb-0.5">قسط الراتب القادم</p>
+                          <p className="text-base sm:text-lg font-black text-indigo-700 dark:text-indigo-300 font-mono">
+                            {fmtCurrency(loanStats.nextMonthInstallmentDue)}
                           </p>
                         </div>
                       </div>
 
-                      {/* Loans History Table */}
+                      {/* Repayment Journey Progress Bar */}
+                      {loanStats.totalBorrowed > 0 && (
+                        <div className="mb-5 p-3.5 rounded-2xl bg-slate-100/70 dark:bg-white/[0.03] border border-slate-200/60 dark:border-white/5">
+                          <div className="flex items-center justify-between text-xs font-bold mb-2">
+                            <span className="text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                              <span>مسار سداد السلف (Repayment Journey)</span>
+                            </span>
+                            <span className="font-mono text-emerald-600 dark:text-emerald-400">
+                              {loanStats.totalSettled.toLocaleString()} ج.م من {loanStats.totalBorrowed.toLocaleString()} ج.م ({loanStats.progressPercent}%)
+                            </span>
+                          </div>
+                          <div className="w-full bg-slate-200 dark:bg-white/10 h-3 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-700 rounded-full"
+                              style={{ width: `${loanStats.progressPercent}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Filter Tabs */}
+                      <div className="flex items-center justify-between gap-2 border-b border-slate-200 dark:border-white/10 pb-3 mb-4 flex-wrap">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setLoanFilter("all")}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${loanFilter === "all" ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"}`}
+                          >
+                            الكل ({empLoans.length})
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setLoanFilter("active")}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${loanFilter === "active" ? "bg-rose-600 text-white shadow-sm" : "text-slate-500 hover:text-rose-600"}`}
+                          >
+                            سارية وقيد السداد ({empLoans.filter(l => (Number(l.remainingBalance ?? l.amount) > 0) && !l.settled && l.status !== "settled").length})
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setLoanFilter("settled")}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${loanFilter === "settled" ? "bg-emerald-600 text-white shadow-sm" : "text-slate-500 hover:text-emerald-600"}`}
+                          >
+                            مسددة بالكامل ({empLoans.filter(l => l.settled || l.status === "settled" || (Number(l.remainingBalance ?? l.amount) <= 0)).length})
+                          </button>
+                        </div>
+                        <span className="text-[11px] text-slate-400 font-medium">
+                          إجمالي الحركات: {empLoans.length}
+                        </span>
+                      </div>
+
+                      {/* Loans History Cards / Table */}
                       {loadingLoans ? (
-                        <div className="py-6 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
+                        <div className="py-8 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
                           <Loader2 size={16} className="animate-spin text-emerald-600" />
-                          <span>جاري تحميل السلف والمستحقات...</span>
+                          <span>جاري تحميل سجل السلف والأقساط...</span>
                         </div>
                       ) : empLoans.length === 0 ? (
-                        <div className="py-4 text-center text-xs text-slate-400 font-medium bg-slate-50 dark:bg-white/[0.02] rounded-xl border border-dashed border-slate-200 dark:border-white/10">
-                          لا توجد سلف أو مستحقات مسجلة حالياً على الموظف (الذمة خالصة).
+                        <div className="py-6 text-center text-xs text-slate-400 font-medium bg-slate-50 dark:bg-white/[0.02] rounded-2xl border border-dashed border-slate-200 dark:border-white/10">
+                          لا توجد سلف أو مستحقات مسجلة حالياً على الموظف (الذمة المالية خالصة تماماً).
                         </div>
                       ) : (
-                        <div className="overflow-x-auto custom-scrollbar">
-                          <table className="w-full text-right text-xs">
-                            <thead>
-                              <tr className="border-b border-slate-200 dark:border-white/10 text-slate-400 font-bold">
-                                <th className="pb-2">التاريخ</th>
-                                <th className="pb-2">المبلغ</th>
-                                <th className="pb-2">الحالة</th>
-                                <th className="pb-2">ملاحظات</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-                              {empLoans.slice(0, 5).map((l, idx) => (
-                                <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.02]">
-                                  <td className="py-2.5 font-mono text-slate-600 dark:text-slate-300">{l.date || "-"}</td>
-                                  <td className="py-2.5 font-mono font-bold text-slate-900 dark:text-white">{fmtCurrency(l.amount || l.approved || 0)}</td>
-                                  <td className="py-2.5">
-                                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${l.settled || l.status === "settled"
-                                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
-                                        : "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300"
-                                      }`}>
-                                      {l.settled || l.status === "settled" ? "تم السداد / مخصوم" : "ساري / معتمد"}
-                                    </span>
-                                  </td>
-                                  <td className="py-2.5 text-slate-500 truncate max-w-[160px]">{l.notes || "-"}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                        <div className="space-y-3">
+                          {empLoans
+                            .filter(l => {
+                              const rem = Number(l.remainingBalance !== undefined ? l.remainingBalance : (l.settled || l.status === "settled" ? 0 : (l.amount || l.approved || 0)));
+                              const isSettled = l.settled === true || l.status === "settled" || rem <= 0;
+                              if (loanFilter === "active") return !isSettled;
+                              if (loanFilter === "settled") return isSettled;
+                              return true;
+                            })
+                            .map((l, idx) => {
+                              const origAmt = Number(l.amount || l.approved || l.requested || 0);
+                              const remAmt = Number(l.remainingBalance !== undefined ? l.remainingBalance : (l.settled || l.status === "settled" ? 0 : origAmt));
+                              const setAmt = Number(l.settledAmount !== undefined ? l.settledAmount : Math.max(0, origAmt - remAmt));
+                              const isSettled = l.settled === true || l.status === "settled" || remAmt <= 0;
+                              const pct = origAmt > 0 ? Math.min(100, Math.round((setAmt / origAmt) * 100)) : 100;
+                              const isExpanded = expandedLoanId === (l.id || idx.toString());
+
+                              return (
+                                <div
+                                  key={l.id || idx}
+                                  className={`rounded-2xl border transition-all p-4 ${isSettled
+                                      ? "bg-white/40 dark:bg-white/[0.02] border-slate-200/80 dark:border-white/5 opacity-90"
+                                      : "bg-white dark:bg-[#161616] border-amber-200 dark:border-amber-900/30 shadow-sm"
+                                    }`}
+                                >
+                                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                    <div className="flex items-start gap-3">
+                                      <div className={`p-2.5 rounded-xl shrink-0 mt-0.5 ${isSettled ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400" : "bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400"}`}>
+                                        <HandCoins size={18} />
+                                      </div>
+                                      <div>
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <span className="text-sm font-black text-slate-900 dark:text-white font-mono">
+                                            {fmtCurrency(origAmt)}
+                                          </span>
+                                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${isSettled ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300" : "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300"}`}>
+                                            {isSettled ? "مسددة بالكامل (خالصة)" : `متبقي: ${fmtCurrency(remAmt)}`}
+                                          </span>
+                                          {l.category && (
+                                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300">
+                                              {loanCategoryLabels[l.category]?.icon} {loanCategoryLabels[l.category]?.label || l.category}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                          <span>تاريخ الصرف: <strong className="font-mono text-slate-700 dark:text-slate-300">{l.date || "-"}</strong></span>
+                                          <span className="mx-1.5">•</span>
+                                          <span>نظام التقسيط: <strong className="text-slate-700 dark:text-slate-300">{l.installmentCount || 1} شهر/أشهر</strong> ({fmtCurrency(l.monthlyInstallment || origAmt)} / شهر)</span>
+                                          {l.reason && (
+                                            <>
+                                              <span className="mx-1.5">•</span>
+                                              <span className="text-slate-500 truncate max-w-[200px]">{l.reason}</span>
+                                            </>
+                                          )}
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    {/* Action Buttons */}
+                                    <div className="flex items-center gap-2 flex-wrap self-end md:self-auto">
+                                      {/* 1-Click Print Official Legal Contract */}
+                                      <button
+                                        type="button"
+                                        onClick={() => handlePrintLoanContract(l, activeEmp)}
+                                        title="طباعة إقرار استلام سلفة وتفويض بالخصم رسمي (A4)"
+                                        className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                                      >
+                                        <Printer size={14} className="text-slate-500" />
+                                        <span>إقرار وتفويض (A4)</span>
+                                      </button>
+
+                                      {/* Early Cash Payoff Button */}
+                                      {!isSettled && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setActiveLoanForPayoff(l);
+                                            setPayoffAmount(remAmt);
+                                            setPayoffNotes("");
+                                            setShowEarlyPayoffModal(true);
+                                          }}
+                                          title="سداد نقدي معجل وتوريد للخزينة"
+                                          className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                                        >
+                                          <DollarSign size={14} />
+                                          <span>سداد نقدي معجل</span>
+                                        </button>
+                                      )}
+
+                                      {/* WhatsApp Statement */}
+                                      <button
+                                        type="button"
+                                        onClick={() => sendWhatsAppLoanStatement(l, activeEmp)}
+                                        title="إرسال كشف حساب السلفة عبر واتساب"
+                                        className="px-2.5 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                                      >
+                                        <Share2 size={14} />
+                                        <span>واتساب</span>
+                                      </button>
+
+                                      {/* Toggle Installments Table */}
+                                      {Array.isArray(l.installments) && l.installments.length > 0 && (
+                                        <button
+                                          type="button"
+                                          onClick={() => setExpandedLoanId(isExpanded ? null : (l.id || idx.toString()))}
+                                          className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
+                                          title="عرض جدول الأقساط الشهرية"
+                                        >
+                                          <ChevronRight size={16} className={`transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`} />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Mini Loan Progress Bar */}
+                                  <div className="mt-3 pt-3 border-t border-slate-100 dark:border-white/5">
+                                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 mb-1.5">
+                                      <span>نسبة السداد: {pct}% ({fmtCurrency(setAmt)} مسدد)</span>
+                                      <span>المتبقي: {fmtCurrency(remAmt)}</span>
+                                    </div>
+                                    <div className="w-full bg-slate-100 dark:bg-white/5 h-2 rounded-full overflow-hidden">
+                                      <div
+                                        className={`h-full rounded-full transition-all duration-500 ${isSettled ? "bg-emerald-500" : "bg-amber-500"}`}
+                                        style={{ width: `${pct}%` }}
+                                      ></div>
+                                    </div>
+                                  </div>
+
+                                  {/* Expandable Installment Breakdown Table */}
+                                  {isExpanded && Array.isArray(l.installments) && (
+                                    <div className="mt-3 pt-3 border-t border-slate-100 dark:border-white/5 animate-in fade-in duration-200">
+                                      <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-2">
+                                        جدول استحقاق الأقساط الشهرية المعتمدة (المادة 34 من قانون العمل 12 لسنة 2003):
+                                      </p>
+                                      <div className="overflow-x-auto custom-scrollbar">
+                                        <table className="w-full text-right text-xs">
+                                          <thead>
+                                            <tr className="border-b border-slate-200 dark:border-white/10 text-slate-400 font-bold">
+                                              <th className="pb-1.5">القسط</th>
+                                              <th className="pb-1.5">الشهر المستحق</th>
+                                              <th className="pb-1.5">قيمة القسط</th>
+                                              <th className="pb-1.5">الحالة</th>
+                                              <th className="pb-1.5">تاريخ وتفاصيل الخصم</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                                            {l.installments.map((inst: any, iIdx: number) => {
+                                              const isInstPaid = inst.status === "paid";
+                                              return (
+                                                <tr key={iIdx} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.02]">
+                                                  <td className="py-2 font-mono text-slate-700 dark:text-slate-300 font-bold">
+                                                    #{inst.installmentNumber || iIdx + 1}
+                                                  </td>
+                                                  <td className="py-2 font-mono text-slate-600 dark:text-slate-300">
+                                                    {inst.month || "-"}
+                                                  </td>
+                                                  <td className="py-2 font-mono font-black text-slate-900 dark:text-white">
+                                                    {fmtCurrency(inst.amount)}
+                                                  </td>
+                                                  <td className="py-2">
+                                                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${isInstPaid
+                                                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"
+                                                        : "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300"
+                                                      }`}>
+                                                      {isInstPaid ? (inst.paymentMethod === "early_cash" ? "تم سداده نقداً للخزينة" : "تم الاستقطاع بالراتب") : "قيد الاستحقاق (مجدول)"}
+                                                    </span>
+                                                  </td>
+                                                  <td className="py-2 text-[11px] text-slate-500 font-mono">
+                                                    {inst.paidAt ? new Date(inst.paidAt).toLocaleDateString('en-GB') : "مجدول بالراتب القادم"}
+                                                    {inst.note && <span className="mr-2 text-indigo-600 dark:text-indigo-400">({inst.note})</span>}
+                                                  </td>
+                                                </tr>
+                                              );
+                                            })}
+                                          </tbody>
+                                        </table>
+                                      </div>
+
+                                      {/* Repayments History */}
+                                      {Array.isArray(l.repayments) && l.repayments.length > 0 && (
+                                        <div className="mt-2.5 p-2.5 bg-slate-50 dark:bg-white/[0.02] rounded-xl border border-slate-100 dark:border-white/5">
+                                          <p className="text-[10.5px] font-bold text-slate-500 mb-1">سجل التوريدات النقدية المعجلة للخزينة:</p>
+                                          <div className="space-y-1">
+                                            {l.repayments.map((rep: any, rIdx: number) => (
+                                              <div key={rIdx} className="text-[10px] text-slate-600 dark:text-slate-400 flex items-center justify-between font-mono">
+                                                <span>• {rep.date}: توريد نقدي بالخزينة بمبلغ {fmtCurrency(rep.amount)}</span>
+                                                <span className="text-slate-400">بواسطة: {rep.receivedBy}</span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
                         </div>
                       )}
                     </div>
@@ -2654,94 +3165,328 @@ export default function EmployeesPage() {
         </div>
       </div>
 
-      {/* LOAN / SALARY ADVANCE MODAL */}
-      {showLoanModal && activeEmp && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-[#121212] border border-border w-full max-w-md rounded-3xl p-6 shadow-2xl space-y-5 relative">
-            <div className="flex justify-between items-start border-b border-border pb-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 rounded-2xl">
-                  <HandCoins size={22} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-black text-slate-900 dark:text-white">
-                    تسجيل سلفة نقدية جديدة
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {activeEmp.name} (الراتب: {activeEmp.baseSalary?.toLocaleString() || 0} ج.م)
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowLoanModal(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-              >
-                <X size={18} />
-              </button>
-            </div>
+      {/* 1. ENTERPRISE LOAN & SALARY ADVANCE ISSUANCE MODAL */}
+      {showLoanModal && activeEmp && (() => {
+        const salary = Number(activeEmp.baseSalary) || 0;
+        const maxSafeInstallment = Math.round(salary * 0.5);
+        const months = Number(loanInstallmentMonths) || 1;
+        const currentMonthlyInst = Math.round((Number(loanAmount) || 0) / months);
+        const isCapExceeded = salary > 0 && currentMonthlyInst > maxSafeInstallment;
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1.5">
-                  مبلغ السلفة (جنيه مصري) *
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min={1}
-                    value={loanAmount || ""}
-                    onChange={(e) => setLoanAmount(Number(e.target.value))}
-                    placeholder="e.g. 1000"
-                    className="w-full pl-4 pr-12 py-3 rounded-xl border border-border bg-background text-lg font-mono font-black focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition"
-                  />
-                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-                    ج.م
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-[#121212] border border-border w-full max-w-lg rounded-3xl p-6 shadow-2xl space-y-5 relative max-h-[92vh] overflow-y-auto custom-scrollbar">
+              <div className="flex justify-between items-start border-b border-border pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 rounded-2xl">
+                    <HandCoins size={22} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                      صرف سلفة نقدية وتقسيط معتمد
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {activeEmp.name} • الراتب الأساسي: {salary.toLocaleString()} ج.م • الفرع: {activeEmp.storeId === "ola" ? "أولا القرنفل" : "العلمين 4"}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowLoanModal(false)}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Reason Category Selection */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-2">
+                    تصنيف سبب السلفة (Retail Category) *
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {(Object.keys(loanCategoryLabels) as (keyof typeof loanCategoryLabels)[]).map((catKey) => {
+                      const item = loanCategoryLabels[catKey];
+                      const isSelected = loanCategory === catKey;
+                      return (
+                        <button
+                          key={catKey}
+                          type="button"
+                          onClick={() => setLoanCategory(catKey as any)}
+                          className={`p-2.5 rounded-xl border text-right transition flex items-center gap-2 cursor-pointer ${
+                            isSelected
+                              ? "border-emerald-500 bg-emerald-50/80 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 font-bold shadow-xs"
+                              : "border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/[0.02] text-slate-600 dark:text-slate-400 text-xs"
+                          }`}
+                        >
+                          <span className="text-base">{item.icon}</span>
+                          <span className="text-[11px] leading-tight">{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Amount Input with Live Arabic Words */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1.5">
+                    إجمالي مبلغ السلفة المطلوب (جنيه مصري) *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min={100}
+                      step={100}
+                      value={loanAmount || ""}
+                      onChange={(e) => setLoanAmount(Number(e.target.value))}
+                      placeholder="مثال: 3000"
+                      className="w-full pl-4 pr-12 py-3 rounded-xl border border-border bg-background text-lg font-mono font-black focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition"
+                    />
+                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                      ج.م
+                    </span>
+                  </div>
+                  {loanAmount > 0 && (
+                    <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold mt-1.5 bg-emerald-50/60 dark:bg-emerald-950/20 px-2.5 py-1 rounded-lg border border-emerald-200/60 dark:border-emerald-900/30">
+                      التفقيط الرسمي: فقط وقدره {numberToArabicWords(loanAmount)} جنيهاً مصرياً لا غير.
+                    </p>
+                  )}
+                </div>
+
+                {/* Multi-Month Installment Term Selector */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide">
+                      مدة التقسيط وعدد الأقساط الشهرية *
+                    </label>
+                    <span className="text-xs font-black font-mono text-emerald-600 dark:text-emerald-400">
+                      {fmtCurrency(currentMonthlyInst)} / شهر
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
+                    {[1, 2, 3, 4, 6, 10, 12].map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setLoanInstallmentMonths(m)}
+                        className={`py-2 px-1 rounded-xl text-xs font-bold border transition text-center cursor-pointer ${
+                          loanInstallmentMonths === m
+                            ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-slate-900 dark:border-white shadow-xs"
+                            : "border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5"
+                        }`}
+                      >
+                        {m === 1 ? "دفعة واحدة" : `${m} شهور`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Egyptian Labor Law Article 34 Cap Gauge */}
+                <div
+                  className={`p-3.5 rounded-2xl border text-xs flex items-start gap-2.5 transition ${
+                    isCapExceeded
+                      ? "bg-rose-50 dark:bg-rose-950/30 border-rose-300 dark:border-rose-900/40 text-rose-800 dark:text-rose-200"
+                      : "bg-emerald-50/70 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/40 text-emerald-800 dark:text-emerald-200"
+                  }`}
+                >
+                  <ShieldCheck size={18} className={`shrink-0 mt-0.5 ${isCapExceeded ? "text-rose-600" : "text-emerald-600"}`} />
+                  <div className="space-y-1">
+                    <div className="font-bold flex items-center justify-between gap-2">
+                      <span>ضوابط المادة (34) من قانون العمل رقم 12 لسنة 2003:</span>
+                      <span className="font-mono font-black">
+                        الحد الأقصى القانوني للخصم (50%): {fmtCurrency(maxSafeInstallment)}
+                      </span>
+                    </div>
+                    {isCapExceeded ? (
+                      <p className="text-[11px] leading-relaxed text-rose-700 dark:text-rose-300 font-medium">
+                        ⚠️ تحذير: القسط الشهري المحدد ({fmtCurrency(currentMonthlyInst)}) يتجاوز 50% من الراتب الأساسي للعامل ({fmtCurrency(maxSafeInstallment)}). يُنصح بزيادة عدد شهور التقسيط لتفادي مخالفة قانون العمل.
+                      </p>
+                    ) : (
+                      <p className="text-[11px] leading-relaxed text-emerald-700 dark:text-emerald-300 font-medium">
+                        ✓ متوافق تماماً: القسط الشهري ({fmtCurrency(currentMonthlyInst)}) يقع في النطاق القانوني الآمن (أقل من 50% من الراتب الشهري).
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Direct Safe Outflow Badge */}
+                <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
+                  <AlertCircle size={16} className="shrink-0 mt-0.5 text-amber-600" />
+                  <span>
+                    <strong>التأثير المالي والخزينة:</strong> سيتم قيد المبلغ وصرفه مباشرة كمسحوبات نقدية من خزينة الفرع (Safe Cash Outflow)، وترحيل الأقساط شهرياً إلى مسير الرواتب تلقائياً.
                   </span>
                 </div>
+
+                {/* Notes Input */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1.5">
+                    ملاحظات إضافية على السلفة
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={loanNotes}
+                    onChange={(e) => setLoanNotes(e.target.value)}
+                    placeholder="اكتب أي ملاحظات خاصة بإذن الصرف أو موافقة الإدارة..."
+                    className="w-full p-3 rounded-xl border border-border bg-background text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition resize-none"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1.5">
-                  بيان سبب السلفة أو تفاصيل الخصم الشهري
-                </label>
-                <textarea
-                  rows={2}
-                  value={loanNotes}
-                  onChange={(e) => setLoanNotes(e.target.value)}
-                  placeholder="مثال: سلفة نقدية تخصم على قسطين من راتب الشهر القادم..."
-                  className="w-full p-3 rounded-xl border border-border bg-background text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition resize-none"
-                />
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowLoanModal(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-border font-bold text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="button"
+                  disabled={isSubmittingLoan || !loanAmount || loanAmount <= 0}
+                  onClick={() => handleCreateLoan(activeEmp)}
+                  className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                >
+                  {isSubmittingLoan ? <Loader2 size={15} className="animate-spin" /> : <HandCoins size={15} />}
+                  <span>اعتماد وصرف السلفة وتوليد الإقرار</span>
+                </button>
               </div>
-
-              <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-700 dark:text-amber-300 flex items-start gap-2">
-                <AlertCircle size={15} className="shrink-0 mt-0.5" />
-                <span>
-                  سيتم ترحيل السلفة مباشرة إلى سجلات الحسابات والخصومات ومتابعة الرصيد المتبقي ذمة العامل تلقائياً.
-                </span>
-              </div>
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowLoanModal(false)}
-                className="flex-1 py-2.5 rounded-xl border border-border font-bold text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
-              >
-                إلغاء
-              </button>
-              <button
-                type="button"
-                disabled={isSubmittingLoan || !loanAmount || loanAmount <= 0}
-                onClick={() => handleCreateLoan(activeEmp)}
-                className="flex-1 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-md shadow-amber-600/20 transition flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {isSubmittingLoan ? <Loader2 size={15} className="animate-spin" /> : <HandCoins size={15} />}
-                <span>تأكيد صرف السلفة</span>
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
+
+      {/* 2. EARLY CASH PAYOFF & SAFE RECOVERY MODAL */}
+      {showEarlyPayoffModal && activeLoanForPayoff && activeEmp && (() => {
+        const rem = Number(activeLoanForPayoff.remainingBalance !== undefined ? activeLoanForPayoff.remainingBalance : activeLoanForPayoff.amount);
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-[#121212] border border-border w-full max-w-md rounded-3xl p-6 shadow-2xl space-y-5 relative">
+              <div className="flex justify-between items-start border-b border-border pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 rounded-2xl">
+                    <DollarSign size={22} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                      سداد نقدي معجل وتوريد للخزينة
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {activeEmp.name} • الرصيد المتبقي ذمته: {fmtCurrency(rem)}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowEarlyPayoffModal(false)}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 rounded-2xl">
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-slate-500 font-bold">قيمة السلفة الأصلية:</span>
+                    <span className="font-mono font-black text-slate-800 dark:text-white">{fmtCurrency(activeLoanForPayoff.amount)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-slate-500 font-bold">الرصيد القائم ذمته حالياً:</span>
+                    <span className="font-mono font-black text-rose-600 dark:text-rose-400">{fmtCurrency(rem)}</span>
+                  </div>
+                </div>
+
+                {/* Amount to Pay */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1.5">
+                    المبلغ المورد نقداً إلى خزينة الفرع (جنيه مصري) *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min={1}
+                      max={rem}
+                      value={payoffAmount || ""}
+                      onChange={(e) => setPayoffAmount(Number(e.target.value))}
+                      placeholder="e.g. 1000"
+                      className="w-full pl-4 pr-12 py-3 rounded-xl border border-border bg-background text-lg font-mono font-black focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition"
+                    />
+                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                      ج.م
+                    </span>
+                  </div>
+
+                  {/* Quick percentage chips */}
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => setPayoffAmount(Math.round(rem * 0.25))}
+                      className="flex-1 py-1 rounded-lg text-[11px] font-bold border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/5 cursor-pointer"
+                    >
+                      25%
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPayoffAmount(Math.round(rem * 0.5))}
+                      className="flex-1 py-1 rounded-lg text-[11px] font-bold border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/5 cursor-pointer"
+                    >
+                      50%
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPayoffAmount(rem)}
+                      className="flex-1 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40 cursor-pointer"
+                    >
+                      100% (سداد كامل وخلو طرف)
+                    </button>
+                  </div>
+                </div>
+
+                {/* Direct Safe Recovery Note */}
+                <div className="p-3 bg-indigo-50/70 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-800/40 rounded-xl text-xs text-indigo-900 dark:text-indigo-200 flex items-start gap-2">
+                  <ShieldCheck size={16} className="shrink-0 mt-0.5 text-indigo-600" />
+                  <span>
+                    سيتم توريد هذا المبلغ نقداً إلى <strong>خزينة الفرع مباشرة (Safe Inflow)</strong> كإيداع سداد سلفة، وتخفيض رصيد مديونية العامل فوراً دون انتظار موعد الراتب.
+                  </span>
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1.5">
+                    ملاحظات أمين الخزينة / سند التوريد
+                  </label>
+                  <input
+                    type="text"
+                    value={payoffNotes}
+                    onChange={(e) => setPayoffNotes(e.target.value)}
+                    placeholder="مثال: توريد نقدي بخزينة فرع أولا القرنفل بخزينة المحل..."
+                    className="w-full p-2.5 rounded-xl border border-border bg-background text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEarlyPayoffModal(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-border font-bold text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="button"
+                  disabled={isSubmittingPayoff || !payoffAmount || payoffAmount <= 0 || payoffAmount > rem}
+                  onClick={handleEarlyPayoff}
+                  className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                >
+                  {isSubmittingPayoff ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
+                  <span>تأكيد التوريد وسداد السلفة</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* CAREER / TRANSFER / PROMOTION MODAL */}
       {showCareerModal && activeEmp && (
@@ -3658,11 +4403,11 @@ export default function EmployeesPage() {
           {`
             @page { 
               size: A4 portrait; 
-              margin: ${printDocumentType === 'termination' ? '8mm 12mm 8mm 12mm !important' : printDocumentType === 'folder_cover' ? '8mm 10mm 8mm 10mm !important' : (printDocumentType === 'salary_letter' || printDocumentType === 'experience_cert' || printDocumentType === 'bank_mandate' || printDocumentType === 'social_insurance_1' || printDocumentType === 'social_insurance_6') ? '8mm 10mm 8mm 10mm !important' : '15mm'}; 
+              margin: ${printDocumentType === 'termination' ? '8mm 12mm 8mm 12mm !important' : printDocumentType === 'folder_cover' ? '8mm 10mm 8mm 10mm !important' : (printDocumentType === 'salary_letter' || printDocumentType === 'experience_cert' || printDocumentType === 'bank_mandate' || printDocumentType === 'social_insurance_1' || printDocumentType === 'social_insurance_6' || printDocumentType === 'loan_contract' || printDocumentType === 'loan_receipt') ? '6mm 9mm 6mm 9mm !important' : '15mm'}; 
             }
             .content-wrapper { padding: 0; margin: 0 auto; }
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            ${printDocumentType === 'termination' || printDocumentType === 'folder_cover' || printDocumentType === 'salary_letter' || printDocumentType === 'experience_cert' || printDocumentType === 'bank_mandate' || printDocumentType === 'social_insurance_1' || printDocumentType === 'social_insurance_6' ? `
+            ${printDocumentType === 'termination' || printDocumentType === 'folder_cover' || printDocumentType === 'salary_letter' || printDocumentType === 'experience_cert' || printDocumentType === 'bank_mandate' || printDocumentType === 'social_insurance_1' || printDocumentType === 'social_insurance_6' || printDocumentType === 'loan_contract' || printDocumentType === 'loan_receipt' ? `
               html, body {
                 height: 100% !important;
                 margin: 0 !important;
@@ -3674,7 +4419,7 @@ export default function EmployeesPage() {
                 margin: 0 !important;
                 height: 100% !important;
               }
-              .termination-page, .folder-cover-page, .salary-letter-page, .experience-cert-page, .bank-mandate-page, .social-insurance-page-1, .social-insurance-page-6 {
+              .termination-page, .folder-cover-page, .salary-letter-page, .experience-cert-page, .bank-mandate-page, .social-insurance-page-1, .social-insurance-page-6, .loan-contract-page, .loan-receipt-page {
                 height: 277mm !important;
                 max-height: 277mm !important;
                 display: flex !important;
@@ -5908,6 +6653,550 @@ export default function EmployeesPage() {
                   }}>
                     <span>استمارة 6 تأمينات - نظام إدارة الموارد البشرية المعتمد لشركة {companyTitleAr}</span>
                     <span>سجل تجاري: {branchInfo.commReg} | بطاقة ضريبية: {branchInfo.taxId} | رقم تأميني: {branchInfo.companyInsuranceNumber}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          // IF PRINTING 100% LEGAL EGYPTIAN LOAN CONTRACT & DEDUCTION AUTHORIZATION (إقرار استلام سلفة وتفويض بالخصم)
+          if (printDocumentType === 'loan_contract') {
+            const loan = selectedLoanForPrint || (empLoans && empLoans[0]) || {};
+            const loanAmt = Number(loan.amount || loan.approved || 0);
+            const instCount = Number(loan.installmentCount || 1);
+            const monthlyInst = Number(loan.monthlyInstallment || Math.round(loanAmt / instCount));
+            const todayFormatted = new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+            const nidChars = (selectedEmployee.nationalId || "").padEnd(14, " ").slice(0, 14).split("");
+
+            // Build or retrieve installments list
+            const installmentsList = Array.isArray(loan.installments) && loan.installments.length > 0 
+              ? loan.installments 
+              : (() => {
+                  const arr = [];
+                  const sD = new Date(loan.date || Date.now());
+                  for (let i = 0; i < instCount; i++) {
+                    const mD = new Date(sD.getFullYear(), sD.getMonth() + i, 1);
+                    const mStr = `${mD.getFullYear()}-${String(mD.getMonth() + 1).padStart(2, "0")}`;
+                    const isLast = i === instCount - 1;
+                    arr.push({
+                      installmentNumber: i + 1,
+                      month: mStr,
+                      amount: isLast ? (loanAmt - (monthlyInst * (instCount - 1))) : monthlyInst,
+                      status: "pending"
+                    });
+                  }
+                  return arr;
+                })();
+
+            let runningBalance = loanAmt;
+
+            return (
+              <div
+                className="content-wrapper loan-contract-page"
+                style={{
+                  width: "100%",
+                  maxWidth: "100%",
+                  height: "277mm",
+                  maxHeight: "277mm",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  color: "#0f172a",
+                  fontFamily: "'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif",
+                  padding: "5mm 8mm",
+                  boxSizing: "border-box"
+                }}
+              >
+                <div>
+                  {/* 1. OFFICIAL CORPORATE & LEGAL HEADER */}
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "1.4fr 2fr 1.4fr",
+                    gap: "8px",
+                    alignItems: "center",
+                    borderBottom: "2.5px solid #0f172a",
+                    paddingBottom: "5px",
+                    marginBottom: "7px"
+                  }}>
+                    {/* Right: Company Identity */}
+                    <div style={{ textAlign: "right", fontSize: "10px", lineHeight: "1.4", color: "#1e293b" }}>
+                      <div style={{ fontWeight: "900", fontSize: "12px" }}>{companyTitleAr}</div>
+                      <div style={{ fontSize: "8.5px", fontWeight: "700", textTransform: "uppercase", color: "#475569" }}>{companySubtitleEn}</div>
+                      <div style={{ fontSize: "9px", fontFamily: "monospace", marginTop: "1px" }}>س.ت: {branchInfo.commReg} | ب.ض: {branchInfo.taxId}</div>
+                      <div style={{ fontSize: "8.5px", color: "#64748b" }}>قطاع التجزئة والمتاجر - إدارة الموارد البشرية</div>
+                    </div>
+
+                    {/* Center: Official Legal Agreement Badge */}
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{
+                        border: "2px solid #0f172a",
+                        borderRadius: "8px",
+                        padding: "4px 10px",
+                        background: "#f8fafc"
+                      }}>
+                        <div style={{ fontSize: "13.5px", fontWeight: "900", color: "#0f172a" }}>
+                          إقرار استلام سلفة نقدية وتفويض رسمي بالاستقطاع من الراتب
+                        </div>
+                        <div style={{ fontSize: "10px", fontWeight: "bold", color: "#047857" }}>
+                          سلفة قرض حسن بدون فوائد • تفويض قانوني ملزم ونافذ
+                        </div>
+                        <div style={{ fontSize: "8px", color: "#475569", marginTop: "1px" }}>
+                          طبقاً لأحكام المادة (34) من قانون العمل المصري رقم 12 لسنة 2003
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Left: Metadata & Branch Details */}
+                    <div style={{ textAlign: "left", fontSize: "9.5px", lineHeight: "1.5", color: "#1e293b", fontFamily: "monospace" }}>
+                      <div><strong style={{ fontFamily: "'Cairo', sans-serif" }}>رقم السلفة:</strong> <span style={{ fontWeight: "bold", color: "#1e3a8a", fontSize: "11px" }}>LN-{(loan.id || "NEW").slice(-6).toUpperCase()}</span></div>
+                      <div><strong style={{ fontFamily: "'Cairo', sans-serif" }}>تاريخ التحرير:</strong> {todayFormatted}</div>
+                      <div><strong style={{ fontFamily: "'Cairo', sans-serif" }}>الفرع:</strong> {branchTitleAr}</div>
+                      <div><strong style={{ fontFamily: "'Cairo', sans-serif" }}>جهة الصرف:</strong> خزينة الفرع (Safe)</div>
+                    </div>
+                  </div>
+
+                  {/* 2. SECTION 1: EMPLOYEE & EMPLOYER IDENTIFICATION */}
+                  <div style={{ marginBottom: "6px" }}>
+                    <div style={{
+                      background: "#0f172a",
+                      color: "#fff",
+                      fontSize: "10px",
+                      fontWeight: "bold",
+                      padding: "2.5px 8px",
+                      borderRadius: "4px 4px 0 0",
+                      display: "flex",
+                      justifyContent: "space-between"
+                    }}>
+                      <span>أولاً: بيانات العامل المقترض والجهة المانحة</span>
+                      <span>عقد ملزم للطرفين</span>
+                    </div>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9.5px", background: "#f8fafc" }}>
+                      <tbody>
+                        <tr>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3.5px 6px", width: "18%", background: "#f1f5f9", fontWeight: "bold" }}>اسم العامل المقترض:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3.5px 6px", width: "42%", fontWeight: "900", color: "#0f172a", fontSize: "11px" }}>{selectedEmployee.name}</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3.5px 6px", width: "18%", background: "#f1f5f9", fontWeight: "bold" }}>المسمى الوظيفي:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3.5px 6px", width: "22%", fontWeight: "bold" }}>{selectedEmployee.position}</td>
+                        </tr>
+                        <tr>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3.5px 6px", background: "#f1f5f9", fontWeight: "bold" }}>الرقم القومي (14 رقم):</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3.5px 6px" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "2.5px" }}>
+                              {nidChars.map((ch, i) => (
+                                <span
+                                  key={i}
+                                  style={{
+                                    display: "inline-block",
+                                    width: "18px",
+                                    height: "19px",
+                                    border: "1.5px solid #475569",
+                                    borderRadius: "3px",
+                                    textAlign: "center",
+                                    lineHeight: "17px",
+                                    fontSize: "11px",
+                                    fontWeight: "bold",
+                                    fontFamily: "monospace",
+                                    background: "#fff"
+                                  }}
+                                >
+                                  {ch.trim() || "-"}
+                                </span>
+                              ))}
+                            </div>
+                          </td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3.5px 6px", background: "#f1f5f9", fontWeight: "bold" }}>الراتب الأساسي الشهري:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3.5px 6px", fontFamily: "monospace", fontWeight: "bold", color: "#047857" }}>
+                            {(selectedEmployee.baseSalary || 0).toLocaleString()} ج.م
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3.5px 6px", background: "#f1f5f9", fontWeight: "bold" }}>الشركة المانحة:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3.5px 6px" }}>{companyTitleAr} (س.ت: {branchInfo.commReg})</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3.5px 6px", background: "#f1f5f9", fontWeight: "bold" }}>مكان العمل والفرع:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3.5px 6px" }}>{branchTitleAr}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* 3. SECTION 2: LOAN FINANCIAL DETAILS & TAFQEET */}
+                  <div style={{ marginBottom: "6px" }}>
+                    <div style={{
+                      background: "#047857",
+                      color: "#fff",
+                      fontSize: "10px",
+                      fontWeight: "bold",
+                      padding: "2.5px 8px",
+                      borderRadius: "4px 4px 0 0",
+                      display: "flex",
+                      justifyContent: "space-between"
+                    }}>
+                      <span>ثانياً: تفاصيل السلفة المعتمدة والتفقيط المالي القانوني</span>
+                      <span>المبالغ بالجنيه المصري (EGP)</span>
+                    </div>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9.5px", background: "#f8fafc" }}>
+                      <tbody>
+                        <tr>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", width: "20%", background: "#ecfdf5", fontWeight: "bold", color: "#065f46" }}>إجمالي مبلغ السلفة:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", width: "30%", fontWeight: "900", fontSize: "12px", color: "#047857", fontFamily: "monospace" }}>
+                            {loanAmt.toLocaleString()} ج.م
+                          </td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", width: "20%", background: "#f1f5f9", fontWeight: "bold" }}>مدة ونظام التقسيط:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", width: "30%", fontWeight: "bold" }}>
+                            {instCount} قسط/أقساط شهرية متتالية
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", background: "#f1f5f9", fontWeight: "bold" }}>التفقيط المالي الرسمي:</td>
+                          <td colSpan={3} style={{ border: "1px solid #cbd5e1", padding: "4px 6px", fontWeight: "bold", color: "#1e293b", fontSize: "10px" }}>
+                            فقط وقدره: <strong style={{ color: "#047857" }}>{numberToArabicWords(loanAmt)} جنيهاً مصرياً لا غير</strong>.
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", background: "#f1f5f9", fontWeight: "bold" }}>قيمة القسط الشهري:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", fontFamily: "monospace", fontWeight: "bold", color: "#1e3a8a" }}>
+                            {monthlyInst.toLocaleString()} ج.م شهرياً
+                          </td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", background: "#f1f5f9", fontWeight: "bold" }}>تاريخ بدء أول قسط:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", fontFamily: "monospace", fontWeight: "bold" }}>
+                            راتب شهر: {loan.firstInstallmentMonth || loan.month || "-"}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", background: "#f1f5f9", fontWeight: "bold" }}>سبب وتصنيف السلفة:</td>
+                          <td colSpan={3} style={{ border: "1px solid #cbd5e1", padding: "4px 6px" }}>
+                            {loan.categoryLabel || loan.reason || "سلفة راتب نقدية معتمدة وفقاً لاحتياجات العامل"}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* 4. SECTION 3: ITEMIZED INSTALLMENT SCHEDULE GRID */}
+                  <div style={{ marginBottom: "6px" }}>
+                    <div style={{
+                      background: "#334155",
+                      color: "#fff",
+                      fontSize: "9.5px",
+                      fontWeight: "bold",
+                      padding: "2px 8px",
+                      borderRadius: "4px 4px 0 0",
+                      display: "flex",
+                      justifyContent: "space-between"
+                    }}>
+                      <span>ثالثاً: جدول استحقاق واستقطاع الأقساط الشهرية من الراتب</span>
+                      <span>سقف الخصم القانوني: لا يجاوز 50% من الأجر</span>
+                    </div>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9px", textAlign: "center" }}>
+                      <thead>
+                        <tr style={{ background: "#e2e8f0", color: "#1e293b", fontWeight: "bold" }}>
+                          <th style={{ border: "1px solid #cbd5e1", padding: "3px" }}>القسط</th>
+                          <th style={{ border: "1px solid #cbd5e1", padding: "3px" }}>شهر الاستحقاق</th>
+                          <th style={{ border: "1px solid #cbd5e1", padding: "3px" }}>قيمة القسط الشهري</th>
+                          <th style={{ border: "1px solid #cbd5e1", padding: "3px" }}>الرصيد المتبقي بعد الخصم</th>
+                          <th style={{ border: "1px solid #cbd5e1", padding: "3px" }}>حالة القسط</th>
+                          <th style={{ border: "1px solid #cbd5e1", padding: "3px" }}>توقيع العامل بالعلم</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {installmentsList.slice(0, 12).map((inst: any, idx: number) => {
+                          runningBalance = Math.max(0, runningBalance - Number(inst.amount));
+                          return (
+                            <tr key={idx} style={{ background: idx % 2 === 0 ? "#fff" : "#f8fafc" }}>
+                              <td style={{ border: "1px solid #cbd5e1", padding: "3px", fontWeight: "bold", fontFamily: "monospace" }}>#{inst.installmentNumber || idx + 1}</td>
+                              <td style={{ border: "1px solid #cbd5e1", padding: "3px", fontFamily: "monospace", fontWeight: "bold" }}>{inst.month}</td>
+                              <td style={{ border: "1px solid #cbd5e1", padding: "3px", fontFamily: "monospace", fontWeight: "bold", color: "#047857" }}>
+                                {Number(inst.amount).toLocaleString()} ج.م
+                              </td>
+                              <td style={{ border: "1px solid #cbd5e1", padding: "3px", fontFamily: "monospace" }}>
+                                {runningBalance.toLocaleString()} ج.م
+                              </td>
+                              <td style={{ border: "1px solid #cbd5e1", padding: "3px" }}>
+                                {inst.status === "paid" ? "تم الخصم بالراتب ✓" : "مجدول بالراتب"}
+                              </td>
+                              <td style={{ border: "1px solid #cbd5e1", padding: "3px", color: "#94a3b8" }}>..........................</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* 5. SECTION 4: STATUTORY EGYPTIAN LABOR LAW UNDERTAKINGS */}
+                  <div style={{
+                    fontSize: "8.5px",
+                    lineHeight: "1.55",
+                    background: "#f8fafc",
+                    border: "1.5px solid #cbd5e1",
+                    borderRadius: "6px",
+                    padding: "5px 8px",
+                    marginBottom: "6px",
+                    color: "#1e293b"
+                  }}>
+                    <strong style={{ color: "#0f172a", fontSize: "9px" }}>رابعاً: البنود القانونية والتفويض الإلزامي بالاستقطاع:</strong>
+                    <ol style={{ margin: "2px 0 0 0", paddingRight: "16px" }}>
+                      <li>
+                        <strong>إقرار الاستلام:</strong> أقر أنا الموقع أدناه بأنني قد استلمت من إدارة الشركة كامل مبلغ السلفة الموضح بعاليه نقداً من خزينة الفرع على سبيل القرض الحسن دون أي فوائد، وتعد ذمتي مشغولة به قانوناً.
+                      </li>
+                      <li>
+                        <strong>تفويض الخصم القانوني:</strong> أفوض إدارة الشركة تفويضاً رسمياً ونهائياً لا رجعة فيه باستقطاع قيمة القسط الشهري الموضح بالجدول من راتبي الشهري اعتباراً من شهر الاستحقاق وحتى تمام السداد، وذلك إعمالاً لنص المادة (34) من قانون العمل رقم 12 لسنة 2003.
+                      </li>
+                      <li>
+                        <strong>تسوية نهاية الخدمة:</strong> في حال انتهاء علاقة العمل لأي سبب من الأسباب (استقالة، فسخ، انتهاء العقد، أو ترك العمل) قبل إتمام سداد كامل السلفة، فإنني أفوض الشركة تفويضاً صريحاً باستقطاع كامل الرصيد المتبقي ذمتي دفعة واحدة من أي مستحقات نهائية لي طرف الشركة (مكافأة نهاية الخدمة، رصيد الإجازات، أجر آخر شهر، أو أي مستحقات أخرى). وفي حال عدم كفايتها أتعهد بسداد المتبقي نقداً فوراً.
+                      </li>
+                      <li>
+                        <strong>الحجية القضائية:</strong> تم تحرير هذا الإقرار بمحض إرادتي الحرة ودون أي إكراه، ويعد حجة قانونية نافذة وقاطعة في مواجهتي ومسؤوليتي المدنية والقضائية الكاملة أمام كافة الجهات الرسمية.
+                      </li>
+                    </ol>
+                  </div>
+                </div>
+
+                {/* 6. SIGNATURES & THUMBPRINT BLOCK */}
+                <div>
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "1.2fr 1fr 1fr 1fr",
+                    gap: "6px",
+                    alignItems: "center",
+                    borderTop: "2px solid #0f172a",
+                    paddingTop: "4px",
+                    marginBottom: "4px"
+                  }}>
+                    {/* Employee Signature */}
+                    <div style={{ textAlign: "center", fontSize: "9px" }}>
+                      <div style={{ fontWeight: "bold", color: "#0f172a" }}>المقر بما فيه (العامل المقترض):</div>
+                      <div style={{ color: "#475569", margin: "1px 0" }}>{selectedEmployee.name}</div>
+                      <div style={{ color: "#64748b", margin: "15px 0 0 0" }}>التوقيع: .................................</div>
+                    </div>
+
+                    {/* OFFICIAL THUMBPRINT BOX (بصمة الإبهام الأيمن للعامل) */}
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                      <div style={{ fontSize: "8.5px", fontWeight: "bold", color: "#0f172a", marginBottom: "2px" }}>
+                        بصمة إبهام العامل (ختم إلزامي):
+                      </div>
+                      <div style={{
+                        width: "95px",
+                        height: "58px",
+                        border: "2px solid #0f172a",
+                        borderRadius: "5px",
+                        background: "#fff",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        textAlign: "center",
+                        fontSize: "8px",
+                        color: "#94a3b8",
+                        fontWeight: "bold",
+                        boxShadow: "inset 0 0 4px rgba(0,0,0,0.05)"
+                      }}>
+                        [ بصمة الإبهام الأيمن ]
+                      </div>
+                    </div>
+
+                    {/* Safe Custodian / Finance */}
+                    <div style={{ textAlign: "center", fontSize: "9px" }}>
+                      <div style={{ fontWeight: "bold", color: "#0f172a" }}>أمين الخزينة / المسؤول المالي:</div>
+                      <div style={{ color: "#475569", margin: "1px 0" }}>تم الصرف نقداً من الخزينة</div>
+                      <div style={{ color: "#64748b", margin: "15px 0 0 0" }}>التوقيع: .................................</div>
+                    </div>
+
+                    {/* HR Approval & Corporate Stamp */}
+                    <div style={{ textAlign: "center", fontSize: "9px" }}>
+                      <div style={{ fontWeight: "bold", color: "#0f172a" }}>اعتماد الموارد البشرية:</div>
+                      <div style={{
+                        margin: "3px auto 0 auto",
+                        width: "115px",
+                        height: "52px",
+                        border: "1.5px solid #1e3a8a",
+                        borderRadius: "6px",
+                        padding: "2px",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background: "#eff6ff",
+                        color: "#1e3a8a"
+                      }}>
+                        <div style={{ fontSize: "9px", fontWeight: "900", lineHeight: "1.1" }}>{companyTitleAr}</div>
+                        <div style={{ fontSize: "7px", fontWeight: "bold", fontFamily: "monospace" }}>س.ت: {branchInfo.commReg}</div>
+                        <div style={{ fontSize: "7px", fontWeight: "bold", fontFamily: "monospace" }}>ب.ض: {branchInfo.taxId}</div>
+                        <div style={{ fontSize: "7px", color: "#047857", fontWeight: "bold" }}>معتمد للصرف والخصم</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Document Legal Footer */}
+                  <div style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    borderTop: "1px solid #cbd5e1",
+                    paddingTop: "2px",
+                    fontSize: "7.5px",
+                    color: "#64748b",
+                    fontWeight: "bold"
+                  }}>
+                    <span>إقرار سلفة معتمد رقم LN-{(loan.id || "NEW").slice(-6).toUpperCase()} • محرر وفق أحكام قانون العمل رقم 12 لسنة 2003</span>
+                    <span>شركة {companyTitleAr} • س.ت: {branchInfo.commReg} • ب.ض: {branchInfo.taxId}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          // IF PRINTING EARLY CASH REPAYMENT RECEIPT (إيصال استلام نقدية وسداد سلفة معجل)
+          if (printDocumentType === 'loan_receipt') {
+            const loan = selectedLoanForPrint || {};
+            const paidAmt = Number(loan.receiptPaidAmount || 0);
+            const prevBal = Number(loan.receiptPreviousBalance || 0);
+            const newBal = Number(loan.receiptNewBalance || 0);
+            const todayFormatted = new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+
+            return (
+              <div
+                className="content-wrapper loan-receipt-page"
+                style={{
+                  width: "100%",
+                  maxWidth: "100%",
+                  height: "277mm",
+                  maxHeight: "277mm",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  color: "#0f172a",
+                  fontFamily: "'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif",
+                  padding: "12mm 14mm",
+                  boxSizing: "border-box"
+                }}
+              >
+                <div>
+                  {/* Header */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "3px solid #047857", paddingBottom: "10px", marginBottom: "15px" }}>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: "16px", fontWeight: "900", color: "#0f172a" }}>{companyTitleAr}</div>
+                      <div style={{ fontSize: "11px", color: "#475569", fontWeight: "bold" }}>{companySubtitleEn}</div>
+                      <div style={{ fontSize: "10px", color: "#64748b", fontFamily: "monospace" }}>س.ت: {branchInfo.commReg} | ب.ض: {branchInfo.taxId}</div>
+                    </div>
+                    <div style={{
+                      border: "2px solid #047857",
+                      borderRadius: "8px",
+                      padding: "6px 14px",
+                      background: "#f0fdf4",
+                      textAlign: "center"
+                    }}>
+                      <div style={{ fontSize: "16px", fontWeight: "900", color: "#047857" }}>
+                        إيصال استلام نقدية وتوريد للخزينة
+                      </div>
+                      <div style={{ fontSize: "11px", fontWeight: "bold", color: "#1e293b" }}>
+                        سداد نقدي معجل لسلفة عامل
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "left", fontSize: "11px", fontFamily: "monospace" }}>
+                      <div><strong>رقم الإيصال:</strong> RCT-{(loan.id || "GEN").slice(-6).toUpperCase()}</div>
+                      <div><strong>تاريخ التوريد:</strong> {todayFormatted}</div>
+                      <div><strong>الفرع:</strong> {branchTitleAr}</div>
+                    </div>
+                  </div>
+
+                  {/* Receipt Body */}
+                  <div style={{ background: "#f8fafc", border: "1.5px solid #cbd5e1", borderRadius: "10px", padding: "16px", marginBottom: "20px" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", lineHeight: "2.2" }}>
+                      <tbody>
+                        <tr>
+                          <td style={{ width: "25%", fontWeight: "bold", color: "#475569" }}>استلمنا من السيد/</td>
+                          <td style={{ width: "75%", fontWeight: "900", color: "#0f172a", fontSize: "15px" }}>{selectedEmployee.name}</td>
+                        </tr>
+                        <tr>
+                          <td style={{ fontWeight: "bold", color: "#475569" }}>بطاقة الرقم القومي/</td>
+                          <td style={{ fontFamily: "monospace", fontWeight: "bold", letterSpacing: "1px" }}>{selectedEmployee.nationalId || "-"}</td>
+                        </tr>
+                        <tr>
+                          <td style={{ fontWeight: "bold", color: "#475569" }}>الوظيفة والفرع/</td>
+                          <td>{selectedEmployee.position} — {branchTitleAr}</td>
+                        </tr>
+                        <tr>
+                          <td style={{ fontWeight: "bold", color: "#065f46" }}>مبلغاً وقدره نقداً/</td>
+                          <td style={{ fontWeight: "900", color: "#047857", fontSize: "18px", fontFamily: "monospace" }}>
+                            {paidAmt.toLocaleString()} جنيهاً مصرياً (EGP)
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style={{ fontWeight: "bold", color: "#475569" }}>فقط وقدره/</td>
+                          <td style={{ fontWeight: "bold", color: "#1e293b" }}>
+                            {numberToArabicWords(paidAmt)} جنيهاً مصرياً لا غير.
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style={{ fontWeight: "bold", color: "#475569" }}>وذلك سداداً عن/</td>
+                          <td>سداد نقدي معجل لسلفة الراتب رقم (LN-{(loan.id || "NEW").slice(-6).toUpperCase()}) وتوريد المبلغ بخزينة الفرع.</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Financial Balances Tile */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px", marginBottom: "25px" }}>
+                    <div style={{ background: "#f1f5f9", padding: "12px", borderRadius: "8px", textAlign: "center", border: "1px solid #cbd5e1" }}>
+                      <div style={{ fontSize: "11px", color: "#64748b", fontWeight: "bold" }}>الرصيد قبل السداد</div>
+                      <div style={{ fontSize: "16px", fontWeight: "900", fontFamily: "monospace", color: "#0f172a", marginTop: "4px" }}>
+                        {prevBal.toLocaleString()} ج.م
+                      </div>
+                    </div>
+                    <div style={{ background: "#ecfdf5", padding: "12px", borderRadius: "8px", textAlign: "center", border: "1px solid #a7f3d0" }}>
+                      <div style={{ fontSize: "11px", color: "#065f46", fontWeight: "bold" }}>المسدد نقداً بالإيصال</div>
+                      <div style={{ fontSize: "18px", fontWeight: "900", fontFamily: "monospace", color: "#047857", marginTop: "4px" }}>
+                        {paidAmt.toLocaleString()} ج.م
+                      </div>
+                    </div>
+                    <div style={{ background: newBal > 0 ? "#fef2f2" : "#ecfdf5", padding: "12px", borderRadius: "8px", textAlign: "center", border: `1px solid ${newBal > 0 ? "#fecaca" : "#a7f3d0"}` }}>
+                      <div style={{ fontSize: "11px", color: newBal > 0 ? "#991b1b" : "#065f46", fontWeight: "bold" }}>الرصيد المتبقي ذمته</div>
+                      <div style={{ fontSize: "16px", fontWeight: "900", fontFamily: "monospace", color: newBal > 0 ? "#b91c1c" : "#047857", marginTop: "4px" }}>
+                        {newBal.toLocaleString()} ج.م {newBal === 0 && "✓ (خالص)"}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ fontSize: "11px", color: "#475569", lineHeight: "1.6", background: "#f8fafc", padding: "10px", borderRadius: "6px", border: "1px dashed #cbd5e1" }}>
+                    * يعد هذا الإيصال سنداً رسمياً لإبراء ذمة العامل من المبلغ المسدد نقداً وتوريده بالخزينة، ولا يعتد بأي سداد نقدي بدون هذا الإيصال المعتمد وخاتم الفرع.
+                  </div>
+                </div>
+
+                {/* Signatures & Seal */}
+                <div style={{ borderTop: "2px solid #0f172a", paddingTop: "15px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "20px", textAlign: "center" }}>
+                    <div>
+                      <div style={{ fontWeight: "bold", fontSize: "12px", color: "#0f172a" }}>المسدد (العامل):</div>
+                      <div style={{ color: "#64748b", margin: "5px 0 35px 0", fontSize: "11px" }}>{selectedEmployee.name}</div>
+                      <div>التوقيع: ............................</div>
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: "bold", fontSize: "12px", color: "#0f172a" }}>أمين الخزينة المستلم:</div>
+                      <div style={{ color: "#64748b", margin: "5px 0 35px 0", fontSize: "11px" }}>خزينة {branchTitleAr}</div>
+                      <div>التوقيع: ............................</div>
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: "bold", fontSize: "12px", color: "#0f172a" }}>خاتم المنشأة والفرع:</div>
+                      <div style={{
+                        margin: "5px auto 0 auto",
+                        width: "120px",
+                        height: "60px",
+                        border: "2px solid #1e3a8a",
+                        borderRadius: "8px",
+                        padding: "4px",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background: "#eff6ff",
+                        color: "#1e3a8a"
+                      }}>
+                        <div style={{ fontSize: "10px", fontWeight: "900" }}>{companyTitleAr}</div>
+                        <div style={{ fontSize: "7.5px", fontFamily: "monospace" }}>س.ت: {branchInfo.commReg}</div>
+                        <div style={{ fontSize: "7.5px", color: "#047857", fontWeight: "bold" }}>تم التوريد بالخزينة</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "center", fontSize: "9px", color: "#94a3b8", marginTop: "15px", borderTop: "1px solid #e2e8f0", paddingTop: "5px" }}>
+                    نظام إدارة الموارد البشرية والحسابات لشركة {companyTitleAr} • طبع بتاريخ {todayFormatted}
                   </div>
                 </div>
               </div>

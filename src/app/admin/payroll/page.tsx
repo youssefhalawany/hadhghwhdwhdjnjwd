@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { db, auth } from "@/lib/firebase";
-import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, getDocs, getDoc, updateDoc, where, limit } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, getDocs, getDoc, updateDoc, where, limit, serverTimestamp } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { Plus, Check, X, ShieldAlert, DollarSign, Calendar, Save, Trash2, CheckCircle2, Printer, Filter, ChevronRight, Share2, Send, FileText, Layers, Download, Pencil, Clock, CreditCard } from "lucide-react";
 import { toast } from "sonner";
@@ -392,13 +392,45 @@ export default function AdminPayrollPage() {
         appliedDeductionIds.push(d.id);
       });
 
-      // Loans for the month
+      // Loans for the month (Multi-month installments or active balance)
       const lQ = query(collection(db, "loans"), where("employeeId", "==", empId));
       const lSnap = await getDocs(lQ);
       lSnap.forEach(l => {
         const data = l.data();
-        if (data.date && data.date.startsWith(monthStr)) {
-          totalLoans += Number(data.approved) || 0;
+        // Skip already settled loans
+        if (data.settled === true || data.status === "settled") return;
+        const currentRemaining = Number(data.remainingBalance !== undefined ? data.remainingBalance : (data.approved || data.amount || 0));
+        if (currentRemaining <= 0) return;
+
+        let installmentToDeduct = 0;
+
+        // Check if this is a multi-month scheduled installment loan
+        if (Array.isArray(data.installments) && data.installments.length > 0) {
+          // Look for an installment scheduled for this exact month
+          const targetInst = data.installments.find((i: any) => i.month === monthStr && i.status === "pending");
+          if (targetInst) {
+            installmentToDeduct = Number(targetInst.amount) || 0;
+          } else {
+            // Check if there are overdue/pending installments whose month <= monthStr
+            const overdueInst = data.installments.find((i: any) => i.month <= monthStr && i.status === "pending");
+            if (overdueInst) {
+              installmentToDeduct = Number(overdueInst.amount) || 0;
+            }
+          }
+          if (installmentToDeduct > 0) {
+            installmentToDeduct = Math.min(installmentToDeduct, currentRemaining);
+          }
+        } else if (data.monthlyInstallment && Number(data.monthlyInstallment) > 0) {
+          installmentToDeduct = Math.min(Number(data.monthlyInstallment), currentRemaining);
+        } else {
+          // Legacy single-month loan: only deduct if it matches monthStr or is pending/approved
+          if (!data.date || data.date.startsWith(monthStr) || (data.status === "approved" || data.status === "pending")) {
+            installmentToDeduct = currentRemaining;
+          }
+        }
+
+        if (installmentToDeduct > 0) {
+          totalLoans += installmentToDeduct;
           appliedLoanIds.push(l.id);
         }
       });
@@ -587,6 +619,56 @@ export default function AdminPayrollPage() {
           try {
             await updateDoc(doc(db, "adjustments", adjId), { status: "applied", appliedPayrollId: newDocRef.id });
           } catch(e) { console.error("Failed to update adjustment", adjId, e); }
+        }
+      }
+
+      // Apply and deduct loans (Multi-month installments & auto-settlement)
+      if (draft.appliedLoanIds && draft.appliedLoanIds.length > 0) {
+        for (const lId of draft.appliedLoanIds) {
+          try {
+            const loanRef = doc(db, "loans", lId);
+            const loanDoc = await getDoc(loanRef);
+            if (loanDoc.exists()) {
+              const lData = loanDoc.data();
+              const currentRem = Number(lData.remainingBalance !== undefined ? lData.remainingBalance : (lData.approved || lData.amount || 0));
+              const curSettled = Number(lData.settledAmount || 0);
+
+              let instAmt = 0;
+              let updatedInstallments = lData.installments;
+
+              if (Array.isArray(lData.installments) && lData.installments.length > 0) {
+                let instMatched = false;
+                updatedInstallments = lData.installments.map((inst: any) => {
+                  if (!instMatched && (inst.month === draft.month || inst.month <= draft.month) && inst.status === "pending") {
+                    instMatched = true;
+                    instAmt = Number(inst.amount) || 0;
+                    return { ...inst, status: "paid", payrollId: newDocRef.id, paidAt: new Date().toISOString() };
+                  }
+                  return inst;
+                });
+              }
+
+              if (instAmt <= 0) {
+                instAmt = Number(lData.monthlyInstallment || lData.amount || currentRem);
+              }
+              instAmt = Math.min(instAmt, currentRem);
+
+              const nextRem = Math.max(0, currentRem - instAmt);
+              const nextSettled = curSettled + instAmt;
+              const isFullySettled = nextRem <= 0;
+
+              await updateDoc(loanRef, {
+                remainingBalance: nextRem,
+                settledAmount: nextSettled,
+                settled: isFullySettled,
+                status: isFullySettled ? "settled" : "approved",
+                installments: updatedInstallments || [],
+                lastDeductionMonth: draft.month,
+                lastPayrollId: newDocRef.id,
+                ...(isFullySettled && { settledAt: serverTimestamp(), appliedPayrollId: newDocRef.id })
+              });
+            }
+          } catch(e) { console.error("Failed to update loan", lId, e); }
         }
       }
 
