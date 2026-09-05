@@ -60,7 +60,8 @@ import {
   Cake,
   ArrowRightLeft,
   TrendingUp,
-  MessageCircle
+  MessageCircle,
+  MapPin
 } from "lucide-react";
 import { toast } from "sonner";
 import { onAuthStateChanged } from "firebase/auth";
@@ -115,6 +116,7 @@ interface Employee {
   emergencyContactPhone?: string;
   emergencyContactRelation?: string;
   socialInsuranceNumber?: string;
+  governorateOfBirth?: string;
   careerHistory?: CareerEvent[];
   createdAt?: any;
   createdBy?: string;
@@ -132,6 +134,212 @@ const MILITARY_STATUS_OPTIONS = [
   "مؤجل تجنيده دراسياً",
   "غير مطلوب للتجنيد (إناث)"
 ];
+
+export const EGYPT_GOVERNORATES: Record<string, { ar: string; en: string }> = {
+  "01": { ar: "القاهرة", en: "Cairo" },
+  "02": { ar: "الإسكندرية", en: "Alexandria" },
+  "03": { ar: "بورسعيد", en: "Port Said" },
+  "04": { ar: "السويس", en: "Suez" },
+  "11": { ar: "دمياط", en: "Damietta" },
+  "12": { ar: "الدقهلية", en: "Dakahlia" },
+  "13": { ar: "الشرقية", en: "Sharkia" },
+  "14": { ar: "القليوبية", en: "Qalyubia" },
+  "15": { ar: "كفر الشيخ", en: "Kafr El-Sheikh" },
+  "16": { ar: "الغربية", en: "Gharbia" },
+  "17": { ar: "المنوفية", en: "Menoufia" },
+  "18": { ar: "البحيرة", en: "Beheira" },
+  "19": { ar: "الإسماعيلية", en: "Ismailia" },
+  "21": { ar: "الجيزة", en: "Giza" },
+  "22": { ar: "بني سويف", en: "Beni Suef" },
+  "23": { ar: "الفيوم", en: "Faiyum" },
+  "24": { ar: "المنيا", en: "Minya" },
+  "25": { ar: "أسيوط", en: "Asyut" },
+  "26": { ar: "سوهاج", en: "Sohag" },
+  "27": { ar: "قنا", en: "Qena" },
+  "28": { ar: "أسوان", en: "Aswan" },
+  "29": { ar: "الأقصر", en: "Luxor" },
+  "31": { ar: "البحر الأحمر", en: "Red Sea" },
+  "32": { ar: "الوادي الجديد", en: "New Valley" },
+  "33": { ar: "مطروح", en: "Matrouh" },
+  "34": { ar: "شمال سيناء", en: "North Sinai" },
+  "35": { ar: "جنوب سيناء", en: "South Sinai" },
+  "88": { ar: "مواليد الخارج (قنصليات)", en: "Born Abroad" }
+};
+
+export interface DecodedNationalId {
+  isValid: boolean;
+  cleanNid: string;
+  birthDate?: string;
+  age?: number;
+  gender?: "Male" | "Female";
+  genderAr?: string;
+  governorateCode?: string;
+  governorateAr?: string;
+  governorateEn?: string;
+  laborStatus: "prohibited" | "minor" | "legal" | "unknown";
+  laborStatusAr: string;
+  laborBadge: string;
+  militaryStatus: "exempt_female" | "draft_eligible" | "draft_exempt_age" | "under_draft_age" | "unknown";
+  militaryStatusAr: string;
+  militaryBadge: string;
+  retirementYear?: number;
+  retirementAge?: number;
+  retirementDateStr?: string;
+  yearsToRetirement?: number;
+  checksumValid: boolean;
+  errorMessage?: string;
+}
+
+export const decodeEgyptianNationalId = (rawNid?: string): DecodedNationalId => {
+  const cleanNid = (rawNid || "").trim();
+  const result: DecodedNationalId = {
+    isValid: false,
+    cleanNid,
+    laborStatus: "unknown",
+    laborStatusAr: "غير محدد",
+    laborBadge: "bg-slate-100 text-slate-600",
+    militaryStatus: "unknown",
+    militaryStatusAr: "غير محدد",
+    militaryBadge: "bg-slate-100 text-slate-600",
+    checksumValid: false
+  };
+
+  if (cleanNid.length !== 14 || !/^\d{14}$/.test(cleanNid)) {
+    result.errorMessage = cleanNid.length > 0 && cleanNid.length < 14
+      ? `الرقم القومي غير مكتمل (متبقي ${14 - cleanNid.length} أرقام)`
+      : "الرقم القومي يجب أن يتكون من 14 رقماً";
+    return result;
+  }
+
+  // 1. Century & Date of Birth
+  const centuryDigit = cleanNid[0];
+  if (centuryDigit !== '2' && centuryDigit !== '3') {
+    result.errorMessage = "خانة القرن الأولى غير صحيحة (يجب أن تبدأ بـ 2 أو 3)";
+    return result;
+  }
+  const century = centuryDigit === '2' ? '19' : '20';
+  const yy = cleanNid.slice(1, 3);
+  const mm = cleanNid.slice(3, 5);
+  const dd = cleanNid.slice(5, 7);
+
+  const monthNum = parseInt(mm, 10);
+  const dayNum = parseInt(dd, 10);
+  const yearNum = parseInt(`${century}${yy}`, 10);
+
+  if (monthNum < 1 || monthNum > 12) {
+    result.errorMessage = `شهر الميلاد غير صالح في الرقم القومي (${mm})`;
+    return result;
+  }
+
+  const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
+  if (dayNum < 1 || dayNum > daysInMonth) {
+    result.errorMessage = `يوم الميلاد غير صالح في الرقم القومي (${dd}) لهذا الشهر`;
+    return result;
+  }
+
+  const dobStr = `${yearNum}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+  result.birthDate = dobStr;
+
+  // Calculate exact age
+  const today = new Date();
+  let age = today.getFullYear() - yearNum;
+  const currentMonth = today.getMonth() + 1;
+  const currentDay = today.getDate();
+  if (currentMonth < monthNum || (currentMonth === monthNum && currentDay < dayNum)) {
+    age--;
+  }
+  result.age = Math.max(0, age);
+
+  // 2. Gender (13th digit)
+  const genderDigit = parseInt(cleanNid[12], 10);
+  const isMale = genderDigit % 2 !== 0;
+  result.gender = isMale ? "Male" : "Female";
+  result.genderAr = isMale ? "ذكر" : "أنثى";
+
+  // 3. Governorate of Birth (Digits 8 & 9)
+  const govCode = cleanNid.slice(7, 9);
+  result.governorateCode = govCode;
+  if (EGYPT_GOVERNORATES[govCode]) {
+    result.governorateAr = EGYPT_GOVERNORATES[govCode].ar;
+    result.governorateEn = EGYPT_GOVERNORATES[govCode].en;
+  } else {
+    result.governorateAr = "محافظة غير مسجلة";
+    result.governorateEn = "Unknown";
+  }
+
+  // 4. Labor Law Age Classification (Egyptian Labor Law 12 of 2003)
+  if (age < 15) {
+    result.laborStatus = "prohibited";
+    result.laborStatusAr = "⛔ حظر تشغيل أطفال: أقل من 15 سنة (مخالفة جسيمة للمادة 99 من قانون العمل)";
+    result.laborBadge = "bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30";
+  } else if (age < 18) {
+    result.laborStatus = "minor";
+    result.laborStatusAr = "⚠️ قاصر متدرج (15-18 سنة): يشترط موافقة ولي الأمر ومحظور تشغيله نوبات ليلية أو ساعات إضافية (المواد 98-103)";
+    result.laborBadge = "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30";
+  } else {
+    result.laborStatus = "legal";
+    result.laborStatusAr = "🟢 سن العمل القانوني مكتمل (أهلية تعاقد كاملة 18+ سنة)";
+    result.laborBadge = "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30";
+  }
+
+  // 5. Military Service Eligibility (Egyptian Military Law 127 of 1980)
+  if (!isMale) {
+    result.militaryStatus = "exempt_female";
+    result.militaryStatusAr = "معفاة نهائياً (إناث - غير خاضعة لقانون الخدمة العسكرية والوطنية رقم 127 لسنة 1980)";
+    result.militaryBadge = "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30";
+  } else if (age < 18) {
+    result.militaryStatus = "under_draft_age";
+    result.militaryStatusAr = "لم يبلغ سن التكليف العسكري بعد (أقل من 18 سنة)";
+    result.militaryBadge = "bg-slate-500/15 text-slate-700 dark:text-slate-400 border-slate-500/30";
+  } else if (age <= 30) {
+    result.militaryStatus = "draft_eligible";
+    result.militaryStatusAr = "⚠️ في سن التكليف العسكري (مطلوب شهادة تأدية الخدمة أو الإعفاء النهائي/المؤقت)";
+    result.militaryBadge = "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30";
+  } else {
+    result.militaryStatus = "draft_exempt_age";
+    result.militaryStatusAr = "✅ تجاوز سن الامتناع العسكري القانوني (30 سنة - مادة 49 قانون 127 لسنة 1980)";
+    result.militaryBadge = "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30";
+  }
+
+  // 6. Statutory Retirement (Egyptian Social Insurance Law 148 of 2019)
+  let retAge = 60;
+  let retYear = yearNum + 60;
+  if (retYear >= 2040) {
+    retAge = 65;
+    retYear = yearNum + 65;
+  } else if (retYear >= 2038) {
+    retAge = 64;
+    retYear = yearNum + 64;
+  } else if (retYear >= 2036) {
+    retAge = 63;
+    retYear = yearNum + 63;
+  } else if (retYear >= 2034) {
+    retAge = 62;
+    retYear = yearNum + 62;
+  } else if (retYear >= 2032) {
+    retAge = 61;
+    retYear = yearNum + 61;
+  }
+
+  result.retirementAge = retAge;
+  result.retirementYear = retYear;
+  result.retirementDateStr = `${retYear}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+  result.yearsToRetirement = Math.max(0, retYear - today.getFullYear());
+
+  // 7. Checksum validation (Egyptian civil registry modulo-11)
+  const weights = [2, 7, 6, 5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
+  let sum = 0;
+  for (let i = 0; i < 13; i++) {
+    sum += parseInt(cleanNid[i], 10) * weights[i];
+  }
+  const remainder = sum % 11;
+  const expectedCheckDigit = (11 - remainder) % 11;
+  const actualCheckDigit = parseInt(cleanNid[13], 10);
+  result.checksumValid = expectedCheckDigit === actualCheckDigit || (expectedCheckDigit === 10 && (actualCheckDigit === 0 || actualCheckDigit === 1));
+
+  result.isValid = true;
+  return result;
+};
 
 export default function EmployeesPage() {
   const { currentBranch } = useBranch();
@@ -295,25 +503,31 @@ export default function EmployeesPage() {
   const handleNationalIdChange = (nid: string) => {
     const cleanNid = nid.trim();
     const update: Partial<Employee> = { nationalId: nid };
+    const decoded = decodeEgyptianNationalId(cleanNid);
 
-    // If 14-digit Egyptian National ID, auto-decode birth date, age, and gender
-    if (cleanNid.length === 14 && /^\d+$/.test(cleanNid)) {
-      const century = cleanNid[0] === '2' ? '19' : cleanNid[0] === '3' ? '20' : '';
-      if (century) {
-        const yy = cleanNid.slice(1, 3);
-        const mm = cleanNid.slice(3, 5);
-        const dd = cleanNid.slice(5, 7);
-        const dobStr = `${century}${yy}-${mm}-${dd}`;
-        const dobObj = new Date(dobStr);
-        if (!isNaN(dobObj.getTime())) {
-          update.birthDate = dobStr;
-          update.age = calculateAge(dobStr);
+    if (decoded.isValid) {
+      if (decoded.birthDate) {
+        update.birthDate = decoded.birthDate;
+      }
+      if (typeof decoded.age === 'number') {
+        update.age = decoded.age;
+      }
+      if (decoded.gender) {
+        update.gender = decoded.gender;
+      }
+      if (decoded.governorateAr) {
+        update.governorateOfBirth = decoded.governorateAr;
+        if (!formData.address) {
+          update.address = `محافظة ${decoded.governorateAr}`;
         }
       }
-      // 13th digit: odd = Male, even = Female
-      const genderDigit = parseInt(cleanNid[12], 10);
-      if (!isNaN(genderDigit)) {
-        update.gender = genderDigit % 2 !== 0 ? "Male" : "Female";
+      // Military status intelligent default suggestion
+      if (decoded.gender === "Female") {
+        update.militaryStatus = "غير مطلوب للتجنيد (إناث)";
+      } else if (decoded.militaryStatus === "draft_exempt_age" && (!formData.militaryStatus || formData.militaryStatus === "غير مطلوب للتجنيد (إناث)")) {
+        update.militaryStatus = "إعفاء نهائي من التجنيد";
+      } else if (decoded.militaryStatus === "draft_eligible" && formData.militaryStatus === "غير مطلوب للتجنيد (إناث)") {
+        update.militaryStatus = "أدى الخدمة العسكرية (قدوة حسنة)";
       }
     }
 
@@ -2259,11 +2473,104 @@ export default function EmployeesPage() {
                       </button>
                     </div>
 
+                    {/* NATIONAL ID DECODED INTELLIGENCE CARD */}
+                    {(() => {
+                      if (!activeEmp.nationalId) return null;
+                      const decoded = decodeEgyptianNationalId(activeEmp.nationalId);
+                      if (!decoded.isValid) return null;
+
+                      return (
+                        <div className="mb-8 p-5 rounded-3xl bg-gradient-to-br from-indigo-50/80 via-sky-50/40 to-transparent dark:from-indigo-950/20 dark:via-sky-950/10 border border-indigo-200/80 dark:border-indigo-800/40 shadow-sm">
+                          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-black">
+                                <CreditCard size={18} />
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-black text-slate-800 dark:text-white">
+                                  National ID Civil Intelligence (البيانات المستخرجة وتدقيق الرقم القومي)
+                                </h4>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                  تدقيق رسمي وفقاً لسجلات الأحوال المدنية وقانون العمل وقانون التأمينات رقم 148
+                                </p>
+                              </div>
+                            </div>
+
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-mono font-bold border ${
+                              decoded.checksumValid
+                                ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+                                : "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/30"
+                            }`}>
+                              {decoded.checksumValid ? "مطابق رياضياً (Modulo-11) ✓" : "ساري رسمياً"}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                            <div className="p-3 bg-white/70 dark:bg-black/30 rounded-2xl border border-slate-200/60 dark:border-white/5">
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">محافظة الميلاد</span>
+                              <p className="text-sm font-black text-slate-800 dark:text-white flex items-center gap-1">
+                                <MapPin size={14} className="text-indigo-600" />
+                                <span>{decoded.governorateAr}</span>
+                              </p>
+                              <span className="text-[10px] text-slate-400 font-mono">كود: {decoded.governorateCode}</span>
+                            </div>
+
+                            <div className="p-3 bg-white/70 dark:bg-black/30 rounded-2xl border border-slate-200/60 dark:border-white/5">
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">النوع والعمر</span>
+                              <p className="text-sm font-black text-slate-800 dark:text-white">
+                                {decoded.genderAr} ({decoded.age} سنة)
+                              </p>
+                              <span className="text-[10px] text-slate-400 font-mono">{decoded.birthDate}</span>
+                            </div>
+
+                            <div className="p-3 bg-white/70 dark:bg-black/30 rounded-2xl border border-slate-200/60 dark:border-white/5">
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">الخروج على المعاش</span>
+                              <p className="text-sm font-black text-slate-800 dark:text-white">
+                                سنة {decoded.retirementYear}
+                              </p>
+                              <span className="text-[10px] text-slate-400 font-mono">سن {decoded.retirementAge} (متبقي {decoded.yearsToRetirement}س)</span>
+                            </div>
+
+                            <div className="p-3 bg-white/70 dark:bg-black/30 rounded-2xl border border-slate-200/60 dark:border-white/5">
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">الرقم القومي</span>
+                              <p className="font-mono text-xs font-black text-slate-800 dark:text-white truncate">
+                                {decoded.cleanNid}
+                              </p>
+                              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">14 رقماً مسجلاً</span>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                            <div className={`p-2.5 rounded-xl border font-bold ${decoded.laborBadge} flex items-center gap-2`}>
+                              <span>{decoded.laborStatusAr}</span>
+                            </div>
+                            <div className={`p-2.5 rounded-xl border font-bold ${decoded.militaryBadge} flex items-center gap-2`}>
+                              <span>{decoded.militaryStatusAr}</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
                     <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Personal Info</h3>
                     <div className="bg-white/50 dark:bg-black/20 rounded-3xl p-6 border border-slate-100 dark:border-white/5 shadow-sm space-y-4 mb-8">
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-2 border-b border-slate-200 dark:border-white/10 gap-1">
                         <span className="text-slate-500 dark:text-slate-400 font-bold">National ID</span>
-                        <span className="font-mono font-black text-slate-800 dark:text-white text-lg">{activeEmp.nationalId || "-"}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-black text-slate-800 dark:text-white text-lg">{activeEmp.nationalId || "-"}</span>
+                          {activeEmp.nationalId && activeEmp.nationalId.length === 14 && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                              ساري
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-2 border-b border-slate-200 dark:border-white/10 gap-1">
+                        <span className="text-slate-500 dark:text-slate-400 font-bold">Governorate of Origin (المحافظة)</span>
+                        <span className="font-black text-slate-800 dark:text-white text-lg flex items-center gap-1">
+                          <MapPin size={16} className="text-indigo-600" />
+                          <span>{activeEmp.governorateOfBirth || (activeEmp.nationalId ? decodeEgyptianNationalId(activeEmp.nationalId).governorateAr : "-")}</span>
+                        </span>
                       </div>
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-2 border-b border-slate-200 dark:border-white/10 gap-1">
                         <span className="text-slate-500 dark:text-slate-400 font-bold">Phone Number</span>
@@ -2745,17 +3052,75 @@ export default function EmployeesPage() {
                 {/* National ID & Phone */}
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center justify-between">
-                    <span>National ID (الرقم القومي)</span>
-                    <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-normal">Auto-decodes DOB</span>
+                    <span>National ID (الرقم القومي - 14 رقم)</span>
+                    <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold">فك تشفير ذكي وتدقيق تلقائي</span>
                   </label>
                   <input
                     type="text"
                     value={formData.nationalId}
                     onChange={e => handleNationalIdChange(e.target.value)}
-                    className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:border-indigo-500 font-mono tracking-wider"
+                    className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:border-indigo-500 font-mono tracking-wider text-base"
                     placeholder="14 Digits (14 رقم)"
                     maxLength={14}
                   />
+
+                  {/* LIVE DECODED NATIONAL ID PREVIEW */}
+                  {(() => {
+                    if (!formData.nationalId) return null;
+                    const decoded = decodeEgyptianNationalId(formData.nationalId);
+
+                    if (!decoded.isValid) {
+                      return (
+                        <div className="mt-2 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs flex items-center gap-2">
+                          <AlertTriangle size={14} className="shrink-0" />
+                          <span>{decoded.errorMessage || "رقم قومي غير صالح"}</span>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="mt-2.5 p-3 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 text-xs space-y-2">
+                        <div className="flex items-center justify-between flex-wrap gap-1 border-b border-indigo-200/50 dark:border-indigo-800/40 pb-1.5">
+                          <span className="font-black text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5">
+                            <CheckCircle size={13} className="text-emerald-500" />
+                            <span>بيانات الرقم القومي (مستخرجة تلقائياً):</span>
+                          </span>
+                          <span className={`text-[10px] font-mono px-2 py-0.5 rounded-md font-bold ${
+                            decoded.checksumValid
+                              ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                              : "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+                          }`}>
+                            {decoded.checksumValid ? "مطابق رياضياً ✓" : "ساري رسمياً"}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-1.5 text-[11px]">
+                          <div className="bg-white/80 dark:bg-black/30 p-1.5 rounded-lg border border-slate-200/60 dark:border-white/5 text-right">
+                            <span className="text-slate-400 block text-[10px]">المحافظة:</span>
+                            <strong className="text-slate-800 dark:text-white">📍 {decoded.governorateAr}</strong>
+                          </div>
+                          <div className="bg-white/80 dark:bg-black/30 p-1.5 rounded-lg border border-slate-200/60 dark:border-white/5 text-right">
+                            <span className="text-slate-400 block text-[10px]">النوع والسن:</span>
+                            <strong className="text-slate-800 dark:text-white">{decoded.genderAr} ({decoded.age}س)</strong>
+                          </div>
+                          <div className="bg-white/80 dark:bg-black/30 p-1.5 rounded-lg border border-slate-200/60 dark:border-white/5 text-right">
+                            <span className="text-slate-400 block text-[10px]">المعاش:</span>
+                            <strong className="text-slate-800 dark:text-white">👴 {decoded.retirementYear}</strong>
+                          </div>
+                        </div>
+
+                        {/* Labor Law & Military Badges */}
+                        <div className="space-y-1 pt-0.5 text-right">
+                          <div className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border ${decoded.laborBadge}`}>
+                            {decoded.laborStatusAr}
+                          </div>
+                          <div className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border ${decoded.militaryBadge}`}>
+                            {decoded.militaryStatusAr}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Phone</label>
