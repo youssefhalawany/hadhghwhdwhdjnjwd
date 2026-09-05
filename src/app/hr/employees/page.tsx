@@ -87,7 +87,7 @@ export default function EmployeesPage() {
   const [isUploadingID, setIsUploadingID] = useState(false);
 
   // Print Mode & Termination Clearance State
-  const [printDocumentType, setPrintDocumentType] = useState<"contract" | "termination">("contract");
+  const [printDocumentType, setPrintDocumentType] = useState<"contract" | "termination" | "folder_cover">("contract");
   const [showTerminationModal, setShowTerminationModal] = useState(false);
   const [terminationEmp, setTerminationEmp] = useState<Employee | null>(null);
   const [terminationData, setTerminationData] = useState({
@@ -368,6 +368,16 @@ export default function EmployeesPage() {
     }, 250);
   };
 
+  const handlePrintFolderCover = (emp?: Employee) => {
+    const target = emp || activeEmp || selectedEmployee;
+    if (!target) return;
+    setPrintDocumentType("folder_cover");
+    setSelectedEmployee(target);
+    setTimeout(() => {
+      window.print();
+    }, 250);
+  };
+
   const filtered = useMemo(() => {
     return employees.filter((emp) => {
       if (statusFilter !== "All Status" && emp.status !== statusFilter.toLowerCase()) return false;
@@ -547,6 +557,17 @@ export default function EmployeesPage() {
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
+                              handlePrintFolderCover(emp);
+                            }}
+                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-xl transition-all"
+                            title="Print Folder Cover (A4) / طباعة غلاف ملف الموظف"
+                          >
+                            <Printer size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
                               handleOpenTerminationModal(emp);
                             }}
                             className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-all"
@@ -579,6 +600,16 @@ export default function EmployeesPage() {
                         title="Edit Details"
                       >
                         <Edit size={18} />
+                      </button>
+                      <button 
+                        onClick={() => handlePrintFolderCover(activeEmp)}
+                        disabled={isPrinting}
+                        className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-2xl font-bold text-sm transition-all shadow-lg hover:shadow-indigo-600/30 active:scale-95 cursor-pointer"
+                        title="Print Folder Cover (A4) / طباعة غلاف ملف الموظف"
+                      >
+                        <Printer size={16} />
+                        <span>Folder Cover</span>
+                        <span className="text-[11px] bg-indigo-800/80 px-1.5 py-0.5 rounded text-white/90">غلاف الملف</span>
                       </button>
                       <button 
                         onClick={() => handleOpenTerminationModal(activeEmp)}
@@ -1113,11 +1144,11 @@ export default function EmployeesPage() {
           {`
             @page { 
               size: A4 portrait; 
-              margin: ${printDocumentType === 'termination' ? '8mm 12mm 8mm 12mm !important' : '15mm'}; 
+              margin: ${printDocumentType === 'termination' ? '8mm 12mm 8mm 12mm !important' : printDocumentType === 'folder_cover' ? '8mm 10mm 8mm 10mm !important' : '15mm'}; 
             }
             .content-wrapper { padding: 0; margin: 0 auto; }
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            ${printDocumentType === 'termination' ? `
+            ${printDocumentType === 'termination' || printDocumentType === 'folder_cover' ? `
               html, body {
                 height: 100% !important;
                 margin: 0 !important;
@@ -1129,7 +1160,7 @@ export default function EmployeesPage() {
                 margin: 0 !important;
                 height: 100% !important;
               }
-              .termination-page {
+              .termination-page, .folder-cover-page {
                 height: 277mm !important;
                 max-height: 277mm !important;
                 display: flex !important;
@@ -1381,6 +1412,560 @@ export default function EmployeesPage() {
                     <span>وثيقة قانونية رسمية معتمدة وفقاً للمادتين (6) و (125) من قانون العمل المصري رقم 12 لسنة 2003</span>
                     <span>(نسخة أصلية موثقة لملف خدمة العامل بالفرع)</span>
                   </div>
+                </div>
+
+              </div>
+            );
+          }
+
+          // IF PRINTING EMPLOYEE DOSSIER FOLDER COVER (A4 OFFICIAL CORPORATE FILE COVER)
+          if (printDocumentType === 'folder_cover') {
+            const nid = (selectedEmployee.nationalId || "").trim();
+            const nidDigits = nid.padEnd(14, " ").slice(0, 14).split("");
+            let birthDateStr = "";
+            let govName = "";
+            if (nid.length === 14 && /^\d+$/.test(nid)) {
+              const century = nid[0] === '2' ? '19' : nid[0] === '3' ? '20' : '';
+              const yy = nid.slice(1, 3);
+              const mm = nid.slice(3, 5);
+              const dd = nid.slice(5, 7);
+              if (century) {
+                birthDateStr = `${century}${yy}/${mm}/${dd}`;
+              }
+              const govCode = nid.slice(7, 9);
+              const govs: Record<string, string> = {
+                "01": "القاهرة", "02": "الإسكندرية", "03": "بورسعيد", "04": "السويس",
+                "11": "دمياط", "12": "الدقهلية", "13": "الشرقية", "14": "القليوبية",
+                "15": "كفر الشيخ", "16": "الغربية", "17": "المنوفية", "18": "البحيرة",
+                "19": "الإسماعيلية", "21": "الجيزة", "22": "بني سويف", "23": "الفيوم",
+                "24": "المنيا", "25": "أسيوط", "26": "سوهاج", "27": "قنا",
+                "28": "أسوان", "29": "الأقصر", "31": "البحر الأحمر", "32": "الوادي الجديد",
+                "33": "مطروح", "34": "شمال سيناء", "35": "جنوب سيناء"
+              };
+              govName = govs[govCode] || "جمهورية مصر العربية";
+            }
+
+            const dossierRef = `CK-DOS-${(selectedEmployee.id || 'EMP').slice(-6).toUpperCase()}`;
+
+            return (
+              <div 
+                className="content-wrapper folder-cover-page" 
+                style={{ 
+                  width: "100%", 
+                  maxWidth: "100%", 
+                  height: "277mm",
+                  maxHeight: "277mm",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  color: "#0f172a", 
+                  fontFamily: "'Cairo', 'Tajawal', system-ui, -apple-system, sans-serif",
+                  boxSizing: "border-box",
+                  padding: "8mm 10mm",
+                  border: "3.5px double #0f172a",
+                  background: "#ffffff",
+                  overflow: "hidden",
+                  lineHeight: "1.25"
+                }}
+              >
+                {/* 1. TOP HEADER & CORPORATE BRANDING */}
+                <div style={{ borderBottom: "2px solid #0f172a", paddingBottom: "6px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
+                    
+                    {/* Right: Circle K & Legal Entity Title */}
+                    <div style={{ textAlign: "right", flex: 1.2 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "3px" }}>
+                        <span style={{ 
+                          background: "#da291c", 
+                          color: "#ffffff", 
+                          fontWeight: "900", 
+                          fontSize: "12px", 
+                          padding: "2px 7px", 
+                          borderRadius: "4px",
+                          letterSpacing: "0.5px"
+                        }}>
+                          CIRCLE K
+                        </span>
+                        <span style={{ fontSize: "12px", fontWeight: "900", color: "#0f172a" }}>
+                          سيركل كي مصر - امتياز رسمي
+                        </span>
+                      </div>
+                      <div style={{ fontSize: "11px", fontWeight: "800", color: "#1e293b" }}>
+                        {companyTitleAr}
+                      </div>
+                      <div style={{ fontSize: "9px", color: "#64748b", fontWeight: "600", textTransform: "uppercase" }}>
+                        {companySubtitleEn}
+                      </div>
+                      <div style={{ fontSize: "9px", color: "#475569", marginTop: "2px" }}>
+                        مقر الإدارة العامة والموارد البشرية | قطاع التجزئة والتشغيل
+                      </div>
+                    </div>
+
+                    {/* Center: Dossier Title Banner */}
+                    <div style={{ textAlign: "center", flex: 1.6, display: "flex", flexDirection: "column", alignItems: "center" }}>
+                      <div style={{ 
+                        background: "#0f172a", 
+                        color: "#ffffff", 
+                        padding: "5px 18px", 
+                        borderRadius: "6px",
+                        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                        width: "100%",
+                        maxWidth: "280px"
+                      }}>
+                        <h1 style={{ fontSize: "15px", fontWeight: "900", margin: 0, letterSpacing: "0.3px" }}>
+                          ملف خدمة وسجل بيانات عامل
+                        </h1>
+                        <p style={{ fontSize: "8.5px", margin: "2px 0 0 0", letterSpacing: "1px", opacity: 0.9, textTransform: "uppercase" }}>
+                          OFFICIAL PERSONNEL DOSSIER COVER
+                        </p>
+                      </div>
+                      <div style={{ fontSize: "8.5px", color: "#64748b", marginTop: "4px", fontWeight: "700" }}>
+                        سجل معتمد وفقاً للمادة (77) من قانون العمل المصري رقم 12 لسنة 2003
+                      </div>
+                    </div>
+
+                    {/* Left: Archive Metadata & Legal Reg */}
+                    <div style={{ textAlign: "left", flex: 1.1, fontSize: "9.5px", color: "#1e293b", lineHeight: "1.4" }}>
+                      <div style={{ 
+                        display: "inline-block",
+                        background: "#f1f5f9", 
+                        border: "1px solid #cbd5e1", 
+                        padding: "3px 8px", 
+                        borderRadius: "4px",
+                        fontWeight: "900",
+                        color: "#0f172a",
+                        marginBottom: "3px"
+                      }}>
+                        {dossierRef}
+                      </div>
+                      <div><strong style={{ color: "#475569" }}>الفرع:</strong> {branchTitleAr}</div>
+                      <div><strong style={{ color: "#475569" }}>س.ت:</strong> {branchInfo.commReg || "114882"} | <strong style={{ color: "#475569" }}>ب.ض:</strong> {branchInfo.taxId || "482-901-332"}</div>
+                      <div><strong style={{ color: "#475569" }}>تاريخ القيد:</strong> {new Date().toLocaleDateString('ar-EG')}</div>
+                    </div>
+
+                  </div>
+                </div>
+
+                {/* 2. EMPLOYEE IDENTITY CARD & PHOTO FRAME */}
+                <div style={{ 
+                  display: "flex", 
+                  gap: "12px", 
+                  alignItems: "stretch", 
+                  background: "#f8fafc", 
+                  border: "1.5px solid #cbd5e1", 
+                  borderRadius: "6px", 
+                  padding: "7px 10px",
+                  marginTop: "4px"
+                }}>
+                  
+                  {/* Photo Frame (4x6 cm Official Portrait) */}
+                  <div style={{ 
+                    width: "68px", 
+                    height: "88px", 
+                    border: "1.5px solid #94a3b8", 
+                    borderRadius: "4px", 
+                    background: "#ffffff",
+                    display: "flex", 
+                    flexDirection: "column", 
+                    alignItems: "center", 
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    overflow: "hidden",
+                    textAlign: "center"
+                  }}>
+                    {selectedEmployee.photoUrl ? (
+                      <img 
+                        src={selectedEmployee.photoUrl} 
+                        alt={selectedEmployee.name} 
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+                      />
+                    ) : (
+                      <div style={{ padding: "4px" }}>
+                        <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: "#e2e8f0", margin: "0 auto 3px auto", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", fontWeight: "900", color: "#64748b" }}>
+                          {selectedEmployee.name.charAt(0)}
+                        </div>
+                        <span style={{ fontSize: "7.5px", color: "#64748b", fontWeight: "bold", display: "block", lineHeight: "1.1" }}>
+                          صورة حديثة<br/>4 × 6
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Identity Key Fields & 14-Digit NID Box Grid */}
+                  <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                    
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", borderBottom: "1px dashed #cbd5e1", paddingBottom: "4px" }}>
+                      <div>
+                        <span style={{ fontSize: "10px", color: "#64748b", fontWeight: "bold" }}>الاسم الرباعي للعامل: </span>
+                        <span style={{ fontSize: "15px", fontWeight: "900", color: "#0f172a" }}>{selectedEmployee.name}</span>
+                      </div>
+                      <div style={{ display: "flex", gap: "6px" }}>
+                        <span style={{ 
+                          fontSize: "9.5px", 
+                          fontWeight: "800", 
+                          background: selectedEmployee.status === 'active' ? '#dcfce7' : '#fee2e2', 
+                          color: selectedEmployee.status === 'active' ? '#166534' : '#991b1b',
+                          padding: "2px 7px",
+                          borderRadius: "4px",
+                          border: `1px solid ${selectedEmployee.status === 'active' ? '#86efac' : '#fca5a5'}`
+                        }}>
+                          {selectedEmployee.status === 'active' ? '● بالخدمة (Active)' : '● موقوف / منهي'}
+                        </span>
+                        <span style={{ 
+                          fontSize: "9.5px", 
+                          fontWeight: "800", 
+                          background: "#e0e7ff", 
+                          color: "#3730a3",
+                          padding: "2px 7px",
+                          borderRadius: "4px",
+                          border: "1px solid #c7d2fe"
+                        }}>
+                          {selectedEmployee.position}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 14-Digit National ID Display Box */}
+                    <div style={{ margin: "4px 0" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "2px" }}>
+                        <span style={{ fontSize: "9px", fontWeight: "800", color: "#334155" }}>
+                          الرقم القومي المصري (14 رقماً مسجلاً رسمياً):
+                        </span>
+                        {govName && (
+                          <span style={{ fontSize: "8.5px", color: "#64748b", fontWeight: "700" }}>
+                            محافظة القيد: {govName} {birthDateStr ? `| ميلاد: ${birthDateStr}` : ''}
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div style={{ display: "flex", gap: "3px", direction: "ltr", justifyContent: "flex-end" }}>
+                        {nidDigits.map((digit, idx) => (
+                          <div 
+                            key={idx} 
+                            style={{ 
+                              width: "18px", 
+                              height: "22px", 
+                              border: "1.5px solid #0f172a", 
+                              borderRadius: "3px", 
+                              background: digit !== " " ? "#ffffff" : "#f1f5f9",
+                              display: "flex", 
+                              alignItems: "center", 
+                              justifyContent: "center", 
+                              fontSize: "12px", 
+                              fontWeight: "900",
+                              color: "#0f172a"
+                            }}
+                          >
+                            {digit !== " " ? digit : "-"}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Quick Specs summary */}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "6px", fontSize: "9px", color: "#334155" }}>
+                      <div><strong>تاريخ استلام العمل:</strong> {selectedEmployee.startDate ? new Date(selectedEmployee.startDate).toLocaleDateString('ar-EG') : 'غير محدد'}</div>
+                      <div><strong>الهاتف:</strong> {selectedEmployee.phone || 'غير مسجل'}</div>
+                      <div><strong>كود الموظف:</strong> {selectedEmployee.id ? selectedEmployee.id.slice(0, 10) : '---'}</div>
+                    </div>
+
+                  </div>
+
+                </div>
+
+                {/* 3. STRUCTURED DATA SECTIONS */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "5px", marginTop: "4px" }}>
+                  
+                  {/* Section A: Personal & Identification */}
+                  <div>
+                    <div style={{ 
+                      background: "#1e293b", 
+                      color: "#ffffff", 
+                      fontSize: "9.5px", 
+                      fontWeight: "900", 
+                      padding: "2.5px 8px", 
+                      borderRadius: "3px",
+                      display: "flex",
+                      justifyContent: "space-between"
+                    }}>
+                      <span>أولاً: البيانات الشخصية والتعريفية للعامل</span>
+                      <span style={{ fontSize: "8px", opacity: 0.8, letterSpacing: "0.5px" }}>PERSONAL & CIVIL STATUS DATA</span>
+                    </div>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9px", marginTop: "2px" }}>
+                      <tbody>
+                        <tr>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3px 6px", background: "#f8fafc", fontWeight: "bold", width: "18%" }}>الاسم بالكامل:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3px 6px", width: "32%", fontWeight: "800" }}>{selectedEmployee.name}</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3px 6px", background: "#f8fafc", fontWeight: "bold", width: "18%" }}>الرقم القومي:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3px 6px", width: "32%", fontFamily: "monospace", fontSize: "10px", fontWeight: "bold" }}>{selectedEmployee.nationalId || "---"}</td>
+                        </tr>
+                        <tr>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3px 6px", background: "#f8fafc", fontWeight: "bold" }}>السن وتاريخ الميلاد:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3px 6px" }}>{selectedEmployee.age ? `${selectedEmployee.age} سنة` : "مستوفى"} {birthDateStr ? `(${birthDateStr})` : ""}</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3px 6px", background: "#f8fafc", fontWeight: "bold" }}>النوع ومحل الميلاد:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3px 6px" }}>{selectedEmployee.gender === "female" ? "أنثى" : "ذكر"} | {govName || "جمهورية مصر العربية"}</td>
+                        </tr>
+                        <tr>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3px 6px", background: "#f8fafc", fontWeight: "bold" }}>محل الإقامة الفعلي:</td>
+                          <td colSpan={3} style={{ border: "1px solid #cbd5e1", padding: "3px 6px" }}>{selectedEmployee.address || "العنوان المعتمد ببطاقة الرقم القومي"}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Section B: Placement & Work Terms */}
+                  <div>
+                    <div style={{ 
+                      background: "#1e293b", 
+                      color: "#ffffff", 
+                      fontSize: "9.5px", 
+                      fontWeight: "900", 
+                      padding: "2.5px 8px", 
+                      borderRadius: "3px",
+                      display: "flex",
+                      justifyContent: "space-between"
+                    }}>
+                      <span>ثانياً: بيانات التعيين والتعاقد ونظام العمل بالفرع</span>
+                      <span style={{ fontSize: "8px", opacity: 0.8, letterSpacing: "0.5px" }}>EMPLOYMENT & CONTRACT DETAILS</span>
+                    </div>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9px", marginTop: "2px" }}>
+                      <tbody>
+                        <tr>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3px 6px", background: "#f8fafc", fontWeight: "bold", width: "18%" }}>المسمى الوظيفي:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3px 6px", width: "32%", fontWeight: "800", color: "#0f172a" }}>{selectedEmployee.position}</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3px 6px", background: "#f8fafc", fontWeight: "bold", width: "18%" }}>الفرع ومقر العمل:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3px 6px", width: "32%", fontWeight: "700" }}>{branchTitleAr} ({selectedEmployee.storeId || "Main"})</td>
+                        </tr>
+                        <tr>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3px 6px", background: "#f8fafc", fontWeight: "bold" }}>نظام التعاقد:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3px 6px" }}>{selectedEmployee.fulltime ? "دوام كامل (Full-Time - 8 ساعات)" : "دوام جزئي (Part-Time)"}</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3px 6px", background: "#f8fafc", fontWeight: "bold" }}>مواعيد الوردية:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3px 6px" }}>{selectedEmployee.shiftTime || "وردية تشغيل معتمدة بجدول الفرع"}</td>
+                        </tr>
+                        <tr>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3px 6px", background: "#f8fafc", fontWeight: "bold" }}>تاريخ مباشرة العمل:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3px 6px", fontWeight: "bold" }}>{selectedEmployee.startDate ? new Date(selectedEmployee.startDate).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' }) : "تاريخ التعيين الرسمي"}</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3px 6px", background: "#f8fafc", fontWeight: "bold" }}>فترة الاختبار القانونية:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3px 6px" }}>ثلاثة أشهر تبدأ من تاريخ استلام العمل الفعلي</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Section C: Financial, Insurance & Legal Custody Guarantees */}
+                  <div>
+                    <div style={{ 
+                      background: "#1e293b", 
+                      color: "#ffffff", 
+                      fontSize: "9.5px", 
+                      fontWeight: "900", 
+                      padding: "2.5px 8px", 
+                      borderRadius: "3px",
+                      display: "flex",
+                      justifyContent: "space-between"
+                    }}>
+                      <span>ثالثاً: البيانات المالية والتأمينات الاجتماعية والأمانات القانونية</span>
+                      <span style={{ fontSize: "8px", opacity: 0.8, letterSpacing: "0.5px" }}>FINANCIAL, SOCIAL INSURANCE & GUARANTEE</span>
+                    </div>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9px", marginTop: "2px" }}>
+                      <tbody>
+                        <tr>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3px 6px", background: "#f8fafc", fontWeight: "bold", width: "18%" }}>الراتب الأساسي الشهري:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3px 6px", width: "32%", fontWeight: "900", color: "#047857" }}>
+                            {selectedEmployee.baseSalary ? `${selectedEmployee.baseSalary.toLocaleString()} جنيه مصري` : "محدد بعقد العمل المبرم"}
+                          </td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3px 6px", background: "#f8fafc", fontWeight: "bold", width: "18%" }}>الاشتراك التأميني:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3px 6px", width: "32%" }}>
+                            {selectedEmployee.insurance ? `${selectedEmployee.insurance.toLocaleString()} ج.م (تأمين اجتماعي)` : "خاضع للاشتراك التأميني س 1"}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3px 6px", background: "#f8fafc", fontWeight: "bold" }}>إيصال أمانة العهدة:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3px 6px", fontWeight: "800", color: "#b91c1c" }}>
+                            {selectedEmployee.chequeSignedNum ? `إيصال مسجل برقم (${selectedEmployee.chequeSignedNum})` : "إيصال أمانة ضامن مودع بالخزينة"}
+                          </td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3px 6px", background: "#f8fafc", fontWeight: "bold" }}>الالتزام المالي:</td>
+                          <td style={{ border: "1px solid #cbd5e1", padding: "3px 6px" }}>مسؤولية كاملة عن النقدية وبضائع وعهد الفرع</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Section D: Statutory Labor Law Dossier Checklist */}
+                  <div>
+                    <div style={{ 
+                      background: "#1e293b", 
+                      color: "#ffffff", 
+                      fontSize: "9.5px", 
+                      fontWeight: "900", 
+                      padding: "2.5px 8px", 
+                      borderRadius: "3px",
+                      display: "flex",
+                      justifyContent: "space-between"
+                    }}>
+                      <span>رابعاً: بيان مسوغات التعيين المودعة بالملف (قانون العمل رقم 12 لسنة 2003)</span>
+                      <span style={{ fontSize: "8px", opacity: 0.8, letterSpacing: "0.5px" }}>STATUTORY DOSSIER DOCUMENT CHECKLIST</span>
+                    </div>
+                    <div style={{ 
+                      border: "1px solid #cbd5e1", 
+                      borderTop: "none", 
+                      padding: "5px 8px", 
+                      display: "grid", 
+                      gridTemplateColumns: "repeat(2, 1fr)", 
+                      gap: "3.5px 14px", 
+                      fontSize: "8.5px",
+                      background: "#ffffff"
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                        <span style={{ color: "#16a34a", fontWeight: "900", fontSize: "10px" }}>[ ✔ ]</span>
+                        <span>أصل شهادة الميلاد المميكنة (حديثة برقم قومي)</span>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                        <span style={{ color: "#16a34a", fontWeight: "900", fontSize: "10px" }}>[ ✔ ]</span>
+                        <span>أصل الموقف التجنيدي / إنهاء الخدمة العسكرية والوطنية</span>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                        <span style={{ color: "#16a34a", fontWeight: "900", fontSize: "10px" }}>[ ✔ ]</span>
+                        <span>صحيفة الحالة الجنائية سارية موجهة باسم الشركة</span>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                        <span style={{ color: "#16a34a", fontWeight: "900", fontSize: "10px" }}>[ ✔ ]</span>
+                        <span>أصل المؤهل الدراسي / الدبلوم معتمد وموثق</span>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                        <span style={{ color: "#16a34a", fontWeight: "900", fontSize: "10px" }}>[ ✔ ]</span>
+                        <span>صورة واضحة لبطاقة الرقم القومي سارية المفعول (وجهين)</span>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                        <span style={{ color: "#16a34a", fontWeight: "900", fontSize: "10px" }}>[ ✔ ]</span>
+                        <span>كعب العمل (شهادة قيد) معتمد من مكتب القوى العاملة المختص</span>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                        <span style={{ color: "#16a34a", fontWeight: "900", fontSize: "10px" }}>[ ✔ ]</span>
+                        <span>الشهادة الصحية سارية للعاملين بمجال الأغذية والمشروبات</span>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                        <span style={{ color: "#16a34a", fontWeight: "900", fontSize: "10px" }}>[ ✔ ]</span>
+                        <span>أصل عقد العمل محدد المدة موقع بالبصمة والإمضاء (3 نسخ)</span>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                        <span style={{ color: "#16a34a", fontWeight: "900", fontSize: "10px" }}>[ ✔ ]</span>
+                        <span>إيصال الأمانة الضامن للعهدة وإقرار استلام توصيف الوظيفة</span>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                        <span style={{ color: "#16a34a", fontWeight: "900", fontSize: "10px" }}>[ ✔ ]</span>
+                        <span>عدد (4) صور شخصية حديثة مقاس 4×6 خلفية بيضاء</span>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* 4. OFFICIAL SIGNATURES & STAMP BOX */}
+                <div style={{ marginTop: "4px" }}>
+                  <div style={{ 
+                    border: "1.5px solid #0f172a", 
+                    borderRadius: "5px", 
+                    padding: "6px 10px", 
+                    background: "#f8fafc" 
+                  }}>
+                    <div style={{ 
+                      display: "grid", 
+                      gridTemplateColumns: "1.2fr 1fr 1fr 1fr", 
+                      gap: "10px", 
+                      textAlign: "center" 
+                    }}>
+                      
+                      {/* Employee Acknowledgment & Thumbprint */}
+                      <div style={{ borderLeft: "1px dashed #cbd5e1", paddingLeft: "8px", textAlign: "right" }}>
+                        <div style={{ fontSize: "9px", fontWeight: "900", color: "#0f172a", marginBottom: "2px" }}>
+                          إقرار وتوقيع العامل:
+                        </div>
+                        <div style={{ fontSize: "7.5px", color: "#64748b", lineHeight: "1.2", marginBottom: "4px" }}>
+                          أقر بصحة كافة البيانات والمستندات المودعة بالملف والالتزام بلائحة الشركة.
+                        </div>
+                        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginTop: "4px" }}>
+                          <div style={{ fontSize: "8.5px", color: "#334155" }}>
+                            التوقيع: .....................
+                          </div>
+                          <div style={{ 
+                            width: "38px", 
+                            height: "44px", 
+                            border: "1px dashed #64748b", 
+                            borderRadius: "50%", 
+                            display: "flex", 
+                            alignItems: "center", 
+                            justifyContent: "center", 
+                            fontSize: "7.5px", 
+                            color: "#94a3b8" 
+                          }}>
+                            البصمة
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Dossier Archiver / HR Officer */}
+                      <div style={{ borderLeft: "1px dashed #cbd5e1", paddingLeft: "8px" }}>
+                        <div style={{ fontSize: "9px", fontWeight: "900", color: "#0f172a", marginBottom: "2px" }}>
+                          مسؤول حفظ الملفات (HR):
+                        </div>
+                        <div style={{ fontSize: "8px", color: "#64748b", marginBottom: "14px" }}>
+                          تمت المراجعة والاستيفاء
+                        </div>
+                        <div style={{ fontSize: "8.5px", color: "#334155" }}>
+                          التوقيع: ..........................
+                        </div>
+                      </div>
+
+                      {/* HR Director */}
+                      <div style={{ borderLeft: "1px dashed #cbd5e1", paddingLeft: "8px" }}>
+                        <div style={{ fontSize: "9px", fontWeight: "900", color: "#0f172a", marginBottom: "2px" }}>
+                          مدير الموارد البشرية:
+                        </div>
+                        <div style={{ fontSize: "8px", color: "#64748b", marginBottom: "14px" }}>
+                          يعتمد ويقيد بالسجلات
+                        </div>
+                        <div style={{ fontSize: "8.5px", color: "#334155" }}>
+                          الاعتماد: ..........................
+                        </div>
+                      </div>
+
+                      {/* Company Seal Stamp Box */}
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                        <div style={{ 
+                          width: "80px", 
+                          height: "56px", 
+                          border: "1.5px dashed #0f172a", 
+                          borderRadius: "4px", 
+                          display: "flex", 
+                          alignItems: "center", 
+                          justifyContent: "center",
+                          fontSize: "8px",
+                          fontWeight: "800",
+                          color: "#94a3b8",
+                          textAlign: "center"
+                        }}>
+                          خاتم الشركة المعتمد<br/>(SEAL / STAMP)
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+                </div>
+
+                {/* 5. LEGAL ARCHIVE FOOTER */}
+                <div style={{ 
+                  display: "flex", 
+                  justifyContent: "space-between", 
+                  alignItems: "center", 
+                  borderTop: "1.5px solid #0f172a", 
+                  paddingTop: "3px", 
+                  fontSize: "8px", 
+                  color: "#475569", 
+                  fontWeight: "bold" 
+                }}>
+                  <span>ملف خدمة وسجل رسمي خاضع لأحكام قانون العمل المصري رقم 12 لسنة 2003 ولائحته التنفيذية وقانون حماية البيانات رقم 151 لسنة 2020</span>
+                  <span>(يحفظ بأرشيف شؤون العاملين بالإدارة العامة للشركة)</span>
                 </div>
 
               </div>
