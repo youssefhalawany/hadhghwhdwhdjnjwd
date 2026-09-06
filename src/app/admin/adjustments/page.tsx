@@ -4,11 +4,11 @@ import React, { useState, useEffect, useMemo } from "react";
 import { db, auth } from "@/lib/firebase";
 import { collection, query, orderBy, onSnapshot, addDoc, doc, updateDoc, where, limit, deleteDoc, getDocs, serverTimestamp } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
-import { Plus, Check, X, ShieldAlert, DollarSign, Calendar, Save, Trash2, Printer, Search, FileText, Coins, TrendingUp, Users, CalendarCheck, Scale, Sparkles, Building2, AlertCircle, ArrowUpRight } from "lucide-react";
+import { Plus, Check, X, ShieldAlert, DollarSign, Calendar, Save, Trash2, Printer, Search, FileText, Coins, TrendingUp, Users, CalendarCheck, Scale, Sparkles, Building2, AlertCircle, ArrowUpRight, CheckCircle2, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBranch } from "@/context/BranchContext";
-import QRCode from "qrcode";
+import { useLanguage } from "@/context/LanguageContext";
 
 function numberToArabicWords(num: number): string {
   if (num === 0) return "صفر";
@@ -54,13 +54,81 @@ function numberToArabicWords(num: number): string {
   return result;
 }
 
-export const loanCategoryLabels: Record<string, { label: string; icon: string; desc: string }> = {
-  medical: { label: "حالات طبية طارئة", icon: "🏥", desc: "عمليات، أدوية، طوارئ صحية" },
-  education: { label: "مصاريف دراسية وجامعية", icon: "🎓", desc: "أقساط مدارس، مستلزمات تعليمية" },
-  marriage: { label: "مناسبات زواج وعائلية", icon: "💍", desc: "زواج، ارتباط، التزامات عائلية" },
-  seasons: { label: "سلفة أعياد ومواسم", icon: "🌙", desc: "عيد الفطر، الأضحى، رمضان، المدارس" },
-  living: { label: "التزامات معيشية وإيجار", icon: "🏠", desc: "إيجار، فواتير، التزامات معيشية طارئة" },
-  other: { label: "سلفة عامة أخرى", icon: "📋", desc: "أسباب وظروف شخصية أخرى" },
+function numberToWordsEn(num: number): string {
+  if (num === 0) return "Zero";
+  const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+  const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+
+  function getBelow100(n: number): string {
+    if (n < 20) return ones[n];
+    const t = Math.floor(n / 10);
+    const o = n % 10;
+    return tens[t] + (o > 0 ? " " + ones[o] : "");
+  }
+
+  function getBelow1000(n: number): string {
+    const h = Math.floor(n / 100);
+    const rest = n % 100;
+    if (h === 0) return getBelow100(rest);
+    return ones[h] + " Hundred" + (rest > 0 ? " and " + getBelow100(rest) : "");
+  }
+
+  const thousands = Math.floor(num / 1000);
+  const remainder = num % 1000;
+  let result = "";
+  if (thousands > 0) {
+    result += getBelow1000(thousands) + " Thousand";
+  }
+  if (remainder > 0) {
+    if (result !== "") result += " ";
+    result += getBelow1000(remainder);
+  }
+  return result;
+}
+
+export const loanCategoryLabels: Record<string, { label: string; labelEn: string; icon: string; desc: string; descEn: string }> = {
+  medical: { 
+    label: "حالات طبية طارئة", 
+    labelEn: "Medical Emergency", 
+    icon: "🏥", 
+    desc: "عمليات، أدوية، طوارئ صحية", 
+    descEn: "Surgeries, medication & urgent healthcare" 
+  },
+  education: { 
+    label: "مصاريف دراسية وجامعية", 
+    labelEn: "Education & Tuition", 
+    icon: "🎓", 
+    desc: "أقساط مدارس، مستلزمات تعليمية", 
+    descEn: "Tuition fees, books & supplies" 
+  },
+  marriage: { 
+    label: "مناسبات زواج وعائلية", 
+    labelEn: "Marriage & Family Events", 
+    icon: "💍", 
+    desc: "زواج، ارتباط، التزامات عائلية", 
+    descEn: "Weddings, family milestones & commitments" 
+  },
+  seasons: { 
+    label: "سلفة أعياد ومواسم", 
+    labelEn: "Seasons & Holidays", 
+    icon: "🌙", 
+    desc: "عيد الفطر، الأضحى، رمضان، المدارس", 
+    descEn: "Eid Al-Fitr, Adha, Ramadan, back to school" 
+  },
+  living: { 
+    label: "التزامات معيشية وإيجار", 
+    labelEn: "Living & Housing Costs", 
+    icon: "🏠", 
+    desc: "إيجار، فواتير، التزامات معيشية طارئة", 
+    descEn: "Rent, bills & emergency living needs" 
+  },
+  other: { 
+    label: "سلفة عامة أخرى", 
+    labelEn: "General / Other Loan", 
+    icon: "📋", 
+    desc: "أسباب وظروف شخصية أخرى", 
+    descEn: "Other personal circumstances" 
+  },
 };
 
 export type AdjustmentRecord = {
@@ -72,9 +140,9 @@ export type AdjustmentRecord = {
   status: "pending" | "applied";
   createdAt: string | any;
   createdBy: string;
-  daysWorkedAtRequest?: number; // for loans
-  maxAllowedAmount?: number; // for loans
-  payrollId?: string; // set when applied
+  daysWorkedAtRequest?: number;
+  maxAllowedAmount?: number;
+  payrollId?: string;
   category?: string;
   installmentCount?: number;
   monthlyInstallment?: number;
@@ -82,6 +150,9 @@ export type AdjustmentRecord = {
 };
 
 export default function AdminAdjustmentsPage() {
+  const { language: lang } = useLanguage();
+  const isAr = lang === "ar";
+
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [currentUserEmail, setCurrentUserEmail] = useState("");
   
@@ -317,11 +388,11 @@ export default function AdminAdjustmentsPage() {
   }, [allSystemLoans]);
 
   const handleSave = async () => {
-    if (!selectedEmpId) return toast.error("اختر الموظف أولاً");
-    if (activeTab === "deduction" && addForm.amount <= 0) return toast.error("أدخل مبلغ الخصم");
-    if (activeTab === "loan" && addForm.daysWorked <= 0) return toast.error("أدخل عدد أيام العمل المحتسبة");
-    if (activeTab === "loan" && addForm.amount <= 0) return toast.error("أدخل مبلغ السلفة المطلوب");
-    if (!addForm.reason) return toast.error("أدخل سبب الطلب / التفاصيل");
+    if (!selectedEmpId) return toast.error(isAr ? "اختر الموظف أولاً" : "Please select an employee first");
+    if (activeTab === "deduction" && addForm.amount <= 0) return toast.error(isAr ? "أدخل مبلغ الخصم" : "Please enter deduction amount");
+    if (activeTab === "loan" && addForm.daysWorked <= 0) return toast.error(isAr ? "أدخل عدد أيام العمل المحتسبة" : "Please enter accrued days worked");
+    if (activeTab === "loan" && addForm.amount <= 0) return toast.error(isAr ? "أدخل مبلغ السلفة المطلوب" : "Please enter requested loan amount");
+    if (!addForm.reason) return toast.error(isAr ? "أدخل سبب الطلب / التفاصيل" : "Please enter request reason / details");
 
     try {
       if (activeTab === "loan") {
@@ -345,7 +416,8 @@ export default function AdminAdjustmentsPage() {
 
         const targetBranchId = selectedEmp?.storeId || currentBranch || "alamein4";
         const catLabel = loanCategoryLabels[loanCategory]?.label || "سلفة نقدية";
-        const finalReason = `${catLabel}${addForm.reason ? ` - ${addForm.reason}` : ""}`;
+        const catLabelEn = loanCategoryLabels[loanCategory]?.labelEn || "Cash Loan";
+        const finalReason = `${isAr ? catLabel : catLabelEn}${addForm.reason ? ` - ${addForm.reason}` : ""}`;
 
         // 1. Direct Safe Outflow & Multi-Month Master Loan in 'loans' collection
         const loanDocPayload = {
@@ -365,12 +437,12 @@ export default function AdminAdjustmentsPage() {
           category: loanCategory,
           categoryLabel: catLabel,
           reason: finalReason,
-          notes: addForm.reason || "سلفة راتب نقدية معتمدة عبر لوحة التعديلات",
+          notes: addForm.reason || (isAr ? "سلفة راتب نقدية معتمدة عبر لوحة التعديلات" : "Cash loan approved via adjustments portal"),
           date: new Date().toISOString().split("T")[0],
           month: new Date().toISOString().slice(0, 7),
           firstInstallmentMonth: schedule[0]?.month || new Date().toISOString().slice(0, 7),
           storeId: targetBranchId,
-          disbursedFrom: "خزينة الفرع (Safe)",
+          disbursedFrom: isAr ? "خزينة الفرع (Safe)" : "Branch Safe Cash",
           installments: schedule,
           repayments: [],
           type: "loan",
@@ -399,7 +471,7 @@ export default function AdminAdjustmentsPage() {
           maxAllowedAmount: maxAllowedLoan
         });
 
-        toast.success("تم اعتماد وصرف السلفة وتخصيص الأقساط الشهرية بنجاح!");
+        toast.success(isAr ? "تم اعتماد وصرف السلفة وتخصيص الأقساط الشهرية بنجاح!" : "Loan approved, disbursed from safe, and installment schedule created!");
       } else {
         const newAdj: AdjustmentRecord = {
           employeeId: selectedEmpId,
@@ -411,7 +483,7 @@ export default function AdminAdjustmentsPage() {
           createdBy: currentUserEmail
         };
         await addDoc(collection(db, "adjustments"), newAdj);
-        toast.success("تم تسجيل الخصم بنجاح");
+        toast.success(isAr ? "تم تسجيل الخصم بنجاح" : "Deduction recorded successfully");
       }
 
       setIsAdding(false);
@@ -419,192 +491,254 @@ export default function AdminAdjustmentsPage() {
       setSelectedEmpId("");
       setLoanInstallmentMonths(1);
     } catch (e: any) {
-      toast.error(e.message || "فشل الحفظ");
+      toast.error(e.message || (isAr ? "فشل الحفظ" : "Save failed"));
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("هل أنت متأكد من حذف هذا السجل المعلق؟")) {
+    if (confirm(isAr ? "هل أنت متأكد من حذف هذا السجل المعلق؟" : "Are you sure you want to delete this pending record?")) {
       await deleteDoc(doc(db, "adjustments", id));
-      toast.success("تم الحذف بنجاح");
+      toast.success(isAr ? "تم الحذف بنجاح" : "Successfully deleted");
     }
   };
 
   if (isAdmin === null) return <div className="p-10"><Skeleton className="h-64 w-full" /></div>;
-  if (isAdmin === false) return <div className="p-10 text-red-500">Access Denied. Admin only.</div>;
-
-  const filteredAdjustments = adjustments.filter(a => a.type === activeTab);
+  if (isAdmin === false) return <div className="p-10 text-red-500">{isAr ? "تم رفض الوصول. لوحة المسؤولين فقط." : "Access Denied. Admin only."}</div>;
 
   // -- PRINT HELPERS --
   const printEmp = printLoan ? employees.find(e => e.id === printLoan.employeeId) || {} : {};
   const printBranch = availableBranches.find(b => b.id === (printEmp.storeId || printLoan?.storeId));
-  const companyName = printBranch ? printBranch.name : "شركة ايه ان اتش للتجارة (ANH)";
-  const dateString = new Date().toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const companyName = printBranch ? printBranch.name : (isAr ? "شركة ايه ان اتش للتجارة (ANH)" : "ANH Trading & Distribution");
+  const dateString = new Date().toLocaleDateString(isAr ? 'ar-EG' : 'en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   return (
     <>
       {/* UI WRAPPER */}
-      <div className="p-4 md:p-8 max-w-7xl mx-auto min-h-screen pb-32 print:hidden space-y-8" dir="rtl">
+      <div className="p-4 md:p-8 max-w-7xl mx-auto min-h-screen pb-32 print:hidden space-y-8" dir={isAr ? "rtl" : "ltr"}>
       
         {/* HEADER */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2.5 bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 rounded-xl">
-                <Scale className="w-6 h-6" strokeWidth={2.5} />
+        <div className="relative overflow-hidden bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 text-white p-6 md:p-8 rounded-3xl shadow-xl border border-slate-800">
+          {/* Subtle decorative glow */}
+          <div className="absolute top-0 right-0 w-96 h-96 bg-rose-600/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
+          <div className="absolute bottom-0 left-0 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl pointer-events-none -ml-20 -mb-20"></div>
+          
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-gradient-to-br from-rose-500 to-rose-600 text-white rounded-2xl shadow-lg shadow-rose-500/30">
+                  <Scale className="w-7 h-7" strokeWidth={2.5} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wider uppercase bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                      {isAr ? "إدارة الموارد البشرية والمالية" : "HR & Payroll Governance"}
+                    </span>
+                    <span className="flex h-2 w-2 relative">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                  </div>
+                  <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight mt-1">
+                    {isAr ? "إدارة السلف والتسويات والاستقطاعات" : "Loans, Adjustments & Deductions"}
+                  </h1>
+                </div>
               </div>
-              <h1 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight">
-                إدارة السلف والتسويات والاستقطاعات
-              </h1>
+              <p className="text-slate-400 text-xs md:text-sm font-medium max-w-2xl">
+                {isAr 
+                  ? "نظام السلف المؤسسي المتوافق مع قانون العمل المصري (مادة 34) • تقسيط السلف • صرف مباشر من الخزينة • استقطاع آلي"
+                  : "Enterprise loan management compliant with Egyptian Labor Law (Art. 34) • Multi-month installments • Direct safe outflow • Automated payroll deductions"}
+              </p>
             </div>
-            <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">
-              نظام السلف المؤسسي المتوافق مع قانون العمل المصري (مادة 34) • تقسيط السلف • صرف مباشر من الخزينة • استقطاع آلي
-            </p>
+
+            {!isAdding && (
+              <button 
+                onClick={() => setIsAdding(true)}
+                className="group relative inline-flex items-center gap-2.5 px-6 py-3.5 bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-rose-600/30 hover:shadow-rose-600/50 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 self-start md:self-auto"
+              >
+                <Plus className="w-5 h-5 transition-transform group-hover:rotate-90 duration-300" />
+                <span>{isAr ? "تسجيل سلفة / خصم جديد" : "New Loan / Deduction"}</span>
+              </button>
+            )}
           </div>
-          {!isAdding && (
-            <button 
-              onClick={() => setIsAdding(true)}
-              className="bg-rose-600 hover:bg-rose-700 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm flex items-center gap-2 self-start md:self-auto"
-            >
-              <Plus className="w-5 h-5" /> تسجيل سلفة / خصم جديد
-            </button>
-          )}
         </div>
 
         {/* 🏢 BRANCH & COMPANY-WIDE LOAN RECOVERY FORECAST TELEMETRY */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
           {/* Card 1: Total Outstanding Loan Capital */}
-          <div className="bg-gradient-to-br from-rose-50 to-white dark:from-rose-950/20 dark:to-slate-900 border border-rose-100 dark:border-rose-900/40 rounded-2xl p-5 shadow-sm relative overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/5 rounded-full blur-2xl group-hover:bg-rose-500/10 transition-colors"></div>
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold text-rose-700 dark:text-rose-300 uppercase tracking-wider">
-                إجمالي السلف القائمة
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                {isAr ? "إجمالي السلف القائمة" : "Total Outstanding Loans"}
               </span>
-              <div className="p-2 bg-rose-100 dark:bg-rose-900/50 text-rose-600 rounded-xl">
+              <div className="p-2.5 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 rounded-xl border border-rose-100 dark:border-rose-900/40">
                 <Coins className="w-5 h-5" />
               </div>
             </div>
-            <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
-              EGP {loanTelemetry.totalOutstanding.toLocaleString()}
+            <div className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
+              <span className="text-sm font-bold text-rose-600 dark:text-rose-400 mr-1.5 font-sans">EGP</span>
+              {loanTelemetry.totalOutstanding.toLocaleString()}
             </div>
-            <div className="mt-2 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-medium">
-              <span>رأس مال السلف المتداول</span>
-              <span className="px-2 py-0.5 bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 rounded-full font-bold">
-                {loanTelemetry.activeLoansCount} سلفة سارية
+            <div className="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <span>{isAr ? "رأس مال السلف المتداول" : "Active Capital"}</span>
+              <span className="px-2 py-0.5 bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 rounded-full font-bold text-[11px]">
+                {isAr ? `${loanTelemetry.activeLoansCount} سلفة سارية` : `${loanTelemetry.activeLoansCount} active loans`}
               </span>
             </div>
           </div>
 
           {/* Card 2: Next Month Recovery Forecast */}
-          <div className="bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/20 dark:to-slate-900 border border-emerald-100 dark:border-emerald-900/40 rounded-2xl p-5 shadow-sm relative overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl group-hover:bg-emerald-500/10 transition-colors"></div>
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">
-                تحصيلات الشهر القادم
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                {isAr ? "تحصيلات الشهر القادم" : "Next Month Recovery"}
               </span>
-              <div className="p-2 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 rounded-xl">
+              <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-xl border border-emerald-100 dark:border-emerald-900/40">
                 <TrendingUp className="w-5 h-5" />
               </div>
             </div>
-            <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
-              EGP {loanTelemetry.nextMonthForecast.toLocaleString()}
+            <div className="text-2xl md:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-mono tracking-tight">
+              <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mr-1.5 font-sans">EGP</span>
+              {loanTelemetry.nextMonthForecast.toLocaleString()}
             </div>
-            <div className="mt-2 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-medium">
-              <span>توقع الاستقطاع من الرواتب</span>
-              <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 rounded-full font-bold">
-                دورة {loanTelemetry.nextMonthStr}
+            <div className="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <span>{isAr ? "توقع الاستقطاع من الرواتب" : "Forecasted Deduction"}</span>
+              <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 rounded-full font-bold text-[11px]">
+                {isAr ? `دورة ${loanTelemetry.nextMonthStr}` : `Cycle ${loanTelemetry.nextMonthStr}`}
               </span>
             </div>
           </div>
 
           {/* Card 3: Active Indebted Staff Count */}
-          <div className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/20 dark:to-slate-900 border border-blue-100 dark:border-blue-900/40 rounded-2xl p-5 shadow-sm relative overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl group-hover:bg-blue-500/10 transition-colors"></div>
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">
-                الموظفون المدينون بالسلف
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                {isAr ? "الموظفون المدينون بالسلف" : "Indebted Staff Count"}
               </span>
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/50 text-blue-600 rounded-xl">
+              <div className="p-2.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-xl border border-blue-100 dark:border-blue-900/40">
                 <Users className="w-5 h-5" />
               </div>
             </div>
-            <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
-              {loanTelemetry.activeIndebtedStaffCount} <span className="text-sm font-normal text-slate-500">موظفاً</span>
+            <div className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
+              {loanTelemetry.activeIndebtedStaffCount} <span className="text-sm font-normal text-slate-500">{isAr ? "موظفاً" : "employees"}</span>
             </div>
-            <div className="mt-2 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-medium">
-              <span>نسبة المدينين بالقوى العاملة</span>
+            <div className="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <span>{isAr ? "نسبة المدينين بالقوى العاملة" : "Staff Ratio"}</span>
               <span className="font-bold text-blue-600 dark:text-blue-400">
-                {employees.length > 0 ? Math.round((loanTelemetry.activeIndebtedStaffCount / employees.length) * 100) : 0}% من الطاقم
+                {employees.length > 0 ? Math.round((loanTelemetry.activeIndebtedStaffCount / employees.length) * 100) : 0}% {isAr ? "من الطاقم" : "of team"}
               </span>
             </div>
           </div>
 
           {/* Card 4: Cumulative Recovery Journey */}
-          <div className="bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/20 dark:to-slate-900 border border-purple-100 dark:border-purple-900/40 rounded-2xl p-5 shadow-sm relative overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full blur-2xl group-hover:bg-purple-500/10 transition-colors"></div>
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wider">
-                نسبة الاسترداد التراكمية
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                {isAr ? "نسبة الاسترداد التراكمية" : "Cumulative Recovery Rate"}
               </span>
-              <div className="p-2 bg-purple-100 dark:bg-purple-900/50 text-purple-600 rounded-xl">
+              <div className="p-2.5 bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 rounded-xl border border-purple-100 dark:border-purple-900/40">
                 <CalendarCheck className="w-5 h-5" />
               </div>
             </div>
-            <div className="text-2xl font-black text-purple-600 dark:text-purple-400 font-mono">
+            <div className="text-2xl md:text-3xl font-black text-purple-600 dark:text-purple-400 font-mono tracking-tight">
               {loanTelemetry.recoveryRate}%
             </div>
-            <div className="w-full bg-purple-100 dark:bg-purple-950/50 rounded-full h-2 mt-2 overflow-hidden">
+            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 mt-3 overflow-hidden">
               <div 
-                className="bg-purple-600 h-2 rounded-full transition-all duration-500" 
+                className="bg-gradient-to-r from-purple-500 to-purple-600 h-2 rounded-full transition-all duration-700" 
                 style={{ width: `${Math.min(100, Math.max(0, loanTelemetry.recoveryRate))}%` }}
               />
             </div>
-            <div className="mt-2 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-medium">
-              <span>تم تحصيل: EGP {loanTelemetry.totalSettled.toLocaleString()}</span>
+            <div className="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <span>{isAr ? `تم تحصيل: EGP ${loanTelemetry.totalSettled.toLocaleString()}` : `Recovered: EGP ${loanTelemetry.totalSettled.toLocaleString()}`}</span>
             </div>
           </div>
         </div>
 
         {/* TABS */}
-        <div className="flex gap-4 border-b border-slate-200 dark:border-slate-800">
+        <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100 dark:bg-slate-800/60 rounded-2xl border border-slate-200/60 dark:border-slate-800">
           <button
             onClick={() => setActiveTab("loan")}
-            className={`pb-4 px-4 font-bold text-sm transition-colors flex items-center gap-2 ${activeTab === "loan" ? "border-b-2 border-rose-600 text-rose-600" : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"}`}
+            className={`px-4 py-2.5 rounded-xl font-bold text-xs md:text-sm transition-all flex items-center gap-2 ${
+              activeTab === "loan" 
+                ? "bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-sm border border-slate-200/60 dark:border-slate-700" 
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
           >
             <Coins className="w-4 h-4" />
-            السلف النقدية والأقساط ({allAdjustments.filter(a => a.type === "loan").length})
+            <span>{isAr ? "السلف النقدية والأقساط" : "Cash Loans & Installments"}</span>
+            <span className={`px-2 py-0.5 rounded-full text-[11px] ${activeTab === "loan" ? "bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400 font-black" : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"}`}>
+              {allAdjustments.filter(a => a.type === "loan").length}
+            </span>
           </button>
+
           <button
             onClick={() => setActiveTab("deduction")}
-            className={`pb-4 px-4 font-bold text-sm transition-colors flex items-center gap-2 ${activeTab === "deduction" ? "border-b-2 border-rose-600 text-rose-600" : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"}`}
+            className={`px-4 py-2.5 rounded-xl font-bold text-xs md:text-sm transition-all flex items-center gap-2 ${
+              activeTab === "deduction" 
+                ? "bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-sm border border-slate-200/60 dark:border-slate-700" 
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
           >
             <FileText className="w-4 h-4" />
-            الاستقطاعات والجزاءات ({allAdjustments.filter(a => a.type === "deduction").length})
+            <span>{isAr ? "الاستقطاعات والجزاءات" : "Deductions & Penalties"}</span>
+            <span className={`px-2 py-0.5 rounded-full text-[11px] ${activeTab === "deduction" ? "bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400 font-black" : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"}`}>
+              {allAdjustments.filter(a => a.type === "deduction").length}
+            </span>
           </button>
+
           <button
             onClick={() => setActiveTab("history")}
-            className={`pb-4 px-4 font-bold text-sm transition-colors flex items-center gap-2 ${activeTab === "history" ? "border-b-2 border-slate-800 text-slate-800 dark:border-white dark:text-white" : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"}`}
+            className={`px-4 py-2.5 rounded-xl font-bold text-xs md:text-sm transition-all flex items-center gap-2 ${
+              activeTab === "history" 
+                ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm border border-slate-200/60 dark:border-slate-700" 
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
           >
             <Calendar className="w-4 h-4" />
-            سجل التسويات المنتهية
+            <span>{isAr ? "سجل التسويات المنتهية" : "Settled History"}</span>
           </button>
         </div>
 
         {/* ADD FORM */}
         {isAdding && activeTab !== "history" && (
-          <div className="bg-white dark:bg-slate-900 border border-rose-100 dark:border-rose-900/50 rounded-2xl p-6 shadow-xl shadow-rose-100/20 dark:shadow-none animate-in slide-in-from-top-4 space-y-6">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-xl animate-in slide-in-from-top-4 space-y-6">
             <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-4">
-              <h2 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                {activeTab === "deduction" ? "تسجيل استقطاع جديد" : "طلب واعتماد سلفة نقدية وتقسيط"}
-              </h2>
-              <button onClick={() => setIsAdding(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-500">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-rose-50 dark:bg-rose-950/50 text-rose-600 rounded-xl">
+                  <Plus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-800 dark:text-white">
+                    {activeTab === "deduction" 
+                      ? (isAr ? "تسجيل استقطاع جديد" : "Record New Deduction")
+                      : (isAr ? "طلب واعتماد سلفة نقدية وتقسيط" : "Request & Approve Cash Loan Installment")}
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    {isAr 
+                      ? "قم بتحديد الموظف والشروط والبيانات للاعتماد الفوري" 
+                      : "Specify employee, terms, and reasons for instant authorization"}
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsAdding(false)} 
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* RETAIL LOAN CATEGORIZATION */}
             {activeTab === "loan" && (
-              <div>
-                <label className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-2">
-                  🏥 تصنيف سبب السلفة (Retail Loan Category):
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                  {isAr ? "🏥 تصنيف سبب السلفة:" : "🏥 Loan Purpose / Category:"}
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
                   {Object.entries(loanCategoryLabels).map(([key, item]) => {
                     const isSelected = loanCategory === key;
                     return (
@@ -612,15 +746,20 @@ export default function AdminAdjustmentsPage() {
                         key={key}
                         type="button"
                         onClick={() => setLoanCategory(key)}
-                        className={`p-3 rounded-xl border text-right transition-all flex flex-col justify-between ${
+                        className={`p-3.5 rounded-2xl border text-start transition-all flex flex-col justify-between relative group ${
                           isSelected
-                            ? "bg-rose-50 dark:bg-rose-950/40 border-rose-600 text-rose-900 dark:text-rose-200 shadow-sm"
-                            : "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                            ? "bg-rose-50/80 dark:bg-rose-950/40 border-rose-500 text-rose-950 dark:text-rose-200 shadow-sm ring-2 ring-rose-500/20"
+                            : "bg-slate-50/60 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300"
                         }`}
                       >
-                        <div className="text-xl mb-1">{item.icon}</div>
-                        <div className="font-bold text-xs">{item.label}</div>
-                        <div className="text-[10px] text-slate-400 mt-1 line-clamp-1">{item.desc}</div>
+                        {isSelected && (
+                          <div className={`absolute top-2 ${isAr ? "left-2" : "right-2"}`}>
+                            <CheckCircle2 className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+                          </div>
+                        )}
+                        <div className="text-2xl mb-1.5">{item.icon}</div>
+                        <div className="font-bold text-xs leading-tight mb-1">{isAr ? item.label : item.labelEn}</div>
+                        <div className="text-[10px] text-slate-400 leading-normal line-clamp-2">{isAr ? item.desc : item.descEn}</div>
                       </button>
                     );
                   })}
@@ -628,15 +767,17 @@ export default function AdminAdjustmentsPage() {
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">الموظف المستفيد</label>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  {isAr ? "الموظف المستفيد" : "Beneficiary Employee"}
+                </label>
                 <select 
                   value={selectedEmpId}
                   onChange={e => setSelectedEmpId(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-rose-500 outline-none text-sm font-bold"
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-rose-500 outline-none text-sm font-bold"
                 >
-                  <option value="">اختر الموظف...</option>
+                  <option value="">{isAr ? "اختر الموظف..." : "Select employee..."}</option>
                   {employees.map(e => (
                     <option key={e.id} value={e.id}>{e.name} ({e.position})</option>
                   ))}
@@ -645,32 +786,50 @@ export default function AdminAdjustmentsPage() {
 
               {selectedEmp && activeTab === "loan" && (
                 <>
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">الراتب الأساسي الشهري</label>
-                    <div className="w-full p-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono text-slate-700 dark:text-slate-300 font-bold">
-                      EGP {(Number(selectedEmp.baseSalary) || Number(selectedEmp.salary) || 3000).toLocaleString()}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      {isAr ? "الراتب الأساسي الشهري" : "Monthly Base Salary"}
+                    </label>
+                    <div className="w-full p-3 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono text-slate-700 dark:text-slate-300 font-bold flex items-center justify-between">
+                      <span>EGP {(Number(selectedEmp.baseSalary) || Number(selectedEmp.salary) || 3000).toLocaleString()}</span>
+                      <span className="text-xs font-sans text-slate-400 font-normal">{isAr ? "مسجل بالنظام" : "On File"}</span>
                     </div>
                   </div>
                   
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">أيام العمل المحتسبة حتى الآن</label>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      {isAr ? "أيام العمل المحتسبة حتى الآن" : "Days Worked Accrued to Date"}
+                    </label>
                     <input 
                       type="number" 
                       value={addForm.daysWorked || ""}
                       onChange={e => setAddForm({...addForm, daysWorked: Number(e.target.value)})}
-                      className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-bold"
-                      placeholder="مثال: 15"
+                      className="w-full p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-bold focus:ring-2 focus:ring-rose-500 outline-none"
+                      placeholder={isAr ? "مثال: 15" : "e.g. 15"}
                     />
                   </div>
 
                   {addForm.daysWorked > 0 && (
-                    <div className="col-span-full bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50 rounded-xl p-4 flex gap-4 items-center">
-                      <ShieldAlert className="w-8 h-8 text-emerald-600 flex-shrink-0" />
+                    <div className="col-span-full bg-emerald-50/80 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/60 rounded-2xl p-4 flex gap-4 items-center">
+                      <div className="p-2.5 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 rounded-xl flex-shrink-0">
+                        <ShieldAlert className="w-6 h-6" />
+                      </div>
                       <div className="text-sm">
-                        <h4 className="text-emerald-900 dark:text-emerald-300 font-bold">قاعدة سقف السلفة (المادة 34 من قانون العمل رقم 12 لسنة 2003)</h4>
-                        <p className="text-emerald-700 dark:text-emerald-400 mt-0.5">
-                          معدل الأجر اليومي: <strong>EGP {dailyRate.toFixed(2)}</strong> &times; {addForm.daysWorked} يوماً = مستحق مكتسب قدره <strong>EGP {(dailyRate * addForm.daysWorked).toFixed(2)}</strong>.<br/>
-                          الحد الأقصى المسموح لصرفه فورياً (50%): <strong className="underline font-black text-base">EGP {maxAllowedLoan.toFixed(2)}</strong>
+                        <h4 className="text-emerald-900 dark:text-emerald-300 font-bold">
+                          {isAr ? "قاعدة سقف السلفة (المادة 34 من قانون العمل رقم 12 لسنة 2003)" : "Loan Ceiling Rule (Article 34 of Egyptian Labor Law 12/2003)"}
+                        </h4>
+                        <p className="text-emerald-700 dark:text-emerald-400 text-xs mt-0.5 leading-relaxed">
+                          {isAr ? (
+                            <>
+                              معدل الأجر اليومي: <strong>EGP {dailyRate.toFixed(2)}</strong> &times; {addForm.daysWorked} يوماً = مستحق مكتسب قدره <strong>EGP {(dailyRate * addForm.daysWorked).toFixed(2)}</strong>.<br/>
+                              الحد الأقصى المسموح لصرفه فورياً (50%): <strong className="underline font-black text-sm">EGP {maxAllowedLoan.toFixed(2)}</strong>
+                            </>
+                          ) : (
+                            <>
+                              Daily wage rate: <strong>EGP {dailyRate.toFixed(2)}</strong> &times; {addForm.daysWorked} days = accrued earned wage of <strong>EGP {(dailyRate * addForm.daysWorked).toFixed(2)}</strong>.<br/>
+                              Statutory maximum immediate disbursement (50% cap): <strong className="underline font-black text-sm">EGP {maxAllowedLoan.toFixed(2)}</strong>
+                            </>
+                          )}
                         </p>
                       </div>
                     </div>
@@ -680,50 +839,54 @@ export default function AdminAdjustmentsPage() {
 
               {selectedEmp && (
                 <>
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      {activeTab === "loan" ? "المبلغ المطلوب" : "مبلغ الاستقطاع"}
+                      {activeTab === "loan" ? (isAr ? "المبلغ المطلوب" : "Requested Loan Amount") : (isAr ? "مبلغ الاستقطاع" : "Deduction Amount")}
                     </label>
                     <div className="relative">
                       <input 
                         type="number" 
                         value={addForm.amount || ""}
                         onChange={e => setAddForm({...addForm, amount: Number(e.target.value)})}
-                        className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-bold pl-12"
+                        className={`w-full p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-bold focus:ring-2 focus:ring-rose-500 outline-none ${isAr ? "pl-14" : "pr-14"}`}
                         placeholder="0.00"
                       />
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">EGP</span>
+                      <span className={`absolute ${isAr ? "left-3" : "right-3"} top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold`}>EGP</span>
                     </div>
                   </div>
 
                   {/* INSTALLMENT DURATION SELECTOR */}
                   {activeTab === "loan" && (
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">خطة التقسيط (أشهر السداد)</label>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                        {isAr ? "خطة التقسيط (أشهر السداد)" : "Installment Plan (Repayment Months)"}
+                      </label>
                       <select
                         value={loanInstallmentMonths}
                         onChange={e => setLoanInstallmentMonths(Number(e.target.value))}
-                        className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-bold focus:ring-2 focus:ring-rose-500 outline-none"
+                        className="w-full p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-bold focus:ring-2 focus:ring-rose-500 outline-none"
                       >
-                        <option value={1}>شهر واحد (استقطاع كامل بالراتب القادم)</option>
-                        <option value={2}>شهرين (قسطين متساويين)</option>
-                        <option value={3}>3 أشهر (3 أقساط شهرية)</option>
-                        <option value={4}>4 أشهر (4 أقساط شهرية)</option>
-                        <option value={6}>6 أشهر (نصف سنة)</option>
-                        <option value={10}>10 أشهر (خطة مدرسية/موسمية)</option>
-                        <option value={12}>12 شهراً (سنة كاملة)</option>
+                        <option value={1}>{isAr ? "شهر واحد (استقطاع كامل بالراتب القادم)" : "1 Month (Full deduction on next payroll)"}</option>
+                        <option value={2}>{isAr ? "شهرين (قسطين متساويين)" : "2 Months (2 equal installments)"}</option>
+                        <option value={3}>{isAr ? "3 أشهر (3 أقساط شهرية)" : "3 Months (3 monthly installments)"}</option>
+                        <option value={4}>{isAr ? "4 أشهر (4 أقساط شهرية)" : "4 Months (4 monthly installments)"}</option>
+                        <option value={6}>{isAr ? "6 أشهر (نصف سنة)" : "6 Months (Half-year plan)"}</option>
+                        <option value={10}>{isAr ? "10 أشهر (خطة مدرسية/موسمية)" : "10 Months (Academic/Seasonal plan)"}</option>
+                        <option value={12}>{isAr ? "12 شهراً (سنة كاملة)" : "12 Months (Full year plan)"}</option>
                       </select>
                     </div>
                   )}
 
-                  <div className="space-y-1 md:col-span-2 lg:col-span-1">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">السبب / البيان التفصيلي</label>
+                  <div className="space-y-1.5 md:col-span-2 lg:col-span-1">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      {isAr ? "السبب / البيان التفصيلي" : "Reason / Detailed Description"}
+                    </label>
                     <input 
                       type="text" 
                       value={addForm.reason}
                       onChange={e => setAddForm({...addForm, reason: e.target.value})}
-                      className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm"
-                      placeholder={activeTab === "loan" ? "مثال: ظرف عائلي طارئ / عملية جراحية" : "مثال: إتلاف عهدة / غياب بدون إذن"}
+                      className="w-full p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-rose-500 outline-none"
+                      placeholder={activeTab === "loan" ? (isAr ? "مثال: ظرف عائلي طارئ / عملية جراحية" : "e.g. Urgent medical expense / family emergency") : (isAr ? "مثال: إتلاف عهدة / غياب بدون إذن" : "e.g. Broken merchandise / unexcused absence")}
                     />
                   </div>
                 </>
@@ -732,26 +895,41 @@ export default function AdminAdjustmentsPage() {
             
             {/* TAFQEET & INSTALLMENT PREVIEW */}
             {selectedEmp && activeTab === "loan" && addForm.amount > 0 && (
-              <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm">
-                  <div className="text-slate-600 dark:text-slate-300">
-                    المبلغ المعتمد بالحروف: <strong className="text-rose-600 dark:text-rose-400">فقط وقدره {numberToArabicWords(finalApprovedLoan)} جنيهاً مصرياً لا غير</strong>
+              <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 space-y-2.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm">
+                  <div className="text-slate-700 dark:text-slate-300">
+                    <span className="font-medium text-slate-500">{isAr ? "المبلغ المعتمد بالحروف: " : "Approved in Words: "}</span>
+                    <strong className="text-rose-600 dark:text-rose-400">
+                      {isAr 
+                        ? `فقط وقدره ${numberToArabicWords(finalApprovedLoan)} جنيهاً مصرياً لا غير`
+                        : `Only ${numberToWordsEn(finalApprovedLoan)} Egyptian Pounds`}
+                    </strong>
                   </div>
-                  <div className="font-bold text-slate-800 dark:text-slate-100 font-mono">
-                    القسط الشهري: <span className="text-emerald-600 dark:text-emerald-400">EGP {Math.round(finalApprovedLoan / (loanInstallmentMonths || 1)).toLocaleString()} / شهر</span> ({loanInstallmentMonths} أشهر)
+                  <div className="font-bold text-slate-800 dark:text-slate-100 font-mono bg-white dark:bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800">
+                    <span className="text-slate-500 font-sans text-xs mr-1">{isAr ? "القسط الشهري:" : "Monthly Installment:"}</span>
+                    <span className="text-emerald-600 dark:text-emerald-400">EGP {Math.round(finalApprovedLoan / (loanInstallmentMonths || 1)).toLocaleString()}</span>
+                    <span className="text-slate-400 font-sans text-xs ml-1 font-normal">({loanInstallmentMonths} {isAr ? "أشهر" : "months"})</span>
                   </div>
                 </div>
-                <div className="text-xs text-slate-500 flex items-center gap-1.5 pt-1 border-t border-slate-200 dark:border-slate-700">
-                  <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                  يتم قيد السلفة مباشرة كحركة خروج نقدية من <strong>خزينة الفرع (Safe)</strong> وتخصم الأقساط آلياً عبر مسيرات الرواتب.
+                <div className="text-xs text-slate-500 flex items-center gap-2 pt-2 border-t border-slate-200 dark:border-slate-700/60">
+                  <Building2 className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                  <span>
+                    {isAr 
+                      ? "يتم قيد السلفة مباشرة كحركة خروج نقدية من خزينة الفرع (Safe) وتخصم الأقساط آلياً عبر مسيرات الرواتب."
+                      : "The loan is recorded immediately as a cash disbursement from the Branch Safe and deducted automatically across monthly payroll runs."}
+                  </span>
                 </div>
               </div>
             )}
 
             {selectedEmp && activeTab === "loan" && addForm.amount > maxAllowedLoan && (
-              <div className="p-3 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-400 rounded-lg text-sm border border-amber-200 dark:border-amber-800/50 font-medium flex items-center gap-2">
-                <ShieldAlert className="w-5 h-5 flex-shrink-0" />
-                تنبيه: المبلغ المطلوب (EGP {addForm.amount}) يتجاوز سقف العمل المكتسب (EGP {maxAllowedLoan.toFixed(2)}). سيتم اعتماد الحد الأقصى المسموح تلقائياً حفاظاً على السلامة القانونية.
+              <div className="p-3.5 bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-300 rounded-2xl text-xs md:text-sm border border-amber-200 dark:border-amber-800/50 font-medium flex items-center gap-3">
+                <ShieldAlert className="w-5 h-5 flex-shrink-0 text-amber-600" />
+                <span>
+                  {isAr 
+                    ? `تنبيه: المبلغ المطلوب (EGP ${addForm.amount}) يتجاوز سقف العمل المكتسب (EGP ${maxAllowedLoan.toFixed(2)}). سيتم اعتماد الحد الأقصى المسموح تلقائياً حفاظاً على السلامة القانونية.`
+                    : `Notice: The requested amount (EGP ${addForm.amount}) exceeds accrued earned wage cap (EGP ${maxAllowedLoan.toFixed(2)}). Statutory ceiling will be enforced automatically.`}
+                </span>
               </div>
             )}
 
@@ -759,122 +937,162 @@ export default function AdminAdjustmentsPage() {
               <button
                 type="button"
                 onClick={() => setIsAdding(false)}
-                className="px-5 py-2.5 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium text-sm transition-colors"
+                className="px-5 py-2.5 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold text-sm transition-colors"
               >
-                إلغاء
+                {isAr ? "إلغاء" : "Cancel"}
               </button>
               <button 
                 onClick={handleSave}
-                className="bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-colors shadow-sm"
+                className="bg-slate-900 hover:bg-slate-800 dark:bg-rose-600 dark:hover:bg-rose-700 text-white px-6 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 transition-all shadow-md active:scale-95"
               >
-                <Save className="w-5 h-5" /> حفظ واعتماد {activeTab === "deduction" ? "الاستقطاع" : "السلفة وصرفها"}
+                <Save className="w-4 h-4" />
+                <span>
+                  {isAr 
+                    ? `حفظ واعتماد ${activeTab === "deduction" ? "الاستقطاع" : "السلفة وصرفها"}`
+                    : `Save & Approve ${activeTab === "deduction" ? "Deduction" : "Loan Disbursement"}`}
+                </span>
               </button>
             </div>
           </div>
         )}
 
-      {/* LIST */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
-        <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20">
-          <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
-            {activeTab === "history" ? (
-              <span className="w-2 h-2 rounded-full bg-slate-400"></span>
-            ) : (
-              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
-            )}
-            {activeTab === "history" ? "Settled Adjustments" : `Pending ${activeTab === "deduction" ? "Deductions" : "Loans"}`}
-          </h3>
-          <p className="text-xs text-slate-500 mt-1">
-            {activeTab === "history" 
-              ? "These have been successfully applied to past payroll runs." 
-              : "These will automatically apply to the employee's next payroll run."}
-          </p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50/50 dark:bg-slate-800/20 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800">
-                <th className="px-4 py-3 font-bold">Date</th>
-                <th className="px-4 py-3 font-bold">Employee</th>
-                <th className="px-4 py-3 font-bold">Type / Reason</th>
-                <th className="px-4 py-3 font-bold">Amount</th>
-                <th className="px-4 py-3 font-bold text-right">{activeTab === "history" ? "Status" : "Actions"}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {activeTab === "history" && isFetchingHistory ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-slate-400 dark:text-slate-500 font-medium">
-                    Loading history...
-                  </td>
+        {/* LIST / TABLE */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm">
+          <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2 text-base">
+                {activeTab === "history" ? (
+                  <span className="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+                ) : (
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span>
+                )}
+                {activeTab === "history" 
+                  ? (isAr ? "سجل التسويات المعتمدة والمنتهية" : "Settled Adjustments & Deductions") 
+                  : (activeTab === "deduction" 
+                      ? (isAr ? "الاستقطاعات والجزاءات المعلقة" : "Pending Deductions & Penalties") 
+                      : (isAr ? "السلف النقدية المعلقة والمجدولة" : "Pending & Active Cash Loans"))}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                {activeTab === "history" 
+                  ? (isAr ? "تم تطبيق هذه التسويات بنجاح على مسيرات الرواتب السابقة." : "These adjustments have been successfully applied to past payroll runs.") 
+                  : (isAr ? "سيتم تطبيق هذه البنود آلياً على مسير الرواتب القادم للموظف." : "These records will automatically apply to the employee's next payroll run.")}
+              </p>
+            </div>
+            
+            <div className="text-xs text-slate-400 font-mono">
+              {activeTab === "history" ? `${historyAdjustments.length} ${isAr ? "سجل" : "records"}` : `${allAdjustments.filter(a => a.type === activeTab).length} ${isAr ? "معلق" : "pending"}`}
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className={`w-full ${isAr ? "text-right" : "text-left"} border-collapse`}>
+              <thead>
+                <tr className="bg-slate-50/80 dark:bg-slate-800/50 text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800">
+                  <th className="px-5 py-3.5 font-bold">{isAr ? "التاريخ" : "Date"}</th>
+                  <th className="px-5 py-3.5 font-bold">{isAr ? "الموظف" : "Employee"}</th>
+                  <th className="px-5 py-3.5 font-bold">{isAr ? "النوع / البيان" : "Type / Reason"}</th>
+                  <th className="px-5 py-3.5 font-bold">{isAr ? "المبلغ" : "Amount"}</th>
+                  <th className={`px-5 py-3.5 font-bold ${isAr ? "text-left" : "text-right"}`}>{activeTab === "history" ? (isAr ? "الحالة" : "Status") : (isAr ? "الإجراءات" : "Actions")}</th>
                 </tr>
-              ) : activeTab === "history" && historyAdjustments.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-slate-400 dark:text-slate-500 font-medium">
-                    No settled history found.
-                  </td>
-                </tr>
-              ) : activeTab !== "history" && allAdjustments.filter(a => a.type === activeTab).length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-slate-400 dark:text-slate-500 font-medium">
-                    No pending {activeTab} found.
-                  </td>
-                </tr>
-              ) : (
-                (activeTab === "history" ? historyAdjustments : allAdjustments.filter(a => a.type === activeTab)).map((adj) => {
-                  const emp = employees.find(e => e.id === adj.employeeId);
-                  return (
-                  <tr key={adj.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                    <td className="px-4 py-3 text-slate-500">{new Date(adj.createdAt).toLocaleDateString()}</td>
-                    <td className="px-4 py-3 font-medium text-slate-800 dark:text-white">{emp?.name || "Unknown"}</td>
-                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400 max-w-xs truncate">
-                      {activeTab === "history" && <span className="font-bold text-slate-800 dark:text-slate-300 mr-2 uppercase text-xs">{adj.type}:</span>}
-                      {adj.reason}
-                    </td>
-                    <td className="px-4 py-3 font-bold text-slate-800 dark:text-white">EGP {adj.amount.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right flex justify-end gap-2">
-                      {activeTab === "history" ? (
-                        <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 px-2 py-1 rounded-md text-xs font-bold">
-                          Settled
-                        </span>
-                      ) : (
-                        <>
-                          {activeTab === "loan" && (
-                            <button 
-                              onClick={() => {
-                                const matchingSysLoan = allSystemLoans.find(l => 
-                                  l.id === (adj as any).loanDocId || 
-                                  (l.employeeId === adj.employeeId && Math.abs((l.approved || l.amount) - adj.amount) < 0.1)
-                                );
-                                setPrintLoan(matchingSysLoan || adj);
-                                setTimeout(() => window.print(), 150);
-                              }}
-                              className="p-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg transition-colors flex items-center gap-1 font-bold text-xs"
-                              title="طباعة إقرار وتفويض السلفة الرسمي (A4)"
-                            >
-                              <Printer className="w-4 h-4" />
-                              <span className="hidden sm:inline">إقرار وتفويض (A4)</span>
-                            </button>
-                          )}
-                          {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
-                            <button 
-                              onClick={() => handleDelete(adj.id!)}
-                              className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-colors"
-                              title="حذف"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </>
-                      )}
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                {activeTab === "history" && isFetchingHistory ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-12 text-center text-slate-400 dark:text-slate-500 font-medium text-sm">
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
+                        <span>{isAr ? "جاري تحميل السجل..." : "Loading history..."}</span>
+                      </div>
                     </td>
                   </tr>
-                );
-              }))}
-            </tbody>
-          </table>
+                ) : activeTab === "history" && historyAdjustments.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-12 text-center text-slate-400 dark:text-slate-500 font-medium text-sm">
+                      {isAr ? "لا توجد تسويات منتهية سابقة." : "No settled history found."}
+                    </td>
+                  </tr>
+                ) : activeTab !== "history" && allAdjustments.filter(a => a.type === activeTab).length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-12 text-center text-slate-400 dark:text-slate-500 font-medium text-sm">
+                      {isAr 
+                        ? `لا توجد ${activeTab === "deduction" ? "استقطاعات" : "سلف"} معلقة حالياً.` 
+                        : `No pending ${activeTab} records found.`}
+                    </td>
+                  </tr>
+                ) : (
+                  (activeTab === "history" ? historyAdjustments : allAdjustments.filter(a => a.type === activeTab)).map((adj) => {
+                    const emp = employees.find(e => e.id === adj.employeeId);
+                    return (
+                    <tr key={adj.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors">
+                      <td className="px-5 py-4 text-xs font-mono text-slate-500">{new Date(adj.createdAt).toLocaleDateString(isAr ? 'ar-EG' : 'en-US')}</td>
+                      <td className="px-5 py-4 font-bold text-sm text-slate-800 dark:text-white">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center justify-center">
+                            {(emp?.name || "U")[0]}
+                          </div>
+                          <span>{emp?.name || (isAr ? "موظف غير معروف" : "Unknown Employee")}</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 text-xs text-slate-600 dark:text-slate-300 max-w-xs">
+                        <div className="flex items-center gap-1.5">
+                          {activeTab === "history" && (
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${adj.type === "loan" ? "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300" : "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300"}`}>
+                              {adj.type}
+                            </span>
+                          )}
+                          <span className="truncate">{adj.reason}</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 font-black text-sm text-slate-900 dark:text-white font-mono">
+                        <span className="text-xs text-rose-600 font-sans mr-1">EGP</span>
+                        {adj.amount.toLocaleString()}
+                      </td>
+                      <td className={`px-5 py-4 ${isAr ? "text-left" : "text-right"}`}>
+                        <div className={`flex items-center gap-2 ${isAr ? "justify-start" : "justify-end"}`}>
+                          {activeTab === "history" ? (
+                            <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 px-2.5 py-1 rounded-full text-xs font-bold border border-emerald-200 dark:border-emerald-800">
+                              <Check className="w-3 h-3" />
+                              <span>{isAr ? "تمت التسوية" : "Settled"}</span>
+                            </span>
+                          ) : (
+                            <>
+                              {activeTab === "loan" && (
+                                <button 
+                                  onClick={() => {
+                                    const matchingSysLoan = allSystemLoans.find(l => 
+                                      l.id === (adj as any).loanDocId || 
+                                      (l.employeeId === adj.employeeId && Math.abs((l.approved || l.amount) - adj.amount) < 0.1)
+                                    );
+                                    setPrintLoan(matchingSysLoan || adj);
+                                    setTimeout(() => window.print(), 150);
+                                  }}
+                                  className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 dark:text-emerald-400 rounded-xl transition-all flex items-center gap-1.5 font-bold text-xs border border-emerald-200 dark:border-emerald-800"
+                                  title={isAr ? "طباعة إقرار وتفويض السلفة الرسمي (A4)" : "Print official A4 loan agreement"}
+                                >
+                                  <Printer className="w-3.5 h-3.5" />
+                                  <span className="hidden sm:inline">{isAr ? "إقرار وتفويض (A4)" : "A4 Agreement"}</span>
+                                </button>
+                              )}
+                              {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
+                                <button 
+                                  onClick={() => handleDelete(adj.id!)}
+                                  className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-colors border border-transparent hover:border-rose-200 dark:hover:border-rose-900"
+                                  title={isAr ? "حذف السجل المعلق" : "Delete pending record"}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                }))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
       </div> {/* End UI wrapper */}
 
       {/* ⚖️ 100% LEGAL EGYPTIAN LOAN AGREEMENT & DEDUCTION AUTHORIZATION (ARTICLE 34 LAW 12/2003) */}
@@ -939,9 +1157,9 @@ export default function AdminAdjustmentsPage() {
 
                   {/* Left: Metadata & Branch Details */}
                   <div style={{ textAlign: "left", fontSize: "9.5px", lineHeight: "1.5", color: "#1e293b", fontFamily: "monospace" }}>
-                    <div><strong style={{ fontFamily: "'Cairo', sans-serif" }}>رقم السلفة:</strong> <span style={{ fontWeight: "bold", color: "#1e3a8a", fontSize: "11px" }}>LN-{(printLoan.id || "NEW").slice(-6).toUpperCase()}</span></div>
+                    <div><strong style={{ fontFamily: "'Cairo', sans-serif" }}>رقم السلفة / Ref:</strong> <span style={{ fontWeight: "bold", color: "#1e3a8a", fontSize: "11px" }}>LN-{(printLoan.id || "NEW").slice(-6).toUpperCase()}</span></div>
                     <div><strong style={{ fontFamily: "'Cairo', sans-serif" }}>تاريخ التحرير:</strong> {dateString}</div>
-                    <div><strong style={{ fontFamily: "'Cairo', sans-serif" }}>الفرع:</strong> {companyName}</div>
+                    <div><strong style={{ fontFamily: "'Cairo', sans-serif" }}>الفرع / Branch:</strong> {companyName}</div>
                     <div><strong style={{ fontFamily: "'Cairo', sans-serif" }}>جهة الصرف:</strong> خزينة الفرع (Safe)</div>
                   </div>
                 </div>
@@ -949,7 +1167,7 @@ export default function AdminAdjustmentsPage() {
                 {/* 2. SECTION 1: EMPLOYEE & EMPLOYER IDENTIFICATION */}
                 <div style={{ marginBottom: "6px" }}>
                   <div style={{ background: "#0f172a", color: "#fff", fontSize: "10px", fontWeight: "bold", padding: "2.5px 8px", borderRadius: "4px 4px 0 0", display: "flex", justifyContent: "space-between" }}>
-                    <span>أولاً: بيانات العامل المقترض والجهة المانحة</span>
+                    <span>أولاً: بيانات العامل المقترض والجهة المانحة (Borrower & Employer Details)</span>
                     <span>عقد ملزم للطرفين</span>
                   </div>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9.5px", background: "#f8fafc" }}>
@@ -1004,7 +1222,7 @@ export default function AdminAdjustmentsPage() {
                 {/* 3. SECTION 2: LOAN FINANCIAL DETAILS & TAFQEET */}
                 <div style={{ marginBottom: "6px" }}>
                   <div style={{ background: "#047857", color: "#fff", fontSize: "10px", fontWeight: "bold", padding: "2.5px 8px", borderRadius: "4px 4px 0 0", display: "flex", justifyContent: "space-between" }}>
-                    <span>ثانياً: تفاصيل السلفة المعتمدة والتفقيط المالي القانوني</span>
+                    <span>ثانياً: تفاصيل السلفة المعتمدة والتفقيط المالي القانوني (Approved Loan Terms)</span>
                     <span>المبالغ بالجنيه المصري (EGP)</span>
                   </div>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9.5px", background: "#f8fafc" }}>
@@ -1016,13 +1234,13 @@ export default function AdminAdjustmentsPage() {
                         </td>
                         <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", width: "20%", background: "#f1f5f9", fontWeight: "bold" }}>مدة ونظام التقسيط:</td>
                         <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", width: "30%", fontWeight: "bold" }}>
-                          {instCount} قسط/أقساط شهرية متتالية
+                          {instCount} قسط/أقساط شهرية متتالية ({instCount} Months)
                         </td>
                       </tr>
                       <tr>
                         <td style={{ border: "1px solid #cbd5e1", padding: "4px 6px", background: "#f1f5f9", fontWeight: "bold" }}>التفقيط المالي الرسمي:</td>
                         <td colSpan={3} style={{ border: "1px solid #cbd5e1", padding: "4px 6px", fontWeight: "bold", color: "#1e293b", fontSize: "10px" }}>
-                          فقط وقدره: <strong style={{ color: "#047857" }}>{numberToArabicWords(loanAmt)} جنيهاً مصرياً لا غير</strong>.
+                          فقط وقدره: <strong style={{ color: "#047857" }}>{numberToArabicWords(loanAmt)} جنيهاً مصرياً لا غير</strong> ({numberToWordsEn(loanAmt)} Egyptian Pounds).
                         </td>
                       </tr>
                       <tr>
@@ -1048,7 +1266,7 @@ export default function AdminAdjustmentsPage() {
                 {/* 4. SECTION 3: ITEMIZED INSTALLMENT SCHEDULE GRID */}
                 <div style={{ marginBottom: "6px" }}>
                   <div style={{ background: "#334155", color: "#fff", fontSize: "9.5px", fontWeight: "bold", padding: "2px 8px", borderRadius: "4px 4px 0 0", display: "flex", justifyContent: "space-between" }}>
-                    <span>ثالثاً: جدول استحقاق واستقطاع الأقساط الشهرية من الراتب</span>
+                    <span>ثالثاً: جدول استحقاق واستقطاع الأقساط الشهرية من الراتب (Installment Recovery Schedule)</span>
                     <span>سقف الخصم القانوني: لا يجاوز 50% من الأجر</span>
                   </div>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9px", textAlign: "center" }}>
