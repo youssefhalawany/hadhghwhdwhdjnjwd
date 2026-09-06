@@ -50,6 +50,7 @@ function numberToArabicWords(num: number): string {
 import React, { useState, useEffect, useMemo } from "react";
 import { TiltCard } from "@/components/MobileUX/TiltCard";
 import { dispatchNotificationSystem } from "@/lib/notifications";
+import { notifyFinancialsUpdated } from "@/lib/financial-sync";
 import { PullToRefresh } from "@/components/MobileUX/PullToRefresh";
 import { db, auth, storage, dbService } from "@/lib/firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -874,6 +875,7 @@ export default function PaymentsRedesignPage() {
       };
 
       const docRef = await addDoc(collection(db, "cash_payments"), newPayment);
+      notifyFinancialsUpdated(currentBranch);
 
       // Dispatch Universal System Notification
       dispatchNotificationSystem({
@@ -954,6 +956,7 @@ export default function PaymentsRedesignPage() {
     try {
       const paymentItem = payments.find(p => p.id === id);
       await deleteDoc(doc(db, "cash_payments", id));
+      notifyFinancialsUpdated(currentBranch);
       setPayments(payments.filter(p => p.id !== id));
 
       // Cascade delete from credit_payments and update parent credits document if linked

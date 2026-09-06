@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBranch } from "@/context/BranchContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { notifyFinancialsUpdated } from "@/lib/financial-sync";
 
 function numberToArabicWords(num: number): string {
   if (num === 0) return "صفر";
@@ -579,6 +580,7 @@ export default function AdminAdjustmentsPage() {
         };
 
         await addDoc(collection(db, "loans"), loanDocPayload);
+        notifyFinancialsUpdated(targetBranchId);
 
         toast.success(isAr ? "تم اعتماد وصرف السلفة وتخصيص الأقساط الشهرية بنجاح!" : "Loan approved, disbursed from safe, and installment schedule created!");
       } else {
@@ -695,7 +697,7 @@ export default function AdminAdjustmentsPage() {
         updatedAt: serverTimestamp()
       });
 
-      // Update cached safe balance immediately in localStorage so changes reflect instantly
+      // Update cached safe balance immediately and broadcast to all pages
       try {
         const cachedSafe = localStorage.getItem(`cached_safe_balance_${targetBranchId}`);
         if (cachedSafe !== null) {
@@ -703,6 +705,7 @@ export default function AdminAdjustmentsPage() {
           localStorage.setItem(`cached_safe_balance_${targetBranchId}`, updatedSafe.toString());
         }
       } catch (_) {}
+      notifyFinancialsUpdated(targetBranchId);
 
       toast.success(isAr 
         ? `تم توريد مبلغ ${repayAmount.toLocaleString()} ج.م إلى الخزينة بنجاح وتسوية السلفة!` 

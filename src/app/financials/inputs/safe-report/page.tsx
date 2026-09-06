@@ -4,7 +4,8 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useBranch } from "@/context/BranchContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { db, auth } from "@/lib/firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, onSnapshot, query, limit } from "firebase/firestore";
+import { fetchUnifiedFinancialDocs } from "@/lib/financial-sync";
 import { 
   Printer, 
   Loader2, 
@@ -136,75 +137,9 @@ export default function SafeReportPage() {
     };
   };
 
-  // Safe Document Fetching: avoids fragile compound indexes
-  const fetchAllFinancialDocs = async () => {
-    const safeGetDocs = async (collectionName: string) => {
-      try {
-        const snap = await getDocs(collection(db, collectionName));
-        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      } catch (e: any) {
-        console.warn(`Could not read ${collectionName}:`, e?.message);
-        return [];
-      }
-    };
-
-    const [
-      salesRaw,
-      cashPaymentsRaw,
-      creditPaymentsRaw,
-      depositsRaw,
-      payrollsRaw,
-      adjustmentsRaw,
-      loansRaw,
-      employeesRaw
-    ] = await Promise.all([
-      safeGetDocs("sales"),
-      safeGetDocs("cash_payments"),
-      safeGetDocs("credit_payments"),
-      safeGetDocs("deposits"),
-      safeGetDocs("payroll_lines"),
-      safeGetDocs("adjustments"),
-      safeGetDocs("loans"),
-      safeGetDocs("employees")
-    ]);
-
-    // Build employees map by ID
-    const employeesMap: Record<string, string> = {};
-    employeesRaw.forEach((emp: any) => {
-      if (emp.id && emp.name) {
-        employeesMap[emp.id] = emp.name;
-      }
-    });
-
-    // Deduplicate credit_payments against cash_payments (so neither missed nor double counted)
-    const uniqueCreditPayments: any[] = [];
-    creditPaymentsRaw.forEach((cp: any) => {
-      const cpAmt = Math.round(Number(cp.amount || cp.total || 0));
-      const cpDate = normalizeDate(cp.date || cp.createdAt);
-      const cpMethod = (cp.method || "cash").toLowerCase();
-      const isDup = cashPaymentsRaw.some((cash: any) => {
-        const kAmt = Math.round(Number(cash.amount || cash.total || 0));
-        const kDate = normalizeDate(cash.date || cash.createdAt);
-        const kMethod = (cash.method || "cash").toLowerCase();
-        return (
-          (cash.creditId && cash.creditId === cp.creditId) ||
-          (cp.invoiceNumber && cash.invoiceNumber && cp.invoiceNumber === cash.invoiceNumber) ||
-          (kAmt === cpAmt && kDate === cpDate && kMethod === cpMethod)
-        );
-      });
-      if (!isDup) uniqueCreditPayments.push(cp);
-    });
-
-    return {
-      sales: salesRaw,
-      cashPayments: cashPaymentsRaw,
-      uniqueCreditPayments,
-      deposits: depositsRaw,
-      payrolls: payrollsRaw,
-      adjustments: adjustmentsRaw,
-      loans: loansRaw,
-      employeesMap
-    };
+  // Fast Cached Financial Document Fetcher: returns instantly from shared memory cache
+  const fetchAllFinancialDocs = async (forceRefresh = false) => {
+    return await fetchUnifiedFinancialDocs(forceRefresh);
   };
 
   const calculateLedger = (
@@ -605,9 +540,9 @@ export default function SafeReportPage() {
     };
   };
 
-  const generateReport = async () => {
+  const generateReport = async (forceRefresh = false, showToast = false) => {
     setLoading(true);
-    setReportData(null);
+    if (forceRefresh) setReportData(null);
 
     try {
       let startDateStr = "", endDateStr = "";
@@ -623,7 +558,7 @@ export default function SafeReportPage() {
         endDateStr = `${selectedYear}-12-31`; 
       }
 
-      const allDocs = await fetchAllFinancialDocs();
+      const allDocs = await fetchAllFinancialDocs(forceRefresh);
       const result = calculateLedger(allDocs, startDateStr, endDateStr, currentBranch);
 
       // Month-over-month trend (monthly view only)
@@ -667,7 +602,9 @@ export default function SafeReportPage() {
         trendData
       });
 
-      toast.success(isAr ? "تم إعداد تقرير الخزنة والبنك بدقة تامة!" : "Safe & Bank statement generated accurately!");
+      if (showToast) {
+        toast.success(isAr ? "تم إعداد تقرير الخزنة والبنك بدقة تامة!" : "Safe & Bank statement generated accurately!");
+      }
     } catch (err: any) {
       console.error(err);
       toast.error("Failed to generate report: " + err.message);
@@ -676,10 +613,30 @@ export default function SafeReportPage() {
     }
   };
 
-  // Auto generate on branch change or initial load
+  // Auto generate on branch change, date filter change, or live financial update
   useEffect(() => {
-    generateReport();
-  }, [currentBranch]);
+    generateReport(false, false);
+
+    const handleFinancialUpdate = () => {
+      generateReport(true, false);
+    };
+
+    window.addEventListener("circlek_financials_updated", handleFinancialUpdate);
+
+    // Live Snapshot Listener on latest cash_payments, sales, deposits to auto-update
+    const unsubs = [
+      onSnapshot(query(collection(db, "cash_payments"), limit(1)), () => generateReport(true, false), () => {}),
+      onSnapshot(query(collection(db, "deposits"), limit(1)), () => generateReport(true, false), () => {}),
+      onSnapshot(query(collection(db, "sales"), limit(1)), () => generateReport(true, false), () => {})
+    ];
+
+    return () => {
+      window.removeEventListener("circlek_financials_updated", handleFinancialUpdate);
+      unsubs.forEach(u => {
+        try { u(); } catch (e) {}
+      });
+    };
+  }, [currentBranch, reportType, selectedDate, selectedMonth, selectedYear]);
 
   const fmt = (n: number) => (Number(n) || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const branchLabel = getBranchLabel();
@@ -974,7 +931,7 @@ export default function SafeReportPage() {
               )}
 
               <button 
-                onClick={generateReport} 
+                onClick={() => generateReport(true, true)} 
                 disabled={loading}
                 className="bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold py-2 px-4 rounded-xl text-xs flex items-center gap-2 transition-all disabled:opacity-50 active:scale-95 shadow-md shadow-indigo-600/30 cursor-pointer"
               >

@@ -10,6 +10,7 @@ import { fetchDashboardData } from "@/lib/dashboard-queries";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { fetchUnifiedFinancialDocs, calculateFinancialLedger } from "@/lib/financial-sync";
 
 export default function FinancialInputsOverview() {
   const { currentBranch } = useBranch();
@@ -172,7 +173,7 @@ export default function FinancialInputsOverview() {
   };
 
   useEffect(() => {
-    async function fetchStats() {
+    async function fetchStats(forceRefresh = false) {
       const hasCached = typeof window !== "undefined" && !!localStorage.getItem(`cached_fin_stats_${currentBranch}`);
       if (!hasCached) {
         setLoading(true);
@@ -182,216 +183,41 @@ export default function FinancialInputsOverview() {
       setMissingIndexes([]);
 
       try {
-        const safeGetDocs = async (collectionName: string, queryLimit = 350) => {
-          try {
-            const colRef = collection(db, collectionName);
-            const q = query(colRef, limit(queryLimit));
-            const snap = await getDocs(q);
-            return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          } catch (e: any) {
-            console.warn(`Could not read ${collectionName}:`, e?.message);
-            return [];
-          }
+        const docs = await fetchUnifiedFinancialDocs(forceRefresh);
+        const ledger = calculateFinancialLedger(docs, currentBranch);
+
+        const finalStats = {
+          totalSales: ledger.totalSales,
+          totalCashPayments: ledger.totalCashPayments,
+          depositsToSafe: ledger.depositsToSafe,
+          depositsFromSafe: ledger.depositsFromSafe,
+          totalPayrolls: ledger.totalPayrolls,
+          totalLoans: ledger.totalLoans,
+          totalOldCreditsCash: 0,
+          totalTaxPaid: ledger.totalCashTax,
+          safeMoney: ledger.closingSafe,
+          totalVisaSales: ledger.totalVisaSales,
+          totalBankPayments: ledger.totalBankPayments,
+          depositsToBank: ledger.depositsToBank,
+          depositsFromBank: ledger.depositsFromBank,
+          totalBankCredits: 0,
+          totalBankTaxPaid: ledger.totalBankTax,
+          bankMoney: ledger.closingBank
         };
 
-        const [
-          salesRaw,
-          cashPaymentsRaw,
-          creditPaymentsRaw,
-          depositsRaw,
-          payrollsRaw,
-          adjustmentsRaw,
-          loansRaw
-        ] = await Promise.all([
-          safeGetDocs("sales", 400),
-          safeGetDocs("cash_payments", 400),
-          safeGetDocs("credit_payments", 400),
-          safeGetDocs("deposits", 200),
-          safeGetDocs("payroll_lines", 200),
-          safeGetDocs("adjustments", 200),
-          safeGetDocs("loans", 200)
-        ]);
-
-        // Deduplicate credit_payments against cash_payments (exact match with safe-report)
-        const uniqueCreditPayments: any[] = [];
-        creditPaymentsRaw.forEach((cp: any) => {
-          const cpAmt = Math.round(Number(cp.amount || cp.total || 0));
-          const cpDate = normalizeDate(cp.date || cp.createdAt);
-          const cpMethod = (cp.method || "cash").toLowerCase();
-          const isDup = cashPaymentsRaw.some((cash: any) => {
-            const kAmt = Math.round(Number(cash.amount || cash.total || 0));
-            const kDate = normalizeDate(cash.date || cash.createdAt);
-            const kMethod = (cash.method || "cash").toLowerCase();
-            return (
-              (cash.creditId && cash.creditId === cp.creditId) ||
-              (cp.invoiceNumber && cash.invoiceNumber && cp.invoiceNumber === cash.invoiceNumber) ||
-              (kAmt === cpAmt && kDate === cpDate && kMethod === cpMethod)
-            );
-          });
-          if (!isDup) uniqueCreditPayments.push(cp);
-        });
-
-        // Compute Lifetime Ledger
-        let totalSalesCash = 0;
-        let totalOverAmount = 0;
-        let totalShortAmount = 0;
-        let totalVisaSales = 0;
-
-        let totalCashPayments = 0;
-        let totalCashTaxPaid = 0;
-        let totalBankPayments = 0;
-        let totalBankTaxPaid = 0;
-
-        let depositsToSafe = 0;
-        let depositsFromSafe = 0;
-        let depositsToBank = 0;
-        let depositsFromBank = 0;
-
-        let totalPayrolls = 0;
-        let totalBankPayrolls = 0;
-        let totalLoans = 0;
-
-        // 1. Sales
-        salesRaw.forEach((s: any) => {
-          if (!matchesBranch(s, currentBranch)) return;
-          const cash = Number(s.cash || 0);
-          const visa = Number(s.visa || 0);
-          const os = Number(s.overShort || 0);
-          const over = os > 0 ? os : 0;
-          const short = os < 0 ? Math.abs(os) : 0;
-
-          totalSalesCash += cash;
-          totalOverAmount += over;
-          totalShortAmount += short;
-          totalVisaSales += visa;
-        });
-
-        // 2. Cash Payments & Expenses
-        cashPaymentsRaw.forEach((p: any) => {
-          if (!matchesBranch(p, currentBranch)) return;
-          const method = (p.method || "cash").toLowerCase();
-          const amt = Number(p.amount || p.total || 0);
-          const tax = Number(p.tax || 0);
-
-          if (method === "cash") {
-            totalCashPayments += amt;
-            totalCashTaxPaid += tax;
-          } else if (["visa", "bank_transfer", "bank"].includes(method)) {
-            totalBankPayments += amt;
-            totalBankTaxPaid += tax;
-          }
-        });
-
-        // 3. Unique Credit Settlements
-        uniqueCreditPayments.forEach((p: any) => {
-          if (!matchesBranch(p, currentBranch)) return;
-          const method = (p.method || "cash").toLowerCase();
-          const amt = Number(p.amount || p.total || 0);
-
-          if (method === "cash") {
-            totalCashPayments += amt;
-          } else if (["visa", "bank_transfer", "bank"].includes(method)) {
-            totalBankPayments += amt;
-          }
-        });
-
-        // 4. Deposits
-        depositsRaw.forEach((dep: any) => {
-          if (!matchesBranch(dep, currentBranch)) return;
-          const amt = Number(dep.amount || 0);
-          const from = (dep.from || "").toLowerCase();
-          const to = (dep.to || "").toLowerCase();
-
-          if (to === "safe") depositsToSafe += amt;
-          if (from === "safe") depositsFromSafe += amt;
-          if (to === "bank") depositsToBank += amt;
-          if (from === "bank") depositsFromBank += amt;
-        });
-
-        // 5. Payrolls (Net pay disbursed from safe or bank)
-        payrollsRaw.forEach((pr: any) => {
-          if (!matchesBranch(pr, currentBranch)) return;
-          const amt = Number(pr.netPay || pr.amount || 0);
-          const method = (pr.paymentMethod || pr.method || "cash").toLowerCase();
-
-          if (method === "cash") {
-            totalPayrolls += amt;
-          } else {
-            totalBankPayrolls += amt;
-          }
-        });
-
-        // 6. Loans & Advances (Deduplicated across loans and adjustments)
-        const seenLoanIds = new Set<string>();
-        const seenLoanComposite = new Set<string>();
-
-        loansRaw.forEach((ln: any) => {
-          if (!matchesBranch(ln, currentBranch)) return;
-          const amt = Number(ln.approved || ln.amount || 0);
-          const d = normalizeDate(ln.date || ln.createdAt);
-          seenLoanIds.add(ln.id);
-          if (ln.employeeId) {
-            seenLoanComposite.add(`${ln.employeeId}_${amt}`);
-            if (d) seenLoanComposite.add(`${ln.employeeId}_${d}_${amt}`);
-          }
-          totalLoans += amt;
-        });
-
-        adjustmentsRaw.forEach((adj: any) => {
-          if (adj.type === "loan") {
-            if (!matchesBranch(adj, currentBranch)) return;
-            if (adj.loanDocId && seenLoanIds.has(adj.loanDocId)) return;
-            if (seenLoanIds.has(adj.id)) return;
-            const amt = Number(adj.amount || 0);
-            const d = normalizeDate(adj.date || adj.createdAt);
-            if (adj.employeeId && (seenLoanComposite.has(`${adj.employeeId}_${amt}`) || (d && seenLoanComposite.has(`${adj.employeeId}_${d}_${amt}`)))) return;
-            seenLoanIds.add(adj.id);
-            totalLoans += amt;
-          }
-        });
-
-        // Reconciled Balances identical to Safe Report closing balances
-        const safeInflows = totalSalesCash + totalOverAmount + depositsToSafe;
-        const safeOutflows = totalShortAmount + totalCashPayments + totalCashTaxPaid + depositsFromSafe + totalPayrolls + totalLoans;
-        const safeMoney = safeInflows - safeOutflows;
-
-        const bankInflows = totalVisaSales + depositsToBank;
-        const bankOutflows = totalBankPayments + totalBankTaxPaid + depositsFromBank + totalBankPayrolls;
-        const bankMoney = bankInflows - bankOutflows;
-
-        const netCashSales = totalSalesCash + totalOverAmount - totalShortAmount;
-
         if (typeof window !== "undefined") {
-          localStorage.setItem(`cached_safe_balance_${currentBranch}`, safeMoney.toString());
-          localStorage.setItem(`cached_bank_balance_${currentBranch}`, bankMoney.toString());
-          localStorage.setItem(`cached_total_cash_payments_${currentBranch}`, totalCashPayments.toString());
-          localStorage.setItem(`cached_total_bank_payments_${currentBranch}`, totalBankPayments.toString());
-          localStorage.setItem(`cached_total_payrolls_loans_${currentBranch}`, (totalPayrolls + totalLoans).toString());
-          localStorage.setItem(`cached_deposits_out_safe_${currentBranch}`, depositsFromSafe.toString());
-          localStorage.setItem(`cached_deposits_in_safe_${currentBranch}`, depositsToSafe.toString());
-          localStorage.setItem(`cached_deposits_out_bank_${currentBranch}`, depositsFromBank.toString());
-          localStorage.setItem(`cached_deposits_in_bank_${currentBranch}`, depositsToBank.toString());
-          const finalStats = {
-            totalSales: netCashSales,
-            totalCashPayments,
-            depositsToSafe,
-            depositsFromSafe,
-            totalPayrolls,
-            totalLoans,
-            totalOldCreditsCash: 0,
-            totalTaxPaid: totalCashTaxPaid,
-            safeMoney,
-            totalVisaSales,
-            totalBankPayments,
-            depositsToBank,
-            depositsFromBank,
-            totalBankCredits: 0,
-            totalBankTaxPaid,
-            bankMoney
-          };
+          localStorage.setItem(`cached_safe_balance_${currentBranch}`, ledger.closingSafe.toString());
+          localStorage.setItem(`cached_bank_balance_${currentBranch}`, ledger.closingBank.toString());
+          localStorage.setItem(`cached_total_cash_payments_${currentBranch}`, ledger.totalCashPayments.toString());
+          localStorage.setItem(`cached_total_bank_payments_${currentBranch}`, ledger.totalBankPayments.toString());
+          localStorage.setItem(`cached_total_payrolls_loans_${currentBranch}`, (ledger.totalPayrolls + ledger.totalLoans).toString());
+          localStorage.setItem(`cached_deposits_out_safe_${currentBranch}`, ledger.depositsFromSafe.toString());
+          localStorage.setItem(`cached_deposits_in_safe_${currentBranch}`, ledger.depositsToSafe.toString());
+          localStorage.setItem(`cached_deposits_out_bank_${currentBranch}`, ledger.depositsFromBank.toString());
+          localStorage.setItem(`cached_deposits_in_bank_${currentBranch}`, ledger.depositsToBank.toString());
           localStorage.setItem(`cached_fin_stats_${currentBranch}`, JSON.stringify(finalStats));
-          setStats(finalStats);
         }
+        setStats(finalStats);
       } catch (err: any) {
         console.error("Ledger calculation error:", err);
       } finally {
@@ -399,7 +225,17 @@ export default function FinancialInputsOverview() {
         setIsSyncing(false);
       }
     }
-    fetchStats();
+
+    fetchStats(false);
+
+    const handleUpdate = () => {
+      fetchStats(true);
+    };
+
+    window.addEventListener("circlek_financials_updated", handleUpdate);
+    return () => {
+      window.removeEventListener("circlek_financials_updated", handleUpdate);
+    };
   }, [currentBranch]);
 
   const fmt = (n: number) =>

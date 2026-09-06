@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { useLiveSafeBalance } from "@/lib/financial-sync";
 import { 
   Wallet, 
   TrendingUp, 
@@ -129,8 +130,7 @@ export default function VIPBentoEnterprisePortal() {
   const [activeStaff, setActiveStaff] = useState<any[]>([]);
   const [offStaff, setOffStaff] = useState<any[]>([]);
   const [connectedDevices, setConnectedDevices] = useState<number>(3);
-  const [safeBalance, setSafeBalance] = useState<number>(0);
-  const [bankBalance, setBankBalance] = useState<number>(0);
+  const { safeBalance, bankBalance } = useLiveSafeBalance(currentBranch);
 
   // Real 7-Day Sales Telemetry State
   const [weeklySales, setWeeklySales] = useState<DayTrendPoint[]>([]);
@@ -195,147 +195,22 @@ export default function VIPBentoEnterprisePortal() {
 
   // Live Firestore counters & Real Telemetry
   useEffect(() => {
-    // 0. Local cache reading for Safe & Bank
-    const updateLocalBalances = () => {
-      if (typeof window !== "undefined") {
-        try {
-          const s = localStorage.getItem(`cached_safe_balance_${currentBranch}`);
-          const b = localStorage.getItem(`cached_bank_balance_${currentBranch}`);
-          if (s) setSafeBalance(parseFloat(s) || 0);
-          if (b) setBankBalance(parseFloat(b) || 0);
-          
-          if (!s || !b) {
-            const stats = localStorage.getItem(`cached_fin_stats_${currentBranch}`);
-            if (stats) {
-              const parsed = JSON.parse(stats);
-              if (parsed.safeMoney !== undefined) setSafeBalance(parsed.safeMoney);
-              if (parsed.bankMoney !== undefined) setBankBalance(parsed.bankMoney);
-            }
-          }
-
-          // Hydrate weekly sales from cache
-          const cachedSales = localStorage.getItem(`cached_weekly_sales_${currentBranch}`);
-          if (cachedSales) {
-            const parsed = JSON.parse(cachedSales);
-            if (parsed.points && Array.isArray(parsed.points)) {
-              setWeeklySales(parsed.points);
-              setWeeklyTotalSales(parsed.sumTotal || 0);
-              setWeeklyAvgSales(parsed.avg || 0);
-              setWeeklyTrendPct(parsed.pct || 0);
-              setSalesLoading(false);
-            }
-          }
-        } catch (e) {}
-      }
-    };
-    updateLocalBalances();
-
-    // 0.1 Live Firestore calculation for Safe & Bank to ensure absolute accuracy and purge stale caches
-    const syncLiveBalances = async () => {
+    // 0. Hydrate weekly sales from cache
+    if (typeof window !== "undefined") {
       try {
-        const safeGet = async (col: string, l = 300) => {
-          try {
-            const snap = await getDocs(query(collection(db, col), limit(l)));
-            return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          } catch {
-            return [];
+        const cachedSales = localStorage.getItem(`cached_weekly_sales_${currentBranch}`);
+        if (cachedSales) {
+          const parsed = JSON.parse(cachedSales);
+          if (parsed.points && Array.isArray(parsed.points)) {
+            setWeeklySales(parsed.points);
+            setWeeklyTotalSales(parsed.sumTotal || 0);
+            setWeeklyAvgSales(parsed.avg || 0);
+            setWeeklyTrendPct(parsed.pct || 0);
+            setSalesLoading(false);
           }
-        };
-
-        const [sales, cashPay, dep, payrolls, loans, adjustments] = await Promise.all([
-          safeGet("sales", 350),
-          safeGet("cash_payments", 350),
-          safeGet("deposits", 200),
-          safeGet("payroll_lines", 200),
-          safeGet("loans", 200),
-          safeGet("adjustments", 200)
-        ]);
-
-        let totalSalesCash = 0, totalOverAmount = 0, totalShortAmount = 0, totalVisaSales = 0;
-        sales.forEach((s: any) => {
-          if (!matchesBranch(s, currentBranch)) return;
-          totalSalesCash += Number(s.cash || 0);
-          totalVisaSales += Number(s.visa || 0);
-          const os = Number(s.overShort || 0);
-          if (os > 0) totalOverAmount += os;
-          else if (os < 0) totalShortAmount += Math.abs(os);
-        });
-
-        let totalCashPayments = 0, totalCashTax = 0, totalBankPayments = 0, totalBankTax = 0;
-        cashPay.forEach((p: any) => {
-          if (!matchesBranch(p, currentBranch)) return;
-          const m = (p.method || "cash").toLowerCase();
-          const amt = Number(p.amount || p.total || 0);
-          const tax = Number(p.tax || 0);
-          if (m === "cash") {
-            totalCashPayments += amt;
-            totalCashTax += tax;
-          } else if (["visa", "bank_transfer", "bank"].includes(m)) {
-            totalBankPayments += amt;
-            totalBankTax += tax;
-          }
-        });
-
-        let depToSafe = 0, depFromSafe = 0, depToBank = 0, depFromBank = 0;
-        dep.forEach((d: any) => {
-          if (!matchesBranch(d, currentBranch)) return;
-          const amt = Number(d.amount || 0);
-          if (d.to === "safe") depToSafe += amt;
-          if (d.from === "safe") depFromSafe += amt;
-          if (d.to === "bank") depToBank += amt;
-          if (d.from === "bank") depFromBank += amt;
-        });
-
-        let totalPay = 0, totalBankPay = 0;
-        payrolls.forEach((pr: any) => {
-          if (!matchesBranch(pr, currentBranch)) return;
-          const m = (pr.paymentMethod || pr.method || "cash").toLowerCase();
-          const amt = Number(pr.netPay || pr.amount || 0);
-          if (m === "cash") totalPay += amt;
-          else totalBankPay += amt;
-        });
-
-        let totalLoans = 0;
-        const seenLoanIds = new Set<string>();
-        const seenLoanComposite = new Set<string>();
-
-        loans.forEach((ln: any) => {
-          if (!matchesBranch(ln, currentBranch)) return;
-          const amt = Number(ln.approved || ln.amount || 0);
-          seenLoanIds.add(ln.id);
-          if (ln.employeeId) {
-            seenLoanComposite.add(`${ln.employeeId}_${amt}`);
-          }
-          totalLoans += amt;
-        });
-
-        adjustments.forEach((adj: any) => {
-          if (adj.type === "loan") {
-            if (!matchesBranch(adj, currentBranch)) return;
-            if (adj.loanDocId && seenLoanIds.has(adj.loanDocId)) return;
-            if (seenLoanIds.has(adj.id)) return;
-            const amt = Number(adj.amount || 0);
-            if (adj.employeeId && seenLoanComposite.has(`${adj.employeeId}_${amt}`)) return;
-            seenLoanIds.add(adj.id);
-            totalLoans += amt;
-          }
-        });
-
-        const safeMoney = (totalSalesCash + totalOverAmount + depToSafe) - (totalShortAmount + totalCashPayments + totalCashTax + depFromSafe + totalPay + totalLoans);
-        const bankMoney = (totalVisaSales + depToBank) - (totalBankPayments + totalBankTax + depFromBank + totalBankPay);
-
-        setSafeBalance(safeMoney);
-        setBankBalance(bankMoney);
-
-        if (typeof window !== "undefined") {
-          localStorage.setItem(`cached_safe_balance_${currentBranch}`, safeMoney.toString());
-          localStorage.setItem(`cached_bank_balance_${currentBranch}`, bankMoney.toString());
         }
-      } catch (e) {
-        console.warn("Live safe balance calculation error:", e);
-      }
-    };
-    syncLiveBalances();
+      } catch (e) {}
+    }
 
     // 1. Pending Voids
     const voidQ = currentBranch === "all"

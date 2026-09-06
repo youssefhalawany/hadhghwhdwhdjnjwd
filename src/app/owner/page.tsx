@@ -10,6 +10,8 @@ import { PullToRefresh } from "@/components/MobileUX/PullToRefresh";
 import { showIsland } from "@/components/MobileUX/DynamicIsland";
 import { SwipeToApprove } from "@/components/MobileUX/SwipeToApprove";
 import { useLanguage } from "@/context/LanguageContext";
+import { useBranch, BranchId } from "@/context/BranchContext";
+import { useLiveSafeBalance } from "@/lib/financial-sync";
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, Cell } from "recharts";
 import { hapticMedium, vibrateSuccess } from "@/lib/haptics";
@@ -53,166 +55,31 @@ const D = {
 
 export default function OwnerDashboard() {
   const { language: lang } = useLanguage();
-  const [loading, setLoading] = useState(true);
-  const [missingIndexes, setMissingIndexes] = useState<string[]>([]);
-  
-  const [stats, setStats] = useState({
-    safeMoney: 0,
-    totalSales: 0,
-    totalCashPayments: 0,
-    depositsToSafe: 0,
-    depositsFromSafe: 0,
-    totalPayrolls: 0,
-    totalLoans: 0,
+  const { currentBranch, setBranch } = useBranch();
+  const { safeBalance, bankBalance, stats: liveStats, loading, refresh } = useLiveSafeBalance(currentBranch);
+
+  const stats = {
+    safeMoney: safeBalance,
+    bankMoney: bankBalance,
+    totalSales: liveStats?.totalSales || 0,
+    totalCashPayments: liveStats?.totalCashPayments || 0,
+    depositsToSafe: liveStats?.depositsToSafe || 0,
+    depositsFromSafe: liveStats?.depositsFromSafe || 0,
+    totalPayrolls: liveStats?.totalPayrolls || 0,
+    totalLoans: liveStats?.totalLoans || 0,
     totalOldCreditsCash: 0,
-    totalTaxPaid: 0,
-
-    bankMoney: 0,
-    totalVisaSales: 0,
-    totalBankPayments: 0,
-    depositsToBank: 0,
-    depositsFromBank: 0,
+    totalTaxPaid: liveStats?.totalCashTax || 0,
+    totalVisaSales: liveStats?.totalVisaSales || 0,
+    totalBankPayments: liveStats?.totalBankPayments || 0,
+    depositsToBank: liveStats?.depositsToBank || 0,
+    depositsFromBank: liveStats?.depositsFromBank || 0,
     totalBankCredits: 0,
-    totalBankTaxPaid: 0,
-  });
-
-  const loadData = async () => {
-    setLoading(true);
-    setMissingIndexes([]);
-    const collectedUrls = new Set<string>();
-
-    try {
-      // --- ZERO READ: aggregate sums on the server ---
-      const salesQ: any = collection(db, "sales");
-      const cashPaymentsQ: any = query(collection(db, "cash_payments"), where("method", "==", "cash"));
-      const depositsToQ: any = query(collection(db, "deposits"), where("to", "==", "safe"));
-      const depositsFromQ: any = query(collection(db, "deposits"), where("from", "==", "safe"));
-      const payrollsQ: any = collection(db, "payroll_lines");
-      const newLoansQ: any = query(collection(db, "adjustments"), where("type", "==", "loan"));
-      const oldLoansQ: any = collection(db, "loans");
-      const oldCreditsCashQ: any = query(collection(db, "credit_payments"), where("method", "==", "cash"));
-      
-      // Bank Queries
-      const cashPaymentsVisaQ: any = query(collection(db, "cash_payments"), where("method", "==", "visa"));
-      const cashPaymentsBankTransferQ: any = query(collection(db, "cash_payments"), where("method", "==", "bank_transfer"));
-      const cashPaymentsBankQ: any = query(collection(db, "cash_payments"), where("method", "==", "bank"));
-      const creditPaymentsVisaQ: any = query(collection(db, "credit_payments"), where("method", "==", "visa"));
-      const creditPaymentsBankTransferQ: any = query(collection(db, "credit_payments"), where("method", "==", "bank_transfer"));
-      const creditPaymentsBankQ: any = query(collection(db, "credit_payments"), where("method", "==", "bank"));
-      const depositsToBankQ: any = query(collection(db, "deposits"), where("to", "==", "bank"));
-      const depositsFromBankQ: any = query(collection(db, "deposits"), where("from", "==", "bank"));
-
-      // Helper for safe fetching
-      const safeSumAgg = async (q: any, sumFields: Record<string, ReturnType<typeof sum>>): Promise<any> => {
-        try {
-          const agg = await getAggregateFromServer(q, sumFields);
-          return agg.data();
-        } catch (err: any) {
-          if (err.message?.includes("https://console.firebase.google.com")) {
-            const urlMatch = err.message.match(/(https:\/\/console\.firebase\.google\.com[^\s]*)/);
-            if (urlMatch) collectedUrls.add(urlMatch[0]);
-          } else {
-            console.error("Query Error:", err);
-          }
-          return null;
-        }
-      };
-
-      const [
-        salesData, cashPaymentsData, depositsToData, depositsFromData, payrollsData,
-        newLoansData, oldLoansData, oldCreditsCashData, visaPaymentsData,
-        bankTransferPaymentsData, visaCreditsData, bankTransferCreditsData, depositsToBankData, depositsFromBankData, visaTaxData, bankTransferTaxData, cashTaxData, cashPaymentsBankData, creditPaymentsBankData, bankTaxData] = await Promise.all([
-        safeSumAgg(salesQ, { cash: sum("cash"), overShort: sum("overShort"), visa: sum("visa") }),
-        safeSumAgg(cashPaymentsQ, { val: sum("amount") }),
-        safeSumAgg(depositsToQ, { val: sum("amount") }),
-        safeSumAgg(depositsFromQ, { val: sum("amount") }),
-        safeSumAgg(payrollsQ, { val: sum("netPay") }),
-        safeSumAgg(newLoansQ, { val: sum("amount") }),
-        safeSumAgg(oldLoansQ, { val: sum("approved") }),
-        safeSumAgg(oldCreditsCashQ, { val: sum("amount") }),
-        safeSumAgg(cashPaymentsVisaQ, { val: sum("amount") }),
-        safeSumAgg(cashPaymentsBankTransferQ, { val: sum("amount") }),
-        safeSumAgg(creditPaymentsVisaQ, { val: sum("amount") }),
-        safeSumAgg(creditPaymentsBankTransferQ, { val: sum("amount") }),
-        safeSumAgg(depositsToBankQ, { val: sum("amount") }),
-        safeSumAgg(depositsFromBankQ, { val: sum("amount") }),
-        safeSumAgg(cashPaymentsVisaQ, { val: sum("tax") }),
-        safeSumAgg(cashPaymentsBankTransferQ, { val: sum("tax") }),
-        safeSumAgg(cashPaymentsQ, { val: sum("tax") }),
-        safeSumAgg(cashPaymentsBankQ, { val: sum("amount") }),
-        safeSumAgg(creditPaymentsBankQ, { val: sum("amount") }),
-        safeSumAgg(cashPaymentsBankQ, { val: sum("tax") })
-      ]);
-
-      if (collectedUrls.size > 0) {
-        setMissingIndexes(Array.from(collectedUrls));
-        return;
-      }
-
-      const totalSales = (salesData?.cash || 0) + (salesData?.overShort || 0);
-      const totalVisaSales = salesData?.visa || 0;
-
-      const totalCashPayments = cashPaymentsData?.val || 0;
-      const depositsToSafe = depositsToData?.val || 0;
-      const depositsFromSafe = depositsFromData?.val || 0;
-      const totalPayrolls = payrollsData?.val || 0;
-      // Authoritative loans collection is the single source of truth for employee loans
-      const totalOldLoans = oldLoansData?.val || 0;
-      const totalLoans = totalOldLoans > 0 ? totalOldLoans : (newLoansData?.val || 0);
-      const totalOldCreditsCash = oldCreditsCashData?.val || 0;
-      const totalTaxPaid = cashTaxData?.val || 0;
-
-      const totalVisaPayments = visaPaymentsData?.val || 0;
-      const totalBankTransferPayments = bankTransferPaymentsData?.val || 0;
-      const totalBankOnlyPayments = cashPaymentsBankData?.val || 0;
-      const totalBankPayments = totalVisaPayments + totalBankTransferPayments + totalBankOnlyPayments;
-
-      const totalVisaTax = visaTaxData?.val || 0;
-      const totalBankTransferTax = bankTransferTaxData?.val || 0;
-      const totalBankOnlyTax = bankTaxData?.val || 0;
-      const totalBankTaxPaid = totalVisaTax + totalBankTransferTax + totalBankOnlyTax;
-
-      const totalVisaCredits = visaCreditsData?.val || 0;
-      const totalBankTransferCredits = bankTransferCreditsData?.val || 0;
-      const totalBankOnlyCredits = creditPaymentsBankData?.val || 0;
-      const totalBankCredits = totalVisaCredits + totalBankTransferCredits + totalBankOnlyCredits;
-
-      const depositsToBank = depositsToBankData?.val || 0;
-      const depositsFromBank = depositsFromBankData?.val || 0;
-
-      const safeMoney = totalSales - totalCashPayments + depositsToSafe - depositsFromSafe - totalPayrolls - totalLoans - totalOldCreditsCash - totalTaxPaid;
-      const bankMoney = totalVisaSales - totalBankPayments - totalBankTaxPaid - totalBankCredits + depositsToBank - depositsFromBank;
-
-      setStats({
-        totalSales,
-        totalCashPayments,
-        depositsToSafe,
-        depositsFromSafe,
-        totalPayrolls,
-        totalLoans,
-        totalOldCreditsCash,
-        totalTaxPaid,
-        safeMoney,
-        totalVisaSales,
-        totalBankPayments,
-        depositsToBank,
-        depositsFromBank,
-        totalBankCredits,
-        totalBankTaxPaid,
-        bankMoney
-      });
-    } catch (err: any) {
-      console.error("Aggregate fetch error:", err);
-    } finally {
-      setLoading(false);
-    }
+    totalBankTaxPaid: liveStats?.totalBankTax || 0,
   };
-
-  useEffect(() => { loadData(); }, []);
 
   const handleRefresh = async () => {
     if ('vibrate' in navigator) navigator.vibrate(20);
-    await loadData();
+    await refresh();
     showIsland("Dashboard Updated", { type: "success" });
   };
 
@@ -221,49 +88,6 @@ export default function OwnerDashboard() {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     }).format(n);
-
-  if (loading) {
-    return (
-        <div style={{ padding: "54px 20px 20px" }}>
-            <div className="animate-shimmer" style={{ height: 30, width: 120, borderRadius: 8, marginBottom: 40 }} />
-            <div className="animate-shimmer" style={{ height: 40, width: 200, borderRadius: 8, marginBottom: 20 }} />
-            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16 }}>
-                <div className="glass-panel animate-shimmer" style={{ height: 180, borderRadius: 24 }} />
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                    <div className="glass-panel animate-shimmer" style={{ height: 120, borderRadius: 24 }} />
-                    <div className="glass-panel animate-shimmer" style={{ height: 120, borderRadius: 24 }} />
-                </div>
-                <div className="glass-panel animate-shimmer" style={{ height: 100, borderRadius: 24 }} />
-            </div>
-        </div>
-    );
-  }
-
-  if (missingIndexes.length > 0) {
-    return (
-      <div style={{ padding: "54px 20px 20px", color: D.red, textAlign: "center" }}>
-        <AlertTriangle size={48} style={{ margin: "0 auto 16px" }} />
-        <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 12 }}>Missing Indexes</h2>
-        <p style={{ fontSize: 14, color: D.textSecondary, marginBottom: 24 }}>
-          Please create the required Firebase indexes to view these metrics.
-        </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {missingIndexes.map((url, i) => (
-            <a 
-              key={i}
-              href={url} 
-              target="_blank" 
-              rel="noreferrer"
-              style={{ background: D.surfaceHigh, padding: "12px 16px", borderRadius: 12, color: D.red, textDecoration: "none", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "space-between" }}
-            >
-              Create Index #{i + 1}
-              <ExternalLink size={16} />
-            </a>
-          ))}
-        </div>
-      </div>
-    );
-  }
 
   const chartData = [
     { name: lang === "en" ? "Safe" : "الخزينة", amount: stats.safeMoney, fill: D.green },
@@ -302,13 +126,43 @@ export default function OwnerDashboard() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.1 }}
-              className="mb-8"
+              className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
             >
+              <div>
                 <h1 className="text-3xl font-black m-0 text-white tracking-tight">{lang === "en" ? "Overview" : "الرئيسية"}</h1>
-                <p className="text-sm text-slate-400 mt-1">{lang === "en" ? "Lifetime enterprise financials" : "المالية الشاملة للمؤسسة"}</p>
+                <p className="text-sm text-slate-400 mt-1">
+                  {currentBranch === "all"
+                    ? (lang === "en" ? "Consolidated enterprise financials" : "المالية الموحدة لجميع الفروع")
+                    : (currentBranch === "alamein4" ? (lang === "en" ? "El Alamein 4 Branch" : "فرع العلمين 4") : (lang === "en" ? "Ola El Koronfol Branch" : "فرع أولا القرنفل"))
+                  }
+                </p>
+              </div>
+
+              {/* Branch Selector Pills */}
+              <div className="flex items-center gap-1.5 p-1 bg-white/5 border border-white/10 rounded-2xl">
+                {[
+                  { id: "all" as BranchId, nameEn: "All Branches", nameAr: "جميع الفروع" },
+                  { id: "alamein4" as BranchId, nameEn: "El Alamein 4", nameAr: "العلمين 4" },
+                  { id: "ola" as BranchId, nameEn: "Ola Koronfol", nameAr: "أولا القرنفل" },
+                ].map((b) => (
+                  <button
+                    key={b.id}
+                    onClick={() => {
+                      hapticMedium();
+                      setBranch(b.id);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      currentBranch === b.id
+                        ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20"
+                        : "text-slate-400 hover:text-white hover:bg-white/5"
+                    }`}
+                  >
+                    {lang === "en" ? b.nameEn : b.nameAr}
+                  </button>
+                ))}
+              </div>
             </motion.div>
 
-            {/* Balances Chart */}
             {/* Balances Chart */}
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
@@ -349,7 +203,11 @@ export default function OwnerDashboard() {
                 
                 <div className="flex justify-between items-center mb-4">
                     <div className="flex items-center gap-2 text-emerald-400 text-xs font-black uppercase tracking-widest">
-                        <ShieldCheck size={18} /> {lang === "en" ? "Lifetime Safe Balance" : "رصيد الخزينة الشامل"}
+                        <ShieldCheck size={18} /> {lang === "en" ? (currentBranch === "all" ? "Lifetime Safe Balance" : "Branch Safe Balance") : (currentBranch === "all" ? "رصيد الخزينة الشامل" : "رصيد خزينة الفرع")}
+                    </div>
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-black text-emerald-400">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>{lang === "en" ? "Live Vault" : "مباشر"}</span>
                     </div>
                 </div>
                 
@@ -358,7 +216,9 @@ export default function OwnerDashboard() {
                   <span className="text-[2.75rem] font-black text-white tracking-tighter leading-none"><AnimatedNumber value={stats.safeMoney} /></span>
                 </div>
                 <p className="text-xs text-slate-500 leading-relaxed max-w-[90%] mb-5">
-                  Cash Sales − Cash Payments (incl. Credits & Tax) + Deposits In − Deposits Out − Payrolls & Loans
+                  {lang === "en"
+                    ? "Cash Sales − Cash Payments (incl. Credits) + Deposits In − Deposits Out − Payrolls & Loans"
+                    : "المبيعات النقدية − المدفوعات والآجل + توريدات الخزينة − المسحوبات − الرواتب والسلف"}
                 </p>
 
                 <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-5">
@@ -368,7 +228,7 @@ export default function OwnerDashboard() {
                     </div>
                     <div>
                         <div className="text-[10px] text-slate-500 uppercase font-bold mb-1">{lang === "en" ? "Total Outflows" : "إجمالي المصروفات"}</div>
-                        <div className="text-lg text-white font-black"><AnimatedNumber value={stats.totalCashPayments + stats.totalOldCreditsCash + stats.totalTaxPaid + stats.totalPayrolls + stats.totalLoans} /></div>
+                        <div className="text-lg text-white font-black"><AnimatedNumber value={stats.totalCashPayments + (stats.totalTaxPaid || 0) + stats.totalPayrolls + stats.totalLoans} /></div>
                     </div>
                 </div>
               </motion.div>
@@ -386,7 +246,11 @@ export default function OwnerDashboard() {
                 
                 <div className="flex justify-between items-center mb-4">
                     <div className="flex items-center gap-2 text-indigo-400 text-xs font-black uppercase tracking-widest">
-                        <Landmark size={18} /> {lang === "en" ? "Lifetime Bank Balance" : "رصيد البنك الشامل"}
+                        <Landmark size={18} /> {lang === "en" ? (currentBranch === "all" ? "Lifetime Bank Balance" : "Branch Bank Balance") : (currentBranch === "all" ? "رصيد البنك الشامل" : "رصيد البنك للفرع")}
+                    </div>
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-[10px] font-black text-cyan-400">
+                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                      <span>{lang === "en" ? "Verified" : "معتمد"}</span>
                     </div>
                 </div>
                 
