@@ -94,8 +94,8 @@ export default function AdminPayrollPage() {
   }, [userRole, currentUserEmail]);
 
   const canEditOrDelete = useMemo(() => {
-    return true; // Full permission to edit and delete salaries for managers and admins
-  }, []);
+    return !isManager;
+  }, [isManager]);
   
   const [employees, setEmployees] = useState<any[]>([]);
   const [drafts, setDrafts] = useState<PayrollRecord[]>([]);
@@ -584,6 +584,10 @@ export default function AdminPayrollPage() {
   };
 
   const handleEditDraft = (draft: PayrollRecord) => {
+    if (!canEditOrDelete) {
+      toast.error(language === "ar" ? "غير مصرح: صلاحية المدير هي إضافة الرواتب فقط دون إمكانية التعديل" : "Managers can only add new salaries. Editing is restricted.");
+      return;
+    }
     const emp = employees.find(e => e.id === draft.employeeId);
     setSelectedEmp(emp || { id: draft.employeeId, name: draft.employeeId });
     setEditingDraftId(draft.id || null);
@@ -609,6 +613,11 @@ export default function AdminPayrollPage() {
   };
 
   const handleSaveDraft = async () => {
+    if (editingDraftId && !canEditOrDelete) {
+      toast.error(language === "ar" ? "غير مصرح: صلاحية المدير هي إضافة الرواتب فقط دون إمكانية التعديل" : "Managers can only add new salaries. Editing existing drafts is restricted.");
+      return;
+    }
+
     if (!selectedEmp || !editForm.employeeId) {
       toast.error("Please select an employee");
       return;
@@ -653,11 +662,19 @@ export default function AdminPayrollPage() {
   };
 
   const openMarkPaidModal = (draft: PayrollRecord) => {
+    if (!canEditOrDelete) {
+      toast.error(language === "ar" ? "اعتماد وصرف الرواتب مخصص للإدارة العليا فقط" : "Approving and paying payroll is restricted to administrators.");
+      return;
+    }
     setShowPaidModal(draft);
     setPaidDate(new Date().toISOString().split("T")[0]);
   };
 
   const confirmMarkPaid = async () => {
+    if (!canEditOrDelete) {
+      toast.error(language === "ar" ? "اعتماد وصرف الرواتب مخصص للإدارة العليا فقط" : "Approving and paying payroll is restricted to administrators.");
+      return;
+    }
     if (!showPaidModal) return;
     const draft = showPaidModal;
 
@@ -753,6 +770,10 @@ export default function AdminPayrollPage() {
   };
 
   const deleteDraft = async (id: string) => {
+    if (!canEditOrDelete) {
+      toast.error(language === "ar" ? "غير مصرح: صلاحية المدير هي إضافة الرواتب فقط دون إمكانية الحذف" : "Managers can only add new salaries. Deleting is restricted.");
+      return;
+    }
     if (!confirm("Delete this draft permanently?")) return;
     try {
       await deleteDoc(doc(db, "payroll_drafts", id));
@@ -792,6 +813,10 @@ export default function AdminPayrollPage() {
   };
 
   const handleOpenEditPaid = (record: PayrollRecord) => {
+    if (!canEditOrDelete) {
+      toast.error(language === "ar" ? "غير مصرح: صلاحية المدير هي إضافة الرواتب فقط دون إمكانية التعديل" : "Managers can only add new salaries. Editing paid records is restricted.");
+      return;
+    }
     const dateInput = getValidDateInput(record.postedToFinanceAt || record.createdAt);
     setEditingPaidRecord(record);
     setPaidEditForm({
@@ -831,6 +856,10 @@ export default function AdminPayrollPage() {
 
   const handleSavePaidRecord = async () => {
     if (!editingPaidRecord?.id) return;
+    if (!canEditOrDelete) {
+      toast.error(language === "ar" ? "غير مصرح: صلاحية المدير هي إضافة الرواتب فقط دون إمكانية التعديل" : "Managers can only add new salaries. Editing is restricted.");
+      return;
+    }
     setIsSavingPaid(true);
     try {
       const { standardPay, netPay } = calcPaidFormPays();
@@ -868,6 +897,10 @@ export default function AdminPayrollPage() {
 
   const handleDeletePaidRecord = async () => {
     if (!editingPaidRecord?.id) return;
+    if (!canEditOrDelete) {
+      toast.error(language === "ar" ? "غير مصرح: صلاحية المدير هي إضافة الرواتب فقط دون إمكانية الحذف" : "Managers can only add new salaries. Deleting is restricted.");
+      return;
+    }
     if (!confirm("Are you sure you want to permanently delete this paid payroll record? This action cannot be undone and will affect financial reports.")) return;
     setIsSavingPaid(true);
     try {
@@ -958,6 +991,12 @@ export default function AdminPayrollPage() {
             <h1 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight">
               {t("admin.payroll.title")}
             </h1>
+            {!canEditOrDelete && (
+              <span className="px-3 py-1 text-xs font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-800/60 rounded-xl flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
+                {language === "ar" ? "صلاحية المدير: إضافة رواتب فقط" : "Manager Mode: Add Salaries Only"}
+              </span>
+            )}
           </div>
           <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">{t("admin.payroll.subtitle")}</p>
         </div>
@@ -1312,13 +1351,15 @@ export default function AdminPayrollPage() {
                         <td className="px-4 py-3 font-mono font-bold text-indigo-600 dark:text-indigo-400">{(d.netPay || 0).toLocaleString()} EGP</td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex justify-end items-center gap-2">
-                            <button 
-                              onClick={() => handleEditDraft(d)}
-                              className="px-2.5 py-1.5 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50 rounded-lg font-bold text-xs flex items-center gap-1 transition-colors print:hidden"
-                              title="Edit Draft"
-                            >
-                              <Pencil className="w-3.5 h-3.5" /> Edit
-                            </button>
+                            {canEditOrDelete && (
+                              <button 
+                                onClick={() => handleEditDraft(d)}
+                                className="px-2.5 py-1.5 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50 rounded-lg font-bold text-xs flex items-center gap-1 transition-colors print:hidden"
+                                title="Edit Draft"
+                              >
+                                <Pencil className="w-3.5 h-3.5" /> Edit
+                              </button>
+                            )}
                             <button 
                               onClick={() => setPrintPayslipRecord(d)}
                               className="px-2.5 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 rounded-lg font-bold text-xs flex items-center gap-1 transition-colors print:hidden"
@@ -1326,19 +1367,23 @@ export default function AdminPayrollPage() {
                             >
                               <Printer className="w-3.5 h-3.5" /> Print Payslip
                             </button>
-                            <button 
-                              onClick={() => openMarkPaidModal(d)}
-                              className="px-3 py-1.5 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50 rounded-lg font-bold text-xs flex items-center gap-1 transition-colors print:hidden"
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5" /> Mark Paid
-                            </button>
-                            <button 
-                              onClick={() => deleteDraft(d.id!)}
-                              className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded print:hidden"
-                              title="Delete Draft"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            {canEditOrDelete && (
+                              <>
+                                <button 
+                                  onClick={() => openMarkPaidModal(d)}
+                                  className="px-3 py-1.5 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50 rounded-lg font-bold text-xs flex items-center gap-1 transition-colors print:hidden"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5" /> Mark Paid
+                                </button>
+                                <button 
+                                  onClick={() => deleteDraft(d.id!)}
+                                  className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded print:hidden"
+                                  title="Delete Draft"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -1387,14 +1432,16 @@ export default function AdminPayrollPage() {
                       <td className="px-4 py-3 text-xs text-slate-500">{String(d.createdBy || "")}</td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex justify-end items-center gap-2">
-                          <button
-                            onClick={() => handleOpenEditPaid(d)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors shadow-sm"
-                            title="Edit Paid Payroll Record"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                            Edit
-                          </button>
+                          {canEditOrDelete && (
+                            <button
+                              onClick={() => handleOpenEditPaid(d)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors shadow-sm"
+                              title="Edit Paid Payroll Record"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                              Edit
+                            </button>
+                          )}
                           <button
                             onClick={() => setPrintPayslipRecord(d)}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-indigo-600 transition-colors shadow-sm"
