@@ -32,7 +32,12 @@ const nextConfig = {
       "clsx",
       "tailwind-merge",
       "chart.js",
-      "react-chartjs-2"
+      "react-chartjs-2",
+      "exceljs",
+      "jspdf",
+      "jspdf-autotable",
+      "papaparse",
+      "canvas-confetti"
     ],
   },
   async headers() {

@@ -42,7 +42,12 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userDoc, setUserDoc] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [minSplashDone, setMinSplashDone] = useState(false);
+  const [minSplashDone, setMinSplashDone] = useState(() => {
+    if (typeof window !== "undefined") {
+      return Boolean(localStorage.getItem("circlek_role") || localStorage.getItem("circlek_user_name"));
+    }
+    return false;
+  });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
@@ -192,7 +197,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     const storedRole = localStorage.getItem("circlek_role") || "owner";
     setRole(storedRole);
 
-    const splashTimer = setTimeout(() => setMinSplashDone(true), 300);
+    const hasCachedSession = Boolean(storedRole || localStorage.getItem("circlek_user_name"));
+    const splashTimer = setTimeout(() => setMinSplashDone(true), hasCachedSession ? 50 : 250);
     const clockTimer = setInterval(() => setCurrentDateTime(new Date()), 30000);
     setCurrentDateTime(new Date());
 

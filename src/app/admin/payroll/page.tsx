@@ -320,6 +320,62 @@ export default function AdminPayrollPage() {
     return "Circle K - El Alamein 4";
   };
 
+  const numberToArabicWords = (num: number): string => {
+    if (!num || num === 0) return "صفر";
+    const absNum = Math.floor(Math.abs(num));
+    
+    const ones = ["", "واحد", "اثنان", "ثلاثة", "أربعة", "خمسة", "ستة", "سبعة", "ثمانية", "تسعة", "عشرة", "أحد عشر", "اثنا عشر", "ثلاثة عشر", "أربعة عشر", "خمسة عشر", "ستة عشر", "سبعة عشر", "ثمانية عشر", "تسعة عشر"];
+    const tens = ["", "", "عشرون", "ثلاثون", "أربعون", "خمسون", "ستون", "سبعون", "ثمانون", "تسعون"];
+    const hundreds = ["", "مائة", "مائتان", "ثلاثمائة", "أربعمائة", "خمسمائة", "ستمائة", "سبعمائة", "ثمانمائة", "تسعمائة"];
+    
+    function getBelow100(n: number): string {
+      if (n < 20) return ones[n];
+      const t = Math.floor(n / 10);
+      const o = n % 10;
+      if (o === 0) return tens[t];
+      return ones[o] + " و" + tens[t];
+    }
+    
+    function getBelow1000(n: number): string {
+      const h = Math.floor(n / 100);
+      const rest = n % 100;
+      if (h === 0) return getBelow100(rest);
+      const hText = hundreds[h];
+      if (rest === 0) return hText;
+      return hText + " و" + getBelow100(rest);
+    }
+    
+    const thousands = Math.floor(absNum / 1000);
+    const remainder = absNum % 1000;
+    
+    let result = "";
+    
+    if (thousands > 0) {
+      if (thousands === 1) result += "ألف";
+      else if (thousands === 2) result += "ألفان";
+      else if (thousands >= 3 && thousands <= 10) result += getBelow100(thousands) + " آلاف";
+      else result += getBelow1000(thousands) + " ألف";
+    }
+    
+    if (remainder > 0) {
+      if (result !== "") result += " و";
+      result += getBelow1000(remainder);
+    }
+    
+    return result;
+  };
+
+  const getArMonthName = (mStr: string) => {
+    if (!mStr || !mStr.includes("-")) return mStr;
+    const [y, m] = mStr.split("-");
+    const months = [
+      "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
+      "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"
+    ];
+    const idx = parseInt(m, 10) - 1;
+    return `${months[idx] || m} ${y}`;
+  };
+
   const numberToEnglishWords = (num: number): string => {
     if (!num || num === 0) return "zero Egyptian pounds";
     const a = ['', 'one ', 'two ', 'three ', 'four ', 'five ', 'six ', 'seven ', 'eight ', 'nine ', 'ten ', 'eleven ', 'twelve ', 'thirteen ', 'fourteen ', 'fifteen ', 'sixteen ', 'seventeen ', 'eighteen ', 'nineteen '];
@@ -1925,277 +1981,548 @@ export default function AdminPayrollPage() {
     {printPayslipRecord && (() => {
       const p = printPayslipRecord;
       const emp = employees.find(e => e.id === p.employeeId) || {};
-      const netPayWords = numberToEnglishWords(p.netPay || 0);
+      const dateString = new Date().toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      const companyName = getBranchCompanyName(emp.storeId || p.storeId, emp.branchId);
+
+      const netPay = p.netPay || 0;
+      const netPayWordsAr = numberToArabicWords(netPay);
+      const netPayWordsEn = numberToEnglishWords(netPay);
       const gross = (p.standardPay || 0) + (p.overtime || 0) + (p.bonus || 0);
-      const dateString = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-      const companyName = getBranchCompanyName(emp.storeId, emp.branchId);
+      const totalDeds = (p.deductions || 0) + (p.insurance || 0) + (p.loanThisMonth || 0);
+      const cycleMonthLabel = getArMonthName(p.month);
+      const nidChars = String(emp?.nationalId || "").replace(/\D/g, "").slice(0, 14).padEnd(14, " ").split("");
+      const docRef1 = `#CK-PAY-${p.month}-${String(p.employeeId || "").slice(-4).toUpperCase()}`;
+      const docRef2 = `#CK-REC-${p.month}-${String(p.employeeId || "").slice(-4).toUpperCase()}`;
 
       return (
-        <div className="hidden print:block w-full text-black bg-white" style={{ fontFamily: "Arial, sans-serif", fontSize: "11px" }}>
+        <div className="hidden print:block w-full text-slate-900 bg-white" style={{ fontFamily: "'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif", fontSize: "10px", lineHeight: "1.4" }} dir="rtl">
+          <style dangerouslySetInnerHTML={{ __html: "@media print { @page { size: A4 portrait; margin: 6mm 8mm; } body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; background: #fff !important; margin: 0 !important; padding: 0 !important; } } table { page-break-inside: avoid; }" }} />
           
-          {/* PAGE 1: PAYSLIP */}
-          <div className="pay-page">
-            <div>
-              {/* Corporate Header */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2.5px solid #0f172a", paddingBottom: "10px", marginBottom: "14px" }}>
+          {/* 🌟 SHEET 1: OFFICIAL MONTHLY PAYSLIP (كشف مفردات الأجر والراتب الشهري المعتمد) 🌟 */}
+          <div
+            style={{
+              margin: "0 auto",
+              width: "100%",
+              maxWidth: "100%",
+              minHeight: "282mm",
+              boxSizing: "border-box",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              padding: "2mm 2mm",
+              pageBreakAfter: "always",
+              breakAfter: "page",
+              pageBreakInside: "avoid",
+              breakInside: "avoid"
+            }}
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {/* 1. CORPORATE & LEGAL HEADER */}
+              <div style={{ display: "grid", gridTemplateColumns: "1.3fr 2fr 1.3fr", gap: "8px", alignItems: "center", borderBottom: "2.5px solid #0f172a", paddingBottom: "6px" }}>
+                <div style={{ textAlign: "right", fontSize: "10px", lineHeight: "1.4", color: "#1e293b" }}>
+                  <div style={{ fontWeight: "900", fontSize: "12.5px", color: "#0f172a" }}>شركة ايه ان اتش للتجارة والتوزيع</div>
+                  <div style={{ fontSize: "9px", fontWeight: "800", textTransform: "uppercase", color: "#475569" }}>ANH TRADING & DISTRIBUTION • CIRCLE K</div>
+                  <div style={{ fontSize: "9px", fontFamily: "monospace", marginTop: "2px" }}>س.ت: 216727 | ب.ض: 756-563-844</div>
+                  <div style={{ fontSize: "8.5px", color: "#64748b" }}>الإدارة المالية وشؤون العاملين والموارد البشرية</div>
+                </div>
+
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ border: "2px solid #0f172a", borderRadius: "8px", padding: "5px 12px", background: "#f8fafc" }}>
+                    <div style={{ fontSize: "13.5px", fontWeight: "900", color: "#0f172a" }}>
+                      كشف مفردات الأجر والراتب الشهري المعتمد
+                    </div>
+                    <div style={{ fontSize: "10px", fontWeight: "bold", color: "#047857", marginTop: "1px" }}>
+                      مسير أجور رسمي مدقق • معتمد ومصرح بالصرف الخزيني
+                    </div>
+                    <div style={{ fontSize: "8.5px", color: "#475569", marginTop: "1px" }}>
+                      طبقاً لأحكام قانون العمل المصري رقم 12 لسنة 2003 وقانون التأمينات رقم 148 لسنة 2019
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ textAlign: "left", fontSize: "9.5px", lineHeight: "1.5", color: "#1e293b", fontFamily: "monospace" }}>
+                  <div><strong style={{ fontFamily: "'Cairo', sans-serif" }}>رقم المسير:</strong> <span style={{ fontWeight: "bold", color: "#1e3a8a", fontSize: "11px" }}>{docRef1}</span></div>
+                  <div><strong style={{ fontFamily: "'Cairo', sans-serif" }}>تاريخ التحرير:</strong> {dateString}</div>
+                  <div><strong style={{ fontFamily: "'Cairo', sans-serif" }}>دورة الاستحقاق:</strong> شهر {cycleMonthLabel} ({p.month})</div>
+                  <div><strong style={{ fontFamily: "'Cairo', sans-serif" }}>جهة الصرف:</strong> خزينة الفرع نقدياً (Branch Cash Safe)</div>
+                </div>
+              </div>
+
+              {/* 2. SECTION 1: EMPLOYEE & EMPLOYMENT PROFILE */}
+              <div>
+                <div style={{ background: "#0f172a", color: "#fff", fontSize: "10px", fontWeight: "bold", padding: "3px 8px", borderRadius: "4px 4px 0 0", display: "flex", justifyContent: "space-between" }}>
+                  <span>أولاً: بيانات العامل وجهة العمل (Employee & Employment Profile)</span>
+                  <span>طرفا علاقة العمل والمسير</span>
+                </div>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px", background: "#f8fafc" }}>
+                  <tbody>
+                    <tr>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 7px", width: "18%", background: "#f1f5f9", fontWeight: "bold" }}>اسم العامل:</td>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 7px", width: "42%", fontWeight: "900", color: "#0f172a", fontSize: "11.5px" }}>{emp?.name || "-"}</td>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 7px", width: "18%", background: "#f1f5f9", fontWeight: "bold" }}>المسمى الوظيفي:</td>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 7px", width: "22%", fontWeight: "bold" }}>{emp?.position || "-"}</td>
+                    </tr>
+                    <tr>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 7px", background: "#f1f5f9", fontWeight: "bold" }}>الرقم القومي (14 رقم):</td>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 7px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "2.5px" }}>
+                          {nidChars.map((ch: string, i: number) => (
+                            <span
+                              key={i}
+                              style={{
+                                display: "inline-block",
+                                width: "19px",
+                                height: "20px",
+                                border: "1.5px solid #475569",
+                                borderRadius: "3px",
+                                textAlign: "center",
+                                lineHeight: "18px",
+                                fontSize: "11.5px",
+                                fontWeight: "bold",
+                                fontFamily: "monospace",
+                                background: "#fff"
+                              }}
+                            >
+                              {ch.trim() || "-"}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 7px", background: "#f1f5f9", fontWeight: "bold" }}>الراتب الأساسي / التأميني:</td>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 7px", fontFamily: "monospace", fontWeight: "bold", color: "#047857" }}>
+                        {(Number(emp?.baseSalary) || Number(p.standardPay) || 0).toLocaleString()} ج.م
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 7px", background: "#f1f5f9", fontWeight: "bold" }}>الشركة الموظفة:</td>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 7px" }}>شركة ايه ان اتش للتجارة والتوزيع (س.ت: 216727)</td>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 7px", background: "#f1f5f9", fontWeight: "bold" }}>الفرع وجهة العمل:</td>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 7px", fontWeight: "bold" }}>{companyName}</td>
+                    </tr>
+                    <tr>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 7px", background: "#f1f5f9", fontWeight: "bold" }}>دورة وشهر الاستحقاق:</td>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 7px", fontWeight: "bold", color: "#1e3a8a" }}>شهر {cycleMonthLabel} ({p.month})</td>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 7px", background: "#f1f5f9", fontWeight: "bold" }}>أيام العمل الفعلية:</td>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 7px", fontWeight: "bold" }}>{p.days || 30} يوم عمل فعلي</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* 3. SECTION 2: PROMINENT NET PAYABLE BANNER & TAFQEET */}
+              <div style={{
+                background: "#eff6ff",
+                border: "2px solid #2563eb",
+                borderRadius: "7px",
+                padding: "7px 12px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                boxShadow: "0 1px 3px rgba(37,99,235,0.08)"
+              }}>
                 <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <div style={{ backgroundColor: "#e61c38", color: "#ffffff", fontWeight: "900", fontSize: "14px", width: "24px", height: "24px", borderRadius: "50%", display: "flex", alignItems: "center", justifyItems: "center", justifyContent: "center" }}>K</div>
-                    <h1 style={{ fontSize: "21px", fontWeight: "900", color: "#0f172a", margin: 0, textTransform: "uppercase", letterSpacing: "1px" }}>{companyName}</h1>
+                  <div style={{ fontSize: "11px", fontWeight: "900", color: "#1e3a8a" }}>
+                    صافي الراتب المستحق للصرف الخزيني (Net Payable):
                   </div>
-                  <p style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "10px" }}>Commercial Registry (س.ت): 123456 | Tax ID (ب.ض): 123-456-789 | Authorized Franchise Portal</p>
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <h2 style={{ fontSize: "18px", fontWeight: "bold", color: "#0f172a", margin: 0 }}>OFFICIAL PAYSLIP</h2>
-                  <h3 style={{ fontSize: "12px", fontWeight: "normal", color: "#475569", margin: "2px 0 0 0" }}>كشف راتب شهري معتمد</h3>
-                </div>
-              </div>
-              
-              {/* Employee Info Grid */}
-              <div style={{ display: "flex", flexWrap: "wrap", border: "1px solid #cbd5e1", borderRadius: "6px", overflow: "hidden", marginBottom: "14px" }}>
-                <div style={{ width: "50%", padding: "8px 12px", borderBottom: "1px solid #cbd5e1", borderRight: "1px solid #cbd5e1" }}>
-                  <div style={{ color: "#64748b", fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                    <span>Employee Name</span><span>اسم الموظف</span>
+                  <div style={{ fontSize: "10.5px", fontWeight: "bold", color: "#0f172a", marginTop: "2px" }}>
+                    فقط وقدره: <strong style={{ color: "#047857", fontSize: "11.5px" }}>{netPayWordsAr} جنيهاً مصرياً لا غير</strong>.
                   </div>
-                  <div style={{ fontWeight: "bold", textAlign: "right", marginTop: "2px", color: "#0f172a", fontSize: "12px" }}>{emp.name || "-"}</div>
-                </div>
-                <div style={{ width: "50%", padding: "8px 12px", borderBottom: "1px solid #cbd5e1" }}>
-                  <div style={{ color: "#64748b", fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                    <span>Employee ID</span><span>الرقم الوظيفي</span>
+                  <div style={{ fontSize: "8.5px", color: "#475569", fontFamily: "monospace", marginTop: "1px" }}>
+                    ({netPayWordsEn})
                   </div>
-                  <div style={{ fontWeight: "bold", textAlign: "right", marginTop: "2px", fontSize: "11px", wordBreak: "break-all", color: "#0f172a" }}>{emp.id || "-"}</div>
                 </div>
-                <div style={{ width: "50%", padding: "8px 12px", borderBottom: "1px solid #cbd5e1", borderRight: "1px solid #cbd5e1" }}>
-                  <div style={{ color: "#64748b", fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                    <span>National ID</span><span>الرقم القومي</span>
+                <div style={{
+                  background: "#fff",
+                  border: "2px solid #047857",
+                  borderRadius: "6px",
+                  padding: "4px 12px",
+                  textAlign: "center"
+                }}>
+                  <div style={{ fontSize: "8px", fontWeight: "bold", color: "#64748b" }}>المبلغ الصافي المعتمد</div>
+                  <div style={{ fontSize: "15px", fontWeight: "900", color: "#047857", fontFamily: "monospace" }}>
+                    {netPay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ج.م
                   </div>
-                  <div style={{ fontWeight: "bold", textAlign: "right", marginTop: "2px", letterSpacing: "0.5px", color: "#0f172a", fontSize: "11px" }}>{emp.nationalId || "-"}</div>
-                </div>
-                <div style={{ width: "50%", padding: "8px 12px", borderBottom: "1px solid #cbd5e1" }}>
-                  <div style={{ color: "#64748b", fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                    <span>Position / Title</span><span>المسمى الوظيفي</span>
-                  </div>
-                  <div style={{ fontWeight: "bold", textAlign: "right", marginTop: "2px", color: "#0f172a", fontSize: "12px" }}>{emp.position || "-"}</div>
-                </div>
-                <div style={{ width: "50%", padding: "8px 12px", borderRight: "1px solid #cbd5e1", backgroundColor: "#f8fafc" }}>
-                  <div style={{ color: "#64748b", fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                    <span>Payroll Period</span><span>دورة الراتب</span>
-                  </div>
-                  <div style={{ fontWeight: "bold", textAlign: "right", marginTop: "2px", color: "#0f172a", fontSize: "12px" }}>{p.month}</div>
-                </div>
-                <div style={{ width: "50%", padding: "8px 12px", backgroundColor: "#f8fafc" }}>
-                  <div style={{ color: "#64748b", fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                    <span>Issue Date</span><span>تاريخ الإصدار</span>
-                  </div>
-                  <div style={{ fontWeight: "bold", textAlign: "right", marginTop: "2px", color: "#0f172a", fontSize: "11px" }}>{dateString}</div>
                 </div>
               </div>
 
-              {/* Ink-Saving Net Pay Banner */}
-              <div style={{ border: "2px solid #0f172a", backgroundColor: "#f8fafc", padding: "10px 16px", marginBottom: "14px", display: "flex", justifyContent: "space-between", alignItems: "center", borderRadius: "8px" }}>
-                <span style={{ fontSize: "13px", fontWeight: "bold", color: "#0f172a" }}>صافي الراتب المستحق / Net Payable</span>
-                <span style={{ fontSize: "18px", fontWeight: "900", color: "#059669" }}>EGP {(p.netPay || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-              </div>
-              <div style={{ textAlign: "right", fontSize: "11px", color: "#475569", fontWeight: "500", marginBottom: "16px" }}>
-                فقط وقدره: {netPayWords} لا غير
-              </div>
-
-              {/* EARNINGS */}
-              <div style={{ marginBottom: "16px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", color: "#0f172a", fontWeight: "bold", borderBottom: "1.5px solid #0f172a", paddingBottom: "4px", marginBottom: "6px", textTransform: "uppercase", fontSize: "11px" }}>
-                  <span>Earnings Breakdown</span><span>بند الاستحقاقات</span>
+              {/* 4. SECTION 3: ITEMIZED EARNINGS BREAKDOWN */}
+              <div>
+                <div style={{ background: "#047857", color: "#fff", fontSize: "10px", fontWeight: "bold", padding: "3px 8px", borderRadius: "4px 4px 0 0", display: "flex", justifyContent: "space-between" }}>
+                  <span>ثالثاً: جدول الاستحقاقات والأجر الشامل (Gross Earnings Breakdown)</span>
+                  <span>المبالغ بالجنيه المصري (EGP)</span>
                 </div>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9.5px", background: "#f8fafc" }}>
                   <thead>
-                    <tr style={{ backgroundColor: "#f8fafc", color: "#475569", borderBottom: "1px solid #cbd5e1" }}>
-                      <th style={{ padding: "6px 10px", textAlign: "right", fontWeight: "600" }}>البند / Description</th>
-                      <th style={{ padding: "6px 10px", textAlign: "right", width: "160px", fontWeight: "600" }}>القيمة / Amount</th>
+                    <tr style={{ background: "#e2e8f0", color: "#1e293b", fontWeight: "bold" }}>
+                      <th style={{ border: "1px solid #cbd5e1", padding: "4px 8px", textAlign: "right", width: "70%" }}>بند الاستحقاق والأجر (Earning Description)</th>
+                      <th style={{ border: "1px solid #cbd5e1", padding: "4px 8px", textAlign: "left", width: "30%" }}>القيمة المعتمدة (Amount)</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
-                      <td style={{ padding: "7px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>الراتب الأساسي (Basic Salary)</td>
-                      <td style={{ padding: "7px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", fontWeight: "600" }}>EGP {(p.standardPay || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px" }}>الراتب الأساسي عن أيام العمل الفعلية (Basic Salary)</td>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px", textAlign: "left", fontFamily: "monospace", fontWeight: "bold", color: "#0f172a" }}>
+                        {(p.standardPay || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ج.م
+                      </td>
                     </tr>
-                    <tr style={{ backgroundColor: "#f8fafc" }}>
-                      <td style={{ padding: "7px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>أجر إضافي (Overtime)</td>
-                      <td style={{ padding: "7px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", fontWeight: "600" }}>EGP {(p.overtime || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <tr style={{ background: "#fff" }}>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px" }}>أجر ساعات العمل الإضافية المعتمدة (Approved Overtime)</td>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px", textAlign: "left", fontFamily: "monospace", fontWeight: "bold", color: "#047857" }}>
+                        {(p.overtime || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ج.م
+                      </td>
                     </tr>
                     <tr>
-                      <td style={{ padding: "7px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>مكافآت وحوافز (Bonuses/Incentives)</td>
-                      <td style={{ padding: "7px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", fontWeight: "600" }}>EGP {(p.bonus || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px" }}>مكافآت أداء وحوافز انتظام وبدلات وظيفية (Incentives, Bonuses & Allowances)</td>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px", textAlign: "left", fontFamily: "monospace", fontWeight: "bold", color: "#047857" }}>
+                        {(p.bonus || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ج.م
+                      </td>
                     </tr>
-                    <tr style={{ backgroundColor: "#e2e8f0", color: "#0f172a" }}>
-                      <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: "bold" }}>إجمالي الاستحقاقات (Gross Earnings)</td>
-                      <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: "bold" }}>EGP {gross.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <tr style={{ background: "#e2e8f0", fontWeight: "bold" }}>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 8px", color: "#0f172a" }}>إجمالي الأجر الشامل المستحق (Total Gross Earnings)</td>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 8px", textAlign: "left", fontFamily: "monospace", fontSize: "10.5px", color: "#0f172a" }}>
+                        {gross.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ج.م
+                      </td>
                     </tr>
                   </tbody>
                 </table>
               </div>
 
-              {/* DEDUCTIONS */}
-              <div style={{ marginBottom: "16px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", color: "#0f172a", fontWeight: "bold", borderBottom: "1.5px solid #0f172a", paddingBottom: "4px", marginBottom: "6px", textTransform: "uppercase", fontSize: "11px" }}>
-                  <span>Deductions Breakdown</span><span>بند الاستقطاعات</span>
+              {/* 5. SECTION 4: ITEMIZED LAWFUL DEDUCTIONS BREAKDOWN */}
+              <div>
+                <div style={{ background: "#334155", color: "#fff", fontSize: "10px", fontWeight: "bold", padding: "3px 8px", borderRadius: "4px 4px 0 0", display: "flex", justifyContent: "space-between" }}>
+                  <span>رابعاً: جدول الاستقطاعات والخصومات القانونية والمالية (Lawful Deductions Breakdown)</span>
+                  <span>سقف الاستقطاع: طبقاً للمادة 34 من قانون العمل 12/2003</span>
                 </div>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9.5px", background: "#f8fafc" }}>
                   <thead>
-                    <tr style={{ backgroundColor: "#f8fafc", color: "#475569", borderBottom: "1px solid #cbd5e1" }}>
-                      <th style={{ padding: "6px 10px", textAlign: "right", fontWeight: "600" }}>البند / Description</th>
-                      <th style={{ padding: "6px 10px", textAlign: "right", width: "160px", fontWeight: "600" }}>القيمة / Amount</th>
+                    <tr style={{ background: "#e2e8f0", color: "#1e293b", fontWeight: "bold" }}>
+                      <th style={{ border: "1px solid #cbd5e1", padding: "4px 8px", textAlign: "right", width: "70%" }}>بند الاستقطاع والخصم (Deduction Description)</th>
+                      <th style={{ border: "1px solid #cbd5e1", padding: "4px 8px", textAlign: "left", width: "30%" }}>القيمة المستقطعة (Amount)</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
-                      <td style={{ padding: "7px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>جزاءات قانونية وإدارية (Legal/Admin Penalties)</td>
-                      <td style={{ padding: "7px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", fontWeight: "600" }}>EGP {(p.deductions || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px" }}>جزاءات تأخير وغياب إدارية معتمدة وفق لائحة العمل (Admin Penalties)</td>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px", textAlign: "left", fontFamily: "monospace", fontWeight: "bold", color: "#b91c1c" }}>
+                        {(p.deductions || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ج.م
+                      </td>
                     </tr>
-                    <tr style={{ backgroundColor: "#f8fafc" }}>
-                      <td style={{ padding: "7px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>تأمينات اجتماعية (Social Insurance)</td>
-                      <td style={{ padding: "7px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", fontWeight: "600" }}>EGP {(p.insurance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <tr style={{ background: "#fff" }}>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px" }}>حصة العامل في التأمينات الاجتماعية (Social Insurance - Law 148/2019)</td>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px", textAlign: "left", fontFamily: "monospace", fontWeight: "bold", color: "#b91c1c" }}>
+                        {(p.insurance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ج.م
+                      </td>
                     </tr>
                     <tr>
-                      <td style={{ padding: "7px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>سلف / قروض (Advances/Loans)</td>
-                      <td style={{ padding: "7px 10px", textAlign: "right", borderBottom: "1px solid #e2e8f0", fontWeight: "600" }}>EGP {(p.loanThisMonth || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px" }}>استقطاع قسط سلفة نقدية معتمدة من المرتب (Loan / Cash Advance Deduction - Art. 34)</td>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px", textAlign: "left", fontFamily: "monospace", fontWeight: "bold", color: "#2563eb" }}>
+                        {(p.loanThisMonth || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ج.م
+                      </td>
                     </tr>
-                    <tr style={{ backgroundColor: "#e2e8f0", color: "#0f172a" }}>
-                      <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: "bold" }}>إجمالي الاستقطاعات (Total Deductions)</td>
-                      <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: "bold" }}>EGP {((p.deductions || 0) + (p.insurance || 0) + (p.loanThisMonth || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <tr style={{ background: "#fee2e2", fontWeight: "bold" }}>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 8px", color: "#991b1b" }}>إجمالي الاستقطاعات والخصومات القانونية (Total Deductions)</td>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 8px", textAlign: "left", fontFamily: "monospace", fontSize: "10.5px", color: "#b91c1c" }}>
+                        {totalDeds.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ج.م
+                      </td>
                     </tr>
                   </tbody>
                 </table>
+              </div>
+
+              {/* 6. SECTION 5: STATUTORY EGYPTIAN LABOR LAW UNDERTAKINGS */}
+              <div style={{ fontSize: "9px", lineHeight: "1.55", background: "#f8fafc", border: "1.5px solid #cbd5e1", borderRadius: "6px", padding: "5px 10px", color: "#1e293b" }}>
+                <strong style={{ color: "#0f172a", fontSize: "9.5px" }}>خامساً: الضوابط القانونية لمسير الأجور (وفقاً لقانون العمل المصري رقم 12 لسنة 2003 وقانون التأمينات 148 لسنة 2019):</strong>
+                <ol style={{ margin: "2px 0 0 0", paddingRight: "16px" }}>
+                  <li>
+                    <strong>الالتزام بالمادة (34):</strong> لا تتجاوز إجمالي الاستقطاعات والخصومات المفروضة على أجر العامل الحدود والنسب القانونية المنصوص عليها، بما يضمن صيانة الحد الأدنى القانوني للأجر.
+                  </li>
+                  <li>
+                    <strong>المطابقة للمادة (38):</strong> يؤدى الأجر للعامل في أحد أيام العمل وفي مقر عمله الرسمي، وتعد بيانات هذا الكشف إثباتاً رسمياً معتمداً ومطابقاً لسجلات الأجور المعمول بها لدى الشركة.
+                  </li>
+                  <li>
+                    <strong>التأمينات الاجتماعية:</strong> تم احتساب واستقطاع اشتراكات التأمين الاجتماعي وفقاً لأحكام قانون التأمينات الاجتماعية والمعاشات رقم 148 لسنة 2019 وقرارات الهيئة القومية للتأمين الاجتماعي.
+                  </li>
+                </ol>
               </div>
             </div>
 
-            {/* Bottom Section: Stamp + Signatures + Enterprise Footer */}
-            <div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", border: "1px solid #cbd5e1", borderRadius: "8px", padding: "14px 18px", backgroundColor: "#ffffff" }}>
-                <div style={{ width: "42%" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "#475569", fontWeight: "bold", marginBottom: "35px" }}>
-                    <span>Employee Signature</span><span>توقيع الموظف</span>
-                  </div>
-                  <div style={{ borderBottom: "1.5px solid #0f172a" }}></div>
+            {/* 7. SIGNATURES & CORPORATE STAMP BLOCK */}
+            <div style={{ marginTop: "6px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1.1fr 1.2fr 1.2fr", gap: "8px", alignItems: "center", borderTop: "2px solid #0f172a", paddingTop: "5px", marginBottom: "3px" }}>
+                <div style={{ textAlign: "center", fontSize: "9px" }}>
+                  <div style={{ fontWeight: "900", color: "#0f172a" }}>المحاسب المالي (معد المسير):</div>
+                  <div style={{ color: "#334155", margin: "1px 0" }}>تم التدقيق الحسابي والمطابقة</div>
+                  <div style={{ color: "#64748b", margin: "16px 0 0 0" }}>التوقيع: .................................</div>
                 </div>
 
-                <div style={{ border: "1.5px dashed #94a3b8", borderRadius: "6px", width: "100px", height: "60px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", color: "#94a3b8", fontSize: "8.5px" }}>
-                  <span>COMPANY STAMP</span>
-                  <span>خاتم الشركة الرسمية</span>
+                <div style={{ textAlign: "center", fontSize: "9px" }}>
+                  <div style={{ fontWeight: "900", color: "#0f172a" }}>اعتماد الموارد البشرية والإدارة:</div>
+                  <div style={{ color: "#334155", margin: "1px 0" }}>معتمد ومطابق لقانون العمل</div>
+                  <div style={{ color: "#64748b", margin: "16px 0 0 0" }}>التوقيع: .................................</div>
                 </div>
 
-                <div style={{ width: "42%" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "#475569", fontWeight: "bold", marginBottom: "35px" }}>
-                    <span>HR Department Approval</span><span>اعتماد إدارة الموارد البشرية</span>
+                <div style={{ textAlign: "center", fontSize: "9px" }}>
+                  <div style={{ fontWeight: "900", color: "#0f172a" }}>خاتم الشركة الرسمي (Stamp):</div>
+                  <div style={{
+                    margin: "2px auto 0 auto",
+                    width: "120px",
+                    height: "52px",
+                    border: "1.5px solid #1e3a8a",
+                    borderRadius: "6px",
+                    padding: "2px",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "#f8fafc"
+                  }}>
+                    <div style={{ fontSize: "7.5px", fontWeight: "900", color: "#1e3a8a" }}>شركة ايه ان اتش للتجارة والتوزيع</div>
+                    <div style={{ fontSize: "6.5px", color: "#475569" }}>س.ت: 216727 • ب.ض: 756-563-844</div>
+                    <div style={{ fontSize: "7px", color: "#047857", fontWeight: "bold", marginTop: "1px" }}>[ مسير أجور معتمد ومسجل ]</div>
                   </div>
-                  <div style={{ borderBottom: "1.5px solid #0f172a" }}></div>
+                </div>
+
+                <div style={{ textAlign: "center", fontSize: "9px" }}>
+                  <div style={{ fontWeight: "900", color: "#0f172a" }}>توقيع العامل بالعلم واستلام الكشف:</div>
+                  <div style={{ color: "#334155", margin: "1px 0" }}>استلمت صورة طبق الأصل من الكشف</div>
+                  <div style={{ color: "#64748b", margin: "16px 0 0 0" }}>التوقيع: .................................</div>
                 </div>
               </div>
 
-              {/* Corporate Footer */}
-              <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: "8px", marginTop: "12px", display: "flex", justifyContent: "space-between", fontSize: "9px", color: "#64748b" }}>
-                <span>{companyName} • Confidential Enterprise Payroll Document</span>
-                <span>Document Ref: #CK-PAY-{p.month}-{String(p.employeeId || "").slice(-4)} • Page 1 of 2</span>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #cbd5e1", paddingTop: "3px", fontSize: "8px", color: "#64748b" }}>
+                <div>وثيقة رسمية صادرة آلياً من نظام إدارة الموارد البشرية - شركة ايه ان اتش للتجارة (ANH) • صفحة 1 من 2 (كشف مفردات الأجر الشهري)</div>
+                <div>المادتان 34 و 38 من قانون العمل رقم 12 لسنة 2003 • بيان مفردات الأجر المعتمد</div>
               </div>
             </div>
           </div>
-          
-          {/* PAGE 2: SALARY ACKNOWLEDGEMENT RECEIPT */}
-          <div className="pay-page-last">
-            <div>
-              {/* Corporate Header */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2.5px solid #0f172a", paddingBottom: "10px", marginBottom: "14px" }}>
+
+          {/* 🌟 SHEET 2: SALARY RECEIPT & LEGAL CLEARANCE (إقرار استلام الراتب والمخالصة المالية والتأمينية التامة والنهائية) 🌟 */}
+          <div
+            style={{
+              margin: "0 auto",
+              width: "100%",
+              maxWidth: "100%",
+              minHeight: "282mm",
+              boxSizing: "border-box",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              padding: "2mm 2mm",
+              pageBreakAfter: "avoid",
+              breakAfter: "avoid",
+              pageBreakInside: "avoid",
+              breakInside: "avoid"
+            }}
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {/* 1. CORPORATE & LEGAL HEADER */}
+              <div style={{ display: "grid", gridTemplateColumns: "1.3fr 2fr 1.3fr", gap: "8px", alignItems: "center", borderBottom: "2.5px solid #0f172a", paddingBottom: "6px" }}>
+                <div style={{ textAlign: "right", fontSize: "10px", lineHeight: "1.4", color: "#1e293b" }}>
+                  <div style={{ fontWeight: "900", fontSize: "12.5px", color: "#0f172a" }}>شركة ايه ان اتش للتجارة والتوزيع</div>
+                  <div style={{ fontSize: "9px", fontWeight: "800", textTransform: "uppercase", color: "#475569" }}>ANH TRADING & DISTRIBUTION • CIRCLE K</div>
+                  <div style={{ fontSize: "9px", fontFamily: "monospace", marginTop: "2px" }}>س.ت: 216727 | ب.ض: 756-563-844</div>
+                  <div style={{ fontSize: "8.5px", color: "#64748b" }}>الإدارة المالية وشؤون العاملين والموارد البشرية</div>
+                </div>
+
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ border: "2px solid #0f172a", borderRadius: "8px", padding: "5px 12px", background: "#f8fafc" }}>
+                    <div style={{ fontSize: "13px", fontWeight: "900", color: "#0f172a" }}>
+                      إقرار استلام الراتب والمخالصة المالية والتأمينية التامة والنهائية
+                    </div>
+                    <div style={{ fontSize: "10px", fontWeight: "bold", color: "#047857", marginTop: "1px" }}>
+                      مخالصة نهائية تامة وناجزة وبراءة ذمة قانونية وقضائية مطلقة
+                    </div>
+                    <div style={{ fontSize: "8.5px", color: "#475569", marginTop: "1px" }}>
+                      إعمالاً لأحكام المادتين (38) و (76) من قانون العمل المصري رقم 12 لسنة 2003
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ textAlign: "left", fontSize: "9.5px", lineHeight: "1.5", color: "#1e293b", fontFamily: "monospace" }}>
+                  <div><strong style={{ fontFamily: "'Cairo', sans-serif" }}>رقم السند:</strong> <span style={{ fontWeight: "bold", color: "#1e3a8a", fontSize: "11px" }}>{docRef2}</span></div>
+                  <div><strong style={{ fontFamily: "'Cairo', sans-serif" }}>تاريخ الصرف:</strong> {dateString}</div>
+                  <div><strong style={{ fontFamily: "'Cairo', sans-serif" }}>دورة الراتب:</strong> شهر {cycleMonthLabel} ({p.month})</div>
+                  <div><strong style={{ fontFamily: "'Cairo', sans-serif" }}>جهة الصرف:</strong> خزينة الفرع نقدياً (Branch Cash Safe)</div>
+                </div>
+              </div>
+
+              {/* 2. SECTION 1: ACKNOWLEDGING EMPLOYEE PROFILE */}
+              <div>
+                <div style={{ background: "#0f172a", color: "#fff", fontSize: "10px", fontWeight: "bold", padding: "3px 8px", borderRadius: "4px 4px 0 0", display: "flex", justifyContent: "space-between" }}>
+                  <span>أولاً: بيانات العامل والمُقر بالاستلام والتخالص (Acknowledging Employee Profile)</span>
+                  <span>المقر بما فيه قانوناً</span>
+                </div>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px", background: "#f8fafc" }}>
+                  <tbody>
+                    <tr>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 7px", width: "18%", background: "#f1f5f9", fontWeight: "bold" }}>اسم العامل المُقر:</td>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 7px", width: "42%", fontWeight: "900", color: "#0f172a", fontSize: "11.5px" }}>{emp?.name || "-"}</td>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 7px", width: "18%", background: "#f1f5f9", fontWeight: "bold" }}>المسمى الوظيفي:</td>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 7px", width: "22%", fontWeight: "bold" }}>{emp?.position || "-"}</td>
+                    </tr>
+                    <tr>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 7px", background: "#f1f5f9", fontWeight: "bold" }}>الرقم القومي (14 رقم):</td>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 7px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "2.5px" }}>
+                          {nidChars.map((ch: string, i: number) => (
+                            <span
+                              key={i}
+                              style={{
+                                display: "inline-block",
+                                width: "19px",
+                                height: "20px",
+                                border: "1.5px solid #475569",
+                                borderRadius: "3px",
+                                textAlign: "center",
+                                lineHeight: "18px",
+                                fontSize: "11.5px",
+                                fontWeight: "bold",
+                                fontFamily: "monospace",
+                                background: "#fff"
+                              }}
+                            >
+                              {ch.trim() || "-"}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 7px", background: "#f1f5f9", fontWeight: "bold" }}>الشركة الموظفة:</td>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 7px" }}>شركة ايه ان اتش للتجارة والتوزيع</td>
+                    </tr>
+                    <tr>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 7px", background: "#f1f5f9", fontWeight: "bold" }}>الفرع وجهة العمل:</td>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 7px", fontWeight: "bold" }}>{companyName}</td>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 7px", background: "#f1f5f9", fontWeight: "bold" }}>طريقة الصرف والتسليم:</td>
+                      <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 7px", fontWeight: "bold", color: "#047857" }}>نقداً وعداً من خزينة الفرع</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* 3. SECTION 2: NET AMOUNT RECEIVED & TAFQEET */}
+              <div style={{
+                background: "#ecfdf5",
+                border: "2px solid #047857",
+                borderRadius: "7px",
+                padding: "7px 12px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                boxShadow: "0 1px 3px rgba(4,120,87,0.08)"
+              }}>
                 <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <div style={{ backgroundColor: "#e61c38", color: "#ffffff", fontWeight: "900", fontSize: "14px", width: "24px", height: "24px", borderRadius: "50%", display: "flex", alignItems: "center", justifyItems: "center", justifyContent: "center" }}>K</div>
-                    <h1 style={{ fontSize: "21px", fontWeight: "900", color: "#0f172a", margin: 0, textTransform: "uppercase", letterSpacing: "1px" }}>{companyName}</h1>
+                  <div style={{ fontSize: "11px", fontWeight: "900", color: "#065f46" }}>
+                    المبلغ الصافي المسلّم نقداً للعامل (Net Cash Received):
                   </div>
-                  <p style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "10px" }}>Commercial Registry (س.ت): 123456 | Tax ID (ب.ض): 123-456-789 | Authorized Franchise Portal</p>
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <h2 style={{ fontSize: "18px", fontWeight: "bold", color: "#0f172a", margin: 0 }}>SALARY RECEIPT & CLEARANCE</h2>
-                  <h3 style={{ fontSize: "12px", fontWeight: "normal", color: "#475569", margin: "2px 0 0 0" }}>إقرار استلام راتب ومخالصة نهائية</h3>
-                </div>
-              </div>
-              
-              <div style={{ display: "flex", flexWrap: "wrap", border: "1px solid #cbd5e1", borderRadius: "6px", overflow: "hidden", marginBottom: "14px" }}>
-                <div style={{ width: "50%", padding: "8px 12px", borderBottom: "1px solid #cbd5e1", borderRight: "1px solid #cbd5e1" }}>
-                  <div style={{ color: "#64748b", fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                    <span>Employee Name</span><span>اسم الموظف</span>
+                  <div style={{ fontSize: "10.5px", fontWeight: "bold", color: "#0f172a", marginTop: "2px" }}>
+                    فقط وقدره: <strong style={{ color: "#047857", fontSize: "11.5px" }}>{netPayWordsAr} جنيهاً مصرياً لا غير</strong>.
                   </div>
-                  <div style={{ fontWeight: "bold", textAlign: "right", marginTop: "2px", color: "#0f172a", fontSize: "12px" }}>{emp.name || "-"}</div>
-                </div>
-                <div style={{ width: "50%", padding: "8px 12px", borderBottom: "1px solid #cbd5e1" }}>
-                  <div style={{ color: "#64748b", fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                    <span>Employee ID</span><span>الرقم الوظيفي</span>
+                  <div style={{ fontSize: "8.5px", color: "#475569", fontFamily: "monospace", marginTop: "1px" }}>
+                    ({netPayWordsEn})
                   </div>
-                  <div style={{ fontWeight: "bold", textAlign: "right", marginTop: "2px", fontSize: "11px", wordBreak: "break-all", color: "#0f172a" }}>{emp.id || "-"}</div>
                 </div>
-                <div style={{ width: "50%", padding: "8px 12px", borderRight: "1px solid #cbd5e1", backgroundColor: "#f8fafc" }}>
-                  <div style={{ color: "#64748b", fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                    <span>Payroll Period</span><span>دورة الراتب</span>
+                <div style={{
+                  background: "#fff",
+                  border: "2px solid #047857",
+                  borderRadius: "6px",
+                  padding: "4px 12px",
+                  textAlign: "center"
+                }}>
+                  <div style={{ fontSize: "8px", fontWeight: "bold", color: "#065f46" }}>إجمالي النقدية المستلمة</div>
+                  <div style={{ fontSize: "15px", fontWeight: "900", color: "#047857", fontFamily: "monospace" }}>
+                    {netPay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ج.م
                   </div>
-                  <div style={{ fontWeight: "bold", textAlign: "right", marginTop: "2px", color: "#0f172a", fontSize: "12px" }}>{p.month}</div>
-                </div>
-                <div style={{ width: "50%", padding: "8px 12px", backgroundColor: "#f8fafc" }}>
-                  <div style={{ color: "#64748b", fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                    <span>Issue Date</span><span>تاريخ الإصدار</span>
-                  </div>
-                  <div style={{ fontWeight: "bold", textAlign: "right", marginTop: "2px", color: "#0f172a", fontSize: "11px" }}>{dateString}</div>
                 </div>
               </div>
 
-              {/* Net Received Amount Banner */}
-              <div style={{ border: "2px solid #0f172a", backgroundColor: "#f8fafc", padding: "10px 16px", marginBottom: "14px", display: "flex", justifyContent: "space-between", alignItems: "center", borderRadius: "8px" }}>
-                <span style={{ fontSize: "13px", fontWeight: "bold", color: "#0f172a" }}>المبلغ الصافي المستلم</span>
-                <span style={{ fontSize: "18px", fontWeight: "900", color: "#059669" }}>EGP {(p.netPay || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-              </div>
-              <div style={{ textAlign: "right", fontSize: "11px", color: "#475569", fontWeight: "500", marginBottom: "16px" }}>
-                فقط وقدره: {netPayWords} لا غير
-              </div>
-
-              {/* BILINGUAL LEGAL CLEARANCE BOX */}
-              <div style={{ border: "1px solid #cbd5e1", borderRadius: "8px", backgroundColor: "#f8fafc", padding: "14px 18px", marginBottom: "20px" }}>
-                <div style={{ direction: "rtl", textAlign: "right", borderBottom: "1px solid #cbd5e1", paddingBottom: "10px", marginBottom: "10px" }}>
-                  <h3 style={{ color: "#0f172a", fontSize: "13px", fontWeight: "bold", margin: 0 }}>إقرار استلام ومخالصة نهائية</h3>
-                  <p style={{ fontSize: "10.5px", lineHeight: "1.5", color: "#334155", margin: "6px 0 0 0", textAlign: "justify" }}>
-                    أقر أنا الموقع أدناه، بصفتي موظفاً لدى الشركة المذكورة أعلاه (<strong>{companyName}</strong>)، بأنني قد استلمت كامل الراتب والمستحقات المالية الخاصة بي عن دورة الراتب (<strong>{p.month}</strong>)، وذلك بعد إجراء كافة الاستقطاعات المقررة قانوناً. ويُعد توقيعي على هذا الإقرار بمثابة مخالصة نهائية تامة تبرئ ذمة الشركة من أي مطالبات مالية تخص هذه الدورة.
-                  </p>
-                </div>
-                <div style={{ direction: "ltr", textAlign: "left", paddingTop: "4px" }}>
-                  <h3 style={{ color: "#0f172a", fontSize: "13px", fontWeight: "bold", margin: 0 }}>Final Clearance & Salary Receipt</h3>
-                  <p style={{ fontSize: "10px", lineHeight: "1.45", color: "#334155", margin: "6px 0 0 0", textAlign: "justify" }}>
-                    I, the undersigned employee, acknowledge receipt of my full salary and dues for (<strong>{p.month}</strong>) from <strong>{companyName}</strong>, net of all lawful deductions. My signature constitutes a full & final clearance discharging the company from any financial claims for this period.
-                  </p>
-                </div>
+              {/* 4. SECTION 3: COMPREHENSIVE EGYPTIAN LABOR LAW CLEARANCE CLAUSES */}
+              <div style={{ fontSize: "9px", lineHeight: "1.58", background: "#f8fafc", border: "1.5px solid #cbd5e1", borderRadius: "6px", padding: "7px 11px", color: "#1e293b" }}>
+                <strong style={{ color: "#0f172a", fontSize: "10px" }}>ثالثاً: البنود القانونية للمخالصة وبراءة الذمة القضائية التامة (وفقاً لقانون العمل المصري رقم 12 لسنة 2003):</strong>
+                <ol style={{ margin: "3px 0 0 0", paddingRight: "16px" }}>
+                  <li style={{ marginBottom: "2.5px" }}>
+                    <strong>إقرار استلام كامل الأجر والمستحقات:</strong> أقر أنا العامل المقر أدناه بكامل إرادتي وبصفتي موظفاً لدى شركة ايه ان اتش للتجارة والتوزيع، بأنني قد استلمت من إدارة الشركة وخزينة الفرع كامل صافي أجري ومستحقاتي المالية الموضحة أعلاه عن دورة شهر ({cycleMonthLabel}) نقداً وعداً دون أي نقص أو تأخير أو اقتطاع غير مشروع.
+                  </li>
+                  <li style={{ marginBottom: "2.5px" }}>
+                    <strong>المخالصة المالية والتأمينية الشاملة والنهائية وبراءة الذمة:</strong> يُعد استلامي لصافي هذا الراتب وتوقيعي وبصمتي على هذا الإقرار بمثابة مخالصة مالية وتأمينية نهائية تامة وناجزة وبراءة ذمة مطلقة لشركة ايه ان اتش للتجارة والتوزيع (س.ت: 216727) وكافة فروعها وإداراتها ومسؤوليها، إبراءً شاملاً مسقطاً لكافة الحقوق والدعاوى والمطالبات العمالية والمدنية والمالية عن دورة هذا الشهر، بما يشمل الراتب الأساسي، بدلات الانتقال والسكن، البدلات الوظيفية، مكافآت وحوافز الإنتاج، وأجر ساعات العمل الإضافية.
+                  </li>
+                  <li style={{ marginBottom: "2.5px" }}>
+                    <strong>الإقرار بصحة الاستقطاعات والجزاءات والتأمينات والسلف:</strong> أقر بموافقتي التامة والقطعية على صحة كافة الاستقطاعات المنفذة على راتبي لشهر الاستحقاق، سواء كانت جزاءات وتأخيرات إدارية، أو اشتراكات التأمينات الاجتماعية وفق القانون رقم 148 لسنة 2019، أو أقساط سداد سلف نقدية استقطعت وفقاً للتفويض الصادر مني وطبقاً للمادة (34) من قانون العمل، وليس لي الحق في الاعتراض عليها أو المطالبة باسترداد أي جزء منها.
+                  </li>
+                  <li>
+                    <strong>الحجية القضائية والإلزام القانوني المطلق:</strong> تم تحرير وتوقيع هذا الإقرار والمخالصة بمحض إرادتي الحرة وبكامل الأهلية القانونية المعتبرة شرعاً وقانوناً، ودون أي ضغط أو إكراه أو تدليس، وتعد هذه الوثيقة بما تضمنته من توقيع وبصمة إبهامي حجة قانونية وقضائية قاطعة ونافذة في مواجهتي ومسؤوليتي المدنية والقضائية الكاملة أمام جميع مكاتب العمل، اللجان التوفيقية، المحاكم العمالية، وكافة جهات القضاء في جمهورية مصر العربية، ولا يجوز لي الطعن عليها أو الرجوع فيها بأي وجه من الوجوه، إعمالاً لأحكام المادتين (38) و(76) من قانون العمل المصري رقم 12 لسنة 2003.
+                  </li>
+                </ol>
               </div>
             </div>
 
-            {/* Bottom Section: Stamp + Signatures + Enterprise Footer */}
-            <div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", border: "1px solid #cbd5e1", borderRadius: "8px", padding: "14px 18px", backgroundColor: "#ffffff" }}>
-                <div style={{ width: "42%" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "#475569", fontWeight: "bold", marginBottom: "35px" }}>
-                    <span>Employee Signature</span><span>توقيع الموظف (المُقر)</span>
-                  </div>
-                  <div style={{ borderBottom: "1.5px solid #0f172a" }}></div>
+            {/* 5. SIGNATURES, THUMBPRINT & CORPORATE STAMP BLOCK */}
+            <div style={{ marginTop: "6px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr 1fr", gap: "8px", alignItems: "center", borderTop: "2px solid #0f172a", paddingTop: "5px", marginBottom: "3px" }}>
+                {/* Employee Signature */}
+                <div style={{ textAlign: "center", fontSize: "9px" }}>
+                  <div style={{ fontWeight: "900", color: "#0f172a" }}>المُقر بما فيه (العامل المستلم):</div>
+                  <div style={{ color: "#334155", margin: "1px 0", fontWeight: "bold" }}>{emp?.name || "-"}</div>
+                  <div style={{ color: "#64748b", margin: "16px 0 0 0" }}>التوقيع: .................................</div>
                 </div>
 
-                <div style={{ border: "1.5px dashed #94a3b8", borderRadius: "6px", width: "100px", height: "60px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", color: "#94a3b8", fontSize: "8.5px" }}>
-                  <span>COMPANY STAMP</span>
-                  <span>خاتم الشركة الرسمية</span>
+                {/* OFFICIAL THUMBPRINT BOX */}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                  <div style={{ fontSize: "8.5px", fontWeight: "900", color: "#0f172a", marginBottom: "1px" }}>
+                    بصمة إبهام العامل (ختم إلزامي):
+                  </div>
+                  <div style={{
+                    width: "100px",
+                    height: "60px",
+                    border: "2px solid #0f172a",
+                    borderRadius: "6px",
+                    background: "#fff",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    textAlign: "center",
+                    fontSize: "8.5px",
+                    color: "#94a3b8",
+                    fontWeight: "bold",
+                    boxShadow: "inset 0 0 4px rgba(0,0,0,0.05)"
+                  }}>
+                    [ بصمة الإبهام الأيمن ]
+                  </div>
                 </div>
 
-                <div style={{ width: "42%" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "#475569", fontWeight: "bold", marginBottom: "35px" }}>
-                    <span>Authorized Manager Signature</span><span>توقيع المدير المختص</span>
+                {/* Safe Custodian / Store Manager Witness */}
+                <div style={{ textAlign: "center", fontSize: "9px" }}>
+                  <div style={{ fontWeight: "900", color: "#0f172a" }}>أمين الخزينة / مدير الفرع:</div>
+                  <div style={{ color: "#334155", margin: "1px 0" }}>تم الصرف والتسليم نقداً بالخزينة</div>
+                  <div style={{ color: "#64748b", margin: "16px 0 0 0" }}>التوقيع: .................................</div>
+                </div>
+
+                {/* HR Approval & Corporate Stamp */}
+                <div style={{ textAlign: "center", fontSize: "9px" }}>
+                  <div style={{ fontWeight: "900", color: "#0f172a" }}>اعتماد الموارد البشرية وخاتم الشركة:</div>
+                  <div style={{
+                    margin: "2px auto 0 auto",
+                    width: "115px",
+                    height: "54px",
+                    border: "1.5px solid #1e3a8a",
+                    borderRadius: "6px",
+                    padding: "2px",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "#f8fafc"
+                  }}>
+                    <div style={{ fontSize: "7.5px", fontWeight: "900", color: "#1e3a8a" }}>شركة ايه ان اتش للتجارة</div>
+                    <div style={{ fontSize: "6.5px", color: "#475569" }}>س.ت: 216727 • ب.ض: 756-563-844</div>
+                    <div style={{ fontSize: "7px", color: "#047857", fontWeight: "bold", marginTop: "1px" }}>[ مخالصة معتمدة ومسجلة ]</div>
                   </div>
-                  <div style={{ borderBottom: "1.5px solid #0f172a" }}></div>
                 </div>
               </div>
 
-              {/* Corporate Footer */}
-              <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: "8px", marginTop: "12px", display: "flex", justifyContent: "space-between", fontSize: "9px", color: "#64748b" }}>
-                <span>{companyName} • Confidential Enterprise Legal Clearance</span>
-                <span>Document Ref: #CK-REC-{p.month}-{String(p.employeeId || "").slice(-4)} • Page 2 of 2</span>
+              {/* Footer Security Strip */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #cbd5e1", paddingTop: "3px", fontSize: "8px", color: "#64748b" }}>
+                <div>وثيقة رسمية ومخالصة قضائية صادرة آلياً من نظام إدارة الموارد البشرية - شركة ايه ان اتش للتجارة (ANH) • صفحة 2 من 2 (المخالصة التامة)</div>
+                <div>المادتان 38 و 76 من قانون العمل المصري رقم 12 لسنة 2003 • إقرار استلام راتب ومخالصة نهائية وناجزة</div>
               </div>
             </div>
           </div>
@@ -2205,7 +2532,7 @@ export default function AdminPayrollPage() {
 
     {/* PRINTABLE BATCH PAYROLL BOOKLET */}
     {isBatchPrinting && (() => {
-      const dateString = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      const dateString = new Date().toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
       const totalBatchGross = filteredDrafts.reduce((acc, curr) => acc + (curr.standardPay || 0) + (curr.overtime || 0) + (curr.bonus || 0), 0);
       const totalBatchDeds = filteredDrafts.reduce((acc, curr) => acc + (curr.deductions || 0) + (curr.insurance || 0) + (curr.loanThisMonth || 0), 0);
       const totalBatchNet = filteredDrafts.reduce((acc, curr) => acc + (curr.netPay || 0), 0);
@@ -2214,324 +2541,477 @@ export default function AdminPayrollPage() {
       const companyName = empBranchObj ? empBranchObj.name : "Circle K Franchise";
 
       return (
-        <div className="hidden print:block w-full text-black bg-white" style={{ fontFamily: "Arial, sans-serif", fontSize: "12px" }}>
+        <div className="hidden print:block w-full text-slate-900 bg-white" style={{ fontFamily: "'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif", fontSize: "10.5px", lineHeight: "1.4" }} dir="rtl">
+          <style dangerouslySetInnerHTML={{ __html: "@media print { @page { size: A4 portrait; margin: 6mm 8mm; } body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; background: #fff !important; margin: 0 !important; padding: 0 !important; } } table { page-break-inside: avoid; }" }} />
           
           {/* PAGE 1: EXECUTIVE SUMMARY TABLE */}
-          <div className="pay-page" style={{ boxSizing: "border-box", width: "100%", maxWidth: "190mm", margin: "0 auto", position: "relative", backgroundColor: "#ffffff" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #0f172a", paddingBottom: "8px", marginBottom: "12px" }}>
-              <div>
-                <h1 style={{ fontSize: "20px", fontWeight: "900", color: "#0f172a", margin: 0, textTransform: "uppercase", letterSpacing: "1px" }}>{companyName}</h1>
-                <p style={{ margin: "2px 0 0 0", color: "#64748b", fontSize: "10px" }}>Commercial Registry (س.ت): 123456 | Tax ID (ب.ض): 123-456-789</p>
+          <div style={{ margin: "0 auto", width: "100%", maxWidth: "100%", minHeight: "282mm", boxSizing: "border-box", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "2mm 2mm", pageBreakAfter: "always", breakAfter: "page" }}>
+            <div>
+              <div style={{ display: "grid", gridTemplateColumns: "1.3fr 2fr 1.3fr", gap: "8px", alignItems: "center", borderBottom: "2.5px solid #0f172a", paddingBottom: "6px", marginBottom: "10px" }}>
+                <div style={{ textAlign: "right", fontSize: "10px", lineHeight: "1.4", color: "#1e293b" }}>
+                  <div style={{ fontWeight: "900", fontSize: "12.5px", color: "#0f172a" }}>شركة ايه ان اتش للتجارة والتوزيع</div>
+                  <div style={{ fontSize: "9px", fontWeight: "800", textTransform: "uppercase", color: "#475569" }}>ANH TRADING & DISTRIBUTION • CIRCLE K</div>
+                  <div style={{ fontSize: "9px", fontFamily: "monospace", marginTop: "2px" }}>س.ت: 216727 | ب.ض: 756-563-844</div>
+                </div>
+
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ border: "2px solid #0f172a", borderRadius: "8px", padding: "5px 12px", background: "#f8fafc" }}>
+                    <div style={{ fontSize: "14px", fontWeight: "900", color: "#0f172a" }}>
+                      مسير رواتب ومستحقات العاملين الإجمالي (Executive Payroll Summary)
+                    </div>
+                    <div style={{ fontSize: "10px", fontWeight: "bold", color: "#047857", marginTop: "1px" }}>
+                      كشف حصر واعتماد الرواتب الشهرية الشامل لفرع: {companyName}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ textAlign: "left", fontSize: "9.5px", lineHeight: "1.5", color: "#1e293b", fontFamily: "monospace" }}>
+                  <div><strong>التاريخ:</strong> {dateString}</div>
+                  <div><strong>إجمالي العاملين:</strong> {filteredDrafts.length} موظف</div>
+                  <div><strong>صافي الرواتب:</strong> {totalBatchNet.toLocaleString()} ج.م</div>
+                </div>
               </div>
-              <div style={{ textAlign: "right" }}>
-                <h2 style={{ fontSize: "16px", fontWeight: "bold", color: "#0f172a", margin: 0 }}>Pending Payroll Summary</h2>
-                <h3 style={{ fontSize: "12px", fontWeight: "normal", color: "#475569", margin: "1px 0 0 0" }}>جدول مسير المستحقات غير المدفوعة</h3>
+
+              {/* Summary Metrics */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "8px", marginBottom: "12px" }}>
+                <div style={{ border: "1.5px solid #cbd5e1", borderRadius: "6px", padding: "6px 10px", background: "#f8fafc", textAlign: "center" }}>
+                  <div style={{ fontSize: "9px", color: "#64748b" }}>عدد العاملين بالمسير</div>
+                  <div style={{ fontSize: "14px", fontWeight: "900", color: "#0f172a" }}>{filteredDrafts.length} موظف</div>
+                </div>
+                <div style={{ border: "1.5px solid #cbd5e1", borderRadius: "6px", padding: "6px 10px", background: "#f8fafc", textAlign: "center" }}>
+                  <div style={{ fontSize: "9px", color: "#64748b" }}>إجمالي الأجر الشامل</div>
+                  <div style={{ fontSize: "14px", fontWeight: "900", color: "#0f172a" }}>{totalBatchGross.toLocaleString()} ج.م</div>
+                </div>
+                <div style={{ border: "1.5px solid #cbd5e1", borderRadius: "6px", padding: "6px 10px", background: "#fee2e2", textAlign: "center" }}>
+                  <div style={{ fontSize: "9px", color: "#991b1b" }}>إجمالي الاستقطاعات</div>
+                  <div style={{ fontSize: "14px", fontWeight: "900", color: "#b91c1c" }}>{totalBatchDeds.toLocaleString()} ج.م</div>
+                </div>
+                <div style={{ border: "1.5px solid #047857", borderRadius: "6px", padding: "6px 10px", background: "#ecfdf5", textAlign: "center" }}>
+                  <div style={{ fontSize: "9px", color: "#065f46" }}>إجمالي الصافي المستحق</div>
+                  <div style={{ fontSize: "14px", fontWeight: "900", color: "#047857" }}>{totalBatchNet.toLocaleString()} ج.م</div>
+                </div>
               </div>
+
+              {/* Table */}
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9.5px", textAlign: "center" }}>
+                <thead>
+                  <tr style={{ background: "#0f172a", color: "#ffffff" }}>
+                    <th style={{ border: "1px solid #cbd5e1", padding: "5px" }}>#</th>
+                    <th style={{ border: "1px solid #cbd5e1", padding: "5px", textAlign: "right" }}>اسم العامل</th>
+                    <th style={{ border: "1px solid #cbd5e1", padding: "5px" }}>الشهر</th>
+                    <th style={{ border: "1px solid #cbd5e1", padding: "5px" }}>الأيام</th>
+                    <th style={{ border: "1px solid #cbd5e1", padding: "5px", textAlign: "left" }}>الأجر الشامل</th>
+                    <th style={{ border: "1px solid #cbd5e1", padding: "5px", textAlign: "left" }}>الاستقطاعات</th>
+                    <th style={{ border: "1px solid #cbd5e1", padding: "5px", textAlign: "left" }}>الصافي المستحق</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredDrafts.map((d, index) => {
+                    const emp = employees.find(e => e.id === d.employeeId);
+                    const gross = (d.standardPay || 0) + (d.overtime || 0) + (d.bonus || 0);
+                    const deds = (d.deductions || 0) + (d.insurance || 0) + (d.loanThisMonth || 0);
+                    return (
+                      <tr key={d.id || index} style={{ background: index % 2 === 0 ? "#ffffff" : "#f8fafc" }}>
+                        <td style={{ border: "1px solid #cbd5e1", padding: "4px", fontWeight: "bold" }}>{index + 1}</td>
+                        <td style={{ border: "1px solid #cbd5e1", padding: "4px", textAlign: "right", fontWeight: "bold", color: "#0f172a" }}>{emp?.name || d.employeeId}</td>
+                        <td style={{ border: "1px solid #cbd5e1", padding: "4px", fontFamily: "monospace" }}>{d.month}</td>
+                        <td style={{ border: "1px solid #cbd5e1", padding: "4px" }}>{d.days}</td>
+                        <td style={{ border: "1px solid #cbd5e1", padding: "4px", textAlign: "left", fontFamily: "monospace" }}>{gross.toLocaleString()} ج.م</td>
+                        <td style={{ border: "1px solid #cbd5e1", padding: "4px", textAlign: "left", color: "#b91c1c", fontFamily: "monospace" }}>{deds.toLocaleString()} ج.م</td>
+                        <td style={{ border: "1px solid #cbd5e1", padding: "4px", textAlign: "left", fontWeight: "900", color: "#047857", fontFamily: "monospace" }}>{(d.netPay || 0).toLocaleString()} ج.م</td>
+                      </tr>
+                    );
+                  })}
+                  <tr style={{ background: "#e2e8f0", fontWeight: "bold", borderTop: "2px solid #0f172a" }}>
+                    <td colSpan={4} style={{ border: "1px solid #cbd5e1", padding: "6px", textAlign: "right" }}>الإجمالي العام (GRAND TOTALS):</td>
+                    <td style={{ border: "1px solid #cbd5e1", padding: "6px", textAlign: "left", fontFamily: "monospace" }}>{totalBatchGross.toLocaleString()} ج.م</td>
+                    <td style={{ border: "1px solid #cbd5e1", padding: "6px", textAlign: "left", color: "#b91c1c", fontFamily: "monospace" }}>{totalBatchDeds.toLocaleString()} ج.م</td>
+                    <td style={{ border: "1px solid #cbd5e1", padding: "6px", textAlign: "left", fontSize: "11px", color: "#047857", fontFamily: "monospace" }}>{totalBatchNet.toLocaleString()} ج.م</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
 
-            <div style={{ backgroundColor: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: "6px", padding: "8px 12px", marginBottom: "12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <span style={{ fontSize: "10px", color: "#64748b", display: "block" }}>Date & Cycle / التاريخ والإصدار</span>
-                <strong style={{ fontSize: "12px", color: "#0f172a" }}>{dateString}</strong>
+            {/* Approvals */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px", borderTop: "2px solid #0f172a", paddingTop: "8px", marginTop: "12px" }}>
+              <div style={{ textAlign: "center", fontSize: "9.5px" }}>
+                <div style={{ fontWeight: "900" }}>إعداد المحاسب المالي:</div>
+                <div style={{ color: "#64748b", marginTop: "20px" }}>التوقيع: .................................</div>
               </div>
-              <div>
-                <span style={{ fontSize: "10px", color: "#64748b", display: "block" }}>Total Pending Count</span>
-                <strong style={{ fontSize: "12px", color: "#0f172a" }}>{filteredDrafts.length} Employees</strong>
+              <div style={{ textAlign: "center", fontSize: "9.5px" }}>
+                <div style={{ fontWeight: "900" }}>اعتماد مدير الموارد البشرية:</div>
+                <div style={{ color: "#64748b", marginTop: "20px" }}>التوقيع: .................................</div>
               </div>
-              <div style={{ textAlign: "right" }}>
-                <span style={{ fontSize: "10px", color: "#64748b", display: "block" }}>Total Net Payable / إجمالي الصافي</span>
-                <strong style={{ fontSize: "15px", color: "#059669" }}>EGP {totalBatchNet.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong>
-              </div>
-            </div>
-
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10.5px" }}>
-              <thead>
-                <tr style={{ backgroundColor: "#0f172a", color: "#ffffff", textAlign: "left" }}>
-                  <th style={{ padding: "6px 8px", textAlign: "center" }}>#</th>
-                  <th style={{ padding: "6px 8px" }}>Employee Name</th>
-                  <th style={{ padding: "6px 8px" }}>Month</th>
-                  <th style={{ padding: "6px 8px", textAlign: "center" }}>Days</th>
-                  <th style={{ padding: "6px 8px", textAlign: "right" }}>Gross Salary</th>
-                  <th style={{ padding: "6px 8px", textAlign: "right" }}>Deductions</th>
-                  <th style={{ padding: "6px 8px", textAlign: "right" }}>Net Payable</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredDrafts.map((d, index) => {
-                  const emp = employees.find(e => e.id === d.employeeId);
-                  const gross = (d.standardPay || 0) + (d.overtime || 0) + (d.bonus || 0);
-                  const deds = (d.deductions || 0) + (d.insurance || 0) + (d.loanThisMonth || 0);
-                  return (
-                    <tr key={d.id || index} style={{ borderBottom: "1px solid #e2e8f0", backgroundColor: index % 2 === 0 ? "#ffffff" : "#f8fafc" }}>
-                      <td style={{ padding: "6px 8px", textAlign: "center", fontWeight: "bold" }}>{index + 1}</td>
-                      <td style={{ padding: "6px 8px", fontWeight: "bold", color: "#0f172a" }}>{emp?.name || d.employeeId}</td>
-                      <td style={{ padding: "6px 8px" }}>{d.month}</td>
-                      <td style={{ padding: "6px 8px", textAlign: "center" }}>{d.days}</td>
-                      <td style={{ padding: "6px 8px", textAlign: "right" }}>EGP {gross.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                      <td style={{ padding: "6px 8px", textAlign: "right", color: "#dc2626" }}>EGP {deds.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                      <td style={{ padding: "6px 8px", textAlign: "right", fontWeight: "900", color: "#059669" }}>EGP {(d.netPay || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                    </tr>
-                  );
-                })}
-                <tr style={{ backgroundColor: "#e2e8f0", fontWeight: "bold", borderTop: "2px solid #0f172a" }}>
-                  <td colSpan={4} style={{ padding: "8px", textAlign: "left" }}>GRAND TOTALS / الإجمالي العام</td>
-                  <td style={{ padding: "8px", textAlign: "right" }}>EGP {totalBatchGross.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                  <td style={{ padding: "8px", textAlign: "right", color: "#dc2626" }}>EGP {totalBatchDeds.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                  <td style={{ padding: "8px", textAlign: "right", fontSize: "12px", color: "#059669" }}>EGP {totalBatchNet.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                </tr>
-              </tbody>
-            </table>
-
-            {/* SIGNATURES */}
-            <div style={{ marginTop: "20px", display: "flex", justifyContent: "space-between", border: "1px solid #cbd5e1", borderRadius: "6px", padding: "10px 14px", backgroundColor: "#f8fafc" }}>
-              <div style={{ width: "45%" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "#475569", fontWeight: "bold", marginBottom: "25px" }}>
-                  <span>Prepared By (Financial Controller)</span>
-                  <span>إعداد المحاسب المسؤول</span>
-                </div>
-                <div style={{ borderBottom: "1px solid #94a3b8" }}></div>
-              </div>
-              <div style={{ width: "45%" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "#475569", fontWeight: "bold", marginBottom: "25px" }}>
-                  <span>Approved By (General Manager)</span>
-                  <span>اعتماد المدير العام</span>
-                </div>
-                <div style={{ borderBottom: "1px solid #94a3b8" }}></div>
+              <div style={{ textAlign: "center", fontSize: "9.5px" }}>
+                <div style={{ fontWeight: "900" }}>اعتماد المدير العام وخاتم الشركة:</div>
+                <div style={{ color: "#64748b", marginTop: "20px" }}>التوقيع والختم: .................................</div>
               </div>
             </div>
           </div>
 
-          {/* PER EMPLOYEE PACKETS */}
-          {filteredDrafts.map((p, idx) => {
-            const emp = employees.find(e => e.id === p.employeeId) || {};
-            const netPayWords = numberToEnglishWords(p.netPay || 0);
-            const gross = (p.standardPay || 0) + (p.overtime || 0) + (p.bonus || 0);
-            const empCompName = getBranchCompanyName(p.storeId, emp.branchId || emp.storeId);
+          {/* PER EMPLOYEE 2-PAGE PACKETS */}
+          {filteredDrafts.map((d, idx) => {
+            const emp = employees.find(e => e.id === d.employeeId) || {};
+            const empCompName = getBranchCompanyName(d.storeId, emp.branchId || d.storeId);
+            const netPay = d.netPay || 0;
+            const netPayWordsAr = numberToArabicWords(netPay);
+            const netPayWordsEn = numberToEnglishWords(netPay);
+            const gross = (d.standardPay || 0) + (d.overtime || 0) + (d.bonus || 0);
+            const totalDeds = (d.deductions || 0) + (d.insurance || 0) + (d.loanThisMonth || 0);
+            const cycleMonthLabel = getArMonthName(d.month);
+            const nidChars = String(emp?.nationalId || "").replace(/\D/g, "").slice(0, 14).padEnd(14, " ").split("");
+            const docRef1 = `#CK-PAY-${d.month}-${String(d.employeeId || "").slice(-4).toUpperCase()}`;
+            const docRef2 = `#CK-REC-${d.month}-${String(d.employeeId || "").slice(-4).toUpperCase()}`;
+            const isLast = idx === filteredDrafts.length - 1;
 
             return (
-              <React.Fragment key={p.id || idx}>
-                {/* PAGE 1: PAYSLIP */}
-                <div className="pay-page" style={{ boxSizing: "border-box", width: "100%", maxWidth: "190mm", margin: "0 auto", position: "relative", backgroundColor: "#ffffff" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #0f172a", paddingBottom: "8px", marginBottom: "12px" }}>
+              <React.Fragment key={d.id || idx}>
+                {/* SHEET 1: PAYSLIP */}
+                <div
+                  style={{
+                    margin: "0 auto",
+                    width: "100%",
+                    maxWidth: "100%",
+                    minHeight: "282mm",
+                    boxSizing: "border-box",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                    padding: "2mm 2mm",
+                    pageBreakAfter: "always",
+                    breakAfter: "page",
+                    pageBreakInside: "avoid",
+                    breakInside: "avoid"
+                  }}
+                >
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1.3fr 2fr 1.3fr", gap: "8px", alignItems: "center", borderBottom: "2.5px solid #0f172a", paddingBottom: "6px" }}>
+                      <div style={{ textAlign: "right", fontSize: "10px", lineHeight: "1.4", color: "#1e293b" }}>
+                        <div style={{ fontWeight: "900", fontSize: "12.5px", color: "#0f172a" }}>شركة ايه ان اتش للتجارة والتوزيع</div>
+                        <div style={{ fontSize: "9px", fontWeight: "800", textTransform: "uppercase", color: "#475569" }}>ANH TRADING & DISTRIBUTION • CIRCLE K</div>
+                        <div style={{ fontSize: "9px", fontFamily: "monospace", marginTop: "2px" }}>س.ت: 216727 | ب.ض: 756-563-844</div>
+                      </div>
+                      <div style={{ textAlign: "center" }}>
+                        <div style={{ border: "2px solid #0f172a", borderRadius: "8px", padding: "5px 12px", background: "#f8fafc" }}>
+                          <div style={{ fontSize: "13.5px", fontWeight: "900", color: "#0f172a" }}>كشف مفردات الأجر والراتب الشهري المعتمد</div>
+                          <div style={{ fontSize: "10px", fontWeight: "bold", color: "#047857", marginTop: "1px" }}>مسير أجور رسمي مدقق • معتمد ومصرح بالصرف</div>
+                          <div style={{ fontSize: "8.5px", color: "#475569", marginTop: "1px" }}>طبقاً لأحكام قانون العمل المصري رقم 12 لسنة 2003 وقانون 148 لسنة 2019</div>
+                        </div>
+                      </div>
+                      <div style={{ textAlign: "left", fontSize: "9.5px", lineHeight: "1.5", color: "#1e293b", fontFamily: "monospace" }}>
+                        <div><strong>رقم المسير:</strong> {docRef1}</div>
+                        <div><strong>تاريخ التحرير:</strong> {dateString}</div>
+                        <div><strong>دورة الاستحقاق:</strong> شهر {cycleMonthLabel}</div>
+                      </div>
+                    </div>
+
                     <div>
-                      <h1 style={{ fontSize: "20px", fontWeight: "900", color: "#0f172a", margin: 0, textTransform: "uppercase", letterSpacing: "1px" }}>{empCompName}</h1>
-                      <p style={{ margin: "2px 0 0 0", color: "#64748b", fontSize: "10px" }}>Commercial Registry (س.ت): 123456 | Tax ID (ب.ض): 123-456-789</p>
+                      <div style={{ background: "#0f172a", color: "#fff", fontSize: "10px", fontWeight: "bold", padding: "3px 8px", borderRadius: "4px 4px 0 0" }}>
+                        أولاً: بيانات العامل وجهة العمل (Employee & Employment Profile)
+                      </div>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px", background: "#f8fafc" }}>
+                        <tbody>
+                          <tr>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 7px", width: "18%", background: "#f1f5f9", fontWeight: "bold" }}>اسم العامل:</td>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 7px", width: "42%", fontWeight: "900", color: "#0f172a", fontSize: "11.5px" }}>{emp?.name || "-"}</td>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 7px", width: "18%", background: "#f1f5f9", fontWeight: "bold" }}>المسمى الوظيفي:</td>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 7px", width: "22%", fontWeight: "bold" }}>{emp?.position || "-"}</td>
+                          </tr>
+                          <tr>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 7px", background: "#f1f5f9", fontWeight: "bold" }}>الرقم القومي (14 رقم):</td>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 7px" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "2.5px" }}>
+                                {nidChars.map((ch: string, i: number) => (
+                                  <span key={i} style={{ display: "inline-block", width: "19px", height: "20px", border: "1.5px solid #475569", borderRadius: "3px", textAlign: "center", lineHeight: "18px", fontSize: "11.5px", fontWeight: "bold", fontFamily: "monospace", background: "#fff" }}>
+                                    {ch.trim() || "-"}
+                                  </span>
+                                ))}
+                              </div>
+                            </td>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 7px", background: "#f1f5f9", fontWeight: "bold" }}>الراتب الأساسي / التأميني:</td>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 7px", fontFamily: "monospace", fontWeight: "bold", color: "#047857" }}>
+                              {(Number(emp?.baseSalary) || Number(d.standardPay) || 0).toLocaleString()} ج.م
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 7px", background: "#f1f5f9", fontWeight: "bold" }}>الفرع وجهة العمل:</td>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 7px", fontWeight: "bold" }}>{empCompName}</td>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 7px", background: "#f1f5f9", fontWeight: "bold" }}>أيام العمل الفعلية:</td>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 7px", fontWeight: "bold" }}>{d.days || 30} يوم</td>
+                          </tr>
+                        </tbody>
+                      </table>
                     </div>
-                    <div style={{ textAlign: "right" }}>
-                      <h2 style={{ fontSize: "16px", fontWeight: "bold", color: "#0f172a", margin: 0 }}>Payslip</h2>
-                      <h3 style={{ fontSize: "12px", fontWeight: "normal", color: "#475569", margin: "1px 0 0 0" }}>كشف راتب شهري</h3>
+
+                    <div style={{ background: "#eff6ff", border: "2px solid #2563eb", borderRadius: "7px", padding: "7px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <div>
+                        <div style={{ fontSize: "11px", fontWeight: "900", color: "#1e3a8a" }}>صافي الراتب المستحق للصرف الخزيني (Net Payable):</div>
+                        <div style={{ fontSize: "10.5px", fontWeight: "bold", color: "#0f172a", marginTop: "2px" }}>
+                          فقط وقدره: <strong style={{ color: "#047857", fontSize: "11.5px" }}>{netPayWordsAr} جنيهاً مصرياً لا غير</strong>.
+                        </div>
+                      </div>
+                      <div style={{ background: "#fff", border: "2px solid #047857", borderRadius: "6px", padding: "4px 12px", textAlign: "center" }}>
+                        <div style={{ fontSize: "8px", fontWeight: "bold", color: "#64748b" }}>المبلغ الصافي المعتمد</div>
+                        <div style={{ fontSize: "15px", fontWeight: "900", color: "#047857", fontFamily: "monospace" }}>{netPay.toLocaleString()} ج.م</div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ background: "#047857", color: "#fff", fontSize: "10px", fontWeight: "bold", padding: "3px 8px", borderRadius: "4px 4px 0 0" }}>ثالثاً: تفاصيل الاستحقاقات والأجر الشامل</div>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9.5px", background: "#f8fafc" }}>
+                        <tbody>
+                          <tr>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px", width: "70%" }}>الراتب الأساسي (Basic Salary)</td>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px", textAlign: "left", fontFamily: "monospace", fontWeight: "bold" }}>{(d.standardPay || 0).toLocaleString()} ج.م</td>
+                          </tr>
+                          <tr style={{ background: "#fff" }}>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px" }}>أجر إضافي (Overtime)</td>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px", textAlign: "left", fontFamily: "monospace", fontWeight: "bold", color: "#047857" }}>{(d.overtime || 0).toLocaleString()} ج.م</td>
+                          </tr>
+                          <tr>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px" }}>مكافآت وحوافز انتظام (Bonuses & Allowances)</td>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px", textAlign: "left", fontFamily: "monospace", fontWeight: "bold", color: "#047857" }}>{(d.bonus || 0).toLocaleString()} ج.م</td>
+                          </tr>
+                          <tr style={{ background: "#e2e8f0", fontWeight: "bold" }}>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 8px" }}>إجمالي الأجر الشامل (Gross Earnings)</td>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 8px", textAlign: "left", fontFamily: "monospace", fontSize: "10.5px" }}>{gross.toLocaleString()} ج.م</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div>
+                      <div style={{ background: "#334155", color: "#fff", fontSize: "10px", fontWeight: "bold", padding: "3px 8px", borderRadius: "4px 4px 0 0" }}>رابعاً: تفاصيل الاستقطاعات والخصومات القانونية</div>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9.5px", background: "#f8fafc" }}>
+                        <tbody>
+                          <tr>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px", width: "70%" }}>جزاءات تأخير وغياب إدارية (Admin Penalties)</td>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px", textAlign: "left", fontFamily: "monospace", fontWeight: "bold", color: "#b91c1c" }}>{(d.deductions || 0).toLocaleString()} ج.م</td>
+                          </tr>
+                          <tr style={{ background: "#fff" }}>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px" }}>حصة العامل في التأمينات الاجتماعية (Social Insurance)</td>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px", textAlign: "left", fontFamily: "monospace", fontWeight: "bold", color: "#b91c1c" }}>{(d.insurance || 0).toLocaleString()} ج.م</td>
+                          </tr>
+                          <tr>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px" }}>استقطاع قسط سلفة من المرتب (Loan Deduction - Art. 34)</td>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px", textAlign: "left", fontFamily: "monospace", fontWeight: "bold", color: "#2563eb" }}>{(d.loanThisMonth || 0).toLocaleString()} ج.م</td>
+                          </tr>
+                          <tr style={{ background: "#fee2e2", fontWeight: "bold" }}>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 8px", color: "#991b1b" }}>إجمالي الاستقطاعات والخصومات (Total Deductions)</td>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4.5px 8px", textAlign: "left", fontFamily: "monospace", fontSize: "10.5px", color: "#b91c1c" }}>{totalDeds.toLocaleString()} ج.م</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div style={{ fontSize: "9px", lineHeight: "1.55", background: "#f8fafc", border: "1.5px solid #cbd5e1", borderRadius: "6px", padding: "5px 10px", color: "#1e293b" }}>
+                      <strong style={{ color: "#0f172a", fontSize: "9.5px" }}>خامساً: الضوابط القانونية لمسير الأجور (وفقاً لقانون العمل المصري رقم 12 لسنة 2003 وقانون التأمينات 148 لسنة 2019):</strong>
+                      <ol style={{ margin: "2px 0 0 0", paddingRight: "16px" }}>
+                        <li>الالتزام بالمادة (34): لا تتجاوز إجمالي الاستقطاعات والخصومات على أجر العامل الحدود المقررة قانوناً.</li>
+                        <li>المطابقة للمادة (38): يؤدى الأجر للعامل في أحد أيام العمل وفي مقر عمله الرسمي ويثبت بالسجلات الرسمية.</li>
+                      </ol>
                     </div>
                   </div>
 
-                  <div style={{ display: "flex", flexWrap: "wrap", border: "1px solid #cbd5e1", borderRadius: "4px", overflow: "hidden" }}>
-                    <div style={{ width: "50%", padding: "6px 10px", borderBottom: "1px solid #cbd5e1", borderRight: "1px solid #cbd5e1" }}>
-                      <div style={{ color: "#64748b", fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                        <span>Employee Name</span><span>اسم الموظف</span>
+                  <div style={{ marginTop: "6px" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1.1fr 1.2fr 1.2fr", gap: "8px", alignItems: "center", borderTop: "2px solid #0f172a", paddingTop: "5px", marginBottom: "3px" }}>
+                      <div style={{ textAlign: "center", fontSize: "9px" }}>
+                        <div style={{ fontWeight: "900", color: "#0f172a" }}>المحاسب المالي (معد المسير):</div>
+                        <div style={{ color: "#64748b", margin: "16px 0 0 0" }}>التوقيع: .................................</div>
                       </div>
-                      <div style={{ fontWeight: "bold", textAlign: "right", marginTop: "1px", color: "#0f172a", fontSize: "11px" }}>{emp.name || "-"}</div>
-                    </div>
-                    <div style={{ width: "50%", padding: "6px 10px", borderBottom: "1px solid #cbd5e1" }}>
-                      <div style={{ color: "#64748b", fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                        <span>Employee ID</span><span>الرقم الوظيفي</span>
+                      <div style={{ textAlign: "center", fontSize: "9px" }}>
+                        <div style={{ fontWeight: "900", color: "#0f172a" }}>اعتماد الموارد البشرية:</div>
+                        <div style={{ color: "#64748b", margin: "16px 0 0 0" }}>التوقيع: .................................</div>
                       </div>
-                      <div style={{ fontWeight: "bold", textAlign: "right", marginTop: "1px", fontSize: "10px", wordBreak: "break-all", color: "#0f172a" }}>{emp.id || "-"}</div>
-                    </div>
-                    <div style={{ width: "50%", padding: "6px 10px", borderBottom: "1px solid #cbd5e1", borderRight: "1px solid #cbd5e1" }}>
-                      <div style={{ color: "#64748b", fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                        <span>National ID</span><span>الرقم القومي</span>
+                      <div style={{ textAlign: "center", fontSize: "9px" }}>
+                        <div style={{ fontWeight: "900", color: "#0f172a" }}>خاتم الشركة الرسمي:</div>
+                        <div style={{ margin: "2px auto 0 auto", width: "120px", height: "52px", border: "1.5px solid #1e3a8a", borderRadius: "6px", padding: "2px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#f8fafc" }}>
+                          <div style={{ fontSize: "7.5px", fontWeight: "900", color: "#1e3a8a" }}>شركة ايه ان اتش للتجارة</div>
+                          <div style={{ fontSize: "6.5px", color: "#475569" }}>س.ت: 216727 • ب.ض: 756-563-844</div>
+                          <div style={{ fontSize: "7px", color: "#047857", fontWeight: "bold" }}>[ مسير أجور معتمد ]</div>
+                        </div>
                       </div>
-                      <div style={{ fontWeight: "bold", textAlign: "right", marginTop: "1px", letterSpacing: "0.5px", color: "#0f172a", fontSize: "11px" }}>{emp.nationalId || "-"}</div>
-                    </div>
-                    <div style={{ width: "50%", padding: "6px 10px", borderBottom: "1px solid #cbd5e1" }}>
-                      <div style={{ color: "#64748b", fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                        <span>Position</span><span>المسمى الوظيفي</span>
+                      <div style={{ textAlign: "center", fontSize: "9px" }}>
+                        <div style={{ fontWeight: "900", color: "#0f172a" }}>توقيع العامل بالعلم:</div>
+                        <div style={{ color: "#64748b", margin: "16px 0 0 0" }}>التوقيع: .................................</div>
                       </div>
-                      <div style={{ fontWeight: "bold", textAlign: "right", marginTop: "1px", color: "#0f172a", fontSize: "11px" }}>{emp.position || "-"}</div>
                     </div>
-                    <div style={{ width: "50%", padding: "6px 10px", borderRight: "1px solid #cbd5e1", backgroundColor: "#f8fafc" }}>
-                      <div style={{ color: "#64748b", fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                        <span>Payroll Period</span><span>دورة الراتب</span>
-                      </div>
-                      <div style={{ fontWeight: "bold", textAlign: "right", marginTop: "1px", color: "#0f172a", fontSize: "11px" }}>{p.month}</div>
-                    </div>
-                    <div style={{ width: "50%", padding: "6px 10px", backgroundColor: "#f8fafc" }}>
-                      <div style={{ color: "#64748b", fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                        <span>Issue Date</span><span>تاريخ الإصدار</span>
-                      </div>
-                      <div style={{ fontWeight: "bold", textAlign: "right", marginTop: "1px", color: "#0f172a", fontSize: "11px" }}>{dateString}</div>
-                    </div>
-                  </div>
-
-                  {/* Ink-Saving Net Pay Banner */}
-                  <div style={{ border: "1.5px solid #0f172a", backgroundColor: "#f8fafc", padding: "8px 14px", marginTop: "12px", display: "flex", justifyContent: "space-between", alignItems: "center", borderRadius: "6px" }}>
-                    <span style={{ fontSize: "12px", fontWeight: "bold", color: "#0f172a" }}>صافي الراتب المستحق / Net Payable</span>
-                    <span style={{ fontSize: "16px", fontWeight: "900", color: "#059669" }}>EGP {(p.netPay || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                  </div>
-                  <div style={{ textAlign: "right", fontSize: "11px", marginTop: "4px", color: "#475569", fontWeight: "500" }}>
-                    فقط وقدره: {netPayWords} لا غير
-                  </div>
-
-                  {/* EARNINGS */}
-                  <div style={{ marginTop: "12px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", color: "#0f172a", fontWeight: "bold", borderBottom: "1.5px solid #0f172a", paddingBottom: "2px", marginBottom: "4px", textTransform: "uppercase", fontSize: "11px" }}>
-                      <span>Earnings</span><span>الاستحقاقات</span>
-                    </div>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px" }}>
-                      <thead>
-                        <tr style={{ backgroundColor: "#f8fafc", color: "#475569", borderBottom: "1px solid #cbd5e1" }}>
-                          <th style={{ padding: "5px 8px", textAlign: "right", fontWeight: "600" }}>البند / Description</th>
-                          <th style={{ padding: "5px 8px", textAlign: "right", width: "150px", fontWeight: "600" }}>القيمة / Amount</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td style={{ padding: "5px 8px", textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>الراتب الأساسي (Basic Salary)</td>
-                          <td style={{ padding: "5px 8px", textAlign: "right", borderBottom: "1px solid #e2e8f0", fontWeight: "600" }}>EGP {(p.standardPay || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        </tr>
-                        <tr style={{ backgroundColor: "#f8fafc" }}>
-                          <td style={{ padding: "5px 8px", textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>أجر إضافي (Overtime)</td>
-                          <td style={{ padding: "5px 8px", textAlign: "right", borderBottom: "1px solid #e2e8f0", fontWeight: "600" }}>EGP {(p.overtime || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        </tr>
-                        <tr>
-                          <td style={{ padding: "5px 8px", textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>مكافآت وحوافز (Bonuses/Incentives)</td>
-                          <td style={{ padding: "5px 8px", textAlign: "right", borderBottom: "1px solid #e2e8f0", fontWeight: "600" }}>EGP {(p.bonus || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        </tr>
-                        <tr style={{ backgroundColor: "#e2e8f0", color: "#0f172a" }}>
-                          <td style={{ padding: "6px 8px", textAlign: "right", fontWeight: "bold" }}>إجمالي الاستحقاقات (Gross Earnings)</td>
-                          <td style={{ padding: "6px 8px", textAlign: "right", fontWeight: "bold" }}>EGP {gross.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* DEDUCTIONS */}
-                  <div style={{ marginTop: "12px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", color: "#0f172a", fontWeight: "bold", borderBottom: "1.5px solid #0f172a", paddingBottom: "2px", marginBottom: "4px", textTransform: "uppercase", fontSize: "11px" }}>
-                      <span>Deductions</span><span>الاستقطاعات</span>
-                    </div>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px" }}>
-                      <thead>
-                        <tr style={{ backgroundColor: "#f8fafc", color: "#475569", borderBottom: "1px solid #cbd5e1" }}>
-                          <th style={{ padding: "5px 8px", textAlign: "right", fontWeight: "600" }}>البند / Description</th>
-                          <th style={{ padding: "5px 8px", textAlign: "right", width: "150px", fontWeight: "600" }}>القيمة / Amount</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td style={{ padding: "5px 8px", textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>جزاءات قانونية وإدارية (Legal/Admin Penalties)</td>
-                          <td style={{ padding: "5px 8px", textAlign: "right", borderBottom: "1px solid #e2e8f0", fontWeight: "600" }}>EGP {(p.deductions || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        </tr>
-                        <tr style={{ backgroundColor: "#f8fafc" }}>
-                          <td style={{ padding: "5px 8px", textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>تأمينات اجتماعية (Social Insurance)</td>
-                          <td style={{ padding: "5px 8px", textAlign: "right", borderBottom: "1px solid #e2e8f0", fontWeight: "600" }}>EGP {(p.insurance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        </tr>
-                        <tr>
-                          <td style={{ padding: "5px 8px", textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>سلف / قروض (Advances/Loans)</td>
-                          <td style={{ padding: "5px 8px", textAlign: "right", borderBottom: "1px solid #e2e8f0", fontWeight: "600" }}>EGP {(p.loanThisMonth || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        </tr>
-                        <tr style={{ backgroundColor: "#e2e8f0", color: "#0f172a" }}>
-                          <td style={{ padding: "6px 8px", textAlign: "right", fontWeight: "bold" }}>إجمالي الاستقطاعات (Total Deductions)</td>
-                          <td style={{ padding: "6px 8px", textAlign: "right", fontWeight: "bold" }}>EGP {((p.deductions || 0) + (p.insurance || 0) + (p.loanThisMonth || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* SIGNATURES */}
-                  <div style={{ marginTop: "16px", display: "flex", justifyContent: "space-between" }}>
-                    <div style={{ width: "42%" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "#475569", marginBottom: "25px" }}>
-                        <span>Employee Signature</span><span>توقيع الموظف</span>
-                      </div>
-                      <div style={{ borderBottom: "1px solid #cbd5e1" }}></div>
-                    </div>
-                    <div style={{ width: "42%" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "#475569", marginBottom: "25px" }}>
-                        <span>HR Department</span><span>إدارة الموارد البشرية</span>
-                      </div>
-                      <div style={{ borderBottom: "1px solid #cbd5e1" }}></div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #cbd5e1", paddingTop: "3px", fontSize: "8px", color: "#64748b" }}>
+                      <div>وثيقة رسمية صادرة آلياً من نظام إدارة الموارد البشرية - شركة ايه ان اتش للتجارة (ANH) • صفحة 1 من 2</div>
+                      <div>المادتان 34 و 38 من قانون العمل رقم 12 لسنة 2003</div>
                     </div>
                   </div>
                 </div>
 
-                {/* PAGE 2: SALARY ACKNOWLEDGEMENT RECEIPT */}
-                <div className="pay-page" style={{ boxSizing: "border-box", width: "100%", maxWidth: "190mm", margin: "0 auto", position: "relative", backgroundColor: "#ffffff" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #0f172a", paddingBottom: "8px", marginBottom: "12px" }}>
+                {/* SHEET 2: SALARY RECEIPT & CLEARANCE */}
+                <div
+                  style={{
+                    margin: "0 auto",
+                    width: "100%",
+                    maxWidth: "100%",
+                    minHeight: "282mm",
+                    boxSizing: "border-box",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                    padding: "2mm 2mm",
+                    pageBreakAfter: isLast ? "avoid" : "always",
+                    breakAfter: isLast ? "avoid" : "page",
+                    pageBreakInside: "avoid",
+                    breakInside: "avoid"
+                  }}
+                >
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1.3fr 2fr 1.3fr", gap: "8px", alignItems: "center", borderBottom: "2.5px solid #0f172a", paddingBottom: "6px" }}>
+                      <div style={{ textAlign: "right", fontSize: "10px", lineHeight: "1.4", color: "#1e293b" }}>
+                        <div style={{ fontWeight: "900", fontSize: "12.5px", color: "#0f172a" }}>شركة ايه ان اتش للتجارة والتوزيع</div>
+                        <div style={{ fontSize: "9px", fontWeight: "800", textTransform: "uppercase", color: "#475569" }}>ANH TRADING & DISTRIBUTION • CIRCLE K</div>
+                        <div style={{ fontSize: "9px", fontFamily: "monospace", marginTop: "2px" }}>س.ت: 216727 | ب.ض: 756-563-844</div>
+                      </div>
+                      <div style={{ textAlign: "center" }}>
+                        <div style={{ border: "2px solid #0f172a", borderRadius: "8px", padding: "5px 12px", background: "#f8fafc" }}>
+                          <div style={{ fontSize: "13px", fontWeight: "900", color: "#0f172a" }}>إقرار استلام الراتب والمخالصة المالية والتأمينية التامة والنهائية</div>
+                          <div style={{ fontSize: "10px", fontWeight: "bold", color: "#047857", marginTop: "1px" }}>مخالصة نهائية تامة وناجزة وبراءة ذمة قانونية وقضائية مطلقة</div>
+                          <div style={{ fontSize: "8.5px", color: "#475569", marginTop: "1px" }}>إعمالاً لأحكام المادتين (38) و (76) من قانون العمل المصري رقم 12 لسنة 2003</div>
+                        </div>
+                      </div>
+                      <div style={{ textAlign: "left", fontSize: "9.5px", lineHeight: "1.5", color: "#1e293b", fontFamily: "monospace" }}>
+                        <div><strong>رقم السند:</strong> {docRef2}</div>
+                        <div><strong>تاريخ الصرف:</strong> {dateString}</div>
+                        <div><strong>دورة الراتب:</strong> شهر {cycleMonthLabel}</div>
+                      </div>
+                    </div>
+
                     <div>
-                      <h1 style={{ fontSize: "20px", fontWeight: "900", color: "#0f172a", margin: 0, textTransform: "uppercase", letterSpacing: "1px" }}>{empCompName}</h1>
-                      <p style={{ margin: "2px 0 0 0", color: "#64748b", fontSize: "10px" }}>Commercial Registry (س.ت): 123456 | Tax ID (ب.ض): 123-456-789</p>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <h2 style={{ fontSize: "16px", fontWeight: "bold", color: "#0f172a", margin: 0 }}>Salary Receipt</h2>
-                      <h3 style={{ fontSize: "12px", fontWeight: "normal", color: "#475569", margin: "1px 0 0 0" }}>إقرار استلام راتب ومخالصة نهائية</h3>
-                    </div>
-                  </div>
-                  
-                  <div style={{ display: "flex", flexWrap: "wrap", border: "1px solid #cbd5e1", borderRadius: "4px", overflow: "hidden" }}>
-                    <div style={{ width: "50%", padding: "6px 10px", borderBottom: "1px solid #cbd5e1", borderRight: "1px solid #cbd5e1" }}>
-                      <div style={{ color: "#64748b", fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                        <span>Employee Name</span><span>اسم الموظف</span>
+                      <div style={{ background: "#0f172a", color: "#fff", fontSize: "10px", fontWeight: "bold", padding: "3px 8px", borderRadius: "4px 4px 0 0" }}>
+                        أولاً: بيانات العامل والمُقر بالاستلام والتخالص (Acknowledging Employee Profile)
                       </div>
-                      <div style={{ fontWeight: "bold", textAlign: "right", marginTop: "1px", color: "#0f172a", fontSize: "11px" }}>{emp.name || "-"}</div>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px", background: "#f8fafc" }}>
+                        <tbody>
+                          <tr>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 7px", width: "18%", background: "#f1f5f9", fontWeight: "bold" }}>اسم العامل المُقر:</td>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 7px", width: "42%", fontWeight: "900", color: "#0f172a", fontSize: "11.5px" }}>{emp?.name || "-"}</td>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 7px", width: "18%", background: "#f1f5f9", fontWeight: "bold" }}>المسمى الوظيفي:</td>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 7px", width: "22%", fontWeight: "bold" }}>{emp?.position || "-"}</td>
+                          </tr>
+                          <tr>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 7px", background: "#f1f5f9", fontWeight: "bold" }}>الرقم القومي (14 رقم):</td>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 7px" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "2.5px" }}>
+                                {nidChars.map((ch: string, i: number) => (
+                                  <span key={i} style={{ display: "inline-block", width: "19px", height: "20px", border: "1.5px solid #475569", borderRadius: "3px", textAlign: "center", lineHeight: "18px", fontSize: "11.5px", fontWeight: "bold", fontFamily: "monospace", background: "#fff" }}>
+                                    {ch.trim() || "-"}
+                                  </span>
+                                ))}
+                              </div>
+                            </td>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 7px", background: "#f1f5f9", fontWeight: "bold" }}>الشركة الموظفة:</td>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 7px" }}>شركة ايه ان اتش للتجارة والتوزيع</td>
+                          </tr>
+                          <tr>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 7px", background: "#f1f5f9", fontWeight: "bold" }}>الفرع وجهة العمل:</td>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 7px", fontWeight: "bold" }}>{empCompName}</td>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 7px", background: "#f1f5f9", fontWeight: "bold" }}>طريقة الصرف:</td>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "4px 7px", fontWeight: "bold", color: "#047857" }}>نقداً وعداً من خزينة الفرع</td>
+                          </tr>
+                        </tbody>
+                      </table>
                     </div>
-                    <div style={{ width: "50%", padding: "6px 10px", borderBottom: "1px solid #cbd5e1" }}>
-                      <div style={{ color: "#64748b", fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                        <span>Employee ID</span><span>الرقم الوظيفي</span>
+
+                    <div style={{ background: "#ecfdf5", border: "2px solid #047857", borderRadius: "7px", padding: "7px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <div>
+                        <div style={{ fontSize: "11px", fontWeight: "900", color: "#065f46" }}>المبلغ الصافي المسلّم نقداً للعامل (Net Cash Received):</div>
+                        <div style={{ fontSize: "10.5px", fontWeight: "bold", color: "#0f172a", marginTop: "2px" }}>
+                          فقط وقدره: <strong style={{ color: "#047857", fontSize: "11.5px" }}>{netPayWordsAr} جنيهاً مصرياً لا غير</strong>.
+                        </div>
                       </div>
-                      <div style={{ fontWeight: "bold", textAlign: "right", marginTop: "1px", fontSize: "10px", wordBreak: "break-all", color: "#0f172a" }}>{emp.id || "-"}</div>
+                      <div style={{ background: "#fff", border: "2px solid #047857", borderRadius: "6px", padding: "4px 12px", textAlign: "center" }}>
+                        <div style={{ fontSize: "8px", fontWeight: "bold", color: "#065f46" }}>إجمالي النقدية المستلمة</div>
+                        <div style={{ fontSize: "15px", fontWeight: "900", color: "#047857", fontFamily: "monospace" }}>{netPay.toLocaleString()} ج.م</div>
+                      </div>
                     </div>
-                    <div style={{ width: "50%", padding: "6px 10px", borderRight: "1px solid #cbd5e1", backgroundColor: "#f8fafc" }}>
-                      <div style={{ color: "#64748b", fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                        <span>Payroll Period</span><span>دورة الراتب</span>
-                      </div>
-                      <div style={{ fontWeight: "bold", textAlign: "right", marginTop: "1px", color: "#0f172a", fontSize: "11px" }}>{p.month}</div>
-                    </div>
-                    <div style={{ width: "50%", padding: "6px 10px", backgroundColor: "#f8fafc" }}>
-                      <div style={{ color: "#64748b", fontSize: "10px", display: "flex", justifyContent: "space-between" }}>
-                        <span>Issue Date</span><span>تاريخ الإصدار</span>
-                      </div>
-                      <div style={{ fontWeight: "bold", textAlign: "right", marginTop: "1px", color: "#0f172a", fontSize: "11px" }}>{dateString}</div>
+
+                    <div style={{ fontSize: "9px", lineHeight: "1.58", background: "#f8fafc", border: "1.5px solid #cbd5e1", borderRadius: "6px", padding: "7px 11px", color: "#1e293b" }}>
+                      <strong style={{ color: "#0f172a", fontSize: "10px" }}>ثالثاً: البنود القانونية للمخالصة وبراءة الذمة القضائية التامة (وفقاً لقانون العمل المصري رقم 12 لسنة 2003):</strong>
+                      <ol style={{ margin: "3px 0 0 0", paddingRight: "16px" }}>
+                        <li style={{ marginBottom: "2.5px" }}>
+                          <strong>إقرار استلام كامل الأجر والمستحقات:</strong> أقر أنا العامل المقر أدناه بكامل إرادتي وبصفتي موظفاً لدى شركة ايه ان اتش للتجارة والتوزيع، بأنني قد استلمت من إدارة الشركة وخزينة الفرع كامل صافي أجري ومستحقاتي المالية الموضحة أعلاه عن دورة شهر ({cycleMonthLabel}) نقداً وعداً دون أي نقص أو تأخير أو اقتطاع غير مشروع.
+                        </li>
+                        <li style={{ marginBottom: "2.5px" }}>
+                          <strong>المخالصة المالية والتأمينية الشاملة والنهائية وبراءة الذمة:</strong> يُعد استلامي لصافي هذا الراتب وتوقيعي وبصمتي على هذا الإقرار بمثابة مخالصة مالية وتأمينية نهائية تامة وناجزة وبراءة ذمة مطلقة لشركة ايه ان اتش للتجارة والتوزيع (س.ت: 216727) وكافة فروعها وإداراتها ومسؤوليها، إبراءً شاملاً مسقطاً لكافة الحقوق والدعاوى والمطالبات العمالية والمدنية والمالية عن دورة هذا الشهر، بما يشمل الراتب الأساسي، بدلات الانتقال والسكن، البدلات الوظيفية، مكافآت وحوافز الإنتاج، وأجر ساعات العمل الإضافية.
+                        </li>
+                        <li style={{ marginBottom: "2.5px" }}>
+                          <strong>الإقرار بصحة الاستقطاعات والجزاءات والتأمينات والسلف:</strong> أقر بموافقتي التامة والقطعية على صحة كافة الاستقطاعات المنفذة على راتبي لشهر الاستحقاق، سواء كانت جزاءات وتأخيرات إدارية، أو اشتراكات التأمينات الاجتماعية وفق القانون رقم 148 لسنة 2019، أو أقساط سداد سلف نقدية استقطعت وفقاً للتفويض الصادر مني وطبقاً للمادة (34) من قانون العمل، وليس لي الحق في الاعتراض عليها أو المطالبة باسترداد أي جزء منها.
+                        </li>
+                        <li>
+                          <strong>الحجية القضائية والإلزام القانوني المطلق:</strong> تم تحرير وتوقيع هذا الإقرار والمخالصة بمحض إرادتي الحرة وبكامل الأهلية القانونية المعتبرة شرعاً وقانوناً، ودون أي ضغط أو إكراه أو تدليس، وتعد هذه الوثيقة بما تضمنته من توقيع وبصمة إبهامي حجة قانونية وقضائية قاطعة ونافذة في مواجهتي ومسؤوليتي المدنية والقضائية الكاملة أمام جميع مكاتب العمل، اللجان التوفيقية، المحاكم العمالية، وكافة جهات القضاء في جمهورية مصر العربية، ولا يجوز لي الطعن عليها أو الرجوع فيها بأي وجه من الوجوه، إعمالاً لأحكام المادتين (38) و(76) من قانون العمل المصري رقم 12 لسنة 2003.
+                        </li>
+                      </ol>
                     </div>
                   </div>
 
-                  {/* Ink-Saving Net Received Banner */}
-                  <div style={{ border: "1.5px solid #0f172a", backgroundColor: "#f8fafc", padding: "8px 14px", marginTop: "12px", display: "flex", justifyContent: "space-between", alignItems: "center", borderRadius: "6px" }}>
-                    <span style={{ fontSize: "12px", fontWeight: "bold", color: "#0f172a" }}>(Net Received Amount) المبلغ الصافي المستلم</span>
-                    <span style={{ fontSize: "16px", fontWeight: "900", color: "#059669" }}>EGP {(p.netPay || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                  </div>
-                  <div style={{ textAlign: "right", fontSize: "11px", marginTop: "4px", color: "#475569", fontWeight: "500" }}>
-                    فقط وقدره: {netPayWords} لا غير
-                  </div>
-
-                  {/* BILINGUAL LEGAL CLEARANCE BOX */}
-                  <div style={{ marginTop: "14px", border: "1px solid #e2e8f0", borderRadius: "6px", backgroundColor: "#f8fafc", padding: "10px 14px" }}>
-                    <div style={{ direction: "rtl", textAlign: "right", borderBottom: "1px solid #cbd5e1", paddingBottom: "6px", marginBottom: "6px" }}>
-                      <h3 style={{ color: "#0f172a", fontSize: "12px", fontWeight: "bold", margin: 0 }}>إقرار استلام ومخالصة نهائية</h3>
-                      <p style={{ fontSize: "10px", lineHeight: "1.4", color: "#334155", margin: "4px 0 0 0", textAlign: "justify" }}>
-                        أقر أنا الموقع أدناه، بصفتي موظفاً لدى الشركة المذكورة أعلاه، بأنني قد استلمت كامل الراتب والمستحقات المالية الخاصة بي عن دورة الراتب (<strong>{p.month}</strong>)، وذلك بعد إجراء كافة الاستقطاعات المقررة قانوناً. ويُعد توقيعي على هذا الإقرار بمثابة مخالصة نهائية تامة تبرئ ذمة الشركة من أي مطالبات مالية تخص هذه الدورة.
-                      </p>
-                    </div>
-                    <div style={{ direction: "ltr", textAlign: "left", paddingTop: "2px" }}>
-                      <h3 style={{ color: "#0f172a", fontSize: "12px", fontWeight: "bold", margin: 0 }}>Final Clearance & Salary Receipt</h3>
-                      <p style={{ fontSize: "9.5px", lineHeight: "1.35", color: "#334155", margin: "4px 0 0 0", textAlign: "justify" }}>
-                        I, the undersigned employee, acknowledge receipt of my full salary and dues for (<strong>{p.month}</strong>), net of all lawful deductions. My signature constitutes a full & final clearance discharging the company from any financial claims for this period.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* SIGNATURES BOX */}
-                  <div style={{ marginTop: "20px", display: "flex", justifyContent: "space-between", border: "1px solid #cbd5e1", borderRadius: "8px", padding: "12px 14px", backgroundColor: "#f8fafc" }}>
-                    <div style={{ width: "45%" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#475569", fontWeight: "bold", marginBottom: "30px" }}>
-                        <span>Employee Signature</span><span>توقيع الموظف (المُقر)</span>
+                  <div style={{ marginTop: "6px" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr 1fr", gap: "8px", alignItems: "center", borderTop: "2px solid #0f172a", paddingTop: "5px", marginBottom: "3px" }}>
+                      <div style={{ textAlign: "center", fontSize: "9px" }}>
+                        <div style={{ fontWeight: "900", color: "#0f172a" }}>المُقر بما فيه (العامل المستلم):</div>
+                        <div style={{ color: "#334155", margin: "1px 0", fontWeight: "bold" }}>{emp?.name || "-"}</div>
+                        <div style={{ color: "#64748b", margin: "16px 0 0 0" }}>التوقيع: .................................</div>
                       </div>
-                      <div style={{ borderBottom: "1px solid #94a3b8" }}></div>
-                    </div>
-                    <div style={{ width: "45%" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#475569", fontWeight: "bold", marginBottom: "30px" }}>
-                        <span>Authorized Manager</span><span>توقيع المدير المختص</span>
+
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                        <div style={{ fontSize: "8.5px", fontWeight: "900", color: "#0f172a", marginBottom: "1px" }}>
+                          بصمة إبهام العامل (ختم إلزامي):
+                        </div>
+                        <div style={{
+                          width: "100px",
+                          height: "60px",
+                          border: "2px solid #0f172a",
+                          borderRadius: "6px",
+                          background: "#fff",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          textAlign: "center",
+                          fontSize: "8.5px",
+                          color: "#94a3b8",
+                          fontWeight: "bold",
+                          boxShadow: "inset 0 0 4px rgba(0,0,0,0.05)"
+                        }}>
+                          [ بصمة الإبهام الأيمن ]
+                        </div>
                       </div>
-                      <div style={{ borderBottom: "1px solid #94a3b8" }}></div>
+
+                      <div style={{ textAlign: "center", fontSize: "9px" }}>
+                        <div style={{ fontWeight: "900", color: "#0f172a" }}>أمين الخزينة / مدير الفرع:</div>
+                        <div style={{ color: "#334155", margin: "1px 0" }}>تم الصرف والتسليم بالخزينة</div>
+                        <div style={{ color: "#64748b", margin: "16px 0 0 0" }}>التوقيع: .................................</div>
+                      </div>
+
+                      <div style={{ textAlign: "center", fontSize: "9px" }}>
+                        <div style={{ fontWeight: "900", color: "#0f172a" }}>اعتماد الموارد البشرية وخاتم الشركة:</div>
+                        <div style={{
+                          margin: "2px auto 0 auto",
+                          width: "115px",
+                          height: "54px",
+                          border: "1.5px solid #1e3a8a",
+                          borderRadius: "6px",
+                          padding: "2px",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          background: "#f8fafc"
+                        }}>
+                          <div style={{ fontSize: "7.5px", fontWeight: "900", color: "#1e3a8a" }}>شركة ايه ان اتش للتجارة</div>
+                          <div style={{ fontSize: "6.5px", color: "#475569" }}>س.ت: 216727 • ب.ض: 756-563-844</div>
+                          <div style={{ fontSize: "7px", color: "#047857", fontWeight: "bold", marginTop: "1px" }}>[ مخالصة معتمدة ومسجلة ]</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #cbd5e1", paddingTop: "3px", fontSize: "8px", color: "#64748b" }}>
+                      <div>وثيقة رسمية ومخالصة قضائية صادرة آلياً من نظام إدارة الموارد البشرية - شركة ايه ان اتش للتجارة (ANH) • صفحة 2 من 2 (المخالصة التامة)</div>
+                      <div>المادتان 38 و 76 من قانون العمل المصري رقم 12 لسنة 2003 • إقرار استلام راتب ومخالصة نهائية وناجزة</div>
                     </div>
                   </div>
                 </div>
