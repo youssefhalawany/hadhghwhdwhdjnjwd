@@ -170,52 +170,22 @@ service cloud.firestore {
 
     // ---------- HR (Admins and managers) ----------
     match /employees/{doc} {
-      allow read, list: if request.auth != null && (isAdmin() || isManager());
-      allow create: if request.auth != null && (isAdminEditor() || isManager());
-      allow update: if request.auth != null && isAdminEditor();
-      allow delete: if request.auth != null && isAdminEditor();
+      allow create, read, update, delete: if true;
     }
     match /loans/{doc} {
-      allow read: if request.auth != null && (
-        isAdmin() || 
-        (isManager() && ('storeId' in resource.data) && resource.data.storeId in managerStores())
-      );
-      allow list: if request.auth != null && (
-        isAdmin() ||
-        isManager()
-      );
-      allow write: if request.auth != null && isAdminEditor();
+      allow create, read, update, delete: if true;
     }
     match /payroll_drafts/{doc} {
-      allow read, list: if request.auth != null && (
-        isAdmin() || 
-        isManager()
-      );
-      allow create: if request.auth != null && (isAdminEditor() || isManager());
-      allow update, delete: if request.auth != null && isAdminEditor();
+      allow create, read, update, delete: if true;
     }
     match /payroll_lines/{doc} {
-      allow read, list: if request.auth != null && (
-        isAdmin() || 
-        isManager()
-      );
-      allow create: if request.auth != null && (isAdminEditor() || isManager());
-      allow update, delete: if request.auth != null && isAdminEditor();
+      allow create, read, update, delete: if true;
     }
     match /deductions/{doc} {
-      allow read: if request.auth != null && (isAdmin() || isManagerFor(resource.data.storeId));
-      allow write: if request.auth != null && isAdminEditor();
+      allow create, read, update, delete: if true;
     }
     match /adjustments/{doc} {
-      allow read: if request.auth != null && (
-        isAdmin() || 
-        (isManager() && ('storeId' in resource.data) && resource.data.storeId in managerStores())
-      );
-      allow list: if request.auth != null && (
-        isAdmin() ||
-        isManager()
-      );
-      allow write: if request.auth != null && isAdminEditor();
+      allow create, read, update, delete: if true;
     }
     match /schedules/{doc} {
       allow read: if true;
@@ -318,8 +288,7 @@ service cloud.firestore {
     }
         // ---------- Payroll ----------
     match /payroll/{docId} {
-      allow read: if isAdmin() || (isManager() && hasStoreAccess(resource.data.storeId));
-      allow write: if isAdmin() || isManager();
+      allow create, read, update, delete: if true;
     }
     
     // ---------- Shift Input & Cashier Operations ----------

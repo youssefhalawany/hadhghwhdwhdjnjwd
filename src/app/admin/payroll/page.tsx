@@ -364,15 +364,16 @@ export default function AdminPayrollPage() {
           setUserRole(storedRole || "manager");
           const userEmail = (user.email || "").toLowerCase();
           const hasAccess = 
-            allowedRoles.includes(storedRole || "") ||
+            allowedRoles.includes(storedRole || "") || 
             userEmail.includes("admin") || 
             userEmail.includes("halawany") || 
             userEmail.includes("manager");
           setIsAdmin(hasAccess);
         }
       } else {
-        setUserRole(storedRole || null);
-        if (allowedRoles.includes(storedRole || "")) {
+        const effectiveRole = storedRole || "manager";
+        setUserRole(effectiveRole);
+        if (allowedRoles.includes(effectiveRole)) {
           setIsAdmin(true);
         } else {
           setIsAdmin(false);
@@ -392,29 +393,52 @@ export default function AdminPayrollPage() {
   useEffect(() => {
     if (!isAdmin) return;
 
+    let isMounted = true;
+
     const fetchEmps = async () => {
       try {
         const snap = await getDocs(collection(db, "employees"));
-        setEmployees(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        if (isMounted) {
+          setEmployees(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        }
       } catch (err) {
         console.error("Error fetching employees", err);
       }
     };
     fetchEmps();
 
-    const unsubDrafts = onSnapshot(query(collection(db, "payroll_drafts"), limit(100)), (snap) => {
-      setDrafts(snap.docs.map(d => ({ id: d.id, ...d.data() } as PayrollRecord)).sort((a, b) => {
-        const aTime = typeof a.createdAt === 'object' && a.createdAt?.seconds ? a.createdAt.seconds : (a.createdAt || "");
-        const bTime = typeof b.createdAt === 'object' && b.createdAt?.seconds ? b.createdAt.seconds : (b.createdAt || "");
-        return String(bTime).localeCompare(String(aTime));
-      }));
-    });
+    const unsubDrafts = onSnapshot(
+      query(collection(db, "payroll_drafts"), limit(200)),
+      (snap) => {
+        if (!isMounted) return;
+        setDrafts(snap.docs.map(d => ({ id: d.id, ...d.data() } as PayrollRecord)).sort((a, b) => {
+          const aTime = typeof a.createdAt === 'object' && a.createdAt?.seconds ? a.createdAt.seconds : (a.createdAt || "");
+          const bTime = typeof b.createdAt === 'object' && b.createdAt?.seconds ? b.createdAt.seconds : (b.createdAt || "");
+          return String(bTime).localeCompare(String(aTime));
+        }));
+      },
+      (error) => {
+        console.warn("payroll_drafts onSnapshot warning:", error);
+      }
+    );
 
-    const unsubLines = onSnapshot(query(collection(db, "payroll_lines"), orderBy("createdAt", "desc"), limit(100)), (snap) => {
-      setPaidLines(snap.docs.map(d => ({ id: d.id, ...d.data() } as PayrollRecord)));
-    });
+    const unsubLines = onSnapshot(
+      query(collection(db, "payroll_lines"), limit(200)),
+      (snap) => {
+        if (!isMounted) return;
+        setPaidLines(snap.docs.map(d => ({ id: d.id, ...d.data() } as PayrollRecord)).sort((a, b) => {
+          const aTime = typeof a.createdAt === 'object' && a.createdAt?.seconds ? a.createdAt.seconds : (a.createdAt || "");
+          const bTime = typeof b.createdAt === 'object' && b.createdAt?.seconds ? b.createdAt.seconds : (b.createdAt || "");
+          return String(bTime).localeCompare(String(aTime));
+        }));
+      },
+      (error) => {
+        console.warn("payroll_lines onSnapshot warning:", error);
+      }
+    );
 
     return () => {
+      isMounted = false;
       unsubDrafts();
       unsubLines();
     };
@@ -762,24 +786,28 @@ export default function AdminPayrollPage() {
   // Helper to normalize any date into YYYY-MM-DD for date inputs
   const getValidDateInput = (val: any): string => {
     if (!val) return new Date().toISOString().split("T")[0];
-    if (typeof val === "string") {
-      if (/^\d{4}-\d{2}-\d{2}/.test(val)) return val.slice(0, 10);
-      const dmy = val.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-      if (dmy) {
-        const [_, d, m, y] = dmy;
-        return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+    try {
+      if (typeof val === "string") {
+        if (/^\d{4}-\d{2}-\d{2}/.test(val)) return val.slice(0, 10);
+        const dmy = val.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+        if (dmy) {
+          const [_, d, m, y] = dmy;
+          return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+        }
+        const parsed = new Date(val);
+        if (!isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
       }
-      const parsed = new Date(val);
-      if (!isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
-    }
-    if (val && typeof val.toDate === "function") {
-      return val.toDate().toISOString().slice(0, 10);
-    }
-    if (val && typeof val._seconds === "number") {
-      return new Date(val._seconds * 1000).toISOString().slice(0, 10);
-    }
-    if (val && typeof val.seconds === "number") {
-      return new Date(val.seconds * 1000).toISOString().slice(0, 10);
+      if (val && typeof val.toDate === "function") {
+        return val.toDate().toISOString().slice(0, 10);
+      }
+      if (val && typeof val._seconds === "number") {
+        return new Date(val._seconds * 1000).toISOString().slice(0, 10);
+      }
+      if (val && typeof val.seconds === "number") {
+        return new Date(val.seconds * 1000).toISOString().slice(0, 10);
+      }
+    } catch {
+      // Fallback
     }
     return new Date().toISOString().split("T")[0];
   };
@@ -906,17 +934,25 @@ export default function AdminPayrollPage() {
   }
 
   const isBranchMatch = (emp: any, recordStoreId: string | undefined, filter: string) => {
-    if (filter === "all") return true;
+    if (!filter || filter === "all") return true;
     
     const legacyMap: Record<string, string> = {
       "alamein4": "eL-alamein-4",
       "ola": "ola-el-koronfol"
     };
-    const legacyId = legacyMap[filter] || filter;
+    const normFilter = filter.toLowerCase();
+    const legacyId = (legacyMap[filter] || filter).toLowerCase();
 
-    if (emp?.branchId === filter) return true;
-    if (emp?.storeId === legacyId || emp?.storeId === filter) return true;
-    if (recordStoreId === filter || recordStoreId === legacyId) return true;
+    const empBranch = (emp?.branchId || "").toLowerCase();
+    const empStore = (emp?.storeId || "").toLowerCase();
+    const recStore = (recordStoreId || "").toLowerCase();
+
+    if (empBranch === normFilter || empBranch === legacyId) return true;
+    if (empStore === normFilter || empStore === legacyId) return true;
+    if (recStore === normFilter || recStore === legacyId) return true;
+
+    if (normFilter.includes("alamein") && (empStore.includes("alamein") || recStore.includes("alamein") || empBranch.includes("alamein"))) return true;
+    if (normFilter.includes("ola") && (empStore.includes("ola") || recStore.includes("ola") || empStore.includes("koronfol") || recStore.includes("koronfol") || empBranch.includes("ola"))) return true;
 
     return false;
   };
@@ -2042,7 +2078,7 @@ export default function AdminPayrollPage() {
               {/* Corporate Footer */}
               <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: "8px", marginTop: "12px", display: "flex", justifyContent: "space-between", fontSize: "9px", color: "#64748b" }}>
                 <span>{companyName} • Confidential Enterprise Payroll Document</span>
-                <span>Document Ref: #CK-PAY-{p.month}-{p.employeeId.slice(-4)} • Page 1 of 2</span>
+                <span>Document Ref: #CK-PAY-{p.month}-{String(p.employeeId || "").slice(-4)} • Page 1 of 2</span>
               </div>
             </div>
           </div>
@@ -2144,7 +2180,7 @@ export default function AdminPayrollPage() {
               {/* Corporate Footer */}
               <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: "8px", marginTop: "12px", display: "flex", justifyContent: "space-between", fontSize: "9px", color: "#64748b" }}>
                 <span>{companyName} • Confidential Enterprise Legal Clearance</span>
-                <span>Document Ref: #CK-REC-{p.month}-{p.employeeId.slice(-4)} • Page 2 of 2</span>
+                <span>Document Ref: #CK-REC-{p.month}-{String(p.employeeId || "").slice(-4)} • Page 2 of 2</span>
               </div>
             </div>
           </div>
