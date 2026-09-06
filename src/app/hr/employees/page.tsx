@@ -69,6 +69,7 @@ import {
 import { toast } from "sonner";
 import { onAuthStateChanged } from "firebase/auth";
 import { useBranch } from "@/context/BranchContext";
+import { useLanguage } from "@/context/LanguageContext";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
@@ -129,6 +130,14 @@ interface Employee {
 
 const POSITIONS = ["Barista", "Cashier", "Manager", "Assistant Manager", "Supervisor"];
 
+const POSITION_AR_MAP: Record<string, string> = {
+  "Barista": "باريستا (Barista)",
+  "Cashier": "كاشير (Cashier)",
+  "Manager": "مدير فرع (Manager)",
+  "Assistant Manager": "مساعد مدير (Assistant Manager)",
+  "Supervisor": "مشرف وردية (Supervisor)"
+};
+
 const MILITARY_STATUS_OPTIONS = [
   "أدى الخدمة العسكرية (قدوة حسنة)",
   "إعفاء نهائي من التجنيد",
@@ -137,6 +146,15 @@ const MILITARY_STATUS_OPTIONS = [
   "مؤجل تجنيده دراسياً",
   "غير مطلوب للتجنيد (إناث)"
 ];
+
+const MILITARY_STATUS_EN_MAP: Record<string, string> = {
+  "أدى الخدمة العسكرية (قدوة حسنة)": "Completed Military Service",
+  "إعفاء نهائي من التجنيد": "Final Exemption",
+  "إعفاء مؤقت من التجنيد": "Temporary Exemption",
+  "لم يصبه الدور (معفى نهائياً)": "Turn Not Called (Exempt)",
+  "مؤجل تجنيده دراسياً": "Postponed for Studies",
+  "غير مطلوب للتجنيد (إناث)": "Not Required (Female)"
+};
 
 export const EGYPT_GOVERNORATES: Record<string, { ar: string; en: string }> = {
   "01": { ar: "القاهرة", en: "Cairo" },
@@ -181,9 +199,11 @@ export interface DecodedNationalId {
   governorateEn?: string;
   laborStatus: "prohibited" | "minor" | "legal" | "unknown";
   laborStatusAr: string;
+  laborStatusEn?: string;
   laborBadge: string;
   militaryStatus: "exempt_female" | "draft_eligible" | "draft_exempt_age" | "under_draft_age" | "unknown";
   militaryStatusAr: string;
+  militaryStatusEn?: string;
   militaryBadge: string;
   retirementYear?: number;
   retirementAge?: number;
@@ -200,9 +220,11 @@ export const decodeEgyptianNationalId = (rawNid?: string): DecodedNationalId => 
     cleanNid,
     laborStatus: "unknown",
     laborStatusAr: "غير محدد",
+    laborStatusEn: "Unknown",
     laborBadge: "bg-slate-100 text-slate-600",
     militaryStatus: "unknown",
     militaryStatusAr: "غير محدد",
+    militaryStatusEn: "Unknown",
     militaryBadge: "bg-slate-100 text-slate-600",
     checksumValid: false
   };
@@ -274,14 +296,17 @@ export const decodeEgyptianNationalId = (rawNid?: string): DecodedNationalId => 
   if (age < 15) {
     result.laborStatus = "prohibited";
     result.laborStatusAr = "⛔ حظر تشغيل أطفال: أقل من 15 سنة (مخالفة جسيمة للمادة 99 من قانون العمل)";
+    result.laborStatusEn = "⛔ Child Labor Prohibited: Under 15 (Violation of Labor Law Art. 99)";
     result.laborBadge = "bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30";
   } else if (age < 18) {
     result.laborStatus = "minor";
     result.laborStatusAr = "⚠️ قاصر متدرج (15-18 سنة): يشترط موافقة ولي الأمر ومحظور تشغيله نوبات ليلية أو ساعات إضافية (المواد 98-103)";
+    result.laborStatusEn = "⚠️ Minor Apprentice (15-18): Guardian consent required, night shifts prohibited (Arts. 98-103)";
     result.laborBadge = "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30";
   } else {
     result.laborStatus = "legal";
     result.laborStatusAr = "🟢 سن العمل القانوني مكتمل (أهلية تعاقد كاملة 18+ سنة)";
+    result.laborStatusEn = "🟢 Statutory Working Age (Full Legal Capacity 18+)";
     result.laborBadge = "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30";
   }
 
@@ -289,18 +314,22 @@ export const decodeEgyptianNationalId = (rawNid?: string): DecodedNationalId => 
   if (!isMale) {
     result.militaryStatus = "exempt_female";
     result.militaryStatusAr = "معفاة نهائياً (إناث - غير خاضعة لقانون الخدمة العسكرية والوطنية رقم 127 لسنة 1980)";
+    result.militaryStatusEn = "Permanently Exempt (Female - Law 127/1980)";
     result.militaryBadge = "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30";
   } else if (age < 18) {
     result.militaryStatus = "under_draft_age";
     result.militaryStatusAr = "لم يبلغ سن التكليف العسكري بعد (أقل من 18 سنة)";
+    result.militaryStatusEn = "Under Conscription Age (< 18 yrs)";
     result.militaryBadge = "bg-slate-500/15 text-slate-700 dark:text-slate-400 border-slate-500/30";
   } else if (age <= 30) {
     result.militaryStatus = "draft_eligible";
     result.militaryStatusAr = "⚠️ في سن التكليف العسكري (مطلوب شهادة تأدية الخدمة أو الإعفاء النهائي/المؤقت)";
+    result.militaryStatusEn = "⚠️ Conscription Eligible (Service / Exemption certificate required)";
     result.militaryBadge = "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30";
   } else {
     result.militaryStatus = "draft_exempt_age";
     result.militaryStatusAr = "✅ تجاوز سن الامتناع العسكري القانوني (30 سنة - مادة 49 قانون 127 لسنة 1980)";
+    result.militaryStatusEn = "✅ Past Statutory Conscription Age (30+ yrs - Law 127/1980 Art. 49)";
     result.militaryBadge = "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30";
   }
 
@@ -346,6 +375,8 @@ export const decodeEgyptianNationalId = (rawNid?: string): DecodedNationalId => 
 
 export default function EmployeesPage() {
   const { currentBranch } = useBranch();
+  const { language: lang } = useLanguage();
+  const isAr = lang === "ar";
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -488,7 +519,7 @@ export default function EmployeesPage() {
       setEmployees(data);
     } catch (err) {
       console.error("Failed to load employees:", err);
-      toast.error("Failed to load employees");
+      toast.error(isAr ? "فشل تحميل بيانات الموظفين" : "Failed to load employees");
     } finally {
       setLoading(false);
     }
@@ -588,7 +619,11 @@ export default function EmployeesPage() {
 
   const handleOpenEdit = (emp: Employee) => {
     if (isManager) {
-      toast.error("Managers cannot edit employee details. Only administrators have edit access.");
+      toast.error(
+        isAr
+          ? "المديرون غير مخولين بتعديل بيانات الموظفين. فقط الإدارة تمتلك صلاحية التعديل."
+          : "Managers cannot edit employee details. Only administrators have edit access."
+      );
       return;
     }
     setSelectedEmployee(emp);
@@ -623,11 +658,15 @@ export default function EmployeesPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name?.trim()) {
-      toast.error("Name is required");
+      toast.error(isAr ? "الاسم الكامل مطلوب" : "Name is required");
       return;
     }
     if (selectedEmployee && isManager) {
-      toast.error("Managers are not authorized to edit employees. You can only add new employees.");
+      toast.error(
+        isAr
+          ? "المديرون غير مخولين بتعديل بيانات الموظفين. يمكنك فقط إضافة موظفين جدد."
+          : "Managers are not authorized to edit employees. You can only add new employees."
+      );
       return;
     }
     setIsSubmitting(true);
@@ -647,21 +686,21 @@ export default function EmployeesPage() {
 
       if (selectedEmployee) {
         await updateDoc(doc(db, "employees", selectedEmployee.id), payload);
-        toast.success("Employee updated!");
+        toast.success(isAr ? "تم تحديث بيانات الموظف بنجاح!" : "Employee updated!");
       } else {
         await addDoc(collection(db, "employees"), {
           ...payload,
           createdAt: serverTimestamp(),
           createdBy: currentUser?.email || "unknown"
         });
-        toast.success("Employee added!");
+        toast.success(isAr ? "تم إضافة الموظف الجديد بنجاح!" : "Employee added!");
       }
 
       setShowAddModal(false);
       loadData(); // refresh data
     } catch (err) {
       console.error(err);
-      toast.error("Failed to save employee");
+      toast.error(isAr ? "فشل حفظ بيانات الموظف" : "Failed to save employee");
     } finally {
       setIsSubmitting(false);
     }
@@ -734,15 +773,15 @@ export default function EmployeesPage() {
       if (downloadURL) {
         setFormData(prev => ({ ...prev, nationalIdPhotoUrl: downloadURL }));
       }
-      toast.success("National ID photo attached! ⚡");
+      toast.success(isAr ? "تم إرفاق صورة البطاقة بنجاح! ⚡" : "National ID photo attached! ⚡");
     } catch (error) {
       console.error("Fast upload error:", error);
       try {
         const { dataUrl } = await compressImage(file, 800, 0.6);
         setFormData(prev => ({ ...prev, nationalIdPhotoUrl: dataUrl }));
-        toast.success("National ID photo saved locally!");
+        toast.success(isAr ? "تم حفظ صورة البطاقة محلياً!" : "National ID photo saved locally!");
       } catch (innerErr) {
-        toast.error("Failed to process ID photo");
+        toast.error(isAr ? "فشل معالجة صورة البطاقة" : "Failed to process ID photo");
       }
     } finally {
       setIsUploadingID(false);
@@ -769,15 +808,15 @@ export default function EmployeesPage() {
       if (downloadURL) {
         setFormData(prev => ({ ...prev, photoUrl: downloadURL }));
       }
-      toast.success("Employee photo attached! ⚡");
+      toast.success(isAr ? "تم إرفاق صورة الموظف بنجاح! ⚡" : "Employee photo attached! ⚡");
     } catch (error) {
       console.error("Photo upload error:", error);
       try {
         const { dataUrl } = await compressImage(file, 500, 0.65);
         setFormData(prev => ({ ...prev, photoUrl: dataUrl }));
-        toast.success("Employee photo saved locally!");
+        toast.success(isAr ? "تم حفظ صورة الموظف محلياً!" : "Employee photo saved locally!");
       } catch (innerErr) {
-        toast.error("Failed to process employee photo");
+        toast.error(isAr ? "فشل معالجة صورة الموظف" : "Failed to process employee photo");
       }
     } finally {
       setIsUploadingPhoto(false);
@@ -787,22 +826,22 @@ export default function EmployeesPage() {
 
   const handleDelete = async (id: string) => {
     if (isManager) {
-      toast.error("Managers are not authorized to delete employees.");
+      toast.error(isAr ? "المديرون غير مخولين بحذف الموظفين." : "Managers are not authorized to delete employees.");
       return;
     }
-    if (!window.confirm("Delete this employee? This cannot be undone.")) return;
+    if (!window.confirm(isAr ? "هل أنت متأكد من حذف هذا الموظف؟ لا يمكن التراجع عن هذا الإجراء." : "Delete this employee? This cannot be undone.")) return;
     try {
       await deleteDoc(doc(db, "employees", id));
-      toast.success("Employee deleted");
+      toast.success(isAr ? "تم حذف الموظف بنجاح" : "Employee deleted");
       loadData(); // refresh data
     } catch (err) {
-      toast.error("Failed to delete");
+      toast.error(isAr ? "فشل حذف الموظف" : "Failed to delete");
     }
   };
 
   const handleQuickStatusChange = async (employeeId: string, newStatus: "active" | "suspended" | "left") => {
     if (isManager) {
-      toast.error("Managers are not authorized to change employee status.");
+      toast.error(isAr ? "المديرون غير مخولين بتغيير حالة الموظف." : "Managers are not authorized to change employee status.");
       return;
     }
     try {
@@ -817,14 +856,14 @@ export default function EmployeesPage() {
       }
       toast.success(
         newStatus === "active"
-          ? "Employee marked as Active (بالخدمة)"
+          ? (isAr ? "تم تعيين الموظف: على رأس العمل (نشط)" : "Employee marked as Active")
           : newStatus === "suspended"
-            ? "Employee marked as Suspended (موقوف مؤقتاً)"
-            : "Employee marked as Left (ترك العمل / انتهت خدمته)"
+            ? (isAr ? "تم تعيين الموظف: موقوف مؤقتاً عن العمل" : "Employee marked as Suspended")
+            : (isAr ? "تم تعيين الموظف: ترك العمل / منتهي الخدمة" : "Employee marked as Left")
       );
     } catch (err) {
       console.error("Failed to update employee status:", err);
-      toast.error("Failed to update status");
+      toast.error(isAr ? "فشل تحديث حالة الموظف" : "Failed to update status");
     }
   };
 
@@ -1004,13 +1043,13 @@ export default function EmployeesPage() {
     }, 250);
   };
 
-  const loanCategoryLabels: Record<string, { label: string; icon: string }> = {
-    medical: { label: "حالات طبية وعلاجية طارئة", icon: "🏥" },
-    education: { label: "مصاريف مدرسية وجامعية", icon: "🎓" },
-    family: { label: "مناسبات عائلية وزواج", icon: "💍" },
-    seasonal: { label: "سلفة أعياد ومواسم", icon: "🌙" },
-    living: { label: "التزامات معيشية وسكنية", icon: "🏠" },
-    other: { label: "أسباب وظروف أخرى", icon: "📝" }
+  const loanCategoryLabels: Record<string, { label: string; labelEn: string; icon: string }> = {
+    medical: { label: "حالات طبية وعلاجية طارئة", labelEn: "Medical Emergency", icon: "🏥" },
+    education: { label: "مصاريف مدرسية وجامعية", labelEn: "Education & Tuition", icon: "🎓" },
+    family: { label: "مناسبات عائلية وزواج", labelEn: "Family & Marriage", icon: "💍" },
+    seasonal: { label: "سلفة أعياد ومواسم", labelEn: "Seasons & Holidays", icon: "🌙" },
+    living: { label: "التزامات معيشية وسكنية", labelEn: "Living & Housing Costs", icon: "🏠" },
+    other: { label: "أسباب وظروف أخرى", labelEn: "General / Other", icon: "📝" }
   };
 
   const handlePrintLoanContract = (loan: any, emp?: Employee) => {
@@ -1076,6 +1115,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
       return {
         status: "missing",
         labelAr: "غير مسجلة (مطلوبة لسلامة الغذاء)",
+        labelEn: "Not registered (Required for food safety)",
         days: null,
         badge: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
       };
@@ -1090,6 +1130,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
       return {
         status: "expired",
         labelAr: `منتهية منذ ${Math.abs(diffDays)} يوم (مخالفة لسلامة الغذاء)`,
+        labelEn: `Expired ${Math.abs(diffDays)}d ago (Food safety violation)`,
         days: diffDays,
         badge: "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30"
       };
@@ -1098,6 +1139,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
       return {
         status: "expiring_soon",
         labelAr: `توشك على الانتهاء خلال ${diffDays} يوم`,
+        labelEn: `Expiring in ${diffDays} days`,
         days: diffDays,
         badge: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30"
       };
@@ -1105,6 +1147,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
     return {
       status: "valid",
       labelAr: `سارية (متبقي ${diffDays} يوم)`,
+      labelEn: `Valid (${diffDays} days remaining)`,
       days: diffDays,
       badge: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
     };
@@ -1115,6 +1158,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
       return {
         status: "missing",
         labelAr: "سارية (يرجى تسجيل تاريخ التجديد)",
+        labelEn: "Valid (Please record renewal date)",
         days: null,
         badge: "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20"
       };
@@ -1129,6 +1173,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
       return {
         status: "expired",
         labelAr: `منتهية منذ ${Math.abs(diffDays)} يوم`,
+        labelEn: `Expired ${Math.abs(diffDays)}d ago`,
         days: diffDays,
         badge: "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30"
       };
@@ -1137,6 +1182,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
       return {
         status: "expiring_soon",
         labelAr: `تجديد مطلوب خلال ${diffDays} يوم`,
+        labelEn: `Renewal due in ${diffDays} days`,
         days: diffDays,
         badge: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30"
       };
@@ -1144,6 +1190,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
     return {
       status: "valid",
       labelAr: `سارية (متبقي ${diffDays} يوم)`,
+      labelEn: `Valid (${diffDays} days remaining)`,
       days: diffDays,
       badge: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
     };
@@ -1154,6 +1201,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
       return {
         status: "missing",
         labelAr: "غير مسجل (مطلوب لملف التعيين)",
+        labelEn: "Not registered (Required for hiring file)",
         days: null,
         badge: "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20"
       };
@@ -1172,6 +1220,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
       return {
         status: "expired",
         labelAr: `منتهي الصلاحية (تجاوز 3 أشهر)`,
+        labelEn: `Expired (Exceeded 3 months)`,
         days: diffDays,
         badge: "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30"
       };
@@ -1180,6 +1229,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
       return {
         status: "expiring_soon",
         labelAr: `ينتهي خلال ${diffDays} يوم`,
+        labelEn: `Expires in ${diffDays} days`,
         days: diffDays,
         badge: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30"
       };
@@ -1187,6 +1237,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
     return {
       status: "valid",
       labelAr: `ساري ومستوفى (${diffDays} يوم)`,
+      labelEn: `Valid & Fulfilled (${diffDays} days remaining)`,
       days: diffDays,
       badge: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
     };
@@ -1194,14 +1245,14 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
 
   const getProbationStatus = (startDateStr?: string) => {
     if (!startDateStr) {
-      return { stage: "unknown", daysElapsed: 0, daysTotal: 90, daysRemaining: 90, labelAr: "غير محدد تاريخ الاستلام", percent: 0, badge: "bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10" };
+      return { stage: "unknown", daysElapsed: 0, daysTotal: 90, daysRemaining: 90, labelAr: "غير محدد تاريخ الاستلام", labelEn: "Hire date not specified", percent: 0, badge: "bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10" };
     }
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const start = new Date(startDateStr);
     start.setHours(0, 0, 0, 0);
     if (isNaN(start.getTime())) {
-      return { stage: "unknown", daysElapsed: 0, daysTotal: 90, daysRemaining: 90, labelAr: "تاريخ غير صالح", percent: 0, badge: "bg-slate-100 text-slate-600" };
+      return { stage: "unknown", daysElapsed: 0, daysTotal: 90, daysRemaining: 90, labelAr: "تاريخ غير صالح", labelEn: "Invalid date", percent: 0, badge: "bg-slate-100 text-slate-600" };
     }
     const daysElapsed = Math.max(0, Math.floor((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
 
@@ -1212,9 +1263,11 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
         daysTotal: 90,
         daysRemaining: 90 - daysElapsed,
         labelAr: `قيد فترة الاختبار (اليوم ${daysElapsed} من 90)`,
+        labelEn: `Under probation (Day ${daysElapsed} of 90)`,
         percent: Math.min(100, Math.round((daysElapsed / 90) * 100)),
         badge: "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30",
-        alertText: `الموظف في فترة الاختبار القانونية (المادة 32 - قانون العمل رقم 12 لسنة 2003). متبقي ${90 - daysElapsed} يوم على التثبيت.`
+        alertText: `الموظف في فترة الاختبار القانونية (المادة 32 - قانون العمل رقم 12 لسنة 2003). متبقي ${90 - daysElapsed} يوم على التثبيت.`,
+        alertTextEn: `Employee is in statutory probation period (Labor Law 12/2003, Art. 32). ${90 - daysElapsed} days remaining until confirmation.`
       };
     }
     if (daysElapsed <= 90) {
@@ -1224,9 +1277,11 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
         daysTotal: 90,
         daysRemaining: 90 - daysElapsed,
         labelAr: `مطلوب تقييم نهائي قبل التثبيت (متبقي ${90 - daysElapsed} يوم)`,
+        labelEn: `Final evaluation required (${90 - daysElapsed} days remaining)`,
         percent: Math.min(100, Math.round((daysElapsed / 90) * 100)),
         badge: "bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/40",
-        alertText: `⚠️ أوشكت فترة الاختبار (90 يوماً) على الانتهاء خلال ${90 - daysElapsed} يوم. يلزم اتخاذ قرار التثبيت أو إنهاء التعاقد دون تعويض قبل انقضاء اليوم 90.`
+        alertText: `⚠️ أوشكت فترة الاختبار (90 يوماً) على الانتهاء خلال ${90 - daysElapsed} يوم. يلزم اتخاذ قرار التثبيت أو إنهاء التعاقد دون تعويض قبل انقضاء اليوم 90.`,
+        alertTextEn: `⚠️ Statutory probation (90 days) ending in ${90 - daysElapsed} days. Decision on confirmation or separation must be taken before day 90.`
       };
     }
     return {
@@ -1235,9 +1290,11 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
       daysTotal: 90,
       daysRemaining: 0,
       labelAr: `مثبت بالخدمة رسمياً (تجاوز فترة الاختبار - ${daysElapsed} يوم عمل)`,
+      labelEn: `Officially confirmed (Probation passed - ${daysElapsed} work days)`,
       percent: 100,
       badge: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
-      alertText: `تم تثبيت الموظف واكتسب كامل الحماية القانونية وفقاً للمادة 32 من قانون العمل رقم 12 لسنة 2003.`
+      alertText: `تم تثبيت الموظف واكتسب كامل الحماية القانونية وفقاً للمادة 32 من قانون العمل رقم 12 لسنة 2003.`,
+      alertTextEn: `Employee is officially confirmed with full statutory protection under Labor Law 12/2003, Art. 32.`
     };
   };
 
@@ -1272,7 +1329,12 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
         ? `العقد منتهي منذ ${Math.abs(diffDays)} يوم (يلزم تجديد العقد السنوي)`
         : diffDays <= 30
           ? `موعد تجديد العقد خلال ${diffDays} يوم`
-          : `تجديد العقد: ${renewalDate.toISOString().split("T")[0]} (${diffDays} يوم متبقي)`
+          : `تجديد العقد: ${renewalDate.toISOString().split("T")[0]} (${diffDays} يوم متبقي)`,
+      labelEn: diffDays < 0
+        ? `Contract expired ${Math.abs(diffDays)}d ago (Annual renewal required)`
+        : diffDays <= 30
+          ? `Contract renewal due in ${diffDays} days`
+          : `Renewal: ${renewalDate.toISOString().split("T")[0]} (${diffDays}d remaining)`
     };
   };
 
@@ -1458,7 +1520,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
       e.preventDefault();
     }
     if (isManager) {
-      toast.error("Managers are not authorized to issue loans.");
+      toast.error(isAr ? "المديرون غير مخولين باعتماد وصرف السلف." : "Managers are not authorized to issue loans.");
       return;
     }
     const targetEmp = (e && 'id' in e && e.id) ? e : employees.find(emp => emp.id === activeEmployeeId) || selectedEmployee;
@@ -1466,7 +1528,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
 
     const amt = Number(loanAmount);
     if (!amt || amt <= 0) {
-      toast.error("يرجى إدخال مبلغ سلفة صحيح");
+      toast.error(isAr ? "يرجى إدخال مبلغ سلفة صحيح" : "Please enter a valid loan amount");
       return;
     }
 
@@ -1524,7 +1586,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
       };
 
       const docRef = await addDoc(collection(db, "loans"), payload);
-      toast.success("تم اعتماد وصرف السلفة وتخصيص الأقساط الشهرية بنجاح!");
+      toast.success(isAr ? "تم اعتماد وصرف السلفة وتخصيص الأقساط الشهرية بنجاح!" : "Loan issued and monthly installments scheduled successfully!");
       setShowLoanModal(false);
       setLoanNotes("");
       const newDoc = { id: docRef.id, ...payload };
@@ -1534,7 +1596,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
       setSelectedLoanForPrint(newDoc);
     } catch (err) {
       console.error("Failed to record loan:", err);
-      toast.error("فشل تسجيل السلفة");
+      toast.error(isAr ? "فشل تسجيل السلفة" : "Failed to record loan");
     } finally {
       setIsSubmittingLoan(false);
     }
@@ -1545,11 +1607,11 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
     const payAmt = Number(payoffAmount);
     const maxPayable = Number(activeLoanForPayoff.remainingBalance !== undefined ? activeLoanForPayoff.remainingBalance : activeLoanForPayoff.amount);
     if (payAmt <= 0) {
-      toast.error("يرجى إدخال مبلغ سداد صحيح");
+      toast.error(isAr ? "يرجى إدخال مبلغ سداد صحيح" : "Please enter a valid payoff amount");
       return;
     }
     if (payAmt > maxPayable) {
-      toast.error(`المبلغ المطلوب سداده أكبر من الرصيد المتبقي (${maxPayable} ج.م)`);
+      toast.error(isAr ? `المبلغ المطلوب سداده أكبر من الرصيد المتبقي (${maxPayable} ج.م)` : `Payment exceeds remaining balance (${maxPayable} EGP)`);
       return;
     }
 
@@ -1632,7 +1694,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
 
       setEmpLoans(prev => prev.map(l => l.id === activeLoanForPayoff.id ? updatedLoan : l));
 
-      toast.success("تم توريد المبلغ للخزينة وتحديث رصيد السلفة بنجاح!");
+      toast.success(isAr ? "تم توريد المبلغ للخزينة وتحديث رصيد السلفة بنجاح!" : "Amount deposited into safe and loan balance updated!");
       setShowEarlyPayoffModal(false);
       setPayoffAmount(0);
       setPayoffNotes("");
@@ -1647,7 +1709,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
       });
     } catch (err) {
       console.error("Failed to record early payoff:", err);
-      toast.error("فشل تسجيل السداد المعجل");
+      toast.error(isAr ? "فشل تسجيل السداد المعجل" : "Failed to record early payoff");
     } finally {
       setIsSubmittingPayoff(false);
     }
@@ -1736,7 +1798,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
 
   const handleOpenCareerModal = (mode: "transfer" | "promotion") => {
     if (isManager) {
-      toast.error("Managers are not authorized to transfer or promote employees.");
+      toast.error(isAr ? "المديرون غير مخولين بنقل أو ترقية الموظفين." : "Managers are not authorized to transfer or promote employees.");
       return;
     }
     if (!activeEmp) return;
@@ -1753,7 +1815,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
     if (e && 'preventDefault' in e) e.preventDefault();
     if (!activeEmp) return;
     if (isManager) {
-      toast.error("Managers are not authorized to transfer or promote employees.");
+      toast.error(isAr ? "المديرون غير مخولين بنقل أو ترقية الموظفين." : "Managers are not authorized to transfer or promote employees.");
       return;
     }
     setIsSubmittingCareer(true);
@@ -1800,7 +1862,11 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
       updates.careerHistory = updatedHistory;
 
       await updateDoc(doc(db, "employees", activeEmp.id), updates);
-      toast.success(careerMode === "transfer" ? "تم نقل الموظف بنجاح وتحديث بيانات الفرع!" : "تمت ترقية الموظف وتعديل بياناته الوظيفية بنجاح!");
+      toast.success(
+        careerMode === "transfer"
+          ? (isAr ? "تم نقل الموظف بنجاح وتحديث بيانات الفرع!" : "Employee transferred and branch updated successfully!")
+          : (isAr ? "تمت ترقية الموظف وتعديل بياناته الوظيفية بنجاح!" : "Employee promoted and position updated successfully!")
+      );
       setShowCareerModal(false);
       setCareerNotes("");
 
@@ -1811,7 +1877,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
       }
     } catch (err) {
       console.error("Failed to submit career event:", err);
-      toast.error("Failed to update employee career status");
+      toast.error(isAr ? "فشل تحديث المسار الوظيفي للموظف" : "Failed to update employee career status");
     } finally {
       setIsSubmittingCareer(false);
     }
@@ -1819,12 +1885,12 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
 
   const handleOpenBonusModal = () => {
     if (isManager) {
-      toast.error("Managers are not authorized to award bonuses.");
+      toast.error(isAr ? "المديرون غير مخولين بمنح المكافآت." : "Managers are not authorized to award bonuses.");
       return;
     }
     if (!activeEmp) return;
     setBonusAmount(500);
-    setBonusReason("مكافأة تميز وسنوية عمل / عيد ميلاد");
+    setBonusReason(isAr ? "مكافأة تميز وسنوية عمل / عيد ميلاد" : "Performance & Work Anniversary / Birthday Bonus");
     setShowBonusModal(true);
   };
 
@@ -1832,7 +1898,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
     if (e && 'preventDefault' in e) e.preventDefault();
     if (!activeEmp) return;
     if (isManager) {
-      toast.error("Managers are not authorized to award bonuses.");
+      toast.error(isAr ? "المديرون غير مخولين بمنح المكافآت." : "Managers are not authorized to award bonuses.");
       return;
     }
     setIsSubmittingBonus(true);
@@ -1842,7 +1908,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
         employeeName: activeEmp.name,
         amount: Number(bonusAmount),
         type: "bonus",
-        reason: bonusReason || "مكافأة مناسبات / أداء متميز",
+        reason: bonusReason || (isAr ? "مكافأة مناسبات / أداء متميز" : "Special Occasion / Performance Bonus"),
         date: new Date().toISOString().split("T")[0],
         month: new Date().toISOString().slice(0, 7),
         storeId: activeEmp.storeId || currentBranch || "alamein4",
@@ -1852,12 +1918,16 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
       };
 
       await addDoc(collection(db, "adjustments"), payload);
-      toast.success(`تم صرف مكافأة قدرها ${Number(bonusAmount).toLocaleString()} ج.م وقيدها بحسابات الموظف!`);
+      toast.success(
+        isAr
+          ? `تم صرف مكافأة قدرها ${Number(bonusAmount).toLocaleString()} ج.م وقيدها بحسابات الموظف!`
+          : `Bonus of ${Number(bonusAmount).toLocaleString()} EGP granted to employee!`
+      );
       setShowBonusModal(false);
-      setBonusReason("مكافأة تميز وحسن سير وسلوك");
+      setBonusReason(isAr ? "مكافأة تميز وحسن سير وسلوك" : "Excellence & Good Conduct Bonus");
     } catch (err) {
       console.error("Failed to grant bonus:", err);
-      toast.error("Failed to grant bonus");
+      toast.error(isAr ? "فشل صرف المكافأة" : "Failed to grant bonus");
     } finally {
       setIsSubmittingBonus(false);
     }
@@ -1878,7 +1948,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
 
   return (
     <>
-      <div className="min-h-screen bg-slate-50 dark:bg-[#0A0A0A] pb-32 print:hidden relative overflow-hidden">
+      <div className="min-h-screen bg-slate-50 dark:bg-[#0A0A0A] pb-32 print:hidden relative overflow-hidden" dir={isAr ? "rtl" : "ltr"}>
         {/* Subtle animated background mesh */}
         <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-500/10 dark:bg-indigo-500/5 blur-[120px]"></div>
@@ -1890,23 +1960,27 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
           {/* Dashboard Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 mb-8">
             <div>
-              <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight mb-2 drop-shadow-sm">Command Center</h1>
-              <p className="text-slate-500 dark:text-slate-400 text-lg font-medium">Manage workforce, analyze payroll, and handle contracts.</p>
+              <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight mb-2 drop-shadow-sm">
+                {isAr ? "مركز إدارة شؤون العاملين" : "Command Center"}
+              </h1>
+              <p className="text-slate-500 dark:text-slate-400 text-lg font-medium">
+                {isAr ? "إدارة شؤون الموظفين، الحركات والمسيرات، والوثائق والعقود الرسمية." : "Manage workforce, analyze payroll, and handle contracts."}
+              </p>
             </div>
             <div className="flex items-center gap-3">
               <button
                 onClick={loadData}
                 disabled={loading}
-                className="flex items-center justify-center p-3.5 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 rounded-2xl shadow-sm hover:shadow-md hover:bg-slate-50 dark:hover:bg-white/10 backdrop-blur-md transition-all"
-                title="Refresh Data"
+                className="flex items-center justify-center p-3.5 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 rounded-2xl shadow-sm hover:shadow-md hover:bg-slate-50 dark:hover:bg-white/10 backdrop-blur-md transition-all cursor-pointer"
+                title={isAr ? "تحديث البيانات" : "Refresh Data"}
               >
                 <RefreshCw size={20} className={loading ? "animate-spin text-indigo-500" : ""} />
               </button>
               <button
                 onClick={handleOpenAdd}
-                className="flex items-center gap-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-6 py-3.5 rounded-2xl font-bold shadow-lg shadow-slate-900/20 dark:shadow-white/10 hover:-translate-y-1 transition-all duration-300"
+                className="flex items-center gap-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-6 py-3.5 rounded-2xl font-bold shadow-lg shadow-slate-900/20 dark:shadow-white/10 hover:-translate-y-1 transition-all duration-300 cursor-pointer"
               >
-                <Plus size={20} /> Add Employee
+                <Plus size={20} /> {isAr ? "إضافة موظف جديد" : "Add Employee"}
               </button>
             </div>
           </div>
@@ -1915,7 +1989,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <div className="bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-white/40 dark:border-white/10 rounded-3xl p-5 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
               <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Active</p>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{isAr ? "على رأس العمل" : "Active"}</p>
                 <p className="text-3xl font-black text-emerald-600 dark:text-emerald-400">{activeCount}</p>
               </div>
               <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform">
@@ -1924,7 +1998,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
             </div>
             <div className="bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-white/40 dark:border-white/10 rounded-3xl p-5 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
               <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Suspended</p>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{isAr ? "موقوف مؤقتاً" : "Suspended"}</p>
                 <p className="text-3xl font-black text-amber-600 dark:text-amber-400">{suspendedCount}</p>
               </div>
               <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform">
@@ -1933,7 +2007,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
             </div>
             <div className="bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-white/40 dark:border-white/10 rounded-3xl p-5 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
               <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Left</p>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{isAr ? "ترك العمل" : "Left"}</p>
                 <p className="text-3xl font-black text-rose-600 dark:text-rose-400">{leftCount}</p>
               </div>
               <div className="w-12 h-12 rounded-2xl bg-rose-100 dark:bg-rose-500/20 flex items-center justify-center text-rose-600 dark:text-rose-400 group-hover:scale-110 transition-transform">
@@ -1942,7 +2016,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
             </div>
             <div className="bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-white/40 dark:border-white/10 rounded-3xl p-5 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
               <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Employees</p>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{isAr ? "إجمالي الموظفين" : "Total Employees"}</p>
                 <p className="text-3xl font-black text-slate-800 dark:text-white">{employees.length}</p>
               </div>
               <div className="w-12 h-12 rounded-2xl bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">
@@ -1960,13 +2034,13 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
               {/* Filter / Search inside Left Pane */}
               <div className="flex flex-col gap-3 p-2 border-b border-slate-200 dark:border-white/10 pb-6 shrink-0">
                 <div className="relative">
-                  <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Search size={18} className={`absolute ${isAr ? "right-4" : "left-4"} top-1/2 -translate-y-1/2 text-slate-400`} />
                   <input
                     type="text"
-                    placeholder="Search employees..."
+                    placeholder={isAr ? "بحث بالاسم، الرقم القومي، الهاتف..." : "Search employees..."}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-slate-100 dark:bg-black/20 text-slate-900 dark:text-white font-medium p-3 pl-11 rounded-2xl outline-none border border-transparent focus:border-indigo-500/50 transition-all placeholder:text-slate-400"
+                    className={`w-full bg-slate-100 dark:bg-black/20 text-slate-900 dark:text-white font-medium p-3 ${isAr ? "pr-11 pl-4" : "pl-11 pr-4"} rounded-2xl outline-none border border-transparent focus:border-indigo-500/50 transition-all placeholder:text-slate-400`}
                   />
                 </div>
                 <div className="flex gap-2">
@@ -1975,10 +2049,10 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                     onChange={(e) => setStatusFilter(e.target.value)}
                     className="flex-1 bg-slate-100 dark:bg-black/20 text-sm font-bold p-3 rounded-2xl outline-none text-slate-700 dark:text-slate-200 border border-transparent focus:border-indigo-500/50 cursor-pointer"
                   >
-                    <option>All Status</option>
-                    <option value="active">Active (نشط)</option>
-                    <option value="suspended">Suspended (موقوف)</option>
-                    <option value="left">Left (ترك العمل)</option>
+                    <option value="All Status">{isAr ? "جميع الحالات" : "All Status"}</option>
+                    <option value="active">{isAr ? "نشط (على رأس العمل)" : "Active (نشط)"}</option>
+                    <option value="suspended">{isAr ? "موقوف مؤقتاً" : "Suspended (موقوف)"}</option>
+                    <option value="left">{isAr ? "ترك العمل (منهي خدمته)" : "Left (ترك العمل)"}</option>
                   </select>
                 </div>
               </div>
@@ -1988,7 +2062,9 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                 {loading ? (
                   <div className="flex justify-center py-20"><Loader2 className="animate-spin text-indigo-500" size={30} /></div>
                 ) : filtered.length === 0 ? (
-                  <div className="text-center py-20 text-slate-400 text-sm font-medium">No employees found.</div>
+                  <div className="text-center py-20 text-slate-400 text-sm font-medium">
+                    {isAr ? "لم يتم العثور على موظفين." : "No employees found."}
+                  </div>
                 ) : (
                   filtered.map(emp => {
                     const isActive = activeEmployeeId === emp.id;
@@ -1999,7 +2075,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                       <div
                         key={emp.id}
                         onClick={() => setActiveEmployeeId(emp.id)}
-                        title={`الاسم الكامل الرسمي: ${emp.name}`}
+                        title={isAr ? `الاسم الكامل الرسمي: ${emp.name}` : `Full Legal Name: ${emp.name}`}
                         className={`group cursor-pointer p-3 rounded-2xl flex items-center justify-between transition-all duration-200 border ${
                           isActive
                             ? "bg-indigo-50 dark:bg-indigo-500/15 shadow-sm border-indigo-200 dark:border-indigo-500/40 ring-1 ring-indigo-500/20"
@@ -2029,7 +2105,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                                     ? "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-800/40"
                                     : "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 border border-rose-300 dark:border-rose-800/40"
                                 }`}>
-                                  {emp.status === "suspended" ? "موقوف" : "ترك العمل"}
+                                  {emp.status === "suspended" ? (isAr ? "موقوف" : "Suspended") : (isAr ? "ترك العمل" : "Left")}
                                 </span>
                               )}
                             </div>
@@ -2044,8 +2120,8 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                               e.stopPropagation();
                               handlePrintFolderCover(emp);
                             }}
-                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-xl transition-all"
-                            title="Print Folder Cover (A4) / طباعة غلاف ملف الموظف"
+                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-xl transition-all cursor-pointer"
+                            title={isAr ? "طباعة غلاف ملف الموظف (A4)" : "Print Folder Cover (A4)"}
                           >
                             <Printer size={15} />
                           </button>
@@ -2055,8 +2131,8 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                               e.stopPropagation();
                               handleOpenTerminationModal(emp);
                             }}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-all"
-                            title="Termination Clearance / إخلاء طرف ومخالصة"
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-all cursor-pointer"
+                            title={isAr ? "إخلاء طرف ومخالصة نهائية" : "Termination Clearance"}
                           >
                             <FileCheck2 size={15} />
                           </button>
@@ -2068,7 +2144,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                                   ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.7)]'
                                   : 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.7)]'
                             }`}
-                            title={emp.status === 'active' ? 'Active / نشط' : emp.status === 'suspended' ? 'Suspended / موقوف' : 'Left / ترك العمل'}
+                            title={emp.status === 'active' ? (isAr ? 'نشط' : 'Active') : emp.status === 'suspended' ? (isAr ? 'موقوف' : 'Suspended') : (isAr ? 'ترك العمل' : 'Left')}
                           />
                         </div>
                       </div>
@@ -2086,13 +2162,13 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                   <div className={`h-48 shrink-0 w-full bg-gradient-to-br ${getColorGradient(activeEmp.name)} relative`}>
                     <div className="absolute inset-0 bg-black/10 backdrop-blur-[2px]"></div>
 
-                    {/* Action Buttons floating top right */}
-                    <div className="absolute top-6 right-6 flex items-center gap-2.5 flex-wrap justify-end">
+                    {/* Action Buttons floating top right / left */}
+                    <div className={`absolute top-6 ${isAr ? "left-6" : "right-6"} flex items-center gap-2.5 flex-wrap justify-end`}>
                       {!isManager && (
                         <button
                           onClick={() => handleOpenEdit(activeEmp)}
-                          className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white p-3 rounded-2xl transition-all shadow-sm"
-                          title="Edit Details"
+                          className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white p-3 rounded-2xl transition-all shadow-sm cursor-pointer"
+                          title={isAr ? "تعديل بيانات الموظف" : "Edit Details"}
                         >
                           <Edit size={18} />
                         </button>
@@ -2104,75 +2180,75 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                           type="button"
                           onClick={() => setShowLettersMenu(!showLettersMenu)}
                           className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 rounded-2xl font-bold text-sm transition-all shadow-lg hover:shadow-emerald-600/30 active:scale-95 cursor-pointer"
-                          title="Official Corporate HR Letters / خطابات ومستندات رسمية"
+                          title={isAr ? "خطابات ومستندات رسمية معتمدة" : "Official Corporate HR Letters"}
                         >
                           <FileBadge2 size={16} />
-                          <span>HR Letters</span>
-                          <span className="text-[11px] bg-emerald-800/80 px-1.5 py-0.5 rounded text-white/90">خطابات رسمية</span>
+                          <span>{isAr ? "الخطابات الرسمية" : "HR Letters"}</span>
+                          <span className="text-[11px] bg-emerald-800/80 px-1.5 py-0.5 rounded text-white/90">{isAr ? "معتمد" : "Official"}</span>
                           <ChevronDown size={14} className={`transition-transform duration-200 ${showLettersMenu ? "rotate-180" : ""}`} />
                         </button>
                         {showLettersMenu && (
-                          <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-[#121216] border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-150">
-                            <div className="px-3 py-2 border-b border-slate-100 dark:border-white/5 mb-1 text-right">
-                              <p className="text-xs font-black text-slate-800 dark:text-white">Official Documents (A4)</p>
-                              <p className="text-[10px] text-slate-400">طباعة خطابات معتمدة بخاتم الشركة</p>
+                          <div className={`absolute ${isAr ? "left-0" : "right-0"} mt-2 w-72 bg-white dark:bg-[#121216] border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-150`}>
+                            <div className={`px-3 py-2 border-b border-slate-100 dark:border-white/5 mb-1 ${isAr ? "text-right" : "text-left"}`}>
+                              <p className="text-xs font-black text-slate-800 dark:text-white">{isAr ? "المستندات الرسمية المعتمدة (A4)" : "Official Documents (A4)"}</p>
+                              <p className="text-[10px] text-slate-400">{isAr ? "طباعة خطابات معتمدة بخاتم الشركة" : "Print official certified letters"}</p>
                             </div>
                             <button
                               type="button"
                               onClick={() => handlePrintSalaryLetter(activeEmp)}
-                              className="w-full text-right px-3 py-2.5 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-slate-800 dark:text-slate-100 flex items-center justify-between text-xs font-bold transition group"
+                              className={`w-full ${isAr ? "text-right" : "text-left"} px-3 py-2.5 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-slate-800 dark:text-slate-100 flex items-center justify-between text-xs font-bold transition group cursor-pointer`}
                             >
                               <span className="flex items-center gap-2">
                                 <Banknote size={15} className="text-emerald-600 group-hover:scale-110 transition" />
-                                <span>شهادة مفردات مرتب (Salary Proof)</span>
+                                <span>{isAr ? "شهادة مفردات مرتب (مفردات الدخل)" : "Salary Certificate (Proof of Income)"}</span>
                               </span>
                               <Printer size={13} className="text-slate-400" />
                             </button>
                             <button
                               type="button"
                               onClick={() => handlePrintExperienceCert(activeEmp)}
-                              className="w-full text-right px-3 py-2.5 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-slate-800 dark:text-slate-100 flex items-center justify-between text-xs font-bold transition group"
+                              className={`w-full ${isAr ? "text-right" : "text-left"} px-3 py-2.5 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-slate-800 dark:text-slate-100 flex items-center justify-between text-xs font-bold transition group cursor-pointer`}
                             >
                               <span className="flex items-center gap-2">
                                 <Award size={15} className="text-indigo-600 group-hover:scale-110 transition" />
-                                <span>شهادة خبرة رسمية (مادة 130)</span>
+                                <span>{isAr ? "شهادة خبرة رسمية (مادة 130)" : "Experience Certificate (Labor Law 130)"}</span>
                               </span>
                               <Printer size={13} className="text-slate-400" />
                             </button>
                             <button
                               type="button"
                               onClick={() => handlePrintBankMandate(activeEmp)}
-                              className="w-full text-right px-3 py-2.5 rounded-xl hover:bg-sky-50 dark:hover:bg-sky-950/40 text-slate-800 dark:text-slate-100 flex items-center justify-between text-xs font-bold transition group"
+                              className={`w-full ${isAr ? "text-right" : "text-left"} px-3 py-2.5 rounded-xl hover:bg-sky-50 dark:hover:bg-sky-950/40 text-slate-800 dark:text-slate-100 flex items-center justify-between text-xs font-bold transition group cursor-pointer`}
                             >
                               <span className="flex items-center gap-2">
                                 <Landmark size={15} className="text-sky-600 group-hover:scale-110 transition" />
-                                <span>خطاب فتح حساب بنكي وتحويل راتب</span>
+                                <span>{isAr ? "خطاب فتح حساب بنكي وتحويل راتب" : "Bank Mandate & Salary Transfer"}</span>
                               </span>
                               <Printer size={13} className="text-slate-400" />
                             </button>
                             <div className="h-px bg-slate-100 dark:border-white/5 my-1" />
-                            <div className="px-3 py-1 text-[10px] font-bold text-amber-600 dark:text-amber-400">
-                              التأمينات الاجتماعية (قانون 148 لسنة 2019)
+                            <div className={`px-3 py-1 text-[10px] font-bold text-amber-600 dark:text-amber-400 ${isAr ? "text-right" : "text-left"}`}>
+                              {isAr ? "الهيئة القومية للتأمين الاجتماعي (قانون 148)" : "Social Insurance (Law 148/2019)"}
                             </div>
                             <button
                               type="button"
                               onClick={() => handlePrintSocialInsurance1(activeEmp)}
-                              className="w-full text-right px-3 py-2.5 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-950/40 text-slate-800 dark:text-slate-100 flex items-center justify-between text-xs font-bold transition group"
+                              className={`w-full ${isAr ? "text-right" : "text-left"} px-3 py-2.5 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-950/40 text-slate-800 dark:text-slate-100 flex items-center justify-between text-xs font-bold transition group cursor-pointer`}
                             >
                               <span className="flex items-center gap-2">
                                 <FileText size={15} className="text-amber-600 group-hover:scale-110 transition" />
-                                <span>استمارة 1 تأمينات (س1 - اشتراك جديد)</span>
+                                <span>{isAr ? "استمارة 1 تأمينات (س1 - اشتراك جديد)" : "Social Insurance Form 1 (S1 - New Hire)"}</span>
                               </span>
                               <Printer size={13} className="text-slate-400" />
                             </button>
                             <button
                               type="button"
                               onClick={() => handlePrintSocialInsurance6(activeEmp)}
-                              className="w-full text-right px-3 py-2.5 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-800 dark:text-slate-100 flex items-center justify-between text-xs font-bold transition group"
+                              className={`w-full ${isAr ? "text-right" : "text-left"} px-3 py-2.5 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-800 dark:text-slate-100 flex items-center justify-between text-xs font-bold transition group cursor-pointer`}
                             >
                               <span className="flex items-center gap-2">
                                 <FileText size={15} className="text-rose-600 group-hover:scale-110 transition" />
-                                <span>استمارة 6 تأمينات (س6 - إنهاء خدمة)</span>
+                                <span>{isAr ? "استمارة 6 تأمينات (س6 - إنهاء خدمة)" : "Social Insurance Form 6 (S6 - Exit)"}</span>
                               </span>
                               <Printer size={13} className="text-slate-400" />
                             </button>
@@ -2184,33 +2260,33 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                         onClick={() => handlePrintFolderCover(activeEmp)}
                         disabled={isPrinting}
                         className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-2xl font-bold text-sm transition-all shadow-lg hover:shadow-indigo-600/30 active:scale-95 cursor-pointer"
-                        title="Print Folder Cover (A4) / طباعة غلاف ملف الموظف"
+                        title={isAr ? "طباعة غلاف ملف الموظف (A4)" : "Print Folder Cover (A4)"}
                       >
                         <Printer size={16} />
-                        <span>Folder Cover</span>
-                        <span className="text-[11px] bg-indigo-800/80 px-1.5 py-0.5 rounded text-white/90">غلاف الملف</span>
+                        <span>{isAr ? "غلاف الملف" : "Folder Cover"}</span>
+                        <span className="text-[11px] bg-indigo-800/80 px-1.5 py-0.5 rounded text-white/90">{isAr ? "ملف A4" : "A4 Cover"}</span>
                       </button>
                       <button
                         onClick={() => handleOpenTerminationModal(activeEmp)}
-                        className="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white px-4 py-3 rounded-2xl font-bold text-sm transition-all shadow-lg hover:shadow-rose-600/30 active:scale-95"
-                        title="Termination & Clearance / مخالصة نهائية وإخلاء طرف"
+                        className="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white px-4 py-3 rounded-2xl font-bold text-sm transition-all shadow-lg hover:shadow-rose-600/30 active:scale-95 cursor-pointer"
+                        title={isAr ? "مخالصة نهائية وإخلاء طرف" : "Termination & Clearance"}
                       >
                         <FileCheck2 size={16} />
-                        <span>Termination Clearance</span>
-                        <span className="text-[11px] bg-rose-800/80 px-1.5 py-0.5 rounded text-white/90">مخالصة</span>
+                        <span>{isAr ? "إخلاء طرف ومخالصة" : "Termination Clearance"}</span>
+                        <span className="text-[11px] bg-rose-800/80 px-1.5 py-0.5 rounded text-white/90">{isAr ? "مخالصة" : "Clearance"}</span>
                       </button>
                       <button
                         onClick={() => handlePrintContract(activeEmp)}
                         disabled={isPrinting}
-                        className="flex items-center gap-2 bg-slate-900 dark:bg-black/50 hover:bg-slate-800 dark:hover:bg-black/80 backdrop-blur-md text-white px-5 py-3 rounded-2xl font-bold text-sm transition-all shadow-lg"
+                        className="flex items-center gap-2 bg-slate-900 dark:bg-black/50 hover:bg-slate-800 dark:hover:bg-black/80 backdrop-blur-md text-white px-5 py-3 rounded-2xl font-bold text-sm transition-all shadow-lg cursor-pointer"
                       >
                         {isPrinting ? <Loader2 size={16} className="animate-spin" /> : <Printer size={16} />}
-                        Print Contract
+                        {isAr ? "طباعة عقد العمل" : "Print Contract"}
                       </button>
                     </div>
 
                     {/* Massive Avatar overlapping the edge */}
-                    <div className="absolute -bottom-12 left-10 w-28 h-28 rounded-[2rem] bg-slate-50 dark:bg-[#0A0A0A] shadow-2xl p-2 z-10">
+                    <div className={`absolute -bottom-12 ${isAr ? "right-10" : "left-10"} w-28 h-28 rounded-[2rem] bg-slate-50 dark:bg-[#0A0A0A] shadow-2xl p-2 z-10`}>
                       <div className={`w-full h-full rounded-2xl bg-gradient-to-br ${getColorGradient(activeEmp.name)} flex items-center justify-center text-white font-black text-5xl`}>
                         {activeEmp.name.charAt(0)}
                       </div>
@@ -2224,11 +2300,11 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                         <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/50">
                             <CheckCircle2 size={12} className="text-indigo-500" />
-                            الاسم الرسمي الكامل (Full Legal Name)
+                            {isAr ? "الاسم الرسمي الكامل (Full Legal Name)" : "Full Legal Name"}
                           </span>
                           {activeEmp.nationalId && (
                             <span className="text-xs text-slate-400 dark:text-slate-500 font-mono">
-                              (رقم قومي: {activeEmp.nationalId})
+                              ({isAr ? "رقم قومي: " : "National ID: "}{activeEmp.nationalId})
                             </span>
                           )}
                         </div>
@@ -2245,7 +2321,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                                   ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30"
                                   : "bg-rose-500/15 text-rose-700 dark:text-rose-400 border border-rose-500/30"
                               }`}>
-                              ● {activeEmp.status === "active" ? "Active" : activeEmp.status === "suspended" ? "Suspended" : "Left"}
+                              ● {activeEmp.status === "active" ? (isAr ? "نشط" : "Active") : activeEmp.status === "suspended" ? (isAr ? "موقوف" : "Suspended") : (isAr ? "ترك العمل" : "Left")}
                             </span>
                           ) : (
                             <div className="flex items-center gap-1 bg-slate-100 dark:bg-white/5 p-1 rounded-2xl border border-slate-200/60 dark:border-white/10">
@@ -2256,9 +2332,9 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                                     ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/25"
                                     : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                                   }`}
-                                title="Mark Active / تعيين كنشط بالخدمة"
+                                title={isAr ? "تعيين كنشط بالخدمة" : "Mark Active"}
                               >
-                                ● Active
+                                ● {isAr ? "نشط" : "Active"}
                               </button>
                               <button
                                 type="button"
@@ -2267,9 +2343,9 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                                     ? "bg-amber-500 text-white shadow-md shadow-amber-500/25"
                                     : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                                   }`}
-                                title="Mark Suspended / تعيين كموقوف مؤقتاً"
+                                title={isAr ? "تعيين كموقوف مؤقتاً" : "Mark Suspended"}
                               >
-                                ● Suspended
+                                ● {isAr ? "موقوف" : "Suspended"}
                               </button>
                               <button
                                 type="button"
@@ -2278,9 +2354,9 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                                     ? "bg-rose-500 text-white shadow-md shadow-rose-500/25"
                                     : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                                   }`}
-                                title="Mark Left / تعيين كمنهي الخدمة أو ترك العمل"
+                                title={isAr ? "تعيين كمنهي الخدمة أو ترك العمل" : "Mark Left"}
                               >
-                                ● Left
+                                ● {isAr ? "ترك العمل" : "Left"}
                               </button>
                             </div>
                           )}
@@ -2293,24 +2369,24 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                             type="button"
                             onClick={() => handleOpenCareerModal("transfer")}
                             className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 rounded-2xl text-xs font-bold transition border border-indigo-200 dark:border-indigo-800/40 cursor-pointer"
-                            title="Branch Transfer / نقل فرع"
+                            title={isAr ? "نقل فرع" : "Branch Transfer"}
                           >
                             <ArrowRightLeft size={15} />
-                            <span>نقل فرع</span>
+                            <span>{isAr ? "نقل فرع" : "Transfer Branch"}</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => handleOpenCareerModal("promotion")}
                             className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 rounded-2xl text-xs font-bold transition border border-emerald-200 dark:border-emerald-800/40 cursor-pointer"
-                            title="Promotion & Raise / ترقية وتعديل راتب"
+                            title={isAr ? "ترقية وتعديل راتب" : "Promotion & Raise"}
                           >
                             <TrendingUp size={15} />
-                            <span>ترقية / مسمى</span>
+                            <span>{isAr ? "ترقية / مسمى" : "Promotion / Raise"}</span>
                           </button>
                           <button
                             onClick={() => handleDelete(activeEmp.id)}
                             className="p-3 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-2xl transition border border-transparent hover:border-rose-100 dark:hover:border-rose-900/30 cursor-pointer"
-                            title="Delete Employee"
+                            title={isAr ? "حذف الموظف" : "Delete Employee"}
                           >
                             <Trash2 size={20} />
                           </button>
@@ -2333,10 +2409,10 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                               </div>
                               <div>
                                 <h3 className="text-sm font-black text-slate-800 dark:text-white">
-                                  Milestone Celebrations & Recognition (أعياد الميلاد والسنوية وتكريم العاملين)
+                                  {isAr ? "مناسبات وتكريم العاملين وسنوية العمل" : "Milestone Celebrations & Recognition"}
                                 </h3>
                                 <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                                  متابعة المناسبات السعيدة لتعزيز ولاء العاملين وتحفيزهم
+                                  {isAr ? "متابعة المناسبات السعيدة لتعزيز ولاء العاملين وتحفيزهم" : "Track birthdays and work anniversaries to boost loyalty and engagement"}
                                 </p>
                               </div>
                             </div>
@@ -2347,7 +2423,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-black shadow-md shadow-amber-500/20 active:scale-95 transition cursor-pointer"
                               >
                                 <Award size={14} />
-                                <span>صرف مكافأة تميز / مناسبة</span>
+                                <span>{isAr ? "صرف مكافأة تميز / مناسبة" : "Issue Milestone Bonus"}</span>
                               </button>
                             )}
                           </div>
@@ -2368,22 +2444,22 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                                   </div>
                                   <div>
                                     <div className="flex items-center gap-2">
-                                      <span className="text-xs font-black">عيد الميلاد ({birthdayInfo.dateStr})</span>
+                                      <span className="text-xs font-black">{isAr ? `عيد الميلاد (${birthdayInfo.dateStr})` : `Birthday (${birthdayInfo.dateStr})`}</span>
                                       {birthdayInfo.isToday && (
                                         <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-pink-500 text-white animate-pulse">
-                                          اليوم! 🎉
+                                          {isAr ? "اليوم! 🎉" : "Today! 🎉"}
                                         </span>
                                       )}
                                       {birthdayInfo.isUpcoming && (
                                         <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-600 dark:text-amber-400">
-                                          خلال {birthdayInfo.daysToBirthday} يوم
+                                          {isAr ? `خلال ${birthdayInfo.daysToBirthday} يوم` : `In ${birthdayInfo.daysToBirthday} days`}
                                         </span>
                                       )}
                                     </div>
                                     <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                                       {birthdayInfo.isToday
-                                        ? `يتم اليوم عامه الـ ${birthdayInfo.turningAge}، نتمنى له عاماً سعيداً!`
-                                        : `متبقي ${birthdayInfo.daysToBirthday} يوم ليكمل ${birthdayInfo.turningAge} سنة`}
+                                        ? (isAr ? `يتم اليوم عامه الـ ${birthdayInfo.turningAge}، نتمنى له عاماً سعيداً!` : `Turns ${birthdayInfo.turningAge} today, wishing them a happy birthday!`)
+                                        : (isAr ? `متبقي ${birthdayInfo.daysToBirthday} يوم ليكمل ${birthdayInfo.turningAge} سنة` : `${birthdayInfo.daysToBirthday} days left to turn ${birthdayInfo.turningAge} years old`)}
                                     </p>
                                   </div>
                                 </div>
@@ -2391,15 +2467,15 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                                   type="button"
                                   onClick={() => handleSendWhatsAppGreeting(activeEmp, "birthday")}
                                   className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow transition active:scale-95 cursor-pointer shrink-0"
-                                  title="تهنئة واتساب"
+                                  title={isAr ? "تهنئة واتساب" : "WhatsApp Greeting"}
                                 >
                                   <MessageCircle size={15} />
-                                  <span className="hidden sm:inline">تهنئة واتساب</span>
+                                  <span className="hidden sm:inline">{isAr ? "تهنئة واتساب" : "WhatsApp"}</span>
                                 </button>
                               </div>
                             ) : (
                               <div className="p-4 rounded-2xl border border-dashed border-slate-200 dark:border-white/10 text-slate-400 text-xs flex items-center justify-center">
-                                تاريخ الميلاد غير مسجل (سجل الرقم القومي لحساب تلقائي)
+                                {isAr ? "تاريخ الميلاد غير مسجل (سجل الرقم القومي لحساب تلقائي)" : "Birth date not registered (Enter National ID for auto-calculation)"}
                               </div>
                             )}
 
@@ -2418,22 +2494,22 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                                   </div>
                                   <div>
                                     <div className="flex items-center gap-2">
-                                      <span className="text-xs font-black">سنوية العمل في الشركة</span>
+                                      <span className="text-xs font-black">{isAr ? "سنوية العمل في الشركة" : "Work Anniversary"}</span>
                                       {anniversaryInfo.isToday && (
                                         <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-600 text-white animate-pulse">
-                                          اليوم! 🌟
+                                          {isAr ? "اليوم! 🌟" : "Today! 🌟"}
                                         </span>
                                       )}
                                       {anniversaryInfo.isUpcoming && (
                                         <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-500/20 text-indigo-600 dark:text-indigo-400">
-                                          خلال {anniversaryInfo.daysToAnniversary} يوم
+                                          {isAr ? `خلال ${anniversaryInfo.daysToAnniversary} يوم` : `In ${anniversaryInfo.daysToAnniversary} days`}
                                         </span>
                                       )}
                                     </div>
                                     <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                                       {anniversaryInfo.isToday
-                                        ? `يُتم اليوم ${anniversaryInfo.milestoneYears} سنوات من العطاء والولاء!`
-                                        : `يكمل ${anniversaryInfo.milestoneYears} سنوات عمل خلال ${anniversaryInfo.daysToAnniversary} يوم`}
+                                        ? (isAr ? `يُتم اليوم ${anniversaryInfo.milestoneYears} سنوات من العطاء والولاء!` : `Completes ${anniversaryInfo.milestoneYears} years of dedication today!`)
+                                        : (isAr ? `يكمل ${anniversaryInfo.milestoneYears} سنوات عمل خلال ${anniversaryInfo.daysToAnniversary} يوم` : `Completes ${anniversaryInfo.milestoneYears} years of service in ${anniversaryInfo.daysToAnniversary} days`)}
                                     </p>
                                   </div>
                                 </div>
@@ -2441,15 +2517,15 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                                   type="button"
                                   onClick={() => handleSendWhatsAppGreeting(activeEmp, "anniversary")}
                                   className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow transition active:scale-95 cursor-pointer shrink-0"
-                                  title="تهنئة واتساب"
+                                  title={isAr ? "تهنئة واتساب" : "WhatsApp Greeting"}
                                 >
                                   <MessageCircle size={15} />
-                                  <span className="hidden sm:inline">تهنئة سنوية</span>
+                                  <span className="hidden sm:inline">{isAr ? "تهنئة سنوية" : "Milestone"}</span>
                                 </button>
                               </div>
                             ) : (
                               <div className="p-4 rounded-2xl border border-dashed border-slate-200 dark:border-white/10 text-slate-400 text-xs flex items-center justify-center">
-                                تاريخ بدء العمل غير مسجل
+                                {isAr ? "تاريخ بدء العمل غير مسجل" : "Hire date not registered"}
                               </div>
                             )}
                           </div>
@@ -2468,11 +2544,11 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                           <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                             <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
                               <HeartPulse size={16} className="text-rose-500" />
-                              <span>Legal Compliance & Health Certificates (الشهادات الصحية والأوراق الرسمية)</span>
+                              <span>{isAr ? "الشهادات الصحية والأوراق الرسمية" : "Legal Compliance & Health Certificates"}</span>
                             </h3>
                             {(hc.status === "expired" || hc.status === "missing") && (
                               <span className="text-[11px] font-black bg-rose-500/15 text-rose-600 dark:text-rose-400 px-2.5 py-1 rounded-full border border-rose-500/30 flex items-center gap-1">
-                                <AlertTriangle size={12} /> تنبيه سلامة الغذاء: شهادة صحية مطلوبة
+                                <AlertTriangle size={12} /> {isAr ? "تنبيه سلامة الغذاء: شهادة صحية مطلوبة" : "Food Safety Alert: Health Certificate Required"}
                               </span>
                             )}
                           </div>
@@ -2482,15 +2558,17 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                             <div className={`p-4 rounded-2xl border ${hc.badge} flex flex-col justify-between transition`}>
                               <div>
                                 <div className="flex items-center justify-between mb-1">
-                                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">الشهادة الصحية</span>
+                                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                    {isAr ? "الشهادة الصحية" : "Health Certificate"}
+                                  </span>
                                   <HeartPulse size={16} className={hc.status === "valid" ? "text-emerald-500" : "text-rose-500"} />
                                 </div>
                                 <p className="font-mono text-sm font-black text-slate-800 dark:text-white">
-                                  {activeEmp.healthCertExpiry || "غير مسجل"}
+                                  {activeEmp.healthCertExpiry || (isAr ? "غير مسجل" : "Not registered")}
                                 </p>
                               </div>
                               <div className="mt-3">
-                                <span className="text-[11px] font-bold block">{hc.labelAr}</span>
+                                <span className="text-[11px] font-bold block">{isAr ? hc.labelAr : hc.labelEn}</span>
                               </div>
                             </div>
 
@@ -2498,15 +2576,17 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                             <div className={`p-4 rounded-2xl border ${nidExp.badge} flex flex-col justify-between transition`}>
                               <div>
                                 <div className="flex items-center justify-between mb-1">
-                                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">بطاقة الرقم القومي</span>
+                                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                    {isAr ? "بطاقة الرقم القومي" : "National ID Card"}
+                                  </span>
                                   <CreditCard size={16} className={nidExp.status === "valid" ? "text-emerald-500" : "text-amber-500"} />
                                 </div>
                                 <p className="font-mono text-sm font-black text-slate-800 dark:text-white">
-                                  {activeEmp.nationalIdExpiry || (activeEmp.nationalId ? "14 رقم قومي ساري" : "غير مسجل")}
+                                  {activeEmp.nationalIdExpiry || (activeEmp.nationalId ? (isAr ? "14 رقم قومي ساري" : "14-digit Valid ID") : (isAr ? "غير مسجل" : "Not registered"))}
                                 </p>
                               </div>
                               <div className="mt-3">
-                                <span className="text-[11px] font-bold block">{nidExp.labelAr}</span>
+                                <span className="text-[11px] font-bold block">{isAr ? nidExp.labelAr : nidExp.labelEn}</span>
                               </div>
                             </div>
 
@@ -2514,15 +2594,17 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                             <div className={`p-4 rounded-2xl border ${cr.badge} flex flex-col justify-between transition`}>
                               <div>
                                 <div className="flex items-center justify-between mb-1">
-                                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">الفيش والتشبيه</span>
+                                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                    {isAr ? "الفيش والتشبيه" : "Criminal Record (Fesh)"}
+                                  </span>
                                   <ShieldCheck size={16} className={cr.status === "valid" ? "text-emerald-500" : "text-slate-400"} />
                                 </div>
                                 <p className="font-mono text-sm font-black text-slate-800 dark:text-white">
-                                  {activeEmp.criminalRecordDate || "مستند بالأرشيف"}
+                                  {activeEmp.criminalRecordDate || (isAr ? "مستند بالأرشيف" : "Archived Record")}
                                 </p>
                               </div>
                               <div className="mt-3">
-                                <span className="text-[11px] font-bold block">{cr.labelAr}</span>
+                                <span className="text-[11px] font-bold block">{isAr ? cr.labelAr : cr.labelEn}</span>
                               </div>
                             </div>
 
@@ -2530,15 +2612,19 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                             <div className="p-4 rounded-2xl border border-slate-200 dark:border-white/10 bg-white/40 dark:bg-black/20 flex flex-col justify-between">
                               <div>
                                 <div className="flex items-center justify-between mb-1">
-                                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">الموقف التجنيدي</span>
+                                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                    {isAr ? "الموقف التجنيدي" : "Military Status"}
+                                  </span>
                                   <Award size={16} className="text-indigo-500" />
                                 </div>
                                 <p className="text-xs font-black text-slate-800 dark:text-white line-clamp-2">
-                                  {activeEmp.militaryStatus || "أدى الخدمة العسكرية (قدوة حسنة)"}
+                                  {activeEmp.militaryStatus || (isAr ? "أدى الخدمة العسكرية (قدوة حسنة)" : "Completed Service (Good Conduct)")}
                                 </p>
                               </div>
                               <div className="mt-3">
-                                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">● مستند رسمي معتمد</span>
+                                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                                  {isAr ? "● مستند رسمي معتمد" : "● Official Certified Document"}
+                                </span>
                               </div>
                             </div>
                           </div>
@@ -2557,14 +2643,16 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                             <div>
                               <h4 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
                                 <Clock size={16} className="text-indigo-600 dark:text-indigo-400" />
-                                <span>Probation Period & Contract Renewal (فترة الاختبار وتجديد العقود)</span>
+                                <span>{isAr ? "فترة الاختبار وتجديد العقود" : "Probation Period & Contract Renewal"}</span>
                               </h4>
                               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                طبقاً للمادة (32) من قانون العمل المصري رقم 12 لسنة 2003: فترة الاختبار لا تزيد على 3 أشهر.
+                                {isAr
+                                  ? "طبقاً للمادة (32) من قانون العمل المصري رقم 12 لسنة 2003: فترة الاختبار لا تزيد على 3 أشهر."
+                                  : "Per Art. (32) of Egyptian Labor Law 12/2003: Probation cannot exceed 3 months."}
                               </p>
                             </div>
                             <span className={`px-3 py-1 rounded-xl text-xs font-black border self-start md:self-auto ${prob.badge}`}>
-                              {prob.labelAr}
+                              {isAr ? prob.labelAr : prob.labelEn}
                             </span>
                           </div>
 
@@ -2583,15 +2671,15 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
 
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs font-medium text-slate-500 dark:text-slate-400 gap-2 pt-1 border-t border-slate-100 dark:border-white/5">
                             <div>
-                              <span>تاريخ استلام العمل: <strong className="text-slate-800 dark:text-slate-200 font-mono">{activeEmp.startDate || "-"}</strong></span>
+                              <span>{isAr ? "تاريخ استلام العمل:" : "Hire Date:"} <strong className="text-slate-800 dark:text-slate-200 font-mono">{activeEmp.startDate || "-"}</strong></span>
                               <span className="mx-2">•</span>
-                              <span>منقضي: <strong className="text-slate-800 dark:text-slate-200">{prob.daysElapsed} يوماً</strong></span>
+                              <span>{isAr ? "منقضي:" : "Elapsed:"} <strong className="text-slate-800 dark:text-slate-200">{prob.daysElapsed} {isAr ? "يوماً" : "days"}</strong></span>
                             </div>
                             {crt && (
                               <div className="flex items-center gap-1.5">
-                                <span className="font-bold">تجديد العقد السنوي:</span>
+                                <span className="font-bold">{isAr ? "تجديد العقد السنوي:" : "Contract Renewal:"}</span>
                                 <span className={`px-2 py-0.5 rounded-md font-mono font-bold ${crt.badge}`}>
-                                  {crt.labelAr}
+                                  {isAr ? crt.labelAr : crt.labelEn}
                                 </span>
                               </div>
                             )}
@@ -2600,7 +2688,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                           {prob.stage === "evaluation_due" && (
                             <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-xl text-amber-800 dark:text-amber-200 text-xs font-bold flex items-center gap-2">
                               <AlertTriangle size={16} className="shrink-0 text-amber-600" />
-                              <span>{prob.alertText}</span>
+                              <span>{isAr ? prob.alertText : (prob.alertTextEn || prob.alertText)}</span>
                             </div>
                           )}
                         </div>
@@ -2616,11 +2704,13 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                               <HandCoins size={18} />
                             </div>
                             <h4 className="text-sm font-black text-slate-900 dark:text-white">
-                              Loans & Advances Management Suite (سلف الموظف ومستحقاته المقيدة)
+                              {isAr ? "سلف الموظف ومستحقاته المقيدة" : "Loans & Advances Management Suite"}
                             </h4>
                           </div>
                           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                            سجل السلف النقدية، الأقساط المجدولة، والتفويضات الرسمية بالخصم وفقاً للمادة (34) من قانون العمل رقم 12 لسنة 2003.
+                            {isAr
+                              ? "سجل السلف النقدية، الأقساط المجدولة، والتفويضات الرسمية بالخصم وفقاً للمادة (34) من قانون العمل رقم 12 لسنة 2003."
+                              : "Cash advances register, scheduled installments, and official deduction authorizations per Art. (34) of Labor Law 12/2003."}
                           </p>
                         </div>
                         {!isManager && (
@@ -2634,7 +2724,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                             }}
                             className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
                           >
-                            <Plus size={15} /> صرف سلفة جديدة معتمدة
+                            <Plus size={15} /> {isAr ? "صرف سلفة جديدة معتمدة" : "Issue New Advance"}
                           </button>
                         )}
                       </div>
@@ -2642,12 +2732,16 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                       {/* Stat Tiles */}
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
                         <div className="p-3.5 rounded-2xl bg-white/80 dark:bg-white/5 border border-slate-100 dark:border-white/5">
-                          <p className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">إجمالي المنصرف</p>
+                          <p className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
+                            {isAr ? "إجمالي المنصرف" : "Total Disbursed"}
+                          </p>
                           <p className="text-base sm:text-lg font-black text-slate-800 dark:text-white font-mono">{fmtCurrency(loanStats.totalBorrowed)}</p>
                         </div>
                         <div className="p-3.5 rounded-2xl bg-white/80 dark:bg-white/5 border border-slate-100 dark:border-white/5">
                           <div className="flex items-center justify-between mb-0.5">
-                            <p className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider">المسدد والمخصوم</p>
+                            <p className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider">
+                              {isAr ? "المسدد والمخصوم" : "Settled & Deducted"}
+                            </p>
                             <span className="text-[9.5px] font-mono font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-md">
                               {loanStats.progressPercent}%
                             </span>
@@ -2659,9 +2753,11 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                             : "bg-emerald-50/60 dark:bg-emerald-950/10 border-emerald-200 dark:border-emerald-900/30"
                           }`}>
                           <div className="flex items-center justify-between mb-0.5">
-                            <p className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider">الرصيد المتبقي ذمته</p>
+                            <p className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider">
+                              {isAr ? "الرصيد المتبقي ذمته" : "Remaining Balance"}
+                            </p>
                             <span className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded-md ${loanStats.remainingBalance > 0 ? "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300" : "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300"}`}>
-                              {loanStats.remainingBalance > 0 ? "ساري" : "خالص الذمة"}
+                              {loanStats.remainingBalance > 0 ? (isAr ? "ساري" : "Active") : (isAr ? "خالص الذمة" : "Settled")}
                             </span>
                           </div>
                           <p className={`text-base sm:text-lg font-black font-mono ${loanStats.remainingBalance > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>
@@ -2669,7 +2765,9 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                           </p>
                         </div>
                         <div className="p-3.5 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900/30">
-                          <p className="text-[10.5px] font-bold text-indigo-500 uppercase tracking-wider mb-0.5">قسط الراتب القادم</p>
+                          <p className="text-[10.5px] font-bold text-indigo-500 uppercase tracking-wider mb-0.5">
+                            {isAr ? "قسط الراتب القادم" : "Next Payroll Due"}
+                          </p>
                           <p className="text-base sm:text-lg font-black text-indigo-700 dark:text-indigo-300 font-mono">
                             {fmtCurrency(loanStats.nextMonthInstallmentDue)}
                           </p>
@@ -2681,10 +2779,10 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                         <div className="mb-5 p-3.5 rounded-2xl bg-slate-100/70 dark:bg-white/[0.03] border border-slate-200/60 dark:border-white/5">
                           <div className="flex items-center justify-between text-xs font-bold mb-2">
                             <span className="text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-                              <span>مسار سداد السلف (Repayment Journey)</span>
+                              <span>{isAr ? "مسار سداد السلف" : "Repayment Journey"}</span>
                             </span>
                             <span className="font-mono text-emerald-600 dark:text-emerald-400">
-                              {loanStats.totalSettled.toLocaleString()} ج.م من {loanStats.totalBorrowed.toLocaleString()} ج.م ({loanStats.progressPercent}%)
+                              {loanStats.totalSettled.toLocaleString()} {isAr ? "ج.م من" : "EGP of"} {loanStats.totalBorrowed.toLocaleString()} {isAr ? "ج.م" : "EGP"} ({loanStats.progressPercent}%)
                             </span>
                           </div>
                           <div className="w-full bg-slate-200 dark:bg-white/10 h-3 rounded-full overflow-hidden">
@@ -2704,25 +2802,29 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                             onClick={() => setLoanFilter("all")}
                             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${loanFilter === "all" ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"}`}
                           >
-                            الكل ({empLoans.length})
+                            {isAr ? `الكل (${empLoans.length})` : `All (${empLoans.length})`}
                           </button>
                           <button
                             type="button"
                             onClick={() => setLoanFilter("active")}
                             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${loanFilter === "active" ? "bg-rose-600 text-white shadow-sm" : "text-slate-500 hover:text-rose-600"}`}
                           >
-                            سارية وقيد السداد ({empLoans.filter(l => (Number(l.remainingBalance ?? l.amount) > 0) && !l.settled && l.status !== "settled").length})
+                            {isAr
+                              ? `سارية وقيد السداد (${empLoans.filter(l => (Number(l.remainingBalance ?? l.amount) > 0) && !l.settled && l.status !== "settled").length})`
+                              : `Active (${empLoans.filter(l => (Number(l.remainingBalance ?? l.amount) > 0) && !l.settled && l.status !== "settled").length})`}
                           </button>
                           <button
                             type="button"
                             onClick={() => setLoanFilter("settled")}
                             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${loanFilter === "settled" ? "bg-emerald-600 text-white shadow-sm" : "text-slate-500 hover:text-emerald-600"}`}
                           >
-                            مسددة بالكامل ({empLoans.filter(l => l.settled || l.status === "settled" || (Number(l.remainingBalance ?? l.amount) <= 0)).length})
+                            {isAr
+                              ? `مسددة بالكامل (${empLoans.filter(l => l.settled || l.status === "settled" || (Number(l.remainingBalance ?? l.amount) <= 0)).length})`
+                              : `Settled (${empLoans.filter(l => l.settled || l.status === "settled" || (Number(l.remainingBalance ?? l.amount) <= 0)).length})`}
                           </button>
                         </div>
                         <span className="text-[11px] text-slate-400 font-medium">
-                          إجمالي الحركات: {empLoans.length}
+                          {isAr ? `إجمالي الحركات: ${empLoans.length}` : `Total records: ${empLoans.length}`}
                         </span>
                       </div>
 
@@ -2730,11 +2832,13 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                       {loadingLoans ? (
                         <div className="py-8 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
                           <Loader2 size={16} className="animate-spin text-emerald-600" />
-                          <span>جاري تحميل سجل السلف والأقساط...</span>
+                          <span>{isAr ? "جاري تحميل سجل السلف والأقساط..." : "Loading loans and installment records..."}</span>
                         </div>
                       ) : empLoans.length === 0 ? (
                         <div className="py-6 text-center text-xs text-slate-400 font-medium bg-slate-50 dark:bg-white/[0.02] rounded-2xl border border-dashed border-slate-200 dark:border-white/10">
-                          لا توجد سلف أو مستحقات مسجلة حالياً على الموظف (الذمة المالية خالصة تماماً).
+                          {isAr
+                            ? "لا توجد سلف أو مستحقات مسجلة حالياً على الموظف (الذمة المالية خالصة تماماً)."
+                            : "No loans or advances recorded. Financial liabilities are fully cleared."}
                         </div>
                       ) : (
                         <div className="space-y-3">
@@ -2773,18 +2877,18 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                                             {fmtCurrency(origAmt)}
                                           </span>
                                           <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${isSettled ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300" : "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300"}`}>
-                                            {isSettled ? "مسددة بالكامل (خالصة)" : `متبقي: ${fmtCurrency(remAmt)}`}
+                                            {isSettled ? (isAr ? "مسددة بالكامل (خالصة)" : "Fully Settled") : (isAr ? `متبقي: ${fmtCurrency(remAmt)}` : `Remaining: ${fmtCurrency(remAmt)}`)}
                                           </span>
                                           {l.category && (
                                             <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300">
-                                              {loanCategoryLabels[l.category]?.icon} {loanCategoryLabels[l.category]?.label || l.category}
+                                              {loanCategoryLabels[l.category]?.icon} {isAr ? loanCategoryLabels[l.category]?.label : (loanCategoryLabels[l.category]?.labelEn || loanCategoryLabels[l.category]?.label)}
                                             </span>
                                           )}
                                         </div>
                                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                          <span>تاريخ الصرف: <strong className="font-mono text-slate-700 dark:text-slate-300">{l.date || "-"}</strong></span>
+                                          <span>{isAr ? "تاريخ الصرف:" : "Issue Date:"} <strong className="font-mono text-slate-700 dark:text-slate-300">{l.date || "-"}</strong></span>
                                           <span className="mx-1.5">•</span>
-                                          <span>نظام التقسيط: <strong className="text-slate-700 dark:text-slate-300">{l.installmentCount || 1} شهر/أشهر</strong> ({fmtCurrency(l.monthlyInstallment || origAmt)} / شهر)</span>
+                                          <span>{isAr ? "نظام التقسيط:" : "Installments:"} <strong className="text-slate-700 dark:text-slate-300">{l.installmentCount || 1} {isAr ? "شهر/أشهر" : "mo."}</strong> ({fmtCurrency(l.monthlyInstallment || origAmt)} / {isAr ? "شهر" : "mo."})</span>
                                           {l.reason && (
                                             <>
                                               <span className="mx-1.5">•</span>
@@ -2801,11 +2905,11 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                                       <button
                                         type="button"
                                         onClick={() => handlePrintLoanContract(l, activeEmp)}
-                                        title="طباعة إقرار استلام سلفة وتفويض بالخصم رسمي (A4)"
+                                        title={isAr ? "طباعة إقرار استلام سلفة وتفويض بالخصم رسمي (A4)" : "Print Official Loan & Deduction Mandate (A4)"}
                                         className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
                                       >
                                         <Printer size={14} className="text-slate-500" />
-                                        <span>إقرار وتفويض (A4)</span>
+                                        <span>{isAr ? "إقرار وتفويض (A4)" : "Mandate (A4)"}</span>
                                       </button>
 
                                       {/* Early Cash Payoff Button */}
@@ -2818,11 +2922,11 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                                             setPayoffNotes("");
                                             setShowEarlyPayoffModal(true);
                                           }}
-                                          title="سداد نقدي معجل وتوريد للخزينة"
+                                          title={isAr ? "سداد نقدي معجل وتوريد للخزينة" : "Early Cash Payoff to Branch Safe"}
                                           className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
                                         >
                                           <DollarSign size={14} />
-                                          <span>سداد نقدي معجل</span>
+                                          <span>{isAr ? "سداد نقدي معجل" : "Early Payoff"}</span>
                                         </button>
                                       )}
 
@@ -2830,11 +2934,11 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                                       <button
                                         type="button"
                                         onClick={() => sendWhatsAppLoanStatement(l, activeEmp)}
-                                        title="إرسال كشف حساب السلفة عبر واتساب"
+                                        title={isAr ? "إرسال كشف حساب السلفة عبر واتساب" : "Send Loan Statement via WhatsApp"}
                                         className="px-2.5 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
                                       >
                                         <Share2 size={14} />
-                                        <span>واتساب</span>
+                                        <span>{isAr ? "واتساب" : "WhatsApp"}</span>
                                       </button>
 
                                       {/* Toggle Installments Table */}
@@ -2843,7 +2947,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                                           type="button"
                                           onClick={() => setExpandedLoanId(isExpanded ? null : (l.id || idx.toString()))}
                                           className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
-                                          title="عرض جدول الأقساط الشهرية"
+                                          title={isAr ? "عرض جدول الأقساط الشهرية" : "Toggle Installment Schedule"}
                                         >
                                           <ChevronRight size={16} className={`transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`} />
                                         </button>
@@ -2854,8 +2958,8 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                                   {/* Mini Loan Progress Bar */}
                                   <div className="mt-3 pt-3 border-t border-slate-100 dark:border-white/5">
                                     <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 mb-1.5">
-                                      <span>نسبة السداد: {pct}% ({fmtCurrency(setAmt)} مسدد)</span>
-                                      <span>المتبقي: {fmtCurrency(remAmt)}</span>
+                                      <span>{isAr ? `نسبة السداد: ${pct}% (${fmtCurrency(setAmt)} مسدد)` : `Repaid: ${pct}% (${fmtCurrency(setAmt)} settled)`}</span>
+                                      <span>{isAr ? `المتبقي: ${fmtCurrency(remAmt)}` : `Remaining: ${fmtCurrency(remAmt)}`}</span>
                                     </div>
                                     <div className="w-full bg-slate-100 dark:bg-white/5 h-2 rounded-full overflow-hidden">
                                       <div
@@ -2869,17 +2973,19 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                                   {isExpanded && Array.isArray(l.installments) && (
                                     <div className="mt-3 pt-3 border-t border-slate-100 dark:border-white/5 animate-in fade-in duration-200">
                                       <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-2">
-                                        جدول استحقاق الأقساط الشهرية المعتمدة (المادة 34 من قانون العمل 12 لسنة 2003):
+                                        {isAr
+                                          ? "جدول استحقاق الأقساط الشهرية المعتمدة (المادة 34 من قانون العمل 12 لسنة 2003):"
+                                          : "Approved Monthly Installment Schedule (Egyptian Labor Law 12/2003, Art. 34):"}
                                       </p>
                                       <div className="overflow-x-auto custom-scrollbar">
-                                        <table className="w-full text-right text-xs">
+                                        <table className={`w-full ${isAr ? "text-right" : "text-left"} text-xs`}>
                                           <thead>
                                             <tr className="border-b border-slate-200 dark:border-white/10 text-slate-400 font-bold">
-                                              <th className="pb-1.5">القسط</th>
-                                              <th className="pb-1.5">الشهر المستحق</th>
-                                              <th className="pb-1.5">قيمة القسط</th>
-                                              <th className="pb-1.5">الحالة</th>
-                                              <th className="pb-1.5">تاريخ وتفاصيل الخصم</th>
+                                              <th className="pb-1.5">{isAr ? "القسط" : "Inst."}</th>
+                                              <th className="pb-1.5">{isAr ? "الشهر المستحق" : "Due Month"}</th>
+                                              <th className="pb-1.5">{isAr ? "قيمة القسط" : "Amount"}</th>
+                                              <th className="pb-1.5">{isAr ? "الحالة" : "Status"}</th>
+                                              <th className="pb-1.5">{isAr ? "تاريخ وتفاصيل الخصم" : "Date & Details"}</th>
                                             </tr>
                                           </thead>
                                           <tbody className="divide-y divide-slate-100 dark:divide-white/5">
@@ -2901,12 +3007,16 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                                                         ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"
                                                         : "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300"
                                                       }`}>
-                                                      {isInstPaid ? (inst.paymentMethod === "early_cash" ? "تم سداده نقداً للخزينة" : "تم الاستقطاع بالراتب") : "قيد الاستحقاق (مجدول)"}
+                                                      {isInstPaid
+                                                        ? (inst.paymentMethod === "early_cash"
+                                                          ? (isAr ? "تم سداده نقداً للخزينة" : "Paid in Cash to Safe")
+                                                          : (isAr ? "تم الاستقطاع بالراتب" : "Deducted from Payroll"))
+                                                        : (isAr ? "قيد الاستحقاق (مجدول)" : "Scheduled")}
                                                     </span>
                                                   </td>
                                                   <td className="py-2 text-[11px] text-slate-500 font-mono">
-                                                    {inst.paidAt ? new Date(inst.paidAt).toLocaleDateString('en-GB') : "مجدول بالراتب القادم"}
-                                                    {inst.note && <span className="mr-2 text-indigo-600 dark:text-indigo-400">({inst.note})</span>}
+                                                    {inst.paidAt ? new Date(inst.paidAt).toLocaleDateString(isAr ? 'ar-EG' : 'en-GB') : (isAr ? "مجدول بالراتب القادم" : "Scheduled on next payroll")}
+                                                    {inst.note && <span className={`${isAr ? "mr-2" : "ml-2"} text-indigo-600 dark:text-indigo-400`}>({inst.note})</span>}
                                                   </td>
                                                 </tr>
                                               );
@@ -2918,12 +3028,14 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                                       {/* Repayments History */}
                                       {Array.isArray(l.repayments) && l.repayments.length > 0 && (
                                         <div className="mt-2.5 p-2.5 bg-slate-50 dark:bg-white/[0.02] rounded-xl border border-slate-100 dark:border-white/5">
-                                          <p className="text-[10.5px] font-bold text-slate-500 mb-1">سجل التوريدات النقدية المعجلة للخزينة:</p>
+                                          <p className="text-[10.5px] font-bold text-slate-500 mb-1">
+                                            {isAr ? "سجل التوريدات النقدية المعجلة للخزينة:" : "Early Safe Cash Inflow Log:"}
+                                          </p>
                                           <div className="space-y-1">
                                             {l.repayments.map((rep: any, rIdx: number) => (
                                               <div key={rIdx} className="text-[10px] text-slate-600 dark:text-slate-400 flex items-center justify-between font-mono">
-                                                <span>• {rep.date}: توريد نقدي بالخزينة بمبلغ {fmtCurrency(rep.amount)}</span>
-                                                <span className="text-slate-400">بواسطة: {rep.receivedBy}</span>
+                                                <span>• {rep.date}: {isAr ? "توريد نقدي بالخزينة بمبلغ" : "Cash deposit to safe of"} {fmtCurrency(rep.amount)}</span>
+                                                <span className="text-slate-400">{isAr ? "بواسطة:" : "By:"} {rep.receivedBy}</span>
                                               </div>
                                             ))}
                                           </div>
@@ -2947,10 +3059,12 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                           </div>
                           <div>
                             <h3 className="text-sm font-black text-slate-800 dark:text-white">
-                              Career Journey & Branch Transfers (سجل التنقلات والترقيات الوظيفية)
+                              {isAr ? "سجل التنقلات والترقيات الوظيفية" : "Career Journey & Branch Transfers"}
                             </h3>
                             <p className="text-[11px] text-slate-400">
-                              تاريخ التدرج الوظيفي، التنقل بين الفروع، وتعديلات الرواتب
+                              {isAr
+                                ? "تاريخ التدرج الوظيفي، التنقل بين الفروع، وتعديلات الرواتب"
+                                : "Career progression history, branch transfers, and salary adjustments"}
                             </p>
                           </div>
                         </div>
@@ -2963,7 +3077,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                               className="px-3 py-1.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
                             >
                               <ArrowRightLeft size={14} />
-                              <span>نقل فرع</span>
+                              <span>{isAr ? "نقل فرع" : "Branch Transfer"}</span>
                             </button>
                             <button
                               type="button"
@@ -2971,7 +3085,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                               className="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
                             >
                               <TrendingUp size={14} />
-                              <span>ترقية</span>
+                              <span>{isAr ? "ترقية" : "Promotion"}</span>
                             </button>
                           </div>
                         )}
@@ -2979,13 +3093,15 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
 
                       {(!activeEmp.careerHistory || activeEmp.careerHistory.length === 0) ? (
                         <div className="py-6 text-center text-xs text-slate-400 font-medium bg-slate-50 dark:bg-white/[0.02] rounded-2xl border border-dashed border-slate-200 dark:border-white/10">
-                          لا توجد تنقلات أو ترقيات مسجلة بعد. الموظف في موقعه الحالي منذ تاريخ التعيين ({activeEmp.startDate || "غير محدد"}).
+                          {isAr
+                            ? `لا توجد تنقلات أو ترقيات مسجلة بعد. الموظف في موقعه الحالي منذ تاريخ التعيين (${activeEmp.startDate || "غير محدد"}).`
+                            : `No transfers or promotions recorded yet. Employee is in current post since hire date (${activeEmp.startDate || "N/A"}).`}
                         </div>
                       ) : (
-                        <div className="space-y-3 relative before:absolute before:inset-y-0 before:right-4 before:w-0.5 before:bg-slate-200 dark:before:bg-white/10 pr-6">
+                        <div className={`space-y-3 relative ${isAr ? "before:right-4 pr-6 text-right" : "before:left-4 pl-6 text-left"} before:absolute before:inset-y-0 before:w-0.5 before:bg-slate-200 dark:before:bg-white/10`}>
                           {activeEmp.careerHistory.map((item, idx) => (
-                            <div key={item.id || idx} className="relative bg-white dark:bg-[#121216] p-3.5 rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-xs text-right">
-                              <span className={`absolute -right-7 top-4 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-black ${
+                            <div key={item.id || idx} className="relative bg-white dark:bg-[#121216] p-3.5 rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-xs">
+                              <span className={`absolute ${isAr ? "-right-7" : "-left-7"} top-4 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-black ${
                                 item.type === "promotion" ? "bg-emerald-500" : "bg-indigo-500"
                               }`} />
                               <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
@@ -2994,14 +3110,16 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                                     ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
                                     : "bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300"
                                 }`}>
-                                  {item.type === "promotion" ? "ترقية وظيفية" : "نقل فرع"}
+                                  {item.type === "promotion" ? (isAr ? "ترقية وظيفية" : "Promotion") : (isAr ? "نقل فرع" : "Branch Transfer")}
                                 </span>
                                 <span className="font-mono text-xs text-slate-400">{item.date}</span>
                               </div>
                               <h5 className="font-bold text-xs text-slate-800 dark:text-white mb-0.5">{item.title}</h5>
                               {item.type === "promotion" && item.toSalary && (
                                 <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-mono font-bold">
-                                  تعديل الراتب: من {fmtCurrency(item.fromSalary || 0)} إلى {fmtCurrency(item.toSalary)}
+                                  {isAr
+                                    ? `تعديل الراتب: من ${fmtCurrency(item.fromSalary || 0)} إلى ${fmtCurrency(item.toSalary)}`
+                                    : `Salary adjustment: from ${fmtCurrency(item.fromSalary || 0)} to ${fmtCurrency(item.toSalary)}`}
                                 </p>
                               )}
                               {item.notes && (
@@ -3014,31 +3132,51 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                     </div>
 
                     {/* Data Grid */}
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Financial & Employment Details</h3>
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">
+                      {isAr ? "البيانات المالية والتعاقدية" : "Financial & Employment Details"}
+                    </h3>
                     <div className="grid grid-cols-2 xl:grid-cols-3 gap-4 mb-8">
                       <div className="bg-white/50 dark:bg-black/20 rounded-2xl p-5 border border-slate-100 dark:border-white/5 shadow-sm">
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Base Salary</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
+                          {isAr ? "الراتب الأساسي" : "Base Salary"}
+                        </p>
                         <p className="text-2xl font-black text-slate-800 dark:text-white">{fmtCurrency(activeEmp.baseSalary)}</p>
                       </div>
                       <div className="bg-white/50 dark:bg-black/20 rounded-2xl p-5 border border-slate-100 dark:border-white/5 shadow-sm">
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Insurance Deduct</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
+                          {isAr ? "استقطاع التأمينات" : "Insurance Deduct"}
+                        </p>
                         <p className="text-2xl font-black text-slate-800 dark:text-white">{fmtCurrency(activeEmp.insurance)}</p>
                       </div>
                       <div className="bg-white/50 dark:bg-black/20 rounded-2xl p-5 border border-slate-100 dark:border-white/5 shadow-sm">
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Start Date</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
+                          {isAr ? "تاريخ استلام العمل" : "Start Date"}
+                        </p>
                         <p className="text-2xl font-black text-slate-800 dark:text-white">{activeEmp.startDate || "-"}</p>
                       </div>
                       <div className="bg-white/50 dark:bg-black/20 rounded-2xl p-5 border border-slate-100 dark:border-white/5 shadow-sm">
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Shift Time</p>
-                        <p className="text-2xl font-black text-slate-800 dark:text-white">{activeEmp.shiftTime || "-"}</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
+                          {isAr ? "فترة الوردية" : "Shift Time"}
+                        </p>
+                        <p className="text-2xl font-black text-slate-800 dark:text-white">
+                          {activeEmp.shiftTime === "Morning" ? (isAr ? "صباحي" : "Morning") : activeEmp.shiftTime === "Night" ? (isAr ? "مسائي" : "Night") : (activeEmp.shiftTime || "-")}
+                        </p>
                       </div>
                       <div className="bg-white/50 dark:bg-black/20 rounded-2xl p-5 border border-slate-100 dark:border-white/5 shadow-sm">
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Employment Type</p>
-                        <p className="text-2xl font-black text-slate-800 dark:text-white">{activeEmp.fulltime ? "Full-Time" : "Part-Time"}</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
+                          {isAr ? "نوع التعاقد" : "Employment Type"}
+                        </p>
+                        <p className="text-2xl font-black text-slate-800 dark:text-white">
+                          {activeEmp.fulltime ? (isAr ? "دوام كامل" : "Full-Time") : (isAr ? "دوام جزئي" : "Part-Time")}
+                        </p>
                       </div>
                       <div className="bg-white/50 dark:bg-black/20 rounded-2xl p-5 border border-slate-100 dark:border-white/5 shadow-sm">
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Age & Gender</p>
-                        <p className="text-2xl font-black text-slate-800 dark:text-white">{activeEmp.age}y / {activeEmp.gender}</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
+                          {isAr ? "السن والنوع" : "Age & Gender"}
+                        </p>
+                        <p className="text-2xl font-black text-slate-800 dark:text-white">
+                          {activeEmp.age}{isAr ? " سنة" : "y"} / {activeEmp.gender === "Male" ? (isAr ? "ذكر" : "Male") : activeEmp.gender === "Female" ? (isAr ? "أنثى" : "Female") : activeEmp.gender}
+                        </p>
                       </div>
                     </div>
 
@@ -3050,19 +3188,21 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                         </div>
                         <div>
                           <h4 className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100">
-                            Employee Exit & Legal Termination Clearance (مخالصة نهائية وإخلاء طرف)
+                            {isAr ? "مخالصة نهائية وإخلاء طرف قانوني" : "Employee Exit & Legal Termination Clearance"}
                           </h4>
                           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                            Official Egyptian Labor Law release: certifies that the branch owes the employee nothing, he owes nothing, and custody is fully cleared.
+                            {isAr
+                              ? "إقرار رسمي طبقاً لقانون العمل المصري: إبراء ذمة العامل من العهد والتزامات الفرع المالية."
+                              : "Official Egyptian Labor Law release: certifies liabilities cleared and custody returned."}
                           </p>
                         </div>
                       </div>
                       <button
                         type="button"
                         onClick={() => handleOpenTerminationModal(activeEmp)}
-                        className="shrink-0 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-rose-600/20 flex items-center gap-2"
+                        className="shrink-0 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-rose-600/20 flex items-center gap-2 cursor-pointer"
                       >
-                        <FileCheck2 size={15} /> Issue Clearance Paper
+                        <FileCheck2 size={15} /> {isAr ? "إصدار وثيقة المخالصة" : "Issue Clearance Paper"}
                       </button>
                     </div>
 
@@ -3081,10 +3221,12 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                               </div>
                               <div>
                                 <h4 className="text-sm font-black text-slate-800 dark:text-white">
-                                  National ID Civil Intelligence (البيانات المستخرجة وتدقيق الرقم القومي)
+                                  {isAr ? "البيانات المستخرجة وتدقيق الرقم القومي" : "National ID Civil Intelligence"}
                                 </h4>
                                 <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                                  تدقيق رسمي وفقاً لسجلات الأحوال المدنية وقانون العمل وقانون التأمينات رقم 148
+                                  {isAr
+                                    ? "تدقيق رسمي وفقاً لسجلات الأحوال المدنية وقانون العمل وقانون التأمينات رقم 148"
+                                    : "Official civil registry, Labor Law, and Social Insurance Law 148 audit"}
                                 </p>
                               </div>
                             </div>
@@ -3094,87 +3236,111 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                                 ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
                                 : "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/30"
                             }`}>
-                              {decoded.checksumValid ? "مطابق رياضياً (Modulo-11) ✓" : "ساري رسمياً"}
+                              {decoded.checksumValid ? (isAr ? "مطابق رياضياً (Modulo-11) ✓" : "Modulo-11 Validated ✓") : (isAr ? "ساري رسمياً" : "Officially Valid")}
                             </span>
                           </div>
 
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
                             <div className="p-3 bg-white/70 dark:bg-black/30 rounded-2xl border border-slate-200/60 dark:border-white/5">
-                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">محافظة الميلاد</span>
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
+                                {isAr ? "محافظة الميلاد" : "Birth Governorate"}
+                              </span>
                               <p className="text-sm font-black text-slate-800 dark:text-white flex items-center gap-1">
                                 <MapPin size={14} className="text-indigo-600" />
-                                <span>{decoded.governorateAr}</span>
+                                <span>{isAr ? decoded.governorateAr : (decoded.governorateEn || decoded.governorateAr)}</span>
                               </p>
-                              <span className="text-[10px] text-slate-400 font-mono">كود: {decoded.governorateCode}</span>
+                              <span className="text-[10px] text-slate-400 font-mono">{isAr ? "كود:" : "Code:"} {decoded.governorateCode}</span>
                             </div>
 
                             <div className="p-3 bg-white/70 dark:bg-black/30 rounded-2xl border border-slate-200/60 dark:border-white/5">
-                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">النوع والعمر</span>
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
+                                {isAr ? "النوع والسن" : "Gender & Age"}
+                              </span>
                               <p className="text-sm font-black text-slate-800 dark:text-white">
-                                {decoded.genderAr} ({decoded.age} سنة)
+                                {isAr ? decoded.genderAr : decoded.gender} ({decoded.age} {isAr ? "سنة" : "yrs"})
                               </p>
                               <span className="text-[10px] text-slate-400 font-mono">{decoded.birthDate}</span>
                             </div>
 
                             <div className="p-3 bg-white/70 dark:bg-black/30 rounded-2xl border border-slate-200/60 dark:border-white/5">
-                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">الخروج على المعاش</span>
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
+                                {isAr ? "الخروج على المعاش" : "Statutory Retirement"}
+                              </span>
                               <p className="text-sm font-black text-slate-800 dark:text-white">
-                                سنة {decoded.retirementYear}
+                                {isAr ? "سنة" : "Year"} {decoded.retirementYear}
                               </p>
-                              <span className="text-[10px] text-slate-400 font-mono">سن {decoded.retirementAge} (متبقي {decoded.yearsToRetirement}س)</span>
+                              <span className="text-[10px] text-slate-400 font-mono">
+                                {isAr ? "سن" : "Age"} {decoded.retirementAge} ({isAr ? `متبقي ${decoded.yearsToRetirement}س` : `${decoded.yearsToRetirement}y left`})
+                              </span>
                             </div>
 
                             <div className="p-3 bg-white/70 dark:bg-black/30 rounded-2xl border border-slate-200/60 dark:border-white/5">
-                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">الرقم القومي</span>
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
+                                {isAr ? "الرقم القومي" : "National ID"}
+                              </span>
                               <p className="font-mono text-xs font-black text-slate-800 dark:text-white truncate">
                                 {decoded.cleanNid}
                               </p>
-                              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">14 رقماً مسجلاً</span>
+                              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                                {isAr ? "14 رقماً مسجلاً" : "14-digit recorded"}
+                              </span>
                             </div>
                           </div>
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                             <div className={`p-2.5 rounded-xl border font-bold ${decoded.laborBadge} flex items-center gap-2`}>
-                              <span>{decoded.laborStatusAr}</span>
+                              <span>{isAr ? decoded.laborStatusAr : (decoded.laborStatusEn || decoded.laborStatusAr)}</span>
                             </div>
                             <div className={`p-2.5 rounded-xl border font-bold ${decoded.militaryBadge} flex items-center gap-2`}>
-                              <span>{decoded.militaryStatusAr}</span>
+                              <span>{isAr ? decoded.militaryStatusAr : (decoded.militaryStatusEn || decoded.militaryStatusAr)}</span>
                             </div>
                           </div>
                         </div>
                       );
                     })()}
 
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Personal Info</h3>
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">
+                      {isAr ? "البيانات الشخصية" : "Personal Info"}
+                    </h3>
                     <div className="bg-white/50 dark:bg-black/20 rounded-3xl p-6 border border-slate-100 dark:border-white/5 shadow-sm space-y-4 mb-8">
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-2 border-b border-slate-200 dark:border-white/10 gap-1">
-                        <span className="text-slate-500 dark:text-slate-400 font-bold">National ID</span>
+                        <span className="text-slate-500 dark:text-slate-400 font-bold">
+                          {isAr ? "الرقم القومي" : "National ID"}
+                        </span>
                         <div className="flex items-center gap-2">
                           <span className="font-mono font-black text-slate-800 dark:text-white text-lg">{activeEmp.nationalId || "-"}</span>
                           {activeEmp.nationalId && activeEmp.nationalId.length === 14 && (
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-                              ساري
+                              {isAr ? "ساري" : "Valid"}
                             </span>
                           )}
                         </div>
                       </div>
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-2 border-b border-slate-200 dark:border-white/10 gap-1">
-                        <span className="text-slate-500 dark:text-slate-400 font-bold">Governorate of Origin (المحافظة)</span>
+                        <span className="text-slate-500 dark:text-slate-400 font-bold">
+                          {isAr ? "المحافظة" : "Governorate of Origin"}
+                        </span>
                         <span className="font-black text-slate-800 dark:text-white text-lg flex items-center gap-1">
                           <MapPin size={16} className="text-indigo-600" />
-                          <span>{activeEmp.governorateOfBirth || (activeEmp.nationalId ? decodeEgyptianNationalId(activeEmp.nationalId).governorateAr : "-")}</span>
+                          <span>{activeEmp.governorateOfBirth || (activeEmp.nationalId ? (isAr ? decodeEgyptianNationalId(activeEmp.nationalId).governorateAr : (decodeEgyptianNationalId(activeEmp.nationalId).governorateEn || decodeEgyptianNationalId(activeEmp.nationalId).governorateAr)) : "-")}</span>
                         </span>
                       </div>
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-2 border-b border-slate-200 dark:border-white/10 gap-1">
-                        <span className="text-slate-500 dark:text-slate-400 font-bold">Phone Number</span>
+                        <span className="text-slate-500 dark:text-slate-400 font-bold">
+                          {isAr ? "رقم الهاتف" : "Phone Number"}
+                        </span>
                         <span className="font-mono font-black text-slate-800 dark:text-white text-lg">{activeEmp.phone || "-"}</span>
                       </div>
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-2 border-b border-slate-200 dark:border-white/10 gap-1">
-                        <span className="text-slate-500 dark:text-slate-400 font-bold">Address</span>
+                        <span className="text-slate-500 dark:text-slate-400 font-bold">
+                          {isAr ? "العنوان" : "Address"}
+                        </span>
                         <span className="font-black text-slate-800 dark:text-white text-lg">{activeEmp.address || "-"}</span>
                       </div>
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-2 gap-1">
-                        <span className="text-slate-500 dark:text-slate-400 font-bold">Cheque Signed #</span>
+                        <span className="text-slate-500 dark:text-slate-400 font-bold">
+                          {isAr ? "رقم إيصال الأمانة / الشيك" : "Cheque Signed #"}
+                        </span>
                         <span className="font-mono font-black text-slate-800 dark:text-white text-lg">{activeEmp.chequeSignedNum || "-"}</span>
                       </div>
                     </div>
@@ -3185,23 +3351,23 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                       <div className="bg-white/50 dark:bg-black/20 rounded-3xl p-6 border border-slate-100 dark:border-white/5 shadow-sm space-y-4">
                         <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
                           <Landmark size={14} className="text-indigo-500" />
-                          <span>Bank & Payroll Details (بيانات الراتب)</span>
+                          <span>{isAr ? "بيانات الراتب والبنك" : "Bank & Payroll Details"}</span>
                         </h4>
                         <div className="space-y-3 pt-1">
                           <div className="flex justify-between items-center text-sm border-b border-slate-200 dark:border-white/10 pb-2">
-                            <span className="text-slate-500 dark:text-slate-400 font-medium">اسم البنك</span>
-                            <span className="font-bold text-slate-800 dark:text-white">{activeEmp.bankName || "غير محدد"}</span>
+                            <span className="text-slate-500 dark:text-slate-400 font-medium">{isAr ? "اسم البنك" : "Bank Name"}</span>
+                            <span className="font-bold text-slate-800 dark:text-white">{activeEmp.bankName || (isAr ? "غير محدد" : "Not specified")}</span>
                           </div>
                           <div className="flex justify-between items-center text-sm border-b border-slate-200 dark:border-white/10 pb-2">
-                            <span className="text-slate-500 dark:text-slate-400 font-medium">الحساب / IBAN</span>
+                            <span className="text-slate-500 dark:text-slate-400 font-medium">{isAr ? "الحساب / IBAN" : "Account / IBAN"}</span>
                             <span className="font-mono font-bold text-slate-800 dark:text-white truncate max-w-[160px]" title={activeEmp.bankIbanOrAccount}>
-                              {activeEmp.bankIbanOrAccount || "غير محدد"}
+                              {activeEmp.bankIbanOrAccount || (isAr ? "غير محدد" : "Not specified")}
                             </span>
                           </div>
                           <div className="flex justify-between items-center text-sm">
-                            <span className="text-slate-500 dark:text-slate-400 font-medium">انستاباي / محفظة</span>
+                            <span className="text-slate-500 dark:text-slate-400 font-medium">{isAr ? "انستاباي / محفظة" : "InstaPay / Wallet"}</span>
                             <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
-                              {activeEmp.instaPayAddress || "غير محدد"}
+                              {activeEmp.instaPayAddress || (isAr ? "غير محدد" : "Not specified")}
                             </span>
                           </div>
                         </div>
@@ -3211,21 +3377,21 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                       <div className="bg-white/50 dark:bg-black/20 rounded-3xl p-6 border border-slate-100 dark:border-white/5 shadow-sm space-y-4">
                         <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
                           <Users size={14} className="text-rose-500" />
-                          <span>Emergency Contact (جهة اتصال الطوارئ)</span>
+                          <span>{isAr ? "جهة اتصال الطوارئ" : "Emergency Contact"}</span>
                         </h4>
                         <div className="space-y-3 pt-1">
                           <div className="flex justify-between items-center text-sm border-b border-slate-200 dark:border-white/10 pb-2">
-                            <span className="text-slate-500 dark:text-slate-400 font-medium">اسم القريب</span>
-                            <span className="font-bold text-slate-800 dark:text-white">{activeEmp.emergencyContactName || "غير مسجل"}</span>
+                            <span className="text-slate-500 dark:text-slate-400 font-medium">{isAr ? "اسم القريب" : "Contact Name"}</span>
+                            <span className="font-bold text-slate-800 dark:text-white">{activeEmp.emergencyContactName || (isAr ? "غير مسجل" : "Not registered")}</span>
                           </div>
                           <div className="flex justify-between items-center text-sm border-b border-slate-200 dark:border-white/10 pb-2">
-                            <span className="text-slate-500 dark:text-slate-400 font-medium">صلة القرابة</span>
-                            <span className="font-bold text-slate-800 dark:text-white">{activeEmp.emergencyContactRelation || "غير مسجل"}</span>
+                            <span className="text-slate-500 dark:text-slate-400 font-medium">{isAr ? "صلة القرابة" : "Relationship"}</span>
+                            <span className="font-bold text-slate-800 dark:text-white">{activeEmp.emergencyContactRelation || (isAr ? "غير مسجل" : "Not registered")}</span>
                           </div>
                           <div className="flex justify-between items-center text-sm">
-                            <span className="text-slate-500 dark:text-slate-400 font-medium">رقم الهاتف</span>
+                            <span className="text-slate-500 dark:text-slate-400 font-medium">{isAr ? "رقم الهاتف" : "Phone Number"}</span>
                             <span className="font-mono font-bold text-slate-800 dark:text-white">
-                              {activeEmp.emergencyContactPhone || "غير مسجل"}
+                              {activeEmp.emergencyContactPhone || (isAr ? "غير مسجل" : "Not registered")}
                             </span>
                           </div>
                         </div>
@@ -3238,8 +3404,14 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                   <div className="w-24 h-24 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center mb-6">
                     <Users size={40} className="text-slate-300 dark:text-slate-600" />
                   </div>
-                  <h3 className="text-2xl font-black text-slate-700 dark:text-slate-300 mb-2">No Employee Selected</h3>
-                  <p className="text-slate-500 max-w-md">Select an employee from the list to view their complete profile, financials, and contract details.</p>
+                  <h3 className="text-2xl font-black text-slate-700 dark:text-slate-300 mb-2">
+                    {isAr ? "لم يتم تحديد موظف" : "No Employee Selected"}
+                  </h3>
+                  <p className="text-slate-500 max-w-md">
+                    {isAr
+                      ? "اختر موظفاً من القائمة الجانبية لعرض ملفه الكامل، بياناته المالية، وعقود عمله."
+                      : "Select an employee from the list to view their complete profile, financials, and contract details."}
+                  </p>
                 </div>
               )}
             </div>
@@ -3265,10 +3437,10 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                   </div>
                   <div>
                     <h3 className="text-lg font-black text-slate-900 dark:text-white">
-                      صرف سلفة نقدية وتقسيط معتمد
+                      {isAr ? "صرف سلفة نقدية وتقسيط معتمد" : "Issue Loan / Salary Advance"}
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {activeEmp.name} • الراتب الأساسي: {salary.toLocaleString()} ج.م • الفرع: {activeEmp.storeId === "ola" ? "أولا القرنفل" : "العلمين 4"}
+                      {activeEmp.name} • {isAr ? "الراتب الأساسي:" : "Base Salary:"} {salary.toLocaleString()} {isAr ? "ج.م" : "EGP"} • {isAr ? "الفرع:" : "Branch:"} {activeEmp.storeId === "ola" ? (isAr ? "أولا القرنفل" : "Ola El-Qornofol") : (isAr ? "العلمين 4" : "Alamein 4")}
                     </p>
                   </div>
                 </div>
@@ -3284,7 +3456,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                 {/* Reason Category Selection */}
                 <div>
                   <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-2">
-                    تصنيف سبب السلفة (Retail Category) *
+                    {isAr ? "تصنيف سبب السلفة (Retail Category) *" : "Loan Purpose Category *"}
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {(Object.keys(loanCategoryLabels) as (keyof typeof loanCategoryLabels)[]).map((catKey) => {
@@ -3302,7 +3474,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                           }`}
                         >
                           <span className="text-base">{item.icon}</span>
-                          <span className="text-[11px] leading-tight">{item.label}</span>
+                          <span className="text-[11px] leading-tight">{isAr ? item.label : (item.labelEn || item.label)}</span>
                         </button>
                       );
                     })}
@@ -3312,7 +3484,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                 {/* Amount Input with Live Arabic Words */}
                 <div>
                   <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1.5">
-                    إجمالي مبلغ السلفة المطلوب (جنيه مصري) *
+                    {isAr ? "إجمالي مبلغ السلفة المطلوب (جنيه مصري) *" : "Total Loan Amount Required (EGP) *"}
                   </label>
                   <div className="relative">
                     <input
@@ -3321,16 +3493,18 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                       step={100}
                       value={loanAmount || ""}
                       onChange={(e) => setLoanAmount(Number(e.target.value))}
-                      placeholder="مثال: 3000"
+                      placeholder={isAr ? "مثال: 3000" : "e.g. 3000"}
                       className="w-full pl-4 pr-12 py-3 rounded-xl border border-border bg-background text-lg font-mono font-black focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition"
                     />
                     <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-                      ج.م
+                      {isAr ? "ج.م" : "EGP"}
                     </span>
                   </div>
                   {loanAmount > 0 && (
                     <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold mt-1.5 bg-emerald-50/60 dark:bg-emerald-950/20 px-2.5 py-1 rounded-lg border border-emerald-200/60 dark:border-emerald-900/30">
-                      التفقيط الرسمي: فقط وقدره {numberToArabicWords(loanAmount)} جنيهاً مصرياً لا غير.
+                      {isAr
+                        ? `التفقيط الرسمي: فقط وقدره ${numberToArabicWords(loanAmount)} جنيهاً مصرياً لا غير.`
+                        : `Words: Only ${numberToArabicWords(loanAmount)} Egyptian Pounds.`}
                     </p>
                   )}
                 </div>
@@ -3339,10 +3513,10 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide">
-                      مدة التقسيط وعدد الأقساط الشهرية *
+                      {isAr ? "مدة التقسيط وعدد الأقساط الشهرية *" : "Installment Plan & Months *"}
                     </label>
                     <span className="text-xs font-black font-mono text-emerald-600 dark:text-emerald-400">
-                      {fmtCurrency(currentMonthlyInst)} / شهر
+                      {fmtCurrency(currentMonthlyInst)} / {isAr ? "شهر" : "mo."}
                     </span>
                   </div>
                   <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
@@ -3357,7 +3531,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                             : "border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5"
                         }`}
                       >
-                        {m === 1 ? "دفعة واحدة" : `${m} شهور`}
+                        {m === 1 ? (isAr ? "دفعة واحدة" : "1 Month") : (isAr ? `${m} شهور` : `${m} Months`)}
                       </button>
                     ))}
                   </div>
@@ -3374,18 +3548,22 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                   <ShieldCheck size={18} className={`shrink-0 mt-0.5 ${isCapExceeded ? "text-rose-600" : "text-emerald-600"}`} />
                   <div className="space-y-1">
                     <div className="font-bold flex items-center justify-between gap-2">
-                      <span>ضوابط المادة (34) من قانون العمل رقم 12 لسنة 2003:</span>
+                      <span>{isAr ? "ضوابط المادة (34) من قانون العمل رقم 12 لسنة 2003:" : "Egyptian Labor Law 12/2003 Art. 34 Regulations:"}</span>
                       <span className="font-mono font-black">
-                        الحد الأقصى القانوني للخصم (50%): {fmtCurrency(maxSafeInstallment)}
+                        {isAr ? `الحد الأقصى القانوني للخصم (50%): ${fmtCurrency(maxSafeInstallment)}` : `Statutory Max Deduction (50%): ${fmtCurrency(maxSafeInstallment)}`}
                       </span>
                     </div>
                     {isCapExceeded ? (
                       <p className="text-[11px] leading-relaxed text-rose-700 dark:text-rose-300 font-medium">
-                        ⚠️ تحذير: القسط الشهري المحدد ({fmtCurrency(currentMonthlyInst)}) يتجاوز 50% من الراتب الأساسي للعامل ({fmtCurrency(maxSafeInstallment)}). يُنصح بزيادة عدد شهور التقسيط لتفادي مخالفة قانون العمل.
+                        {isAr
+                          ? `⚠️ تحذير: القسط الشهري المحدد (${fmtCurrency(currentMonthlyInst)}) يتجاوز 50% من الراتب الأساسي للعامل (${fmtCurrency(maxSafeInstallment)}). يُنصح بزيادة عدد شهور التقسيط لتفادي مخالفة قانون العمل.`
+                          : `⚠️ Warning: Monthly installment (${fmtCurrency(currentMonthlyInst)}) exceeds 50% of base salary (${fmtCurrency(maxSafeInstallment)}). Consider increasing installment months to comply with labor law.`}
                       </p>
                     ) : (
                       <p className="text-[11px] leading-relaxed text-emerald-700 dark:text-emerald-300 font-medium">
-                        ✓ متوافق تماماً: القسط الشهري ({fmtCurrency(currentMonthlyInst)}) يقع في النطاق القانوني الآمن (أقل من 50% من الراتب الشهري).
+                        {isAr
+                          ? `✓ متوافق تماماً: القسط الشهري (${fmtCurrency(currentMonthlyInst)}) يقع في النطاق القانوني الآمن (أقل من 50% من الراتب الشهري).`
+                          : `✓ Fully Compliant: Monthly installment (${fmtCurrency(currentMonthlyInst)}) is within safe legal limit (< 50% of base salary).`}
                       </p>
                     )}
                   </div>
@@ -3395,20 +3573,24 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                 <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
                   <AlertCircle size={16} className="shrink-0 mt-0.5 text-amber-600" />
                   <span>
-                    <strong>التأثير المالي والخزينة:</strong> سيتم قيد المبلغ وصرفه مباشرة كمسحوبات نقدية من خزينة الفرع (Safe Cash Outflow)، وترحيل الأقساط شهرياً إلى مسير الرواتب تلقائياً.
+                    {isAr ? (
+                      <><strong>التأثير المالي والخزينة:</strong> سيتم قيد المبلغ وصرفه مباشرة كمسحوبات نقدية من خزينة الفرع (Safe Cash Outflow)، وترحيل الأقساط شهرياً إلى مسير الرواتب تلقائياً.</>
+                    ) : (
+                      <><strong>Treasury Impact:</strong> Disbursed as a Safe Cash Outflow from branch safe, and installments will deduct automatically on payroll.</>
+                    )}
                   </span>
                 </div>
 
                 {/* Notes Input */}
                 <div>
                   <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1.5">
-                    ملاحظات إضافية على السلفة
+                    {isAr ? "ملاحظات إضافية على السلفة" : "Additional Loan Notes"}
                   </label>
                   <textarea
                     rows={2}
                     value={loanNotes}
                     onChange={(e) => setLoanNotes(e.target.value)}
-                    placeholder="اكتب أي ملاحظات خاصة بإذن الصرف أو موافقة الإدارة..."
+                    placeholder={isAr ? "اكتب أي ملاحظات خاصة بإذن الصرف أو موافقة الإدارة..." : "Enter any approval notes or comments..."}
                     className="w-full p-3 rounded-xl border border-border bg-background text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition resize-none"
                   />
                 </div>
@@ -3420,7 +3602,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                   onClick={() => setShowLoanModal(false)}
                   className="flex-1 py-2.5 rounded-xl border border-border font-bold text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer"
                 >
-                  إلغاء
+                  {isAr ? "إلغاء" : "Cancel"}
                 </button>
                 <button
                   type="button"
@@ -3429,7 +3611,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                   className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                 >
                   {isSubmittingLoan ? <Loader2 size={15} className="animate-spin" /> : <HandCoins size={15} />}
-                  <span>اعتماد وصرف السلفة وتوليد الإقرار</span>
+                  <span>{isAr ? "اعتماد وصرف السلفة وتوليد الإقرار" : "Approve, Disburse & Generate Mandate"}</span>
                 </button>
               </div>
             </div>
@@ -3451,10 +3633,10 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                   </div>
                   <div>
                     <h3 className="text-lg font-black text-slate-900 dark:text-white">
-                      سداد نقدي معجل وتوريد للخزينة
+                      {isAr ? "سداد نقدي معجل وتوريد للخزينة" : "Early Cash Settlement & Safe Deposit"}
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {activeEmp.name} • الرصيد المتبقي ذمته: {fmtCurrency(rem)}
+                      {activeEmp.name} • {isAr ? "الرصيد المتبقي ذمته:" : "Remaining Balance:"} {fmtCurrency(rem)}
                     </p>
                   </div>
                 </div>
@@ -3469,11 +3651,11 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
               <div className="space-y-4">
                 <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 rounded-2xl">
                   <div className="flex justify-between text-xs mb-1">
-                    <span className="text-slate-500 font-bold">قيمة السلفة الأصلية:</span>
+                    <span className="text-slate-500 font-bold">{isAr ? "قيمة السلفة الأصلية:" : "Original Loan Amount:"}</span>
                     <span className="font-mono font-black text-slate-800 dark:text-white">{fmtCurrency(activeLoanForPayoff.amount)}</span>
                   </div>
                   <div className="flex justify-between text-xs">
-                    <span className="text-slate-500 font-bold">الرصيد القائم ذمته حالياً:</span>
+                    <span className="text-slate-500 font-bold">{isAr ? "الرصيد القائم ذمته حالياً:" : "Current Outstanding Balance:"}</span>
                     <span className="font-mono font-black text-rose-600 dark:text-rose-400">{fmtCurrency(rem)}</span>
                   </div>
                 </div>
@@ -3481,7 +3663,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                 {/* Amount to Pay */}
                 <div>
                   <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1.5">
-                    المبلغ المورد نقداً إلى خزينة الفرع (جنيه مصري) *
+                    {isAr ? "المبلغ المورد نقداً إلى خزينة الفرع (جنيه مصري) *" : "Cash Amount Deposited to Branch Safe (EGP) *"}
                   </label>
                   <div className="relative">
                     <input
@@ -3494,7 +3676,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                       className="w-full pl-4 pr-12 py-3 rounded-xl border border-border bg-background text-lg font-mono font-black focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition"
                     />
                     <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-                      ج.م
+                      {isAr ? "ج.م" : "EGP"}
                     </span>
                   </div>
 
@@ -3519,7 +3701,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                       onClick={() => setPayoffAmount(rem)}
                       className="flex-1 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40 cursor-pointer"
                     >
-                      100% (سداد كامل وخلو طرف)
+                      {isAr ? "100% (سداد كامل وخلو طرف)" : "100% (Full Settlement)"}
                     </button>
                   </div>
                 </div>
@@ -3528,20 +3710,24 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                 <div className="p-3 bg-indigo-50/70 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-800/40 rounded-xl text-xs text-indigo-900 dark:text-indigo-200 flex items-start gap-2">
                   <ShieldCheck size={16} className="shrink-0 mt-0.5 text-indigo-600" />
                   <span>
-                    سيتم توريد هذا المبلغ نقداً إلى <strong>خزينة الفرع مباشرة (Safe Inflow)</strong> كإيداع سداد سلفة، وتخفيض رصيد مديونية العامل فوراً دون انتظار موعد الراتب.
+                    {isAr ? (
+                      <>سيتم توريد هذا المبلغ نقداً إلى <strong>خزينة الفرع مباشرة (Safe Inflow)</strong> كإيداع سداد سلفة، وتخفيض رصيد مديونية العامل فوراً دون انتظار موعد الراتب.</>
+                    ) : (
+                      <>Deposited directly into <strong>branch safe (Safe Inflow)</strong> to clear employee debt immediately without waiting for payroll.</>
+                    )}
                   </span>
                 </div>
 
                 {/* Notes */}
                 <div>
                   <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1.5">
-                    ملاحظات أمين الخزينة / سند التوريد
+                    {isAr ? "ملاحظات أمين الخزينة / سند التوريد" : "Cashier Notes / Receipt Ref"}
                   </label>
                   <input
                     type="text"
                     value={payoffNotes}
                     onChange={(e) => setPayoffNotes(e.target.value)}
-                    placeholder="مثال: توريد نقدي بخزينة فرع أولا القرنفل بخزينة المحل..."
+                    placeholder={isAr ? "مثال: توريد نقدي بخزينة فرع أولا القرنفل بخزينة المحل..." : "e.g. Cash deposit in branch safe..."}
                     className="w-full p-2.5 rounded-xl border border-border bg-background text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition"
                   />
                 </div>
@@ -3553,7 +3739,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                   onClick={() => setShowEarlyPayoffModal(false)}
                   className="flex-1 py-2.5 rounded-xl border border-border font-bold text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer"
                 >
-                  إلغاء
+                  {isAr ? "إلغاء" : "Cancel"}
                 </button>
                 <button
                   type="button"
@@ -3562,7 +3748,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                   className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                 >
                   {isSubmittingPayoff ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
-                  <span>تأكيد التوريد وسداد السلفة</span>
+                  <span>{isAr ? "تأكيد التوريد وسداد السلفة" : "Confirm Deposit & Settle"}</span>
                 </button>
               </div>
             </div>
@@ -3585,10 +3771,12 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                 </div>
                 <div>
                   <h3 className="text-lg font-black text-slate-900 dark:text-white">
-                    {careerMode === "transfer" ? "نقل موظف إلى فرع آخر" : "ترقية موظف وتعديل مسمى وراتب"}
+                    {careerMode === "transfer"
+                      ? (isAr ? "نقل موظف إلى فرع آخر" : "Branch Transfer")
+                      : (isAr ? "ترقية موظف وتعديل مسمى وراتب" : "Promotion & Salary Adjustment")}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {activeEmp.name} — الوظيفة الحالية: {activeEmp.position} ({activeEmp.storeId?.toLowerCase().includes("ola") ? "فرع أولا القرنفل" : "فرع العلمين 4"})
+                    {activeEmp.name} — {isAr ? "الوظيفة الحالية:" : "Current Position:"} {activeEmp.position} ({activeEmp.storeId?.toLowerCase().includes("ola") ? (isAr ? "فرع أولا القرنفل" : "Ola El-Qornofol Branch") : (isAr ? "فرع العلمين 4" : "Alamein 4 Branch")})
                   </p>
                 </div>
               </div>
@@ -3604,22 +3792,22 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
               {careerMode === "transfer" ? (
                 <div>
                   <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1.5">
-                    الفرع المنقول إليه *
+                    {isAr ? "الفرع المنقول إليه *" : "Destination Branch *"}
                   </label>
                   <select
                     value={careerTargetBranch}
                     onChange={(e) => setCareerTargetBranch(e.target.value)}
                     className="w-full p-3 rounded-xl border border-border bg-background text-sm font-bold focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition"
                   >
-                    <option value="ola">فرع أولا القرنفل (القاهرة الجديدة - التجمع الخامس)</option>
-                    <option value="alamein4">فرع العلمين 4 (الساحل الشمالي - مارينا)</option>
+                    <option value="ola">{isAr ? "فرع أولا القرنفل (القاهرة الجديدة - التجمع الخامس)" : "Ola El-Qornofol Branch (New Cairo - 5th Settlement)"}</option>
+                    <option value="alamein4">{isAr ? "فرع العلمين 4 (الساحل الشمالي - مارينا)" : "Alamein 4 Branch (North Coast - Marina)"}</option>
                   </select>
                 </div>
               ) : (
                 <>
                   <div>
                     <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1.5">
-                      المسمى الوظيفي الجديد (New Position) *
+                      {isAr ? "المسمى الوظيفي الجديد (New Position) *" : "New Job Position *"}
                     </label>
                     <input
                       type="text"
@@ -3632,7 +3820,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1.5">
-                      الراتب الأساسي الجديد (جنيه مصري) *
+                      {isAr ? "الراتب الأساسي الجديد (جنيه مصري) *" : "New Base Salary (EGP) *"}
                     </label>
                     <div className="relative">
                       <input
@@ -3644,7 +3832,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                         className="w-full pl-4 pr-12 py-3 rounded-xl border border-border bg-background text-base font-mono font-bold focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition"
                       />
                       <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-                        ج.م
+                        {isAr ? "ج.م" : "EGP"}
                       </span>
                     </div>
                   </div>
@@ -3653,7 +3841,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
 
               <div>
                 <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1.5">
-                  تاريخ سريان القرار *
+                  {isAr ? "تاريخ سريان القرار *" : "Effective Date *"}
                 </label>
                 <input
                   type="date"
@@ -3666,13 +3854,17 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
 
               <div>
                 <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1.5">
-                  ملاحظات أو أسباب القرار الإداري
+                  {isAr ? "ملاحظات أو أسباب القرار الإداري" : "Administrative Notes / Reason"}
                 </label>
                 <textarea
                   rows={2}
                   value={careerNotes}
                   onChange={(e) => setCareerNotes(e.target.value)}
-                  placeholder={careerMode === "transfer" ? "مثال: انتداب لموسم الصيف أو نقل دائم لتغطية احتياجات الفرع..." : "مثال: ترقية استثنائية نظراً للأداء المتميز وتحقيق المستهدف..."}
+                  placeholder={
+                    careerMode === "transfer"
+                      ? (isAr ? "مثال: انتداب لموسم الصيف أو نقل دائم لتغطية احتياجات الفرع..." : "e.g. Summer season transfer or branch operational needs...")
+                      : (isAr ? "مثال: ترقية استثنائية نظراً للأداء المتميز وتحقيق المستهدف..." : "e.g. Merit-based promotion for outstanding performance...")
+                  }
                   className="w-full p-3 rounded-xl border border-border bg-background text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition resize-none"
                 />
               </div>
@@ -3683,7 +3875,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                   onClick={() => setShowCareerModal(false)}
                   className="flex-1 py-2.5 rounded-xl border border-border font-bold text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer"
                 >
-                  إلغاء
+                  {isAr ? "إلغاء" : "Cancel"}
                 </button>
                 <button
                   type="submit"
@@ -3695,7 +3887,11 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                   }`}
                 >
                   {isSubmittingCareer ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle size={15} />}
-                  <span>{careerMode === "transfer" ? "تأكيد النقل وحفظ السجل" : "تأكيد الترقية وتحديث الراتب"}</span>
+                  <span>
+                    {careerMode === "transfer"
+                      ? (isAr ? "تأكيد النقل وحفظ السجل" : "Confirm Transfer & Save")
+                      : (isAr ? "تأكيد الترقية وتحديث الراتب" : "Confirm Promotion & Update Salary")}
+                  </span>
                 </button>
               </div>
             </form>
@@ -3714,10 +3910,10 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                 </div>
                 <div>
                   <h3 className="text-lg font-black text-slate-900 dark:text-white">
-                    صرف مكافأة مناسبة / تميز
+                    {isAr ? "صرف مكافأة مناسبة / تميز" : "Issue Milestone / Merit Bonus"}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {activeEmp.name} — تقدير سنوية العمل أو عيد الميلاد
+                    {activeEmp.name} — {isAr ? "تقدير سنوية العمل أو عيد الميلاد" : "Work Anniversary or Birthday Recognition"}
                   </p>
                 </div>
               </div>
@@ -3732,7 +3928,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
             <form onSubmit={handleSubmitBonus} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1.5">
-                  قيمة المكافأة (جنيه مصري) *
+                  {isAr ? "قيمة المكافأة (جنيه مصري) *" : "Bonus Amount (EGP) *"}
                 </label>
                 <div className="relative">
                   <input
@@ -3744,21 +3940,21 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                     className="w-full pl-4 pr-12 py-3 rounded-xl border border-border bg-background text-lg font-mono font-black focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition"
                   />
                   <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-                    ج.م
+                    {isAr ? "ج.م" : "EGP"}
                   </span>
                 </div>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-1.5">
-                  بيان سبب صرف المكافأة
+                  {isAr ? "بيان سبب صرف المكافأة" : "Bonus Reason"}
                 </label>
                 <input
                   type="text"
                   required
                   value={bonusReason}
                   onChange={(e) => setBonusReason(e.target.value)}
-                  placeholder="مثال: مكافأة تقديرية بمناسبة إتمام سنة من العطاء..."
+                  placeholder={isAr ? "مثال: مكافأة تقديرية بمناسبة إتمام سنة من العطاء..." : "e.g. Recognition for completing a year of service..."}
                   className="w-full p-3 rounded-xl border border-border bg-background text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition"
                 />
               </div>
@@ -3766,7 +3962,9 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
               <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-700 dark:text-amber-300 flex items-start gap-2">
                 <Gift size={15} className="shrink-0 mt-0.5" />
                 <span>
-                  سيتم تسجيل هذه المكافأة كبند مستحق إضافي في تسوية المرتبات الشهرية للموظف.
+                  {isAr
+                    ? "سيتم تسجيل هذه المكافأة كبند مستحق إضافي في تسوية المرتبات الشهرية للموظف."
+                    : "This bonus will be recorded as an additional entitlement in the employee's monthly payroll."}
                 </span>
               </div>
 
@@ -3776,7 +3974,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                   onClick={() => setShowBonusModal(false)}
                   className="flex-1 py-2.5 rounded-xl border border-border font-bold text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer"
                 >
-                  إلغاء
+                  {isAr ? "إلغاء" : "Cancel"}
                 </button>
                 <button
                   type="submit"
@@ -3784,7 +3982,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                   className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                 >
                   {isSubmittingBonus ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle size={15} />}
-                  <span>تأكيد اعتماد وصرف المكافأة</span>
+                  <span>{isAr ? "تأكيد اعتماد وصرف المكافأة" : "Confirm & Issue Bonus"}</span>
                 </button>
               </div>
             </form>
@@ -3800,7 +3998,9 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
             <div className="flex justify-between items-center px-6 py-4 sm:px-8 sm:py-5 border-b border-border shrink-0 bg-card z-10">
               <div>
                 <h2 className="text-xl font-black text-slate-900 dark:text-slate-50">
-                  {selectedEmployee ? "Edit Employee" : "Add Employee"}
+                  {selectedEmployee
+                    ? (isAr ? "تعديل بيانات الموظف" : "Edit Employee")
+                    : (isAr ? "إضافة موظف جديد" : "Add Employee")}
                 </h2>
                 {selectedEmployee && <p className="text-xs text-slate-500 mt-0.5">{selectedEmployee.name}</p>}
               </div>
@@ -3818,47 +4018,59 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 {/* Name */}
                 <div className="md:col-span-2">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Full Name *</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+                    {isAr ? "الاسم الكامل (رباعي) *" : "Full Name *"}
+                  </label>
                   <input
                     type="text"
                     required
                     value={formData.name}
                     onChange={e => setFormData({ ...formData, name: e.target.value })}
                     className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:border-indigo-500"
-                    placeholder="e.g. احمد محمد عبدالله"
+                    placeholder={isAr ? "مثال: أحمد محمد عبدالله" : "e.g. Ahmed Mohamed Abdullah"}
                   />
                 </div>
 
                 {/* Position */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Position</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+                    {isAr ? "المسمى الوظيفي" : "Position"}
+                  </label>
                   <select
                     value={formData.position}
                     onChange={e => setFormData({ ...formData, position: e.target.value })}
                     className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:border-indigo-500"
                   >
-                    {POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}
-                    <option value="Other">Other</option>
+                    {POSITIONS.map(p => (
+                      <option key={p} value={p}>
+                        {isAr ? (POSITION_AR_MAP[p] || p) : p}
+                      </option>
+                    ))}
+                    <option value="Other">{isAr ? "أخرى" : "Other"}</option>
                   </select>
                 </div>
 
                 {/* Status */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Status</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+                    {isAr ? "حالة العمل" : "Status"}
+                  </label>
                   <select
                     value={formData.status}
                     onChange={e => setFormData({ ...formData, status: e.target.value })}
                     className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:border-indigo-500 font-bold"
                   >
-                    <option value="active">Active (على رأس العمل / نشط)</option>
-                    <option value="suspended">Suspended (موقوف مؤقتاً عن العمل)</option>
-                    <option value="left">Left (ترك العمل / انتهت خدمته)</option>
+                    <option value="active">{isAr ? "على رأس العمل (نشط)" : "Active (On Duty)"}</option>
+                    <option value="suspended">{isAr ? "موقوف مؤقتاً عن العمل" : "Suspended"}</option>
+                    <option value="left">{isAr ? "ترك العمل (منتهي الخدمة)" : "Left / Terminated"}</option>
                   </select>
                 </div>
 
                 {/* Base Salary & Insurance */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Base Salary (EGP)</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+                    {isAr ? "الراتب الأساسي (ج.م)" : "Base Salary (EGP)"}
+                  </label>
                   <input
                     type="number"
                     value={formData.baseSalary}
@@ -3867,7 +4079,9 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Insurance Deduct (EGP)</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+                    {isAr ? "استقطاع التأمينات (ج.م)" : "Insurance Deduct (EGP)"}
+                  </label>
                   <input
                     type="number"
                     value={formData.insurance}
@@ -3879,15 +4093,17 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                 {/* National ID & Phone */}
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center justify-between">
-                    <span>National ID (الرقم القومي - 14 رقم)</span>
-                    <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold">فك تشفير ذكي وتدقيق تلقائي</span>
+                    <span>{isAr ? "الرقم القومي (14 رقم)" : "National ID (14 Digits)"}</span>
+                    <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold">
+                      {isAr ? "فك تشفير ذكي وتدقيق تلقائي" : "Smart Decoding & Auto-Validation"}
+                    </span>
                   </label>
                   <input
                     type="text"
                     value={formData.nationalId}
                     onChange={e => handleNationalIdChange(e.target.value)}
                     className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:border-indigo-500 font-mono tracking-wider text-base"
-                    placeholder="14 Digits (14 رقم)"
+                    placeholder={isAr ? "14 رقم قومي" : "14 Digits"}
                     maxLength={14}
                   />
 
@@ -3900,7 +4116,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                       return (
                         <div className="mt-2 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs flex items-center gap-2">
                           <AlertTriangle size={14} className="shrink-0" />
-                          <span>{decoded.errorMessage || "رقم قومي غير صالح"}</span>
+                          <span>{decoded.errorMessage || (isAr ? "رقم قومي غير صالح" : "Invalid National ID")}</span>
                         </div>
                       );
                     }
@@ -3910,39 +4126,45 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                         <div className="flex items-center justify-between flex-wrap gap-1 border-b border-indigo-200/50 dark:border-indigo-800/40 pb-1.5">
                           <span className="font-black text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5">
                             <CheckCircle size={13} className="text-emerald-500" />
-                            <span>بيانات الرقم القومي (مستخرجة تلقائياً):</span>
+                            <span>{isAr ? "بيانات الرقم القومي (مستخرجة تلقائياً):" : "National ID Decoded Data (Auto):"}</span>
                           </span>
                           <span className={`text-[10px] font-mono px-2 py-0.5 rounded-md font-bold ${
                             decoded.checksumValid
                               ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
                               : "bg-amber-500/15 text-amber-700 dark:text-amber-300"
                           }`}>
-                            {decoded.checksumValid ? "مطابق رياضياً ✓" : "ساري رسمياً"}
+                            {decoded.checksumValid
+                              ? (isAr ? "مطابق رياضياً ✓" : "Checksum Valid ✓")
+                              : (isAr ? "ساري رسمياً" : "Officially Valid")}
                           </span>
                         </div>
 
                         <div className="grid grid-cols-3 gap-1.5 text-[11px]">
-                          <div className="bg-white/80 dark:bg-black/30 p-1.5 rounded-lg border border-slate-200/60 dark:border-white/5 text-right">
-                            <span className="text-slate-400 block text-[10px]">المحافظة:</span>
-                            <strong className="text-slate-800 dark:text-white">📍 {decoded.governorateAr}</strong>
+                          <div className={`bg-white/80 dark:bg-black/30 p-1.5 rounded-lg border border-slate-200/60 dark:border-white/5 ${isAr ? "text-right" : "text-left"}`}>
+                            <span className="text-slate-400 block text-[10px]">{isAr ? "المحافظة:" : "Governorate:"}</span>
+                            <strong className="text-slate-800 dark:text-white">📍 {isAr ? decoded.governorateAr : (decoded.governorateEn || decoded.governorateAr)}</strong>
                           </div>
-                          <div className="bg-white/80 dark:bg-black/30 p-1.5 rounded-lg border border-slate-200/60 dark:border-white/5 text-right">
-                            <span className="text-slate-400 block text-[10px]">النوع والسن:</span>
-                            <strong className="text-slate-800 dark:text-white">{decoded.genderAr} ({decoded.age}س)</strong>
+                          <div className={`bg-white/80 dark:bg-black/30 p-1.5 rounded-lg border border-slate-200/60 dark:border-white/5 ${isAr ? "text-right" : "text-left"}`}>
+                            <span className="text-slate-400 block text-[10px]">{isAr ? "النوع والسن:" : "Gender & Age:"}</span>
+                            <strong className="text-slate-800 dark:text-white">
+                              {isAr
+                                ? `${decoded.genderAr} (${decoded.age}س)`
+                                : `${decoded.gender || decoded.genderAr} (${decoded.age}y)`}
+                            </strong>
                           </div>
-                          <div className="bg-white/80 dark:bg-black/30 p-1.5 rounded-lg border border-slate-200/60 dark:border-white/5 text-right">
-                            <span className="text-slate-400 block text-[10px]">المعاش:</span>
+                          <div className={`bg-white/80 dark:bg-black/30 p-1.5 rounded-lg border border-slate-200/60 dark:border-white/5 ${isAr ? "text-right" : "text-left"}`}>
+                            <span className="text-slate-400 block text-[10px]">{isAr ? "المعاش:" : "Retirement:"}</span>
                             <strong className="text-slate-800 dark:text-white">👴 {decoded.retirementYear}</strong>
                           </div>
                         </div>
 
                         {/* Labor Law & Military Badges */}
-                        <div className="space-y-1 pt-0.5 text-right">
+                        <div className={`space-y-1 pt-0.5 ${isAr ? "text-right" : "text-left"}`}>
                           <div className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border ${decoded.laborBadge}`}>
-                            {decoded.laborStatusAr}
+                            {isAr ? decoded.laborStatusAr : (decoded.laborStatusEn || decoded.laborStatusAr)}
                           </div>
                           <div className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border ${decoded.militaryBadge}`}>
-                            {decoded.militaryStatusAr}
+                            {isAr ? decoded.militaryStatusAr : (decoded.militaryStatusEn || decoded.militaryStatusAr)}
                           </div>
                         </div>
                       </div>
@@ -3950,18 +4172,23 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                   })()}
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Phone</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+                    {isAr ? "رقم الهاتف" : "Phone"}
+                  </label>
                   <input
                     type="text"
                     value={formData.phone}
                     onChange={e => setFormData({ ...formData, phone: e.target.value })}
                     className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:border-indigo-500 font-mono"
+                    placeholder="01xxxxxxxxx"
                   />
                 </div>
 
                 {/* Start Date & Date of Birth */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Start Date (تاريخ استلام العمل)</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+                    {isAr ? "تاريخ استلام العمل (بداية العقد)" : "Start Date (Onboarding)"}
+                  </label>
                   <input
                     type="date"
                     value={formData.startDate}
@@ -3972,11 +4199,11 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">
-                      Date of Birth (تاريخ الميلاد)
+                      {isAr ? "تاريخ الميلاد" : "Date of Birth"}
                     </label>
                     {formData.age ? (
                       <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-800">
-                        {formData.age} سنة (محسوب)
+                        {formData.age} {isAr ? "سنة (محسوب)" : "yrs (calculated)"}
                       </span>
                     ) : null}
                   </div>
@@ -3988,70 +4215,85 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                   />
                   {formData.age ? (
                     <p className="text-[11px] text-slate-400 mt-1 font-medium">
-                      السن المحسوب تلقائياً: <strong className="text-slate-700 dark:text-slate-200">{formData.age} عاماً</strong>
+                      {isAr ? (
+                        <>السن المحسوب تلقائياً: <strong className="text-slate-700 dark:text-slate-200">{formData.age} عاماً</strong></>
+                      ) : (
+                        <>Auto-calculated age: <strong className="text-slate-700 dark:text-slate-200">{formData.age} yrs</strong></>
+                      )}
                     </p>
                   ) : (
                     <p className="text-[11px] text-slate-400 mt-1">
-                      أدخل تاريخ الميلاد أو الرقم القومي لحساب السن تلقائياً
+                      {isAr ? "أدخل تاريخ الميلاد أو الرقم القومي لحساب السن تلقائياً" : "Enter birth date or National ID to calculate age"}
                     </p>
                   )}
                 </div>
 
                 {/* Shift & Fulltime */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Shift Time</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+                    {isAr ? "فترة العمل (الشفت)" : "Shift Time"}
+                  </label>
                   <select
                     value={formData.shiftTime}
                     onChange={e => setFormData({ ...formData, shiftTime: e.target.value })}
                     className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:border-indigo-500"
                   >
-                    <option value="Morning">Morning</option>
-                    <option value="Night">Night</option>
+                    <option value="Morning">{isAr ? "صباحي (Morning)" : "Morning"}</option>
+                    <option value="Night">{isAr ? "مسائي (Night)" : "Night"}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Employment Type</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+                    {isAr ? "نوع التوظيف" : "Employment Type"}
+                  </label>
                   <select
                     value={formData.fulltime ? "Yes" : "No"}
                     onChange={e => setFormData({ ...formData, fulltime: e.target.value === "Yes" })}
                     className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:border-indigo-500"
                   >
-                    <option value="Yes">Full-Time</option>
-                    <option value="No">Part-Time</option>
+                    <option value="Yes">{isAr ? "دوام كامل (Full-Time)" : "Full-Time"}</option>
+                    <option value="No">{isAr ? "دوام جزئي (Part-Time)" : "Part-Time"}</option>
                   </select>
                 </div>
 
                 {/* Gender & Cheque */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Gender</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+                    {isAr ? "النوع" : "Gender"}
+                  </label>
                   <select
                     value={formData.gender}
                     onChange={e => setFormData({ ...formData, gender: e.target.value })}
                     className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:border-indigo-500"
                   >
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
+                    <option value="Male">{isAr ? "ذكر" : "Male"}</option>
+                    <option value="Female">{isAr ? "أنثى" : "Female"}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Cheque Signed #</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+                    {isAr ? "رقم شيك / إيصال الأمانة" : "Cheque Signed #"}
+                  </label>
                   <input
                     type="text"
                     value={formData.chequeSignedNum}
                     onChange={e => setFormData({ ...formData, chequeSignedNum: e.target.value })}
                     className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:border-indigo-500"
-                    placeholder="Optional"
+                    placeholder={isAr ? "اختياري" : "Optional"}
                   />
                 </div>
 
                 {/* Address */}
                 <div className="md:col-span-2">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Address</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+                    {isAr ? "العنوان" : "Address"}
+                  </label>
                   <input
                     type="text"
                     value={formData.address}
                     onChange={e => setFormData({ ...formData, address: e.target.value })}
                     className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:border-indigo-500"
+                    placeholder={isAr ? "العنوان بالتفصيل..." : "Full address..."}
                   />
                 </div>
 
@@ -4059,15 +4301,17 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                 <div className="md:col-span-2 pt-4 border-t border-border">
                   <h4 className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-2 mb-4">
                     <HeartPulse size={16} className="text-rose-500" />
-                    <span>الشهادات الصحية والأوراق الرسمية (Health Certificate & Compliance)</span>
+                    <span>{isAr ? "الشهادات الصحية والأوراق الرسمية والامتثال" : "Retail Compliance & Official Documents"}</span>
                   </h4>
                 </div>
 
                 {/* Health Cert Expiry */}
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center justify-between">
-                    <span>Health Cert Expiry (انتهاء الشهادة الصحية)</span>
-                    <span className="text-[10px] text-rose-500 font-bold">إلزامية لمحلات الأغذية</span>
+                    <span>{isAr ? "تاريخ انتهاء الشهادة الصحية" : "Health Cert Expiry"}</span>
+                    <span className="text-[10px] text-rose-500 font-bold">
+                      {isAr ? "إلزامية لمحلات الأغذية" : "Mandatory for Food Retail"}
+                    </span>
                   </label>
                   <input
                     type="date"
@@ -4080,7 +4324,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                 {/* National ID Expiry */}
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
-                    National ID Expiry (انتهاء بطاقة الرقم القومي)
+                    {isAr ? "تاريخ انتهاء بطاقة الرقم القومي" : "National ID Expiry"}
                   </label>
                   <input
                     type="date"
@@ -4093,8 +4337,8 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                 {/* Criminal Record Date */}
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center justify-between">
-                    <span>Criminal Record Date (تاريخ الفيش والتشبيه)</span>
-                    <span className="text-[10px] text-slate-400">صلاحية 3 أشهر</span>
+                    <span>{isAr ? "تاريخ الفيش والتشبيه" : "Criminal Record Date"}</span>
+                    <span className="text-[10px] text-slate-400">{isAr ? "صلاحية 3 أشهر" : "Valid for 3 months"}</span>
                   </label>
                   <input
                     type="date"
@@ -4107,7 +4351,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                 {/* Military Status */}
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
-                    Military Status (الموقف من التجنيد)
+                    {isAr ? "الموقف من التجنيد" : "Military Status"}
                   </label>
                   <select
                     value={formData.militaryStatus || MILITARY_STATUS_OPTIONS[0]}
@@ -4115,7 +4359,9 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                     className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:border-indigo-500 font-medium text-sm"
                   >
                     {MILITARY_STATUS_OPTIONS.map(opt => (
-                      <option key={opt} value={opt}>{opt}</option>
+                      <option key={opt} value={opt}>
+                        {isAr ? opt : (MILITARY_STATUS_EN_MAP[opt] || opt)}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -4123,8 +4369,10 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                 {/* Annual Contract End Date */}
                 <div className="md:col-span-2">
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center justify-between">
-                    <span>Contract End Date (تاريخ انتهاء العقد السنوي)</span>
-                    <span className="text-[10px] text-indigo-500 font-bold">تنبيه قبل 30 يوماً من التجديد</span>
+                    <span>{isAr ? "تاريخ انتهاء العقد السنوي" : "Contract End Date"}</span>
+                    <span className="text-[10px] text-indigo-500 font-bold">
+                      {isAr ? "تنبيه قبل 30 يوماً من التجديد" : "Alert 30 days before renewal"}
+                    </span>
                   </label>
                   <input
                     type="date"
@@ -4138,20 +4386,20 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                 <div className="md:col-span-2 pt-4 border-t border-border">
                   <h4 className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-2 mb-4">
                     <Landmark size={16} className="text-indigo-500" />
-                    <span>البيانات البنكية وتحويلات الراتب (Bank & Digital Wallets)</span>
+                    <span>{isAr ? "البيانات البنكية وتحويلات الراتب والمحافظ" : "Banking & Salary Transfers"}</span>
                   </h4>
                 </div>
 
                 {/* Bank Name */}
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
-                    Bank Name (اسم البنك)
+                    {isAr ? "اسم البنك" : "Bank Name"}
                   </label>
                   <input
                     type="text"
                     value={formData.bankName || ""}
                     onChange={e => setFormData({ ...formData, bankName: e.target.value })}
-                    placeholder="e.g. البنك الأهلي المصري / CIB"
+                    placeholder={isAr ? "مثال: البنك الأهلي المصري / بنك مصر / CIB" : "e.g. National Bank of Egypt / CIB"}
                     className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:border-indigo-500"
                   />
                 </div>
@@ -4159,7 +4407,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                 {/* Bank Account / IBAN */}
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
-                    Account # / IBAN (رقم الحساب / الآيبان)
+                    {isAr ? "رقم الحساب / الآيبان (IBAN)" : "Account # / IBAN"}
                   </label>
                   <input
                     type="text"
@@ -4173,7 +4421,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                 {/* InstaPay / Digital Wallet */}
                 <div className="md:col-span-2">
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
-                    InstaPay / Mobile Wallet (عنوان انستاباي أو فودافون كاش)
+                    {isAr ? "عنوان انستاباي أو محفظة كاش" : "InstaPay / Mobile Wallet"}
                   </label>
                   <input
                     type="text"
@@ -4188,26 +4436,26 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                 <div className="md:col-span-2 pt-4 border-t border-border">
                   <h4 className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-2 mb-4">
                     <Users size={16} className="text-rose-500" />
-                    <span>جهة الاتصال للطوارئ (Emergency Contact)</span>
+                    <span>{isAr ? "جهة الاتصال للطوارئ" : "Emergency Contact"}</span>
                   </h4>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
-                    Contact Name (اسم شخص للطوارئ)
+                    {isAr ? "اسم شخص للطوارئ" : "Contact Name"}
                   </label>
                   <input
                     type="text"
                     value={formData.emergencyContactName || ""}
                     onChange={e => setFormData({ ...formData, emergencyContactName: e.target.value })}
-                    placeholder="الاسم صلة قرابة أولى"
+                    placeholder={isAr ? "الاسم صلة قرابة أولى" : "Full name of contact"}
                     className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:border-indigo-500"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
-                    Emergency Phone (هاتف الطوارئ)
+                    {isAr ? "هاتف الطوارئ" : "Emergency Phone"}
                   </label>
                   <input
                     type="text"
@@ -4220,13 +4468,13 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
 
                 <div className="md:col-span-2">
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
-                    Relationship (صلة القرابة)
+                    {isAr ? "صلة القرابة" : "Relationship"}
                   </label>
                   <input
                     type="text"
                     value={formData.emergencyContactRelation || ""}
                     onChange={e => setFormData({ ...formData, emergencyContactRelation: e.target.value })}
-                    placeholder="مثال: الوالد / الزوجة / الأخ"
+                    placeholder={isAr ? "مثال: الوالد / الزوجة / الأخ" : "e.g. Father, Spouse, Brother"}
                     className="w-full p-3 rounded-xl border border-border bg-background outline-none focus:border-indigo-500"
                   />
                 </div>
@@ -4234,14 +4482,20 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                 {/* Employee Portrait Photo (4x6) */}
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center justify-between">
-                    <span>Personal Photo 4×6 (صورة العامل)</span>
-                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-normal">⚡ Instant Compressed</span>
+                    <span>{isAr ? "الصورة الشخصية 4×6" : "Personal Photo 4×6"}</span>
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-normal">
+                      {isAr ? "⚡ ضغط فوري" : "⚡ Instant Compressed"}
+                    </span>
                   </label>
                   <div className="flex items-center gap-3">
                     <label className="flex-1 cursor-pointer flex items-center justify-center gap-2 p-3.5 border-2 border-dashed border-indigo-200 dark:border-indigo-900/50 bg-indigo-50/40 dark:bg-indigo-950/20 rounded-xl hover:bg-indigo-100/50 transition active:scale-[0.99]">
                       {isUploadingPhoto ? <Loader2 className="animate-spin text-indigo-600" size={18} /> : <Camera size={18} className="text-indigo-600 dark:text-indigo-400" />}
                       <span className="text-xs font-bold text-indigo-950 dark:text-indigo-200 truncate">
-                        {isUploadingPhoto ? "Processing..." : formData.photoUrl ? "Change Photo 4×6" : "Upload / Capture 4×6"}
+                        {isUploadingPhoto
+                          ? (isAr ? "جاري المعالجة..." : "Processing...")
+                          : formData.photoUrl
+                            ? (isAr ? "تغيير الصورة الشخصية" : "Change Photo 4×6")
+                            : (isAr ? "رفع / التقاط صورة 4×6" : "Upload / Capture 4×6")}
                       </span>
                       <input type="file" accept="image/*" capture="user" className="hidden" onChange={handlePhotoUpload} disabled={isUploadingPhoto} />
                     </label>
@@ -4252,7 +4506,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                           type="button"
                           onClick={() => setFormData(prev => ({ ...prev, photoUrl: "" }))}
                           className="absolute inset-0 bg-black/60 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
-                          title="Remove Photo"
+                          title={isAr ? "حذف الصورة" : "Remove Photo"}
                         >
                           <X size={14} />
                         </button>
@@ -4264,14 +4518,20 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                 {/* National ID Photo */}
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center justify-between">
-                    <span>National ID Card (صورة البطاقة)</span>
-                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-normal">⚡ Instant Compressed</span>
+                    <span>{isAr ? "صورة بطاقة الرقم القومي" : "National ID Card"}</span>
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-normal">
+                      {isAr ? "⚡ ضغط فوري" : "⚡ Instant Compressed"}
+                    </span>
                   </label>
                   <div className="flex items-center gap-3">
                     <label className="flex-1 cursor-pointer flex items-center justify-center gap-2 p-3.5 border-2 border-dashed border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-black/20 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 transition active:scale-[0.99]">
                       {isUploadingID ? <Loader2 className="animate-spin text-indigo-500" size={18} /> : <Upload size={18} className="text-slate-600 dark:text-slate-300" />}
                       <span className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">
-                        {isUploadingID ? "Processing..." : formData.nationalIdPhotoUrl ? "Change Scanned ID" : "Upload / Scan ID"}
+                        {isUploadingID
+                          ? (isAr ? "جاري المعالجة..." : "Processing...")
+                          : formData.nationalIdPhotoUrl
+                            ? (isAr ? "تغيير صورة البطاقة" : "Change Scanned ID")
+                            : (isAr ? "رفع / مسح البطاقة" : "Upload / Scan ID")}
                       </span>
                       <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleIDUpload} disabled={isUploadingID} />
                     </label>
@@ -4282,7 +4542,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                           type="button"
                           onClick={() => setFormData(prev => ({ ...prev, nationalIdPhotoUrl: "" }))}
                           className="absolute inset-0 bg-black/60 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
-                          title="Remove ID Photo"
+                          title={isAr ? "حذف صورة البطاقة" : "Remove ID Photo"}
                         >
                           <X size={14} />
                         </button>
@@ -4299,15 +4559,15 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                   onClick={() => setShowAddModal(false)}
                   className="flex-1 py-3.5 border border-border rounded-xl font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
                 >
-                  Cancel
+                  {isAr ? "إلغاء" : "Cancel"}
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 py-3.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 transition flex items-center justify-center gap-2"
+                  className="flex-1 py-3.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 transition flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {isSubmitting && <Loader2 size={18} className="animate-spin" />}
-                  Save Employee
+                  <span>{isAr ? "حفظ بيانات الموظف" : "Save Employee"}</span>
                 </button>
               </div>
             </form>
@@ -4326,10 +4586,12 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                 </div>
                 <div>
                   <h3 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-                    إصدار إقرار مخالصة وإخلاء طرف قانوني
+                    {isAr ? "إصدار إقرار مخالصة وإخلاء طرف قانوني" : "Issue Legal Discharge & Exit Clearance"}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Official Egyptian Labor Law compliant Discharge, Liabilities Release & Job Clearance
+                    {isAr
+                      ? "إقرار إبراء ذمة واستلام المستحقات والتصفية المالية وفقاً لأحكام قانون العمل المصري"
+                      : "Official Egyptian Labor Law compliant Discharge, Liabilities Release & Job Clearance"}
                   </p>
                 </div>
               </div>
@@ -4346,11 +4608,13 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
               <div>
                 <p className="font-bold text-slate-800 dark:text-white text-base">{terminationEmp.name}</p>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-mono">
-                  ID: {terminationEmp.nationalId || "No National ID"} • {terminationEmp.position} • Branch: {terminationEmp.storeId || currentBranch}
+                  {isAr ? "الرقم القومي: " : "ID: "}
+                  {terminationEmp.nationalId || (isAr ? "غير مسجل" : "No National ID")} • {terminationEmp.position} • {isAr ? "الفرع: " : "Branch: "}
+                  {terminationEmp.storeId || currentBranch}
                 </p>
               </div>
               <span className="px-3 py-1 bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-400 font-bold text-xs rounded-lg uppercase">
-                Exit Clearance
+                {isAr ? "إخلاء طرف" : "Exit Clearance"}
               </span>
             </div>
 
@@ -4358,7 +4622,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">
-                    تاريخ ترك العمل (Termination Date)
+                    {isAr ? "تاريخ ترك العمل" : "Termination / Exit Date"}
                   </label>
                   <input
                     type="date"
@@ -4370,18 +4634,28 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
 
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">
-                    سبب انتهاء العمل (Exit Reason)
+                    {isAr ? "سبب انتهاء العمل" : "Exit Reason"}
                   </label>
                   <select
                     value={terminationData.reason}
                     onChange={e => setTerminationData({ ...terminationData, reason: e.target.value })}
                     className="w-full p-3 bg-slate-100 dark:bg-black/20 border border-transparent focus:border-rose-500 rounded-xl font-bold text-sm outline-none cursor-pointer"
                   >
-                    <option value="استقالة اختيارية برغبة العامل الصريحة">استقالة اختيارية برغبة العامل (Resignation)</option>
-                    <option value="انتهاء مدة عقد العمل المحدد دون تجديد">انتهاء مدة العقد المحدد (Contract Expiry)</option>
-                    <option value="إنهاء علاقة العمل بالتراضي والاتفاق المشترك">إنهاء بالتراضي والاتفاق (Mutual Agreement)</option>
-                    <option value="ترك العمل بناءً على طلبه لظروف خاصة">ترك العمل لظروف خاصة (Personal Reasons)</option>
-                    <option value="عدم اجتياز فترة الاختبار بنجاح">فسخ خلال فترة الاختبار (Probation Period)</option>
+                    <option value="استقالة اختيارية برغبة العامل الصريحة">
+                      {isAr ? "استقالة اختيارية برغبة العامل الصريحة" : "Voluntary Resignation (استقالة اختيارية)"}
+                    </option>
+                    <option value="انتهاء مدة عقد العمل المحدد دون تجديد">
+                      {isAr ? "انتهاء مدة عقد العمل المحدد دون تجديد" : "Fixed-Term Contract Expiration (انتهاء مدة العقد)"}
+                    </option>
+                    <option value="إنهاء علاقة العمل بالتراضي والاتفاق المشترك">
+                      {isAr ? "إنهاء علاقة العمل بالتراضي والاتفاق المشترك" : "Mutual Consent Termination (إنهاء بالتراضي)"}
+                    </option>
+                    <option value="ترك العمل بناءً على طلبه لظروف خاصة">
+                      {isAr ? "ترك العمل بناءً على طلبه لظروف خاصة" : "Personal Circumstances (ترك العمل لظروف خاصة)"}
+                    </option>
+                    <option value="عدم اجتياز فترة الاختبار بنجاح">
+                      {isAr ? "عدم اجتياز فترة الاختبار بنجاح" : "Probation Period Non-Pass (فترة الاختبار)"}
+                    </option>
                   </select>
                 </div>
               </div>
@@ -4389,7 +4663,7 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">
-                    صافي مبلغ التصفية المالية المستلم (EGP)
+                    {isAr ? "صافي مبلغ التصفية المالية المستلم (ج.م)" : "Net Financial Settlement Amount (EGP)"}
                   </label>
                   <input
                     type="number"
@@ -4400,14 +4674,14 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                   />
                   <p className="text-[11px] text-slate-400 mt-1">
                     {terminationData.settlementAmount > 0
-                      ? numberToArabicWords(terminationData.settlementAmount)
-                      : "تم استلام كافة المستحقات بالكامل حتى تاريخه"}
+                      ? (isAr ? numberToArabicWords(terminationData.settlementAmount) : `${terminationData.settlementAmount.toLocaleString()} EGP`)
+                      : (isAr ? "تم استلام كافة المستحقات بالكامل حتى تاريخه" : "All entitlements settled in full to date")}
                   </p>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">
-                    مقابل رصيد الإجازات المستحقة (EGP)
+                    {isAr ? "مقابل رصيد الإجازات المستحقة (ج.م)" : "Accrued Leave Compensation (EGP)"}
                   </label>
                   <input
                     type="number"
@@ -4418,8 +4692,8 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                   />
                   <p className="text-[11px] text-slate-400 mt-1">
                     {terminationData.leaveCompensation > 0
-                      ? numberToArabicWords(terminationData.leaveCompensation)
-                      : "تم استنفاد الإجازات بالكامل أو متضمنة بالتصفية"}
+                      ? (isAr ? numberToArabicWords(terminationData.leaveCompensation) : `${terminationData.leaveCompensation.toLocaleString()} EGP`)
+                      : (isAr ? "تم استنفاد الإجازات بالكامل أو متضمنة بالتصفية" : "All leaves consumed or included in settlement")}
                   </p>
                 </div>
               </div>
@@ -4427,7 +4701,8 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
               {/* Custody & Clearances Verification Box */}
               <div className="p-4 rounded-2xl border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50/50 dark:bg-emerald-950/20 space-y-2.5">
                 <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-bold text-xs uppercase tracking-wider">
-                  <CheckCircle size={16} /> شروط المخالصة وإبراء الذمة القانونية (Egyptian Labor Law)
+                  <CheckCircle size={16} />
+                  <span>{isAr ? "شروط المخالصة وإبراء الذمة القانونية (قانون العمل المصري)" : "Discharge & Legal Clearance Terms (Egyptian Labor Law)"}</span>
                 </div>
                 <div className="space-y-2 text-xs text-slate-700 dark:text-slate-300">
                   <label className="flex items-center gap-2.5 cursor-pointer font-medium">
@@ -4437,7 +4712,11 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                       onChange={e => setTerminationData({ ...terminationData, paidInFull: e.target.checked })}
                       className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
                     />
-                    <span>إقرار العامل باستلام كامل الأجور والبدلات والإضافي ومكافأة نهاية الخدمة (لا يطلب الفرع بأي شيء)</span>
+                    <span>
+                      {isAr
+                        ? "إقرار العامل باستلام كامل الأجور والبدلات والإضافي ومكافأة نهاية الخدمة (لا يطلب المنشأة بأي شيء)"
+                        : "Employee acknowledges full receipt of wages, allowances, overtime, and benefits (no outstanding claims)"}
+                    </span>
                   </label>
                   <label className="flex items-center gap-2.5 cursor-pointer font-medium">
                     <input
@@ -4446,7 +4725,11 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                       onChange={e => setTerminationData({ ...terminationData, custodyCleared: e.target.checked })}
                       className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
                     />
-                    <span>تسليم كافة العهد: عهدة نقدية، مفاتيح الفرع والخزينة، الزي الرسمي، وبطاقات التشغيل (الفرع لا يطلبه بأي شيء)</span>
+                    <span>
+                      {isAr
+                        ? "تسليم كافة العهد: عهدة نقدية، مفاتيح الفرع والخزينة، الزي الرسمي، وبطاقات التشغيل (المنشأة بريئة الذمة)"
+                        : "Full handover of company custody: petty cash, branch keys, uniforms, and access cards (fully cleared)"}
+                    </span>
                   </label>
                 </div>
               </div>
@@ -4458,15 +4741,15 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                 onClick={() => setShowTerminationModal(false)}
                 className="flex-1 py-3.5 border border-border rounded-xl font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition text-sm"
               >
-                إلغاء (Cancel)
+                {isAr ? "إلغاء" : "Cancel"}
               </button>
               <button
                 type="button"
                 onClick={() => handlePrintTermination(terminationEmp)}
-                className="flex-1 py-3.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold transition flex items-center justify-center gap-2 text-sm shadow-lg shadow-rose-600/20"
+                className="flex-1 py-3.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold transition flex items-center justify-center gap-2 text-sm shadow-lg shadow-rose-600/20 cursor-pointer"
               >
                 <Printer size={18} />
-                طباعة وثيقة المخالصة الرسمية (Print Clearance)
+                <span>{isAr ? "طباعة وثيقة المخالصة الرسمية" : "Print Official Clearance"}</span>
               </button>
             </div>
           </div>
