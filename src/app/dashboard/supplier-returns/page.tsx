@@ -130,11 +130,11 @@ export default function SupplierReturnsDashboard() {
   }, [currentBarcode]);
   
   const handleAddDirectItem = () => {
-    if (!currentBarcode || !currentName || currentQty <= 0) return;
+    if (!currentBarcode && !currentName) return; // need at least one field
     setDirectItems([...directItems, {
-      barcode: currentBarcode,
-      itemName: currentName,
-      quantity: currentQty,
+      barcode: currentBarcode || "—",
+      itemName: currentName || "—",
+      quantity: currentQty > 0 ? currentQty : 1,
       id: Date.now().toString()
     }]);
     setCurrentBarcode("");
@@ -151,6 +151,7 @@ export default function SupplierReturnsDashboard() {
       alert("Please fill in all Agent Information fields.");
       return;
     }
+    // Items are OPTIONAL — if none added, receipt will note it matches transfer doc
 
     try {
       setProcessing("direct_return");
@@ -800,7 +801,7 @@ export default function SupplierReturnsDashboard() {
                     <div className="flex items-end">
                       <button 
                         onClick={handleAddDirectItem}
-                        disabled={!currentBarcode || !currentName || currentQty <= 0}
+                        disabled={!currentBarcode && !currentName}
                         className="h-[38px] px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold disabled:opacity-50"
                       >
                         Add
@@ -846,8 +847,12 @@ export default function SupplierReturnsDashboard() {
                       </table>
                     </div>
                   ) : (
-                    <div className="p-8 text-center border-2 border-dashed border-border rounded-xl text-muted-foreground">
-                      {lang === "ar" ? "لم تتم إضافة أصناف بعد. قم بمسح باركود لإضافة أصناف لهذا المرتجع." : "No items added yet. Scan a barcode above to add items to this return."}
+                    <div className="p-8 text-center border-2 border-dashed border-blue-200 dark:border-blue-900/40 rounded-xl">
+                      <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-900/30 mb-2">
+                        <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                      </div>
+                      <p className="text-sm font-bold text-muted-foreground">{lang === "ar" ? "لا توجد أصناف — سيُشار في الإيصال أن البضاعة مطابقة لمستند التحويل" : "No items added — receipt will note items match the Transfer Out document"}</p>
+                      <p className="text-xs text-muted-foreground mt-1 opacity-70">{lang === "ar" ? "يمكنك الاستمرار بدون إضافة أصناف" : "You can proceed without adding items"}</p>
                     </div>
                   )}
                 </div>
@@ -1319,49 +1324,67 @@ export default function SupplierReturnsDashboard() {
 
                   {/* Items Block */}
                   <div className="mb-4">
-                    <h3 className="text-sm font-black mb-2 uppercase tracking-tight text-gray-800">تفاصيل الأصناف المرتجعة | Returned Items</h3>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '6px' }}>
+                      <h3 style={{ fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '1px', color: '#1e293b', margin: 0 }}>تفاصيل الأصناف المرتجعة | Returned Items</h3>
+                      {printData.transferOutNumber && (
+                        <span style={{ fontSize: '9px', fontWeight: '800', color: '#64748b', backgroundColor: '#f1f5f9', padding: '2px 8px', borderRadius: '4px', border: '1px solid #e2e8f0', letterSpacing: '0.5px' }}>
+                          REF: {printData.transferOutNumber}
+                        </span>
+                      )}
+                    </div>
                     
                     {printData.items.length === 1 && printData.items[0].barcode === "N/A" ? (
-                      <div className="border-2 border-gray-200 border-dashed rounded-xl p-4 text-center bg-gray-50 my-2">
-                        <div className="mx-auto bg-green-100 w-10 h-10 rounded-full flex items-center justify-center mb-2">
-                          <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                      /* No items case — matches transfer doc */
+                      <div style={{ border: '1.5px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
+                        <div style={{ backgroundColor: '#f8fafc', borderBottom: '1.5px solid #e2e8f0', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '9px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>#</span>
+                          <span style={{ fontSize: '9px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', flex: 1 }}>Barcode | باركود</span>
+                          <span style={{ fontSize: '9px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', flex: 3 }}>Item Description | وصف الصنف</span>
+                          <span style={{ fontSize: '9px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', width: '60px', textAlign: 'center' }}>Qty</span>
                         </div>
-                        <p className="text-sm font-black text-gray-800 mb-1">مطابق لمستند التحويل من النظام | MATCHES SYSTEM TRANSFER</p>
-                        <p className="text-[10px] font-bold text-gray-500">لا يوجد إدخال يدوي للعناصر - تم استلام البضاعة كما هي في مستند التحويل المرفق</p>
-                        <p className="text-[10px] font-bold text-gray-500 mt-1">No items manually appended - goods received exactly as per system transfer document.</p>
+                        <div style={{ padding: '16px 12px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', backgroundColor: '#ffffff' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                            <div style={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <svg style={{ width: '12px', height: '12px' }} fill="none" stroke="#16a34a" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                            </div>
+                            <p style={{ fontSize: '10px', fontWeight: '900', color: '#1e293b', margin: 0 }}>مطابق لمستند التحويل | MATCHES TRANSFER DOCUMENT</p>
+                          </div>
+                          <p style={{ fontSize: '8.5px', color: '#64748b', fontWeight: '600', margin: 0, textAlign: 'center' }}>البضاعة تسلم كما هي موضحة في وثيقة نقل البضاعة / Goods delivered as listed in the Transfer Out document.</p>
+                          {printData.transferOutNumber && (
+                            <p style={{ fontSize: '8.5px', color: '#3b82f6', fontWeight: '700', marginTop: '4px' }}>Transfer Ref: {printData.transferOutNumber}</p>
+                          )}
+                        </div>
+                        <div style={{ backgroundColor: '#f8fafc', borderTop: '1.5px solid #e2e8f0', padding: '4px 12px', display: 'flex', justifyContent: 'flex-end', gap: '16px' }}>
+                          <span style={{ fontSize: '9px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase' }}>Total Units | إجمالي الوحدات</span>
+                          <span style={{ fontSize: '9px', fontWeight: '900', color: '#1e293b', minWidth: '24px', textAlign: 'center' }}>—</span>
+                        </div>
                       </div>
                     ) : (
-                      <div className="border-2 border-black rounded-xl overflow-hidden">
-                        <table className="w-full text-left border-collapse">
-                          <thead className="bg-gray-100">
-                            <tr className="border-b-2 border-black">
-                              <th className="py-2 px-3 font-black text-[10px] text-gray-500 uppercase tracking-wider w-12 text-center border-r-2 border-black">م</th>
-                              <th className="py-2 px-3 font-black text-[10px] text-gray-500 uppercase tracking-wider w-40 border-r-2 border-black">Barcode | باركود</th>
-                              <th className="py-2 px-3 font-black text-[10px] text-gray-500 uppercase tracking-wider border-r-2 border-black">Item | الصنف</th>
-                              <th className="py-2 px-3 font-black text-[10px] text-gray-500 uppercase tracking-wider w-20 text-center">Qty | كمية</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y border-black">
-                            {printData.items.map((it: any, i: number) => (
-                              <tr key={it.id || i}>
-                                <td className="py-1 px-3 font-bold text-gray-500 text-center border-r-2 border-black text-[10px]">{i + 1}</td>
-                                <td className="py-1 px-3 font-mono font-bold text-[10px] text-gray-800 border-r-2 border-black tracking-wider">{it.barcode}</td>
-                                <td className="py-1 px-3 font-black text-gray-900 border-r-2 border-black text-[10px]">{it.itemName}</td>
-                                <td className="py-1 px-3 font-black text-gray-900 text-center text-sm">{it.quantity}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                          <tfoot className="bg-gray-100 border-t-2 border-black">
-                            <tr>
-                              <td colSpan={3} className="py-2 px-4 text-right font-black text-gray-600 uppercase tracking-wider border-r-2 border-black text-[10px]">
-                                Total Units | إجمالي الوحدات
-                              </td>
-                              <td className="py-2 px-4 text-center font-black text-lg text-gray-900">
-                                {printData.items.reduce((sum: number, it: any) => sum + Number(it.quantity || 0), 0)}
-                              </td>
-                            </tr>
-                          </tfoot>
-                        </table>
+                      /* Items table — Transfer Out style */
+                      <div style={{ border: '2px solid #0f172a', borderRadius: '10px', overflow: 'hidden' }}>
+                        {/* Header */}
+                        <div style={{ backgroundColor: '#0f172a', padding: '6px 0', display: 'grid', gridTemplateColumns: '32px 130px 1fr 60px', gap: 0 }}>
+                          <span style={{ fontSize: '8px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', textAlign: 'center', padding: '0 6px', borderRight: '1px solid #334155' }}>#</span>
+                          <span style={{ fontSize: '8px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', padding: '0 8px', borderRight: '1px solid #334155' }}>Barcode | باركود</span>
+                          <span style={{ fontSize: '8px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', padding: '0 8px', borderRight: '1px solid #334155' }}>Item Description | وصف الصنف</span>
+                          <span style={{ fontSize: '8px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', textAlign: 'center', padding: '0 6px' }}>Qty</span>
+                        </div>
+                        {/* Rows */}
+                        {printData.items.map((it: any, i: number) => (
+                          <div key={it.id || i} style={{ display: 'grid', gridTemplateColumns: '32px 130px 1fr 60px', borderTop: '1px solid #e2e8f0', backgroundColor: i % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
+                            <span style={{ fontSize: '9px', fontWeight: '800', color: '#94a3b8', textAlign: 'center', padding: '5px 6px', borderRight: '1px solid #e2e8f0' }}>{i + 1}</span>
+                            <span style={{ fontSize: '9px', fontWeight: '700', color: '#334155', padding: '5px 8px', fontFamily: 'monospace', letterSpacing: '0.5px', borderRight: '1px solid #e2e8f0' }}>{it.barcode}</span>
+                            <span style={{ fontSize: '9px', fontWeight: '800', color: '#0f172a', padding: '5px 8px', borderRight: '1px solid #e2e8f0' }}>{it.itemName}</span>
+                            <span style={{ fontSize: '11px', fontWeight: '900', color: '#0f172a', textAlign: 'center', padding: '5px 6px' }}>{it.quantity}</span>
+                          </div>
+                        ))}
+                        {/* Footer */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '32px 130px 1fr 60px', borderTop: '2px solid #0f172a', backgroundColor: '#f1f5f9' }}>
+                          <span style={{ gridColumn: '1 / 4', fontSize: '9px', fontWeight: '900', color: '#475569', textTransform: 'uppercase', letterSpacing: '1px', padding: '6px 12px', textAlign: 'right', borderRight: '1px solid #e2e8f0' }}>Total Units | إجمالي الوحدات</span>
+                          <span style={{ fontSize: '14px', fontWeight: '900', color: '#0f172a', textAlign: 'center', padding: '4px 6px' }}>
+                            {printData.items.reduce((sum: number, it: any) => sum + Number(it.quantity || 0), 0)}
+                          </span>
+                        </div>
                       </div>
                     )}
                   </div>
