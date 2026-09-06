@@ -509,7 +509,14 @@ export default function AdminPayrollPage() {
       adjSnap.forEach(a => {
         const data = a.data();
         if (data.type === "deduction") totalDeductions += (Number(data.amount) || 0);
-        if (data.type === "loan") totalLoans += (Number(data.amount) || 0);
+        if (data.type === "loan") {
+          // If this adjustment is a mirror of a loan doc already processed in loans above, do not add it again
+          if ((data.loanDocId && appliedLoanIds.includes(data.loanDocId)) || appliedLoanIds.includes(a.id)) {
+            appliedAdjustmentIds.push(a.id);
+            return;
+          }
+          totalLoans += (Number(data.amount) || 0);
+        }
         appliedAdjustmentIds.push(a.id);
       });
 

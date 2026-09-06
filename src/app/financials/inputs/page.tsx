@@ -321,18 +321,33 @@ export default function FinancialInputsOverview() {
           }
         });
 
-        // 6. Adjustments (Loans)
+        // 6. Loans & Advances (Deduplicated across loans and adjustments)
+        const seenLoanIds = new Set<string>();
+        const seenLoanComposite = new Set<string>();
+
+        loansRaw.forEach((ln: any) => {
+          if (!matchesBranch(ln, currentBranch)) return;
+          const amt = Number(ln.approved || ln.amount || 0);
+          const d = normalizeDate(ln.date || ln.createdAt);
+          seenLoanIds.add(ln.id);
+          if (ln.employeeId) {
+            seenLoanComposite.add(`${ln.employeeId}_${amt}`);
+            if (d) seenLoanComposite.add(`${ln.employeeId}_${d}_${amt}`);
+          }
+          totalLoans += amt;
+        });
+
         adjustmentsRaw.forEach((adj: any) => {
           if (adj.type === "loan") {
             if (!matchesBranch(adj, currentBranch)) return;
-            totalLoans += Number(adj.amount || 0);
+            if (adj.loanDocId && seenLoanIds.has(adj.loanDocId)) return;
+            if (seenLoanIds.has(adj.id)) return;
+            const amt = Number(adj.amount || 0);
+            const d = normalizeDate(adj.date || adj.createdAt);
+            if (adj.employeeId && (seenLoanComposite.has(`${adj.employeeId}_${amt}`) || (d && seenLoanComposite.has(`${adj.employeeId}_${d}_${amt}`)))) return;
+            seenLoanIds.add(adj.id);
+            totalLoans += amt;
           }
-        });
-
-        // 7. Legacy Loans
-        loansRaw.forEach((ln: any) => {
-          if (!matchesBranch(ln, currentBranch)) return;
-          totalLoans += Number(ln.approved || ln.amount || 0);
         });
 
         // Reconciled Balances identical to Safe Report closing balances

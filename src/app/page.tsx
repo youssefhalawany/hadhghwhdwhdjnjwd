@@ -53,7 +53,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { collection, query, where, onSnapshot, doc, getDoc, limit, deleteDoc } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, getDoc, getDocs, limit, deleteDoc } from "firebase/firestore";
 
 interface ToolItem {
   id: string;
@@ -229,6 +229,113 @@ export default function VIPBentoEnterprisePortal() {
       }
     };
     updateLocalBalances();
+
+    // 0.1 Live Firestore calculation for Safe & Bank to ensure absolute accuracy and purge stale caches
+    const syncLiveBalances = async () => {
+      try {
+        const safeGet = async (col: string, l = 300) => {
+          try {
+            const snap = await getDocs(query(collection(db, col), limit(l)));
+            return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          } catch {
+            return [];
+          }
+        };
+
+        const [sales, cashPay, dep, payrolls, loans, adjustments] = await Promise.all([
+          safeGet("sales", 350),
+          safeGet("cash_payments", 350),
+          safeGet("deposits", 200),
+          safeGet("payroll_lines", 200),
+          safeGet("loans", 200),
+          safeGet("adjustments", 200)
+        ]);
+
+        let totalSalesCash = 0, totalOverAmount = 0, totalShortAmount = 0, totalVisaSales = 0;
+        sales.forEach((s: any) => {
+          if (!matchesBranch(s, currentBranch)) return;
+          totalSalesCash += Number(s.cash || 0);
+          totalVisaSales += Number(s.visa || 0);
+          const os = Number(s.overShort || 0);
+          if (os > 0) totalOverAmount += os;
+          else if (os < 0) totalShortAmount += Math.abs(os);
+        });
+
+        let totalCashPayments = 0, totalCashTax = 0, totalBankPayments = 0, totalBankTax = 0;
+        cashPay.forEach((p: any) => {
+          if (!matchesBranch(p, currentBranch)) return;
+          const m = (p.method || "cash").toLowerCase();
+          const amt = Number(p.amount || p.total || 0);
+          const tax = Number(p.tax || 0);
+          if (m === "cash") {
+            totalCashPayments += amt;
+            totalCashTax += tax;
+          } else if (["visa", "bank_transfer", "bank"].includes(m)) {
+            totalBankPayments += amt;
+            totalBankTax += tax;
+          }
+        });
+
+        let depToSafe = 0, depFromSafe = 0, depToBank = 0, depFromBank = 0;
+        dep.forEach((d: any) => {
+          if (!matchesBranch(d, currentBranch)) return;
+          const amt = Number(d.amount || 0);
+          if (d.to === "safe") depToSafe += amt;
+          if (d.from === "safe") depFromSafe += amt;
+          if (d.to === "bank") depToBank += amt;
+          if (d.from === "bank") depFromBank += amt;
+        });
+
+        let totalPay = 0, totalBankPay = 0;
+        payrolls.forEach((pr: any) => {
+          if (!matchesBranch(pr, currentBranch)) return;
+          const m = (pr.paymentMethod || pr.method || "cash").toLowerCase();
+          const amt = Number(pr.netPay || pr.amount || 0);
+          if (m === "cash") totalPay += amt;
+          else totalBankPay += amt;
+        });
+
+        let totalLoans = 0;
+        const seenLoanIds = new Set<string>();
+        const seenLoanComposite = new Set<string>();
+
+        loans.forEach((ln: any) => {
+          if (!matchesBranch(ln, currentBranch)) return;
+          const amt = Number(ln.approved || ln.amount || 0);
+          seenLoanIds.add(ln.id);
+          if (ln.employeeId) {
+            seenLoanComposite.add(`${ln.employeeId}_${amt}`);
+          }
+          totalLoans += amt;
+        });
+
+        adjustments.forEach((adj: any) => {
+          if (adj.type === "loan") {
+            if (!matchesBranch(adj, currentBranch)) return;
+            if (adj.loanDocId && seenLoanIds.has(adj.loanDocId)) return;
+            if (seenLoanIds.has(adj.id)) return;
+            const amt = Number(adj.amount || 0);
+            if (adj.employeeId && seenLoanComposite.has(`${adj.employeeId}_${amt}`)) return;
+            seenLoanIds.add(adj.id);
+            totalLoans += amt;
+          }
+        });
+
+        const safeMoney = (totalSalesCash + totalOverAmount + depToSafe) - (totalShortAmount + totalCashPayments + totalCashTax + depFromSafe + totalPay + totalLoans);
+        const bankMoney = (totalVisaSales + depToBank) - (totalBankPayments + totalBankTax + depFromBank + totalBankPay);
+
+        setSafeBalance(safeMoney);
+        setBankBalance(bankMoney);
+
+        if (typeof window !== "undefined") {
+          localStorage.setItem(`cached_safe_balance_${currentBranch}`, safeMoney.toString());
+          localStorage.setItem(`cached_bank_balance_${currentBranch}`, bankMoney.toString());
+        }
+      } catch (e) {
+        console.warn("Live safe balance calculation error:", e);
+      }
+    };
+    syncLiveBalances();
 
     // 1. Pending Voids
     const voidQ = currentBranch === "all"
@@ -1359,35 +1466,63 @@ export default function VIPBentoEnterprisePortal() {
                         <Link
                           href="/financials/inputs/safe-report"
                           prefetch={true}
-                          className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-emerald-950/50 via-[#0d1612] to-[#0a0f0d] border border-emerald-500/30 hover:border-emerald-400/70 transition-all group/safe relative overflow-hidden flex flex-col justify-between shadow-lg"
+                          className={`p-4 sm:p-5 rounded-2xl transition-all group/safe relative overflow-hidden flex flex-col justify-between shadow-lg ${
+                            safeBalance < 0
+                              ? "bg-gradient-to-br from-amber-950/40 via-[#18130e] to-[#0f0c08] border border-amber-500/35 hover:border-amber-400/70"
+                              : "bg-gradient-to-br from-emerald-950/50 via-[#0d1612] to-[#0a0f0d] border border-emerald-500/30 hover:border-emerald-400/70"
+                          }`}
                         >
-                          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+                          <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-2xl pointer-events-none ${
+                            safeBalance < 0 ? "bg-amber-500/10" : "bg-emerald-500/10"
+                          }`} />
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center">
-                                <Wallet className="w-4 h-4 text-emerald-400" />
+                              <div className={`w-8 h-8 rounded-xl border flex items-center justify-center ${
+                                safeBalance < 0
+                                  ? "bg-amber-500/20 border-amber-500/40 text-amber-400"
+                                  : "bg-emerald-500/20 border-emerald-500/40 text-emerald-400"
+                              }`}>
+                                <Wallet className="w-4 h-4" />
                               </div>
-                              <span className="text-xs font-bold text-emerald-300 uppercase tracking-wider">
-                                {isAr ? "رصيد الخزنة الفعلي" : "Money in Safe"}
+                              <span className={`text-xs font-bold uppercase tracking-wider ${
+                                safeBalance < 0 ? "text-amber-300" : "text-emerald-300"
+                              }`}>
+                                {isAr ? (safeBalance < 0 ? "رصيد الخزنة (صافي العهدة)" : "رصيد الخزنة الفعلي") : (safeBalance < 0 ? "Vault Net Float" : "Money in Safe")}
                               </span>
                             </div>
-                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                              {isAr ? "مباشر" : "Live Vault"}
+                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border flex items-center gap-1.5 ${
+                              safeBalance < 0
+                                ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                                : "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                            }`}>
+                              <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${
+                                safeBalance < 0 ? "bg-amber-400" : "bg-emerald-400"
+                              }`} />
+                              {safeBalance < 0 
+                                ? (isAr ? "سلفة عهدة منصرفة" : "Advance Outflow")
+                                : (isAr ? "مباشر" : "Live Vault")}
                             </span>
                           </div>
 
                           <div className="my-1">
                             <div className="text-2xl sm:text-3xl font-black text-white font-mono tracking-tight flex items-baseline gap-2">
-                              <span className="text-sm font-bold text-emerald-400/80">EGP</span>
+                              <span className={`text-sm font-bold ${
+                                safeBalance < 0 ? "text-amber-400/90" : "text-emerald-400/80"
+                              }`}>EGP</span>
                               <span>{fmt(safeBalance)}</span>
                             </div>
                             <span className="text-[11px] text-slate-400 mt-1 block">
-                              {isAr ? "العهدة النقدية وجرد الخزنة المعتمد" : "Cash float & verified safe closure"}
+                              {safeBalance < 0
+                                ? (isAr ? "مخصوم سلفة موظف معتمدة من الخزينة لحين توريد الوردية" : "Verified staff loan outflow pending cashier shift drop")
+                                : (isAr ? "العهدة النقدية وجرد الخزنة المعتمد" : "Cash float & verified safe closure")}
                             </span>
                           </div>
 
-                          <div className="pt-3 mt-2 border-t border-white/[0.06] flex items-center justify-between text-xs font-bold text-emerald-400 group-hover/safe:text-emerald-300">
+                          <div className={`pt-3 mt-2 border-t border-white/[0.06] flex items-center justify-between text-xs font-bold transition-colors ${
+                            safeBalance < 0
+                              ? "text-amber-400 group-hover/safe:text-amber-300"
+                              : "text-emerald-400 group-hover/safe:text-emerald-300"
+                          }`}>
                             <span>{isAr ? "تقرير الخزنة بالتفصيل" : "Open Safe Report"}</span>
                             <ArrowUpRight className="w-3.5 h-3.5 group-hover/safe:translate-x-0.5 group-hover/safe:-translate-y-0.5 transition-transform" />
                           </div>

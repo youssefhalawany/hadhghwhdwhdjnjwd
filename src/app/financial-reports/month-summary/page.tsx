@@ -158,7 +158,7 @@ export default function MonthSummaryPage() {
           totalCashPayments: (cpD?.val || 0) + (cpD?.tax || 0),
           totalVisaPayments: (vpD?.val || 0) + (btD?.val || 0),
           depositsToSafe: dtD?.val || 0, depositsFromSafe: dfD?.val || 0,
-          totalPayrolls: prD?.val || 0, totalLoans: (nlD?.val || 0) + (olD?.val || 0),
+          totalPayrolls: prD?.val || 0, totalLoans: (olD?.val || 0) > 0 ? (olD?.val || 0) : (nlD?.val || 0),
           totalOldCreditsCash: occD?.val || 0
         };
       };

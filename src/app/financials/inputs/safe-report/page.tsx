@@ -496,12 +496,52 @@ export default function SafeReportPage() {
       }
     });
 
-    // 6. STAFF LOANS & ADVANCES
+    // 6. STAFF LOANS & ADVANCES (Deduplicated to prevent double counting between loans and adjustments collections)
+    const seenLoanIds = new Set<string>();
+    const seenLoanComposite = new Set<string>();
+
+    docs.loans.forEach((ln: any) => {
+      if (!matchesBranch(ln, targetBranch)) return;
+      const d = normalizeDate(ln.date || ln.createdAt);
+      const amt = Number(ln.approved || ln.amount || 0);
+      const empName = ln.employeeName || ln.name || docs.employeesMap[ln.employeeId] || (isAr ? "موظف" : "Employee");
+
+      seenLoanIds.add(ln.id);
+      if (ln.employeeId) {
+        seenLoanComposite.add(`${ln.employeeId}_${amt}`);
+        if (d) seenLoanComposite.add(`${ln.employeeId}_${d}_${amt}`);
+      }
+
+      if (!d || d < startDateStr) {
+        openingSafe -= amt;
+      } else if (d >= startDateStr && d <= endDateStr) {
+        periodLoans += amt;
+        itemizedTransactions.push({
+          id: ln.id,
+          date: d || startDateStr,
+          category: "loan",
+          titleEn: `Staff Loan / Advance: ${empName}`,
+          titleAr: `سلفة موظف: ${empName}`,
+          safeChange: -amt,
+          bankChange: 0,
+          details: `Reason: ${ln.reason || "Advance"} | Amount: ${amt.toLocaleString()} EGP`
+        });
+      }
+    });
+
     docs.adjustments.forEach((adj: any) => {
       if (adj.type === "loan") {
         if (!matchesBranch(adj, targetBranch)) return;
+
+        // Skip if this adjustment is a mirror of a loan already counted from the loans collection
+        if (adj.loanDocId && seenLoanIds.has(adj.loanDocId)) return;
+        if (seenLoanIds.has(adj.id)) return;
+
         const d = normalizeDate(adj.date || adj.createdAt);
         const amt = Number(adj.amount || 0);
+        if (adj.employeeId && (seenLoanComposite.has(`${adj.employeeId}_${amt}`) || (d && seenLoanComposite.has(`${adj.employeeId}_${d}_${amt}`)))) return;
+
+        seenLoanIds.add(adj.id);
         const empName = adj.employeeName || adj.name || docs.employeesMap[adj.employeeId] || (isAr ? "موظف" : "Employee");
 
         if (!d || d < startDateStr) {
@@ -519,29 +559,6 @@ export default function SafeReportPage() {
             details: `Reason: ${adj.reason || "Advance"} | Amount: ${amt.toLocaleString()} EGP`
           });
         }
-      }
-    });
-
-    docs.loans.forEach((ln: any) => {
-      if (!matchesBranch(ln, targetBranch)) return;
-      const d = normalizeDate(ln.date || ln.createdAt);
-      const amt = Number(ln.approved || ln.amount || 0);
-      const empName = ln.employeeName || ln.name || docs.employeesMap[ln.employeeId] || (isAr ? "موظف" : "Employee");
-
-      if (!d || d < startDateStr) {
-        openingSafe -= amt;
-      } else if (d >= startDateStr && d <= endDateStr) {
-        periodLoans += amt;
-        itemizedTransactions.push({
-          id: ln.id,
-          date: d || startDateStr,
-          category: "loan",
-          titleEn: `Staff Loan / Advance: ${empName}`,
-          titleAr: `سلفة موظف: ${empName}`,
-          safeChange: -amt,
-          bankChange: 0,
-          details: `Reason: ${ln.reason || "Advance"} | Amount: ${amt.toLocaleString()} EGP`
-        });
       }
     });
 

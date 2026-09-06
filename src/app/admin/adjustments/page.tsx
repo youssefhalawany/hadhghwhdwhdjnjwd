@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { db, auth } from "@/lib/firebase";
 import { collection, query, orderBy, onSnapshot, addDoc, doc, updateDoc, where, limit, deleteDoc, getDocs, serverTimestamp } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
-import { Plus, Check, X, ShieldAlert, DollarSign, Calendar, Save, Trash2, Printer, Search, FileText, Coins, TrendingUp, Users, CalendarCheck, Scale, Sparkles, Building2, AlertCircle, ArrowUpRight, CheckCircle2, ChevronRight } from "lucide-react";
+import { Plus, Check, X, ShieldAlert, DollarSign, Calendar, Save, Trash2, Printer, Search, FileText, Coins, TrendingUp, Users, CalendarCheck, Scale, Sparkles, Building2, AlertCircle, ArrowUpRight, CheckCircle2, ChevronRight, Banknote, ArrowDownLeft, ShieldCheck, Receipt } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBranch } from "@/context/BranchContext";
@@ -181,6 +181,13 @@ export default function AdminAdjustmentsPage() {
   
   const [printLoan, setPrintLoan] = useState<any | null>(null);
   const [qrCodeData, setQrCodeData] = useState<string>("");
+
+  // Early Repayment & Safe Inflow State
+  const [repayLoan, setRepayLoan] = useState<any | null>(null);
+  const [repayAmount, setRepayAmount] = useState<number>(0);
+  const [repayNote, setRepayNote] = useState<string>("");
+  const [isRepaying, setIsRepaying] = useState<boolean>(false);
+  const [repaymentReceipt, setRepaymentReceipt] = useState<any | null>(null);
 
   useEffect(() => {
     const handleAfterPrint = () => {
@@ -571,25 +578,7 @@ export default function AdminAdjustmentsPage() {
           createdBy: currentUserEmail
         };
 
-        const docRef = await addDoc(collection(db, "loans"), loanDocPayload);
-
-        // 2. Mirror into 'adjustments' for unified dashboard and history
-        await addDoc(collection(db, "adjustments"), {
-          employeeId: selectedEmpId,
-          type: "loan",
-          amount: finalApprovedLoan,
-          reason: finalReason,
-          status: "pending",
-          createdAt: new Date().toISOString(),
-          createdBy: currentUserEmail,
-          loanDocId: docRef.id,
-          storeId: targetBranchId,
-          category: loanCategory,
-          installmentCount: months,
-          monthlyInstallment: monthlyInst,
-          daysWorkedAtRequest: addForm.daysWorked,
-          maxAllowedAmount: maxAllowedLoan
-        });
+        await addDoc(collection(db, "loans"), loanDocPayload);
 
         toast.success(isAr ? "تم اعتماد وصرف السلفة وتخصيص الأقساط الشهرية بنجاح!" : "Loan approved, disbursed from safe, and installment schedule created!");
       } else {
@@ -638,6 +627,111 @@ export default function AdminAdjustmentsPage() {
       } catch (e: any) {
         toast.error(e.message || (isAr ? "فشل الحذف" : "Failed to delete"));
       }
+    }
+  };
+
+  const handleExecuteRepayment = async () => {
+    if (!repayLoan) return;
+    if (repayAmount <= 0) {
+      toast.error(isAr ? "يرجى إدخال مبلغ سداد صحيح أكبر من الصفر" : "Please enter a valid repayment amount greater than 0");
+      return;
+    }
+
+    const currentBal = Number(repayLoan.remainingBalance !== undefined ? repayLoan.remainingBalance : (repayLoan.approved || repayLoan.amount || 0));
+    if (repayAmount > currentBal) {
+      toast.error(isAr ? `مبلغ السداد (${repayAmount.toLocaleString()} ج.م) أكبر من الرصيد المتبقي (${currentBal.toLocaleString()} ج.م)` : `Repayment amount (${repayAmount} EGP) exceeds remaining balance (${currentBal} EGP)`);
+      return;
+    }
+
+    setIsRepaying(true);
+    try {
+      const targetBranchId = repayLoan.storeId || repayLoan.branchId || (currentBranch !== "all" ? currentBranch : "ola");
+      const emp = employees.find(e => e.id === repayLoan.employeeId) || {};
+      const empName = emp.name || repayLoan.employeeName || (isAr ? "موظف" : "Employee");
+      const receiptNo = `RCP-SAFE-${Date.now().toString().slice(-6)}`;
+      const todayStr = new Date().toISOString().split("T")[0];
+
+      // 1. Log direct cash inflow deposit into the branch safe
+      await addDoc(collection(db, "deposits"), {
+        amount: repayAmount,
+        category: "loan_repayment",
+        date: todayStr,
+        from: "employee",
+        to: "safe",
+        employeeId: repayLoan.employeeId,
+        employeeName: empName,
+        loanDocId: repayLoan.id,
+        note: repayNote || (isAr ? `سداد نقدي لسلفة الموظف ${empName} - توريد بالخزينة` : `Early cash loan repayment by ${empName} - Vault deposit`),
+        storeId: targetBranchId,
+        createdBy: currentUserEmail,
+        receiptNumber: receiptNo,
+        createdAt: serverTimestamp()
+      });
+
+      // 2. Update the master loan document
+      const newRemaining = Math.max(0, currentBal - repayAmount);
+      const prevSettled = Number(repayLoan.settledAmount || 0);
+      const newSettledAmt = prevSettled + repayAmount;
+      const isFullySettled = newRemaining === 0;
+
+      const repaymentEntry = {
+        amount: repayAmount,
+        date: todayStr,
+        receiptNumber: receiptNo,
+        method: "cash_safe",
+        receivedBy: currentUserEmail,
+        note: repayNote || (isAr ? "سداد نقدي وتوريد بخزينة الفرع" : "Cash settlement to branch safe")
+      };
+
+      const existingRepayments = Array.isArray(repayLoan.repayments) ? repayLoan.repayments : [];
+
+      await updateDoc(doc(db, "loans", repayLoan.id), {
+        remainingBalance: newRemaining,
+        settledAmount: newSettledAmt,
+        settled: isFullySettled,
+        status: isFullySettled ? "settled" : "active",
+        repayments: [...existingRepayments, repaymentEntry],
+        lastRepaymentDate: todayStr,
+        updatedAt: serverTimestamp()
+      });
+
+      // Update cached safe balance immediately in localStorage so changes reflect instantly
+      try {
+        const cachedSafe = localStorage.getItem(`cached_safe_balance_${targetBranchId}`);
+        if (cachedSafe !== null) {
+          const updatedSafe = (parseFloat(cachedSafe) || 0) + repayAmount;
+          localStorage.setItem(`cached_safe_balance_${targetBranchId}`, updatedSafe.toString());
+        }
+      } catch (_) {}
+
+      toast.success(isAr 
+        ? `تم توريد مبلغ ${repayAmount.toLocaleString()} ج.م إلى الخزينة بنجاح وتسوية السلفة!` 
+        : `Successfully deposited ${repayAmount.toLocaleString()} EGP into the safe and updated loan!`);
+
+      // Set digital receipt for presentation / printing
+      setRepaymentReceipt({
+        receiptNumber: receiptNo,
+        date: todayStr,
+        employeeName: empName,
+        employeeId: repayLoan.employeeId,
+        nationalId: emp.nationalId || repayLoan.employeeNationalId || "",
+        branchId: targetBranchId,
+        repaidAmount: repayAmount,
+        previousBalance: currentBal,
+        newRemainingBalance: newRemaining,
+        isFullySettled,
+        receivedBy: currentUserEmail,
+        notes: repayNote
+      });
+
+      setRepayLoan(null);
+      setRepayAmount(0);
+      setRepayNote("");
+    } catch (err: any) {
+      console.error("Repayment error:", err);
+      toast.error(err.message || (isAr ? "فشل تنفيذ السداد" : "Failed to process repayment"));
+    } finally {
+      setIsRepaying(false);
     }
   };
 
@@ -1204,21 +1298,40 @@ export default function AdminAdjustmentsPage() {
                           ) : (
                             <>
                               {activeTab === "loan" && (
-                                <button 
-                                  onClick={() => {
-                                    const matchingSysLoan = allSystemLoans.find(l => 
-                                      l.id === (adj as any).loanDocId || 
-                                      (l.employeeId === adj.employeeId && Math.abs((l.approved || l.amount) - adj.amount) < 0.1)
-                                    );
-                                    setPrintLoan(matchingSysLoan || adj);
-                                    setTimeout(() => window.print(), 150);
-                                  }}
-                                  className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 dark:text-emerald-400 rounded-xl transition-all flex items-center gap-1.5 font-bold text-xs border border-emerald-200 dark:border-emerald-800"
-                                  title={isAr ? "طباعة إقرار وتفويض السلفة الرسمي (A4)" : "Print official A4 loan agreement"}
-                                >
-                                  <Printer className="w-3.5 h-3.5" />
-                                  <span className="hidden sm:inline">{isAr ? "إقرار وتفويض (A4)" : "A4 Agreement"}</span>
-                                </button>
+                                <>
+                                  <button
+                                    onClick={() => {
+                                      const matchingSysLoan = allSystemLoans.find(l => 
+                                        l.id === (adj as any).loanDocId || 
+                                        (l.employeeId === adj.employeeId && Math.abs((l.approved || l.amount) - adj.amount) < 0.1)
+                                      );
+                                      const targetLoan = matchingSysLoan || adj;
+                                      setRepayLoan(targetLoan);
+                                      const rem = Number(targetLoan.remainingBalance !== undefined ? targetLoan.remainingBalance : (targetLoan.approved || targetLoan.amount || 0));
+                                      setRepayAmount(rem);
+                                    }}
+                                    className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:hover:bg-blue-900/50 dark:text-blue-400 rounded-xl transition-all flex items-center gap-1.5 font-bold text-xs border border-blue-200 dark:border-blue-800 shadow-sm"
+                                    title={isAr ? "سداد نقدي مبكر للسلفة وتوريد بالخزينة" : "Early cash repayment to vault"}
+                                  >
+                                    <Banknote className="w-3.5 h-3.5" />
+                                    <span className="hidden sm:inline">{isAr ? "سداد نقدي" : "Cash Repay"}</span>
+                                  </button>
+                                  <button 
+                                    onClick={() => {
+                                      const matchingSysLoan = allSystemLoans.find(l => 
+                                        l.id === (adj as any).loanDocId || 
+                                        (l.employeeId === adj.employeeId && Math.abs((l.approved || l.amount) - adj.amount) < 0.1)
+                                      );
+                                      setPrintLoan(matchingSysLoan || adj);
+                                      setTimeout(() => window.print(), 150);
+                                    }}
+                                    className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 dark:text-emerald-400 rounded-xl transition-all flex items-center gap-1.5 font-bold text-xs border border-emerald-200 dark:border-emerald-800"
+                                    title={isAr ? "طباعة إقرار وتفويض السلفة الرسمي (A4)" : "Print official A4 loan agreement"}
+                                  >
+                                    <Printer className="w-3.5 h-3.5" />
+                                    <span className="hidden sm:inline">{isAr ? "إقرار وتفويض (A4)" : "A4 Agreement"}</span>
+                                  </button>
+                                </>
                               )}
                               {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
                                 <button 
@@ -1241,6 +1354,225 @@ export default function AdminAdjustmentsPage() {
           </div>
         </div>
       </div> {/* End UI wrapper */}
+
+      {/* 💰 EARLY CASH REPAYMENT & SAFE INFLOW MODAL */}
+      {repayLoan && (() => {
+        const emp = employees.find(e => e.id === repayLoan.employeeId) || {};
+        const empName = emp.name || repayLoan.employeeName || (isAr ? "موظف" : "Employee");
+        const loanTotal = Number(repayLoan.approved || repayLoan.amount || 0);
+        const curRemaining = Number(repayLoan.remainingBalance !== undefined ? repayLoan.remainingBalance : loanTotal);
+        const branchName = repayLoan.storeId === "ola" ? "Ola Koronfol" : "Alamein 4";
+        const newCalculatedBalance = Math.max(0, curRemaining - (Number(repayAmount) || 0));
+
+        return (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-[#0f1422] border border-white/10 rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl relative text-white space-y-6">
+              {/* Header */}
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-500/20 border border-blue-500/40 flex items-center justify-center text-blue-400">
+                    <Banknote className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-white">
+                      {isAr ? "سداد نقدي مبكر للسلفة" : "Early Cash Loan Repayment"}
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {isAr ? "توريد نقدي فوري بالخزينة وتسوية رصيد السلفة" : "Immediate vault deposit & loan balance settlement"}
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => { setRepayLoan(null); setRepayAmount(0); }}
+                  className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Employee & Loan Details */}
+              <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-400">{isAr ? "الموظف المستفيد:" : "Employee:"}</span>
+                  <span className="font-bold text-white text-sm">{empName}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-400">{isAr ? "الفرع المودع به (الخزينة):" : "Branch Vault:"}</span>
+                  <span className="font-bold text-blue-400">{branchName}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-800/80">
+                  <div>
+                    <span className="text-[11px] text-slate-400 block">{isAr ? "أصل السلفة المصروفة" : "Original Loan"}</span>
+                    <span className="text-sm font-bold text-slate-300 font-mono">{loanTotal.toLocaleString()} EGP</span>
+                  </div>
+                  <div>
+                    <span className="text-[11px] text-slate-400 block">{isAr ? "الرصيد المتبقي الحالي" : "Current Outstanding"}</span>
+                    <span className="text-sm font-black text-amber-400 font-mono">{curRemaining.toLocaleString()} EGP</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Input Form */}
+              <div className="space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-bold text-slate-300">
+                      {isAr ? "مبلغ التوريد النقدي للخزينة (EGP)" : "Cash Deposit Amount (EGP)"}
+                    </label>
+                    <button 
+                      type="button"
+                      onClick={() => setRepayAmount(curRemaining)}
+                      className="text-[11px] text-blue-400 hover:text-blue-300 font-bold underline"
+                    >
+                      {isAr ? "سداد كامل الرصيد" : "Settle Full Balance"}
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input 
+                      type="number"
+                      min={1}
+                      max={curRemaining}
+                      value={repayAmount || ""}
+                      onChange={(e) => setRepayAmount(Number(e.target.value))}
+                      placeholder={curRemaining.toString()}
+                      className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-2xl text-white font-mono font-bold text-lg focus:border-blue-500 focus:outline-none"
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                      EGP
+                    </span>
+                  </div>
+                </div>
+
+                {/* Live simulation */}
+                <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-between text-xs">
+                  <span className="text-blue-300">
+                    {isAr ? "الرصيد المتبقي بعد هذا السداد:" : "Remaining Balance After Payment:"}
+                  </span>
+                  <span className="font-mono font-black text-sm text-blue-200">
+                    {newCalculatedBalance.toLocaleString()} EGP
+                  </span>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-300 block mb-1.5">
+                    {isAr ? "ملاحظات أو رقم الإيصال اليدوي (اختياري)" : "Notes or Manual Receipt Ref (Optional)"}
+                  </label>
+                  <input 
+                    type="text"
+                    value={repayNote}
+                    onChange={(e) => setRepayNote(e.target.value)}
+                    placeholder={isAr ? "سداد نقدي لخزينة الفرع" : "Early cash repayment to vault"}
+                    className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-xs focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setRepayLoan(null); setRepayAmount(0); }}
+                  className="flex-1 py-3 px-4 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-colors"
+                >
+                  {isAr ? "إلغاء" : "Cancel"}
+                </button>
+                <button
+                  type="button"
+                  disabled={isRepaying || repayAmount <= 0 || repayAmount > curRemaining}
+                  onClick={handleExecuteRepayment}
+                  className="flex-[2] py-3 px-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-blue-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isRepaying ? (
+                    <span>{isAr ? "جاري التوريد بالخزينة..." : "Processing Safe Deposit..."}</span>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>{isAr ? "تأكيد السداد وتوريد الخزينة" : "Confirm & Deposit into Safe"}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 🧾 DIGITAL REPAYMENT RECEIPT & SAFE DEPOSIT VOUCHER */}
+      {repaymentReceipt && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white text-slate-900 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative space-y-6">
+            <div className="text-center space-y-1 pb-4 border-b border-slate-200">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-2">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-black tracking-tight">CIRCLE K ENTERPRISE</h3>
+              <p className="text-xs font-bold text-slate-500">
+                {isAr ? "إيصال توريد نقدي رسمي - سداد سلفة" : "Official Cash Loan Repayment Receipt"}
+              </p>
+              <span className="inline-block font-mono text-[11px] bg-slate-100 px-2.5 py-0.5 rounded-full text-slate-600 mt-1">
+                {repaymentReceipt.receiptNumber}
+              </span>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="flex justify-between py-1 border-b border-slate-100">
+                <span className="text-slate-500">{isAr ? "اسم الموظف:" : "Employee Name:"}</span>
+                <span className="font-bold">{repaymentReceipt.employeeName}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-100">
+                <span className="text-slate-500">{isAr ? "الفرع والخزينة:" : "Branch Safe:"}</span>
+                <span className="font-bold uppercase">{repaymentReceipt.branchId}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-100">
+                <span className="text-slate-500">{isAr ? "تاريخ التوريد:" : "Deposit Date:"}</span>
+                <span className="font-bold font-mono">{repaymentReceipt.date}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-slate-200 bg-emerald-50 px-3 rounded-xl">
+                <span className="font-bold text-emerald-800">{isAr ? "المبلغ المسدد نقداً:" : "Repaid Amount:"}</span>
+                <span className="font-black text-emerald-700 text-base font-mono">
+                  {repaymentReceipt.repaidAmount.toLocaleString()} EGP
+                </span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-100">
+                <span className="text-slate-500">{isAr ? "الرصيد المتبقي على الموظف:" : "Remaining Balance:"}</span>
+                <span className="font-bold font-mono text-slate-800">
+                  {repaymentReceipt.newRemainingBalance.toLocaleString()} EGP
+                </span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-100">
+                <span className="text-slate-500">{isAr ? "حالة السلفة:" : "Loan Status:"}</span>
+                <span className={`font-bold ${repaymentReceipt.isFullySettled ? "text-emerald-600" : "text-amber-600"}`}>
+                  {repaymentReceipt.isFullySettled 
+                    ? (isAr ? "مسددة بالكامل (Settled)" : "Fully Settled") 
+                    : (isAr ? "سداد جزئي (Partial)" : "Partially Settled")}
+                </span>
+              </div>
+              <div className="flex justify-between py-1 text-[11px] text-slate-400">
+                <span>{isAr ? "المستلم بالخزينة:" : "Received By:"}</span>
+                <span>{repaymentReceipt.receivedBy}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setRepaymentReceipt(null)}
+                className="flex-1 py-3 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors"
+              >
+                {isAr ? "إغلاق" : "Close"}
+              </button>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="flex-1 py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/25 transition-all flex items-center justify-center gap-2"
+              >
+                <Printer className="w-4 h-4" />
+                <span>{isAr ? "طباعة الإيصال" : "Print Receipt"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ⚖️ 100% LEGAL EGYPTIAN LOAN AGREEMENT & DEDUCTION AUTHORIZATION (ARTICLE 34 LAW 12/2003) */}
       {printLoan && (() => {

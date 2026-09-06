@@ -156,9 +156,9 @@ export default function OwnerDashboard() {
       const depositsToSafe = depositsToData?.val || 0;
       const depositsFromSafe = depositsFromData?.val || 0;
       const totalPayrolls = payrollsData?.val || 0;
-      const totalNewLoans = newLoansData?.val || 0;
+      // Authoritative loans collection is the single source of truth for employee loans
       const totalOldLoans = oldLoansData?.val || 0;
-      const totalLoans = totalNewLoans + totalOldLoans;
+      const totalLoans = totalOldLoans > 0 ? totalOldLoans : (newLoansData?.val || 0);
       const totalOldCreditsCash = oldCreditsCashData?.val || 0;
       const totalTaxPaid = cashTaxData?.val || 0;
 
