@@ -5599,11 +5599,9 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
           // IF PRINTING SALARY PROOF LETTER (HR LETTER / شهادة مفردات مرتب معتمدة)
           if (printDocumentType === 'salary_letter') {
             const todayFormatted = new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
-            const base = selectedEmployee.baseSalary || 0;
-            const allowance = Math.round(base * 0.15); // بدل انتقال ومظهر وانتظام
-            const gross = base + allowance;
-            const insurance = selectedEmployee.insurance || Math.round(base * 0.11);
-            const net = Math.max(0, gross - insurance);
+            const net = Number(selectedEmployee.baseSalary || (selectedEmployee as any).salary || 0);
+            const insurance = Number(selectedEmployee.insurance || 0);
+            const gross = insurance > 0 ? (net + insurance) : net;
             const netWords = numberToArabicWords(net);
             const refCode = `HR-SAL-${(selectedEmployee.id || 'EMP').slice(-6).toUpperCase()}-${new Date().getFullYear()}`;
 
@@ -5722,37 +5720,34 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                       <tr>
                         <td style={{ border: "1px solid #cbd5e1", padding: "6px 10px", fontWeight: "bold", background: "#f8fafc" }}>الراتب الأساسي التعاقدي (Basic Salary):</td>
                         <td style={{ border: "1px solid #cbd5e1", padding: "6px 10px", textAlign: "center", fontFamily: "monospace", fontWeight: "900", fontSize: "12px" }}>
-                          {base.toLocaleString()} ج.م
+                          {net.toLocaleString()} ج.م
                         </td>
-                        <td style={{ border: "1px solid #cbd5e1", padding: "6px 10px", color: "#475569" }}>الأجر الأساسي المنصوص عليه بعقد العمل</td>
+                        <td style={{ border: "1px solid #cbd5e1", padding: "6px 10px", color: "#475569" }}>الأجر الأساسي الصافي المنصوص عليه بسجلات شؤون العاملين</td>
                       </tr>
-                      <tr>
-                        <td style={{ border: "1px solid #cbd5e1", padding: "6px 10px", fontWeight: "bold", background: "#f8fafc" }}>بدل انتقال ومظهر وبدل طبيعة عمل:</td>
-                        <td style={{ border: "1px solid #cbd5e1", padding: "6px 10px", textAlign: "center", fontFamily: "monospace", fontWeight: "900", fontSize: "12px" }}>
-                          {allowance.toLocaleString()} ج.م
-                        </td>
-                        <td style={{ border: "1px solid #cbd5e1", padding: "6px 10px", color: "#475569" }}>بدلات شهرية ثابتة مرتبطة بالوظيفة</td>
-                      </tr>
-                      <tr style={{ background: "#f1f5f9" }}>
-                        <td style={{ border: "1px solid #94a3b8", padding: "6px 10px", fontWeight: "900", color: "#0f172a" }}>إجمالي الدخل الشهري الشامل (Gross Salary):</td>
-                        <td style={{ border: "1px solid #94a3b8", padding: "6px 10px", textAlign: "center", fontFamily: "monospace", fontWeight: "900", fontSize: "12.5px", color: "#0f172a" }}>
-                          {gross.toLocaleString()} ج.م
-                        </td>
-                        <td style={{ border: "1px solid #94a3b8", padding: "6px 10px", fontWeight: "bold", color: "#0f172a" }}>إجمالي الاستحقاقات قبل الاستقطاعات</td>
-                      </tr>
-                      <tr>
-                        <td style={{ border: "1px solid #cbd5e1", padding: "6px 10px", fontWeight: "bold", color: "#b91c1c", background: "#fef2f2" }}>استقطاع التأمينات الاجتماعية (س1):</td>
-                        <td style={{ border: "1px solid #cbd5e1", padding: "6px 10px", textAlign: "center", fontFamily: "monospace", fontWeight: "900", fontSize: "12px", color: "#b91c1c" }}>
-                          ({insurance.toLocaleString()}) ج.م
-                        </td>
-                        <td style={{ border: "1px solid #cbd5e1", padding: "6px 10px", color: "#b91c1c" }}>حصة العامل في التأمين الاجتماعي المصري</td>
-                      </tr>
+                      {insurance > 0 && (
+                        <>
+                          <tr style={{ background: "#f1f5f9" }}>
+                            <td style={{ border: "1px solid #94a3b8", padding: "6px 10px", fontWeight: "900", color: "#0f172a" }}>إجمالي الأجر التأميني الشامل (Gross Salary):</td>
+                            <td style={{ border: "1px solid #94a3b8", padding: "6px 10px", textAlign: "center", fontFamily: "monospace", fontWeight: "900", fontSize: "12.5px", color: "#0f172a" }}>
+                              {gross.toLocaleString()} ج.م
+                            </td>
+                            <td style={{ border: "1px solid #94a3b8", padding: "6px 10px", fontWeight: "bold", color: "#0f172a" }}>الأجر الشامل مضافاً إليه حصة التأمينات الاجتماعية</td>
+                          </tr>
+                          <tr>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "6px 10px", fontWeight: "bold", color: "#b91c1c", background: "#fef2f2" }}>استقطاع التأمينات الاجتماعية (س1):</td>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "6px 10px", textAlign: "center", fontFamily: "monospace", fontWeight: "900", fontSize: "12px", color: "#b91c1c" }}>
+                              ({insurance.toLocaleString()}) ج.م
+                            </td>
+                            <td style={{ border: "1px solid #cbd5e1", padding: "6px 10px", color: "#b91c1c" }}>حصة العامل في التأمين الاجتماعي المصري المسددة</td>
+                          </tr>
+                        </>
+                      )}
                       <tr style={{ background: "#ecfdf5" }}>
                         <td style={{ border: "2px solid #059669", padding: "8px 10px", fontWeight: "900", fontSize: "12px", color: "#047857" }}>صافي الراتب الشهري المنصرف (Net Salary):</td>
                         <td style={{ border: "2px solid #059669", padding: "8px 10px", textAlign: "center", fontFamily: "monospace", fontWeight: "900", fontSize: "14px", color: "#047857" }}>
                           {net.toLocaleString()} ج.م
                         </td>
-                        <td style={{ border: "2px solid #059669", padding: "8px 10px", fontWeight: "bold", color: "#047857" }}>صافي ما يتقاضاه العامل شهرياً</td>
+                        <td style={{ border: "2px solid #059669", padding: "8px 10px", fontWeight: "bold", color: "#047857" }}>صافي ما يتقاضاه العامل شهرياً دون أي استقطاع</td>
                       </tr>
                     </tbody>
                   </table>
@@ -5769,8 +5764,8 @@ _وفقاً لأحكام المادة (34) من قانون العمل رقم 12 
                     marginBottom: "12px"
                   }}>
                     <span>فقط وقدره: </span>
-                    <span style={{ textDecoration: "underline" }}>{netWords}</span>
-                    <span> لا غير، يتم صرفها بانتظام بنهاية كل شهر ميلادي.</span>
+                    <span style={{ textDecoration: "underline" }}>{netWords} جنيهاً مصرياً</span>
+                    <span> لا غير، يتم صرفها بالكامل وبانتظام بنهاية كل شهر ميلادي.</span>
                   </div>
 
                   {/* 7. LEGAL DISCLAIMER */}

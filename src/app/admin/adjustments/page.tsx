@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { db, auth } from "@/lib/firebase";
 import { collection, query, orderBy, onSnapshot, addDoc, doc, updateDoc, where, limit, deleteDoc, getDocs, serverTimestamp } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
@@ -147,6 +147,8 @@ export type AdjustmentRecord = {
   installmentCount?: number;
   monthlyInstallment?: number;
   loanDocId?: string;
+  storeId?: string;
+  remainingBalance?: number;
 };
 
 export default function AdminAdjustmentsPage() {
@@ -210,14 +212,18 @@ export default function AdminAdjustmentsPage() {
       const emps: any[] = [];
       snap.forEach(d => emps.push({ id: d.id, ...d.data() }));
       setEmployees(emps);
+    }, (err) => {
+      console.error("employees snapshot error:", err);
     });
 
-    // Fetch ONLY pending adjustments to save reads
-    const adjQ = query(collection(db, "adjustments"), where("status", "==", "pending"), orderBy("createdAt", "desc"));
+    // Fetch pending adjustments
+    const adjQ = query(collection(db, "adjustments"), where("status", "==", "pending"));
     const unsubAdj = onSnapshot(adjQ, (snap) => {
       const adjs: any[] = [];
       snap.forEach(d => adjs.push({ id: d.id, ...d.data() }));
       setAdjustments(adjs);
+    }, (err) => {
+      console.error("adjustments snapshot error:", err);
     });
 
     // Fetch old deductions that are not yet applied
@@ -233,10 +239,13 @@ export default function AdminAdjustmentsPage() {
           amount: Number(data.amount) || 0,
           reason: data.reason || "Old System Deduction",
           status: "pending",
+          storeId: data.storeId || data.branchId,
           createdAt: data.date || data.createdAt || new Date().toISOString()
         } as AdjustmentRecord);
       });
       setOldDeductions(arr);
+    }, (err) => {
+      console.error("deductions snapshot error:", err);
     });
 
     // Fetch old loans for the current payroll month (approximate)
@@ -253,24 +262,29 @@ export default function AdminAdjustmentsPage() {
             id: l.id,
             employeeId: data.employeeId,
             type: "loan",
-            amount: Number(data.approved) || 0,
+            amount: Number(data.approved || data.amount) || 0,
             reason: data.reason || "Old System Loan",
             status: "pending",
+            storeId: data.storeId || data.branchId,
             createdAt: data.createdAt || data.date || new Date().toISOString()
           } as AdjustmentRecord);
         }
       });
       setOldLoans(arr);
+    }, (err) => {
+      console.error("loans snapshot error:", err);
     });
 
     // Fetch all system loans for company/branch telemetry and forecasting
-    const sysLoansQ = query(collection(db, "loans"), orderBy("createdAt", "desc"), limit(300));
+    const sysLoansQ = query(collection(db, "loans"), limit(300));
     const unsubSysLoans = onSnapshot(sysLoansQ, (snap) => {
       const arr: any[] = [];
       snap.forEach(l => {
         arr.push({ id: l.id, ...l.data() });
       });
       setAllSystemLoans(arr);
+    }, (err) => {
+      console.error("sys loans snapshot error:", err);
     });
 
     return () => {
@@ -302,6 +316,7 @@ export default function AdminAdjustmentsPage() {
               amount: Number(data.amount) || 0,
               reason: data.reason || "Old System Deduction",
               status: "applied",
+              storeId: data.storeId || data.branchId,
               createdAt: data.date || data.createdAt || new Date().toISOString()
             } as AdjustmentRecord);
           });
@@ -318,16 +333,120 @@ export default function AdminAdjustmentsPage() {
     }
   }, [activeTab, historyAdjustments.length, isFetchingHistory]);
 
-  const allAdjustments = [...adjustments, ...oldDeductions, ...oldLoans].sort((a: any, b: any) => {
-    return new Date(b.createdAt || "").getTime() - new Date(a.createdAt || "").getTime();
-  });
+  // Branch helper: match record storeId or associated employee storeId/branchId
+  const isBranchMatch = useCallback((itemStoreOrBranchId?: string, emp?: any, targetBranch?: string): boolean => {
+    const branchToMatch = (targetBranch || currentBranch || "").toLowerCase();
+    if (!branchToMatch || branchToMatch === "all") return true;
+
+    const rawItemStore = (itemStoreOrBranchId || "").toLowerCase();
+    const empStore = (emp?.storeId || "").toLowerCase();
+    const empBranch = (emp?.branchId || "").toLowerCase();
+
+    const isOlaMatch = (val: string) => 
+      val.includes("ola") || val.includes("koronfol") || val === "store_2" || val === "2";
+    const isAlameinMatch = (val: string) => 
+      val.includes("alamein") || val.includes("elalamein") || val === "store_1" || val === "1";
+
+    if (branchToMatch.includes("ola") || branchToMatch.includes("koronfol") || branchToMatch === "store_2" || branchToMatch === "2") {
+      return isOlaMatch(rawItemStore) || isOlaMatch(empStore) || isOlaMatch(empBranch);
+    }
+
+    if (branchToMatch.includes("alamein") || branchToMatch.includes("elalamein") || branchToMatch === "store_1" || branchToMatch === "1") {
+      return isAlameinMatch(rawItemStore) || isAlameinMatch(empStore) || isAlameinMatch(empBranch);
+    }
+
+    return rawItemStore === branchToMatch || empStore === branchToMatch || empBranch === branchToMatch;
+  }, [currentBranch]);
+
+  // Branch-filtered active employees (used for staff ratio and dropdown)
+  const branchEmployees = useMemo(() => {
+    return employees.filter(emp => isBranchMatch(emp.storeId || emp.branchId, emp));
+  }, [employees, isBranchMatch]);
+
+  // Branch-filtered loans from Firestore 'loans' collection
+  const branchSystemLoans = useMemo(() => {
+    return allSystemLoans.filter(loan => {
+      const emp = employees.find(e => e.id === loan.employeeId);
+      return isBranchMatch(loan.storeId || loan.branchId, emp);
+    });
+  }, [allSystemLoans, employees, isBranchMatch]);
+
+  // Transform active un-settled branch loans into adjustments if not already present
+  const activeSystemLoansAsAdjustments = useMemo(() => {
+    return branchSystemLoans
+      .filter(loan => {
+        const isSettled = loan.settled === true || loan.status === "settled" || loan.status === "cancelled" || loan.status === "rejected";
+        const approvedAmt = Number(loan.approved || loan.amount || 0);
+        const settledAmt = Number(loan.settledAmount || 0);
+        const remaining = Number(loan.remainingBalance !== undefined ? loan.remainingBalance : Math.max(0, approvedAmt - settledAmt));
+        if (isSettled || remaining <= 0) return false;
+
+        const existsInAdj = adjustments.some(a => a.id === loan.id || (a as any).loanDocId === loan.id);
+        return !existsInAdj;
+      })
+      .map(loan => {
+        const approvedAmt = Number(loan.approved || loan.amount || 0);
+        const settledAmt = Number(loan.settledAmount || 0);
+        const remaining = Number(loan.remainingBalance !== undefined ? loan.remainingBalance : Math.max(0, approvedAmt - settledAmt));
+
+        let dateStr = new Date().toISOString();
+        if (loan.createdAt) {
+          if (typeof loan.createdAt.toDate === "function") dateStr = loan.createdAt.toDate().toISOString();
+          else if (loan.createdAt.seconds) dateStr = new Date(loan.createdAt.seconds * 1000).toISOString();
+          else dateStr = String(loan.createdAt);
+        } else if (loan.date) {
+          dateStr = loan.date;
+        }
+
+        return {
+          id: loan.id,
+          employeeId: loan.employeeId,
+          type: "loan",
+          amount: remaining > 0 ? remaining : approvedAmt,
+          reason: loan.reason || loan.categoryLabel || (isAr ? "سلفة نقدية معتمدة" : "Approved Cash Loan"),
+          status: "pending",
+          createdAt: dateStr,
+          createdBy: loan.createdBy || "System",
+          loanDocId: loan.id,
+          storeId: loan.storeId,
+          monthlyInstallment: loan.monthlyInstallment,
+          installmentCount: loan.installmentCount,
+          remainingBalance: remaining
+        } as AdjustmentRecord;
+      });
+  }, [branchSystemLoans, adjustments, isAr]);
+
+  // Combined & branch-filtered adjustments
+  const allAdjustments = useMemo(() => {
+    const combined = [...adjustments, ...oldDeductions, ...oldLoans, ...activeSystemLoansAsAdjustments];
+    return combined
+      .filter(item => {
+        const emp = employees.find(e => e.id === item.employeeId);
+        return isBranchMatch((item as any).storeId, emp);
+      })
+      .sort((a: any, b: any) => {
+        return new Date(b.createdAt || "").getTime() - new Date(a.createdAt || "").getTime();
+      });
+  }, [adjustments, oldDeductions, oldLoans, activeSystemLoansAsAdjustments, employees, isBranchMatch]);
+
+  // Branch-filtered history adjustments
+  const filteredHistoryAdjustments = useMemo(() => {
+    return historyAdjustments
+      .filter(item => {
+        const emp = employees.find(e => e.id === item.employeeId);
+        return isBranchMatch((item as any).storeId, emp);
+      })
+      .sort((a: any, b: any) => {
+        return new Date(b.createdAt || "").getTime() - new Date(a.createdAt || "").getTime();
+      });
+  }, [historyAdjustments, employees, isBranchMatch]);
 
   const selectedEmp = employees.find(e => e.id === selectedEmpId);
   const dailyRate = selectedEmp ? ((Number(selectedEmp.baseSalary) || Number(selectedEmp.salary) || 3000) / 30) : 0;
   const maxAllowedLoan = activeTab === "loan" ? (dailyRate * addForm.daysWorked * 0.5) : 0;
   const finalApprovedLoan = activeTab === "loan" ? Math.min(addForm.amount, maxAllowedLoan) : 0;
 
-  // -- COMPANY & BRANCH LOAN RECOVERY FORECAST TELEMETRY --
+  // -- BRANCH LOAN RECOVERY FORECAST TELEMETRY --
   const loanTelemetry = useMemo(() => {
     let totalOutstanding = 0;
     let totalOriginated = 0;
@@ -340,8 +459,8 @@ export default function AdminAdjustmentsPage() {
     const nextMonthD = new Date(today.getFullYear(), today.getMonth() + 1, 1);
     const nextMonthStr = `${nextMonthD.getFullYear()}-${String(nextMonthD.getMonth() + 1).padStart(2, "0")}`;
 
-    allSystemLoans.forEach(loan => {
-      const isSettled = loan.settled === true || loan.status === "settled";
+    branchSystemLoans.forEach(loan => {
+      const isSettled = loan.settled === true || loan.status === "settled" || loan.status === "cancelled" || loan.status === "rejected";
       const approvedAmt = Number(loan.approved || loan.amount || 0);
       const settledAmt = Number(loan.settledAmount || 0);
       const remaining = Number(loan.remainingBalance !== undefined ? loan.remainingBalance : Math.max(0, approvedAmt - settledAmt));
@@ -385,7 +504,7 @@ export default function AdminAdjustmentsPage() {
       recoveryRate,
       nextMonthStr
     };
-  }, [allSystemLoans]);
+  }, [branchSystemLoans]);
 
   const handleSave = async () => {
     if (!selectedEmpId) return toast.error(isAr ? "اختر الموظف أولاً" : "Please select an employee first");
@@ -414,7 +533,7 @@ export default function AdminAdjustmentsPage() {
           });
         }
 
-        const targetBranchId = selectedEmp?.storeId || currentBranch || "alamein4";
+        const targetBranchId = selectedEmp?.storeId || selectedEmp?.branchId || (currentBranch !== "all" ? currentBranch : "alamein4");
         const catLabel = loanCategoryLabels[loanCategory]?.label || "سلفة نقدية";
         const catLabelEn = loanCategoryLabels[loanCategory]?.labelEn || "Cash Loan";
         const finalReason = `${isAr ? catLabel : catLabelEn}${addForm.reason ? ` - ${addForm.reason}` : ""}`;
@@ -464,6 +583,7 @@ export default function AdminAdjustmentsPage() {
           createdAt: new Date().toISOString(),
           createdBy: currentUserEmail,
           loanDocId: docRef.id,
+          storeId: targetBranchId,
           category: loanCategory,
           installmentCount: months,
           monthlyInstallment: monthlyInst,
@@ -473,12 +593,14 @@ export default function AdminAdjustmentsPage() {
 
         toast.success(isAr ? "تم اعتماد وصرف السلفة وتخصيص الأقساط الشهرية بنجاح!" : "Loan approved, disbursed from safe, and installment schedule created!");
       } else {
+        const targetBranchId = selectedEmp?.storeId || selectedEmp?.branchId || (currentBranch !== "all" ? currentBranch : "alamein4");
         const newAdj: AdjustmentRecord = {
           employeeId: selectedEmpId,
           type: "deduction",
           amount: addForm.amount,
           reason: addForm.reason,
           status: "pending",
+          storeId: targetBranchId,
           createdAt: new Date().toISOString(),
           createdBy: currentUserEmail
         };
@@ -497,8 +619,25 @@ export default function AdminAdjustmentsPage() {
 
   const handleDelete = async (id: string) => {
     if (confirm(isAr ? "هل أنت متأكد من حذف هذا السجل المعلق؟" : "Are you sure you want to delete this pending record?")) {
-      await deleteDoc(doc(db, "adjustments", id));
-      toast.success(isAr ? "تم الحذف بنجاح" : "Successfully deleted");
+      try {
+        const adj = allAdjustments.find(a => a.id === id);
+        const loanId = (adj as any)?.loanDocId || (adj?.type === "loan" ? adj.id : null);
+        if (loanId) {
+          try {
+            await deleteDoc(doc(db, "loans", loanId));
+          } catch (err) {
+            console.warn("Could not delete from loans collection:", err);
+          }
+        }
+        try {
+          await deleteDoc(doc(db, "adjustments", id));
+        } catch (err) {
+          console.warn("Could not delete from adjustments collection:", err);
+        }
+        toast.success(isAr ? "تم الحذف بنجاح" : "Successfully deleted");
+      } catch (e: any) {
+        toast.error(e.message || (isAr ? "فشل الحذف" : "Failed to delete"));
+      }
     }
   };
 
@@ -507,7 +646,7 @@ export default function AdminAdjustmentsPage() {
 
   // -- PRINT HELPERS --
   const printEmp = printLoan ? employees.find(e => e.id === printLoan.employeeId) || {} : {};
-  const printBranch = availableBranches.find(b => b.id === (printEmp.storeId || printLoan?.storeId));
+  const printBranch = availableBranches.find(b => b.id === (printEmp.storeId || printLoan?.storeId || (currentBranch !== "all" ? currentBranch : undefined)));
   const companyName = printBranch ? printBranch.name : (isAr ? "شركة ايه ان اتش للتجارة (ANH)" : "ANH Trading & Distribution");
   const dateString = new Date().toLocaleDateString(isAr ? 'ar-EG' : 'en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -529,9 +668,17 @@ export default function AdminAdjustmentsPage() {
                   <Scale className="w-7 h-7" strokeWidth={2.5} />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wider uppercase bg-rose-500/20 text-rose-300 border border-rose-500/30">
                       {isAr ? "إدارة الموارد البشرية والمالية" : "HR & Payroll Governance"}
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wider bg-slate-800/90 text-slate-200 border border-slate-700 flex items-center gap-1.5 shadow-sm">
+                      <Building2 className="w-3.5 h-3.5 text-rose-400" />
+                      <span>
+                        {currentBranch === "all" 
+                          ? (isAr ? "جميع الفروع" : "All Branches") 
+                          : (availableBranches.find(b => b.id === currentBranch)?.name || (currentBranch === "ola" ? "Ola El Koronfol" : "El Alamein 4"))}
+                      </span>
                     </span>
                     <span className="flex h-2 w-2 relative">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -627,7 +774,7 @@ export default function AdminAdjustmentsPage() {
             <div className="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
               <span>{isAr ? "نسبة المدينين بالقوى العاملة" : "Staff Ratio"}</span>
               <span className="font-bold text-blue-600 dark:text-blue-400">
-                {employees.length > 0 ? Math.round((loanTelemetry.activeIndebtedStaffCount / employees.length) * 100) : 0}% {isAr ? "من الطاقم" : "of team"}
+                {branchEmployees.length > 0 ? Math.round((loanTelemetry.activeIndebtedStaffCount / branchEmployees.length) * 100) : 0}% {isAr ? "من الطاقم" : "of team"}
               </span>
             </div>
           </div>
@@ -778,7 +925,7 @@ export default function AdminAdjustmentsPage() {
                   className="w-full p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-rose-500 outline-none text-sm font-bold"
                 >
                   <option value="">{isAr ? "اختر الموظف..." : "Select employee..."}</option>
-                  {employees.map(e => (
+                  {branchEmployees.map(e => (
                     <option key={e.id} value={e.id}>{e.name} ({e.position})</option>
                   ))}
                 </select>
@@ -980,7 +1127,7 @@ export default function AdminAdjustmentsPage() {
             </div>
             
             <div className="text-xs text-slate-400 font-mono">
-              {activeTab === "history" ? `${historyAdjustments.length} ${isAr ? "سجل" : "records"}` : `${allAdjustments.filter(a => a.type === activeTab).length} ${isAr ? "معلق" : "pending"}`}
+              {activeTab === "history" ? `${filteredHistoryAdjustments.length} ${isAr ? "سجل" : "records"}` : `${allAdjustments.filter(a => a.type === activeTab).length} ${isAr ? "معلق" : "pending"}`}
             </div>
           </div>
 
@@ -1005,22 +1152,22 @@ export default function AdminAdjustmentsPage() {
                       </div>
                     </td>
                   </tr>
-                ) : activeTab === "history" && historyAdjustments.length === 0 ? (
+                ) : activeTab === "history" && filteredHistoryAdjustments.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-4 py-12 text-center text-slate-400 dark:text-slate-500 font-medium text-sm">
-                      {isAr ? "لا توجد تسويات منتهية سابقة." : "No settled history found."}
+                      {isAr ? "لا توجد تسويات منتهية سابقة لهذا الفرع." : "No settled history found for this branch."}
                     </td>
                   </tr>
                 ) : activeTab !== "history" && allAdjustments.filter(a => a.type === activeTab).length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-4 py-12 text-center text-slate-400 dark:text-slate-500 font-medium text-sm">
                       {isAr 
-                        ? `لا توجد ${activeTab === "deduction" ? "استقطاعات" : "سلف"} معلقة حالياً.` 
-                        : `No pending ${activeTab} records found.`}
+                        ? `لا توجد ${activeTab === "deduction" ? "استقطاعات" : "سلف"} معلقة حالياً لهذا الفرع.` 
+                        : `No pending ${activeTab} records found for this branch.`}
                     </td>
                   </tr>
                 ) : (
-                  (activeTab === "history" ? historyAdjustments : allAdjustments.filter(a => a.type === activeTab)).map((adj) => {
+                  (activeTab === "history" ? filteredHistoryAdjustments : allAdjustments.filter(a => a.type === activeTab)).map((adj) => {
                     const emp = employees.find(e => e.id === adj.employeeId);
                     return (
                     <tr key={adj.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors">

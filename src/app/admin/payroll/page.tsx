@@ -94,8 +94,8 @@ export default function AdminPayrollPage() {
   }, [userRole, currentUserEmail]);
 
   const canEditOrDelete = useMemo(() => {
-    return !isManager;
-  }, [isManager]);
+    return true; // Full permission to edit and delete salaries for managers and admins
+  }, []);
   
   const [employees, setEmployees] = useState<any[]>([]);
   const [drafts, setDrafts] = useState<PayrollRecord[]>([]);
@@ -584,10 +584,6 @@ export default function AdminPayrollPage() {
   };
 
   const handleEditDraft = (draft: PayrollRecord) => {
-    if (!canEditOrDelete) {
-      toast.error(language === "ar" ? "غير مصرح: للمديرين صلاحية إضافة الرواتب فقط دون إمكانية التعديل" : "Managers cannot edit payroll drafts. You can only add new entries.");
-      return;
-    }
     const emp = employees.find(e => e.id === draft.employeeId);
     setSelectedEmp(emp || { id: draft.employeeId, name: draft.employeeId });
     setEditingDraftId(draft.id || null);
@@ -613,11 +609,6 @@ export default function AdminPayrollPage() {
   };
 
   const handleSaveDraft = async () => {
-    if (editingDraftId && !canEditOrDelete) {
-      toast.error(language === "ar" ? "غير مصرح: للمديرين صلاحية إضافة الرواتب فقط دون إمكانية التعديل" : "Managers cannot edit existing drafts. You can only add new drafts.");
-      return;
-    }
-
     if (!selectedEmp || !editForm.employeeId) {
       toast.error("Please select an employee");
       return;
@@ -662,19 +653,11 @@ export default function AdminPayrollPage() {
   };
 
   const openMarkPaidModal = (draft: PayrollRecord) => {
-    if (!canEditOrDelete) {
-      toast.error(language === "ar" ? "اعتماد وصرف الرواتب مخصص للإدارة العليا فقط. يمكنك إضافة المسودات فقط" : "Approving and paying payroll is reserved for administrators.");
-      return;
-    }
     setShowPaidModal(draft);
     setPaidDate(new Date().toISOString().split("T")[0]);
   };
 
   const confirmMarkPaid = async () => {
-    if (!canEditOrDelete) {
-      toast.error("Managers cannot finalize payroll.");
-      return;
-    }
     if (!showPaidModal) return;
     const draft = showPaidModal;
 
@@ -770,10 +753,6 @@ export default function AdminPayrollPage() {
   };
 
   const deleteDraft = async (id: string) => {
-    if (!canEditOrDelete) {
-      toast.error(language === "ar" ? "غير مصرح: للمديرين صلاحية إضافة الرواتب فقط دون إمكانية الحذف" : "Managers cannot delete payroll drafts. You can only add new entries.");
-      return;
-    }
     if (!confirm("Delete this draft permanently?")) return;
     try {
       await deleteDoc(doc(db, "payroll_drafts", id));
@@ -813,10 +792,6 @@ export default function AdminPayrollPage() {
   };
 
   const handleOpenEditPaid = (record: PayrollRecord) => {
-    if (!canEditOrDelete) {
-      toast.error(language === "ar" ? "غير مصرح: للمديرين صلاحية إضافة الرواتب فقط دون إمكانية التعديل" : "Managers cannot edit paid payroll records.");
-      return;
-    }
     const dateInput = getValidDateInput(record.postedToFinanceAt || record.createdAt);
     setEditingPaidRecord(record);
     setPaidEditForm({
@@ -856,10 +831,6 @@ export default function AdminPayrollPage() {
 
   const handleSavePaidRecord = async () => {
     if (!editingPaidRecord?.id) return;
-    if (!canEditOrDelete) {
-      toast.error(language === "ar" ? "غير مصرح: للمديرين صلاحية إضافة الرواتب فقط دون إمكانية التعديل" : "Managers cannot edit payroll records.");
-      return;
-    }
     setIsSavingPaid(true);
     try {
       const { standardPay, netPay } = calcPaidFormPays();
@@ -897,10 +868,6 @@ export default function AdminPayrollPage() {
 
   const handleDeletePaidRecord = async () => {
     if (!editingPaidRecord?.id) return;
-    if (!canEditOrDelete) {
-      toast.error(language === "ar" ? "غير مصرح: للمديرين صلاحية إضافة الرواتب فقط دون إمكانية الحذف" : "Managers cannot delete payroll records.");
-      return;
-    }
     if (!confirm("Are you sure you want to permanently delete this paid payroll record? This action cannot be undone and will affect financial reports.")) return;
     setIsSavingPaid(true);
     try {
@@ -991,12 +958,6 @@ export default function AdminPayrollPage() {
             <h1 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight">
               {t("admin.payroll.title")}
             </h1>
-            {!canEditOrDelete && (
-              <span className="px-3 py-1 text-xs font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-800/60 rounded-xl flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
-                {language === "ar" ? "صلاحية المدير: إضافة فقط" : "Manager Mode: Add Only"}
-              </span>
-            )}
           </div>
           <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">{t("admin.payroll.subtitle")}</p>
         </div>
