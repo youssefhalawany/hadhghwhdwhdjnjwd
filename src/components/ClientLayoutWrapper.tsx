@@ -28,6 +28,7 @@ import { audioChimes } from "@/lib/audio-chimes";
 import WelcomeModal from "./WelcomeModal";
 import { RemoteMessageOverlay, RemoteMessage } from "./RemoteMessageOverlay";
 import { RemoteLockOverlay } from "./RemoteLockOverlay";
+import EnterpriseLoginScreen from "./EnterpriseLoginScreen";
 
 export default function ClientLayoutWrapper({ children }: { children: React.ReactNode }) {
   const { currentBranch, setBranch, availableBranches, setAvailableBranches } = useBranch();
@@ -1041,13 +1042,30 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     return true;
   });
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleEnterpriseLogin = async (identifier: string, pass: string, remember: boolean) => {
     setAuthError("");
+    const trimmedId = identifier.trim();
+    let loginEmail = trimmedId;
+    if (!loginEmail.includes("@")) {
+      loginEmail = `${loginEmail.toLowerCase()}@circlek.com`;
+    }
+
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await signInWithEmailAndPassword(auth, loginEmail, pass);
+      setEmail(trimmedId);
+      setPassword("");
     } catch (err: any) {
+      // If failed and had no @ originally, also try raw identifier
+      if (!trimmedId.includes("@")) {
+        try {
+          await signInWithEmailAndPassword(auth, trimmedId, pass);
+          setEmail(trimmedId);
+          setPassword("");
+          return;
+        } catch (e2) {}
+      }
       setAuthError(err.message || "Failed to log in");
+      throw err;
     }
   };
 
@@ -1140,106 +1158,14 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
   if (!user) {
     return (
-      <div className="h-[100dvh] w-full overflow-y-auto flex items-center justify-center py-8 relative" style={{ background: '#09090B' }}>
-        {/* Gradient mesh background */}
-        <div className="absolute inset-0 pointer-events-none" style={{
-          background: 'radial-gradient(ellipse at 20% 0%, rgba(225,29,72,0.15) 0%, transparent 50%), radial-gradient(ellipse at 80% 100%, rgba(249,115,22,0.10) 0%, transparent 50%)',
-        }} />
-
-        {/* Login card */}
-        <div className="relative z-10 p-8 sm:p-10 rounded-3xl w-full max-w-md mx-4" style={{
-          background: 'rgba(24,24,27,0.7)',
-          backdropFilter: 'blur(40px)',
-          WebkitBackdropFilter: 'blur(40px)',
-          border: '1px solid rgba(255,255,255,0.06)',
-          boxShadow: '0 25px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04)',
-        }}>
-          {/* Logo */}
-          <div className="flex flex-col items-center mb-10">
-            <div className="relative">
-              <div className="absolute -inset-1.5 rounded-full" style={{
-                background: 'conic-gradient(from 0deg, #E11D48, #F97316, #FBBF24, #E11D48)',
-                filter: 'blur(6px)',
-                opacity: 0.4,
-              }} />
-              <div className="relative h-16 w-16 rounded-full flex items-center justify-center font-black text-white text-3xl" style={{
-                background: '#18181B',
-                border: '2px solid rgba(255,255,255,0.08)',
-              }}>
-                K
-              </div>
-            </div>
-            <h1 className="mt-5 text-2xl font-extrabold tracking-[0.15em]" style={{ color: '#FAFAFA' }}>CIRCLE K</h1>
-            <p className="text-xs uppercase tracking-[0.2em] font-semibold text-center mt-2" style={{ color: '#71717A' }}>
-              Franchise Enterprise<br />Authorized Access Only
-            </p>
-          </div>
-
-          <form onSubmit={handleLogin} className="space-y-5">
-            {authError && (
-              <div className="p-3.5 rounded-xl text-sm text-center font-semibold" style={{
-                background: 'rgba(225,29,72,0.08)',
-                color: '#FB7185',
-                border: '1px solid rgba(225,29,72,0.15)',
-              }}>
-                {authError}
-              </div>
-            )}
-
-            {/* Email Field */}
-            <div className="relative">
-              <label className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block" style={{ color: '#71717A' }}>Email Address</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="manager@circlek.com"
-                className="w-full rounded-xl p-3.5 text-sm outline-none transition-all duration-200"
-                style={{
-                  background: 'rgba(39,39,42,0.5)',
-                  border: '1px solid rgba(255,255,255,0.06)',
-                  color: '#FAFAFA',
-                }}
-                onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(225,29,72,0.4)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(225,29,72,0.08)'; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; e.currentTarget.style.boxShadow = 'none'; }}
-                required
-              />
-            </div>
-
-            {/* Password Field */}
-            <div className="relative">
-              <label className="text-[11px] font-bold uppercase tracking-wider mb-1.5 block" style={{ color: '#71717A' }}>Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full rounded-xl p-3.5 text-sm outline-none transition-all duration-200"
-                style={{
-                  background: 'rgba(39,39,42,0.5)',
-                  border: '1px solid rgba(255,255,255,0.06)',
-                  color: '#FAFAFA',
-                }}
-                onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(225,29,72,0.4)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(225,29,72,0.08)'; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; e.currentTarget.style.boxShadow = 'none'; }}
-                required
-              />
-            </div>
-
-            {/* Sign In Button */}
-            <button
-              type="submit"
-              className="w-full text-white font-extrabold py-3.5 rounded-xl mt-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] text-sm tracking-wide"
-              style={{
-                background: 'linear-gradient(135deg, #E11D48, #F97316)',
-                boxShadow: '0 8px 25px rgba(225,29,72,0.25), inset 0 1px 0 rgba(255,255,255,0.1)',
-              }}
-            >
-              Sign In to Enterprise System
-            </button>
-          </form>
-        </div>
-      </div>
+      <EnterpriseLoginScreen
+        onLogin={handleEnterpriseLogin}
+        authError={authError}
+        clearAuthError={() => setAuthError("")}
+        language={language}
+        onToggleLanguage={() => setLanguage(language === "ar" ? "en" : "ar")}
+        defaultIdentifier={email}
+      />
     );
   }
 
