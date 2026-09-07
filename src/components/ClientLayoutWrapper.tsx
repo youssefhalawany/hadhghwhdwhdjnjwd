@@ -1049,42 +1049,50 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   const handleEnterpriseLogin = async (identifier: string, pass: string, remember: boolean) => {
     setAuthError("");
     const trimmedId = identifier.trim();
-    let loginEmail = trimmedId;
-    if (!loginEmail.includes("@")) {
-      loginEmail = `${loginEmail.toLowerCase()}@circlek.com`;
+    const cleanLower = trimmedId.toLowerCase();
+
+    // Construct candidate emails to try
+    const candidates: string[] = [];
+    if (trimmedId.includes("@")) {
+      candidates.push(trimmedId);
+      if (trimmedId !== cleanLower) candidates.push(cleanLower);
+    } else {
+      // In this system, user accounts are registered with @ck.com, @circlek.com, and @ckk.com
+      candidates.push(`${cleanLower}@ck.com`);
+      candidates.push(`${cleanLower}@circlek.com`);
+      candidates.push(`${cleanLower}@ckk.com`);
+      candidates.push(trimmedId);
     }
 
-    try {
-      const cred = await signInWithEmailAndPassword(auth, loginEmail, pass);
-      setUser(cred.user);
-      setAuthLoading(false);
-      setEmail(trimmedId);
-      setPassword("");
-      toast.success(language === "ar" ? "تم تسجيل الدخول بنجاح" : "Signed in successfully", { duration: 3000 });
-    } catch (err: any) {
-      // If failed and had no @ originally, also try raw identifier
-      if (!trimmedId.includes("@")) {
-        try {
-          const cred2 = await signInWithEmailAndPassword(auth, trimmedId, pass);
-          setUser(cred2.user);
-          setAuthLoading(false);
-          setEmail(trimmedId);
-          setPassword("");
-          toast.success(language === "ar" ? "تم تسجيل الدخول بنجاح" : "Signed in successfully", { duration: 3000 });
-          return;
-        } catch (e2) {}
+    let lastError: any = null;
+    for (const emailToTry of candidates) {
+      try {
+        const cred = await signInWithEmailAndPassword(auth, emailToTry, pass);
+        setUser(cred.user);
+        setAuthLoading(false);
+        setEmail(emailToTry);
+        setPassword("");
+        toast.success(language === "ar" ? "تم تسجيل الدخول بنجاح" : "Signed in successfully", { duration: 3000 });
+        return;
+      } catch (err: any) {
+        lastError = err;
+        // If exact email provided and failed with wrong password/credential, stop trying other variants
+        if (trimmedId.includes("@")) {
+          break;
+        }
       }
-      const rawMsg = err?.message || "Failed to log in";
-      setAuthError(rawMsg);
-      const isInvalid = rawMsg.toLowerCase().includes("invalid-credential") || rawMsg.toLowerCase().includes("wrong-password") || rawMsg.toLowerCase().includes("user-not-found");
-      toast.error(
-        isInvalid
-          ? (language === "ar" ? "اسم المستخدم أو كلمة المرور غير صحيحة. يرجى التأكد وإعادة المحاولة." : "Invalid username/email or password. Please verify your credentials.")
-          : rawMsg,
-        { duration: 5000 }
-      );
-      throw err;
     }
+
+    const rawMsg = lastError?.message || "Failed to log in";
+    setAuthError(rawMsg);
+    const isInvalid = rawMsg.toLowerCase().includes("invalid-credential") || rawMsg.toLowerCase().includes("wrong-password") || rawMsg.toLowerCase().includes("user-not-found");
+    toast.error(
+      isInvalid
+        ? (language === "ar" ? "اسم المستخدم أو كلمة المرور غير صحيحة. يرجى التأكد وإعادة المحاولة." : "Invalid username/email or password. Please verify your credentials.")
+        : rawMsg,
+      { duration: 5000 }
+    );
+    throw lastError;
   };
 
   const totalNotifications = systemNotifications.length + pendingShiftCount + pendingVoidCount + pendingExpiriesCount + pendingReturnsCount + pendingOosCount;

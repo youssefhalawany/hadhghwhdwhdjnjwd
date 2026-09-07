@@ -86,11 +86,25 @@ export default function EnterpriseLoginScreen({
     };
   }, []);
 
-  const handleSubmit = async (e?: React.FormEvent) => {
+  const handleSubmit = async (e?: React.FormEvent<HTMLFormElement>) => {
     if (e) e.preventDefault();
 
-    const effectiveId = (idInputRef.current?.value || identifier || "").trim();
-    const effectivePass = passInputRef.current?.value || password || "";
+    let effectiveId = "";
+    let effectivePass = "";
+
+    if (e && e.currentTarget) {
+      try {
+        const formData = new FormData(e.currentTarget);
+        effectiveId = ((formData.get("identifier") as string) || idInputRef.current?.value || identifier || "").trim();
+        effectivePass = (formData.get("password") as string) || passInputRef.current?.value || password || "";
+      } catch {
+        effectiveId = (idInputRef.current?.value || identifier || "").trim();
+        effectivePass = passInputRef.current?.value || password || "";
+      }
+    } else {
+      effectiveId = (idInputRef.current?.value || identifier || "").trim();
+      effectivePass = passInputRef.current?.value || password || "";
+    }
 
     if (!effectiveId) {
       toast.error(isAr ? "يرجى إدخال اسم المستخدم أو البريد الإلكتروني" : "Please enter your email or username");
@@ -318,6 +332,7 @@ export default function EnterpriseLoginScreen({
                   </div>
                   <input
                     ref={idInputRef}
+                    name="identifier"
                     type="text"
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
@@ -358,6 +373,7 @@ export default function EnterpriseLoginScreen({
                   </div>
                   <input
                     ref={passInputRef}
+                    name="password"
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -409,10 +425,6 @@ export default function EnterpriseLoginScreen({
               {/* Radiant Primary Action Button */}
               <button
                 type="submit"
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleSubmit(e);
-                }}
                 disabled={isSubmitting}
                 className="w-full relative overflow-hidden rounded-2xl py-3.5 px-6 font-black text-sm text-white tracking-wide shadow-xl transition-all duration-200 hover:scale-[1.015] active:scale-[0.985] disabled:opacity-60 flex items-center justify-center gap-2.5 mt-4 cursor-pointer"
                 style={{
