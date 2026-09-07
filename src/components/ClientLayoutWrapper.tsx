@@ -43,8 +43,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   const [role, setRole] = useState<string>("owner");
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userDoc, setUserDoc] = useState<any>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [minSplashDone, setMinSplashDone] = useState(() => {
+  const [authLoading, setAuthLoading] = useState(() => {
     if (typeof window !== "undefined") {
       return Boolean(localStorage.getItem("circlek_role") || localStorage.getItem("circlek_user_name"));
     }
@@ -200,19 +199,15 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     const storedRole = localStorage.getItem("circlek_role") || "owner";
     setRole(storedRole);
 
-    const hasCachedSession = Boolean(storedRole || localStorage.getItem("circlek_user_name"));
-    const splashTimer = setTimeout(() => setMinSplashDone(true), hasCachedSession ? 50 : 250);
     const safetyTimeout = setTimeout(() => {
       setAuthLoading(false);
-      setMinSplashDone(true);
-    }, 400);
+    }, 250);
     const clockTimer = setInterval(() => setCurrentDateTime(new Date()), 30000);
     setCurrentDateTime(new Date());
 
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       setAuthLoading(false);
-      setMinSplashDone(true);
 
       if (currentUser) {
         if (!localStorage.getItem("has_seen_welcome_anh_v2")) {
@@ -455,7 +450,6 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     return () => {
       unsubscribe();
       if (typeof unsubNotifs === "function") unsubNotifs();
-      clearTimeout(splashTimer);
       clearTimeout(safetyTimeout);
       window.removeEventListener('click', handleClick);
       clearInterval(clockTimer);
@@ -1092,76 +1086,12 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     );
   }
 
-  if (authLoading && !minSplashDone) {
+  if (authLoading) {
     return (
-      <div className="h-[100dvh] w-full flex flex-col items-center justify-center relative overflow-hidden" style={{ background: '#09090B' }}>
-        {/* Ambient glow orbs */}
-        <div className="absolute top-[20%] left-[15%] w-72 h-72 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(225,29,72,0.12) 0%, transparent 70%)', filter: 'blur(60px)' }} />
-        <div className="absolute bottom-[25%] right-[10%] w-60 h-60 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(249,115,22,0.10) 0%, transparent 70%)', filter: 'blur(60px)' }} />
-
-        <div className="z-10 flex flex-col items-center">
-          {/* Animated gradient ring logo */}
-          <div className="relative">
-            <div className="absolute -inset-2 rounded-full" style={{
-              background: 'conic-gradient(from 0deg, #E11D48, #F97316, #FBBF24, #E11D48)',
-              animation: 'spin 3s linear infinite',
-              filter: 'blur(8px)',
-              opacity: 0.5,
-            }} />
-            <div className="absolute -inset-2 rounded-full" style={{
-              background: 'conic-gradient(from 0deg, #E11D48, #F97316, #FBBF24, #E11D48)',
-              animation: 'spin 3s linear infinite',
-            }} />
-            <div className="relative h-24 w-24 rounded-full flex items-center justify-center font-black text-white text-5xl shadow-2xl" style={{
-              background: '#09090B',
-              border: '3px solid rgba(255,255,255,0.06)',
-            }}>
-              K
-            </div>
-          </div>
-
-          {/* Brand text with stagger */}
-          <div className="mt-10 flex items-center gap-[3px]">
-            {'CIRCLE K'.split('').map((char, i) => (
-              <span key={i} className="text-3xl sm:text-4xl font-extrabold tracking-widest" style={{
-                color: '#FAFAFA',
-                opacity: 0,
-                animation: `fadeInUp 0.4s ease forwards`,
-                animationDelay: `${0.8 + i * 0.06}s`,
-              }}>
-                {char === ' ' ? '\u00A0' : char}
-              </span>
-            ))}
-          </div>
-          <p className="mt-3 text-sm uppercase tracking-[0.25em] font-semibold" style={{ color: '#71717A', opacity: 0, animation: 'fadeInUp 0.5s ease forwards', animationDelay: '1.4s' }}>
-            ANH Portal
-          </p>
-          <p className="mt-3 text-xs font-bold tracking-wider" style={{ color: '#FB7185', opacity: 0, animation: 'fadeInUp 0.5s ease forwards', animationDelay: '1.6s' }}>
-            Please wait {(userDoc?.displayName || user?.displayName || user?.email?.split('@')[0]) ? `${userDoc?.displayName || user?.displayName || user?.email?.split('@')[0]}` : ''}...
-          </p>
-
-          {/* Progress ring spinner */}
-          <div className="mt-14">
-            <svg width="28" height="28" viewBox="0 0 28 28" className="animate-spin" style={{ animationDuration: '1.2s' }}>
-              <circle cx="14" cy="14" r="12" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="2.5" />
-              <circle cx="14" cy="14" r="12" fill="none" stroke="url(#splashGrad)" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="60 100" />
-              <defs>
-                <linearGradient id="splashGrad" x1="0" y1="0" x2="28" y2="28">
-                  <stop offset="0%" stopColor="#E11D48" />
-                  <stop offset="100%" stopColor="#F97316" />
-                </linearGradient>
-              </defs>
-            </svg>
-          </div>
+      <div className="h-[100dvh] w-full flex flex-col items-center justify-center bg-[#09090B] text-foreground">
+        <div className="relative h-12 w-12 rounded-full flex items-center justify-center font-black text-white text-xl bg-gradient-to-br from-red-600 to-rose-700 shadow-lg animate-pulse">
+          K
         </div>
-
-        {/* Keyframe styles */}
-        <style>{`
-          @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(12px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-        `}</style>
       </div>
     );
   }
