@@ -22,6 +22,7 @@ import {
   KeyRound
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 
 interface EnterpriseLoginScreenProps {
   onLogin: (identifier: string, pass: string, remember: boolean) => Promise<void>;
@@ -51,6 +52,9 @@ export default function EnterpriseLoginScreen({
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [inputFocused, setInputFocused] = useState<"id" | "pass" | null>(null);
 
+  const idInputRef = useRef<HTMLInputElement>(null);
+  const passInputRef = useRef<HTMLInputElement>(null);
+
   // Auto-fill remembered identity from localStorage
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -61,22 +65,59 @@ export default function EnterpriseLoginScreen({
     }
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!identifier.trim() || !password || isSubmitting) return;
+  // Synchronize browser autofill values into state and refs
+  useEffect(() => {
+    const syncAutofill = () => {
+      if (idInputRef.current && idInputRef.current.value && idInputRef.current.value !== identifier) {
+        setIdentifier(idInputRef.current.value);
+      }
+      if (passInputRef.current && passInputRef.current.value && passInputRef.current.value !== password) {
+        setPassword(passInputRef.current.value);
+      }
+    };
+    syncAutofill();
+    const t1 = setTimeout(syncAutofill, 150);
+    const t2 = setTimeout(syncAutofill, 500);
+    const t3 = setTimeout(syncAutofill, 1000);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, []);
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+
+    const effectiveId = (idInputRef.current?.value || identifier || "").trim();
+    const effectivePass = passInputRef.current?.value || password || "";
+
+    if (!effectiveId) {
+      toast.error(isAr ? "يرجى إدخال اسم المستخدم أو البريد الإلكتروني" : "Please enter your email or username");
+      idInputRef.current?.focus();
+      return;
+    }
+
+    if (!effectivePass) {
+      toast.error(isAr ? "يرجى إدخال كلمة المرور" : "Please enter your password");
+      passInputRef.current?.focus();
+      return;
+    }
+
+    if (isSubmitting) return;
 
     if (clearAuthError) clearAuthError();
     setIsSubmitting(true);
 
     try {
       if (rememberMe && typeof window !== "undefined") {
-        localStorage.setItem("circlek_remembered_identity", identifier.trim());
+        localStorage.setItem("circlek_remembered_identity", effectiveId);
       } else if (typeof window !== "undefined") {
         localStorage.removeItem("circlek_remembered_identity");
       }
-      await onLogin(identifier.trim(), password, rememberMe);
+      await onLogin(effectiveId, effectivePass, rememberMe);
     } catch (err) {
-      // Upstream error handler sets authError
+      // Upstream error handler sets authError & toast
     } finally {
       setIsSubmitting(false);
     }
@@ -276,6 +317,7 @@ export default function EnterpriseLoginScreen({
                     {identifier.includes("@") ? <Mail className="w-4 h-4" /> : <User className="w-4 h-4" />}
                   </div>
                   <input
+                    ref={idInputRef}
                     type="text"
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
@@ -315,6 +357,7 @@ export default function EnterpriseLoginScreen({
                     <Lock className="w-4 h-4" />
                   </div>
                   <input
+                    ref={passInputRef}
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -366,8 +409,12 @@ export default function EnterpriseLoginScreen({
               {/* Radiant Primary Action Button */}
               <button
                 type="submit"
-                disabled={isSubmitting || !identifier.trim() || !password}
-                className="w-full relative overflow-hidden rounded-2xl py-3.5 px-6 font-black text-sm text-white tracking-wide shadow-xl transition-all duration-200 hover:scale-[1.015] active:scale-[0.985] disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2.5 mt-4 cursor-pointer"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleSubmit(e);
+                }}
+                disabled={isSubmitting}
+                className="w-full relative overflow-hidden rounded-2xl py-3.5 px-6 font-black text-sm text-white tracking-wide shadow-xl transition-all duration-200 hover:scale-[1.015] active:scale-[0.985] disabled:opacity-60 flex items-center justify-center gap-2.5 mt-4 cursor-pointer"
                 style={{
                   background: "linear-gradient(135deg, #E11D48 0%, #EA580C 100%)",
                   boxShadow: "0 8px 30px rgba(225, 29, 72, 0.45)"

@@ -1055,20 +1055,34 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     }
 
     try {
-      await signInWithEmailAndPassword(auth, loginEmail, pass);
+      const cred = await signInWithEmailAndPassword(auth, loginEmail, pass);
+      setUser(cred.user);
+      setAuthLoading(false);
       setEmail(trimmedId);
       setPassword("");
+      toast.success(language === "ar" ? "تم تسجيل الدخول بنجاح" : "Signed in successfully", { duration: 3000 });
     } catch (err: any) {
       // If failed and had no @ originally, also try raw identifier
       if (!trimmedId.includes("@")) {
         try {
-          await signInWithEmailAndPassword(auth, trimmedId, pass);
+          const cred2 = await signInWithEmailAndPassword(auth, trimmedId, pass);
+          setUser(cred2.user);
+          setAuthLoading(false);
           setEmail(trimmedId);
           setPassword("");
+          toast.success(language === "ar" ? "تم تسجيل الدخول بنجاح" : "Signed in successfully", { duration: 3000 });
           return;
         } catch (e2) {}
       }
-      setAuthError(err.message || "Failed to log in");
+      const rawMsg = err?.message || "Failed to log in";
+      setAuthError(rawMsg);
+      const isInvalid = rawMsg.toLowerCase().includes("invalid-credential") || rawMsg.toLowerCase().includes("wrong-password") || rawMsg.toLowerCase().includes("user-not-found");
+      toast.error(
+        isInvalid
+          ? (language === "ar" ? "اسم المستخدم أو كلمة المرور غير صحيحة. يرجى التأكد وإعادة المحاولة." : "Invalid username/email or password. Please verify your credentials.")
+          : rawMsg,
+        { duration: 5000 }
+      );
       throw err;
     }
   };
