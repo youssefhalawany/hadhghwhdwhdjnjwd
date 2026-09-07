@@ -82,7 +82,7 @@ function OfficialPaymentReceipt({
   const branchNameArDisplay = isOlaBranch ? "علا القرنفل" : "العلمين 4";
   const crNumber = isOlaBranch ? "219405 / استثمار القاهرة" : "184920 / استثمار الإسكندرية";
   const taxNumber = isOlaBranch ? "618-932-147" : "542-108-392";
-  const isBank = payment.method === 'bank_transfer';
+  const isBank = payment.method === 'bank_transfer' || payment.method === 'bank' || !!payment.bankTransferReceiptUrl;
   const paymentMethodLabelAr = isBank
     ? 'تحويل بنكي رسمي'
     : (payment.method === 'cheque' ? 'شيك بنكي معتمد' : 'نقداً من خزينة الفرع');
@@ -225,25 +225,42 @@ function OfficialPaymentReceipt({
                 </div>
                 {/* REPRESENTATIVE */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px dashed #e2e8f0', paddingBottom: '4px' }}>
-                  <span style={{ fontSize: '10.5px', color: '#475569', fontWeight: '700' }}>المندوب المستلم:</span>
+                  <span style={{ fontSize: '10.5px', color: '#475569', fontWeight: '700' }}>
+                    {isBank ? 'جهة التحويل / الصرف:' : 'المندوب المستلم:'}
+                  </span>
                   <span style={{ fontSize: '12px', fontWeight: '800', color: '#0f172a' }}>
-                    {payment.supplierRepName || "مندوب الشركة المعتمد"}
+                    {isBank
+                      ? (payment.supplierRepName || "التحويل للحساب البنكي الرسمي للمورد")
+                      : (payment.supplierRepName || "مندوب الشركة المعتمد")}
                   </span>
                 </div>
                 {/* NATIONAL ID */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px dashed #e2e8f0', paddingBottom: '4px' }}>
-                  <span style={{ fontSize: '10.5px', color: '#475569', fontWeight: '700' }}>الرقم القومي:</span>
-                  <span style={{ fontSize: '12px', fontWeight: '800', fontFamily: 'monospace', color: '#0f172a' }}>
-                    {payment.supplierNationalId || "مرفق بالصورة"}
+                  <span style={{ fontSize: '10.5px', color: '#475569', fontWeight: '700' }}>
+                    {isBank ? 'طبيعة العملية:' : 'الرقم القومي:'}
+                  </span>
+                  <span style={{ fontSize: '12px', fontWeight: '800', fontFamily: isBank ? 'inherit' : 'monospace', color: '#0f172a' }}>
+                    {isBank
+                      ? (payment.supplierNationalId || "سداد إلكتروني معتمد بالحساب المؤسسي")
+                      : (payment.supplierNationalId || "مرفق بالصورة")}
                   </span>
                 </div>
-                {/* ATTACHED NATIONAL ID NOTICE */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '5px 10px' }}>
-                  <span style={{ fontSize: '10px', fontWeight: '800', color: '#0f172a' }}>
-                    ✓ مرفق معه صورة بطاقة الرقم القومي للمورد
-                  </span>
-                  <span style={{ fontSize: '8px', color: '#64748b', fontWeight: '800' }}>[ ID COPY ATTACHED ]</span>
-                </div>
+                {/* ATTACHED NATIONAL ID NOTICE (NOT ATTACHED WHEN PAID BY BANK) */}
+                {isBank ? (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '4px', padding: '5px 10px' }}>
+                    <span style={{ fontSize: '9.5px', fontWeight: '800', color: '#1e40af' }}>
+                      ℹ️ سداد بنكي مؤسسي مباشر - لا يلزم بطاقة رقم قومي
+                    </span>
+                    <span style={{ fontSize: '8px', color: '#3b82f6', fontWeight: '800' }}>[ BANK DIRECT PAY • NO ID REQ ]</span>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '5px 10px' }}>
+                    <span style={{ fontSize: '10px', fontWeight: '800', color: '#0f172a' }}>
+                      ✓ مرفق معه صورة بطاقة الرقم القومي للمورد
+                    </span>
+                    <span style={{ fontSize: '8px', color: '#64748b', fontWeight: '800' }}>[ ID COPY ATTACHED ]</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -401,33 +418,80 @@ function OfficialPaymentReceipt({
             <div style={{ width: '43%', direction: 'rtl', borderLeft: '1px dashed #cbd5e1', paddingLeft: '12px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div>
                 <div style={{ border: '1px solid #0f172a', backgroundColor: '#f8fafc', color: '#0f172a', padding: '4px 8px', fontSize: '10.5px', fontWeight: '800', textAlign: 'center', borderRadius: '3px', marginBottom: '8px' }}>
-                  الطرف الأول: استلام ومخالصة مندوب المورد
+                  {isBank ? 'الطرف الأول: إشعار السداد والتحويل البنكي للمورد' : 'الطرف الأول: استلام ومخالصة مندوب المورد'}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '9.5px', fontWeight: '700' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: '#475569' }}>اسم المستلم: </span>
-                    <span style={{ color: '#0f172a', fontWeight: '800', fontSize: '11px' }}>{payment.supplierRepName || "مندوب الشركة المعتمد"}</span>
+                    <span style={{ color: '#475569' }}>{isBank ? 'الجهة المستفيدة:' : 'اسم المستلم:'} </span>
+                    <span style={{ color: '#0f172a', fontWeight: '800', fontSize: '11px' }}>
+                      {isBank ? (payment.companyName || 'الشركة الموردة') : (payment.supplierRepName || "مندوب الشركة المعتمد")}
+                    </span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: '#475569' }}>الرقم القومي: </span>
-                    <span style={{ color: '#0f172a', fontWeight: '800', fontFamily: 'monospace', fontSize: '11px' }}>{payment.supplierNationalId || "مرفق بالصورة"}</span>
+                    <span style={{ color: '#475569' }}>{isBank ? 'قناة التحويل:' : 'الرقم القومي:'} </span>
+                    <span style={{ color: '#0f172a', fontWeight: '800', fontFamily: isBank ? 'inherit' : 'monospace', fontSize: '11px' }}>
+                      {isBank ? 'الحساب البنكي المؤسسي المعتمد' : (payment.supplierNationalId || "مرفق بالصورة")}
+                    </span>
                   </div>
-                  {/* Arabic Attached National ID Confirmation */}
-                  <div style={{ border: '1px dashed #0f172a', borderRadius: '3px', padding: '3px 8px', backgroundColor: '#f8fafc', fontSize: '9px', fontWeight: '800', color: '#0f172a', marginTop: '2px' }}>
-                    ✓ مرفق معه صورة بطاقة الرقم القومي للمورد
-                  </div>
+                  {/* Arabic Attached National ID Confirmation / Bank Notice */}
+                  {isBank ? (
+                    <div style={{ border: '1px solid #bfdbfe', borderRadius: '3px', padding: '3px 8px', backgroundColor: '#eff6ff', fontSize: '9px', fontWeight: '800', color: '#1e40af', marginTop: '2px' }}>
+                      ℹ️ سداد بنكي إلكتروني رسمي - لا يتطلب توقيع المندوب
+                    </div>
+                  ) : (
+                    <div style={{ border: '1px dashed #0f172a', borderRadius: '3px', padding: '3px 8px', backgroundColor: '#f8fafc', fontSize: '9px', fontWeight: '800', color: '#0f172a', marginTop: '2px' }}>
+                      ✓ مرفق معه صورة بطاقة الرقم القومي للمورد
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Wide Dedicated Signing Box - Full Width (No Fingerprint Box) */}
-              <div style={{ marginTop: '10px' }}>
-                <div style={{ height: '105px', border: '1px solid #cbd5e1', borderRadius: '4px', backgroundColor: '#fafafa', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center', paddingBottom: '8px' }}>
-                  <span style={{ fontSize: '9px', color: '#94a3b8', letterSpacing: '0.5px' }}>[ مساحة توقيع وخاتم المستلم المعتمد / RECIPIENT SIGNATURE & STAMP ]</span>
+              {isBank ? (
+                <div style={{ marginTop: '10px' }}>
+                  <div
+                    style={{
+                      height: '105px',
+                      border: '1.5px solid #2563eb',
+                      borderRadius: '4px',
+                      backgroundColor: '#eff6ff',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      padding: '8px 12px',
+                      textAlign: 'center',
+                      boxSizing: 'border-box'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px' }}>
+                      <span style={{ fontSize: '16px' }}>🏦</span>
+                      <span style={{ fontSize: '12px', fontWeight: '900', color: '#1e40af' }}>
+                        سداد إلكتروني معتمد بالحساب البنكي
+                      </span>
+                    </div>
+                    <p style={{ margin: '2px 0', fontSize: '10px', fontWeight: '800', color: '#1d4ed8', lineHeight: 1.4 }}>
+                      لا يتطلب توقيع المندوب<br />
+                      {payment.bankTransferReceiptUrl ? '(إشعار التحويل البنكي الرسمي مرفق بالصفحة التالية)' : '(مسدد بموجب أمر تحويل بنكي رسمي معتمد)'}
+                    </p>
+                    <span style={{ fontSize: '7.5px', fontWeight: '800', color: '#3b82f6', letterSpacing: '0.4px', textTransform: 'uppercase', marginTop: '3px' }}>
+                      ELECTRONIC SETTLEMENT • NO SUPPLIER SIGNATURE REQUIRED
+                    </span>
+                  </div>
+                  <p style={{ margin: '5px 0 0', fontSize: '9.5px', fontWeight: '900', textAlign: 'center', color: '#1e40af' }}>
+                    مسدد ومقيد رسمياً بحساب المورد بموجب إشعار التحويل البنكي
+                  </p>
                 </div>
-                <p style={{ margin: '5px 0 0', fontSize: '9.5px', fontWeight: '900', textAlign: 'center', color: '#0f172a' }}>
-                  توقيع المستلم بما يفيد المخالصة التامة واستلام كامل مستحقات الفاتورة
-                </p>
-              </div>
+              ) : (
+                <div style={{ marginTop: '10px' }}>
+                  <div style={{ height: '105px', border: '1px solid #cbd5e1', borderRadius: '4px', backgroundColor: '#fafafa', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center', paddingBottom: '8px' }}>
+                    <span style={{ fontSize: '9px', color: '#94a3b8', letterSpacing: '0.5px' }}>[ مساحة توقيع وخاتم المستلم المعتمد / RECIPIENT SIGNATURE & STAMP ]</span>
+                  </div>
+                  <p style={{ margin: '5px 0 0', fontSize: '9.5px', fontWeight: '900', textAlign: 'center', color: '#0f172a' }}>
+                    توقيع المستلم بما يفيد المخالصة التامة واستلام كامل مستحقات الفاتورة
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Store Custody & Management (Center) */}
@@ -547,7 +611,166 @@ function OfficialPaymentReceipt({
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ color: '#dc2626' }}>لا يُعتد بأي كشط أو تعديل في هذا السند</span>
-              <span style={{ color: '#0f172a', fontWeight: '900' }}>PAGE 1 OF 1 [صفحة واحدة معتمدة]</span>
+              <span style={{ color: '#0f172a', fontWeight: '900' }}>
+                {isBank && payment.bankTransferReceiptUrl ? 'PAGE 1 OF 2 [الإشعار مرفق ص.٢]' : 'PAGE 1 OF 1 [صفحة واحدة معتمدة]'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BankTransferReceiptPrintPage({
+  payment,
+  currentBranch,
+  elementId = "pdf-receipt-bank-page"
+}: {
+  payment: any;
+  currentBranch?: string;
+  elementId?: string;
+}) {
+  const pBranchStr = (payment.branchId || payment.storeId || currentBranch || "").toLowerCase();
+  const isOlaBranch = pBranchStr.includes("ola") || pBranchStr.includes("koronfol");
+  const companyNameDisplay = isOlaBranch ? "شركة إيه إن إتش تريد (ش.ذ.م.م)" : "الشركة المصرية للتجارة (ش.م.م)";
+  const branchNameDisplay = isOlaBranch ? "Ola El Koronfol" : "El Alamein 4";
+  const branchNameHeaderDisplay = isOlaBranch ? "CIRCLE K OLA EL KORONFOL" : "CIRCLE K EL-ALAMEIN 4";
+  const branchNameArDisplay = isOlaBranch ? "علا القرنفل" : "العلمين 4";
+  const formattedTotal = Number(payment.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const voucherIdShort = payment.id ? payment.id.substring(0, 10).toUpperCase() : Date.now().toString().slice(-8);
+
+  return (
+    <div
+      id={elementId}
+      className="print-page"
+      style={{
+        width: '210mm',
+        height: '297mm',
+        maxHeight: '297mm',
+        backgroundColor: '#ffffff',
+        position: 'relative',
+        overflow: 'hidden',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Cairo", "Tahoma", Arial, sans-serif',
+        boxSizing: 'border-box',
+        padding: '8mm 10mm',
+        color: '#0f172a',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        pageBreakInside: 'avoid',
+        breakInside: 'avoid'
+      }}
+    >
+      {/* Outer Border Frame */}
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          border: '1.5px solid #0f172a',
+          padding: '3px',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          boxSizing: 'border-box'
+        }}
+      >
+        <div
+          style={{
+            border: '1px solid #94a3b8',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            padding: '12px 16px',
+            boxSizing: 'border-box'
+          }}
+        >
+          {/* Header */}
+          <div style={{ paddingBottom: '10px', borderBottom: '1.5px solid #0f172a' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              {/* Brand Left */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '30%' }}>
+                <div style={{ width: '46px', height: '46px', backgroundColor: '#dc2626', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.15)' }}>
+                  <span style={{ fontSize: '32px', fontWeight: '900', color: '#ffffff', lineHeight: 1, fontFamily: '"Arial Black", Impact, sans-serif' }}>K</span>
+                </div>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#dc2626', letterSpacing: '0.5px', textTransform: 'uppercase' }}>CIRCLE K EGYPT</h2>
+                  <p style={{ margin: '2px 0 0', fontSize: '11.5px', fontWeight: '800', color: '#0f172a' }}>{branchNameHeaderDisplay}</p>
+                  <p style={{ margin: '1px 0 0', fontSize: '9px', fontWeight: '700', color: '#64748b' }}>سلسلة متاجر ومحطات سيركل كيه - فرع {branchNameArDisplay}</p>
+                </div>
+              </div>
+
+              {/* Title Center */}
+              <div style={{ textAlign: 'center', width: '40%' }}>
+                <h1 style={{ margin: 0, fontSize: '17px', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.3px', lineHeight: 1.25 }} dir="rtl">
+                  مرفق إشعار التحويل البنكي الرسمي المعتمد
+                </h1>
+                <p style={{ margin: '3px 0 0', fontSize: '9px', fontWeight: '800', color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                  OFFICIAL BANK TRANSFER CONFIRMATION RECEIPT
+                </p>
+                <div style={{ display: 'inline-block', border: '1px solid #bfdbfe', backgroundColor: '#eff6ff', color: '#1e40af', fontSize: '9.5px', fontWeight: '800', padding: '2px 10px', borderRadius: '3px', marginTop: '4px' }}>
+                  مرفق رسمي تابع لسند السداد رقم: PAY-{voucherIdShort}
+                </div>
+              </div>
+
+              {/* Meta Right */}
+              <div style={{ width: '30%', textAlign: 'right', direction: 'rtl' }}>
+                <p style={{ margin: 0, fontSize: '12px', fontWeight: '900', color: '#0f172a' }}>{companyNameDisplay}</p>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px', marginTop: '3px' }}>
+                  <span style={{ fontSize: '9.5px', color: '#64748b', fontWeight: '700' }}>الشركة الموردة:</span>
+                  <span style={{ fontSize: '11.5px', fontWeight: '900', color: '#0f172a' }}>{payment.companyName || '—'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px', marginTop: '2px' }}>
+                  <span style={{ fontSize: '9.5px', color: '#64748b', fontWeight: '700' }}>رقم الفاتورة:</span>
+                  <span style={{ fontSize: '11.5px', fontWeight: '900', color: '#0f172a', fontFamily: 'monospace' }}>{payment.invoiceNumber || '—'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px', marginTop: '2px' }}>
+                  <span style={{ fontSize: '9.5px', color: '#64748b', fontWeight: '700' }}>المبلغ المحول:</span>
+                  <span style={{ fontSize: '11.5px', fontWeight: '900', color: '#047857', fontFamily: 'monospace' }}>EGP {formattedTotal}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Attached Bank Slip Image Viewer */}
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '1.5px dashed #94a3b8',
+              borderRadius: '6px',
+              padding: '14px',
+              margin: '10px 0',
+              backgroundColor: '#f8fafc',
+              overflow: 'hidden'
+            }}
+          >
+            <img
+              src={payment.bankTransferReceiptUrl}
+              alt="Bank Transfer Receipt Slip"
+              style={{
+                maxHeight: '820px',
+                maxWidth: '100%',
+                objectFit: 'contain',
+                borderRadius: '4px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+              }}
+            />
+          </div>
+
+          {/* Footer */}
+          <div style={{ paddingTop: '6px', borderTop: '1px solid #0f172a', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '8px', fontWeight: '800', color: '#475569' }}>
+            <div style={{ fontFamily: 'monospace' }}>
+              ATTACHMENT REF: TRF-DOC-{voucherIdShort} | ORIGINAL VOUCHER ID: {payment.id} | TIMESTAMP: {new Date().toLocaleString('ar-EG')}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ color: '#2563eb' }}>إشعار تحويل بنكي إلكتروني معتمد رسمياً</span>
+              <span style={{ color: '#0f172a', fontWeight: '900' }}>PAGE 2 OF 2 [مرفق التحويل البنكي]</span>
             </div>
           </div>
         </div>
@@ -1758,10 +1981,6 @@ export default function PaymentsRedesignPage() {
 html, body {
   margin: 0;
   padding: 0;
-  width: 210mm;
-  height: 297mm;
-  max-height: 297mm;
-  overflow: hidden !important;
   background: white;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
@@ -1773,9 +1992,13 @@ html, body {
   overflow: hidden !important;
   page-break-inside: avoid !important;
   break-inside: avoid !important;
+  page-break-after: always !important;
+  break-after: page !important;
+  box-sizing: border-box !important;
+}
+.print-page:last-child {
   page-break-after: avoid !important;
   break-after: avoid !important;
-  box-sizing: border-box !important;
 }
 </style>
 </head>
@@ -1858,6 +2081,22 @@ html, body {
                 pdf.addImage(imgDataInv, "JPEG", 0, 0, pdfWidth, pdfHeightInv);
               } catch (invErr) {
                 console.warn(`Bulk payment ${p.id} invoice ${j} error:`, invErr);
+              }
+            }
+          }
+
+          const isBankP = p.method === 'bank_transfer' || p.method === 'bank' || !!p.bankTransferReceiptUrl;
+          if (isBankP && p.bankTransferReceiptUrl) {
+            const bankPage = document.getElementById(`pdf-bulk-payment-${p.id}-bank-receipt`);
+            if (bankPage) {
+              try {
+                const canvasBank = await html2canvas(bankPage, { scale: 2, useCORS: true, allowTaint: true, logging: false });
+                const imgDataBank = canvasBank.toDataURL("image/jpeg", 0.95);
+                const pdfHeightBank = (canvasBank.height * pdfWidth) / canvasBank.width;
+                pdf.addPage();
+                pdf.addImage(imgDataBank, "JPEG", 0, 0, pdfWidth, pdfHeightBank);
+              } catch (bankErr) {
+                console.warn(`Bulk payment ${p.id} bank slip error:`, bankErr);
               }
             }
           }
@@ -2725,7 +2964,7 @@ html, body {
         )}
       </AnimatePresence>
 
-      {/* HIDDEN PRINT LAYOUT (A4 SINGLE SHEET EXECUTIVE VOUCHER) */}
+      {/* HIDDEN PRINT LAYOUT (A4 SINGLE SHEET EXECUTIVE VOUCHER OR 2-PAGE FOR BANK TRANSFER) */}
       {selectedPaymentForPrint && (
         <div id="single-payment-print-wrapper" style={{ position: 'absolute', left: '-9999px', top: 0 }}>
           <OfficialPaymentReceipt
@@ -2734,6 +2973,13 @@ html, body {
             qrUrl={qrCodeData}
             currentBranch={currentBranch}
           />
+
+          {(selectedPaymentForPrint.method === 'bank_transfer' || selectedPaymentForPrint.method === 'bank' || selectedPaymentForPrint.bankTransferReceiptUrl) && selectedPaymentForPrint.bankTransferReceiptUrl && (
+            <BankTransferReceiptPrintPage
+              payment={selectedPaymentForPrint}
+              currentBranch={currentBranch}
+            />
+          )}
         </div>
       )}
 
@@ -3727,6 +3973,14 @@ html, body {
                   elementId={`pdf-bulk-payment-${selectedPaymentForPrint.id}`}
                   currentBranch={currentBranch}
                 />
+
+                {(selectedPaymentForPrint.method === 'bank_transfer' || selectedPaymentForPrint.method === 'bank' || selectedPaymentForPrint.bankTransferReceiptUrl) && selectedPaymentForPrint.bankTransferReceiptUrl && (
+                  <BankTransferReceiptPrintPage
+                    payment={selectedPaymentForPrint}
+                    currentBranch={currentBranch}
+                    elementId={`pdf-bulk-payment-${selectedPaymentForPrint.id}-bank-receipt`}
+                  />
+                )}
 
                 {urls.map((url: string, index: number) => (
                   <div key={`bulk-pay-${selectedPaymentForPrint.id}-invoice-${index}`} id={`pdf-bulk-payment-${selectedPaymentForPrint.id}-invoice-${index}`} style={{ width: '794px', height: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', padding: '40px' }}>
