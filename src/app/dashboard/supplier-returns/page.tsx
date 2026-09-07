@@ -5,7 +5,7 @@ import { collection, onSnapshot, doc, updateDoc, deleteDoc, addDoc, query, where
 import { db } from "@/lib/firebase";
 import { useBranch } from "@/context/BranchContext";
 import { useLanguage } from "@/context/LanguageContext";
-import { Truck, CheckCircle, Search, Calendar, FileText, ArrowLeft, Printer, AlertTriangle } from "lucide-react";
+import { Truck, CheckCircle, Search, Calendar, FileText, ArrowLeft, Printer, AlertTriangle, Edit, Trash2, Plus, X } from "lucide-react";
 import Link from "next/link";
 import { PageTransition } from "@/components/PageTransition";
 
@@ -392,6 +392,151 @@ export default function SupplierReturnsDashboard() {
   const [transferOutNumber, setTransferOutNumber] = useState("");
   const [printData, setPrintData] = useState<any | null>(null);
   const [processing, setProcessing] = useState<string | null>(null);
+
+  // Admin Role & Edit State
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [editingReturn, setEditingReturn] = useState<any | null>(null);
+
+  useEffect(() => {
+    const checkRole = () => {
+      const storedRole = typeof window !== "undefined" ? (localStorage.getItem("circlek_role") || sessionStorage.getItem("circlek_role")) : null;
+      let sessionRole = null;
+      try {
+        const sess = localStorage.getItem("active_cashier_session");
+        if (sess) {
+          sessionRole = JSON.parse(sess).role;
+        }
+      } catch (e) {}
+
+      const effectiveRole = storedRole || sessionRole;
+      const adminApproved = effectiveRole === "owner" || effectiveRole === "admin" || effectiveRole === "admin_editor" || (Boolean(effectiveRole) && effectiveRole !== "manager" && effectiveRole !== "cashier");
+      setIsAdmin(Boolean(adminApproved));
+    };
+
+    checkRole();
+    window.addEventListener("circlek_role_changed", checkRole);
+    return () => window.removeEventListener("circlek_role_changed", checkRole);
+  }, []);
+
+  const handleOpenEdit = (eventItems: any[]) => {
+    if (!eventItems || eventItems.length === 0) return;
+    const first = eventItems[0];
+    setEditingReturn({
+      eventItems,
+      supplier: first.supplier || "",
+      returnNumber: first.returnNumber || "",
+      transferOutNumber: first.transferOutNumber || "",
+      returnedAt: first.returnedAt ? first.returnedAt.slice(0, 16) : new Date().toISOString().slice(0, 16),
+      agentName: first.agentName || "",
+      agentNationalId: first.agentNationalId || "",
+      agentMobile: first.agentMobile || "",
+      totalPrice: Number(first.totalPrice) || 0,
+      settlementMethod: (first.settlementMethod || "money") as "money" | "products",
+      paymentTiming: (first.paymentTiming || "now") as "now" | "later",
+      expectedPaymentDate: first.expectedPaymentDate || "",
+      isSettled: Boolean(first.isSettled),
+      items: eventItems.map(item => ({
+        id: item.id,
+        barcode: item.barcode || "",
+        itemName: item.itemName || "",
+        quantity: Number(item.quantity) || 1,
+        isDeleted: false
+      }))
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingReturn) return;
+    if (!editingReturn.supplier.trim()) {
+      alert(lang === "ar" ? "يرجى كتابة اسم المورد" : "Please enter supplier name");
+      return;
+    }
+
+    try {
+      setProcessing("saving_edit");
+
+      const sharedUpdate = {
+        supplier: editingReturn.supplier.trim(),
+        returnNumber: editingReturn.returnNumber.trim(),
+        transferOutNumber: editingReturn.transferOutNumber.trim(),
+        returnedAt: editingReturn.returnedAt,
+        agentName: editingReturn.agentName.trim(),
+        agentNationalId: editingReturn.agentNationalId.trim(),
+        agentMobile: editingReturn.agentMobile.trim(),
+        totalPrice: Number(editingReturn.totalPrice) || 0,
+        settlementMethod: editingReturn.settlementMethod,
+        paymentTiming: editingReturn.paymentTiming,
+        expectedPaymentDate: editingReturn.paymentTiming === "later" ? editingReturn.expectedPaymentDate : null,
+        isSettled: Boolean(editingReturn.isSettled),
+        settledAt: editingReturn.isSettled ? (editingReturn.eventItems[0]?.settledAt || new Date().toISOString()) : null
+      };
+
+      const activeItems = editingReturn.items.filter((i: any) => !i.isDeleted);
+      if (activeItems.length === 0) {
+        alert(lang === "ar" ? "يجب أن تحتوي الفاتورة على صنف واحد على الأقل" : "Return must contain at least one item");
+        setProcessing(null);
+        return;
+      }
+
+      // Update or delete existing items
+      for (const item of editingReturn.items) {
+        if (item.id && !item.isNew) {
+          if (item.isDeleted) {
+            await deleteDoc(doc(db, "supplier_returns", item.id));
+          } else {
+            await updateDoc(doc(db, "supplier_returns", item.id), {
+              ...sharedUpdate,
+              barcode: item.barcode.trim() || "N/A",
+              itemName: item.itemName.trim(),
+              quantity: Number(item.quantity) || 1
+            });
+          }
+        } else if (item.isNew && !item.isDeleted) {
+          const first = editingReturn.eventItems[0] || {};
+          await addDoc(collection(db, "supplier_returns"), {
+            ...sharedUpdate,
+            barcode: item.barcode.trim() || "N/A",
+            itemName: item.itemName.trim() || (lang === "ar" ? "صنف مرتجع" : "Returned Item"),
+            quantity: Number(item.quantity) || 1,
+            category: first.category || "manual",
+            storeId: first.storeId || (currentBranch === "all" ? "eL-alamein-4" : currentBranch),
+            branchId: first.branchId || (currentBranch === "all" ? "alamein4" : currentBranch),
+            status: "returned",
+            createdAt: first.createdAt || new Date().toISOString(),
+            createdBy: first.createdBy || "Admin"
+          });
+        }
+      }
+
+      // Synchronize printData if currently showing this return
+      if (printData && (printData.returnNumber === editingReturn.returnNumber || printData.eventIds?.some((id: string) => editingReturn.eventItems.some((e: any) => e.id === id)))) {
+        setPrintData({
+          ...printData,
+          supplier: sharedUpdate.supplier,
+          returnNumber: sharedUpdate.returnNumber,
+          transferOutNumber: sharedUpdate.transferOutNumber,
+          returnedAt: sharedUpdate.returnedAt,
+          date: new Date(sharedUpdate.returnedAt || new Date()).toLocaleDateString('en-GB'),
+          agentName: sharedUpdate.agentName,
+          agentNationalId: sharedUpdate.agentNationalId,
+          agentMobile: sharedUpdate.agentMobile,
+          totalPrice: sharedUpdate.totalPrice,
+          settlementMethod: sharedUpdate.settlementMethod,
+          paymentTiming: sharedUpdate.paymentTiming,
+          expectedPaymentDate: sharedUpdate.expectedPaymentDate,
+          isSettled: sharedUpdate.isSettled,
+          items: activeItems
+        });
+      }
+
+      setEditingReturn(null);
+    } catch (err: any) {
+      console.error("Error saving return edit:", err);
+      alert("Failed to save changes: " + (err?.message || "Unknown error"));
+    } finally {
+      setProcessing(null);
+    }
+  };
 
   // Direct/Manual Return state
   const [showManualReturn, setShowManualReturn] = useState(false);
@@ -967,7 +1112,20 @@ export default function SupplierReturnsDashboard() {
                             Expected: <span className="font-medium text-foreground">{first.expectedPaymentDate || "Not set"}</span>
                           </p>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 shrink-0">
+                          {isAdmin && (
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenEdit(eventItems);
+                              }}
+                              className="bg-blue-600/10 hover:bg-blue-600 text-blue-600 hover:text-white border border-blue-500/30 font-bold py-2.5 px-3.5 rounded-xl text-sm transition-all flex items-center gap-1.5 shadow-sm"
+                              title={lang === "ar" ? "تعديل المرتجع (صلاحية الإدارة)" : "Edit Return (Admin Only)"}
+                            >
+                              <Edit className="w-4 h-4" />
+                              <span>{lang === "ar" ? "تعديل" : "Edit"}</span>
+                            </button>
+                          )}
                           <button 
                             onClick={(e) => {
                               e.stopPropagation();
@@ -975,19 +1133,19 @@ export default function SupplierReturnsDashboard() {
                             }}
                             className="bg-background border border-border hover:bg-muted text-foreground font-bold py-2.5 px-4 rounded-xl text-sm transition-colors shrink-0 shadow-sm"
                           >
-                            View Details
+                            {lang === "ar" ? "عرض التفاصيل" : "View Details"}
                           </button>
                           <button 
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (!confirm("Confirm that you have received the pending payment/products for ALL items in this return?")) return;
+                              if (!confirm(lang === "ar" ? "تأكيد استلام وتسوية كافة بنود هذا الإشعار؟" : "Confirm that you have received the pending payment/products for ALL items in this return?")) return;
                               eventItems.forEach(item => {
                                 handleSettlePayment(item.id);
                               });
                             }}
-                            className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 px-6 rounded-xl text-sm transition-colors shrink-0 shadow-sm"
+                            className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 px-5 rounded-xl text-sm transition-colors shrink-0 shadow-sm"
                           >
-                            Mark as Paid
+                            {lang === "ar" ? "تأكيد الدفع" : "Mark as Paid"}
                           </button>
                         </div>
                       </div>
@@ -1048,15 +1206,30 @@ export default function SupplierReturnsDashboard() {
                             Settled on: {new Date(first.settledAt || first.returnedAt).toLocaleDateString()}
                           </p>
                         </div>
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            viewReturnDetails(eventItems);
-                          }}
-                          className="bg-background border border-border hover:bg-muted text-foreground font-bold py-2.5 px-4 rounded-xl text-sm transition-colors shrink-0 shadow-sm"
-                        >
-                          View Receipt
-                        </button>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {isAdmin && (
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenEdit(eventItems);
+                              }}
+                              className="bg-blue-600/10 hover:bg-blue-600 text-blue-600 hover:text-white border border-blue-500/30 font-bold py-2.5 px-3.5 rounded-xl text-sm transition-all flex items-center gap-1.5 shadow-sm"
+                              title={lang === "ar" ? "تعديل المرتجع (صلاحية الإدارة)" : "Edit Return (Admin Only)"}
+                            >
+                              <Edit className="w-4 h-4" />
+                              <span>{lang === "ar" ? "تعديل" : "Edit"}</span>
+                            </button>
+                          )}
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              viewReturnDetails(eventItems);
+                            }}
+                            className="bg-background border border-border hover:bg-muted text-foreground font-bold py-2.5 px-4 rounded-xl text-sm transition-colors shrink-0 shadow-sm"
+                          >
+                            {lang === "ar" ? "عرض الإيصال" : "View Receipt"}
+                          </button>
+                        </div>
                       </div>
                     );
                   })
@@ -1521,6 +1694,349 @@ export default function SupplierReturnsDashboard() {
           </div>
         )}
 
+        {/* ADMIN EDIT RETURN MODAL */}
+        {editingReturn && isAdmin && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200 no-print">
+            <div className="bg-card w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden border border-border flex flex-col max-h-[92vh]">
+              {/* Header */}
+              <div className="p-5 border-b border-border bg-muted/30 flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
+                    <Edit className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-xl font-black tracking-tight text-foreground">
+                        {lang === "ar" ? "تعديل إشعار المرتجع" : "Edit Supplier Return"}
+                      </h3>
+                      <span className="bg-amber-500/10 text-amber-600 border border-amber-500/20 text-[10px] font-black uppercase px-2 py-0.5 rounded-full">
+                        Admin Only
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {lang === "ar" ? "تعديل بيانات المورد، تفاصيل التسوية، الأصناف، والحالة (مغلق / معلق)" : "Modify supplier info, settlement terms, items, and status (closed/pending)"}
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setEditingReturn(null)}
+                  className="p-2 hover:bg-muted rounded-xl transition-colors text-muted-foreground hover:text-foreground"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6" dir={lang === "ar" ? "rtl" : "ltr"}>
+                
+                {/* 1. Basic Info */}
+                <div className="space-y-3">
+                  <h4 className="font-bold text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                    <Truck className="w-3.5 h-3.5 text-blue-500" />
+                    <span>{lang === "ar" ? "1. البيانات الأساسية للمرتجع" : "1. Basic Return Information"}</span>
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-xs font-bold text-muted-foreground mb-1 block">
+                        {lang === "ar" ? "اسم الشركة / المورد *" : "Supplier Name *"}
+                      </label>
+                      <input 
+                        type="text" 
+                        value={editingReturn.supplier}
+                        onChange={e => setEditingReturn({...editingReturn, supplier: e.target.value})}
+                        className="w-full p-2.5 border border-border rounded-xl bg-background outline-none focus:border-blue-500 font-bold text-sm"
+                        placeholder="e.g. alshahin"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-muted-foreground mb-1 block">
+                        {lang === "ar" ? "رقم إذن المرتجع" : "Return Reference Number"}
+                      </label>
+                      <input 
+                        type="text" 
+                        value={editingReturn.returnNumber}
+                        onChange={e => setEditingReturn({...editingReturn, returnNumber: e.target.value})}
+                        className="w-full p-2.5 border border-border rounded-xl bg-background outline-none focus:border-blue-500 font-bold text-sm font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-muted-foreground mb-1 block">
+                        {lang === "ar" ? "رقم إذن التحويل الخارجي (TR)" : "Transfer Out / Credit Note (TR)"}
+                      </label>
+                      <input 
+                        type="text" 
+                        value={editingReturn.transferOutNumber}
+                        onChange={e => setEditingReturn({...editingReturn, transferOutNumber: e.target.value})}
+                        className="w-full p-2.5 border border-border rounded-xl bg-background outline-none focus:border-blue-500 font-bold text-sm font-mono"
+                        placeholder="e.g. 2552120"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Agent Information */}
+                <div className="space-y-3 pt-3 border-t border-border">
+                  <h4 className="font-bold text-xs text-muted-foreground uppercase tracking-wider">
+                    {lang === "ar" ? "2. بيانات مندوب الاستلام" : "2. Delivery Agent Information"}
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-xs font-bold text-muted-foreground mb-1 block">
+                        {lang === "ar" ? "اسم المندوب" : "Agent Name"}
+                      </label>
+                      <input 
+                        type="text" 
+                        value={editingReturn.agentName}
+                        onChange={e => setEditingReturn({...editingReturn, agentName: e.target.value})}
+                        className="w-full p-2.5 border border-border rounded-xl bg-background outline-none focus:border-blue-500 font-semibold text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-muted-foreground mb-1 block">
+                        {lang === "ar" ? "الرقم القومي (14 رقم)" : "National ID"}
+                      </label>
+                      <input 
+                        type="text" 
+                        value={editingReturn.agentNationalId}
+                        onChange={e => setEditingReturn({...editingReturn, agentNationalId: e.target.value})}
+                        className="w-full p-2.5 border border-border rounded-xl bg-background outline-none focus:border-blue-500 font-bold text-sm font-mono"
+                        maxLength={14}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-muted-foreground mb-1 block">
+                        {lang === "ar" ? "رقم هاتف المندوب" : "Agent Mobile"}
+                      </label>
+                      <input 
+                        type="text" 
+                        value={editingReturn.agentMobile}
+                        onChange={e => setEditingReturn({...editingReturn, agentMobile: e.target.value})}
+                        className="w-full p-2.5 border border-border rounded-xl bg-background outline-none focus:border-blue-500 font-semibold text-sm font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Financials & Status */}
+                <div className="space-y-3 pt-3 border-t border-border">
+                  <h4 className="font-bold text-xs text-muted-foreground uppercase tracking-wider">
+                    {lang === "ar" ? "3. التسوية المالية وحالة الإشعار" : "3. Settlement & Financial Status"}
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div>
+                      <label className="text-xs font-bold text-muted-foreground mb-1 block">
+                        {lang === "ar" ? "طريقة التسوية" : "Settlement Method"}
+                      </label>
+                      <select 
+                        value={editingReturn.settlementMethod}
+                        onChange={e => setEditingReturn({...editingReturn, settlementMethod: e.target.value as any})}
+                        className="w-full p-2.5 border border-border rounded-xl bg-background outline-none focus:border-blue-500 font-bold text-sm"
+                      >
+                        <option value="money">{lang === "ar" ? "نقدي / تحويل بنكي" : "Cash / Bank Transfer"}</option>
+                        <option value="products">{lang === "ar" ? "استبدال بضاعة" : "Products Exchange"}</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-muted-foreground mb-1 block">
+                        {lang === "ar" ? "توقيت السداد" : "Payment Timing"}
+                      </label>
+                      <select 
+                        value={editingReturn.paymentTiming}
+                        onChange={e => setEditingReturn({...editingReturn, paymentTiming: e.target.value as any})}
+                        className="w-full p-2.5 border border-border rounded-xl bg-background outline-none focus:border-blue-500 font-bold text-sm"
+                      >
+                        <option value="now">{lang === "ar" ? "سداد فوري" : "Immediate (Now)"}</option>
+                        <option value="later">{lang === "ar" ? "آجل (استحقاق لاحق)" : "Later Date"}</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-muted-foreground mb-1 block">
+                        {lang === "ar" ? "إجمالي القيمة (ج.م)" : "Total Amount (EGP)"}
+                      </label>
+                      <input 
+                        type="number" 
+                        value={editingReturn.totalPrice}
+                        onChange={e => setEditingReturn({...editingReturn, totalPrice: Number(e.target.value) || 0})}
+                        className="w-full p-2.5 border border-border rounded-xl bg-background outline-none focus:border-blue-500 font-black text-sm text-emerald-600"
+                        min={0}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-muted-foreground mb-1 block">
+                        {lang === "ar" ? "حالة الإغلاق والتسوية *" : "Status (Closed vs Open) *"}
+                      </label>
+                      <div className="flex gap-1.5 mt-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setEditingReturn({...editingReturn, isSettled: true})}
+                          className={`flex-1 py-2 px-2 rounded-xl text-xs font-bold border transition-all ${editingReturn.isSettled ? "bg-emerald-600 text-white border-emerald-600 shadow-sm" : "bg-muted/40 text-muted-foreground border-border hover:bg-muted"}`}
+                        >
+                          {lang === "ar" ? "مسددة (مغلقة)" : "Settled"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingReturn({...editingReturn, isSettled: false})}
+                          className={`flex-1 py-2 px-2 rounded-xl text-xs font-bold border transition-all ${!editingReturn.isSettled ? "bg-amber-600 text-white border-amber-600 shadow-sm" : "bg-muted/40 text-muted-foreground border-border hover:bg-muted"}`}
+                        >
+                          {lang === "ar" ? "معلقة (مفتوحة)" : "Pending"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {editingReturn.paymentTiming === "later" && (
+                    <div className="w-full md:w-1/3">
+                      <label className="text-xs font-bold text-muted-foreground mb-1 block">
+                        {lang === "ar" ? "تاريخ الاستحقاق المتوقع" : "Expected Payment Date"}
+                      </label>
+                      <input 
+                        type="date" 
+                        value={editingReturn.expectedPaymentDate}
+                        onChange={e => setEditingReturn({...editingReturn, expectedPaymentDate: e.target.value})}
+                        className="w-full p-2.5 border border-border rounded-xl bg-background outline-none focus:border-blue-500 font-semibold text-sm"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* 4. Items Table */}
+                <div className="space-y-3 pt-3 border-t border-border">
+                  <div className="flex justify-between items-center">
+                    <h4 className="font-bold text-xs text-muted-foreground uppercase tracking-wider">
+                      {lang === "ar" ? "4. الأصناف والكميات المرتجعة" : "4. Returned Items & Quantities"}
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingReturn({
+                          ...editingReturn,
+                          items: [
+                            ...editingReturn.items,
+                            { barcode: "", itemName: "", quantity: 1, isNew: true }
+                          ]
+                        });
+                      }}
+                      className="text-xs bg-blue-600/10 hover:bg-blue-600 text-blue-600 hover:text-white border border-blue-500/20 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 transition-all"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>{lang === "ar" ? "إضافة صنف" : "Add Item"}</span>
+                    </button>
+                  </div>
+
+                  <div className="border border-border rounded-xl overflow-hidden bg-muted/20">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-muted text-muted-foreground font-bold border-b border-border">
+                        <tr>
+                          <th className="p-2.5 text-center w-10">#</th>
+                          <th className="p-2.5 w-36">{lang === "ar" ? "الباركود" : "Barcode"}</th>
+                          <th className="p-2.5">{lang === "ar" ? "اسم الصنف وتوصيفه" : "Item Description"}</th>
+                          <th className="p-2.5 text-center w-24">{lang === "ar" ? "الكمية" : "Qty"}</th>
+                          <th className="p-2.5 text-center w-14"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {editingReturn.items.map((item: any, idx: number) => {
+                          if (item.isDeleted) return null;
+                          return (
+                            <tr key={item.id || idx} className="hover:bg-muted/40">
+                              <td className="p-2 text-center font-bold text-muted-foreground">{idx + 1}</td>
+                              <td className="p-2">
+                                <input 
+                                  type="text" 
+                                  value={item.barcode}
+                                  onChange={e => {
+                                    const updated = [...editingReturn.items];
+                                    updated[idx].barcode = e.target.value;
+                                    setEditingReturn({...editingReturn, items: updated});
+                                  }}
+                                  className="w-full p-1.5 border border-border rounded-lg bg-background font-mono text-xs"
+                                  placeholder="Barcode..."
+                                />
+                              </td>
+                              <td className="p-2">
+                                <input 
+                                  type="text" 
+                                  value={item.itemName}
+                                  onChange={e => {
+                                    const updated = [...editingReturn.items];
+                                    updated[idx].itemName = e.target.value;
+                                    setEditingReturn({...editingReturn, items: updated});
+                                  }}
+                                  className="w-full p-1.5 border border-border rounded-lg bg-background font-bold text-xs"
+                                  placeholder="Item name..."
+                                />
+                              </td>
+                              <td className="p-2">
+                                <input 
+                                  type="number" 
+                                  min="1"
+                                  value={item.quantity}
+                                  onChange={e => {
+                                    const updated = [...editingReturn.items];
+                                    updated[idx].quantity = Number(e.target.value) || 1;
+                                    setEditingReturn({...editingReturn, items: updated});
+                                  }}
+                                  className="w-full p-1.5 border border-border rounded-lg bg-background font-black text-xs text-center"
+                                />
+                              </td>
+                              <td className="p-2 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = [...editingReturn.items];
+                                    if (item.isNew) {
+                                      updated.splice(idx, 1);
+                                    } else {
+                                      updated[idx].isDeleted = true;
+                                    }
+                                    setEditingReturn({...editingReturn, items: updated});
+                                  }}
+                                  className="p-1 hover:bg-red-500/10 text-red-500 rounded-lg transition-colors"
+                                  title="Remove item"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 border-t border-border bg-muted/30 flex justify-between items-center gap-3">
+                <p className="text-xs text-muted-foreground">
+                  {lang === "ar" ? "* سيتم تحديث كافة بيانات الفاتورة والمقاصة فوراً في قاعدة البيانات." : "* All changes will be saved to the database immediately."}
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingReturn(null)}
+                    disabled={processing === "saving_edit"}
+                    className="px-5 py-2 rounded-xl text-xs font-bold border border-border hover:bg-muted transition-all"
+                  >
+                    {lang === "ar" ? "إلغاء" : "Cancel"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveEdit}
+                    disabled={processing === "saving_edit"}
+                    className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {processing === "saving_edit" ? "..." : (lang === "ar" ? "حفظ التعديلات" : "Save Changes")}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ON-SCREEN RECEIPT PREVIEW MODAL */}
         {printData && (
           <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 no-print">
@@ -1537,6 +2053,23 @@ export default function SupplierReturnsDashboard() {
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
+                  {isAdmin && (
+                    <button 
+                      onClick={() => {
+                        const matchedEvent = returnHistoryEventsRaw.find(ev => ev[0]?.returnNumber === printData.returnNumber) ||
+                          pendingSettlements.filter(item => item.returnNumber === printData.returnNumber);
+                        if (matchedEvent && matchedEvent.length > 0) {
+                          handleOpenEdit(matchedEvent);
+                        } else if (printData.items && printData.items.length > 0) {
+                          handleOpenEdit(printData.items);
+                        }
+                      }}
+                      className="px-3.5 py-2 bg-blue-600/10 hover:bg-blue-600 text-blue-600 hover:text-white border border-blue-500/30 rounded-xl font-bold text-xs shadow-sm transition-all flex items-center gap-1.5"
+                    >
+                      <Edit className="w-3.5 h-3.5" />
+                      <span>{lang === "ar" ? "تعديل المرتجع" : "Edit Return"}</span>
+                    </button>
+                  )}
                   {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
                     <button 
                       onClick={handleDeleteReturn}
