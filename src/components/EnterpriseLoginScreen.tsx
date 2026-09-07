@@ -43,8 +43,6 @@ export default function EnterpriseLoginScreen({
 }: EnterpriseLoginScreenProps) {
   const isAr = language === "ar";
   
-  const [identifier, setIdentifier] = useState(defaultIdentifier);
-  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [capsLockOn, setCapsLockOn] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
@@ -59,51 +57,27 @@ export default function EnterpriseLoginScreen({
   useEffect(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("circlek_remembered_identity");
-      if (saved && !identifier) {
-        setIdentifier(saved);
+      if (saved && idInputRef.current && !idInputRef.current.value) {
+        idInputRef.current.value = saved;
       }
     }
   }, []);
 
-  // Synchronize browser autofill values into state and refs
-  useEffect(() => {
-    const syncAutofill = () => {
-      if (idInputRef.current && idInputRef.current.value && idInputRef.current.value !== identifier) {
-        setIdentifier(idInputRef.current.value);
-      }
-      if (passInputRef.current && passInputRef.current.value && passInputRef.current.value !== password) {
-        setPassword(passInputRef.current.value);
-      }
-    };
-    syncAutofill();
-    const t1 = setTimeout(syncAutofill, 150);
-    const t2 = setTimeout(syncAutofill, 500);
-    const t3 = setTimeout(syncAutofill, 1000);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-    };
-  }, []);
-
   const handleSubmit = async (e?: React.FormEvent<HTMLFormElement>) => {
-    if (e) e.preventDefault();
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
 
-    let effectiveId = "";
-    let effectivePass = "";
+    let effectiveId = (idInputRef.current?.value || "").trim();
+    let effectivePass = passInputRef.current?.value || "";
 
-    if (e && e.currentTarget) {
+    if ((!effectiveId || !effectivePass) && e && e.currentTarget) {
       try {
         const formData = new FormData(e.currentTarget);
-        effectiveId = ((formData.get("identifier") as string) || idInputRef.current?.value || identifier || "").trim();
-        effectivePass = (formData.get("password") as string) || passInputRef.current?.value || password || "";
-      } catch {
-        effectiveId = (idInputRef.current?.value || identifier || "").trim();
-        effectivePass = passInputRef.current?.value || password || "";
-      }
-    } else {
-      effectiveId = (idInputRef.current?.value || identifier || "").trim();
-      effectivePass = passInputRef.current?.value || password || "";
+        if (!effectiveId) effectiveId = ((formData.get("identifier") as string) || "").trim();
+        if (!effectivePass) effectivePass = (formData.get("password") as string) || "";
+      } catch {}
     }
 
     if (!effectiveId) {
@@ -312,9 +286,9 @@ export default function EnterpriseLoginScreen({
             </AnimatePresence>
 
             {/* Login Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} action="javascript:void(0)" method="post" className="space-y-4">
               
-              {/* Field 1: Email or Username (Clean, NO e.g. ezzat or admin) */}
+              {/* Field 1: Email or Username */}
               <div className="space-y-1.5 text-start">
                 <label className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider block">
                   {isAr ? "اسم المستخدم أو البريد الإلكتروني" : "Email or Username"}
@@ -328,20 +302,18 @@ export default function EnterpriseLoginScreen({
                   }`}
                 >
                   <div className="ps-3.5 pe-2 text-zinc-400">
-                    {identifier.includes("@") ? <Mail className="w-4 h-4" /> : <User className="w-4 h-4" />}
+                    <User className="w-4 h-4" />
                   </div>
                   <input
                     ref={idInputRef}
                     name="identifier"
                     type="text"
-                    value={identifier}
-                    onChange={(e) => setIdentifier(e.target.value)}
+                    defaultValue={defaultIdentifier}
                     onFocus={() => setInputFocused("id")}
                     onBlur={() => setInputFocused(null)}
                     placeholder={isAr ? "أدخل اسم المستخدم أو البريد" : "Enter email or username"}
                     required
                     autoComplete="username"
-                    disabled={isSubmitting}
                     className="w-full bg-transparent py-3.5 pe-3.5 text-sm font-semibold text-white placeholder:text-zinc-500 outline-none"
                   />
                 </div>
@@ -375,8 +347,6 @@ export default function EnterpriseLoginScreen({
                     ref={passInputRef}
                     name="password"
                     type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
                     onFocus={() => setInputFocused("pass")}
                     onBlur={() => setInputFocused(null)}
                     onKeyDown={(e) => setCapsLockOn(e.getModifierState("CapsLock"))}
@@ -384,7 +354,6 @@ export default function EnterpriseLoginScreen({
                     placeholder="••••••••••••"
                     required
                     autoComplete="current-password"
-                    disabled={isSubmitting}
                     className="w-full bg-transparent py-3.5 text-sm font-semibold text-white placeholder:text-zinc-500 outline-none"
                   />
                   <button

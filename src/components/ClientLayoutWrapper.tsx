@@ -1056,23 +1056,55 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     if (trimmedId.includes("@")) {
       candidates.push(trimmedId);
       if (trimmedId !== cleanLower) candidates.push(cleanLower);
+      candidates.push(trimmedId.replace(/\s+/g, ''));
+      candidates.push(cleanLower.replace(/\s+/g, ''));
     } else {
       // In this system, user accounts are registered with @ck.com, @circlek.com, and @ckk.com
       candidates.push(`${cleanLower}@ck.com`);
       candidates.push(`${cleanLower}@circlek.com`);
       candidates.push(`${cleanLower}@ckk.com`);
+
+      // Known corporate domain accounts for shorthand usernames
+      if (cleanLower.includes("youssef") || cleanLower.includes("halawany")) {
+        candidates.push("youssef.elhalawany@gaf.ac");
+        candidates.push("youssef@ck.com");
+      }
+      if (cleanLower.includes("mahmoud") || cleanLower.includes("ezzat")) {
+        candidates.push("mahmoud.ezzat_2000@icloud.com");
+        candidates.push("mahmoud@ck.com");
+      }
+      if (cleanLower.includes("yassin")) {
+        candidates.push("yassinelhalawany17@gmail.com");
+      }
+      if (cleanLower.includes("mohamed")) {
+        candidates.push("mohamedyehia@gmail.com");
+        candidates.push("mohamed@ck.com");
+      }
+      if (cleanLower.includes("admin")) {
+        candidates.push("admin@ck.com");
+        candidates.push("admin@ckk.com");
+        candidates.push("admin.editor@corp.com");
+      }
+      if (cleanLower.includes("alamein")) {
+        candidates.push("alamein4@ck.com");
+      }
+      if (cleanLower.includes("aosman")) {
+        candidates.push("aosman.nys@gmail.com");
+        candidates.push("aosman@ahlimo.net");
+      }
       candidates.push(trimmedId);
     }
 
+    const uniqueCandidates = Array.from(new Set(candidates));
+
     let lastError: any = null;
-    for (const emailToTry of candidates) {
+    for (const emailToTry of uniqueCandidates) {
       try {
         const cred = await signInWithEmailAndPassword(auth, emailToTry, pass);
         setUser(cred.user);
         setAuthLoading(false);
-        setEmail(emailToTry);
-        setPassword("");
         toast.success(language === "ar" ? "تم تسجيل الدخول بنجاح" : "Signed in successfully", { duration: 3000 });
+        router.refresh();
         return;
       } catch (err: any) {
         lastError = err;
