@@ -96,7 +96,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       }
 
       if (perm !== "granted") {
-        perm = await Notification.requestPermission();
+        setPushPermissionNeeded(true);
+        return;
       }
 
       if (perm === "granted") {
@@ -201,16 +202,23 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
     const hasCachedSession = Boolean(storedRole || localStorage.getItem("circlek_user_name"));
     const splashTimer = setTimeout(() => setMinSplashDone(true), hasCachedSession ? 50 : 250);
+    const safetyTimeout = setTimeout(() => {
+      setAuthLoading(false);
+      setMinSplashDone(true);
+    }, 400);
     const clockTimer = setInterval(() => setCurrentDateTime(new Date()), 30000);
     setCurrentDateTime(new Date());
 
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+      setAuthLoading(false);
+      setMinSplashDone(true);
 
       if (currentUser) {
         if (!localStorage.getItem("has_seen_welcome_anh_v2")) {
           setShowWelcomeModal(true);
         }
+        (async () => {
         try {
           let userDocData: any = null;
 
@@ -370,8 +378,8 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
             sessionStorage.setItem("circlek_welcomed", "true");
           }
         }
+        })().catch(console.warn);
       }
-      setAuthLoading(false);
     });
 
     // Real-Time Live Notification Listener for Mobile Manager
@@ -448,6 +456,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       unsubscribe();
       if (typeof unsubNotifs === "function") unsubNotifs();
       clearTimeout(splashTimer);
+      clearTimeout(safetyTimeout);
       window.removeEventListener('click', handleClick);
       clearInterval(clockTimer);
     };
@@ -1083,7 +1092,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     );
   }
 
-  if (authLoading || !minSplashDone) {
+  if (authLoading && !minSplashDone) {
     return (
       <div className="h-[100dvh] w-full flex flex-col items-center justify-center relative overflow-hidden" style={{ background: '#09090B' }}>
         {/* Ambient glow orbs */}
