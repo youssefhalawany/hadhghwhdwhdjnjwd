@@ -4,14 +4,21 @@ import React, { useState, useEffect, useMemo } from "react";
 import { db, auth } from "@/lib/firebase";
 import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, getDocs, getDoc, updateDoc, where, limit, serverTimestamp } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
-import { Plus, Check, X, ShieldAlert, ShieldCheck, DollarSign, Calendar, Save, Trash2, CheckCircle2, Printer, Filter, ChevronRight, Share2, Send, FileText, Layers, Download, Pencil, Clock, CreditCard } from "lucide-react";
+import { 
+  Plus, Check, X, ShieldAlert, ShieldCheck, DollarSign, Calendar, Save, Trash2, 
+  CheckCircle2, Printer, Filter, ChevronRight, Share2, Send, FileText, Layers, 
+  Download, Pencil, Clock, CreditCard, Search, Building2, Sparkles, ArrowUpRight, 
+  Coins, TrendingUp, Users, Banknote, CheckCheck, AlertCircle, Briefcase, 
+  UserCheck, RefreshCw, Eye, PieChart, ArrowDownRight, Wallet
+} from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBranch, BranchId } from "@/context/BranchContext";
 import { useLanguage } from "@/context/LanguageContext";
-import { motion, useAnimation, useMotionValue, useTransform } from "framer-motion";
+import { motion, useAnimation, useMotionValue, useTransform, animate, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import { dispatchNotificationSystem } from "@/lib/notifications";
+import { notifyFinancialsUpdated } from "@/lib/financial-sync";
 
 type PayrollRecord = {
   id?: string;
@@ -35,6 +42,20 @@ type PayrollRecord = {
   appliedAdjustmentIds?: string[]; // for the new Adjustments system
   status?: string;
 };
+
+function AnimatedNumber({ value }: { value: number }) {
+  const count = useMotionValue(0);
+  const rounded = useTransform(count, (latest) =>
+    new Intl.NumberFormat("en-EG", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(latest)
+  );
+
+  useEffect(() => {
+    const controls = animate(count, value, { duration: 1.2, ease: "easeOut" });
+    return controls.stop;
+  }, [value]);
+
+  return <motion.span className="tabular-nums">{rounded}</motion.span>;
+}
 
 const SlideToRun = ({ onComplete }: { onComplete: () => void }) => {
   const [isSuccess, setIsSuccess] = useState(false);
@@ -156,6 +177,12 @@ export default function AdminPayrollPage() {
   const [printPayslipRecord, setPrintPayslipRecord] = useState<PayrollRecord | null>(null);
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [isBatchPrinting, setIsBatchPrinting] = useState(false);
+
+  // Modern Navigation, Search & Loan Context States
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<"drafts" | "history" | "analytics">("drafts");
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<"all" | "cash" | "bank">("all");
+  const [empLoanInfo, setEmpLoanInfo] = useState<{ activeLoanBal: number; totalInstallments: number; nextInstallment: number } | null>(null);
 
   useEffect(() => {
     const handleAfterPrint = () => {
@@ -503,6 +530,8 @@ export default function AdminPayrollPage() {
   const fetchEmployeeDeductionsAndLoans = async (empId: string, monthStr: string) => {
     let totalDeductions = 0;
     let totalLoans = 0;
+    let totalActiveLoanBalance = 0;
+    let activeLoanInstallmentsRemaining = 0;
     const appliedDeductionIds: string[] = [];
     const appliedLoanIds: string[] = [];
     const appliedAdjustmentIds: string[] = [];
@@ -526,10 +555,13 @@ export default function AdminPayrollPage() {
         const currentRemaining = Number(data.remainingBalance !== undefined ? data.remainingBalance : (data.approved || data.amount || 0));
         if (currentRemaining <= 0) return;
 
+        totalActiveLoanBalance += currentRemaining;
+
         let installmentToDeduct = 0;
 
         // Check if this is a multi-month scheduled installment loan
         if (Array.isArray(data.installments) && data.installments.length > 0) {
+          activeLoanInstallmentsRemaining += data.installments.filter((i: any) => i.status === "pending").length;
           // Look for an installment scheduled for this exact month
           const targetInst = data.installments.find((i: any) => i.month === monthStr && i.status === "pending");
           if (targetInst) {
@@ -572,6 +604,7 @@ export default function AdminPayrollPage() {
             return;
           }
           totalLoans += (Number(data.amount) || 0);
+          totalActiveLoanBalance += (Number(data.amount) || 0);
         }
         appliedAdjustmentIds.push(a.id);
       });
@@ -580,12 +613,24 @@ export default function AdminPayrollPage() {
       console.error("Error fetching deductions/loans", err);
     }
 
-    return { totalDeductions, totalLoans, appliedDeductionIds, appliedLoanIds, appliedAdjustmentIds };
+    return { 
+      totalDeductions, 
+      totalLoans, 
+      appliedDeductionIds, 
+      appliedLoanIds, 
+      appliedAdjustmentIds,
+      totalActiveLoanBalance,
+      activeLoanInstallmentsRemaining
+    };
   };
 
   const handleEmpSelect = async (empId: string) => {
     const emp = employees.find(e => e.id === empId);
-    if (!emp) return;
+    if (!emp) {
+      setSelectedEmp(null);
+      setEmpLoanInfo(null);
+      return;
+    }
     
     setSelectedEmp(emp);
     
@@ -594,7 +639,21 @@ export default function AdminPayrollPage() {
     if (d.getDate() < 15) d.setMonth(d.getMonth() - 1);
     const monthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 
-    const { totalDeductions, totalLoans, appliedDeductionIds, appliedLoanIds, appliedAdjustmentIds } = await fetchEmployeeDeductionsAndLoans(emp.id, monthStr);
+    const { 
+      totalDeductions, 
+      totalLoans, 
+      appliedDeductionIds, 
+      appliedLoanIds, 
+      appliedAdjustmentIds,
+      totalActiveLoanBalance,
+      activeLoanInstallmentsRemaining
+    } = await fetchEmployeeDeductionsAndLoans(emp.id, monthStr);
+
+    setEmpLoanInfo({
+      activeLoanBal: totalActiveLoanBalance,
+      totalInstallments: activeLoanInstallmentsRemaining,
+      nextInstallment: totalLoans
+    });
 
     setEditForm({
       employeeId: emp.id,
@@ -616,7 +675,22 @@ export default function AdminPayrollPage() {
   const handleMonthChange = async (newMonth: string) => {
     setEditForm({ ...editForm, month: newMonth });
     if (selectedEmp) {
-      const { totalDeductions, totalLoans, appliedDeductionIds, appliedLoanIds, appliedAdjustmentIds } = await fetchEmployeeDeductionsAndLoans(selectedEmp.id, newMonth);
+      const { 
+        totalDeductions, 
+        totalLoans, 
+        appliedDeductionIds, 
+        appliedLoanIds, 
+        appliedAdjustmentIds,
+        totalActiveLoanBalance,
+        activeLoanInstallmentsRemaining
+      } = await fetchEmployeeDeductionsAndLoans(selectedEmp.id, newMonth);
+
+      setEmpLoanInfo({
+        activeLoanBal: totalActiveLoanBalance,
+        totalInstallments: activeLoanInstallmentsRemaining,
+        nextInstallment: totalLoans
+      });
+
       setEditForm(prev => ({
         ...prev,
         month: newMonth,
@@ -825,6 +899,7 @@ export default function AdminPayrollPage() {
         await deleteDoc(doc(db, "payroll_drafts", draft.id));
       }
       
+      notifyFinancialsUpdated(draft.storeId || currentBranch);
       toast.success("Payroll Marked as Paid and posted to Finance");
       setShowPaidModal(null);
     } catch (err: any) {
@@ -949,6 +1024,7 @@ export default function AdminPayrollPage() {
         updatedBy: currentUserEmail
       });
 
+      notifyFinancialsUpdated(editingPaidRecord.storeId || currentBranch);
       toast.success("Paid payroll record updated successfully");
       setEditingPaidRecord(null);
     } catch (err: any) {
@@ -968,6 +1044,7 @@ export default function AdminPayrollPage() {
     setIsSavingPaid(true);
     try {
       await deleteDoc(doc(db, "payroll_lines", editingPaidRecord.id));
+      notifyFinancialsUpdated(editingPaidRecord.storeId || currentBranch);
       toast.success("Paid payroll record deleted");
       setEditingPaidRecord(null);
     } catch (err: any) {
@@ -979,9 +1056,15 @@ export default function AdminPayrollPage() {
 
   if (isAdmin === null) {
     return (
-      <div className="p-8 space-y-4">
-        <Skeleton className="h-10 w-[200px]" />
-        <Skeleton className="h-[400px] w-full" />
+      <div className="p-8 space-y-4 max-w-7xl mx-auto">
+        <Skeleton className="h-14 w-[320px] rounded-2xl bg-slate-800/60" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Skeleton className="h-32 rounded-2xl bg-slate-800/60" />
+          <Skeleton className="h-32 rounded-2xl bg-slate-800/60" />
+          <Skeleton className="h-32 rounded-2xl bg-slate-800/60" />
+          <Skeleton className="h-32 rounded-2xl bg-slate-800/60" />
+        </div>
+        <Skeleton className="h-[400px] w-full rounded-3xl bg-slate-800/60" />
       </div>
     );
   }
@@ -995,6 +1078,8 @@ export default function AdminPayrollPage() {
       </div>
     );
   }
+
+  const isAr = language === "ar";
 
   const isBranchMatch = (emp: any, recordStoreId: string | undefined, filter: string) => {
     if (!filter || filter === "all") return true;
@@ -1020,18 +1105,33 @@ export default function AdminPayrollPage() {
     return false;
   };
 
+  const matchesSearch = (record: PayrollRecord, emp: any, qStr: string) => {
+    if (!qStr) return true;
+    const q = qStr.toLowerCase().trim();
+    const name = (emp?.name || "").toLowerCase();
+    const nationalId = String(emp?.nationalId || "");
+    const position = (emp?.position || "").toLowerCase();
+    const empId = (record.employeeId || "").toLowerCase();
+    const month = (record.month || "").toLowerCase();
+    return name.includes(q) || nationalId.includes(q) || position.includes(q) || empId.includes(q) || month.includes(q);
+  };
+
   const filteredDrafts = drafts.filter(d => {
     const emp = employees.find(e => e.id === d.employeeId);
     const branchMatch = isBranchMatch(emp, d.storeId, filterBranch);
     const monthMatch = filterMonth === "all" || d.month === filterMonth;
-    return branchMatch && monthMatch;
+    const searchMatch = matchesSearch(d, emp, searchQuery);
+    const methodMatch = paymentMethodFilter === "all" || (d.paymentMethod || "cash") === paymentMethodFilter;
+    return branchMatch && monthMatch && searchMatch && methodMatch;
   });
 
   const filteredLines = paidLines.filter(d => {
     const emp = employees.find(e => e.id === d.employeeId);
     const branchMatch = isBranchMatch(emp, d.storeId, filterBranch);
     const monthMatch = filterMonth === "all" || d.month === filterMonth;
-    return branchMatch && monthMatch;
+    const searchMatch = matchesSearch(d, emp, searchQuery);
+    const methodMatch = paymentMethodFilter === "all" || (d.paymentMethod || "cash") === paymentMethodFilter;
+    return branchMatch && monthMatch && searchMatch && methodMatch;
   });
 
   const allMonths = Array.from(new Set([...drafts, ...paidLines].map(d => d.month))).sort().reverse();
@@ -1039,527 +1139,1162 @@ export default function AdminPayrollPage() {
   const totalPendingPayment = filteredDrafts.reduce((sum, d) => sum + (Number(d.netPay) || 0), 0);
   const totalPaidPayment = filteredLines.reduce((sum, d) => sum + (Number(d.netPay) || 0), 0);
   const totalCombinedPayroll = totalPendingPayment + totalPaidPayment;
+  
+  const totalLoanRecoveries = [...filteredDrafts, ...filteredLines].reduce((sum, d) => sum + (Number(d.loanThisMonth) || 0), 0);
+  const totalDeductionsRecovered = [...filteredDrafts, ...filteredLines].reduce((sum, d) => sum + (Number(d.deductions) || 0) + (Number(d.insurance) || 0), 0);
+  const totalOvertimeVolume = [...filteredDrafts, ...filteredLines].reduce((sum, d) => sum + (Number(d.overtime) || 0), 0);
+  const totalBonusVolume = [...filteredDrafts, ...filteredLines].reduce((sum, d) => sum + (Number(d.bonus) || 0), 0);
+
+  const cashPaidTotal = filteredLines.filter(d => (d.paymentMethod || "cash") === "cash").reduce((s, d) => s + (Number(d.netPay) || 0), 0);
+  const bankPaidTotal = filteredLines.filter(d => d.paymentMethod === "bank").reduce((s, d) => s + (Number(d.netPay) || 0), 0);
 
   const { standardPay, netPay } = calcPays();
 
+  const getEmpAvatarColor = (name: string = "") => {
+    const colors = [
+      "from-indigo-600 to-indigo-800 text-indigo-100",
+      "from-blue-600 to-cyan-700 text-blue-100",
+      "from-emerald-600 to-teal-800 text-emerald-100",
+      "from-purple-600 to-indigo-800 text-purple-100",
+      "from-rose-600 to-pink-800 text-rose-100",
+      "from-amber-600 to-orange-800 text-amber-100",
+    ];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  };
+
+  const getInitials = (name: string = "") => {
+    if (!name) return "EM";
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  };
+
+  const getBranchLabel = (storeId?: string, empBranchId?: string) => {
+    const id = (storeId || empBranchId || "").toLowerCase();
+    if (id.includes("alamein") || id === "alamein4" || id === "1") return isAr ? "العلمين 4" : "El Alamein 4";
+    if (id.includes("ola") || id.includes("koronfol") || id === "ola" || id === "2") return isAr ? "أولا القرنفل" : "Ola Koronfol";
+    return isAr ? "فرع معتمد" : "Corporate";
+  };
+
   return (
     <>
-    <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8 animate-in fade-in duration-500 pb-24 print:hidden">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <div>
-          <div className="flex items-center gap-3 mb-2 flex-wrap">
-            <div className="p-2.5 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 rounded-xl">
-              <DollarSign className="w-6 h-6" strokeWidth={2.5} />
-            </div>
-            <h1 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight">
-              {t("admin.payroll.title")}
-            </h1>
-            {!canEditOrDelete && (
-              <span className="px-3 py-1 text-xs font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-800/60 rounded-xl flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
-                {language === "ar" ? "صلاحية المدير: إضافة رواتب فقط" : "Manager Mode: Add Salaries Only"}
-              </span>
-            )}
-          </div>
-          <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">{t("admin.payroll.subtitle")}</p>
-        </div>
-        {!isAdding && (
-          <button 
-            onClick={() => {
-              setEditingDraftId(null);
-              setSelectedEmp(null);
-              setEditForm({ bonus: 0, days: 0, deductions: 0, insurance: 0, loanThisMonth: 0, overtime: 0, paymentMethod: "cash" });
-              setIsAdding(true);
-            }}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm flex items-center gap-2"
-          >
-            <Plus className="w-5 h-5" /> {t("admin.payroll.new_payroll")}
-          </button>
-        )}
-      </div>
+    <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8 animate-in fade-in duration-500 pb-32 print:hidden" dir={isAr ? "rtl" : "ltr"}>
+      
+      {/* 1. EXECUTIVE MASTER HERO BANNER */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950/60 text-white p-6 md:p-8 rounded-3xl shadow-2xl border border-slate-800">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
+        <div className="absolute bottom-0 left-0 w-80 h-80 bg-cyan-600/10 rounded-full blur-3xl pointer-events-none -ml-20 -mb-20"></div>
 
-      {isAdding && (
-        <div className="bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/50 rounded-2xl p-6 shadow-xl shadow-indigo-100/20 dark:shadow-none animate-in slide-in-from-top-4">
-          <div className="flex justify-between items-center mb-6 border-b border-slate-100 dark:border-slate-800 pb-4">
-            <h2 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-indigo-500" /> {editingDraftId ? "Edit Unpaid Payroll Draft" : t("admin.payroll.draft_new")}
-            </h2>
-            <button onClick={() => { setIsAdding(false); setSelectedEmp(null); setEditingDraftId(null); }} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-500">
-              <X className="w-5 h-5" />
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-2xl shadow-lg shadow-indigo-500/30">
+                <DollarSign className="w-7 h-7" strokeWidth={2.5} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wider uppercase bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-1">
+                    <Briefcase className="w-3 h-3" />
+                    <span>{isAr ? "نظام الرواتب والأجور المؤسسي" : "Enterprise Compensation Governance"}</span>
+                  </span>
+                  
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wider bg-slate-800/90 text-slate-200 border border-slate-700 flex items-center gap-1.5 shadow-sm">
+                    <Building2 className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>
+                      {filterBranch === "all" 
+                        ? (isAr ? "جميع الفروع" : "All Branches") 
+                        : (availableBranches.find(b => b.id === filterBranch)?.name || (filterBranch === "ola" ? "Ola El Koronfol" : "El Alamein 4"))}
+                    </span>
+                  </span>
+
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wider bg-slate-800/90 text-indigo-300 border border-indigo-900/60 flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-indigo-400" />
+                    <span>{filterMonth === "all" ? (isAr ? "كافة الشهور" : "All Periods") : filterMonth}</span>
+                  </span>
+
+                  <span className="flex h-2 w-2 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                </div>
+                <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight mt-1">
+                  {isAr ? "إدارة مسير المرتبات والتعويضات" : "Enterprise Payroll & Compensation Studio"}
+                </h1>
+              </div>
+            </div>
+
+            <p className="text-slate-400 text-xs md:text-sm font-medium max-w-2xl leading-relaxed">
+              {isAr 
+                ? "نظام احتساب الرواتب المتوافق مع قانون العمل المصري (مادة 34 و 38) • خصم آلي لأقساط السلف • صرف فوري من الخزينة والبنك • طباعة قانونية A4 معتمدة"
+                : "Corporate payroll ledger compliant with Egyptian Labor Law (Art. 34 & 38) • Automated monthly loan recovery • Instant vault & bank disbursement • 2-Page legal payslips with National ID clearance"}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {!isAdding && (
+              <button 
+                onClick={() => {
+                  setEditingDraftId(null);
+                  setSelectedEmp(null);
+                  setEmpLoanInfo(null);
+                  setEditForm({ bonus: 0, days: 30, deductions: 0, insurance: 0, loanThisMonth: 0, overtime: 0, paymentMethod: "cash" });
+                  setIsAdding(true);
+                  if (typeof window !== "undefined") {
+                    window.scrollTo({ top: 300, behavior: "smooth" });
+                  }
+                }}
+                className="group relative inline-flex items-center gap-2.5 px-5 py-3 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-indigo-600/30 hover:shadow-indigo-600/50 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+              >
+                <Plus className="w-5 h-5 transition-transform group-hover:rotate-90 duration-300" />
+                <span>{isAr ? "إضافة مسودة راتب جديدة" : "New Payroll Run"}</span>
+              </button>
+            )}
+
+            {filteredDrafts.length > 0 && (
+              <button
+                onClick={() => setShowBatchModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-3 bg-slate-800/90 hover:bg-slate-700/90 text-white rounded-2xl font-bold text-sm border border-slate-700 shadow-md transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+              >
+                <Layers className="w-4 h-4 text-indigo-400" />
+                <span>{isAr ? "تصدير الدفعة (PDF & واتساب)" : "Batch Export & Dispatch"}</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => {
+                requestAnimationFrame(() => {
+                  window.print();
+                });
+              }}
+              className="p-3 bg-slate-800/70 hover:bg-slate-700 text-slate-300 hover:text-white rounded-2xl border border-slate-700/70 transition-colors cursor-pointer"
+              title={isAr ? "طباعة مسير الرواتب" : "Print Payroll Report"}
+            >
+              <Printer className="w-4 h-4" />
             </button>
           </div>
+        </div>
+      </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.payroll.employee")}</label>
-              <select 
-                value={editForm.employeeId || ""}
-                onChange={e => handleEmpSelect(e.target.value)}
-                className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+      {/* 2. 4-CARD VIP TELEMETRY BENTO GRID */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl group-hover:bg-amber-500/10 transition-colors"></div>
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              {isAr ? "إجمالي الرواتب المعلقة" : "Pending Payout"}
+            </span>
+            <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 rounded-xl border border-amber-100 dark:border-amber-900/40">
+              <Clock className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
+            <span className="text-sm font-bold text-amber-600 dark:text-amber-400 mr-1.5 font-sans">EGP</span>
+            <AnimatedNumber value={totalPendingPayment} />
+          </div>
+          <div className="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <span>{isAr ? "بانتظار الصرف" : "Awaiting disbursement"}</span>
+            <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 rounded-full font-bold text-[11px]">
+              {filteredDrafts.length} {isAr ? "مسودة" : "drafts"}
+            </span>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl group-hover:bg-emerald-500/10 transition-colors"></div>
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              {isAr ? "إجمالي المنصرف المعتمد" : "Disbursed Wages"}
+            </span>
+            <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-xl border border-emerald-100 dark:border-emerald-900/40">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="text-2xl md:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-mono tracking-tight">
+            <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mr-1.5 font-sans">EGP</span>
+            <AnimatedNumber value={totalPaidPayment} />
+          </div>
+          <div className="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <span>{isAr ? "مسدد بالخزينة والبنك" : "Reconciled with vaults"}</span>
+            <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 rounded-full font-bold text-[11px]">
+              {filteredLines.length} {isAr ? "سجل معتمد" : "settled"}
+            </span>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl group-hover:bg-indigo-500/10 transition-colors"></div>
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              {isAr ? "إجمالي مسير الرواتب" : "Combined Wage Volume"}
+            </span>
+            <div className="p-2.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-xl border border-indigo-100 dark:border-indigo-900/40">
+              <CreditCard className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
+            <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400 mr-1.5 font-sans">EGP</span>
+            <AnimatedNumber value={totalCombinedPayroll} />
+          </div>
+          <div className="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <span>{isAr ? "التزام الأجور الشامل" : "Total payroll commitment"}</span>
+            <span className="font-bold text-indigo-600 dark:text-indigo-400 text-xs">
+              {filteredDrafts.length + filteredLines.length} {isAr ? "سجل" : "records"}
+            </span>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/5 rounded-full blur-2xl group-hover:bg-cyan-500/10 transition-colors"></div>
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              {isAr ? "استردادات السلف والخصومات" : "Recovered Loans & Deductions"}
+            </span>
+            <div className="p-2.5 bg-cyan-50 dark:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400 rounded-xl border border-cyan-100 dark:border-cyan-900/40">
+              <Coins className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="text-2xl md:text-3xl font-black text-cyan-600 dark:text-cyan-400 font-mono tracking-tight">
+            <span className="text-sm font-bold text-cyan-600 dark:text-cyan-400 mr-1.5 font-sans">EGP</span>
+            <AnimatedNumber value={totalLoanRecoveries + totalDeductionsRecovered} />
+          </div>
+          <div className="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <span title={`Loans: ${totalLoanRecoveries.toLocaleString()} EGP`}>
+              {isAr ? `سلف: ${totalLoanRecoveries.toLocaleString()}` : `Loans: ${totalLoanRecoveries.toLocaleString()}`}
+            </span>
+            <span className="font-bold text-slate-600 dark:text-slate-300">
+              {isAr ? `خصومات: ${totalDeductionsRecovered.toLocaleString()}` : `Deductions: ${totalDeductionsRecovered.toLocaleString()}`}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. GUIDED SMART PAYROLL STUDIO (CREATION / EDIT FORM) */}
+      <AnimatePresence>
+        {isAdding && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.98 }}
+            transition={{ duration: 0.2 }}
+            className="bg-slate-900/95 border border-indigo-500/30 rounded-3xl p-6 md:p-8 shadow-2xl shadow-indigo-950/50 backdrop-blur-md relative overflow-hidden"
+          >
+            <div className="flex justify-between items-center pb-5 mb-6 border-b border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-indigo-500/20 text-indigo-400 rounded-xl border border-indigo-500/30">
+                  <Pencil className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-black text-white flex items-center gap-2">
+                    <span>{editingDraftId ? (isAr ? "تعديل مسودة الراتب" : "Edit Unpaid Payroll Draft") : (isAr ? "إعداد كشف رواتب موظف" : "Smart Payroll Run Studio")}</span>
+                    <span className="px-2 py-0.5 text-[10px] font-extrabold uppercase bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-full">
+                      {isAr ? "مسودة غير مدفوعة" : "DRAFT UNPAID"}
+                    </span>
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {isAr ? "احتساب تلقائي للراتب، البدلات، الجزاءات، وأقساط السلف المستحقة" : "Automated wage calculation, statutory loan deduction, and labor law compliance"}
+                  </p>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => { setIsAdding(false); setSelectedEmp(null); setEditingDraftId(null); setEmpLoanInfo(null); }} 
+                className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors cursor-pointer"
               >
-                <option value="">Select an employee...</option>
-                {employees.filter(e => e.status === 'active').map(e => (
-                  <option key={e.id} value={e.id}>{e.name} ({e.position})</option>
-                ))}
-              </select>
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            {selectedEmp && (
-              <>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.payroll.month")}</label>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              <div className="space-y-4 bg-slate-950/60 p-5 rounded-2xl border border-slate-800">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>{isAr ? "اختر الموظف" : "Select Employee"}</span>
+                  </label>
+                  <select 
+                    value={editForm.employeeId || ""}
+                    onChange={e => handleEmpSelect(e.target.value)}
+                    className="w-full p-3 bg-slate-900 border border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm text-white font-medium cursor-pointer"
+                  >
+                    <option value="">{isAr ? "-- اضغط لاختيار موظف من القائمة --" : "-- Select an active employee --"}</option>
+                    {employees.filter(e => e.status === 'active').map(e => (
+                      <option key={e.id} value={e.id}>{e.name} ({e.position || "Staff"}) - {getBranchLabel(e.storeId, e.branchId)}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {selectedEmp ? (
+                  <div className="space-y-3 pt-3 border-t border-slate-800/80 animate-in fade-in duration-300">
+                    <div className="flex items-center gap-3 p-3 bg-slate-900/90 rounded-xl border border-slate-800">
+                      <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${getEmpAvatarColor(selectedEmp.name)} flex items-center justify-center font-black text-sm shadow-md`}>
+                        {getInitials(selectedEmp.name)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bold text-sm text-white truncate">{selectedEmp.name}</div>
+                        <div className="text-xs text-slate-400 truncate">{selectedEmp.position || "Employee"} • {getBranchLabel(selectedEmp.storeId, selectedEmp.branchId)}</div>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center p-3 bg-indigo-950/30 border border-indigo-800/40 rounded-xl text-xs">
+                      <span className="text-indigo-300 font-bold">{isAr ? "الراتب الأساسي الثابت:" : "Contract Base Wage:"}</span>
+                      <span className="text-sm font-black font-mono text-white">
+                        {(Number(selectedEmp.baseSalary) || Number(selectedEmp.salary) || 3000).toLocaleString()} EGP
+                      </span>
+                    </div>
+
+                    {empLoanInfo && empLoanInfo.activeLoanBal > 0 ? (
+                      <div className="p-3.5 bg-amber-950/30 border border-amber-500/40 rounded-xl space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                            <Coins className="w-3.5 h-3.5" />
+                            {isAr ? "سلفة قائمة مستحقة" : "Active Loan Debt"}
+                          </span>
+                          <span className="text-xs font-mono font-black text-amber-300">
+                            EGP {empLoanInfo.activeLoanBal.toLocaleString()}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-amber-200/80 leading-tight">
+                          {isAr 
+                            ? `تم استقطاع قسط بقيمة ${empLoanInfo.nextInstallment.toLocaleString()} ج.م تلقائياً لهذا الشهر (${empLoanInfo.totalInstallments} أقساط متبقية).`
+                            : `EGP ${empLoanInfo.nextInstallment.toLocaleString()} scheduled installment auto-applied (${empLoanInfo.totalInstallments} installments remaining).`}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-emerald-950/20 border border-emerald-500/20 rounded-xl flex items-center gap-2 text-xs text-emerald-400">
+                        <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                        <span>{isAr ? "لا توجد سلف أو ديون قائمة على الموظف" : "No outstanding loans on employee profile"}</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-6 text-center text-slate-500 text-xs border border-dashed border-slate-800 rounded-xl">
+                    {isAr ? "يرجى اختيار موظف لعرض بياناته وبدء الاحتساب" : "Select an employee to load base parameters"}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-4 bg-slate-950/60 p-5 rounded-2xl border border-slate-800">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>{isAr ? "شهر الراتب (الدورة)" : "Payroll Cycle Month"}</span>
+                  </label>
                   <input 
                     type="month" 
-                    value={editForm.month}
+                    value={editForm.month || ""}
                     onChange={e => handleMonthChange(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm"
+                    className="w-full p-3 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
                   />
                 </div>
-                
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.payroll.base_salary")}</label>
-                  <div className="w-full p-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono text-slate-500">
-                    {(Number(selectedEmp.baseSalary) || Number(selectedEmp.salary) || 3000).toLocaleString()} EGP
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                    <span>{isAr ? "أيام العمل الفعلية" : "Days Worked"}</span>
+                    <span className="text-indigo-400 font-mono font-bold text-xs">{editForm.days || 0} / 30 {isAr ? "يوم" : "days"}</span>
+                  </label>
+                  <input 
+                    type="number" 
+                    value={editForm.days ?? 30}
+                    onChange={e => setEditForm({...editForm, days: Number(e.target.value)})}
+                    className="w-full p-3 bg-slate-900 border border-indigo-500/50 rounded-xl text-base font-bold text-indigo-400 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                  <div className="flex gap-1.5 pt-1">
+                    {[
+                      { days: 30, label: isAr ? "شهر كامل (30)" : "Full (30d)" },
+                      { days: 26, label: isAr ? "26 يوم" : "26 Days" },
+                      { days: 15, label: isAr ? "نصف شهر (15)" : "Half (15d)" },
+                    ].map(p => (
+                      <button
+                        key={p.days}
+                        type="button"
+                        onClick={() => setEditForm({ ...editForm, days: p.days })}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors cursor-pointer ${
+                          editForm.days === p.days
+                            ? "bg-indigo-600 text-white"
+                            : "bg-slate-800 text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.payroll.days_worked")}</label>
-                  <input 
-                    type="number" 
-                    value={editForm.days}
-                    onChange={e => setEditForm({...editForm, days: Number(e.target.value)})}
-                    className="w-full p-2.5 bg-white dark:bg-slate-950 border border-indigo-200 dark:border-indigo-800 rounded-xl text-sm font-bold text-indigo-700 dark:text-indigo-400"
-                  />
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      {isAr ? "إضافي ساعات / حوافز" : "Overtime (EGP)"}
+                    </label>
+                    <input 
+                      type="number" 
+                      value={editForm.overtime ?? 0}
+                      onChange={e => setEditForm({...editForm, overtime: Number(e.target.value)})}
+                      className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm font-mono text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                      placeholder="0"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      {isAr ? "مكافآت تشغيلية" : "Bonus (EGP)"}
+                    </label>
+                    <input 
+                      type="number" 
+                      value={editForm.bonus ?? 0}
+                      onChange={e => setEditForm({...editForm, bonus: Number(e.target.value)})}
+                      className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm font-mono text-emerald-400 focus:ring-2 focus:ring-indigo-500 outline-none"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4 bg-slate-950/60 p-5 rounded-2xl border border-slate-800">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center justify-between">
+                      <span>{isAr ? "قسط السلفة" : "Loan Recovery"}</span>
+                    </label>
+                    <input 
+                      type="number" 
+                      value={editForm.loanThisMonth ?? 0}
+                      onChange={e => setEditForm({...editForm, loanThisMonth: Number(e.target.value)})}
+                      className="w-full p-2.5 bg-slate-900 border border-amber-500/50 rounded-xl text-sm font-mono text-amber-400 font-bold focus:ring-2 focus:ring-amber-500 outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-rose-400 uppercase tracking-wider">
+                      {isAr ? "خصومات وجزاءات" : "Deductions"}
+                    </label>
+                    <input 
+                      type="number" 
+                      value={editForm.deductions ?? 0}
+                      onChange={e => setEditForm({...editForm, deductions: Number(e.target.value)})}
+                      className="w-full p-2.5 bg-slate-900 border border-rose-500/50 rounded-xl text-sm font-mono text-rose-400 font-bold focus:ring-2 focus:ring-rose-500 outline-none"
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.payroll.overtime")}</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    {isAr ? "تأمينات اجتماعية (قانون 148/2019)" : "Social Insurance (EGP)"}
+                  </label>
                   <input 
                     type="number" 
-                    value={editForm.overtime}
-                    onChange={e => setEditForm({...editForm, overtime: Number(e.target.value)})}
-                    className="w-full p-2.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.payroll.bonus")}</label>
-                  <input 
-                    type="number" 
-                    value={editForm.bonus}
-                    onChange={e => setEditForm({...editForm, bonus: Number(e.target.value)})}
-                    className="w-full p-2.5 bg-white dark:bg-slate-950 border border-green-200 dark:border-green-800 rounded-xl text-sm text-green-600"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.payroll.deductions")}</label>
-                  <input 
-                    type="number" 
-                    value={editForm.deductions}
-                    onChange={e => setEditForm({...editForm, deductions: Number(e.target.value)})}
-                    className="w-full p-2.5 bg-white dark:bg-slate-950 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-600"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.payroll.loan_deductions")}</label>
-                  <input 
-                    type="number" 
-                    value={editForm.loanThisMonth}
-                    onChange={e => setEditForm({...editForm, loanThisMonth: Number(e.target.value)})}
-                    className="w-full p-2.5 bg-white dark:bg-slate-950 border border-orange-200 dark:border-orange-800 rounded-xl text-sm text-orange-600"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("admin.payroll.insurance")}</label>
-                  <input 
-                    type="number" 
-                    value={editForm.insurance}
+                    value={editForm.insurance ?? 0}
                     onChange={e => setEditForm({...editForm, insurance: Number(e.target.value)})}
-                    className="w-full p-2.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm"
+                    className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm font-mono text-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none"
                   />
                 </div>
 
-                <div className="space-y-1 lg:col-span-3 mt-4">
-                  <div className="bg-slate-50 dark:bg-slate-950 p-6 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4">
-                    <div className="flex gap-8">
-                      <div>
-                        <p className="text-xs text-slate-500 font-bold uppercase">Calculated Standard Pay</p>
-                        <p className="text-2xl font-mono font-bold text-slate-700 dark:text-slate-300">{standardPay.toLocaleString()} EGP</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-indigo-500 font-bold uppercase">Final Net Pay</p>
-                        <p className="text-3xl font-black font-mono text-indigo-600 dark:text-indigo-400">{netPay.toLocaleString()} EGP</p>
-                      </div>
-                    </div>
-                    
-                    <button 
-                      onClick={handleSaveDraft}
-                      className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-md"
+                <div className="space-y-1.5 pt-1">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+                    {isAr ? "طريقة صرف الراتب" : "Payment Method"}
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditForm({ ...editForm, paymentMethod: "cash" })}
+                      className={`p-2.5 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                        editForm.paymentMethod === "cash"
+                          ? "bg-emerald-600/20 border-emerald-500 text-emerald-400"
+                          : "bg-slate-900 border-slate-800 text-slate-400 hover:text-white"
+                      }`}
                     >
-                      <Save className="w-5 h-5" /> {editingDraftId ? "Update Draft" : "Save as Draft (Unpaid)"}
+                      <Banknote className="w-3.5 h-3.5" />
+                      <span>{isAr ? "نقداً من الخزينة" : "Cash (Safe)"}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditForm({ ...editForm, paymentMethod: "bank" })}
+                      className={`p-2.5 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                        editForm.paymentMethod === "bank"
+                          ? "bg-indigo-600/20 border-indigo-500 text-indigo-400"
+                          : "bg-slate-900 border-slate-800 text-slate-400 hover:text-white"
+                      }`}
+                    >
+                      <CreditCard className="w-3.5 h-3.5" />
+                      <span>{isAr ? "تحويل بنكي" : "Bank Wire"}</span>
                     </button>
                   </div>
                 </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* PAYROLL SUMMARY METRICS (DYNAMIC TO BRANCH & PERIOD FILTERS) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 print:hidden">
-        <div className="bg-white dark:bg-slate-900 border border-amber-200/60 dark:border-amber-900/40 p-5 rounded-2xl shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">Total Pending Payment</p>
-            <h3 className="text-2xl font-black text-slate-800 dark:text-white mt-1">
-              EGP {totalPendingPayment.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </h3>
-            <p className="text-xs text-slate-400 mt-1 font-medium">{filteredDrafts.length} unpaid draft payrolls</p>
-          </div>
-          <div className="p-3 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-xl">
-            <Clock className="w-6 h-6" />
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 border border-emerald-200/60 dark:border-emerald-900/40 p-5 rounded-2xl shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Total Paid Payment</p>
-            <h3 className="text-2xl font-black text-slate-800 dark:text-white mt-1">
-              EGP {totalPaidPayment.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </h3>
-            <p className="text-xs text-slate-400 mt-1 font-medium">{filteredLines.length} paid payroll records</p>
-          </div>
-          <div className="p-3 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl">
-            <CheckCircle2 className="w-6 h-6" />
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 border border-indigo-200/60 dark:border-indigo-900/40 p-5 rounded-2xl shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Total Combined Payroll</p>
-            <h3 className="text-2xl font-black text-slate-800 dark:text-white mt-1">
-              EGP {totalCombinedPayroll.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </h3>
-            <p className="text-xs text-slate-400 mt-1 font-medium">{filteredDrafts.length + filteredLines.length} total records in filter</p>
-          </div>
-          <div className="p-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl">
-            <CreditCard className="w-6 h-6" />
-          </div>
-        </div>
-      </div>
-
-      {/* FILTER BAR */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl flex flex-col md:flex-row items-center gap-4 shadow-sm print:hidden">
-        <div className="flex items-center gap-2 text-slate-500">
-          <Filter className="w-5 h-5" />
-          <span className="font-bold">Filters:</span>
-        </div>
-        <select
-          value={filterBranch}
-          onChange={(e) => setFilterBranch(e.target.value as BranchId | "all")}
-          className="p-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-lg text-sm"
-        >
-          <option value="all">All Branches</option>
-          {availableBranches.map(b => (
-            <option key={b.id} value={b.id}>{b.name}</option>
-          ))}
-        </select>
-        <select
-          value={filterMonth}
-          onChange={(e) => setFilterMonth(e.target.value)}
-          className="p-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-lg text-sm"
-        >
-          <option value="all">All Months</option>
-          {allMonths.map(m => (
-            <option key={m} value={m}>{m}</option>
-          ))}
-        </select>
-        <div className="flex-1"></div>
-        <button
-          onClick={() => {
-            requestAnimationFrame(() => {
-              window.print();
-            });
-          }}
-          className="bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 text-sm transition-colors"
-        >
-          <Printer className="w-4 h-4" /> Print Report
-        </button>
-      </div>
-
-      {/* DRAFTS */}
-      <div className="space-y-4">
-        <div className="flex flex-wrap justify-between items-center gap-4">
-          <h2 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse"></span>
-            Unpaid Drafts ({filteredDrafts.length})
-          </h2>
-          {filteredDrafts.length > 0 && (
-            <button
-              onClick={() => setShowBatchModal(true)}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 text-sm shadow-md transition-all hover:scale-105 active:scale-95"
-            >
-              <Layers className="w-4 h-4" /> Batch Export All Pending (PDF & WhatsApp)
-            </button>
-          )}
-        </div>
-
-        {/* BATCH DRAFT EXPORT MODAL */}
-        {showBatchModal && (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-6 animate-in fade-in zoom-in duration-200">
-              <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl">
-                    <Layers className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-black text-slate-800 dark:text-white">Batch Export Pending Payrolls</h3>
-                    <p className="text-xs text-slate-500">{filteredDrafts.length} Pending Payroll Packets Ready</p>
-                  </div>
-                </div>
-                <button onClick={() => setShowBatchModal(false)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-xl">
-                  <X className="w-5 h-5" />
-                </button>
               </div>
 
-              <div className="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl space-y-2 text-xs text-slate-600 dark:text-slate-300">
-                <div className="flex justify-between font-medium">
-                  <span>Total Employees:</span>
-                  <span className="font-bold text-slate-800 dark:text-white">{filteredDrafts.length}</span>
+            </div>
+
+            <div className="mt-6 pt-6 border-t border-slate-800 bg-slate-950/80 p-5 rounded-2xl flex flex-col lg:flex-row items-center justify-between gap-6">
+              <div className="space-y-2 text-center lg:text-start w-full lg:w-auto">
+                <div className="text-xs text-slate-400 flex flex-wrap items-center justify-center lg:justify-start gap-2 font-mono">
+                  <span>Standard: <strong className="text-white">{standardPay.toLocaleString()}</strong></span>
+                  <span className="text-slate-600">+</span>
+                  <span>Overtime: <strong className="text-emerald-400">+{Number(editForm.overtime || 0).toLocaleString()}</strong></span>
+                  <span className="text-slate-600">+</span>
+                  <span>Bonus: <strong className="text-emerald-400">+{Number(editForm.bonus || 0).toLocaleString()}</strong></span>
+                  <span className="text-slate-600">−</span>
+                  <span>Loans: <strong className="text-amber-400">−{Number(editForm.loanThisMonth || 0).toLocaleString()}</strong></span>
+                  <span className="text-slate-600">−</span>
+                  <span>Deductions: <strong className="text-rose-400">−{Number(editForm.deductions || 0).toLocaleString()}</strong></span>
+                  <span className="text-slate-600">−</span>
+                  <span>Ins: <strong className="text-slate-400">−{Number(editForm.insurance || 0).toLocaleString()}</strong></span>
                 </div>
-                <div className="flex justify-between font-medium">
-                  <span>Total Pending Payout:</span>
-                  <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                    EGP {filteredDrafts.reduce((acc, c) => acc + (c.netPay || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+
+                <div className="flex items-center justify-center lg:justify-start gap-3">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    {isAr ? "صافي الراتب المستحق:" : "Net Payable Wage:"}
+                  </span>
+                  <span className="text-3xl font-black font-mono text-emerald-400 tracking-tight">
+                    {netPay.toLocaleString()} <span className="text-sm font-sans font-bold">EGP</span>
                   </span>
                 </div>
-                <div className="pt-2 border-t border-slate-200 dark:border-slate-700 text-slate-500">
-                  📄 <strong>Multi-Page Packet Includes:</strong> Executive Summary Table + Per-Employee 2-Page Payslip & Receipt Packets.
-                </div>
+                <p className="text-[11px] text-slate-500 font-medium">
+                  {isAr ? `فقط وقدره ${numberToArabicWords(netPay)} جنيهاً مصرياً لا غير` : numberToEnglishWords(netPay)}
+                </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <button
-                  onClick={() => {
-                    setShowBatchModal(false);
-                    handleTriggerBatchPrint();
-                  }}
-                  className="p-3.5 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-2xl font-bold flex flex-col items-center gap-1.5 text-xs shadow-lg transition-all"
+              <div className="flex items-center gap-3 w-full lg:w-auto justify-end">
+                <button 
+                  type="button"
+                  onClick={() => { setIsAdding(false); setSelectedEmp(null); setEditingDraftId(null); setEmpLoanInfo(null); }}
+                  className="px-5 py-3 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer"
                 >
-                  <Printer className="w-5 h-5 text-indigo-400" />
-                  <span>Print PDF Booklet</span>
-                  <span className="text-[9px] font-normal text-slate-400">Print A4 Slips directly</span>
+                  {isAr ? "إلغاء" : "Cancel"}
                 </button>
-
-                <button
-                  onClick={() => {
-                    setShowBatchModal(false);
-                    handleSendBatchToManager();
-                  }}
-                  className="p-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold flex flex-col items-center gap-1.5 text-xs shadow-lg transition-all border border-indigo-400/30 shadow-indigo-600/20"
+                <button 
+                  type="button"
+                  onClick={handleSaveDraft}
+                  className="px-8 py-3 rounded-xl text-sm font-black bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-600 text-white shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
                 >
-                  <Send className="w-5 h-5 text-indigo-100 animate-pulse" />
-                  <span>Send to Manager</span>
-                  <span className="text-[9px] font-normal text-indigo-100">Dispatch Push & PDF Link</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    setShowBatchModal(false);
-                    handleBatchWhatsApp();
-                  }}
-                  className="p-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold flex flex-col items-center gap-1.5 text-xs shadow-lg transition-all"
-                >
-                  <Share2 className="w-5 h-5 text-emerald-200" />
-                  <span>WhatsApp Summary</span>
-                  <span className="text-[9px] font-normal text-emerald-100">Send Text Breakdown</span>
+                  <Save className="w-4 h-4" />
+                  <span>{editingDraftId ? (isAr ? "تحديث المسودة" : "Update Draft") : (isAr ? "حفظ كمسودة (غير مدفوعة)" : "Save as Draft (Unpaid)")}</span>
                 </button>
               </div>
             </div>
-          </div>
+
+          </motion.div>
         )}
-        
-        {filteredDrafts.length === 0 ? (
-          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-8 rounded-2xl text-center text-slate-500">
-            No unpaid payroll drafts at the moment.
+      </AnimatePresence>
+
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-1.5 p-1.5 bg-slate-900 border border-slate-800 rounded-2xl">
+            <button
+              onClick={() => setActiveTab("drafts")}
+              className={`px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                activeTab === "drafts"
+                  ? "bg-gradient-to-r from-amber-600 to-amber-500 text-white shadow-md shadow-amber-600/20"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+              }`}
+            >
+              <Clock className="w-4 h-4" />
+              <span>{isAr ? "المسودات المعلقة للصرف" : "Unpaid Drafts"}</span>
+              <span className={`px-2 py-0.5 rounded-full text-[11px] font-black ${activeTab === "drafts" ? "bg-black/20 text-white" : "bg-slate-800 text-amber-400"}`}>
+                {filteredDrafts.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("history")}
+              className={`px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                activeTab === "history"
+                  ? "bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-md shadow-emerald-600/20"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+              }`}
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              <span>{isAr ? "سجل الرواتب المنصرفة" : "Paid History"}</span>
+              <span className={`px-2 py-0.5 rounded-full text-[11px] font-black ${activeTab === "history" ? "bg-black/20 text-white" : "bg-slate-800 text-emerald-400"}`}>
+                {filteredLines.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("analytics")}
+              className={`px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                activeTab === "analytics"
+                  ? "bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-md shadow-indigo-600/20"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+              }`}
+            >
+              <PieChart className="w-4 h-4" />
+              <span>{isAr ? "تحليلات الأجور" : "Wage Analytics"}</span>
+            </button>
           </div>
-        ) : (
-          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+        </div>
+
+        <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col md:flex-row items-center gap-3 shadow-md">
+          <div className="relative flex-1 w-full">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            <input 
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder={isAr ? "بحث فوري بالاسم، الوظيفة، أو الرقم القومي..." : "Search employee by name, role, or ID..."}
+              className="w-full pl-10 pr-9 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs md:text-sm text-white placeholder:text-slate-500 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+            />
+            {searchQuery && (
+              <button 
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          <div className="w-full md:w-auto">
+            <select
+              value={filterBranch}
+              onChange={(e) => setFilterBranch(e.target.value as BranchId | "all")}
+              className="w-full md:w-auto py-2.5 px-3 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer"
+            >
+              <option value="all">{isAr ? "🏢 جميع الفروع" : "🏢 All Branches"}</option>
+              {availableBranches.map(b => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="w-full md:w-auto">
+            <select
+              value={filterMonth}
+              onChange={(e) => setFilterMonth(e.target.value)}
+              className="w-full md:w-auto py-2.5 px-3 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer"
+            >
+              <option value="all">{isAr ? "📅 كافة الشهور" : "📅 All Months"}</option>
+              {allMonths.map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="w-full md:w-auto">
+            <select
+              value={paymentMethodFilter}
+              onChange={(e) => setPaymentMethodFilter(e.target.value as any)}
+              className="w-full md:w-auto py-2.5 px-3 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer"
+            >
+              <option value="all">{isAr ? "💳 كافة طرق الصرف" : "💳 All Methods"}</option>
+              <option value="cash">{isAr ? "💵 نقداً (الخزينة)" : "💵 Cash (Safe)"}</option>
+              <option value="bank">{isAr ? "🏦 تحويل بنكي" : "🏦 Bank Transfer"}</option>
+            </select>
+          </div>
+
+          {(searchQuery || filterBranch !== "all" || filterMonth !== "all" || paymentMethodFilter !== "all") && (
+            <button
+              onClick={() => {
+                setSearchQuery("");
+                setFilterBranch("all");
+                setFilterMonth("all");
+                setPaymentMethodFilter("all");
+              }}
+              className="px-3 py-2 text-xs font-bold text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors cursor-pointer shrink-0"
+            >
+              {isAr ? "إعادة تعيين" : "Reset"}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {activeTab === "drafts" && (
+        <div className="space-y-4 animate-in fade-in duration-300">
+          <div className="flex flex-wrap justify-between items-center gap-4">
+            <h2 className="text-xl font-black text-white flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+              <span>{isAr ? "المسودات الجاهزة للصرف والاعتماد" : "Unpaid Payroll Drafts"}</span>
+              <span className="text-xs font-bold text-amber-400 px-2 py-0.5 bg-amber-500/10 rounded-full border border-amber-500/20">
+                {filteredDrafts.length}
+              </span>
+            </h2>
+
+            {filteredDrafts.length > 0 && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowBatchModal(true)}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  <Layers className="w-4 h-4" />
+                  <span>{isAr ? "طباعة وإرسال الدفعة كاملة" : "Batch Export & Dispatch"}</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {filteredDrafts.length === 0 ? (
+            <div className="bg-slate-900 border border-slate-800 p-12 rounded-3xl text-center space-y-4">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto shadow-inner">
+                <CheckCheck className="w-8 h-8" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-lg font-bold text-white">
+                  {isAr ? "مسير الرواتب محدث بالكامل! 🎉" : "All Caught Up! 🎉"}
+                </h3>
+                <p className="text-xs text-slate-400 max-w-md mx-auto">
+                  {isAr 
+                    ? "لا توجد مسودات رواتب معلقة بانتظار الصرف للفترة المحددة. اضغط على 'إضافة مسودة جديدة' لإعداد رواتب الشهر."
+                    : "No unpaid payroll drafts for the selected filters. Click 'New Payroll Run' to prepare upcoming wages."}
+                </p>
+              </div>
+              {!isAdding && (
+                <button
+                  onClick={() => {
+                    setEditingDraftId(null);
+                    setSelectedEmp(null);
+                    setEmpLoanInfo(null);
+                    setEditForm({ bonus: 0, days: 30, deductions: 0, insurance: 0, loanThisMonth: 0, overtime: 0, paymentMethod: "cash" });
+                    setIsAdding(true);
+                  }}
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold inline-flex items-center gap-2 shadow-lg transition-all cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>{isAr ? "بدء إعداد كشف رواتب" : "Start New Payroll Run"}</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm whitespace-nowrap">
+                  <thead>
+                    <tr className="bg-slate-950/80 border-b border-slate-800 text-slate-400 font-bold text-xs uppercase tracking-wider">
+                      <th className="px-5 py-4">{isAr ? "الموظف" : "Employee"}</th>
+                      <th className="px-5 py-4">{isAr ? "الدورة والأيام" : "Period & Days"}</th>
+                      <th className="px-5 py-4">{isAr ? "الأساسي" : "Standard Pay"}</th>
+                      <th className="px-5 py-4">{isAr ? "البدلات والخصم" : "Additions / Deductions"}</th>
+                      <th className="px-5 py-4">{isAr ? "صافي المستحق" : "Net Payable"}</th>
+                      <th className="px-5 py-4">{isAr ? "طريقة الصرف" : "Payment Method"}</th>
+                      <th className="px-5 py-4 text-right">{isAr ? "الإجراءات" : "Actions"}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {filteredDrafts.map(d => {
+                      const emp = employees.find(e => e.id === d.employeeId);
+                      return (
+                        <tr key={d.id} className="hover:bg-slate-800/40 transition-colors">
+                          <td className="px-5 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${getEmpAvatarColor(emp?.name)} flex items-center justify-center font-bold text-xs shadow-sm`}>
+                                {getInitials(emp?.name)}
+                              </div>
+                              <div>
+                                <div className="font-bold text-white text-sm">{emp?.name || d.employeeId}</div>
+                                <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
+                                  <span>{emp?.position || "Staff"}</span>
+                                  <span>•</span>
+                                  <span className="text-indigo-400">{getBranchLabel(d.storeId, emp?.storeId)}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+
+                          <td className="px-5 py-4">
+                            <div className="font-mono text-xs font-bold text-slate-200">{d.month}</div>
+                            <div className="text-[11px] text-slate-400">{d.days} {isAr ? "يوم عمل" : "days worked"}</div>
+                          </td>
+
+                          <td className="px-5 py-4 font-mono font-bold text-slate-300">
+                            {(d.standardPay || 0).toLocaleString()} EGP
+                          </td>
+
+                          <td className="px-5 py-4">
+                            <div className="flex flex-col gap-0.5 text-xs font-mono">
+                              {(Number(d.overtime || 0) > 0 || Number(d.bonus || 0) > 0) && (
+                                <span className="text-emerald-400 text-[11px]">
+                                  +{(Number(d.overtime || 0) + Number(d.bonus || 0)).toLocaleString()} {isAr ? "إضافي" : "add"}
+                                </span>
+                              )}
+                              {(Number(d.loanThisMonth || 0) > 0 || Number(d.deductions || 0) > 0 || Number(d.insurance || 0) > 0) && (
+                                <span className="text-rose-400 text-[11px]">
+                                  −{(Number(d.loanThisMonth || 0) + Number(d.deductions || 0) + Number(d.insurance || 0)).toLocaleString()} {isAr ? "خصم/سلف" : "ded"}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          <td className="px-5 py-4">
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-sm font-black font-mono bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+                              {(d.netPay || 0).toLocaleString()} EGP
+                            </span>
+                          </td>
+
+                          <td className="px-5 py-4">
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
+                              (d.paymentMethod || "cash") === "cash"
+                                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                : "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
+                            }`}>
+                              {(d.paymentMethod || "cash") === "cash" ? <Banknote className="w-3 h-3" /> : <CreditCard className="w-3 h-3" />}
+                              <span>{(d.paymentMethod || "cash") === "cash" ? (isAr ? "نقداً (الخزينة)" : "Cash Safe") : (isAr ? "تحويل بنكي" : "Bank")}</span>
+                            </span>
+                          </td>
+
+                          <td className="px-5 py-4 text-right">
+                            <div className="flex justify-end items-center gap-1.5">
+                              {canEditOrDelete && (
+                                <button 
+                                  onClick={() => handleEditDraft(d)}
+                                  className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                                  title="Edit Draft"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                  <span>{isAr ? "تعديل" : "Edit"}</span>
+                                </button>
+                              )}
+
+                              <button 
+                                onClick={() => setPrintPayslipRecord(d)}
+                                className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-indigo-400 hover:text-indigo-300 rounded-lg font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                                title="Print 2-Page Legal Payslip"
+                              >
+                                <Printer className="w-3.5 h-3.5" />
+                                <span>{isAr ? "مفردات مرتب" : "Payslip"}</span>
+                              </button>
+
+                              {canEditOrDelete && (
+                                <>
+                                  <button 
+                                    onClick={() => openMarkPaidModal(d)}
+                                    className="px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-600 text-white rounded-lg font-bold text-xs flex items-center gap-1 shadow-sm transition-all cursor-pointer"
+                                    title="Disburse & Post"
+                                  >
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    <span>{isAr ? "اعتماد وصرف" : "Mark Paid"}</span>
+                                  </button>
+                                  <button 
+                                    onClick={() => deleteDraft(d.id!)}
+                                    className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
+                                    title="Delete Draft"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === "history" && (
+        <div className="space-y-4 animate-in fade-in duration-300">
+          <div className="flex flex-wrap justify-between items-center gap-4">
+            <h2 className="text-xl font-black text-white flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+              <span>{isAr ? "سجل الرواتب المعتمدة والمنصرفة" : "Paid Payroll History"}</span>
+              <span className="text-xs font-bold text-emerald-400 px-2 py-0.5 bg-emerald-500/10 rounded-full border border-emerald-500/20">
+                {filteredLines.length}
+              </span>
+            </h2>
+          </div>
+
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm whitespace-nowrap">
                 <thead>
-                  <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-medium">
-                    <th className="px-4 py-3">Employee</th>
-                    <th className="px-4 py-3">Month</th>
-                    <th className="px-4 py-3">Days</th>
-                    <th className="px-4 py-3">Gross</th>
-                    <th className="px-4 py-3">Net Pay</th>
-                    <th className="px-4 py-3 text-right">Actions</th>
+                  <tr className="bg-slate-950/80 border-b border-slate-800 text-slate-400 font-bold text-xs uppercase tracking-wider">
+                    <th className="px-5 py-4">{isAr ? "الموظف" : "Employee"}</th>
+                    <th className="px-5 py-4">{isAr ? "الشهر" : "Month"}</th>
+                    <th className="px-5 py-4">{isAr ? "المبلغ المنصرف" : "Net Paid"}</th>
+                    <th className="px-5 py-4">{isAr ? "طريقة الصرف" : "Method"}</th>
+                    <th className="px-5 py-4">{isAr ? "تاريخ الصرف" : "Paid At"}</th>
+                    <th className="px-5 py-4">{isAr ? "المسؤول" : "Processed By"}</th>
+                    <th className="px-5 py-4 text-right">{isAr ? "الإجراءات" : "Actions"}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
-                  {filteredDrafts.map(d => {
+                <tbody className="divide-y divide-slate-800/60">
+                  {filteredLines.map((d, i) => {
                     const emp = employees.find(e => e.id === d.employeeId);
                     return (
-                      <tr key={d.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                        <td className="px-4 py-3 font-medium text-slate-800 dark:text-white">{emp?.name || d.employeeId}</td>
-                        <td className="px-4 py-3 font-mono text-xs">{d.month}</td>
-                        <td className="px-4 py-3">{d.days}</td>
-                        <td className="px-4 py-3 font-mono text-slate-500">{(d.standardPay || 0).toLocaleString()}</td>
-                        <td className="px-4 py-3 font-mono font-bold text-indigo-600 dark:text-indigo-400">{(d.netPay || 0).toLocaleString()} EGP</td>
-                        <td className="px-4 py-3 text-right">
+                      <tr key={d.id || i} className="hover:bg-slate-800/40 transition-colors">
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${getEmpAvatarColor(emp?.name)} flex items-center justify-center font-bold text-xs shadow-sm`}>
+                              {getInitials(emp?.name)}
+                            </div>
+                            <div>
+                              <div className="font-bold text-white text-sm">{emp?.name || d.employeeId}</div>
+                              <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
+                                <span>{emp?.position || "Staff"}</span>
+                                <span>•</span>
+                                <span className="text-emerald-400">{getBranchLabel(d.storeId, emp?.storeId)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="px-5 py-4 font-mono text-xs font-bold text-slate-300">
+                          {d.month}
+                        </td>
+
+                        <td className="px-5 py-4">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-sm font-black font-mono bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                            {(d.netPay || 0).toLocaleString()} EGP
+                          </span>
+                        </td>
+
+                        <td className="px-5 py-4">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
+                            (d.paymentMethod || "cash") === "cash"
+                              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                              : "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
+                          }`}>
+                            {(d.paymentMethod || "cash") === "cash" ? <Banknote className="w-3 h-3" /> : <CreditCard className="w-3 h-3" />}
+                            <span>{(d.paymentMethod || "cash") === "cash" ? (isAr ? "نقداً" : "Cash Safe") : (isAr ? "بنكي" : "Bank")}</span>
+                          </span>
+                        </td>
+
+                        <td className="px-5 py-4 text-xs font-mono text-slate-400">
+                          {typeof d.postedToFinanceAt === 'object' && d.postedToFinanceAt?.seconds 
+                            ? new Date(d.postedToFinanceAt.seconds * 1000).toLocaleString('en-GB') 
+                            : String(d.postedToFinanceAt || "N/A")}
+                        </td>
+
+                        <td className="px-5 py-4 text-xs text-slate-400">
+                          {String(d.createdBy || "").split("@")[0]}
+                        </td>
+
+                        <td className="px-5 py-4 text-right">
                           <div className="flex justify-end items-center gap-2">
                             {canEditOrDelete && (
-                              <button 
-                                onClick={() => handleEditDraft(d)}
-                                className="px-2.5 py-1.5 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50 rounded-lg font-bold text-xs flex items-center gap-1 transition-colors print:hidden"
-                                title="Edit Draft"
+                              <button
+                                onClick={() => handleOpenEditPaid(d)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors cursor-pointer"
+                                title="Edit Paid Payroll Record"
                               >
-                                <Pencil className="w-3.5 h-3.5" /> Edit
+                                <Pencil className="w-3.5 h-3.5" />
+                                <span>{isAr ? "تعديل" : "Edit"}</span>
                               </button>
                             )}
-                            <button 
+                            <button
                               onClick={() => setPrintPayslipRecord(d)}
-                              className="px-2.5 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 rounded-lg font-bold text-xs flex items-center gap-1 transition-colors print:hidden"
-                              title="Print Payslip"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-lg transition-colors cursor-pointer"
+                              title="Print 2-Page Legal Slip"
                             >
-                              <Printer className="w-3.5 h-3.5" /> Print Payslip
+                              <Printer className="w-3.5 h-3.5" />
+                              <span>{isAr ? "طباعة المفردات" : "Print Payslip"}</span>
                             </button>
-                            {canEditOrDelete && (
-                              <>
-                                <button 
-                                  onClick={() => openMarkPaidModal(d)}
-                                  className="px-3 py-1.5 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50 rounded-lg font-bold text-xs flex items-center gap-1 transition-colors print:hidden"
-                                >
-                                  <CheckCircle2 className="w-3.5 h-3.5" /> Mark Paid
-                                </button>
-                                <button 
-                                  onClick={() => deleteDraft(d.id!)}
-                                  className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded print:hidden"
-                                  title="Delete Draft"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </>
-                            )}
                           </div>
                         </td>
                       </tr>
                     );
                   })}
+                  {filteredLines.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
+                        {isAr ? "لا يوجد سجل رواتب منصرفة مطابق لخيارات البحث." : "No paid payroll records found."}
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* PAID HISTORY */}
-      <div className="space-y-4 pt-8 border-t border-slate-200 dark:border-slate-800">
-        <h2 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-2">
-          <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-          Paid History
-        </h2>
-        
-        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-medium">
-                  <th className="px-4 py-3">Employee</th>
-                  <th className="px-4 py-3">Month</th>
-                  <th className="px-4 py-3">Net Paid</th>
-                  <th className="px-4 py-3">Paid At</th>
-                  <th className="px-4 py-3">Processed By</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
-                {filteredLines.map((d, i) => {
-                  const emp = employees.find(e => e.id === d.employeeId);
-                  return (
-                    <tr key={d.id || i} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                      <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-300">{emp?.name || d.employeeId}</td>
-                      <td className="px-4 py-3 font-mono text-xs">{d.month}</td>
-                      <td className="px-4 py-3 font-mono font-bold text-emerald-600 dark:text-emerald-400">{(d.netPay || 0).toLocaleString()} EGP</td>
-                      <td className="px-4 py-3 text-xs text-slate-500">
-                        {typeof d.postedToFinanceAt === 'object' && d.postedToFinanceAt?.seconds 
-                          ? new Date(d.postedToFinanceAt.seconds * 1000).toLocaleString('en-GB') 
-                          : String(d.postedToFinanceAt || "N/A")}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-slate-500">{String(d.createdBy || "")}</td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex justify-end items-center gap-2">
-                          {canEditOrDelete && (
-                            <button
-                              onClick={() => handleOpenEditPaid(d)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors shadow-sm"
-                              title="Edit Paid Payroll Record"
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                              Edit
-                            </button>
-                          )}
-                          <button
-                            onClick={() => setPrintPayslipRecord(d)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-indigo-600 transition-colors shadow-sm"
-                          >
-                            <Printer className="w-3.5 h-3.5" />
-                            Print Payslip
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-                {filteredLines.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-slate-500">No paid history found.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+      {activeTab === "analytics" && (
+        <div className="space-y-6 animate-in fade-in duration-300">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{isAr ? "توزيع الصرف" : "Vault vs Bank"}</span>
+                <PieChart className="w-4 h-4 text-indigo-400" />
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs">
+                  <span className="text-emerald-400 flex items-center gap-1"><Banknote className="w-3 h-3" /> Cash</span>
+                  <span className="font-mono font-bold text-white">EGP {cashPaidTotal.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-indigo-400 flex items-center gap-1"><CreditCard className="w-3 h-3" /> Bank</span>
+                  <span className="font-mono font-bold text-white">EGP {bankPaidTotal.toLocaleString()}</span>
+                </div>
+                <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden flex mt-2">
+                  <div 
+                    style={{ width: `${totalPaidPayment > 0 ? (cashPaidTotal / totalPaidPayment) * 100 : 50}%` }}
+                    className="bg-emerald-500 h-full transition-all"
+                  />
+                  <div 
+                    style={{ width: `${totalPaidPayment > 0 ? (bankPaidTotal / totalPaidPayment) * 100 : 50}%` }}
+                    className="bg-indigo-500 h-full transition-all"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{isAr ? "متوسط الراتب" : "Average Net Wage"}</span>
+                <TrendingUp className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div className="text-2xl font-black font-mono text-white">
+                <span className="text-xs font-bold text-emerald-400 mr-1">EGP</span>
+                {filteredLines.length > 0 ? Math.round(totalPaidPayment / filteredLines.length).toLocaleString() : 0}
+              </div>
+              <p className="text-xs text-slate-400">
+                {isAr ? `محسوب على إجمالي ${filteredLines.length} سجل منصرف` : `Based on ${filteredLines.length} settled payments`}
+              </p>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{isAr ? "حجم الحوافز والإضافي" : "Incentives Volume"}</span>
+                <Sparkles className="w-4 h-4 text-amber-400" />
+              </div>
+              <div className="text-2xl font-black font-mono text-amber-400">
+                <span className="text-xs font-bold mr-1">EGP</span>
+                {(totalOvertimeVolume + totalBonusVolume).toLocaleString()}
+              </div>
+              <p className="text-xs text-slate-400">
+                {isAr ? `إضافي: ${totalOvertimeVolume.toLocaleString()} • مكافآت: ${totalBonusVolume.toLocaleString()}` : `Overtime: ${totalOvertimeVolume.toLocaleString()} • Bonus: ${totalBonusVolume.toLocaleString()}`}
+              </p>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{isAr ? "استردادات السلف" : "Loan Recoveries"}</span>
+                <Coins className="w-4 h-4 text-cyan-400" />
+              </div>
+              <div className="text-2xl font-black font-mono text-cyan-400">
+                <span className="text-xs font-bold mr-1">EGP</span>
+                {totalLoanRecoveries.toLocaleString()}
+              </div>
+              <p className="text-xs text-slate-400">
+                {isAr ? "تم خصمها وإعادتها لخزينة الشركة" : "Directly credited back to company vault"}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
     </div>
 
-    {/* MARK PAID MODAL */}
+    {/* BATCH DRAFT EXPORT MODAL */}
+    {showBatchModal && (
+      <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 print:hidden">
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-6 animate-in fade-in zoom-in-95 duration-200">
+          <div className="flex justify-between items-center border-b border-slate-800 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-indigo-500/20 text-indigo-400 rounded-2xl border border-indigo-500/30">
+                <Layers className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-white">{isAr ? "تصدير دفعة الرواتب المعلقة" : "Batch Export Pending Payrolls"}</h3>
+                <p className="text-xs text-slate-400">{filteredDrafts.length} {isAr ? "كشف راتب جاهز للتصدير" : "Pending Payroll Packets Ready"}</p>
+              </div>
+            </div>
+            <button onClick={() => setShowBatchModal(false)} className="p-2 text-slate-400 hover:text-white rounded-xl">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="bg-slate-950 p-4 rounded-2xl space-y-2 text-xs text-slate-300 border border-slate-800">
+            <div className="flex justify-between font-medium">
+              <span>{isAr ? "إجمالي الموظفين:" : "Total Employees:"}</span>
+              <span className="font-bold text-white">{filteredDrafts.length}</span>
+            </div>
+            <div className="flex justify-between font-medium">
+              <span>{isAr ? "إجمالي صافي المنصرف:" : "Total Pending Payout:"}</span>
+              <span className="font-bold text-emerald-400">
+                EGP {filteredDrafts.reduce((acc, c) => acc + (c.netPay || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+            <div className="pt-2 border-t border-slate-800 text-slate-400">
+              📄 {isAr ? "يشمل الكتيب: جدول الملخص التنفيذي + كشف مفردات أجر وإقرار استلام من صفحتين لكل موظف." : "Multi-Page Packet Includes: Executive Summary Table + Per-Employee 2-Page Payslip & Receipt Packets."}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <button
+              onClick={() => {
+                setShowBatchModal(false);
+                handleTriggerBatchPrint();
+              }}
+              className="p-3.5 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold flex flex-col items-center gap-1.5 text-xs shadow-lg transition-all cursor-pointer"
+            >
+              <Printer className="w-5 h-5 text-indigo-400" />
+              <span>{isAr ? "طباعة الكتيب" : "Print PDF Booklet"}</span>
+              <span className="text-[9px] font-normal text-slate-400">{isAr ? "طباعة A4 فورية" : "Print A4 directly"}</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setShowBatchModal(false);
+                handleSendBatchToManager();
+              }}
+              className="p-3.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-bold flex flex-col items-center gap-1.5 text-xs shadow-lg transition-all border border-indigo-400/30 shadow-indigo-600/20 cursor-pointer"
+            >
+              <Send className="w-5 h-5 text-indigo-100 animate-pulse" />
+              <span>{isAr ? "إرسال للمدير" : "Send to Manager"}</span>
+              <span className="text-[9px] font-normal text-indigo-100">{isAr ? "إشعار ومستند رسمي" : "Dispatch Push & Link"}</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setShowBatchModal(false);
+                handleBatchWhatsApp();
+              }}
+              className="p-3.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-bold flex flex-col items-center gap-1.5 text-xs shadow-lg transition-all cursor-pointer"
+            >
+              <Share2 className="w-5 h-5 text-emerald-200" />
+              <span>{isAr ? "ملخص واتساب" : "WhatsApp Summary"}</span>
+              <span className="text-[9px] font-normal text-emerald-100">{isAr ? "إرسال نصي فوري" : "Send Breakdown"}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* MARK PAID MODAL WITH SLIDE TO RUN */}
     {showPaidModal && (
-      <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 print:hidden">
-        <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
-          <div className="p-6 border-b border-slate-100 dark:border-slate-800">
-            <h3 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-              Confirm Payment Date
+      <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 print:hidden">
+        <div className="bg-slate-900 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-800 animate-in zoom-in-95 duration-200">
+          <div className="p-6 border-b border-slate-800">
+            <h3 className="text-xl font-black text-white flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+              <span>{isAr ? "تأكيد تاريخ واعتماد الصرف" : "Confirm Payment Date"}</span>
             </h3>
-            <p className="text-sm text-slate-500 mt-1">
-              Mark payroll for {employees.find(e => e.id === showPaidModal.employeeId)?.name || 'Employee'} as PAID.
+            <p className="text-sm text-slate-400 mt-1">
+              {isAr ? "اعتماد وصرف راتب الموظف:" : "Mark payroll for:"} <strong className="text-white">{employees.find(e => e.id === showPaidModal.employeeId)?.name || 'Employee'}</strong>
             </p>
           </div>
           <div className="p-6 space-y-4">
             <div>
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Payment Date</label>
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">
+                {isAr ? "تاريخ الصرف الفعلي" : "Disbursement Date"}
+              </label>
               <input 
                 type="date" 
                 value={paidDate}
                 onChange={e => setPaidDate(e.target.value)}
-                className="w-full p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium"
+                className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-sm font-medium text-white outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
+
+            <div className="p-3 bg-emerald-950/20 border border-emerald-500/20 rounded-xl text-xs text-emerald-400 flex justify-between items-center">
+              <span>{isAr ? "المبلغ المنصرف من الخزينة/البنك:" : "Net Payout Amount:"}</span>
+              <span className="font-mono font-black text-base text-white">{Number(showPaidModal.netPay || 0).toLocaleString()} EGP</span>
+            </div>
+
             <div className="flex flex-col gap-4 pt-4 items-center">
               <SlideToRun onComplete={confirmMarkPaid} />
               <button 
                 onClick={() => setShowPaidModal(null)}
-                className="w-full max-w-[320px] py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-colors"
+                className="w-full max-w-[320px] py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold transition-colors cursor-pointer"
               >
-                Cancel
+                {isAr ? "إلغاء" : "Cancel"}
               </button>
             </div>
           </div>
@@ -1567,60 +2302,59 @@ export default function AdminPayrollPage() {
       </div>
     )}
 
-    {/* EDIT PAID PAYROLL MODAL */}
+    {/* EDIT PAID RECORD MODAL */}
     {editingPaidRecord && (() => {
       const emp = employees.find(e => e.id === editingPaidRecord.employeeId);
       const { standardPay: calcStd, netPay: calcNet, baseSalary } = calcPaidFormPays();
 
       return (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 print:hidden overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200 my-8">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-start">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 print:hidden overflow-y-auto">
+          <div className="bg-slate-900 rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden border border-slate-800 animate-in zoom-in-95 duration-200 my-8">
+            <div className="p-6 border-b border-slate-800 flex justify-between items-start">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="p-2 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 rounded-xl">
+                  <span className="p-2 bg-indigo-500/20 text-indigo-400 rounded-xl">
                     <Pencil className="w-5 h-5" />
                   </span>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-xl font-black text-slate-800 dark:text-white">
-                        Edit Paid Payroll Record
+                      <h3 className="text-xl font-black text-white">
+                        {isAr ? "تعديل سجل راتب منصرف" : "Edit Paid Payroll Record"}
                       </h3>
-                      <span className="px-2 py-0.5 text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400 rounded-full">
+                      <span className="px-2 py-0.5 text-[10px] font-extrabold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full">
                         PAID RECORD
                       </span>
                     </div>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      Employee: <strong className="text-slate-800 dark:text-slate-200">{emp?.name || editingPaidRecord.employeeId}</strong> • Branch: {emp?.storeId || editingPaidRecord.storeId || 'N/A'}
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Employee: <strong className="text-white">{emp?.name || editingPaidRecord.employeeId}</strong> • Branch: {getBranchLabel(editingPaidRecord.storeId, emp?.storeId)}
                     </p>
                   </div>
                 </div>
               </div>
               <button 
                 onClick={() => setEditingPaidRecord(null)}
-                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+                className="p-2 text-slate-400 hover:text-white rounded-xl cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
-              {/* Top row: Month, Payment Date, Payment Method */}
+            <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">
-                    Payroll Month
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                    {isAr ? "شهر الراتب" : "Payroll Month"}
                   </label>
-                  <input 
-                    type="month" 
+                  <input
+                    type="month"
                     value={paidEditForm.month}
                     onChange={e => setPaidEditForm({ ...paidEditForm, month: e.target.value })}
                     className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">
-                    Disbursement Date
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                    {isAr ? "تاريخ الصرف" : "Disbursement Date"}
                   </label>
                   <input 
                     type="date" 
