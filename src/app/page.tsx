@@ -55,6 +55,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { collection, query, where, onSnapshot, doc, getDoc, getDocs, limit, deleteDoc } from "firebase/firestore";
+import NotificationBell from "@/components/NotificationBell";
 
 interface ToolItem {
   id: string;
@@ -981,6 +982,9 @@ export default function VIPBentoEnterprisePortal() {
               <span className="font-bold text-slate-300 capitalize">{userRole}</span>
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
             </div>
+
+            {/* Notification Bell */}
+            <NotificationBell />
 
             {/* Language Switcher */}
             <button

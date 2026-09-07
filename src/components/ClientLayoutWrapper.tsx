@@ -29,6 +29,7 @@ import WelcomeModal from "./WelcomeModal";
 import { RemoteMessageOverlay, RemoteMessage } from "./RemoteMessageOverlay";
 import { RemoteLockOverlay } from "./RemoteLockOverlay";
 import EnterpriseLoginScreen from "./EnterpriseLoginScreen";
+import NotificationBell from "./NotificationBell";
 
 export default function ClientLayoutWrapper({ children }: { children: React.ReactNode }) {
   const { currentBranch, setBranch, availableBranches, setAvailableBranches } = useBranch();
@@ -1248,104 +1249,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
               )}
 
               {/* Notification Bell */}
-              <div className="relative">
-                <button
-                  onClick={() => setNotificationsOpen(!notificationsOpen)}
-                  className="relative p-2 rounded-xl transition-all bg-muted/60 border border-border text-muted-foreground hover:text-foreground cursor-pointer"
-                >
-                  <Bell className={`h-4 w-4 ${totalNotifications > 0 ? "animate-pulse text-rose-500" : ""}`} />
-                  {totalNotifications > 0 && (
-                    <span className="absolute -top-1 -right-1 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-lg bg-rose-500">
-                      {totalNotifications}
-                    </span>
-                  )}
-                </button>
-
-                {/* Dropdown */}
-                {notificationsOpen && (
-                  <div className="absolute right-0 mt-2 w-72 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col bg-card border border-border">
-                    <div className="p-3.5 font-black text-sm flex justify-between items-center bg-muted/40 border-b border-border text-foreground">
-                      <div className="flex items-center gap-2">
-                        <span>{isAr ? "التنبيهات" : "Notifications"}</span>
-                        <span className="text-white text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-500">{totalNotifications}</span>
-                      </div>
-                      {systemNotifications.length > 0 && (
-                        <button 
-                          onClick={handleClearAllNotifications}
-                          className="text-[10px] font-bold transition-colors px-2 py-1 rounded-lg cursor-pointer text-rose-600 dark:text-rose-400 bg-rose-500/10 border border-rose-500/20"
-                        >
-                          {isAr ? "مسح الكل" : "Clear All"}
-                        </button>
-                      )}
-                    </div>
-                    <div className="max-h-72 overflow-y-auto custom-scrollbar">
-                      {totalNotifications === 0 ? (
-                        <div className="p-6 text-center text-xs font-semibold text-muted-foreground">{isAr ? "لا توجد تنبيهات جديدة" : "All caught up! No pending alerts."}</div>
-                      ) : (
-                        <>
-                          {systemNotifications.length > 0 && (
-                            <div className="px-3.5 py-1.5 text-[10px] font-black uppercase tracking-wider bg-muted text-secondary">
-                              {isAr ? "إجراءات حديثة" : "Recent Actions"}
-                            </div>
-                          )}
-                          {systemNotifications.map(notif => (
-                            <Link
-                              key={notif.id}
-                              href={notif.link || "/"}
-                              onClick={async () => {
-                                setNotificationsOpen(false);
-                                try {
-                                  await updateDoc(doc(db, "notifications", notif.id), { read: true });
-                                } catch (e) { console.error("Error marking read", e); }
-                              }}
-                              className="block p-3.5 transition-colors border-b border-border bg-rose-500/5 hover:bg-rose-500/10"
-                            >
-                              <div className="flex justify-between items-start mb-1">
-                                <p className="text-xs font-extrabold capitalize flex items-center gap-2 text-foreground">
-                                  <span className="w-2 h-2 rounded-full inline-block animate-pulse bg-rose-500"></span>
-                                  {notif.type} Update
-                                </p>
-                                <span className="text-[10px] font-medium text-muted-foreground">{new Date(notif.createdAt?.toDate ? notif.createdAt.toDate() : Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                              </div>
-                              <p className="text-xs font-medium text-muted-foreground">{notif.message}</p>
-                            </Link>
-                          ))}
-
-                          {(pendingShiftCount > 0 || pendingVoidCount > 0 || pendingReturnsCount > 0 || pendingExpiriesCount > 0) && (
-                            <div className="px-3.5 py-1.5 text-[10px] font-black uppercase tracking-wider bg-muted text-secondary">
-                              {isAr ? "في انتظار الاعتماد" : "Pending Approvals"}
-                            </div>
-                          )}
-                          {pendingShiftCount > 0 && (
-                            <Link href="/shift-reports/manager" onClick={() => setNotificationsOpen(false)} className="block p-3.5 transition-colors border-b border-border hover:bg-muted/50">
-                              <p className="text-xs font-extrabold text-foreground">{isAr ? "مراجعة الورديات" : "Shift Audits"}</p>
-                              <p className="text-xs font-semibold mt-0.5 text-muted-foreground">{pendingShiftCount} {isAr ? "ورديات تنتظر اعتماد المدير" : "pending shifts require approval."}</p>
-                            </Link>
-                          )}
-                          {pendingVoidCount > 0 && (
-                            <Link href="/voids/manager" onClick={() => setNotificationsOpen(false)} className="block p-3.5 transition-colors border-b border-border hover:bg-muted/50">
-                              <p className="text-xs font-extrabold text-foreground">{isAr ? "إلغاءات ومرتجعات المبيعات" : "Voids & Returns"}</p>
-                              <p className="text-xs font-semibold mt-0.5 text-muted-foreground">{pendingVoidCount} {isAr ? "طلبات تراجع تحتاج مراجعة" : "requests require review."}</p>
-                            </Link>
-                          )}
-                          {pendingReturnsCount > 0 && (
-                            <Link href="/dashboard/supplier-returns" onClick={() => setNotificationsOpen(false)} className="block p-3.5 transition-colors border-b border-border hover:bg-muted/50">
-                              <p className="text-xs font-extrabold text-foreground">{isAr ? "مرتجعات الموردين" : "Supplier Returns"}</p>
-                              <p className="text-xs font-semibold mt-0.5 text-muted-foreground">{pendingReturnsCount} {isAr ? "إيصالات مرتجع قيد التسوية" : "returns pending settlement."}</p>
-                            </Link>
-                          )}
-                          {pendingExpiriesCount > 0 && (
-                            <Link href="/products/expiries-audit" onClick={() => setNotificationsOpen(false)} className="block p-3.5 transition-colors hover:bg-muted/50">
-                              <p className="text-xs font-extrabold text-foreground">{isAr ? "جرد الصلاحيات" : "Expiry Audits"}</p>
-                              <p className="text-xs font-semibold mt-0.5 text-muted-foreground">{pendingExpiriesCount} {isAr ? "سجلات تحتاج مراجعة" : "audits require review."}</p>
-                            </Link>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
+              <NotificationBell buttonClassName="p-2 rounded-xl transition-all bg-muted/60 border border-border text-muted-foreground hover:text-foreground cursor-pointer flex items-center justify-center" />
 
               {/* Language Toggle */}
               <button
