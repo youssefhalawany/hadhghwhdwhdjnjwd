@@ -73,7 +73,10 @@ import {
   Pencil,
   RefreshCw,
   RotateCcw,
-  ExternalLink
+  ExternalLink,
+  Check,
+  Layers,
+  PackageOpen
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -95,7 +98,7 @@ import { AnalogOdometer } from "@/components/SkeuomorphicUX/AnalogOdometer";
 import { CoinDropWallet } from "@/components/SkeuomorphicUX/CoinDropWallet";
 import { PosReceiptPrinter } from "@/components/SkeuomorphicUX/PosReceiptPrinter";
 import { RubberStamp } from "@/components/SkeuomorphicUX/RubberStamp";
-import { ReturnReceiptContent, numberToArabicWords } from "@/components/ReturnReceiptContent";
+import { ReturnReceiptContent, numberToArabicWords, PendingReturnTicket, groupPendingReturns } from "@/components/ReturnReceiptContent";
 
 const compressImage = (file: File, maxWidth: number = 1200, quality: number = 0.75): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -363,6 +366,12 @@ export default function CreditsPage() {
 
   // Goods Return / RTV Deduction Form State
   const [hasReturn, setHasReturn] = useState(false);
+  const [returnSource, setReturnSource] = useState<"pending" | "new">("pending");
+  const [availablePendingReturns, setAvailablePendingReturns] = useState<PendingReturnTicket[]>([]);
+  const [loadingPendingReturns, setLoadingPendingReturns] = useState(false);
+  const [selectedPendingReturn, setSelectedPendingReturn] = useState<PendingReturnTicket | null>(null);
+  const [pendingReturnSearchQuery, setPendingReturnSearchQuery] = useState("");
+  const [showAllSuppliersPending, setShowAllSuppliersPending] = useState(false);
   const [returnAmount, setReturnAmount] = useState("");
   const [returnTransferOutNumber, setReturnTransferOutNumber] = useState("");
   const [returnAgentName, setReturnAgentName] = useState("");
@@ -370,6 +379,89 @@ export default function CreditsPage() {
   const [returnAgentMobile, setReturnAgentMobile] = useState("");
   const [returnReason, setReturnReason] = useState("");
   const [returnItems, setReturnItems] = useState<{ barcode: string; itemName: string; quantity: number; unitPrice: number; totalPrice: number }[]>([]);
+
+  const fetchPendingReturnsList = async () => {
+    setLoadingPendingReturns(true);
+    try {
+      const q = query(
+        collection(db, "supplier_returns"),
+        orderBy("createdAt", "desc"),
+        limit(150)
+      );
+      const snap = await getDocs(q);
+      const grouped = groupPendingReturns(snap.docs);
+      setAvailablePendingReturns(grouped);
+    } catch (err) {
+      console.error("Error loading pending returns:", err);
+    } finally {
+      setLoadingPendingReturns(false);
+    }
+  };
+
+  useEffect(() => {
+    if (hasReturn) {
+      fetchPendingReturnsList();
+    }
+  }, [hasReturn]);
+
+  const matchingPendingReturns = useMemo(() => {
+    if (!availablePendingReturns || availablePendingReturns.length === 0) return [];
+    const queryStr = (pendingReturnSearchQuery || "").toLowerCase().trim();
+    const targetComp = (selectedCreditForPayment?.companyName || "").toLowerCase().replace(/[\s\-_]/g, '').trim();
+
+    return availablePendingReturns.filter((ticket) => {
+      const supp = (ticket.supplier || "").toLowerCase().trim();
+      const suppClean = supp.replace(/[\s\-_]/g, '');
+      const retNum = (ticket.returnNumber || "").toLowerCase();
+      const trNum = (ticket.transferOutNumber || "").toLowerCase();
+      const reason = (ticket.reason || "").toLowerCase();
+
+      if (queryStr) {
+        return (
+          supp.includes(queryStr) ||
+          retNum.includes(queryStr) ||
+          trNum.includes(queryStr) ||
+          reason.includes(queryStr)
+        );
+      }
+
+      if (showAllSuppliersPending) return true;
+
+      if (!targetComp) return true;
+      return suppClean.includes(targetComp) || targetComp.includes(suppClean);
+    });
+  }, [availablePendingReturns, selectedCreditForPayment, pendingReturnSearchQuery, showAllSuppliersPending]);
+
+  const handleSelectPendingReturn = (ticket: PendingReturnTicket) => {
+    if (selectedPendingReturn?.id === ticket.id) {
+      setSelectedPendingReturn(null);
+      setReturnAmount("");
+      setReturnTransferOutNumber("");
+      setReturnReason("");
+      setReturnItems([]);
+      return;
+    }
+
+    setSelectedPendingReturn(ticket);
+    const amountVal = ticket.totalPrice > 0 ? ticket.totalPrice.toString() : "";
+    setReturnAmount(amountVal);
+    setReturnTransferOutNumber(ticket.transferOutNumber || ticket.returnNumber || "");
+    setReturnReason(ticket.reason || `مرتجع بضاعة معلق (${ticket.returnNumber})`);
+    if (ticket.agentName) setReturnAgentName(ticket.agentName);
+    if (ticket.agentNationalId) setReturnAgentNationalId(ticket.agentNationalId);
+    if (ticket.agentMobile) setReturnAgentMobile(ticket.agentMobile);
+    if (ticket.items && ticket.items.length > 0) {
+      setReturnItems(ticket.items);
+    } else {
+      setReturnItems([{
+        barcode: "N/A",
+        itemName: ticket.reason || "مرتجع بضاعة",
+        quantity: 1,
+        unitPrice: ticket.totalPrice || 0,
+        totalPrice: ticket.totalPrice || 0
+      }]);
+    }
+  };
 
   const handleReturnItemChange = (index: number, field: string, value: any) => {
     const newItems = [...returnItems];
@@ -1457,6 +1549,10 @@ export default function CreditsPage() {
     setPaymentMethod("cash");
     setBankTransferFile(null);
     setHasReturn(false);
+    setReturnSource("pending");
+    setSelectedPendingReturn(null);
+    setPendingReturnSearchQuery("");
+    setShowAllSuppliersPending(false);
     setReturnAmount("");
     setReturnTransferOutNumber("");
     setReturnAgentName(credit.supplierRepName || "");
@@ -1465,6 +1561,7 @@ export default function CreditsPage() {
     setReturnReason("");
     setReturnItems([]);
     setShowPaymentModal(true);
+    fetchPendingReturnsList();
   };
 
   const handleProcessPayment = async (e: React.FormEvent) => {
@@ -1531,68 +1628,110 @@ export default function CreditsPage() {
         (typeof window !== "undefined" ? localStorage.getItem("circlek_email") || localStorage.getItem("circlek_role") : null) || 
         "manager";
 
-      // Step C: If there is an RTV return, auto-create a closed, settled record in supplier_returns
-      const generatedReturnNumber = hasReturn ? `RTV-${Date.now().toString().slice(-6)}` : null;
-      const finalRepName = returnAgentName.trim() || selectedCreditForPayment.supplierRepName || "مندوب الشركة المعتمد";
-      const finalRepNationalId = returnAgentNationalId.trim() || selectedCreditForPayment.supplierNationalId || "";
-      const finalRepMobile = returnAgentMobile.trim() || "";
-      const finalReturnReason = returnReason.trim() || "خصم مرتجع بضاعة من سداد المديونية الآجلة";
+      // Step C: If there is an RTV return, settle existing pending return or create a new settled record
+      const isPendingSource = hasReturn && returnSource === "pending" && !!selectedPendingReturn;
+      const finalReturnNumber = isPendingSource
+        ? (selectedPendingReturn.returnNumber || `RTV-${selectedPendingReturn.id.slice(-6)}`)
+        : (hasReturn ? `RTV-${Date.now().toString().slice(-6)}` : null);
+
+      const finalRepName = returnAgentName.trim() || selectedCreditForPayment.supplierRepName || (isPendingSource ? selectedPendingReturn.agentName : "") || "مندوب الشركة المعتمد";
+      const finalRepNationalId = returnAgentNationalId.trim() || selectedCreditForPayment.supplierNationalId || (isPendingSource ? selectedPendingReturn.agentNationalId : "") || "";
+      const finalRepMobile = returnAgentMobile.trim() || (isPendingSource ? selectedPendingReturn.agentMobile : "") || "";
+      const finalReturnReason = returnReason.trim() || (isPendingSource ? selectedPendingReturn.reason : "") || "خصم مرتجع بضاعة من سداد المديونية الآجلة";
 
       const finalReturnItems = (returnItems && returnItems.length > 0)
         ? returnItems
-        : [{
-            barcode: "N/A",
-            itemName: finalReturnReason,
-            quantity: 1,
-            unitPrice: numReturnAmount,
-            totalPrice: numReturnAmount
-          }];
+        : (isPendingSource && selectedPendingReturn.items && selectedPendingReturn.items.length > 0)
+          ? selectedPendingReturn.items
+          : [{
+              barcode: "N/A",
+              itemName: finalReturnReason,
+              quantity: 1,
+              unitPrice: numReturnAmount,
+              totalPrice: numReturnAmount
+            }];
 
       let createdReturnId = null;
+      const voucherRef = selectedCreditForPayment.invoiceNumber ? `INV-${selectedCreditForPayment.invoiceNumber}` : `CREDIT-${selectedCreditForPayment.id.slice(-6)}`;
+
       if (hasReturn && numReturnAmount > 0) {
-        const returnTimestamp = new Date().toISOString();
-        const returnDocRef = await addDoc(collection(db, "supplier_returns"), {
-          barcode: finalReturnItems[0]?.barcode || "N/A",
-          itemName: finalReturnItems[0]?.itemName || finalReturnReason,
-          category: "deduction_from_payment",
-          supplier: selectedCreditForPayment.companyName,
-          quantity: finalReturnItems.reduce((acc, it) => acc + (Number(it.quantity) || 0), 0) || 1,
-          storeId: targetStoreId,
-          branchId: currentBranch === "all" ? (targetStoreId.includes("ola") ? "ola" : "alamein4") : currentBranch,
-          status: "returned",
-          createdAt: returnTimestamp,
-          createdBy: userEmail,
-          returnedAt: returnTimestamp,
-          returnNumber: generatedReturnNumber,
-          transferOutNumber: returnTransferOutNumber.trim(),
-          agentName: finalRepName,
-          agentNationalId: finalRepNationalId,
-          agentMobile: finalRepMobile,
-          totalPrice: numReturnAmount,
-          reason: finalReturnReason,
-          items: finalReturnItems,
-          settlementMethod: "money",
-          paymentTiming: "now",
-          isSettled: true,
-          paymentVoucherNumber: selectedCreditForPayment.invoiceNumber ? `INV-${selectedCreditForPayment.invoiceNumber}` : `CREDIT-${selectedCreditForPayment.id.slice(-6)}`,
-          creditId: selectedCreditForPayment.id,
-          deductedFromPaymentDate: paymentDate || new Date().toISOString().split("T")[0]
-        });
-        createdReturnId = returnDocRef.id;
+        if (isPendingSource) {
+          // Update all docs belonging to this pending return ticket to settled!
+          const settleTimestamp = new Date().toISOString();
+          for (const docId of selectedPendingReturn.allDocIds) {
+            try {
+              await updateDoc(doc(db, "supplier_returns", docId), {
+                status: "returned",
+                isSettled: true,
+                settledAt: settleTimestamp,
+                settledBy: userEmail,
+                settledByVoucher: voucherRef,
+                paymentTiming: "now",
+                settlementMethod: "money",
+                deductedFromPaymentDate: paymentDate || new Date().toISOString().split("T")[0],
+                returnAmount: numReturnAmount,
+                transferOutNumber: returnTransferOutNumber.trim() || selectedPendingReturn.transferOutNumber,
+                agentName: finalRepName,
+                agentNationalId: finalRepNationalId,
+                agentMobile: finalRepMobile,
+                creditId: selectedCreditForPayment.id
+              });
+            } catch (updErr) {
+              console.warn(`Failed to update return doc ${docId}:`, updErr);
+            }
+          }
+          createdReturnId = selectedPendingReturn.id;
+        } else {
+          // Create new settled return record in supplier_returns
+          const returnTimestamp = new Date().toISOString();
+          const returnDocRef = await addDoc(collection(db, "supplier_returns"), {
+            barcode: finalReturnItems[0]?.barcode || "N/A",
+            itemName: finalReturnItems[0]?.itemName || finalReturnReason,
+            category: "deduction_from_payment",
+            supplier: selectedCreditForPayment.companyName,
+            quantity: finalReturnItems.reduce((acc, it) => acc + (Number(it.quantity) || 0), 0) || 1,
+            storeId: targetStoreId,
+            branchId: currentBranch === "all" ? (targetStoreId.includes("ola") ? "ola" : "alamein4") : currentBranch,
+            status: "returned",
+            createdAt: returnTimestamp,
+            createdBy: userEmail,
+            returnedAt: returnTimestamp,
+            returnNumber: finalReturnNumber,
+            transferOutNumber: returnTransferOutNumber.trim(),
+            agentName: finalRepName,
+            agentNationalId: finalRepNationalId,
+            agentMobile: finalRepMobile,
+            totalPrice: numReturnAmount,
+            reason: finalReturnReason,
+            items: finalReturnItems,
+            settlementMethod: "money",
+            paymentTiming: "now",
+            isSettled: true,
+            paymentVoucherNumber: voucherRef,
+            creditId: selectedCreditForPayment.id,
+            deductedFromPaymentDate: paymentDate || new Date().toISOString().split("T")[0]
+          });
+          createdReturnId = returnDocRef.id;
+        }
       }
 
       const returnDetailsPayload = (hasReturn && numReturnAmount > 0) ? {
-        returnNumber: generatedReturnNumber,
+        returnNumber: finalReturnNumber,
         returnId: createdReturnId,
-        transferOutNumber: returnTransferOutNumber.trim(),
+        allDocIds: isPendingSource ? selectedPendingReturn.allDocIds : [createdReturnId],
+        sourceType: isPendingSource ? "pending_settled" : "newly_created",
+        transferOutNumber: returnTransferOutNumber.trim() || (isPendingSource ? selectedPendingReturn.transferOutNumber : ""),
         returnAmount: numReturnAmount,
         agentName: finalRepName,
         agentNationalId: finalRepNationalId,
         agentMobile: finalRepMobile,
         reason: finalReturnReason,
         items: finalReturnItems,
-        returnedAt: new Date().toISOString(),
-        isSettled: true
+        returnedAt: (isPendingSource && selectedPendingReturn.returnedAt) ? selectedPendingReturn.returnedAt : new Date().toISOString(),
+        isSettled: true,
+        settlementMethod: "money",
+        paymentTiming: "now",
+        paymentVoucherNumber: voucherRef
       } : null;
 
       // Step D: Update Credit Document in Firestore
@@ -1620,8 +1759,8 @@ export default function CreditsPage() {
           grossTotal: grossSettled,
           hasReturn: hasReturn && numReturnAmount > 0,
           returnDeductionAmount: hasReturn ? numReturnAmount : 0,
-          returnNumber: generatedReturnNumber,
-          returnTransferOutNumber: returnTransferOutNumber.trim(),
+          returnNumber: finalReturnNumber || "",
+          returnTransferOutNumber: returnTransferOutNumber.trim() || (isPendingSource ? selectedPendingReturn.transferOutNumber : "") || "",
           returnDetails: returnDetailsPayload,
           category: "credit",
           categoryNote: `Credit Payment - Inv #${selectedCreditForPayment.invoiceNumber || ""} - ${selectedCreditForPayment.companyName || ""}${hasReturn ? ` (RTV: EGP ${numReturnAmount})` : ''}`,
@@ -3384,6 +3523,244 @@ html, body {
                             transition={{ duration: 0.25 }}
                             className="mt-6 pt-6 border-t border-amber-500/20 space-y-6 overflow-hidden"
                           >
+                            {/* Segmented Source Switcher: Choose from Pending vs Add New */}
+                            <div className="flex items-center gap-2 p-1.5 bg-slate-950/80 rounded-2xl border border-slate-800 shadow-inner">
+                              <button
+                                type="button"
+                                onClick={() => setReturnSource("pending")}
+                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-black transition-all ${
+                                  returnSource === "pending"
+                                    ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30 ring-2 ring-amber-400/20'
+                                    : 'text-slate-400 hover:text-white'
+                                }`}
+                              >
+                                <FileText size={15} />
+                                <span>{isAr ? "اختيار من المرتجعات المعلقة للشركة" : "Select Pending Return"}</span>
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                  returnSource === "pending" ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-300'
+                                }`}>
+                                  {matchingPendingReturns.length}
+                                </span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setReturnSource("new");
+                                  setSelectedPendingReturn(null);
+                                }}
+                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-black transition-all ${
+                                  returnSource === "new"
+                                    ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30 ring-2 ring-amber-400/20'
+                                    : 'text-slate-400 hover:text-white'
+                                }`}
+                              >
+                                <Plus size={15} />
+                                <span>{isAr ? "تسجيل مرتجع جديد الآن" : "Create New Return"}</span>
+                              </button>
+                            </div>
+
+                            {/* PENDING RETURNS BROWSER & SELECTOR */}
+                            {returnSource === "pending" && (
+                              <div className="space-y-3 p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20">
+                                {/* Search & Filter Header */}
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                                  <div className="relative flex-1">
+                                    <Search size={14} className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <input
+                                      type="text"
+                                      placeholder={isAr ? "بحث برقم المرتجع (RTV)، إذن الخروج (TR)، أو اسم المورد..." : "Search RTV #, TR #, or supplier..."}
+                                      value={pendingReturnSearchQuery}
+                                      onChange={(e) => setPendingReturnSearchQuery(e.target.value)}
+                                      className="w-full pl-9 pr-4 rtl:pl-4 rtl:pr-9 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs font-bold text-white placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-amber-500"
+                                    />
+                                    {pendingReturnSearchQuery && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setPendingReturnSearchQuery("")}
+                                        className="absolute right-2.5 rtl:right-auto rtl:left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                                      >
+                                        <X size={13} />
+                                      </button>
+                                    )}
+                                  </div>
+
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <button
+                                      type="button"
+                                      onClick={() => setShowAllSuppliersPending(!showAllSuppliersPending)}
+                                      className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 ${
+                                        showAllSuppliersPending
+                                          ? 'bg-amber-950/60 border-amber-500 text-amber-300'
+                                          : 'bg-slate-900 border-slate-700 text-slate-300 hover:text-white'
+                                      }`}
+                                    >
+                                      <Layers size={13} />
+                                      {showAllSuppliersPending
+                                        ? (isAr ? "عرض مرتجعات المورد المحدد" : "Selected Supplier Only")
+                                        : (isAr ? `عرض كل المرتجعات (${availablePendingReturns.length})` : `All Returns (${availablePendingReturns.length})`)}
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={fetchPendingReturnsList}
+                                      disabled={loadingPendingReturns}
+                                      title={isAr ? "تحديث القائمة" : "Refresh"}
+                                      className="p-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-400 hover:text-amber-400 transition-colors"
+                                    >
+                                      <RefreshCw size={13} className={loadingPendingReturns ? "animate-spin" : ""} />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Loading Spinner */}
+                                {loadingPendingReturns && (
+                                  <div className="py-6 flex flex-col items-center justify-center text-slate-400 space-y-2">
+                                    <Loader2 size={22} className="animate-spin text-amber-500" />
+                                    <p className="text-xs font-bold">{isAr ? "جاري جلب المرتجعات المعلقة من السيستم..." : "Loading pending returns..."}</p>
+                                  </div>
+                                )}
+
+                                {/* Empty State */}
+                                {!loadingPendingReturns && matchingPendingReturns.length === 0 && (
+                                  <div className="p-5 rounded-xl bg-slate-900/80 border border-dashed border-amber-500/30 text-center space-y-2.5">
+                                    <div className="w-10 h-10 mx-auto rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-400">
+                                      <PackageOpen size={20} />
+                                    </div>
+                                    <div>
+                                      <h4 className="text-xs font-black text-white">
+                                        {isAr ? `لا توجد مرتجعات معلقة مسجلة لشركة "${selectedCreditForPayment?.companyName || 'المورد'}"` : `No pending returns for "${selectedCreditForPayment?.companyName || 'Supplier'}"`}
+                                      </h4>
+                                      <p className="text-[11px] text-slate-400 mt-0.5 max-w-sm mx-auto">
+                                        {isAr
+                                          ? "يمكنك الضغط على زر 'تسجيل مرتجع جديد الآن' لإدخال بيانات المرتجع يدوياً وخصمه فوراً."
+                                          : "You can click 'Create New Return' to enter return details manually."}
+                                      </p>
+                                    </div>
+                                    <div className="flex items-center justify-center gap-2 pt-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setReturnSource("new");
+                                          setSelectedPendingReturn(null);
+                                        }}
+                                        className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-black shadow-sm transition-all flex items-center gap-1"
+                                      >
+                                        <Plus size={13} />
+                                        {isAr ? "تسجيل مرتجع جديد الآن" : "Create New Return"}
+                                      </button>
+                                      {availablePendingReturns.length > 0 && !showAllSuppliersPending && (
+                                        <button
+                                          type="button"
+                                          onClick={() => setShowAllSuppliersPending(true)}
+                                          className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all"
+                                        >
+                                          {isAr ? `عرض كل المرتجعات (${availablePendingReturns.length})` : `Show All (${availablePendingReturns.length})`}
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Pending Returns Cards Grid */}
+                                {!loadingPendingReturns && matchingPendingReturns.length > 0 && (
+                                  <div className="grid sm:grid-cols-2 gap-2.5 max-h-[300px] overflow-y-auto pr-1">
+                                    {matchingPendingReturns.map((ticket) => {
+                                      const isSelected = selectedPendingReturn?.id === ticket.id;
+                                      const itemsCount = ticket.items?.length || 0;
+                                      return (
+                                        <div
+                                          key={ticket.id}
+                                          onClick={() => handleSelectPendingReturn(ticket)}
+                                          className={`relative p-3 rounded-xl border cursor-pointer transition-all duration-200 flex flex-col justify-between ${
+                                            isSelected
+                                              ? 'bg-amber-500/20 border-amber-500 ring-2 ring-amber-500/30 shadow-md shadow-amber-500/20'
+                                              : 'bg-slate-900/90 border-slate-800 hover:border-amber-400/50'
+                                          }`}
+                                        >
+                                          <div className="space-y-1.5">
+                                            <div className="flex items-center justify-between gap-2">
+                                              <div className="flex items-center gap-1.5 flex-wrap">
+                                                <span className="px-2 py-0.5 rounded-md text-[11px] font-mono font-black bg-slate-950 text-amber-400 border border-slate-800">
+                                                  {ticket.returnNumber}
+                                                </span>
+                                                {ticket.transferOutNumber && (
+                                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-slate-300">
+                                                    TR: {ticket.transferOutNumber}
+                                                  </span>
+                                                )}
+                                              </div>
+                                              <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-all ${
+                                                isSelected ? 'bg-amber-500 text-white' : 'border-2 border-slate-600'
+                                              }`}>
+                                                {isSelected && <Check size={12} strokeWidth={3} />}
+                                              </div>
+                                            </div>
+
+                                            <div>
+                                              <p className="text-xs font-black text-white line-clamp-1">
+                                                {ticket.supplier}
+                                              </p>
+                                              <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
+                                                {ticket.reason || "مرتجع بضاعة معلق"}
+                                              </p>
+                                            </div>
+
+                                            {itemsCount > 0 && (
+                                              <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400">
+                                                <span>{itemsCount} {isAr ? "صنف مفصل" : "items"}</span>
+                                                {ticket.agentName && <span>• {ticket.agentName}</span>}
+                                              </div>
+                                            )}
+                                          </div>
+
+                                          <div className="pt-2 mt-2 border-t border-slate-800 flex items-center justify-between">
+                                            <span className="text-[10px] text-slate-500 font-medium">
+                                              {ticket.date ? new Date(ticket.date).toLocaleDateString(isAr ? 'ar-EG' : 'en-GB') : ''}
+                                            </span>
+                                            <div className="text-right">
+                                              <span className="text-[10px] text-slate-400 font-bold block">{isAr ? "قيمة المرتجع" : "Amount"}</span>
+                                              <span className="text-xs sm:text-sm font-mono font-black text-amber-400">
+                                                EGP {Number(ticket.totalPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                              </span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+
+                                {/* Selected Return Callout Badge */}
+                                {selectedPendingReturn && (
+                                  <motion.div
+                                    initial={{ opacity: 0, y: -4 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="p-3 bg-amber-500/15 border border-amber-500/40 rounded-xl flex items-center justify-between gap-3 text-xs"
+                                  >
+                                    <div className="flex items-center gap-2 text-amber-200">
+                                      <CheckCircle2 size={17} className="text-amber-400 shrink-0" />
+                                      <div>
+                                        <span className="font-black">
+                                          {isAr ? `تم ربط المرتجع المعلق (${selectedPendingReturn.returnNumber})` : `Linked to Return (${selectedPendingReturn.returnNumber})`}
+                                        </span>
+                                        <span className="opacity-80 block text-[11px]">
+                                          {isAr ? "سيتم إغلاق وتسوية هذا المرتجع فور حفظ السداد، وطباعة إيصال المرتجع الرسمي A4." : "Will be settled and closed automatically upon saving."}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSelectPendingReturn(selectedPendingReturn)}
+                                      className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-red-950/40 text-red-400 font-bold text-[11px] transition-colors shrink-0 border border-slate-700"
+                                    >
+                                      {isAr ? "إلغاء التحديد" : "Deselect"}
+                                    </button>
+                                  </motion.div>
+                                )}
+                              </div>
+                            )}
+
                             {/* Main Return Questions Grid */}
                             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                               {/* Question 1: Return Amount */}

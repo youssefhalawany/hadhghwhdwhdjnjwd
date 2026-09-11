@@ -103,6 +103,124 @@ export interface ReturnReceiptData {
   paymentVoucherNumber?: string;
 }
 
+export interface PendingReturnTicket {
+  id: string;
+  allDocIds: string[];
+  returnNumber: string;
+  transferOutNumber: string;
+  supplier: string;
+  totalPrice: number;
+  date: string;
+  returnedAt: string;
+  reason: string;
+  agentName: string;
+  agentNationalId: string;
+  agentMobile: string;
+  items: any[];
+  status: string;
+  isSettled: boolean;
+}
+
+export function groupPendingReturns(rawDocs: any[]): PendingReturnTicket[] {
+  const groups: Record<string, PendingReturnTicket> = {};
+
+  rawDocs.forEach(raw => {
+    const data = raw.data ? { id: raw.id, ...raw.data() } : raw;
+    if (data.isSettled === true || !!data.settledByVoucher) return;
+    if (data.status !== "pending" && data.status !== "pending_return" && data.status !== "returned" && data.status) return;
+
+    const key = data.returnNumber || data.id;
+    if (!groups[key]) {
+      const itemsList = Array.isArray(data.items) && data.items.length > 0
+        ? [...data.items]
+        : [{
+            barcode: data.barcode || "N/A",
+            itemName: data.itemName || data.reason || "مرتجع بضاعة",
+            quantity: Number(data.quantity) || 1,
+            unitPrice: Number(data.totalPrice) || 0,
+            totalPrice: Number(data.totalPrice) || 0
+          }];
+
+      const initialTotal = Number(data.totalPrice) || 0;
+
+      groups[key] = {
+        id: data.id,
+        allDocIds: [data.id],
+        returnNumber: data.returnNumber || `RTV-${data.id.slice(-6)}`,
+        transferOutNumber: data.transferOutNumber || "",
+        supplier: data.supplier || "Unknown",
+        totalPrice: initialTotal,
+        date: data.date || data.returnedAt || data.createdAt || "",
+        returnedAt: data.returnedAt || data.createdAt || "",
+        reason: data.reason || data.itemName || "مرتجع بضاعة",
+        agentName: data.agentName || "",
+        agentNationalId: data.agentNationalId || "",
+        agentMobile: data.agentMobile || "",
+        items: itemsList,
+        status: data.status || "pending",
+        isSettled: false
+      };
+    } else {
+      if (!groups[key].allDocIds.includes(data.id)) {
+        groups[key].allDocIds.push(data.id);
+      }
+      if (Array.isArray(data.items) && data.items.length > 0) {
+        data.items.forEach((it: any) => {
+          if (!groups[key].items.some((existing: any) => existing.barcode === it.barcode && existing.itemName === it.itemName)) {
+            groups[key].items.push(it);
+          }
+        });
+      } else if (data.itemName && !groups[key].items.some((existing: any) => existing.itemName === data.itemName)) {
+        groups[key].items.push({
+          barcode: data.barcode || "N/A",
+          itemName: data.itemName,
+          quantity: Number(data.quantity) || 1,
+          unitPrice: Number(data.totalPrice) || 0,
+          totalPrice: Number(data.totalPrice) || 0
+        });
+      }
+
+      if (data.totalPrice && Number(data.totalPrice) > groups[key].totalPrice) {
+        groups[key].totalPrice = Number(data.totalPrice);
+      }
+      if (!groups[key].transferOutNumber && data.transferOutNumber) {
+        groups[key].transferOutNumber = data.transferOutNumber;
+      }
+      if (!groups[key].agentName && data.agentName) {
+        groups[key].agentName = data.agentName;
+      }
+      if (!groups[key].agentNationalId && data.agentNationalId) {
+        groups[key].agentNationalId = data.agentNationalId;
+      }
+      if (!groups[key].agentMobile && data.agentMobile) {
+        groups[key].agentMobile = data.agentMobile;
+      }
+      if (!groups[key].reason && data.reason) {
+        groups[key].reason = data.reason;
+      }
+    }
+  });
+
+  // Calculate sum of items if higher than totalPrice
+  Object.values(groups).forEach(grp => {
+    if (grp.items && grp.items.length > 0) {
+      const itemsSum = grp.items.reduce((sum: number, it: any) => {
+        const itemTot = Number(it.totalPrice) || ((Number(it.quantity) || 1) * (Number(it.unitPrice) || 0));
+        return sum + itemTot;
+      }, 0);
+      if (itemsSum > grp.totalPrice && itemsSum > 0) {
+        grp.totalPrice = itemsSum;
+      }
+    }
+  });
+
+  return Object.values(groups).sort((a, b) => {
+    const da = new Date(a.returnedAt || a.date || 0).getTime();
+    const db = new Date(b.returnedAt || b.date || 0).getTime();
+    return db - da;
+  });
+}
+
 export function ReturnReceiptContent({ data, currentBranch }: { data: ReturnReceiptData | any; currentBranch?: string }) {
   if (!data) return null;
   const branchDetails = getReturnBranchDetails(data.branchId || data.storeId, undefined, currentBranch);
