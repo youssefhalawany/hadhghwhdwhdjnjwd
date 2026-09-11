@@ -72,6 +72,7 @@ import {
   Calculator,
   Pencil,
   RefreshCw,
+  RotateCcw,
   ExternalLink
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -94,6 +95,7 @@ import { AnalogOdometer } from "@/components/SkeuomorphicUX/AnalogOdometer";
 import { CoinDropWallet } from "@/components/SkeuomorphicUX/CoinDropWallet";
 import { PosReceiptPrinter } from "@/components/SkeuomorphicUX/PosReceiptPrinter";
 import { RubberStamp } from "@/components/SkeuomorphicUX/RubberStamp";
+import { ReturnReceiptContent, numberToArabicWords } from "@/components/ReturnReceiptContent";
 
 const compressImage = (file: File, maxWidth: number = 1200, quality: number = 0.75): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -358,6 +360,45 @@ export default function CreditsPage() {
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [bankTransferFile, setBankTransferFile] = useState<File | null>(null);
+
+  // Goods Return / RTV Deduction Form State
+  const [hasReturn, setHasReturn] = useState(false);
+  const [returnAmount, setReturnAmount] = useState("");
+  const [returnTransferOutNumber, setReturnTransferOutNumber] = useState("");
+  const [returnAgentName, setReturnAgentName] = useState("");
+  const [returnAgentNationalId, setReturnAgentNationalId] = useState("");
+  const [returnAgentMobile, setReturnAgentMobile] = useState("");
+  const [returnReason, setReturnReason] = useState("");
+  const [returnItems, setReturnItems] = useState<{ barcode: string; itemName: string; quantity: number; unitPrice: number; totalPrice: number }[]>([]);
+
+  const handleReturnItemChange = (index: number, field: string, value: any) => {
+    const newItems = [...returnItems];
+    const currentItem = { ...newItems[index], [field]: value };
+    if (field === 'quantity' || field === 'unitPrice') {
+      const qty = field === 'quantity' ? parseFloat(value) || 0 : currentItem.quantity;
+      const prc = field === 'unitPrice' ? parseFloat(value) || 0 : currentItem.unitPrice;
+      currentItem.totalPrice = qty * prc;
+    }
+    newItems[index] = currentItem;
+    setReturnItems(newItems);
+    if (field === 'quantity' || field === 'unitPrice' || field === 'totalPrice') {
+      const sum = newItems.reduce((acc, it) => acc + (Number(it.totalPrice) || 0), 0);
+      setReturnAmount(sum.toString());
+    }
+  };
+
+  const handleAddReturnItem = () => {
+    setReturnItems([...returnItems, { barcode: "", itemName: "", quantity: 1, unitPrice: 0, totalPrice: 0 }]);
+  };
+
+  const handleRemoveReturnItem = (index: number) => {
+    const newItems = returnItems.filter((_, idx) => idx !== index);
+    setReturnItems(newItems);
+    if (newItems.length > 0) {
+      const sum = newItems.reduce((acc, it) => acc + (Number(it.totalPrice) || 0), 0);
+      setReturnAmount(sum.toString());
+    }
+  };
 
   const [expandedCredits, setExpandedCredits] = useState<Record<string, boolean>>({});
   const [creditPOItems, setCreditPOItems] = useState<Record<string, any[]>>({});
@@ -964,7 +1005,7 @@ export default function CreditsPage() {
       return;
     }
 
-    const pAmt = Number(payment.amount || payment.total || 0);
+    const pAmt = Number(payment.grossAmount || payment.grossTotal || (Number(payment.amount || 0) + Number(payment.returnDeductionAmount || 0)) || payment.total || 0);
     if (!confirm(isAr 
       ? `هل أنت متأكد من حذف هذه الدفعة بقيمة EGP ${pAmt.toLocaleString()}؟` 
       : `Are you sure you want to delete this payment of EGP ${pAmt.toLocaleString()}?`)) {
@@ -976,6 +1017,12 @@ export default function CreditsPage() {
       if (payment.id) {
         try { await deleteDoc(doc(db, "cash_payments", payment.id)); } catch (e) {}
         try { await deleteDoc(doc(db, "credit_payments", payment.id)); } catch (e) {}
+      }
+
+      // If this payment had an associated RTV return in supplier_returns, delete it as well
+      const associatedReturnId = payment.returnDetails?.returnId || payment.returnId;
+      if (associatedReturnId) {
+        try { await deleteDoc(doc(db, "supplier_returns", associatedReturnId)); } catch (e) {}
       }
 
       // Also clean any duplicates with same creditId & date & amount
@@ -1409,6 +1456,14 @@ export default function CreditsPage() {
     setPaymentAmount(remaining.toString());
     setPaymentMethod("cash");
     setBankTransferFile(null);
+    setHasReturn(false);
+    setReturnAmount("");
+    setReturnTransferOutNumber("");
+    setReturnAgentName(credit.supplierRepName || "");
+    setReturnAgentNationalId(credit.supplierNationalId || "");
+    setReturnAgentMobile("");
+    setReturnReason("");
+    setReturnItems([]);
     setShowPaymentModal(true);
   };
 
@@ -1416,18 +1471,39 @@ export default function CreditsPage() {
     e.preventDefault();
     if (!selectedCreditForPayment) return;
     
-    const pAmt = parseFloat(paymentAmount);
-    if (isNaN(pAmt) || pAmt <= 0) {
+    const grossSettled = parseFloat(paymentAmount);
+    if (isNaN(grossSettled) || grossSettled <= 0) {
       toast.error(isAr ? "يرجى إدخال مبلغ سداد صحيح" : "Enter a valid payment amount");
       return;
     }
 
+    const numReturnAmount = hasReturn ? (parseFloat(returnAmount) || 0) : 0;
+
+    if (hasReturn) {
+      if (numReturnAmount <= 0) {
+        toast.error(isAr ? "برجاء إدخال قيمة خصم المرتجع بشكل صحيح." : "Please enter a valid return deduction amount.");
+        return;
+      }
+      if (numReturnAmount > grossSettled) {
+        toast.error(isAr ? "قيمة خصم المرتجع لا يمكن أن تتجاوز إجمالي المبلغ المسدد." : "Return deduction cannot exceed gross settlement amount.");
+        return;
+      }
+      if (!returnTransferOutNumber.trim()) {
+        toast.error(isAr ? "برجاء إدخال رقم إذن خروج البضاعة (TR Number)." : "Please enter the Outbound Transfer # (TR).");
+        return;
+      }
+    }
+
+    // Net cash disbursed from safe (after deducting goods return RTV)
+    const netCashDisbursed = Math.max(0, grossSettled - numReturnAmount);
+
     setIsSubmitting(true);
-    const saveToastId = toast.loading(isAr ? "جاري تسجيل السداد..." : "Processing payment...");
+    const saveToastId = toast.loading(isAr ? "جاري تسجيل السداد وتسوية المرتجع..." : "Processing payment & return settlement...");
 
     try {
       const currentPaid = Number(selectedCreditForPayment.paidAmount) || 0;
-      const newPaidAmount = currentPaid + pAmt;
+      // Credit debt is settled by the full gross amount (Cash + Return)
+      const newPaidAmount = currentPaid + grossSettled;
       const totalDue = (Number(selectedCreditForPayment.amountDue) || 0) + (Number(selectedCreditForPayment.tax) || 0);
 
       let newStatus = selectedCreditForPayment.status;
@@ -1455,7 +1531,71 @@ export default function CreditsPage() {
         (typeof window !== "undefined" ? localStorage.getItem("circlek_email") || localStorage.getItem("circlek_role") : null) || 
         "manager";
 
-      // Step C: Update Credit Document in Firestore
+      // Step C: If there is an RTV return, auto-create a closed, settled record in supplier_returns
+      const generatedReturnNumber = hasReturn ? `RTV-${Date.now().toString().slice(-6)}` : null;
+      const finalRepName = returnAgentName.trim() || selectedCreditForPayment.supplierRepName || "مندوب الشركة المعتمد";
+      const finalRepNationalId = returnAgentNationalId.trim() || selectedCreditForPayment.supplierNationalId || "";
+      const finalRepMobile = returnAgentMobile.trim() || "";
+      const finalReturnReason = returnReason.trim() || "خصم مرتجع بضاعة من سداد المديونية الآجلة";
+
+      const finalReturnItems = (returnItems && returnItems.length > 0)
+        ? returnItems
+        : [{
+            barcode: "N/A",
+            itemName: finalReturnReason,
+            quantity: 1,
+            unitPrice: numReturnAmount,
+            totalPrice: numReturnAmount
+          }];
+
+      let createdReturnId = null;
+      if (hasReturn && numReturnAmount > 0) {
+        const returnTimestamp = new Date().toISOString();
+        const returnDocRef = await addDoc(collection(db, "supplier_returns"), {
+          barcode: finalReturnItems[0]?.barcode || "N/A",
+          itemName: finalReturnItems[0]?.itemName || finalReturnReason,
+          category: "deduction_from_payment",
+          supplier: selectedCreditForPayment.companyName,
+          quantity: finalReturnItems.reduce((acc, it) => acc + (Number(it.quantity) || 0), 0) || 1,
+          storeId: targetStoreId,
+          branchId: currentBranch === "all" ? (targetStoreId.includes("ola") ? "ola" : "alamein4") : currentBranch,
+          status: "returned",
+          createdAt: returnTimestamp,
+          createdBy: userEmail,
+          returnedAt: returnTimestamp,
+          returnNumber: generatedReturnNumber,
+          transferOutNumber: returnTransferOutNumber.trim(),
+          agentName: finalRepName,
+          agentNationalId: finalRepNationalId,
+          agentMobile: finalRepMobile,
+          totalPrice: numReturnAmount,
+          reason: finalReturnReason,
+          items: finalReturnItems,
+          settlementMethod: "money",
+          paymentTiming: "now",
+          isSettled: true,
+          paymentVoucherNumber: selectedCreditForPayment.invoiceNumber ? `INV-${selectedCreditForPayment.invoiceNumber}` : `CREDIT-${selectedCreditForPayment.id.slice(-6)}`,
+          creditId: selectedCreditForPayment.id,
+          deductedFromPaymentDate: paymentDate || new Date().toISOString().split("T")[0]
+        });
+        createdReturnId = returnDocRef.id;
+      }
+
+      const returnDetailsPayload = (hasReturn && numReturnAmount > 0) ? {
+        returnNumber: generatedReturnNumber,
+        returnId: createdReturnId,
+        transferOutNumber: returnTransferOutNumber.trim(),
+        returnAmount: numReturnAmount,
+        agentName: finalRepName,
+        agentNationalId: finalRepNationalId,
+        agentMobile: finalRepMobile,
+        reason: finalReturnReason,
+        items: finalReturnItems,
+        returnedAt: new Date().toISOString(),
+        isSettled: true
+      } : null;
+
+      // Step D: Update Credit Document in Firestore
       const creditUpdatePayload: any = {
         paidAmount: newPaidAmount,
         status: newStatus,
@@ -1470,34 +1610,52 @@ export default function CreditsPage() {
         status: newStatus as any 
       } : c));
 
-      // Step D: Write cash_payments (single source of truth for payments ledger)
+      // Step E: Write cash_payments (single source of truth for payments ledger)
+      // Safe accounting: Safe balance outflow is payment.amount, so we store netCashDisbursed
+      let createdCashPaymentId = "";
       try {
         const paymentRecord: any = {
-          amount: pAmt,
+          amount: netCashDisbursed,
+          grossAmount: grossSettled,
+          grossTotal: grossSettled,
+          hasReturn: hasReturn && numReturnAmount > 0,
+          returnDeductionAmount: hasReturn ? numReturnAmount : 0,
+          returnNumber: generatedReturnNumber,
+          returnTransferOutNumber: returnTransferOutNumber.trim(),
+          returnDetails: returnDetailsPayload,
           category: "credit",
-          categoryNote: `Credit Payment - Inv #${selectedCreditForPayment.invoiceNumber || ""} - ${selectedCreditForPayment.companyName || ""}`,
+          categoryNote: `Credit Payment - Inv #${selectedCreditForPayment.invoiceNumber || ""} - ${selectedCreditForPayment.companyName || ""}${hasReturn ? ` (RTV: EGP ${numReturnAmount})` : ''}`,
           companyName: selectedCreditForPayment.companyName || "Unknown",
           createdAt: serverTimestamp(),
           createdBy: userEmail,
           date: paymentDate || new Date().toISOString().split("T")[0],
-          description: `Credit Payment`,
+          description: hasReturn ? `Credit Payment & RTV Settled` : `Credit Payment`,
           invoiceNumber: selectedCreditForPayment.invoiceNumber || "",
           isTaxable: Number(selectedCreditForPayment.tax) > 0,
           method: paymentMethod,
           poNumber: selectedCreditForPayment.poNumber || "",
           poImageUrl: selectedCreditForPayment.poImageUrl || "",
-          supplierRepName: selectedCreditForPayment.supplierRepName || "",
-          supplierNationalId: selectedCreditForPayment.supplierNationalId || "",
+          supplierRepName: finalRepName,
+          supplierNationalId: finalRepNationalId,
           items: selectedCreditForPayment.items || [],
           storeId: targetStoreId,
-          tax: Number(selectedCreditForPayment.tax) || 0,
-          total: pAmt,
+          tax: 0,
+          total: netCashDisbursed,
           creditId: selectedCreditForPayment.id,
         };
         if (bankTransferReceiptUrl) {
           paymentRecord.bankTransferReceiptUrl = bankTransferReceiptUrl;
         }
-        await addDoc(collection(db, "cash_payments"), paymentRecord);
+        const cashDocRef = await addDoc(collection(db, "cash_payments"), paymentRecord);
+        createdCashPaymentId = cashDocRef.id;
+
+        // Auto open print dialog immediately for the dual-sheet voucher
+        const createdPaymentForPrint = {
+          ...paymentRecord,
+          id: createdCashPaymentId,
+          date: paymentDate || new Date().toISOString().split("T")[0],
+        };
+        handlePrintPaymentReceipt(selectedCreditForPayment, createdPaymentForPrint);
       } catch (cashErr) {
         console.warn("Could not write cash_payment log:", cashErr);
       }
@@ -1512,16 +1670,18 @@ export default function CreditsPage() {
 
       // Dismiss loading toast and show success
       toast.success(
-        isAr 
-          ? (newStatus === "paid" ? "تم سداد الدين بالكامل وتحديث الحالة إلى مدفوع!" : "تم تسجيل الدفعة بنجاح!") 
-          : (newStatus === "paid" ? "Credit fully paid and status updated!" : "Payment recorded successfully!"), 
+        hasReturn
+          ? (isAr ? "تم تسجيل سداد الدين وخصم المرتجع وطباعة الإيصالات بنجاح!" : "Payment & Return settled successfully!")
+          : (newStatus === "paid" 
+              ? (isAr ? "تم سداد الدين بالكامل وتحديث الحالة إلى مدفوع!" : "Credit fully paid and status updated!") 
+              : (isAr ? "تم تسجيل الدفعة بنجاح!" : "Payment recorded successfully!")), 
         { id: saveToastId }
       );
       
       setShowPaymentModal(false);
       setSelectedCreditForPayment(null);
 
-      // Step E: Refresh data in background without blocking or throwing
+      // Step F: Refresh data in background without blocking or throwing
       fetchCredits().catch(e => console.warn("Background fetch credits failed:", e));
 
       // Refresh history if expanded
@@ -1687,11 +1847,37 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
       iframeDoc.write(`<!DOCTYPE html>
 <html>
 <head>
-<title>Payment Receipt Voucher</title>
+<title>Payment Receipt Voucher - ${selectedPaymentForPrint?.credit?.companyName || ''}</title>
 <style>
-@page { size: A4 portrait; margin: 0; }
-* { box-sizing: border-box; }
-body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+@page {
+  size: A4 portrait;
+  margin: 0;
+}
+* {
+  box-sizing: border-box;
+}
+html, body {
+  margin: 0;
+  padding: 0;
+  background: white;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.print-page {
+  width: 210mm !important;
+  height: 297mm !important;
+  max-height: 297mm !important;
+  overflow: hidden !important;
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+  page-break-after: always !important;
+  break-after: page !important;
+  box-sizing: border-box !important;
+}
+.print-page:last-child {
+  page-break-after: avoid !important;
+  break-after: avoid !important;
+}
 </style>
 </head>
 <body>${receiptHtml}</body>
@@ -2555,10 +2741,23 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                                         <CheckCircle size={18} />
                                       </div>
                                       <div>
-                                        <p className="font-bold text-white font-mono tracking-tight text-base">
-                                          EGP {Number(payment.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                        </p>
-                                        <p className="text-xs font-medium text-slate-400 flex items-center gap-1.5 flex-wrap">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <p className="font-bold text-white font-mono tracking-tight text-base">
+                                            EGP {Number(payment.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                          </p>
+                                          {payment.hasReturn && (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-400 border border-amber-500/40">
+                                              <RotateCcw size={10} />
+                                              {isAr ? `خصم مرتجع: ${Number(payment.returnDeductionAmount || payment.returnDetails?.returnAmount || 0).toLocaleString()} ج.م` : `RTV: EGP ${Number(payment.returnDeductionAmount || payment.returnDetails?.returnAmount || 0).toLocaleString()}`}
+                                            </span>
+                                          )}
+                                          {payment.grossAmount && Number(payment.grossAmount) > Number(payment.amount) && (
+                                            <span className="text-[11px] text-slate-500 font-mono">
+                                              ({isAr ? "إجمالي الدين المسدد:" : "Gross Settled:"} EGP {Number(payment.grossAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })})
+                                            </span>
+                                          )}
+                                        </div>
+                                        <p className="text-xs font-medium text-slate-400 flex items-center gap-1.5 flex-wrap mt-0.5">
                                           <Calendar size={12}/> <span>{payment.date || "Completed"}</span> 
                                           <span className="text-slate-600">•</span> 
                                           <span className="uppercase font-semibold text-slate-300">{payment.method || "CASH"}</span>
@@ -2566,6 +2765,12 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                                             <>
                                               <span className="text-slate-600">•</span>
                                               <span className="text-slate-500 font-mono text-[11px]">{payment.createdBy.split('@')[0]}</span>
+                                            </>
+                                          )}
+                                          {payment.hasReturn && (payment.returnTransferOutNumber || payment.returnDetails?.transferOutNumber) && (
+                                            <>
+                                              <span className="text-slate-600">•</span>
+                                              <span className="text-amber-400 font-mono text-[11px]">TR-{payment.returnTransferOutNumber || payment.returnDetails?.transferOutNumber}</span>
                                             </>
                                           )}
                                         </p>
@@ -3009,7 +3214,7 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
-              className="bg-[#0B1121] text-slate-100 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-slate-800 flex flex-col max-h-[95vh] relative"
+              className="bg-[#0B1121] text-slate-100 rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl border border-slate-800 flex flex-col max-h-[95vh] relative"
             >
               {/* Skeuomorphic Overlays */}
               {isCoinDropping && (
@@ -3023,7 +3228,7 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                 </div>
               )}
               <div className="flex justify-between items-center p-6 border-b border-slate-800 bg-slate-900/60" dir={isAr ? "rtl" : "ltr"}>
-                <h2 className="text-2xl font-black text-white tracking-tight">{isAr ? "تحصيل مديونية / آجل" : "Make Payment"}</h2>
+                <h2 className="text-2xl font-black text-white tracking-tight">{isAr ? "سداد مديونية مورد / آجل" : "Make Credit Payment"}</h2>
                 <button onClick={() => setShowPaymentModal(false)} className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-full transition-colors cursor-pointer">
                   <X size={20} />
                 </button>
@@ -3032,84 +3237,385 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
               <form onSubmit={handleProcessPayment} className="flex flex-col flex-1 min-h-0" dir={isAr ? "rtl" : "ltr"}>
                 <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
                   <div className="bg-gradient-to-br from-slate-900 to-indigo-950/40 p-5 rounded-2xl border border-indigo-900/50 shadow-inner">
-                  <p className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-1">{isAr ? "تحصيل لحساب" : "Paying For"}</p>
-                  <p className="text-lg text-white font-black tracking-tight">{selectedCreditForPayment.companyName}</p>
-                  <p className="text-sm font-medium text-slate-400 mb-4 flex items-center gap-1"><FileText size={14}/> {isAr ? "فاتورة رقم:" : "Inv:"} {selectedCreditForPayment.invoiceNumber}</p>
-                  
-                  <div className="bg-[#0B1121] p-3 rounded-xl border border-slate-800 flex justify-between items-center">
-                    <span className="text-sm font-bold text-slate-400 uppercase tracking-wide">{isAr ? "المبلغ المتبقي" : "Remaining Balance"}</span>
-                    <span className="text-2xl font-black text-indigo-400 font-mono tracking-tight">EGP {((selectedCreditForPayment.amountDue + selectedCreditForPayment.tax) - selectedCreditForPayment.paidAmount).toLocaleString()}</span>
-                  </div>
-                </div>
-
-                <div className="space-y-4 mb-2">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "التاريخ *" : "Date *"}</label>
-                      <input required type="date" className="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 focus:border-indigo-500 transition-all outline-none font-bold text-white" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "الوقت *" : "Time *"}</label>
-                      <input required type="time" className="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 focus:border-indigo-500 transition-all outline-none font-bold text-white" value={paymentTime} onChange={(e) => setPaymentTime(e.target.value)} />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "طريقة التحصيل *" : "Payment Method *"}</label>
-                    <select className="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 focus:border-indigo-500 transition-all outline-none font-bold text-white appearance-none cursor-pointer" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
-                      <option value="cash">{isAr ? "💵 كاش (نقداً)" : "💵 Cash / نقدي"}</option>
-                      <option value="bank_transfer">{isAr ? "🏦 تحويل بنكي" : "🏦 Bank Transfer / تحويل بنكي"}</option>
-                      <option value="visa">{isAr ? "💳 فيزا (بطاقة)" : "💳 Visa / فيزا"}</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "المبلغ المحصل *" : "Amount to Pay *"}</label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-black">EGP</span>
-                      <input 
-                        required 
-                        type="number" 
-                        step="0.01" 
-                        min="0.01" 
-                        placeholder="0.00" 
-                        className="w-full pl-16 pr-4 py-3 rounded-xl bg-slate-900 border border-slate-700 focus:border-indigo-500 transition-all outline-none font-black text-white text-lg font-mono" 
-                        value={paymentAmount} 
-                        onChange={(e) => setPaymentAmount(e.target.value)} 
-                      />
+                    <p className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-1">{isAr ? "سداد لحساب" : "Paying For"}</p>
+                    <p className="text-lg text-white font-black tracking-tight">{selectedCreditForPayment.companyName}</p>
+                    <p className="text-sm font-medium text-slate-400 mb-4 flex items-center gap-1"><FileText size={14}/> {isAr ? "فاتورة رقم:" : "Inv:"} {selectedCreditForPayment.invoiceNumber}</p>
+                    
+                    <div className="bg-[#0B1121] p-3 rounded-xl border border-slate-800 flex justify-between items-center">
+                      <span className="text-sm font-bold text-slate-400 uppercase tracking-wide">{isAr ? "المبلغ المتبقي" : "Remaining Balance"}</span>
+                      <span className="text-2xl font-black text-indigo-400 font-mono tracking-tight">EGP {((selectedCreditForPayment.amountDue + selectedCreditForPayment.tax) - selectedCreditForPayment.paidAmount).toLocaleString()}</span>
                     </div>
                   </div>
 
-                  {paymentMethod === 'bank_transfer' && (
-                    <div className="bg-blue-950/40 p-4 rounded-xl border border-blue-900/60 mb-4 mt-2">
-                      <label className="block text-xs font-bold text-blue-300 uppercase tracking-wider mb-2">{isAr ? "إيصال التحويل البنكي *" : "Bank Transfer Receipt *"}</label>
-                      <div className="flex flex-col gap-2">
-                        <input 
-                          type="file" 
-                          accept="image/*" 
-                          onChange={(e) => {
-                            if (e.target.files && e.target.files[0]) {
-                              setBankTransferFile(e.target.files[0]);
-                            }
-                          }}
-                          className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-900/80 file:text-blue-300 hover:file:bg-blue-800"
-                        />
-                        {bankTransferFile ? (
-                          <p className="text-xs font-medium text-blue-300 break-all bg-blue-900/50 p-2 rounded-lg border border-blue-800 inline-flex items-center gap-1"><CheckCircle2 size={12}/> {bankTransferFile.name}</p>
-                        ) : (
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-[10px] text-blue-400">{isAr ? "أو:" : "Or: "}</span>
-                            <button 
-                              type="button" 
-                              onClick={handlePasteBankReceipt}
-                              className="text-[10px] text-blue-300 bg-blue-900/60 hover:bg-blue-800 px-2 py-1 rounded flex items-center gap-1 transition-colors border border-blue-800 cursor-pointer"
-                            >
-                              <ClipboardPaste size={10}/> {isAr ? "لصق من الحافظة" : "Paste from Clipboard"}
-                            </button>
-                          </div>
-                        )}
+                  <div className="space-y-4 mb-2">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "التاريخ *" : "Date *"}</label>
+                        <input required type="date" className="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 focus:border-indigo-500 transition-all outline-none font-bold text-white" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "الوقت *" : "Time *"}</label>
+                        <input required type="time" className="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 focus:border-indigo-500 transition-all outline-none font-bold text-white" value={paymentTime} onChange={(e) => setPaymentTime(e.target.value)} />
                       </div>
                     </div>
-                  )}
-                </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "طريقة التحصيل *" : "Payment Method *"}</label>
+                      <select className="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 focus:border-indigo-500 transition-all outline-none font-bold text-white appearance-none cursor-pointer" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+                        <option value="cash">{isAr ? "💵 كاش (نقداً)" : "💵 Cash / نقدي"}</option>
+                        <option value="bank_transfer">{isAr ? "🏦 تحويل بنكي" : "🏦 Bank Transfer / تحويل بنكي"}</option>
+                        <option value="visa">{isAr ? "💳 فيزا (بطاقة)" : "💳 Visa / فيزا"}</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "المبلغ المراد سداده من المديونية *" : "Gross Debt Amount to Settle *"}</label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-black">EGP</span>
+                        <input 
+                          required 
+                          type="number" 
+                          step="0.01" 
+                          min="0.01" 
+                          placeholder="0.00" 
+                          className="w-full pl-16 pr-4 py-3 rounded-xl bg-slate-900 border border-slate-700 focus:border-indigo-500 transition-all outline-none font-black text-white text-lg font-mono" 
+                          value={paymentAmount} 
+                          onChange={(e) => setPaymentAmount(e.target.value)} 
+                        />
+                      </div>
+                    </div>
+
+                    {paymentMethod === 'bank_transfer' && (
+                      <div className="bg-blue-950/40 p-4 rounded-xl border border-blue-900/60 mb-4 mt-2">
+                        <label className="block text-xs font-bold text-blue-300 uppercase tracking-wider mb-2">{isAr ? "إيصال التحويل البنكي *" : "Bank Transfer Receipt *"}</label>
+                        <div className="flex flex-col gap-2">
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            onChange={(e) => {
+                              if (e.target.files && e.target.files[0]) {
+                                setBankTransferFile(e.target.files[0]);
+                              }
+                            }}
+                            className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-900/80 file:text-blue-300 hover:file:bg-blue-800"
+                          />
+                          {bankTransferFile ? (
+                            <p className="text-xs font-medium text-blue-300 break-all bg-blue-900/50 p-2 rounded-lg border border-blue-800 inline-flex items-center gap-1"><CheckCircle2 size={12}/> {bankTransferFile.name}</p>
+                          ) : (
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-[10px] text-blue-400">{isAr ? "أو:" : "Or: "}</span>
+                              <button 
+                                type="button" 
+                                onClick={handlePasteBankReceipt}
+                                className="text-[10px] text-blue-300 bg-blue-900/60 hover:bg-blue-800 px-2 py-1 rounded flex items-center gap-1 transition-colors border border-blue-800 cursor-pointer"
+                              >
+                                <ClipboardPaste size={10}/> {isAr ? "لصق من الحافظة" : "Paste from Clipboard"}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* GOODS RETURN (RTV) DEDUCTION INTERACTIVE CARD */}
+                  <div className="mt-6 pt-4 border-t border-slate-800">
+                    <div className={`p-5 rounded-2xl border transition-all duration-300 ${hasReturn ? 'bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent border-amber-400 dark:border-amber-600/60 shadow-lg shadow-amber-500/5' : 'bg-slate-900/60 border-slate-800'}`}>
+                      {/* Question Header & Toggle Switch */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-start sm:items-center gap-3.5">
+                          <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 transition-all ${hasReturn ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30 ring-4 ring-amber-500/15' : 'bg-slate-800 text-slate-400'}`}>
+                            <RotateCcw size={22} className={hasReturn ? 'rotate-[-30deg] transition-transform duration-300' : ''} />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-base sm:text-lg font-black text-white">
+                                {isAr ? "هل يوجد مرتجع بضاعة مرتبط بسداد هذه المديونية؟ (RTV)" : "Is there a Goods Return (RTV) for this credit payment?"}
+                              </h3>
+                              {hasReturn && (
+                                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-amber-500 text-white animate-pulse">
+                                  {isAr ? "يوجد خصم مرتجع" : "RTV Deduction Active"}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-400 mt-0.5">
+                              {isAr
+                                ? "في حالة وجود بضاعة مرتجعة، سيتم خصم قيمتها من المبلغ المطلوب سداده نقداً، وتسوية الدين بالكامل، وطباعة إيصال مرتجع رسمي A4 تلقائياً مع إيصال السداد، وإغلاق المرتجع في السيستم."
+                                : "If goods are returned, their value will be deducted from cash outflow while clearing full credit debt, an official A4 RTV receipt printed, and return closed."}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Yes / No Toggle Buttons */}
+                        <div className="flex items-center bg-slate-800 p-1 rounded-xl self-start sm:self-center shrink-0 border border-slate-700">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setHasReturn(false);
+                              setReturnAmount("");
+                              setReturnTransferOutNumber("");
+                              setReturnReason("");
+                              setReturnItems([]);
+                            }}
+                            className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${!hasReturn ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                          >
+                            {isAr ? "لا، لا يوجد" : "No Return"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setHasReturn(true);
+                              if (!returnAgentName && selectedCreditForPayment.supplierRepName) setReturnAgentName(selectedCreditForPayment.supplierRepName);
+                              if (!returnAgentNationalId && selectedCreditForPayment.supplierNationalId) setReturnAgentNationalId(selectedCreditForPayment.supplierNationalId);
+                            }}
+                            className={`px-4 py-2 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 ${hasReturn ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30' : 'text-slate-400 hover:text-white'}`}
+                          >
+                            <RotateCcw size={13} />
+                            {isAr ? "نعم، يوجد مرتجع" : "Yes, Return"}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Expandable Return Details Inputs */}
+                      <AnimatePresence>
+                        {hasReturn && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.25 }}
+                            className="mt-6 pt-6 border-t border-amber-500/20 space-y-6 overflow-hidden"
+                          >
+                            {/* Main Return Questions Grid */}
+                            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                              {/* Question 1: Return Amount */}
+                              <div className="bg-[#0B1121] p-4 rounded-xl border border-amber-400/40 shadow-xs">
+                                <label className="block text-xs font-black text-amber-400 uppercase tracking-wider mb-1.5">
+                                  {isAr ? "١. قيمة خصم المرتجع (ج.م) *" : "1. Return Deduction Amount (EGP) *"}
+                                </label>
+                                <input
+                                  type="number"
+                                  required={hasReturn}
+                                  placeholder="0.00"
+                                  step="0.01"
+                                  min="0.01"
+                                  max={parseFloat(paymentAmount) || undefined}
+                                  value={returnAmount}
+                                  onChange={(e) => setReturnAmount(e.target.value)}
+                                  className="w-full p-2.5 rounded-lg bg-slate-900 border border-amber-400/50 focus:ring-2 focus:ring-amber-500 outline-none font-mono font-black text-amber-400 text-lg"
+                                />
+                                <span className="text-[11px] text-slate-400 mt-1 block">
+                                  {isAr ? "المبلغ المستحق خصمه من السداد النقدي" : "Amount to deduct from cash payout"}
+                                </span>
+                              </div>
+
+                              {/* Question 2: TR Number */}
+                              <div className="bg-[#0B1121] p-4 rounded-xl border border-amber-400/40 shadow-xs">
+                                <label className="block text-xs font-black text-slate-200 uppercase tracking-wider mb-1.5">
+                                  {isAr ? "٢. رقم إذن خروج البضاعة (TR Number) *" : "2. Outbound Transfer # (TR) *"}
+                                </label>
+                                <input
+                                  type="text"
+                                  required={hasReturn}
+                                  placeholder={isAr ? "مثال: TR-94821 أو رقم إذن الصرف" : "e.g. TR-94821"}
+                                  value={returnTransferOutNumber}
+                                  onChange={(e) => setReturnTransferOutNumber(e.target.value)}
+                                  className="w-full p-2.5 rounded-lg bg-slate-900 border border-slate-700 focus:ring-2 focus:ring-amber-500 outline-none font-bold text-white text-sm"
+                                />
+                                <span className="text-[11px] text-slate-400 mt-1 block">
+                                  {isAr ? "الرقم الدفتري أو الإلكتروني لإذن الخروج" : "Official outbound transfer manifest #"}
+                                </span>
+                              </div>
+
+                              {/* Question 3: Return Reason */}
+                              <div className="bg-[#0B1121] p-4 rounded-xl border border-amber-400/40 shadow-xs sm:col-span-2 lg:col-span-1">
+                                <label className="block text-xs font-black text-slate-200 uppercase tracking-wider mb-1.5">
+                                  {isAr ? "٣. سبب الإرجاع *" : "3. Return Reason *"}
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder={isAr ? "بضاعة تالفة / منتهية الصلاحية / راكدة / تسوية دين" : "Damaged / Expired / Slow moving / Debt settlement"}
+                                  value={returnReason}
+                                  onChange={(e) => setReturnReason(e.target.value)}
+                                  className="w-full p-2.5 rounded-lg bg-slate-900 border border-slate-700 focus:ring-2 focus:ring-amber-500 outline-none font-medium text-white text-sm"
+                                />
+                                <span className="text-[11px] text-slate-400 mt-1 block">
+                                  {isAr ? "يظهر رسمياً على إيصال المرتجع" : "Will appear on RTV receipt"}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Representative / Driver for Return Handover */}
+                            <div className="bg-[#0B1121] p-4 rounded-xl border border-slate-800">
+                              <h4 className="text-xs font-black text-slate-300 uppercase tracking-wider mb-3">
+                                {isAr ? "بيانات مندوب / سائق استلام المرتجع (اختياري - للإيصال)" : "Representative Handover Details"}
+                              </h4>
+                              <div className="grid sm:grid-cols-3 gap-3">
+                                <div>
+                                  <label className="block text-[11px] font-bold text-slate-400 mb-1">{isAr ? "اسم المندوب المستلم" : "Rep Name"}</label>
+                                  <input
+                                    type="text"
+                                    placeholder={selectedCreditForPayment.supplierRepName || (isAr ? "مندوب المورد" : "Representative")}
+                                    value={returnAgentName}
+                                    onChange={(e) => setReturnAgentName(e.target.value)}
+                                    className="w-full p-2 rounded-lg bg-slate-900 border border-slate-800 text-xs font-bold text-white"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[11px] font-bold text-slate-400 mb-1">{isAr ? "الرقم القومي (١٤ رقم)" : "National ID (14 digits)"}</label>
+                                  <input
+                                    type="text"
+                                    maxLength={14}
+                                    placeholder={selectedCreditForPayment.supplierNationalId || (isAr ? "الرقم القومي" : "National ID")}
+                                    value={returnAgentNationalId}
+                                    onChange={(e) => setReturnAgentNationalId(e.target.value)}
+                                    className="w-full p-2 rounded-lg bg-slate-900 border border-slate-800 text-xs font-mono font-bold text-white"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[11px] font-bold text-slate-400 mb-1">{isAr ? "رقم الهاتف المحمول" : "Mobile Number"}</label>
+                                  <input
+                                    type="tel"
+                                    placeholder="01XXXXXXXXX"
+                                    value={returnAgentMobile}
+                                    onChange={(e) => setReturnAgentMobile(e.target.value)}
+                                    className="w-full p-2 rounded-lg bg-slate-900 border border-slate-800 text-xs font-mono font-bold text-white"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Optional Itemized Return Items */}
+                            <div>
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-bold text-slate-400">
+                                  {isAr ? `أصناف المرتجع التفصيلية (${returnItems.length}) - اختياري` : `Itemized Return Items (${returnItems.length}) - Optional`}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={handleAddReturnItem}
+                                  className="text-xs font-bold text-amber-400 hover:underline flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Plus size={13} /> {isAr ? "إضافة صنف مرتجع" : "Add Return Item"}
+                                </button>
+                              </div>
+
+                              {returnItems.length > 0 && (
+                                <div className="overflow-x-auto border border-amber-500/20 rounded-xl mb-3">
+                                  <table className="w-full text-xs text-left" dir={isAr ? "rtl" : "ltr"}>
+                                    <thead className="bg-amber-950/40 text-amber-200 uppercase font-black text-[10px]">
+                                      <tr>
+                                        <th className="p-2.5">{isAr ? "الباركود" : "Barcode"}</th>
+                                        <th className="p-2.5">{isAr ? "اسم الصنف" : "Item Name"}</th>
+                                        <th className="p-2.5 text-center w-20">{isAr ? "الكمية" : "Qty"}</th>
+                                        <th className="p-2.5 text-right w-24">{isAr ? "السعر" : "Price"}</th>
+                                        <th className="p-2.5 text-right w-24">{isAr ? "الإجمالي" : "Total"}</th>
+                                        <th className="p-2.5 text-center w-10"></th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-amber-900/30">
+                                      {returnItems.map((ritem, rIdx) => (
+                                        <tr key={rIdx} className="bg-slate-900/60">
+                                          <td className="p-1.5">
+                                            <input
+                                              type="text"
+                                              placeholder="Barcode"
+                                              value={ritem.barcode}
+                                              onChange={(e) => handleReturnItemChange(rIdx, 'barcode', e.target.value)}
+                                              className="w-full p-1.5 rounded bg-slate-800 text-xs border border-slate-700 text-white"
+                                            />
+                                          </td>
+                                          <td className="p-1.5">
+                                            <input
+                                              type="text"
+                                              placeholder={isAr ? "اسم الصنف المرتجع" : "Item description"}
+                                              value={ritem.itemName}
+                                              onChange={(e) => handleReturnItemChange(rIdx, 'itemName', e.target.value)}
+                                              className="w-full p-1.5 rounded bg-slate-800 text-xs border border-slate-700 text-white"
+                                            />
+                                          </td>
+                                          <td className="p-1.5">
+                                            <input
+                                              type="number"
+                                              min="1"
+                                              value={ritem.quantity}
+                                              onChange={(e) => handleReturnItemChange(rIdx, 'quantity', e.target.value)}
+                                              className="w-full p-1.5 rounded bg-slate-800 text-xs border border-slate-700 text-center font-bold text-white"
+                                            />
+                                          </td>
+                                          <td className="p-1.5">
+                                            <input
+                                              type="number"
+                                              step="0.01"
+                                              min="0"
+                                              value={ritem.unitPrice}
+                                              onChange={(e) => handleReturnItemChange(rIdx, 'unitPrice', e.target.value)}
+                                              className="w-full p-1.5 rounded bg-slate-800 text-xs border border-slate-700 text-right font-bold text-white"
+                                            />
+                                          </td>
+                                          <td className="p-1.5 text-right font-mono font-black text-amber-400">
+                                            {(ritem.totalPrice || 0).toFixed(2)}
+                                          </td>
+                                          <td className="p-1.5 text-center">
+                                            <button
+                                              type="button"
+                                              onClick={() => handleRemoveReturnItem(rIdx)}
+                                              className="p-1 text-red-400 hover:bg-red-950/50 rounded transition-colors cursor-pointer"
+                                            >
+                                              <Trash2 size={13} />
+                                            </button>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Net Payout Real-Time Accounting Reconciliation Banner */}
+                            {(() => {
+                              const gross = parseFloat(paymentAmount) || 0;
+                              const ret = parseFloat(returnAmount) || 0;
+                              const net = Math.max(0, gross - ret);
+                              const isOverLimit = ret > gross && gross > 0;
+
+                              return (
+                                <div className={`p-4 rounded-2xl border transition-all ${isOverLimit ? 'bg-red-950/40 border-red-500' : 'bg-gradient-to-r from-slate-900 to-indigo-950/40 text-white border-slate-700 shadow-xl'}`}>
+                                  {isOverLimit ? (
+                                    <div className="flex items-center gap-3 text-red-400">
+                                      <AlertTriangle size={22} className="shrink-0" />
+                                      <div>
+                                        <p className="font-black text-sm">{isAr ? "تنبيه: قيمة المرتجع تتجاوز إجمالي المبلغ المسدد!" : "Warning: Return exceeds payment amount!"}</p>
+                                        <p className="text-xs text-red-300/80">{isAr ? "يرجى تعديل قيمة المرتجع لتكون أقل من أو تساوي المبلغ المراد سداده." : "Adjust return amount to be less than or equal to settlement amount."}</p>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                                      <div className="space-y-1 text-center sm:text-right">
+                                        <span className="text-[11px] font-black uppercase text-amber-400 tracking-wider">
+                                          {isAr ? "المعادلة المحاسبية للتسوية والسداد" : "Accounting Settlement Formula"}
+                                        </span>
+                                        <div className="flex items-center gap-2 flex-wrap text-sm font-bold font-mono justify-center sm:justify-start">
+                                          <span className="text-slate-300">{isAr ? "إجمالي سداد الدين:" : "Gross Settled:"} EGP {gross.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                          <span className="text-amber-400">- {isAr ? "مرتجع RTV:" : "RTV:"} EGP {ret.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                          <span className="text-emerald-400">= {isAr ? "الصافي النقدي المنصرف:" : "Net Cash Paid:"} EGP {net.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                        </div>
+                                      </div>
+                                      <div className="text-center sm:text-left shrink-0 bg-[#0B1121] px-4 py-2.5 rounded-xl border border-emerald-500/40 shadow-inner">
+                                        <span className="text-[10px] uppercase font-bold text-slate-400 block">{isAr ? "الصافي المنصرف من الخزينة" : "Net Safe Outflow"}</span>
+                                        <span className="text-xl font-black font-mono text-emerald-400">
+                                          EGP {net.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </div>
 
                 </div>
                 <div className="flex justify-end gap-3 p-6 border-t border-slate-800 bg-slate-900/60 mt-auto">
@@ -4020,23 +4526,31 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
       const branchNameHeaderDisplay = isOlaBranch ? "CIRCLE K OLA EL KORONFOL" : "CIRCLE K EL-ALAMEIN 4";
       const totalDue = Number(credit.amountDue || 0) + Number(credit.tax || 0);
       const paidThisPayment = Number(payment.amount || 0);
+      const isReturnDeducted = !!payment.hasReturn || Number(payment.returnDeductionAmount || 0) > 0;
+      const returnDeduction = Number(payment.returnDeductionAmount || payment.returnDetails?.returnAmount || 0);
+      const grossDebtSettled = Number(payment.grossAmount || payment.grossTotal || (paidThisPayment + returnDeduction));
       const cumulativePaid = Number(credit.paidAmount || 0);
       const remainingBalance = Math.max(0, totalDue - cumulativePaid);
       const refId = payment.id ? (payment.id.startsWith("settlement_") ? `SETTLE-${payment.id.slice(-6)}` : `PAY-${payment.id.slice(0, 8).toUpperCase()}`) : `PAY-${Date.now().toString().slice(-6)}`;
+      const returnNumDisplay = payment.returnDetails?.returnNumber || payment.returnNumber || `RTV-${credit.invoiceNumber || (payment.id ? payment.id.slice(0, 6) : Date.now().toString().slice(-6))}`;
+      const trNumDisplay = payment.returnDetails?.transferOutNumber || payment.returnTransferOutNumber || "";
 
       const qrValue = JSON.stringify({
         ref: refId,
         supplier: credit.companyName,
         inv: credit.invoiceNumber,
         paid: paidThisPayment,
+        gross: grossDebtSettled,
+        rtv: returnDeduction,
         date: payment.date || new Date().toISOString().split("T")[0],
         branch: branchNameDisplay,
-        status: "OFFICIALLY_SETTLED"
+        status: isReturnDeducted ? "OFFICIALLY_SETTLED_WITH_RTV" : "OFFICIALLY_SETTLED"
       });
 
       return (
         <div id="single-payment-print-wrapper" style={{ position: 'absolute', left: '-9999px', top: 0 }}>
-          <div id="print-payment-container" style={{ width: '794px', minHeight: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
+          {/* Page 1: Official Credit Payment Receipt Voucher */}
+          <div id="print-payment-container" className="print-page" style={{ width: '794px', minHeight: '1123px', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden', fontFamily: 'Arial, sans-serif', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
             
             {/* Official Header */}
             <div style={{ padding: '20px 30px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #000', position: 'relative', zIndex: 10 }}>
@@ -4055,38 +4569,120 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
                   <p style={{ margin: 0, fontSize: '12px', fontWeight: 'bold', color: '#000', lineHeight: 1, fontFamily: 'monospace' }}>{refId}</p>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', borderLeft: '1px solid #ccc', paddingLeft: '10px' }}>
-                  <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#000' }} dir="rtl">إيصال سداد دفعة آجلة</span>
+                  <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#000' }} dir="rtl">
+                    {isReturnDeducted ? "إيصال سداد دين وتسوية مرتجع" : "إيصال سداد دفعة آجلة"}
+                  </span>
                 </div>
               </div>
             </div>
 
             {/* Official Confirmation Text */}
-            <div style={{ padding: '25px 30px 10px', textAlign: 'right', direction: 'rtl' }}>
-              <p style={{ margin: 0, fontSize: '14px', lineHeight: '1.6', color: '#000', fontWeight: 'bold' }}>
-                تُقر إدارة الفرع بأنه قد تم استلام وتسجيل دفعة السداد الموضحة تفاصيلها أدناه لصالح المورد المذكور، وتعتبر هذه الوثيقة إشعاراً رسمياً بالسداد والتسوية المالية:
+            <div style={{ padding: '20px 30px 10px', textAlign: 'right', direction: 'rtl' }}>
+              <p style={{ margin: 0, fontSize: '13px', lineHeight: '1.6', color: '#000', fontWeight: 'bold' }}>
+                {isReturnDeducted
+                  ? "تُقر إدارة الفرع بأنه قد تم تسوية المديونية المستحقة للمورد بموجب سداد نقدي ومقاصة مرتجع بضاعة معتمد (RTV) طبقاً للبيان المالي المعتمد أدناه:"
+                  : "تُقر إدارة الفرع بأنه قد تم استلام وتسجيل دفعة السداد الموضحة تفاصيلها أدناه لصالح المورد المذكور، وتعتبر هذه الوثيقة إشعاراً رسمياً بالسداد والتسوية المالية:"}
               </p>
             </div>
 
             {/* Main Financial Payment Highlight Box */}
-            <div style={{ padding: '0 30px', marginBottom: '20px' }}>
-              <div style={{ backgroundColor: '#f0fdf4', border: '2px solid #16a34a', borderRadius: '8px', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <span style={{ fontSize: '11px', color: '#166534', fontWeight: 'bold', textTransform: 'uppercase', display: 'block' }}>Payment Amount / المبلغ المسدد</span>
-                  <div style={{ fontSize: '28px', fontWeight: '900', color: '#15803d', fontFamily: 'monospace', marginTop: '2px' }}>
-                    EGP {paidThisPayment.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            <div style={{ padding: '0 30px', marginBottom: '15px' }}>
+              {isReturnDeducted ? (
+                <div style={{ border: '2px solid #000', borderRadius: '8px', overflow: 'hidden' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', fontSize: '11px' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#f8fafc', color: '#000', borderBottom: '1.5px solid #000' }}>
+                        <th style={{ padding: '8px 6px', fontWeight: '800', borderRight: '1px solid #000', width: '25%' }}>
+                          إجمالي الدين المسدد<br /><span style={{ fontSize: '8px', color: '#666' }}>GROSS SETTLED DEBT</span>
+                        </th>
+                        <th style={{ padding: '8px 6px', fontWeight: '900', borderRight: '1px solid #000', width: '25%', backgroundColor: '#fffbeb', color: '#b45309' }}>
+                          خصم مرتجع بضاعة RTV<br /><span style={{ fontSize: '8px', color: '#d97706' }}>LESS: RETURN DEDUCTION</span>
+                        </th>
+                        <th style={{ padding: '8px 6px', fontWeight: '900', borderRight: '1px solid #000', width: '25%', backgroundColor: '#f0fdf4', color: '#15803d' }}>
+                          الصافي المنصرف نقداً<br /><span style={{ fontSize: '8px', color: '#166534' }}>NET CASH PAID</span>
+                        </th>
+                        <th style={{ padding: '8px 6px', fontWeight: '800', width: '25%' }}>
+                          طريقة السداد / الحالة<br /><span style={{ fontSize: '8px', color: '#666' }}>METHOD / STATUS</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr style={{ backgroundColor: '#ffffff' }}>
+                        <td style={{ padding: '10px 6px', borderRight: '1px solid #000', fontWeight: '700', fontSize: '14px', fontFamily: 'monospace' }}>
+                          EGP {grossDebtSettled.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </td>
+                        <td style={{ padding: '10px 6px', borderRight: '1px solid #000', fontWeight: '900', fontSize: '15px', fontFamily: 'monospace', color: '#b45309', backgroundColor: '#fffbeb' }}>
+                          - EGP {returnDeduction.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </td>
+                        <td style={{ padding: '10px 6px', borderRight: '1px solid #000', fontWeight: '900', fontSize: '18px', fontFamily: 'monospace', color: '#15803d', backgroundColor: '#f0fdf4' }}>
+                          EGP {paidThisPayment.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </td>
+                        <td style={{ padding: '10px 6px', fontWeight: '800', fontSize: '11px', color: '#16a34a' }}>
+                          {payment.method ? String(payment.method).toUpperCase() : 'CASH / نقدي'}<br />
+                          <span style={{ fontSize: '9px' }}>تسوية بعد المقاصة</span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div style={{ backgroundColor: '#f0fdf4', border: '2px solid #16a34a', borderRadius: '8px', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <span style={{ fontSize: '11px', color: '#166534', fontWeight: 'bold', textTransform: 'uppercase', display: 'block' }}>Payment Amount / المبلغ المسدد</span>
+                    <div style={{ fontSize: '26px', fontWeight: '900', color: '#15803d', fontFamily: 'monospace', marginTop: '2px' }}>
+                      EGP {paidThisPayment.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ fontSize: '11px', color: '#166534', fontWeight: 'bold', textTransform: 'uppercase', display: 'block' }}>Payment Method / طريقة السداد</span>
+                    <div style={{ fontSize: '15px', fontWeight: 'bold', color: '#14532d', textTransform: 'uppercase', marginTop: '2px' }}>
+                      {payment.method || 'CASH / نقدي'}
+                    </div>
                   </div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontSize: '11px', color: '#166534', fontWeight: 'bold', textTransform: 'uppercase', display: 'block' }}>Payment Method / طريقة السداد</span>
-                  <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#14532d', textTransform: 'uppercase', marginTop: '2px' }}>
-                    {payment.method || 'CASH / نقدي'}
+              )}
+            </div>
+
+            {/* Tafqeet & Clearance Ribbons */}
+            <div style={{ padding: '0 30px', marginBottom: '15px' }}>
+              <div
+                dir="rtl"
+                style={{
+                  backgroundColor: isReturnDeducted ? '#fffbeb' : '#f8fafc',
+                  border: isReturnDeducted ? '1.5px dashed #f59e0b' : '1px solid #cbd5e1',
+                  borderRadius: '6px',
+                  padding: '8px 14px',
+                  fontSize: '11px',
+                  fontWeight: '800',
+                  color: isReturnDeducted ? '#92400e' : '#0f172a'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <span style={{ color: isReturnDeducted ? '#b45309' : '#dc2626' }}>
+                      {isReturnDeducted ? 'الصافي المنصرف بالحروف: ' : 'المبلغ بالحروف: '}
+                    </span>
+                    <span>
+                      فقط وقدره {numberToArabicWords(paidThisPayment)} جنيهاً مصرياً لا غير{isReturnDeducted ? ' (صافي بعد خصم المرتجع)' : ''}.
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '10px', color: '#64748b' }}>
+                    {isReturnDeducted ? `تم تسوية دين بقيمة: ${numberToArabicWords(grossDebtSettled)} ج.م` : ''}
                   </div>
                 </div>
+                {isReturnDeducted && (
+                  <div style={{ marginTop: '4px', paddingTop: '4px', borderTop: '1px dashed #fcd34d', fontSize: '10px', color: '#b45309' }}>
+                    <span>✓ مقاصة وتسوية مرتجع: </span>
+                    <span>
+                      تم خصم إشعار مرتجع بضاعة رسمي #{returnNumDisplay} {trNumDisplay ? `(إذن خروج: TR-${trNumDisplay})` : ''} بقيمة EGP {returnDeduction.toLocaleString(undefined, { minimumFractionDigits: 2 })} ج.م ومرفق بالصفحة التالية أصل إيصال المرتجع معتمداً.
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Credit & Supplier Details Grid */}
-            <div style={{ padding: '0 30px', marginBottom: '20px' }}>
+            <div style={{ padding: '0 30px', marginBottom: '15px' }}>
               <div style={{ border: '2px solid #000', borderRadius: '4px', overflow: 'hidden' }}>
                 {/* Row 1 */}
                 <div style={{ display: 'flex', borderBottom: '1px solid #000', backgroundColor: '#f9f9f9' }}>
@@ -4141,16 +4737,16 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
               </div>
 
               <div style={{ transform: 'rotate(-5deg)', opacity: 0.9 }}>
-                <div style={{ border: '4px solid #16a34a', borderRadius: '50%', width: '130px', height: '130px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#16a34a' }}>
-                  <span style={{ fontSize: '14px', fontWeight: '900', letterSpacing: '1px', textTransform: 'uppercase' }}>PAID</span>
-                  <span style={{ fontSize: '14px', fontWeight: '900', borderBottom: '1px solid #16a34a', paddingBottom: '2px', marginBottom: '2px' }}>تم السداد</span>
+                <div style={{ border: '4px solid #16a34a', borderRadius: '50%', width: '120px', height: '120px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#16a34a' }}>
+                  <span style={{ fontSize: '13px', fontWeight: '900', letterSpacing: '1px', textTransform: 'uppercase' }}>PAID</span>
+                  <span style={{ fontSize: '13px', fontWeight: '900', borderBottom: '1px solid #16a34a', paddingBottom: '2px', marginBottom: '2px' }}>تم السداد</span>
                   <span style={{ fontSize: '8px', fontWeight: 'bold' }}>{payment.date || new Date().toISOString().split("T")[0]}</span>
                 </div>
               </div>
             </div>
 
             {/* Signatures */}
-            <div style={{ marginTop: 'auto', padding: '20px 30px 30px' }}>
+            <div style={{ marginTop: 'auto', padding: '15px 30px 25px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #ccc', paddingTop: '15px' }}>
                 <div style={{ width: '200px', textAlign: 'center' }}>
                   <p style={{ fontSize: '10px', color: '#666', textTransform: 'uppercase', marginBottom: '40px', fontWeight: 'bold' }}>Store Receiving Officer</p>
@@ -4168,15 +4764,100 @@ body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exa
               </div>
 
               {/* Footer */}
-              <div style={{ marginTop: '20px', borderTop: '1px solid #000', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ marginTop: '15px', borderTop: '1px solid #000', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <p style={{ fontSize: '8px', color: '#555', fontFamily: 'monospace', margin: 0 }}>
                   TRANSACTION ID: {refId} | GENERATED: {new Date().toLocaleString()} | ANH ENTERPRISE PORTAL
                 </p>
-                <p style={{ fontSize: '9px', fontWeight: 'bold', margin: 0 }}>PAGE 1 OF 1</p>
+                <p style={{ fontSize: '9px', fontWeight: 'bold', margin: 0 }}>
+                  PAGE 1 OF {isReturnDeducted ? (payment.bankTransferReceiptUrl ? 3 : 2) : (payment.bankTransferReceiptUrl ? 2 : 1)}
+                </p>
               </div>
             </div>
 
           </div>
+
+          {/* Page 2: Official Egyptian Arabic Full A4 Goods Return (RTV) Receipt */}
+          {isReturnDeducted && (
+            <div
+              className="print-page"
+              id={`credit-payment-${payment.id || 'new'}-return-receipt`}
+              style={{
+                width: '794px',
+                minHeight: '1123px',
+                padding: '40px',
+                backgroundColor: '#ffffff',
+                boxSizing: 'border-box',
+                pageBreakInside: 'avoid',
+                pageBreakAfter: 'always',
+                overflow: 'hidden'
+              }}
+            >
+              <ReturnReceiptContent
+                data={{
+                  ...(payment.returnDetails || {}),
+                  supplier: credit.companyName,
+                  branchId: credit.storeId || currentBranch,
+                  storeId: credit.storeId || currentBranch,
+                  totalPrice: returnDeduction,
+                  returnNumber: returnNumDisplay,
+                  transferOutNumber: trNumDisplay,
+                  agentName: payment.returnDetails?.agentName || payment.supplierRepName || "",
+                  agentNationalId: payment.returnDetails?.agentNationalId || payment.supplierNationalId || "",
+                  agentMobile: payment.returnDetails?.agentMobile || "",
+                  items: (payment.returnDetails?.items && payment.returnDetails.items.length > 0)
+                    ? payment.returnDetails.items
+                    : [{
+                        barcode: "N/A",
+                        itemName: payment.returnDetails?.reason || "بضاعة مرتجعة مخصومة من سداد المديونية بموجب إذن خروج",
+                        quantity: 1,
+                        unitPrice: returnDeduction,
+                        totalPrice: returnDeduction
+                      }],
+                  settlementMethod: "money",
+                  paymentTiming: "now",
+                  isSettled: true,
+                  settledByVoucher: credit.invoiceNumber || credit.id,
+                  paymentVoucherNumber: credit.invoiceNumber || credit.id,
+                  returnedAt: payment.returnDetails?.returnedAt || payment.date,
+                  date: payment.date || new Date().toISOString().split("T")[0],
+                }}
+                currentBranch={currentBranch}
+              />
+            </div>
+          )}
+
+          {/* Page 3: Bank Transfer Receipt Attachment (if applicable) */}
+          {payment.bankTransferReceiptUrl && (
+            <div
+              className="print-page"
+              style={{
+                width: '794px',
+                minHeight: '1123px',
+                padding: '40px',
+                backgroundColor: '#ffffff',
+                boxSizing: 'border-box',
+                display: 'flex',
+                flexDirection: 'column',
+                pageBreakInside: 'avoid',
+                pageBreakAfter: 'avoid'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #000', paddingBottom: '15px', marginBottom: '20px' }}>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>BANK TRANSFER RECEIPT ATTACHMENT</h2>
+                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#666' }}>Ref: {refId} | Supplier: {credit.companyName}</p>
+                </div>
+                <span style={{ fontSize: '18px', fontWeight: 'bold' }} dir="rtl">مرفق إشعار التحويل البنكي</span>
+              </div>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed #999', borderRadius: '8px', padding: '10px', backgroundColor: '#fafafa' }}>
+                <img 
+                  src={payment.bankTransferReceiptUrl} 
+                  alt="Bank Transfer Receipt" 
+                  style={{ maxHeight: '900px', maxWidth: '100%', objectFit: 'contain' }}
+                />
+              </div>
+            </div>
+          )}
         </div>
       );
     })()}
