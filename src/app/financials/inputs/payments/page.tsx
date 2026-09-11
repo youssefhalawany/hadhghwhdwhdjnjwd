@@ -89,6 +89,11 @@ function OfficialPaymentReceipt({
   const paymentMethodLabelEn = isBank
     ? 'BANK TRANSFER'
     : (payment.method === 'cheque' ? 'CASHIER CHEQUE' : 'CASH PAYMENT');
+  const isReturnDeducted = !!payment.hasReturn || Number(payment.returnDeductionAmount || 0) > 0;
+  const returnDeductionNum = Number(payment.returnDeductionAmount || 0);
+  const grossInvoiceNum = Number(payment.grossAmount || (Number(payment.total || 0) + returnDeductionNum));
+  const formattedGross = grossInvoiceNum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formattedReturnDeduction = returnDeductionNum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const formattedAmount = Number(payment.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const formattedTax = Number(payment.tax || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const formattedTotal = Number(payment.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -308,40 +313,84 @@ function OfficialPaymentReceipt({
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', fontSize: '11px' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f8fafc', color: '#0f172a', borderBottom: '1.5px solid #0f172a' }}>
-                  <th style={{ padding: '8px 6px', fontWeight: '800', borderRight: '1px solid #cbd5e1', width: '22%' }}>
-                    قيمة الفاتورة الصافية<br /><span style={{ fontSize: '8.5px', color: '#64748b' }}>NET INVOICE VALUE</span>
-                  </th>
-                  <th style={{ padding: '8px 6px', fontWeight: '800', borderRight: '1px solid #cbd5e1', width: '18%' }}>
-                    ضريبة القيمة المضافة<br /><span style={{ fontSize: '8.5px', color: '#64748b' }}>VAT / TAX AMOUNT</span>
-                  </th>
-                  <th style={{ padding: '8px 6px', fontWeight: '800', borderRight: '1px solid #cbd5e1', width: '26%', backgroundColor: '#f1f5f9' }}>
-                    إجمالي المسدد والمنصرف<br /><span style={{ fontSize: '8.5px', color: '#0f172a' }}>TOTAL DISBURSED AMOUNT</span>
-                  </th>
-                  <th style={{ padding: '8px 6px', fontWeight: '800', borderRight: '1px solid #cbd5e1', width: '18%' }}>
-                    طريقة السداد<br /><span style={{ fontSize: '8.5px', color: '#64748b' }}>PAYMENT METHOD</span>
-                  </th>
-                  <th style={{ padding: '8px 6px', fontWeight: '800', width: '16%' }}>
-                    حالة السداد<br /><span style={{ fontSize: '8.5px', color: '#64748b' }}>SETTLEMENT STATUS</span>
-                  </th>
+                  {isReturnDeducted ? (
+                    <>
+                      <th style={{ padding: '8px 6px', fontWeight: '800', borderRight: '1px solid #cbd5e1', width: '22%' }}>
+                        إجمالي الفاتورة الأصلية<br /><span style={{ fontSize: '8px', color: '#64748b' }}>GROSS INVOICE TOTAL</span>
+                      </th>
+                      <th style={{ padding: '8px 6px', fontWeight: '800', borderRight: '1px solid #cbd5e1', width: '15%' }}>
+                        ضريبة القيمة المضافة<br /><span style={{ fontSize: '8px', color: '#64748b' }}>VAT / TAX</span>
+                      </th>
+                      <th style={{ padding: '8px 6px', fontWeight: '900', borderRight: '1px solid #cbd5e1', width: '23%', backgroundColor: '#fffbeb', color: '#b45309' }}>
+                        خصم مرتجع بضاعة RTV<br /><span style={{ fontSize: '8px', color: '#d97706' }}>LESS: RETURN DEDUCTION</span>
+                      </th>
+                      <th style={{ padding: '8px 6px', fontWeight: '900', borderRight: '1px solid #cbd5e1', width: '24%', backgroundColor: '#f1f5f9' }}>
+                        الصافي المسدد والمنصرف<br /><span style={{ fontSize: '8px', color: '#0f172a' }}>NET CASH DISBURSED</span>
+                      </th>
+                      <th style={{ padding: '8px 6px', fontWeight: '800', width: '16%' }}>
+                        حالة التسوية<br /><span style={{ fontSize: '8px', color: '#64748b' }}>SETTLEMENT STATUS</span>
+                      </th>
+                    </>
+                  ) : (
+                    <>
+                      <th style={{ padding: '8px 6px', fontWeight: '800', borderRight: '1px solid #cbd5e1', width: '22%' }}>
+                        قيمة الفاتورة الصافية<br /><span style={{ fontSize: '8.5px', color: '#64748b' }}>NET INVOICE VALUE</span>
+                      </th>
+                      <th style={{ padding: '8px 6px', fontWeight: '800', borderRight: '1px solid #cbd5e1', width: '18%' }}>
+                        ضريبة القيمة المضافة<br /><span style={{ fontSize: '8.5px', color: '#64748b' }}>VAT / TAX AMOUNT</span>
+                      </th>
+                      <th style={{ padding: '8px 6px', fontWeight: '800', borderRight: '1px solid #cbd5e1', width: '26%', backgroundColor: '#f1f5f9' }}>
+                        إجمالي المسدد والمنصرف<br /><span style={{ fontSize: '8.5px', color: '#0f172a' }}>TOTAL DISBURSED AMOUNT</span>
+                      </th>
+                      <th style={{ padding: '8px 6px', fontWeight: '800', borderRight: '1px solid #cbd5e1', width: '18%' }}>
+                        طريقة السداد<br /><span style={{ fontSize: '8.5px', color: '#64748b' }}>PAYMENT METHOD</span>
+                      </th>
+                      <th style={{ padding: '8px 6px', fontWeight: '800', width: '16%' }}>
+                        حالة السداد<br /><span style={{ fontSize: '8.5px', color: '#64748b' }}>SETTLEMENT STATUS</span>
+                      </th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody>
                 <tr style={{ backgroundColor: '#ffffff' }}>
-                  <td style={{ padding: '12px 8px', borderRight: '1px solid #cbd5e1', fontWeight: '700', fontSize: '13.5px', fontFamily: 'monospace' }}>
-                    EGP {formattedAmount}
-                  </td>
-                  <td style={{ padding: '12px 8px', borderRight: '1px solid #cbd5e1', fontWeight: '700', fontSize: '13.5px', fontFamily: 'monospace' }}>
-                    EGP {formattedTax}
-                  </td>
-                  <td style={{ padding: '12px 8px', borderRight: '1px solid #cbd5e1', fontWeight: '900', fontSize: '20px', fontFamily: 'monospace', color: '#0f172a', backgroundColor: '#f8fafc' }}>
-                    EGP {formattedTotal}
-                  </td>
-                  <td style={{ padding: '12px 8px', borderRight: '1px solid #cbd5e1', fontWeight: '800', fontSize: '11.5px' }}>
-                    {paymentMethodLabelAr}
-                  </td>
-                  <td style={{ padding: '12px 8px', fontWeight: '800', fontSize: '11px', color: '#16a34a' }}>
-                    مسددة بالكامل ١٠٠٪<br /><span style={{ fontSize: '8.5px' }}>PAID IN FULL</span>
-                  </td>
+                  {isReturnDeducted ? (
+                    <>
+                      <td style={{ padding: '12px 8px', borderRight: '1px solid #cbd5e1', fontWeight: '700', fontSize: '13.5px', fontFamily: 'monospace' }}>
+                        EGP {formattedGross}
+                      </td>
+                      <td style={{ padding: '12px 8px', borderRight: '1px solid #cbd5e1', fontWeight: '700', fontSize: '13.5px', fontFamily: 'monospace' }}>
+                        EGP {formattedTax}
+                      </td>
+                      <td style={{ padding: '12px 8px', borderRight: '1px solid #cbd5e1', fontWeight: '900', fontSize: '15px', fontFamily: 'monospace', color: '#b45309', backgroundColor: '#fffbeb' }}>
+                        - EGP {formattedReturnDeduction}
+                      </td>
+                      <td style={{ padding: '12px 8px', borderRight: '1px solid #cbd5e1', fontWeight: '900', fontSize: '20px', fontFamily: 'monospace', color: '#0f172a', backgroundColor: '#f8fafc' }}>
+                        EGP {formattedTotal}
+                      </td>
+                      <td style={{ padding: '12px 8px', fontWeight: '800', fontSize: '10.5px', color: '#16a34a' }}>
+                        مسددة بعد المقاصة<br /><span style={{ fontSize: '8px' }}>PAID AFTER RTV</span>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td style={{ padding: '12px 8px', borderRight: '1px solid #cbd5e1', fontWeight: '700', fontSize: '13.5px', fontFamily: 'monospace' }}>
+                        EGP {formattedAmount}
+                      </td>
+                      <td style={{ padding: '12px 8px', borderRight: '1px solid #cbd5e1', fontWeight: '700', fontSize: '13.5px', fontFamily: 'monospace' }}>
+                        EGP {formattedTax}
+                      </td>
+                      <td style={{ padding: '12px 8px', borderRight: '1px solid #cbd5e1', fontWeight: '900', fontSize: '20px', fontFamily: 'monospace', color: '#0f172a', backgroundColor: '#f8fafc' }}>
+                        EGP {formattedTotal}
+                      </td>
+                      <td style={{ padding: '12px 8px', borderRight: '1px solid #cbd5e1', fontWeight: '800', fontSize: '11.5px' }}>
+                        {paymentMethodLabelAr}
+                      </td>
+                      <td style={{ padding: '12px 8px', fontWeight: '800', fontSize: '11px', color: '#16a34a' }}>
+                        مسددة بالكامل ١٠٠٪<br /><span style={{ fontSize: '8.5px' }}>PAID IN FULL</span>
+                      </td>
+                    </>
+                  )}
                 </tr>
               </tbody>
             </table>
@@ -352,22 +401,50 @@ function OfficialPaymentReceipt({
               style={{
                 backgroundColor: '#ffffff',
                 borderTop: '1px solid #0f172a',
-                padding: '9px 16px',
+                padding: '8px 16px',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                fontSize: '11.5px',
+                fontSize: '11px',
                 fontWeight: '800'
               }}
             >
               <div>
-                <span style={{ color: '#dc2626' }}>المبلغ بالحروف: </span>
-                <span style={{ color: '#0f172a' }}>فقط وقدره {numberToArabicWords(Number(payment.total))} جنيهاً مصرياً لا غير.</span>
+                <span style={{ color: '#dc2626' }}>{isReturnDeducted ? 'الصافي المنصرف بالحروف: ' : 'المبلغ بالحروف: '}</span>
+                <span style={{ color: '#0f172a' }}>فقط وقدره {numberToArabicWords(Number(payment.total))} جنيهاً مصرياً لا غير{isReturnDeducted ? ' (صافي بعد خصم المرتجع)' : ''}.</span>
               </div>
-              <div style={{ fontSize: '9.5px', color: '#475569', fontWeight: '700' }}>
+              <div style={{ fontSize: '9px', color: '#475569', fontWeight: '700' }}>
                 طريقة السداد: {paymentMethodLabelAr} بالعملة الرسمية لجمهورية مصر العربية
               </div>
             </div>
+
+            {isReturnDeducted && (
+              <div
+                dir="rtl"
+                style={{
+                  backgroundColor: '#fffbeb',
+                  borderTop: '1px dashed #f59e0b',
+                  padding: '6px 14px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  fontSize: '9.5px',
+                  color: '#92400e',
+                  fontWeight: '800'
+                }}
+              >
+                <div>
+                  <span style={{ color: '#b45309' }}>✓ مقاصة وتسوية مرتجع: </span>
+                  <span>
+                    تم خصم إشعار مرتجع بضاعة رسمي #{payment.returnNumber || payment.returnDetails?.returnNumber || 'RTV'}
+                    {payment.transferOutNumber ? ` (إذن تحويل خارجي: TR-${payment.transferOutNumber})` : ''} بقيمة {formattedReturnDeduction} ج.م ومرفق أصل الإشعار معتمد.
+                  </span>
+                </div>
+                <span style={{ fontSize: '8px', color: '#b45309', fontFamily: 'monospace', textTransform: 'uppercase' }}>
+                  [ RTV DEDUCTION APPLIED • ATTACHED ON PAGE 2 ]
+                </span>
+              </div>
+            )}
           </div>
 
           {/* 4. COMPREHENSIVE EGYPTIAN LEGAL DISCHARGE & WAIVER (LESS ZAHMA, EXECUTIVE STYLE) */}
@@ -822,8 +899,11 @@ import {
   PieChart as PieChartIcon,
   Printer,
   Calculator,
-  Pencil
+  Pencil,
+  RotateCcw,
+  Undo2
 } from "lucide-react";
+import { ReturnReceiptContent } from "@/components/ReturnReceiptContent";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, LineChart, Line, XAxis, YAxis } from 'recharts';
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
@@ -991,6 +1071,16 @@ export default function PaymentsRedesignPage() {
   const [showAddSupplier, setShowAddSupplier] = useState(false);
   const [qrCodeData, setQrCodeData] = useState("");
   const [bankTransferFile, setBankTransferFile] = useState<File | null>(null);
+
+  // Goods Return / RTV Deduction Form State
+  const [hasReturn, setHasReturn] = useState(false);
+  const [returnAmount, setReturnAmount] = useState("");
+  const [returnTransferOutNumber, setReturnTransferOutNumber] = useState("");
+  const [returnAgentName, setReturnAgentName] = useState("");
+  const [returnAgentNationalId, setReturnAgentNationalId] = useState("");
+  const [returnAgentMobile, setReturnAgentMobile] = useState("");
+  const [returnReason, setReturnReason] = useState("");
+  const [returnItems, setReturnItems] = useState<{ barcode: string; itemName: string; quantity: number; unitPrice: number; totalPrice: number }[]>([]);
 
   // PO Extraction State
   const [poItems, setPoItems] = useState<{ barcode: string, quantity: number, description: string, unitPrice: number }[]>([]);
@@ -1540,6 +1630,15 @@ export default function PaymentsRedesignPage() {
     setPoItems([]);
     setIsProcessingPo(false);
     setBankTransferFile(null);
+    // Reset Return States
+    setHasReturn(false);
+    setReturnAmount("");
+    setReturnTransferOutNumber("");
+    setReturnAgentName("");
+    setReturnAgentNationalId("");
+    setReturnAgentMobile("");
+    setReturnReason("");
+    setReturnItems([]);
   };
 
   const handlePoItemChange = (index: number, field: 'barcode' | 'quantity' | 'description' | 'unitPrice', value: any) => {
@@ -1556,6 +1655,32 @@ export default function PaymentsRedesignPage() {
     setPoItems([...poItems, { barcode: "", quantity: 1, description: "", unitPrice: 0 }]);
   };
 
+  const handleReturnItemChange = (index: number, field: string, value: any) => {
+    const newItems = [...returnItems];
+    newItems[index] = { ...newItems[index], [field]: value };
+    if (field === 'quantity' || field === 'unitPrice') {
+      const q = field === 'quantity' ? (parseInt(value) || 0) : (newItems[index].quantity || 0);
+      const p = field === 'unitPrice' ? (parseFloat(value) || 0) : (newItems[index].unitPrice || 0);
+      newItems[index].totalPrice = q * p;
+    }
+    setReturnItems(newItems);
+    const sum = newItems.reduce((acc, it) => acc + (Number(it.totalPrice) || 0), 0);
+    if (sum > 0) setReturnAmount(sum.toString());
+  };
+
+  const handleRemoveReturnItem = (index: number) => {
+    const newItems = returnItems.filter((_, i) => i !== index);
+    setReturnItems(newItems);
+    if (newItems.length > 0) {
+      const sum = newItems.reduce((acc, it) => acc + (Number(it.totalPrice) || 0), 0);
+      setReturnAmount(sum.toString());
+    }
+  };
+
+  const handleAddReturnItem = () => {
+    setReturnItems([...returnItems, { barcode: "", itemName: "", quantity: 1, unitPrice: 0, totalPrice: 0 }]);
+  };
+
   const handleSavePayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!companyName || !amount) {
@@ -1565,7 +1690,28 @@ export default function PaymentsRedesignPage() {
 
     const numAmount = parseFloat(amount) || 0;
     const numTax = parseFloat(tax) || 0;
-    const total = numAmount + numTax;
+    const grossTotal = numAmount + numTax;
+    const numReturnAmount = hasReturn ? (parseFloat(returnAmount) || 0) : 0;
+
+    if (hasReturn) {
+      if (numReturnAmount <= 0) {
+        toast.error(isAr ? "برجاء إدخال قيمة خصم المرتجع بشكل صحيح." : "Please enter a valid return deduction amount.");
+        return;
+      }
+      if (numReturnAmount > grossTotal) {
+        toast.error(isAr ? "قيمة خصم المرتجع لا يمكن أن تتجاوز إجمالي قيمة الفاتورة." : "Return deduction cannot exceed gross invoice total.");
+        return;
+      }
+      if (!returnTransferOutNumber.trim()) {
+        toast.error(isAr ? "برجاء إدخال رقم إذن خروج البضاعة (TR Number)." : "Please enter the Outbound Transfer # (TR).");
+        return;
+      }
+    }
+
+    const netTotal = Math.max(0, grossTotal - numReturnAmount);
+    // Safe accounting: Safe balance outflow is (p.amount + p.tax)
+    // To deduct exactly netTotal from the safe, set netAmount = Math.max(0, netTotal - numTax)
+    const netAmount = Math.max(0, netTotal - numTax);
 
     try {
       setSubmitting(true);
@@ -1583,8 +1729,73 @@ export default function PaymentsRedesignPage() {
       const finalPoItems = isOrderCategory ? poItems : [];
       const finalPoImageUrl = isOrderCategory ? poImageUrl : "";
 
+      const generatedReturnNumber = hasReturn ? `RTV-${Date.now().toString().slice(-6)}` : null;
+      const finalRepName = returnAgentName.trim() || supplierRepName.trim() || "مندوب الشركة المعتمد";
+      const finalRepNationalId = returnAgentNationalId.trim() || supplierNationalId.trim() || "";
+      const finalRepMobile = returnAgentMobile.trim() || "";
+      const finalReturnReason = returnReason.trim() || "خصم مرتجع بضاعة من سداد المورد";
+
+      const finalReturnItems = (returnItems && returnItems.length > 0)
+        ? returnItems
+        : [{
+            barcode: "N/A",
+            itemName: finalReturnReason,
+            quantity: 1,
+            unitPrice: numReturnAmount,
+            totalPrice: numReturnAmount
+          }];
+
+      let createdReturnId = null;
+      if (hasReturn && numReturnAmount > 0) {
+        const returnTimestamp = new Date().toISOString();
+        const returnDocRef = await addDoc(collection(db, "supplier_returns"), {
+          barcode: finalReturnItems[0]?.barcode || "N/A",
+          itemName: finalReturnItems[0]?.itemName || finalReturnReason,
+          category: "deduction_from_payment",
+          supplier: companyName,
+          quantity: finalReturnItems.reduce((acc, it) => acc + (Number(it.quantity) || 0), 0) || 1,
+          storeId: branchIds.length > 0 ? branchIds[0] : (currentBranch === "ola" ? "ola-el-koronfol" : "eL-alamein-4"),
+          branchId: currentBranch === "all" ? "alamein4" : currentBranch,
+          status: "returned",
+          createdAt: returnTimestamp,
+          createdBy: currentUser?.email || "unknown",
+          returnedAt: returnTimestamp,
+          returnNumber: generatedReturnNumber,
+          transferOutNumber: returnTransferOutNumber.trim(),
+          agentName: finalRepName,
+          agentNationalId: finalRepNationalId,
+          agentMobile: finalRepMobile,
+          totalPrice: numReturnAmount,
+          reason: finalReturnReason,
+          items: finalReturnItems,
+          settlementMethod: "money",
+          paymentTiming: "now",
+          isSettled: true,
+          paymentVoucherNumber: invoiceNumber ? `INV-${invoiceNumber}` : (finalPoNumber ? `PO-${finalPoNumber}` : `PAY-${Date.now().toString().slice(-6)}`),
+          deductedFromPaymentDate: date
+        });
+        createdReturnId = returnDocRef.id;
+      }
+
+      const returnDetailsPayload = (hasReturn && numReturnAmount > 0) ? {
+        returnNumber: generatedReturnNumber,
+        returnId: createdReturnId,
+        transferOutNumber: returnTransferOutNumber.trim(),
+        returnAmount: numReturnAmount,
+        agentName: finalRepName,
+        agentNationalId: finalRepNationalId,
+        agentMobile: finalRepMobile,
+        reason: finalReturnReason,
+        items: finalReturnItems,
+        isSettled: true,
+        settlementMethod: "money",
+        paymentTiming: "now",
+        paymentVoucherNumber: invoiceNumber || finalPoNumber || `PAY-${Date.now().toString().slice(-6)}`,
+        returnedAt: new Date().toISOString()
+      } : null;
+
       const newPayment = {
-        amount: numAmount,
+        amount: hasReturn ? netAmount : numAmount,
         category,
         categoryNote,
         companyName,
@@ -1598,9 +1809,17 @@ export default function PaymentsRedesignPage() {
         poNumber: finalPoNumber,
         storeId: branchIds.length > 0 ? branchIds[0] : "eL-alamein-4",
         tax: numTax,
-        total,
+        total: hasReturn ? netTotal : grossTotal,
         supplierRepName,
         supplierNationalId,
+        // RTV Return Deduction Tracking
+        hasReturn: hasReturn && numReturnAmount > 0,
+        grossAmount: numAmount,
+        grossTotal: grossTotal,
+        returnDeductionAmount: hasReturn ? numReturnAmount : 0,
+        returnNumber: generatedReturnNumber || "",
+        transferOutNumber: returnTransferOutNumber.trim() || "",
+        returnDetails: returnDetailsPayload,
         ...(finalPoItems.length > 0 ? { items: finalPoItems } : {}),
         ...(finalPoImageUrl ? { poImageUrl: finalPoImageUrl } : {}),
         ...(bankTransferReceiptUrl ? { bankTransferReceiptUrl } : {})
@@ -1610,13 +1829,17 @@ export default function PaymentsRedesignPage() {
       notifyFinancialsUpdated(currentBranch);
 
       // Dispatch Universal System Notification
+      const notifBody = hasReturn
+        ? `Payment logged for ${companyName}: Gross EGP ${grossTotal.toLocaleString()} - Return EGP ${numReturnAmount.toLocaleString()} = Net Paid EGP ${netTotal.toLocaleString()}.\nMethod: ${method?.replace('_', ' ').toUpperCase() || 'CASH'} • RTV: ${generatedReturnNumber}`
+        : `Payment of EGP ${Number(grossTotal).toLocaleString(undefined, { minimumFractionDigits: 2 })} logged for ${companyName}.\nTax: EGP ${Number(numTax).toLocaleString()} • Method: ${method?.replace('_', ' ').toUpperCase() || 'CASH'}${invoiceNumber ? ` • Inv #: ${invoiceNumber}` : ''}${finalPoNumber ? ` • PO #: ${finalPoNumber}` : ''}`;
+
       dispatchNotificationSystem({
-        title: `💵 Cash Payment Logged - ${companyName}`,
-        body: `Payment of EGP ${Number(total).toLocaleString(undefined, { minimumFractionDigits: 2 })} logged for ${companyName}.\nTax: EGP ${Number(numTax).toLocaleString()} • Method: ${method?.replace('_', ' ').toUpperCase() || 'CASH'}${invoiceNumber ? ` • Inv #: ${invoiceNumber}` : ''}${finalPoNumber ? ` • PO #: ${finalPoNumber}` : ''}`,
+        title: hasReturn ? `💵 Payment & RTV Settled - ${companyName}` : `💵 Cash Payment Logged - ${companyName}`,
+        body: notifBody,
         type: "payment",
         url: "/financials/inputs/payments",
         branchId: currentBranch,
-        metadata: { companyName, totalAmount: total, method, invoiceNumber, poNumber: finalPoNumber, storeId: currentBranch }
+        metadata: { companyName, totalAmount: hasReturn ? netTotal : grossTotal, grossTotal, returnDeductionAmount: numReturnAmount, method, invoiceNumber, poNumber: finalPoNumber, storeId: currentBranch }
       });
 
       const role = typeof window !== "undefined" ? (localStorage.getItem("circlek_role") || "manager") : "manager";
@@ -1626,7 +1849,7 @@ export default function PaymentsRedesignPage() {
         role,
         "Create Payment Record",
         "N/A",
-        `Supplier: ${companyName}, Amount: EGP ${amount}`
+        `Supplier: ${companyName}, Net Paid: EGP ${newPayment.total}${hasReturn ? ` (Gross: EGP ${grossTotal}, Return Deducted: EGP ${numReturnAmount})` : ''}`
       ).catch(() => {});
 
       // Sync products to secondary Firebase
@@ -1634,23 +1857,12 @@ export default function PaymentsRedesignPage() {
         syncProductsToMaster(poItems, date, companyName);
       }
 
-      toast.success("Payment saved & notification sent!");
+      toast.success(hasReturn ? (isAr ? "تم حفظ السداد وتسوية المرتجع وطباعة الإيصالات!" : "Payment & Return settled successfully!") : "Payment saved & notification sent!");
       handleCloseModal();
       fetchData();
       const savedPayment = { id: docRef.id, ...newPayment, createdAt: Timestamp.now() };
       setPayments([savedPayment, ...payments]);
       setShowAddModal(false);
-
-      // Reset form
-      setInvoiceNumber("");
-      setPoNumber("");
-      setAmount("");
-      setTax("");
-      setCategoryNote("");
-      setSupplierRepName("");
-      setSupplierNationalId("");
-      setPoItems([]);
-      setPoImageFile(null);
 
       // Auto Print & QR
       setSelectedPaymentForPrint(savedPayment);
@@ -2529,6 +2741,19 @@ html, body {
                           <span className="bg-emerald-950/50 text-emerald-400 border border-emerald-800/60 text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
                             {METHOD_EMOJIS[pay.method] || "💵"} <span className="capitalize">{pay.method?.replace('_', ' ') || 'cash'}</span>
                           </span>
+                          {pay.hasReturn && (
+                            <span 
+                              className="bg-amber-950/60 text-amber-300 border border-amber-600/60 text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full font-black flex items-center gap-1 shadow-xs cursor-pointer hover:bg-amber-900/60 transition-colors"
+                              title={isAr ? `خصم مرتجع: ${Number(pay.returnDeductionAmount || 0).toLocaleString()} ج.م` : `RTV Deduction: EGP ${Number(pay.returnDeductionAmount || 0).toLocaleString()}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedPaymentForView(pay);
+                              }}
+                            >
+                              <RotateCcw size={11} className="text-amber-400" />
+                              <span>{isAr ? `مرتجع: ${Number(pay.returnDeductionAmount || 0).toLocaleString()} ج.م` : `RTV: EGP ${Number(pay.returnDeductionAmount || 0).toLocaleString()}`}</span>
+                            </span>
+                          )}
                           {pay.isEdited && (
                             <span 
                               className="bg-amber-950/40 text-amber-400 border border-amber-800/60 text-[10px] sm:text-xs px-2 py-0.5 rounded-full font-bold flex items-center gap-1 cursor-pointer hover:bg-amber-900/40 transition-colors"
@@ -2562,6 +2787,12 @@ html, body {
                           <span className="text-xs sm:text-sm font-medium text-slate-400 mr-1">EGP</span>
                           {Number(pay.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </p>
+                        {pay.hasReturn && (pay.grossAmount || pay.grossTotal) && (
+                          <p className="text-[10px] text-slate-400 font-mono line-through mt-0.5">
+                            {isAr ? `الأصلي: ` : `Gross: `}
+                            EGP {Number(pay.grossTotal || pay.grossAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </p>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-1 sm:gap-2">
@@ -2850,6 +3081,341 @@ html, body {
                   </div>
                 </div>
 
+                {/* GOODS RETURN (RTV) DEDUCTION INTERACTIVE CARD */}
+                <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800">
+                  <div className={`p-5 rounded-2xl border transition-all duration-300 ${hasReturn ? 'bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent border-amber-400 dark:border-amber-600/60 shadow-lg shadow-amber-500/5' : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800'}`}>
+                    {/* Question Header & Toggle Switch */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex items-start sm:items-center gap-3.5">
+                        <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 transition-all ${hasReturn ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30 ring-4 ring-amber-500/15' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>
+                          <RotateCcw size={22} className={hasReturn ? 'rotate-[-30deg] transition-transform duration-300' : ''} />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+                              {isAr ? "هل يوجد مرتجع بضاعة مرتبط بهذا السداد؟ (RTV)" : "Is there a Goods Return (RTV) for this payment?"}
+                            </h3>
+                            {hasReturn && (
+                              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-amber-500 text-white animate-pulse">
+                                {isAr ? "يوجد خصم مرتجع" : "RTV Deduction Active"}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                            {isAr
+                              ? "في حالة وجود بضاعة مرتجعة، سيتم خصم قيمتها من إجمالي الفاتورة، وطباعة إيصال مرتجع رسمي A4 تلقائياً مع سند الصرف، وإغلاق المرتجع في السيستم."
+                              : "If goods are returned, their value will be deducted from the payout, an official A4 RTV receipt printed, and the return closed."}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Yes / No Toggle Buttons */}
+                      <div className="flex items-center bg-slate-200/80 dark:bg-slate-700/80 p-1 rounded-xl self-start sm:self-center shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setHasReturn(false);
+                            setReturnAmount("");
+                            setReturnTransferOutNumber("");
+                            setReturnReason("");
+                            setReturnItems([]);
+                          }}
+                          className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${!hasReturn ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800'}`}
+                        >
+                          {isAr ? "لا، لا يوجد" : "No Return"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setHasReturn(true);
+                            if (!returnAgentName && supplierRepName) setReturnAgentName(supplierRepName);
+                            if (!returnAgentNationalId && supplierNationalId) setReturnAgentNationalId(supplierNationalId);
+                          }}
+                          className={`px-4 py-2 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 ${hasReturn ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800'}`}
+                        >
+                          <RotateCcw size={13} />
+                          {isAr ? "نعم، يوجد مرتجع" : "Yes, Return"}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Expandable Return Details Inputs */}
+                    <AnimatePresence>
+                      {hasReturn && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.25 }}
+                          className="mt-6 pt-6 border-t border-amber-200/60 dark:border-amber-800/40 space-y-6 overflow-hidden"
+                        >
+                          {/* Main Return Questions Grid */}
+                          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {/* Question 1: Return Amount */}
+                            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-amber-300 dark:border-amber-700/60 shadow-xs">
+                              <label className="block text-xs font-black text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-1.5">
+                                {isAr ? "١. قيمة خصم المرتجع (ج.م) *" : "1. Return Deduction Amount (EGP) *"}
+                              </label>
+                              <input
+                                type="number"
+                                required={hasReturn}
+                                placeholder="0.00"
+                                step="0.01"
+                                min="0.01"
+                                max={((parseFloat(amount) || 0) + (parseFloat(tax) || 0)) || undefined}
+                                value={returnAmount}
+                                onChange={(e) => setReturnAmount(e.target.value)}
+                                className="w-full p-2.5 rounded-lg bg-amber-50/50 dark:bg-amber-950/20 border border-amber-300 focus:ring-2 focus:ring-amber-500 outline-none font-mono font-black text-amber-600 text-lg"
+                              />
+                              <span className="text-[11px] text-slate-400 mt-1 block">
+                                {isAr ? "المبلغ المستحق خصمه من مستحقات المورد" : "Amount to deduct from payout"}
+                              </span>
+                            </div>
+
+                            {/* Question 2: TR Number */}
+                            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-amber-300 dark:border-amber-700/60 shadow-xs">
+                              <label className="block text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-1.5">
+                                {isAr ? "٢. رقم إذن خروج البضاعة (TR Number) *" : "2. Outbound Transfer # (TR) *"}
+                              </label>
+                              <input
+                                type="text"
+                                required={hasReturn}
+                                placeholder={isAr ? "مثال: TR-94821 أو رقم إذن الصرف" : "e.g. TR-94821"}
+                                value={returnTransferOutNumber}
+                                onChange={(e) => setReturnTransferOutNumber(e.target.value)}
+                                className="w-full p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-amber-500 outline-none font-bold text-slate-900 dark:text-white text-sm"
+                              />
+                              <span className="text-[11px] text-slate-400 mt-1 block">
+                                {isAr ? "الرقم الدفتري أو الإلكتروني لإذن الخروج" : "Official outbound transfer manifest #"}
+                              </span>
+                            </div>
+
+                            {/* Question 3: Return Reason */}
+                            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-amber-300 dark:border-amber-700/60 shadow-xs sm:col-span-2 lg:col-span-1">
+                              <label className="block text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-1.5">
+                                {isAr ? "٣. سبب الإرجاع *" : "3. Return Reason *"}
+                              </label>
+                              <input
+                                type="text"
+                                placeholder={isAr ? "بضاعة تالفة / منتهية الصلاحية / راكدة / خصم تجاري" : "Damaged / Expired / Slow moving / Commercial discount"}
+                                value={returnReason}
+                                onChange={(e) => setReturnReason(e.target.value)}
+                                className="w-full p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-amber-500 outline-none font-medium text-slate-900 dark:text-white text-sm"
+                              />
+                              <span className="text-[11px] text-slate-400 mt-1 block">
+                                {isAr ? "يظهر رسمياً على إيصال المرتجع" : "Will appear on RTV receipt"}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Representative / Driver for Return Handover */}
+                          <div className="bg-white/80 dark:bg-slate-900/80 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <h4 className="text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-3">
+                              {isAr ? "بيانات مندوب / سائق استلام المرتجع (اختياري - للإيصال)" : "Representative Handover Details"}
+                            </h4>
+                            <div className="grid sm:grid-cols-3 gap-3">
+                              <div>
+                                <label className="block text-[11px] font-bold text-slate-400 mb-1">{isAr ? "اسم المندوب المستلم" : "Rep Name"}</label>
+                                <input
+                                  type="text"
+                                  placeholder={supplierRepName || (isAr ? "مندوب المورد" : "Representative")}
+                                  value={returnAgentName}
+                                  onChange={(e) => setReturnAgentName(e.target.value)}
+                                  className="w-full p-2 rounded-lg bg-slate-50 dark:bg-slate-800 border-none text-xs font-bold text-slate-900 dark:text-white"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[11px] font-bold text-slate-400 mb-1">{isAr ? "الرقم القومي (١٤ رقم)" : "National ID (14 digits)"}</label>
+                                <input
+                                  type="text"
+                                  maxLength={14}
+                                  placeholder={supplierNationalId || (isAr ? "الرقم القومي" : "National ID")}
+                                  value={returnAgentNationalId}
+                                  onChange={(e) => setReturnAgentNationalId(e.target.value)}
+                                  className="w-full p-2 rounded-lg bg-slate-50 dark:bg-slate-800 border-none text-xs font-mono font-bold text-slate-900 dark:text-white"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[11px] font-bold text-slate-400 mb-1">{isAr ? "رقم الهاتف المحمول" : "Mobile Number"}</label>
+                                <input
+                                  type="tel"
+                                  placeholder="01XXXXXXXXX"
+                                  value={returnAgentMobile}
+                                  onChange={(e) => setReturnAgentMobile(e.target.value)}
+                                  className="w-full p-2 rounded-lg bg-slate-50 dark:bg-slate-800 border-none text-xs font-mono font-bold text-slate-900 dark:text-white"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Optional Itemized Return Items */}
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-bold text-slate-500">
+                                {isAr ? `أصناف المرتجع التفصيلية (${returnItems.length}) - اختياري` : `Itemized Return Items (${returnItems.length}) - Optional`}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={handleAddReturnItem}
+                                className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1"
+                              >
+                                <Plus size={13} /> {isAr ? "إضافة صنف مرتجع" : "Add Return Item"}
+                              </button>
+                            </div>
+
+                            {returnItems.length > 0 && (
+                              <div className="overflow-x-auto border border-amber-200/60 dark:border-amber-800/40 rounded-xl mb-3">
+                                <table className="w-full text-xs text-left" dir={isAr ? "rtl" : "ltr"}>
+                                  <thead className="bg-amber-50/70 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 uppercase font-black text-[10px]">
+                                    <tr>
+                                      <th className="p-2.5">{isAr ? "الباركود" : "Barcode"}</th>
+                                      <th className="p-2.5">{isAr ? "اسم الصنف" : "Item Name"}</th>
+                                      <th className="p-2.5 text-center w-20">{isAr ? "الكمية" : "Qty"}</th>
+                                      <th className="p-2.5 text-right w-24">{isAr ? "السعر" : "Price"}</th>
+                                      <th className="p-2.5 text-right w-24">{isAr ? "الإجمالي" : "Total"}</th>
+                                      <th className="p-2.5 text-center w-10"></th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-amber-100 dark:divide-amber-900/30">
+                                    {returnItems.map((ritem, rIdx) => (
+                                      <tr key={rIdx} className="bg-white/60 dark:bg-slate-900/60">
+                                        <td className="p-1.5">
+                                          <input
+                                            type="text"
+                                            placeholder="Barcode"
+                                            value={ritem.barcode}
+                                            onChange={(e) => handleReturnItemChange(rIdx, 'barcode', e.target.value)}
+                                            className="w-full p-1.5 rounded bg-slate-50 dark:bg-slate-800 text-xs border-none"
+                                          />
+                                        </td>
+                                        <td className="p-1.5">
+                                          <input
+                                            type="text"
+                                            placeholder={isAr ? "اسم الصنف المرتجع" : "Item description"}
+                                            value={ritem.itemName}
+                                            onChange={(e) => handleReturnItemChange(rIdx, 'itemName', e.target.value)}
+                                            className="w-full p-1.5 rounded bg-slate-50 dark:bg-slate-800 text-xs border-none"
+                                          />
+                                        </td>
+                                        <td className="p-1.5">
+                                          <input
+                                            type="number"
+                                            min="1"
+                                            value={ritem.quantity}
+                                            onChange={(e) => handleReturnItemChange(rIdx, 'quantity', e.target.value)}
+                                            className="w-full p-1.5 rounded bg-slate-50 dark:bg-slate-800 text-xs border-none text-center font-bold"
+                                          />
+                                        </td>
+                                        <td className="p-1.5">
+                                          <input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            value={ritem.unitPrice}
+                                            onChange={(e) => handleReturnItemChange(rIdx, 'unitPrice', e.target.value)}
+                                            className="w-full p-1.5 rounded bg-slate-50 dark:bg-slate-800 text-xs border-none text-right font-bold"
+                                          />
+                                        </td>
+                                        <td className="p-1.5 text-right font-mono font-black text-amber-700 dark:text-amber-300">
+                                          {(ritem.totalPrice || 0).toFixed(2)}
+                                        </td>
+                                        <td className="p-1.5 text-center">
+                                          <button
+                                            type="button"
+                                            onClick={() => handleRemoveReturnItem(rIdx)}
+                                            className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors"
+                                          >
+                                            <Trash2 size={13} />
+                                          </button>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Net Payout Real-Time Accounting Reconciliation Banner */}
+                          {(() => {
+                            const gross = (parseFloat(amount) || 0) + (parseFloat(tax) || 0);
+                            const ret = parseFloat(returnAmount) || 0;
+                            const net = Math.max(0, gross - ret);
+                            const isOverLimit = ret > gross && gross > 0;
+
+                            return (
+                              <div className={`p-4 rounded-2xl border transition-all ${isOverLimit ? 'bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-700' : 'bg-gradient-to-r from-slate-900 to-slate-800 text-white border-slate-700 shadow-xl'}`}>
+                                {isOverLimit ? (
+                                  <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
+                                    <AlertTriangle size={22} className="shrink-0" />
+                                    <div>
+                                      <h4 className="text-sm font-black">{isAr ? "خطأ في قيمة المرتجع!" : "Invalid Return Amount"}</h4>
+                                      <p className="text-xs font-medium mt-0.5">
+                                        {isAr
+                                          ? `قيمة المرتجع (${ret.toLocaleString()} ج.م) أكبر من إجمالي الفاتورة (${gross.toLocaleString()} ج.م). لا يمكن أن تتجاوز قيمة الخصم إجمالي المستحق.`
+                                          : `Return amount cannot exceed gross payment total.`}
+                                      </p>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-3">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+                                      <div className="flex items-center gap-2.5">
+                                        <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-black text-sm">
+                                          <CheckCircle2 size={18} />
+                                        </div>
+                                        <div>
+                                          <span className="text-xs font-black uppercase tracking-wider text-slate-300 block">
+                                            {isAr ? "المعادلة المحاسبية المعتمدة لسند الصرف" : "Approved Accounting Net Payout Formula"}
+                                          </span>
+                                          <span className="text-[11px] text-slate-400">
+                                            {isAr ? "سيتم خصم صافي المنصرف فقط من الخزينة لحماية أرصدة الصندوق" : "Safe balance will be deducted ONLY by net cash disbursed"}
+                                          </span>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-4 text-xs font-mono">
+                                        <div>
+                                          <span className="text-slate-400 text-[10px] block">{isAr ? "إجمالي الفاتورة:" : "Gross:"}</span>
+                                          <span className="font-bold text-slate-200">EGP {gross.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                        </div>
+                                        <span className="text-amber-400 font-black text-base">-</span>
+                                        <div>
+                                          <span className="text-amber-400 text-[10px] block">{isAr ? "خصم المرتجع:" : "Return:"}</span>
+                                          <span className="font-bold text-amber-400">EGP {ret.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                        </div>
+                                        <span className="text-emerald-400 font-black text-base">=</span>
+                                        <div className="bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/30">
+                                          <span className="text-emerald-400 text-[10px] font-black block">{isAr ? "صافي الصرف الفعلي:" : "Net Cash Paid:"}</span>
+                                          <span className="text-base sm:text-lg font-black text-emerald-400">EGP {net.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-300">
+                                      <div className="flex items-center gap-2">
+                                        <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                                        <span>{isAr ? "١. سند صرف نقدي رسمي يوضح الفاتورة الأصلية وخصم المرتجع والصافي" : "1. Official payment voucher showing Gross, RTV Deduction & Net"}</span>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <span className="inline-block w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                                        <span>{isAr ? "٢. إيصال مرتجع رسمي A4 مختوم ومعتمد مطبوع فورياً" : "2. Official A4 Return Manifest printed immediately"}</span>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <span className="inline-block w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
+                                        <span>{isAr ? "٣. تسجيل المرتجع كمغلق ومسدد (Closed / Settled) بالكامل" : "3. Return logged as Closed/Settled in Returns System"}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+
                 {poItems.length > 0 && (
                   <div className="mt-8 pt-6 border-t border-slate-100">
                     <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4">
@@ -2964,7 +3530,7 @@ html, body {
         )}
       </AnimatePresence>
 
-      {/* HIDDEN PRINT LAYOUT (A4 SINGLE SHEET EXECUTIVE VOUCHER OR 2-PAGE FOR BANK TRANSFER) */}
+      {/* HIDDEN PRINT LAYOUT (A4 SINGLE SHEET EXECUTIVE VOUCHER OR 2-PAGE FOR BANK TRANSFER / RETURN MANIFEST) */}
       {selectedPaymentForPrint && (
         <div id="single-payment-print-wrapper" style={{ position: 'absolute', left: '-9999px', top: 0 }}>
           <OfficialPaymentReceipt
@@ -2973,6 +3539,58 @@ html, body {
             qrUrl={qrCodeData}
             currentBranch={currentBranch}
           />
+
+          {/* PAGE 2: OFFICIAL A4 GOODS RETURN (RTV) RECEIPT / MANIFEST */}
+          {selectedPaymentForPrint.hasReturn && (
+            <div
+              className="print-page"
+              style={{
+                width: '210mm',
+                height: '297mm',
+                maxHeight: '297mm',
+                padding: '12mm 15mm',
+                backgroundColor: '#ffffff',
+                boxSizing: 'border-box',
+                pageBreakInside: 'avoid',
+                pageBreakAfter: (selectedPaymentForPrint.bankTransferReceiptUrl) ? 'always' : 'avoid',
+                overflow: 'hidden'
+              }}
+            >
+              <ReturnReceiptContent
+                data={{
+                  ...(selectedPaymentForPrint.returnDetails || {}),
+                  supplier: selectedPaymentForPrint.companyName,
+                  branchId: selectedPaymentForPrint.storeId || currentBranch,
+                  storeId: selectedPaymentForPrint.storeId || currentBranch,
+                  totalPrice: selectedPaymentForPrint.returnDeductionAmount || selectedPaymentForPrint.returnDetails?.returnAmount || 0,
+                  returnNumber: selectedPaymentForPrint.returnDetails?.returnNumber || selectedPaymentForPrint.returnNumber || `RTV-${selectedPaymentForPrint.invoiceNumber || (selectedPaymentForPrint.id ? selectedPaymentForPrint.id.slice(0, 6) : Date.now().toString().slice(-6))}`,
+                  transferOutNumber: selectedPaymentForPrint.returnDetails?.transferOutNumber || selectedPaymentForPrint.transferOutNumber || "",
+                  agentName: selectedPaymentForPrint.returnDetails?.agentName || selectedPaymentForPrint.supplierRepName || "",
+                  agentNationalId: selectedPaymentForPrint.returnDetails?.agentNationalId || selectedPaymentForPrint.supplierNationalId || "",
+                  agentMobile: selectedPaymentForPrint.returnDetails?.agentMobile || "",
+                  items: (selectedPaymentForPrint.returnDetails?.items && selectedPaymentForPrint.returnDetails.items.length > 0)
+                    ? selectedPaymentForPrint.returnDetails.items
+                    : [{
+                        barcode: "N/A",
+                        itemName: selectedPaymentForPrint.returnDetails?.reason || "بضاعة مرتجعة مخصومة من سداد المورد بموجب إذن خروج",
+                        quantity: 1,
+                        unitPrice: Number(selectedPaymentForPrint.returnDeductionAmount || 0),
+                        totalPrice: Number(selectedPaymentForPrint.returnDeductionAmount || 0)
+                      }],
+                  settlementMethod: "money",
+                  paymentTiming: "now",
+                  isSettled: true,
+                  settledByVoucher: selectedPaymentForPrint.invoiceNumber || selectedPaymentForPrint.id,
+                  paymentVoucherNumber: selectedPaymentForPrint.invoiceNumber || selectedPaymentForPrint.id,
+                  returnedAt: selectedPaymentForPrint.returnDetails?.returnedAt || selectedPaymentForPrint.date,
+                  date: selectedPaymentForPrint.date,
+                  createdAt: selectedPaymentForPrint.createdAt,
+                  createdBy: selectedPaymentForPrint.createdBy
+                }}
+                currentBranch={currentBranch}
+              />
+            </div>
+          )}
 
           {(selectedPaymentForPrint.method === 'bank_transfer' || selectedPaymentForPrint.method === 'bank' || selectedPaymentForPrint.bankTransferReceiptUrl) && selectedPaymentForPrint.bankTransferReceiptUrl && (
             <BankTransferReceiptPrintPage
@@ -3162,6 +3780,74 @@ html, body {
                           <div className={`bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl ${!selectedPaymentForView.supplierRepName ? 'col-span-full' : ''}`}>
                             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "ملاحظات" : "Notes"}</p>
                             <p className="text-md font-medium text-slate-700 dark:text-slate-300">{selectedPaymentForView.categoryNote}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {selectedPaymentForView.hasReturn && (
+                      <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-400 dark:border-amber-700/60 rounded-2xl p-5 mb-8 shadow-xs">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-amber-200 dark:border-amber-800/40">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black shadow-md shadow-amber-500/20">
+                              <RotateCcw size={20} />
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+                                <span>{isAr ? "تسوية مرتجع بضاعة مرتبط بالسداد (RTV Settlement)" : "Goods Return (RTV) Deduction"}</span>
+                                <span className="bg-amber-500 text-white text-[10px] px-2 py-0.5 rounded-full font-black">
+                                  {isAr ? "مغلق ومسدد" : "Closed & Settled"}
+                                </span>
+                              </h4>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                                {isAr ? "تم خصم قيمة هذا المرتجع بالكامل من سداد المورد" : "Return value fully deducted from this payment payout"}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedPaymentForPrint(selectedPaymentForView);
+                              setTimeout(() => generatePDF(selectedPaymentForView), 100);
+                            }}
+                            className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-black rounded-xl transition-all shadow-sm flex items-center gap-1.5 self-start sm:self-center cursor-pointer"
+                          >
+                            <Printer size={13} />
+                            {isAr ? "طباعة إيصال المرتجع (A4)" : "Print RTV Receipt"}
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 text-xs">
+                          <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-amber-200 dark:border-amber-800/30">
+                            <span className="text-slate-400 text-[10px] font-bold block">{isAr ? "رقم إشعار المرتجع" : "RTV Number"}</span>
+                            <span className="font-black font-mono text-amber-600 dark:text-amber-400 text-sm">
+                              {selectedPaymentForView.returnDetails?.returnNumber || selectedPaymentForView.returnNumber || "RTV"}
+                            </span>
+                          </div>
+                          <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-amber-200 dark:border-amber-800/30">
+                            <span className="text-slate-400 text-[10px] font-bold block">{isAr ? "رقم إذن خروج البضاعة (TR)" : "Transfer Out (TR)"}</span>
+                            <span className="font-black font-mono text-slate-900 dark:text-white text-sm">
+                              {selectedPaymentForView.returnDetails?.transferOutNumber || selectedPaymentForView.transferOutNumber || (isAr ? "غير محدد" : "N/A")}
+                            </span>
+                          </div>
+                          <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-amber-200 dark:border-amber-800/30">
+                            <span className="text-slate-400 text-[10px] font-bold block">{isAr ? "قيمة الخصم المستقطعة" : "Deduction Value"}</span>
+                            <span className="font-black font-mono text-rose-600 dark:text-rose-400 text-sm">
+                              - EGP {Number(selectedPaymentForView.returnDeductionAmount || selectedPaymentForView.returnDetails?.returnAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                          <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-amber-200 dark:border-amber-800/30">
+                            <span className="text-slate-400 text-[10px] font-bold block">{isAr ? "المندوب المستلم" : "Handover Rep"}</span>
+                            <span className="font-bold text-slate-800 dark:text-slate-200 truncate block" title={selectedPaymentForView.returnDetails?.agentName || selectedPaymentForView.supplierRepName}>
+                              {selectedPaymentForView.returnDetails?.agentName || selectedPaymentForView.supplierRepName || (isAr ? "مندوب المورد" : "Supplier Rep")}
+                            </span>
+                          </div>
+                        </div>
+
+                        {selectedPaymentForView.returnDetails?.reason && (
+                          <div className="mt-3 pt-3 border-t border-amber-100 dark:border-amber-900/30 text-xs text-slate-600 dark:text-slate-300 flex items-center gap-2">
+                            <span className="font-bold text-amber-700 dark:text-amber-400">{isAr ? "سبب الإرجاع:" : "Reason:"}</span>
+                            <span>{selectedPaymentForView.returnDetails.reason}</span>
                           </div>
                         )}
                       </div>
@@ -3973,6 +4659,57 @@ html, body {
                   elementId={`pdf-bulk-payment-${selectedPaymentForPrint.id}`}
                   currentBranch={currentBranch}
                 />
+
+                {selectedPaymentForPrint.hasReturn && (
+                  <div
+                    className="print-page"
+                    id={`pdf-bulk-payment-${selectedPaymentForPrint.id}-return-receipt`}
+                    style={{
+                      width: '794px',
+                      minHeight: '1123px',
+                      padding: '40px',
+                      backgroundColor: '#ffffff',
+                      boxSizing: 'border-box',
+                      pageBreakInside: 'avoid',
+                      pageBreakAfter: 'always',
+                      overflow: 'hidden'
+                    }}
+                  >
+                    <ReturnReceiptContent
+                      data={{
+                        ...(selectedPaymentForPrint.returnDetails || {}),
+                        supplier: selectedPaymentForPrint.companyName,
+                        branchId: selectedPaymentForPrint.storeId || currentBranch,
+                        storeId: selectedPaymentForPrint.storeId || currentBranch,
+                        totalPrice: selectedPaymentForPrint.returnDeductionAmount || selectedPaymentForPrint.returnDetails?.returnAmount || 0,
+                        returnNumber: selectedPaymentForPrint.returnDetails?.returnNumber || selectedPaymentForPrint.returnNumber || `RTV-${selectedPaymentForPrint.invoiceNumber || (selectedPaymentForPrint.id ? selectedPaymentForPrint.id.slice(0, 6) : Date.now().toString().slice(-6))}`,
+                        transferOutNumber: selectedPaymentForPrint.returnDetails?.transferOutNumber || selectedPaymentForPrint.transferOutNumber || "",
+                        agentName: selectedPaymentForPrint.returnDetails?.agentName || selectedPaymentForPrint.supplierRepName || "",
+                        agentNationalId: selectedPaymentForPrint.returnDetails?.agentNationalId || selectedPaymentForPrint.supplierNationalId || "",
+                        agentMobile: selectedPaymentForPrint.returnDetails?.agentMobile || "",
+                        items: (selectedPaymentForPrint.returnDetails?.items && selectedPaymentForPrint.returnDetails.items.length > 0)
+                          ? selectedPaymentForPrint.returnDetails.items
+                          : [{
+                              barcode: "N/A",
+                              itemName: selectedPaymentForPrint.returnDetails?.reason || "بضاعة مرتجعة مخصومة من سداد المورد بموجب إذن خروج",
+                              quantity: 1,
+                              unitPrice: Number(selectedPaymentForPrint.returnDeductionAmount || 0),
+                              totalPrice: Number(selectedPaymentForPrint.returnDeductionAmount || 0)
+                            }],
+                        settlementMethod: "money",
+                        paymentTiming: "now",
+                        isSettled: true,
+                        settledByVoucher: selectedPaymentForPrint.invoiceNumber || selectedPaymentForPrint.id,
+                        paymentVoucherNumber: selectedPaymentForPrint.invoiceNumber || selectedPaymentForPrint.id,
+                        returnedAt: selectedPaymentForPrint.returnDetails?.returnedAt || selectedPaymentForPrint.date,
+                        date: selectedPaymentForPrint.date,
+                        createdAt: selectedPaymentForPrint.createdAt,
+                        createdBy: selectedPaymentForPrint.createdBy
+                      }}
+                      currentBranch={currentBranch}
+                    />
+                  </div>
+                )}
 
                 {(selectedPaymentForPrint.method === 'bank_transfer' || selectedPaymentForPrint.method === 'bank' || selectedPaymentForPrint.bankTransferReceiptUrl) && selectedPaymentForPrint.bankTransferReceiptUrl && (
                   <BankTransferReceiptPrintPage
