@@ -856,7 +856,7 @@ function BankTransferReceiptPrintPage({
   );
 }
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { TiltCard } from "@/components/MobileUX/TiltCard";
 import { dispatchNotificationSystem } from "@/lib/notifications";
 import { notifyFinancialsUpdated } from "@/lib/financial-sync";
@@ -1124,6 +1124,10 @@ export default function PaymentsRedesignPage() {
         } else {
           setMonthFilter(""); // clear month filter so searched PO/invoice across all months is shown!
         }
+        // Clean URL immediately so that refreshing the page resets the search to blank
+        try {
+          window.history.replaceState(null, "", window.location.pathname);
+        } catch (_) {}
       }
     }
   }, []);
@@ -1131,11 +1135,17 @@ export default function PaymentsRedesignPage() {
   // Luxury UI States & Controls
   const [viewMode, setViewMode] = useState<"bento" | "ledger">("bento");
   const [timePreset, setTimePreset] = useState<"today" | "yesterday" | "this_week" | "this_month" | "last_month" | "all" | "custom">("this_month");
-  const [mousePos, setMousePos] = useState({ x: -999, y: -999 });
+  
+  // High-performance DOM spotlight ref (0 React re-renders on mousemove)
+  const spotlightRef = useRef<HTMLDivElement>(null);
 
   const handleContainerMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+    if (spotlightRef.current) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      spotlightRef.current.style.background = `radial-gradient(600px circle at ${x}px ${y}px, rgba(244, 63, 94, 0.04), transparent 80%)`;
+    }
   }, []);
 
   const handleSelectTimePreset = (preset: "today" | "yesterday" | "this_week" | "this_month" | "last_month" | "all") => {
@@ -2607,15 +2617,34 @@ html, body {
     }, 1000);
   };
 
+  // Memoized lookup maps for lightning-fast credit enrichment (O(1) instead of O(N))
+  const creditLookup = useMemo(() => {
+    const byId = new Map<string, any>();
+    const byInv = new Map<string, any>();
+    credits.forEach(c => {
+      if (c.id) byId.set(c.id, c);
+      if (c.invoiceNumber) {
+        const key = `${c.invoiceNumber.toLowerCase().trim()}___${(c.companyName || "").toLowerCase().trim()}`;
+        byInv.set(key, c);
+      }
+    });
+    return { byId, byInv };
+  }, [credits]);
+
   // Helper to enrich payment with linked credit data (PO, items, invoice images) if missing
   const getEnrichedPayment = useCallback((p: any) => {
     if (!p) return p;
     if (!p.creditId && !p.invoiceNumber) return p;
 
-    // Find matching credit by creditId or invoiceNumber + companyName
-    const matchingCredit = p.creditId
-      ? credits.find(c => c.id === p.creditId)
-      : credits.find(c => c.invoiceNumber && c.invoiceNumber === p.invoiceNumber && (!p.companyName || !c.companyName || c.companyName.toLowerCase() === p.companyName.toLowerCase()));
+    // Fast O(1) matching credit lookup
+    let matchingCredit = null;
+    if (p.creditId) {
+      matchingCredit = creditLookup.byId.get(p.creditId);
+    }
+    if (!matchingCredit && p.invoiceNumber) {
+      const key = `${p.invoiceNumber.toLowerCase().trim()}___${(p.companyName || "").toLowerCase().trim()}`;
+      matchingCredit = creditLookup.byInv.get(key) || credits.find(c => c.invoiceNumber === p.invoiceNumber);
+    }
 
     if (!matchingCredit) return p;
 
@@ -2641,9 +2670,9 @@ html, body {
       enriched.managerSignature = matchingCredit.managerSignature;
     }
     return enriched;
-  }, [credits]);
+  }, [creditLookup, credits]);
 
-  // Derived filtered data with Time Presets support
+  // Derived filtered data with Time Presets support (early filter eliminates unnecessary processing)
   const filteredPayments = useMemo(() => {
     const now = new Date();
     const todayStr = now.toISOString().split("T")[0];
@@ -2654,23 +2683,27 @@ html, body {
     weekAgo.setDate(weekAgo.getDate() - 7);
     const weekAgoStr = weekAgo.toISOString().split("T")[0];
 
-    return payments.map(getEnrichedPayment).filter(p => {
-      // Time Presets Filter
+    const q = searchQuery ? searchQuery.toLowerCase().trim() : "";
+    const result: any[] = [];
+
+    for (let i = 0; i < payments.length; i++) {
+      const raw = payments[i];
+      // Quick pre-filtering by time preset and month
       if (timePreset === "today") {
-        if (p.date !== todayStr) return false;
+        if (raw.date !== todayStr) continue;
       } else if (timePreset === "yesterday") {
-        if (p.date !== yestStr) return false;
+        if (raw.date !== yestStr) continue;
       } else if (timePreset === "this_week") {
-        if (!p.date || p.date < weekAgoStr || p.date > todayStr) return false;
-      } else if (monthFilter && p.date && !p.date.startsWith(monthFilter)) {
-        // Month Filter
-        return false;
+        if (!raw.date || raw.date < weekAgoStr || raw.date > todayStr) continue;
+      } else if (monthFilter && raw.date && !raw.date.startsWith(monthFilter)) {
+        continue;
       }
 
+      const p = getEnrichedPayment(raw);
+
       // Search Filter
-      if (searchQuery) {
-        const q = searchQuery.toLowerCase().trim();
-        return (
+      if (q) {
+        const matches = (
           p.companyName?.toLowerCase().includes(q) ||
           p.invoiceNumber?.toLowerCase().includes(q) ||
           p.poNumber?.toLowerCase().includes(q) ||
@@ -2679,9 +2712,13 @@ html, body {
           p.category?.toLowerCase().includes(q) ||
           p.items?.some((it: any) => (it.description || it.itemName || it.barcode)?.toLowerCase().includes(q))
         );
+        if (!matches) continue;
       }
-      return true;
-    });
+
+      result.push(p);
+    }
+
+    return result;
   }, [payments, monthFilter, searchQuery, timePreset, getEnrichedPayment]);
 
   // Executive HUD Metrics & Financial Velocity
@@ -2873,12 +2910,10 @@ html, body {
         <div className="absolute top-[30%] left-[-10%] w-[600px] h-[600px] bg-gradient-to-br from-purple-600/10 via-indigo-600/5 to-transparent rounded-full blur-[140px]" />
         <div className="absolute bottom-[-10%] right-[20%] w-[700px] h-[700px] bg-gradient-to-tr from-emerald-600/10 via-teal-600/5 to-transparent rounded-full blur-[160px]" />
         
-        {/* Dynamic Cursor-Reactive Ambient Spotlight */}
+        {/* Dynamic Cursor-Reactive Ambient Spotlight (Updated via ref for 120fps hardware acceleration) */}
         <div
+          ref={spotlightRef}
           className="pointer-events-none absolute inset-0 transition-opacity duration-300"
-          style={{
-            background: `radial-gradient(650px circle at ${mousePos.x}px ${mousePos.y}px, rgba(244,63,94,0.06), transparent 75%)`
-          }}
         />
 
         {/* Subtle VIP Grid Mesh Overlay */}
@@ -3317,8 +3352,25 @@ html, body {
               placeholder={isAr ? "ابحث باسم الشركة، رقم الفاتورة، أو أمر الشراء..." : "Search company, invoice, PO number..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-11 pr-4 py-2.5 rounded-xl bg-transparent focus:bg-white/[0.03] transition-colors border-none outline-none text-white placeholder:text-slate-500 text-xs font-medium"
+              className="w-full pl-11 pr-10 py-2.5 rounded-xl bg-transparent focus:bg-white/[0.03] transition-colors border-none outline-none text-white placeholder:text-slate-500 text-xs font-medium"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery("");
+                  if (!monthFilter) {
+                    const today = new Date();
+                    const mm = String(today.getMonth() + 1).padStart(2, '0');
+                    setMonthFilter(`${today.getFullYear()}-${mm}`);
+                  }
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-slate-400 hover:text-white hover:bg-white/[0.1] transition-colors cursor-pointer"
+                title={isAr ? "مسح البحث" : "Clear search"}
+              >
+                <X size={15} />
+              </button>
+            )}
           </div>
           <div className="h-px md:h-auto md:w-px bg-white/[0.08]"></div>
           <input
@@ -3487,7 +3539,7 @@ html, body {
                         <td className="p-3.5 text-right font-mono whitespace-nowrap">
                           <span className="font-black text-rose-400 text-sm">
                             <span className="text-[10px] text-rose-400/70 mr-1 font-bold">EGP</span>
-                            <RollingNumber value={Number(pay.total)} />
+                            {Number(pay.total).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                           {pay.hasReturn && (pay.grossAmount || pay.grossTotal) && (
                             <div className="text-[9px] text-slate-500 line-through">
@@ -3656,7 +3708,7 @@ html, body {
                         <div className="text-left md:text-right">
                           <p className="text-xl sm:text-2xl font-black text-rose-400 tracking-tight font-mono">
                             <span className="text-xs sm:text-sm font-bold text-rose-400/70 mr-1">EGP</span>
-                            <RollingNumber value={Number(pay.total)} />
+                            {Number(pay.total).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </p>
                           {pay.hasReturn && (pay.grossAmount || pay.grossTotal) && (
                             <p className="text-[10px] text-slate-500 font-mono line-through mt-0.5">
