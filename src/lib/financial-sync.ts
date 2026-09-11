@@ -206,6 +206,29 @@ export interface FinancialLedgerResult {
   openingBank: number;
   closingSafe: number;
   closingBank: number;
+  safeInflows: number;
+  safeOutflows: number;
+  bankInflows: number;
+  bankOutflows: number;
+  startDateStr?: string;
+  endDateStr?: string;
+  itemizedTransactions: any[];
+  period: {
+    salesCash: number;
+    overAmount: number;
+    shortAmount: number;
+    depositsToSafe: number;
+    totalCashPayments: number;
+    totalCashTaxes: number;
+    depositsFromSafe: number;
+    totalPayrolls: number;
+    totalLoans: number;
+    visaSales: number;
+    depositsToBank: number;
+    bankPayments: number;
+    bankTaxes: number;
+    depositsFromBank: number;
+  };
 }
 
 /**
@@ -216,7 +239,8 @@ export function calculateFinancialLedger(
   docs: UnifiedFinancialDocs,
   targetBranch: string,
   startDateStr?: string,
-  endDateStr?: string
+  endDateStr?: string,
+  isAr: boolean = false
 ): FinancialLedgerResult {
   const isLifetime = !startDateStr && !endDateStr;
   const start = startDateStr || "1970-01-01";
@@ -244,6 +268,8 @@ export function calculateFinancialLedger(
   let periodBankPayrolls = 0;
   let periodLoans = 0;
 
+  const itemizedTransactions: any[] = [];
+
   // 1. SALES
   docs.sales.forEach((s: any) => {
     if (!matchesBranch(s, targetBranch)) return;
@@ -264,6 +290,19 @@ export function calculateFinancialLedger(
       periodSalesVisa += visa;
       periodOverAmount += over;
       periodShortAmount += short;
+
+      if (!isLifetime) {
+        itemizedTransactions.push({
+          id: s.id,
+          date: d,
+          category: "sales",
+          titleEn: `Shift Sales Cash (${s.shift || "Day"})`,
+          titleAr: `مبيعات وردية نقدية (${s.shift || "يومي"})`,
+          safeChange: cash + over - short,
+          bankChange: visa,
+          details: `Cash: ${cash.toLocaleString()} | Visa: ${visa.toLocaleString()}${os !== 0 ? ` | Over/Short: ${os}` : ""}`
+        });
+      }
     }
   });
 
@@ -274,27 +313,49 @@ export function calculateFinancialLedger(
     if (!d) return;
 
     const method = (p.method || "cash").toLowerCase();
-    const totalVal = Number(p.total || 0);
-    const amtVal = Number(p.amount || 0);
-    const taxVal = Number(p.tax || 0);
-    
-    // Resolve exact expense outflow
-    const amt = totalVal > 0 ? totalVal : (amtVal + taxVal);
-    const tax = taxVal;
+    const amt = Number(p.amount || p.total || 0);
+    const tax = Number(p.tax || 0);
+    const totalOut = amt + tax;
 
     if (method === "cash") {
       if (!isLifetime && d < start) {
-        openingSafe -= amt;
+        openingSafe -= totalOut;
       } else if (isLifetime || (d >= start && d <= end)) {
         periodCashPayments += amt;
         periodCashTax += tax;
+
+        if (!isLifetime) {
+          itemizedTransactions.push({
+            id: p.id,
+            date: d,
+            category: "expense_cash",
+            titleEn: p.companyName || p.description || p.category || "Cash Expense",
+            titleAr: p.companyName || p.description || "مصروف نقدي",
+            safeChange: -totalOut,
+            bankChange: 0,
+            details: `Invoice: ${p.invoiceNumber || "N/A"} | Amt: ${amt.toLocaleString()}${tax > 0 ? ` + Tax: ${tax}` : ""}`
+          });
+        }
       }
     } else if (["visa", "bank_transfer", "bank"].includes(method)) {
       if (!isLifetime && d < start) {
-        openingBank -= amt;
+        openingBank -= totalOut;
       } else if (isLifetime || (d >= start && d <= end)) {
         periodBankPayments += amt;
         periodBankTax += tax;
+
+        if (!isLifetime) {
+          itemizedTransactions.push({
+            id: p.id,
+            date: d,
+            category: "expense_bank",
+            titleEn: p.companyName || p.description || p.category || "Bank Payment",
+            titleAr: p.companyName || p.description || "مدفوعات بنكية",
+            safeChange: 0,
+            bankChange: -totalOut,
+            details: `Method: ${method} | Invoice: ${p.invoiceNumber || "N/A"} | Amt: ${amt.toLocaleString()}`
+          });
+        }
       }
     }
   });
@@ -313,12 +374,38 @@ export function calculateFinancialLedger(
         openingSafe -= amt;
       } else if (isLifetime || (d >= start && d <= end)) {
         periodCashPayments += amt;
+
+        if (!isLifetime) {
+          itemizedTransactions.push({
+            id: p.id,
+            date: d,
+            category: "credit_settlement_cash",
+            titleEn: p.companyName || "Supplier Credit Settlement (Cash)",
+            titleAr: p.companyName || "سداد آجل نقدي",
+            safeChange: -amt,
+            bankChange: 0,
+            details: `Credit ID: ${p.creditId || "N/A"} | Amt: ${amt.toLocaleString()}`
+          });
+        }
       }
     } else if (["visa", "bank_transfer", "bank"].includes(method)) {
       if (!isLifetime && d < start) {
         openingBank -= amt;
       } else if (isLifetime || (d >= start && d <= end)) {
         periodBankPayments += amt;
+
+        if (!isLifetime) {
+          itemizedTransactions.push({
+            id: p.id,
+            date: d,
+            category: "credit_settlement_bank",
+            titleEn: p.companyName || "Supplier Credit Settlement (Bank)",
+            titleAr: p.companyName || "سداد آجل بنكي",
+            safeChange: 0,
+            bankChange: -amt,
+            details: `Method: ${method} | Credit ID: ${p.creditId || "N/A"} | Amt: ${amt.toLocaleString()}`
+          });
+        }
       }
     }
   });
@@ -336,21 +423,77 @@ export function calculateFinancialLedger(
     // Safe Inflows & Outflows
     if (to === "safe") {
       if (!isLifetime && d < start) openingSafe += amt;
-      else if (isLifetime || (d >= start && d <= end)) periodDepositsToSafe += amt;
+      else if (isLifetime || (d >= start && d <= end)) {
+        periodDepositsToSafe += amt;
+        if (!isLifetime) {
+          itemizedTransactions.push({
+            id: dep.id,
+            date: d,
+            category: "deposit_in_safe",
+            titleEn: `Cash Injection to Safe (From: ${dep.from || "Owner"})`,
+            titleAr: `تغذية نقدية بالخزنة (من: ${dep.from || "المالك"})`,
+            safeChange: amt,
+            bankChange: 0,
+            details: `Deposit: ${amt.toLocaleString()} EGP`
+          });
+        }
+      }
     }
     if (from === "safe") {
       if (!isLifetime && d < start) openingSafe -= amt;
-      else if (isLifetime || (d >= start && d <= end)) periodDepositsFromSafe += amt;
+      else if (isLifetime || (d >= start && d <= end)) {
+        periodDepositsFromSafe += amt;
+        if (!isLifetime) {
+          itemizedTransactions.push({
+            id: dep.id,
+            date: d,
+            category: "deposit_out_safe",
+            titleEn: `Cash Transferred from Safe (To: ${dep.to || "Bank/Owner"})`,
+            titleAr: `تحويل نقدي خارج من الخزنة (إلى: ${dep.to || "البنك/المالك"})`,
+            safeChange: -amt,
+            bankChange: to === "bank" ? amt : 0,
+            details: `Transfer: ${amt.toLocaleString()} EGP`
+          });
+        }
+      }
     }
 
     // Bank Inflows & Outflows
     if (to === "bank") {
       if (!isLifetime && d < start) openingBank += amt;
-      else if (isLifetime || (d >= start && d <= end)) periodDepositsToBank += amt;
+      else if (isLifetime || (d >= start && d <= end)) {
+        periodDepositsToBank += amt;
+        if (!isLifetime && from !== "safe") {
+          itemizedTransactions.push({
+            id: dep.id,
+            date: d,
+            category: "deposit_in_bank",
+            titleEn: `Deposit into Bank Account (From: ${dep.from || "Owner"})`,
+            titleAr: `إيداع بنكي وارد (من: ${dep.from || "المالك"})`,
+            safeChange: 0,
+            bankChange: amt,
+            details: `Deposit: ${amt.toLocaleString()} EGP`
+          });
+        }
+      }
     }
     if (from === "bank") {
       if (!isLifetime && d < start) openingBank -= amt;
-      else if (isLifetime || (d >= start && d <= end)) periodDepositsFromBank += amt;
+      else if (isLifetime || (d >= start && d <= end)) {
+        periodDepositsFromBank += amt;
+        if (!isLifetime) {
+          itemizedTransactions.push({
+            id: dep.id,
+            date: d,
+            category: "deposit_out_bank",
+            titleEn: `Withdrawal / Transfer from Bank (To: ${dep.to || "Owner"})`,
+            titleAr: `مسحوبات / تحويل من البنك (إلى: ${dep.to || "المالك"})`,
+            safeChange: to === "safe" ? amt : 0,
+            bankChange: -amt,
+            details: `Withdrawal: ${amt.toLocaleString()} EGP`
+          });
+        }
+      }
     }
   });
 
@@ -362,18 +505,43 @@ export function calculateFinancialLedger(
 
     const amt = Number(pr.netPay || pr.amount || 0);
     const method = (pr.paymentMethod || pr.method || "cash").toLowerCase();
+    const empName = pr.employeeName || pr.name || docs.employeesMap[pr.employeeId] || (isAr ? "موظف" : "Employee");
 
     if (method === "cash") {
       if (!isLifetime && d < start) {
         openingSafe -= amt;
       } else if (isLifetime || (d >= start && d <= end)) {
         periodPayrolls += amt;
+        if (!isLifetime) {
+          itemizedTransactions.push({
+            id: pr.id,
+            date: d,
+            category: "payroll",
+            titleEn: `Staff Payroll (Cash): ${empName}`,
+            titleAr: `راتب موظف (نقداً): ${empName}`,
+            safeChange: -amt,
+            bankChange: 0,
+            details: `Month: ${pr.month || "N/A"} | Net Pay: ${amt.toLocaleString()} EGP`
+          });
+        }
       }
     } else {
       if (!isLifetime && d < start) {
         openingBank -= amt;
       } else if (isLifetime || (d >= start && d <= end)) {
         periodBankPayrolls += amt;
+        if (!isLifetime) {
+          itemizedTransactions.push({
+            id: pr.id,
+            date: d,
+            category: "payroll_bank",
+            titleEn: `Staff Payroll (Bank): ${empName}`,
+            titleAr: `راتب موظف (بنكي): ${empName}`,
+            safeChange: 0,
+            bankChange: -amt,
+            details: `Month: ${pr.month || "N/A"} | Net Pay: ${amt.toLocaleString()} EGP`
+          });
+        }
       }
     }
   });
@@ -386,6 +554,7 @@ export function calculateFinancialLedger(
     if (!matchesBranch(ln, targetBranch)) return;
     const d = normalizeDate(ln.date || ln.createdAt);
     const amt = Number(ln.approved || ln.amount || 0);
+    const empName = ln.employeeName || ln.name || docs.employeesMap[ln.employeeId] || (isAr ? "موظف" : "Employee");
 
     seenLoanIds.add(ln.id);
     if (ln.employeeId) {
@@ -393,10 +562,22 @@ export function calculateFinancialLedger(
       if (d) seenLoanComposite.add(`${ln.employeeId}_${d}_${amt}`);
     }
 
-    if (!isLifetime && d && d < start) {
+    if (!isLifetime && (!d || d < start)) {
       openingSafe -= amt;
     } else if (isLifetime || !d || (d >= start && d <= end)) {
       periodLoans += amt;
+      if (!isLifetime) {
+        itemizedTransactions.push({
+          id: ln.id,
+          date: d || start,
+          category: "loan",
+          titleEn: `Staff Loan / Advance: ${empName}`,
+          titleAr: `سلفة موظف: ${empName}`,
+          safeChange: -amt,
+          bankChange: 0,
+          details: `Reason: ${ln.reason || "Advance"} | Amount: ${amt.toLocaleString()} EGP`
+        });
+      }
     }
   });
 
@@ -411,21 +592,38 @@ export function calculateFinancialLedger(
       if (adj.employeeId && (seenLoanComposite.has(`${adj.employeeId}_${amt}`) || (d && seenLoanComposite.has(`${adj.employeeId}_${d}_${amt}`)))) return;
 
       seenLoanIds.add(adj.id);
+      const empName = adj.employeeName || adj.name || docs.employeesMap[adj.employeeId] || (isAr ? "موظف" : "Employee");
 
-      if (!isLifetime && d && d < start) {
+      if (!isLifetime && (!d || d < start)) {
         openingSafe -= amt;
       } else if (isLifetime || !d || (d >= start && d <= end)) {
         periodLoans += amt;
+        if (!isLifetime) {
+          itemizedTransactions.push({
+            id: adj.id,
+            date: d || start,
+            category: "loan",
+            titleEn: `Staff Loan / Advance: ${empName}`,
+            titleAr: `سلفة موظف: ${empName}`,
+            safeChange: -amt,
+            bankChange: 0,
+            details: `Reason: ${adj.reason || "Advance"} | Amount: ${amt.toLocaleString()} EGP`
+          });
+        }
       }
     }
   });
 
+  if (itemizedTransactions.length > 0) {
+    itemizedTransactions.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  }
+
   const safeInflows = periodSalesCash + periodOverAmount + periodDepositsToSafe;
-  const safeOutflows = periodShortAmount + periodCashPayments + periodDepositsFromSafe + periodPayrolls + periodLoans;
+  const safeOutflows = periodShortAmount + periodCashPayments + periodCashTax + periodDepositsFromSafe + periodPayrolls + periodLoans;
   const closingSafe = openingSafe + safeInflows - safeOutflows;
 
   const bankInflows = periodSalesVisa + periodDepositsToBank;
-  const bankOutflows = periodBankPayments + periodDepositsFromBank + periodBankPayrolls;
+  const bankOutflows = periodBankPayments + periodBankTax + periodDepositsFromBank + periodBankPayrolls;
   const closingBank = openingBank + bankInflows - bankOutflows;
 
   const netCashSales = periodSalesCash + periodOverAmount - periodShortAmount;
@@ -452,7 +650,30 @@ export function calculateFinancialLedger(
     openingSafe,
     openingBank,
     closingSafe,
-    closingBank
+    closingBank,
+    safeInflows,
+    safeOutflows,
+    bankInflows,
+    bankOutflows,
+    startDateStr,
+    endDateStr,
+    itemizedTransactions,
+    period: {
+      salesCash: periodSalesCash,
+      overAmount: periodOverAmount,
+      shortAmount: periodShortAmount,
+      depositsToSafe: periodDepositsToSafe,
+      totalCashPayments: periodCashPayments,
+      totalCashTaxes: periodCashTax,
+      depositsFromSafe: periodDepositsFromSafe,
+      totalPayrolls: periodPayrolls,
+      totalLoans: periodLoans,
+      visaSales: periodSalesVisa,
+      depositsToBank: periodDepositsToBank,
+      bankPayments: periodBankPayments,
+      bankTaxes: periodBankTax,
+      depositsFromBank: periodDepositsFromBank
+    }
   };
 }
 
