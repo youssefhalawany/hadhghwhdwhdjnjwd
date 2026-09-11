@@ -910,10 +910,18 @@ import {
   Package,
   Zap,
   Truck,
-  Wrench
+  Wrench,
+  LayoutGrid,
+  Rows,
+  Activity,
+  Flame,
+  ArrowUpRight,
+  ArrowDownRight,
+  CalendarDays,
+  SlidersHorizontal
 } from "lucide-react";
 import { ReturnReceiptContent, PendingReturnTicket, groupPendingReturns } from "@/components/ReturnReceiptContent";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, LineChart, Line, XAxis, YAxis } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, LineChart, Line, XAxis, YAxis, AreaChart, Area } from 'recharts';
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import Barcode from "react-barcode";
@@ -974,6 +982,87 @@ const METHOD_EMOJIS: Record<string, string> = {
   visa: "💳",
   bank_transfer: "🏦"
 };
+
+// Luxury Rolling Odometer Number Component (Swiss Chronometer Effect)
+function RollingNumber({
+  value,
+  prefix = "",
+  suffix = "",
+  decimals = 2
+}: {
+  value: number;
+  prefix?: string;
+  suffix?: string;
+  decimals?: number;
+}) {
+  const [displayVal, setDisplayVal] = useState(value);
+  const prevValRef = React.useRef(value);
+
+  useEffect(() => {
+    const start = prevValRef.current;
+    const end = value;
+    prevValRef.current = value;
+    if (start === end) {
+      setDisplayVal(end);
+      return;
+    }
+    const duration = 650;
+    const startTime = performance.now();
+
+    const tick = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const ease = 1 - Math.pow(1 - progress, 3);
+      const current = start + (end - start) * ease;
+      setDisplayVal(current);
+      if (progress < 1) {
+        requestAnimationFrame(tick);
+      } else {
+        setDisplayVal(end);
+      }
+    };
+    const animId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(animId);
+  }, [value]);
+
+  return (
+    <span className="font-mono tabular-nums inline-block">
+      {prefix}{displayVal.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}{suffix}
+    </span>
+  );
+}
+
+// Anodized Metallic Payment Method Badges (Banknote Guilloche, Titanium Chip, Gold Foil)
+function PaymentMethodBadge({ method }: { method: string }) {
+  const m = method?.toLowerCase() || "cash";
+  if (m === "bank_transfer" || m === "visa" || m === "card") {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black uppercase tracking-wider bg-gradient-to-r from-indigo-950/80 via-slate-900/90 to-indigo-950/80 text-indigo-300 border border-indigo-500/40 shadow-[0_0_12px_rgba(99,102,241,0.15)] ring-1 ring-white/10">
+        <span className="w-2.5 h-2 rounded-[2px] bg-indigo-500/30 border border-indigo-300/50 shadow-inner flex items-center justify-center">
+          <span className="w-1.5 h-0.5 bg-indigo-200 block rounded-[0.5px]" />
+        </span>
+        <span>{m === "bank_transfer" ? "Bank Wire" : "Card / Visa"}</span>
+      </span>
+    );
+  }
+  if (m === "return" || m === "rtv") {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-950/80 via-yellow-950/60 to-amber-950/80 text-amber-200 border border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.2)] ring-1 ring-amber-400/20">
+        <RotateCcw size={10} className="text-amber-400" />
+        <span>RTV Credit</span>
+      </span>
+    );
+  }
+  // Default Cash
+  return (
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black uppercase tracking-wider bg-gradient-to-r from-emerald-950/80 via-teal-950/60 to-emerald-950/80 text-emerald-300 border border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.18)] ring-1 ring-emerald-400/20">
+      <span className="w-3 h-2 rounded-[1px] border border-emerald-400/80 bg-emerald-500/30 flex items-center justify-center text-[7px] leading-none font-mono font-bold text-emerald-200">
+        $
+      </span>
+      <span>Cash</span>
+    </span>
+  );
+}
 
 export default function PaymentsRedesignPage() {
   const { currentBranch } = useBranch();
@@ -1038,6 +1127,37 @@ export default function PaymentsRedesignPage() {
       }
     }
   }, []);
+
+  // Luxury UI States & Controls
+  const [viewMode, setViewMode] = useState<"bento" | "ledger">("bento");
+  const [timePreset, setTimePreset] = useState<"today" | "yesterday" | "this_week" | "this_month" | "last_month" | "all" | "custom">("this_month");
+  const [mousePos, setMousePos] = useState({ x: -999, y: -999 });
+
+  const handleContainerMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  }, []);
+
+  const handleSelectTimePreset = (preset: "today" | "yesterday" | "this_week" | "this_month" | "last_month" | "all") => {
+    setTimePreset(preset);
+    const now = new Date();
+    const curMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    if (preset === "this_month" || preset === "today" || preset === "this_week") {
+      setMonthFilter(curMonth);
+    } else if (preset === "yesterday") {
+      const yest = new Date();
+      yest.setDate(yest.getDate() - 1);
+      const yestMonth = `${yest.getFullYear()}-${String(yest.getMonth() + 1).padStart(2, '0')}`;
+      setMonthFilter(yestMonth);
+    } else if (preset === "last_month") {
+      const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const prevMonth = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`;
+      setMonthFilter(prevMonth);
+    } else if (preset === "all") {
+      setMonthFilter("");
+    }
+  };
 
   // Supplier Features State
   const [selectedSupplierProfile, setSelectedSupplierProfile] = useState<string | null>(null);
@@ -2523,11 +2643,29 @@ html, body {
     return enriched;
   }, [credits]);
 
-  // Derived filtered data
+  // Derived filtered data with Time Presets support
   const filteredPayments = useMemo(() => {
+    const now = new Date();
+    const todayStr = now.toISOString().split("T")[0];
+    const yestDate = new Date();
+    yestDate.setDate(yestDate.getDate() - 1);
+    const yestStr = yestDate.toISOString().split("T")[0];
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const weekAgoStr = weekAgo.toISOString().split("T")[0];
+
     return payments.map(getEnrichedPayment).filter(p => {
-      // Month Filter
-      if (monthFilter && p.date && !p.date.startsWith(monthFilter)) return false;
+      // Time Presets Filter
+      if (timePreset === "today") {
+        if (p.date !== todayStr) return false;
+      } else if (timePreset === "yesterday") {
+        if (p.date !== yestStr) return false;
+      } else if (timePreset === "this_week") {
+        if (!p.date || p.date < weekAgoStr || p.date > todayStr) return false;
+      } else if (monthFilter && p.date && !p.date.startsWith(monthFilter)) {
+        // Month Filter
+        return false;
+      }
 
       // Search Filter
       if (searchQuery) {
@@ -2544,7 +2682,54 @@ html, body {
       }
       return true;
     });
-  }, [payments, monthFilter, searchQuery, getEnrichedPayment]);
+  }, [payments, monthFilter, searchQuery, timePreset, getEnrichedPayment]);
+
+  // Executive HUD Metrics & Financial Velocity
+  const totalFilteredSpend = useMemo(() => {
+    return filteredPayments.reduce((acc, p) => acc + (Number(p.total) || 0), 0);
+  }, [filteredPayments]);
+
+  const burnRate = useMemo(() => {
+    if (filteredPayments.length === 0) return 0;
+    const uniqueDays = new Set(filteredPayments.map(p => p.date).filter(Boolean)).size;
+    return totalFilteredSpend / Math.max(1, uniqueDays);
+  }, [filteredPayments, totalFilteredSpend]);
+
+  const momMetrics = useMemo(() => {
+    const now = new Date();
+    const curMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevMonthKey = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+
+    const curSpend = payments.filter(p => p.date?.startsWith(curMonthKey)).reduce((sum, p) => sum + (Number(p.total) || 0), 0);
+    const prevSpend = payments.filter(p => p.date?.startsWith(prevMonthKey)).reduce((sum, p) => sum + (Number(p.total) || 0), 0);
+
+    let deltaPercent = 0;
+    if (prevSpend > 0) {
+      deltaPercent = ((curSpend - prevSpend) / prevSpend) * 100;
+    }
+    return { curSpend, prevSpend, deltaPercent };
+  }, [payments]);
+
+  const largestOutgoing = useMemo(() => {
+    if (filteredPayments.length === 0) return null;
+    return filteredPayments.reduce((max, p) => (Number(p.total) || 0) > (Number(max.total) || 0) ? p : max, filteredPayments[0]);
+  }, [filteredPayments]);
+
+  const velocitySparklineData = useMemo(() => {
+    if (filteredPayments.length === 0) return [];
+    const byDate: Record<string, number> = {};
+    filteredPayments.forEach(p => {
+      if (!p.date) return;
+      byDate[p.date] = (byDate[p.date] || 0) + (Number(p.total) || 0);
+    });
+    const sortedDates = Object.keys(byDate).sort();
+    let cumulative = 0;
+    return sortedDates.map(d => {
+      cumulative += byDate[d];
+      return { date: d.slice(5), amount: byDate[d], cumulative };
+    });
+  }, [filteredPayments]);
 
   // Aggregate Category Stats for the top cards & method totals
   const { categoryStats, methodTotals } = useMemo(() => {
@@ -2678,12 +2863,24 @@ html, body {
   }
 
   return (
-    <div className="min-h-screen bg-[#070709] text-white font-sans selection:bg-rose-500 selection:text-white pb-28 relative overflow-x-hidden">
-      {/* LUXURY RADIAL AMBIENT BACKGROUND GLOWS (Matching Main Executive Hub) */}
+    <div 
+      className="min-h-screen bg-[#070709] text-white font-sans selection:bg-rose-500 selection:text-white pb-28 relative overflow-x-hidden"
+      onMouseMove={handleContainerMouseMove}
+    >
+      {/* LUXURY RADIAL AMBIENT BACKGROUND GLOWS & CURSOR SPOTLIGHT */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute top-[-10%] right-[-10%] w-[650px] h-[650px] bg-gradient-to-br from-rose-600/15 via-red-600/5 to-transparent rounded-full blur-[140px]" />
         <div className="absolute top-[30%] left-[-10%] w-[600px] h-[600px] bg-gradient-to-br from-purple-600/10 via-indigo-600/5 to-transparent rounded-full blur-[140px]" />
         <div className="absolute bottom-[-10%] right-[20%] w-[700px] h-[700px] bg-gradient-to-tr from-emerald-600/10 via-teal-600/5 to-transparent rounded-full blur-[160px]" />
+        
+        {/* Dynamic Cursor-Reactive Ambient Spotlight */}
+        <div
+          className="pointer-events-none absolute inset-0 transition-opacity duration-300"
+          style={{
+            background: `radial-gradient(650px circle at ${mousePos.x}px ${mousePos.y}px, rgba(244,63,94,0.06), transparent 75%)`
+          }}
+        />
+
         {/* Subtle VIP Grid Mesh Overlay */}
         <div 
           className="absolute inset-0 opacity-[0.025]" 
@@ -2742,6 +2939,132 @@ html, body {
             >
               <Plus size={18} /> {isAr ? "تسجيل مدفوعات جديدة" : "Record Payment"}
             </button>
+          </div>
+        </div>
+
+        {/* EXECUTIVE FLOATING HUD & SPEND VELOCITY STRIP */}
+        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
+          {/* Card 1: Total Period Spend */}
+          <div className="rounded-[22px] p-4 bg-[#111116] border border-white/[0.08] shadow-xl relative overflow-hidden flex flex-col justify-between group hover:border-rose-500/40 transition-all">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/10 rounded-full blur-2xl pointer-events-none" />
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                {isAr ? "إجمالي المنصرف" : "Total Outgoings"}
+              </span>
+              <div className="w-7 h-7 rounded-lg bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400">
+                <Activity size={14} />
+              </div>
+            </div>
+            <div>
+              <div className="text-xl sm:text-2xl font-black font-mono text-white tracking-tight">
+                <span className="text-xs font-bold text-rose-400 mr-1">EGP</span>
+                <RollingNumber value={totalFilteredSpend} />
+              </div>
+              <span className="text-[10px] text-slate-500 font-mono mt-0.5 block">
+                {filteredPayments.length} {isAr ? "سند دفع معتمد" : "vouchers reconciled"}
+              </span>
+            </div>
+          </div>
+
+          {/* Card 2: Daily Burn Rate */}
+          <div className="rounded-[22px] p-4 bg-[#111116] border border-white/[0.08] shadow-xl relative overflow-hidden flex flex-col justify-between group hover:border-amber-500/40 transition-all">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                {isAr ? "معدل الصرف اليومي" : "Daily Burn Rate"}
+              </span>
+              <div className="w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                <Flame size={14} />
+              </div>
+            </div>
+            <div>
+              <div className="text-xl sm:text-2xl font-black font-mono text-white tracking-tight">
+                <span className="text-xs font-bold text-amber-400 mr-1">EGP</span>
+                <RollingNumber value={burnRate} decimals={0} />
+              </div>
+              <span className="text-[10px] text-slate-500 font-mono mt-0.5 block">
+                {isAr ? "متوسط سرعة الاستنزاف / يوم" : "Avg velocity per active day"}
+              </span>
+            </div>
+          </div>
+
+          {/* Card 3: MoM Comparison Delta */}
+          <div className="rounded-[22px] p-4 bg-[#111116] border border-white/[0.08] shadow-xl relative overflow-hidden flex flex-col justify-between group hover:border-indigo-500/40 transition-all">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                {isAr ? "المقارنة الشهرية" : "MoM Trajectory"}
+              </span>
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${momMetrics.deltaPercent <= 0 ? "bg-emerald-500/15 border border-emerald-500/30 text-emerald-400" : "bg-rose-500/15 border border-rose-500/30 text-rose-400"}`}>
+                {momMetrics.deltaPercent <= 0 ? <ArrowDownRight size={14} /> : <ArrowUpRight size={14} />}
+              </div>
+            </div>
+            <div>
+              <div className="flex items-baseline gap-2">
+                <span className={`text-xl sm:text-2xl font-black font-mono tracking-tight ${momMetrics.deltaPercent <= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                  {momMetrics.deltaPercent >= 0 ? "+" : ""}{momMetrics.deltaPercent.toFixed(1)}%
+                </span>
+                <span className="text-[10px] text-slate-400 font-bold uppercase">
+                  {momMetrics.deltaPercent <= 0 ? (isAr ? "وفورات" : "Savings") : (isAr ? "زيادة" : "Expansion")}
+                </span>
+              </div>
+              <span className="text-[10px] text-slate-500 font-mono mt-0.5 block truncate">
+                {isAr ? `السابق: ${momMetrics.prevSpend.toLocaleString()} ج.م` : `vs EGP ${momMetrics.prevSpend.toLocaleString()} prev`}
+              </span>
+            </div>
+          </div>
+
+          {/* Card 4: Top Outgoing Record */}
+          <div className="rounded-[22px] p-4 bg-[#111116] border border-white/[0.08] shadow-xl relative overflow-hidden flex flex-col justify-between group hover:border-purple-500/40 transition-all">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl pointer-events-none" />
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                {isAr ? "أكبر دفعة فردية" : "Largest Outgoing"}
+              </span>
+              <div className="w-7 h-7 rounded-lg bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                <Sparkles size={14} />
+              </div>
+            </div>
+            <div>
+              <div className="text-lg sm:text-xl font-black font-mono text-white tracking-tight truncate">
+                <span className="text-xs font-bold text-purple-400 mr-1">EGP</span>
+                {largestOutgoing ? Number(largestOutgoing.total).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : "0"}
+              </div>
+              <span className="text-[10px] text-slate-400 font-bold truncate block mt-0.5" title={largestOutgoing?.companyName}>
+                {largestOutgoing?.companyName || (isAr ? "لا توجد سجلات" : "No records")}
+              </span>
+            </div>
+          </div>
+
+          {/* Card 5: Mini Velocity Area Sparkline (Visible on XL) */}
+          <div className="hidden xl:flex rounded-[22px] p-4 bg-[#111116] border border-white/[0.08] shadow-xl relative overflow-hidden flex-col justify-between group hover:border-rose-500/40 transition-all col-span-1">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                {isAr ? "منحنى التدفق" : "Velocity Sparkline"}
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-rose-500/10 border border-rose-500/20 text-rose-400">
+                +{velocitySparklineData.length} pts
+              </span>
+            </div>
+            <div className="h-10 w-full mt-1">
+              {velocitySparklineData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={velocitySparklineData}>
+                    <defs>
+                      <linearGradient id="velocityGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.5}/>
+                        <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <Area type="monotone" dataKey="cumulative" stroke="#f43f5e" strokeWidth={2} fillOpacity={1} fill="url(#velocityGrad)" isAnimationActive={false} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-[10px] text-slate-600 font-mono">
+                  Flatline
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -2823,7 +3146,7 @@ html, body {
                 <div>
                   <p className="text-2xl font-black font-mono text-white tracking-tight relative z-10">
                     <span className="text-xs font-bold text-blue-400/80 mr-1">EGP</span>
-                    {categoryStats["order"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    <RollingNumber value={categoryStats["order"].total} />
                   </p>
                 </div>
               </motion.div>
@@ -2847,7 +3170,7 @@ html, body {
                 <div>
                   <p className="text-2xl font-black font-mono text-white tracking-tight relative z-10">
                     <span className="text-xs font-bold text-amber-400/80 mr-1">EGP</span>
-                    {categoryStats["utilities"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    <RollingNumber value={categoryStats["utilities"].total} />
                   </p>
                 </div>
               </motion.div>
@@ -2871,7 +3194,7 @@ html, body {
                 <div>
                   <p className="text-2xl font-black font-mono text-white tracking-tight relative z-10">
                     <span className="text-xs font-bold text-purple-400/80 mr-1">EGP</span>
-                    {categoryStats["maintenance"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    <RollingNumber value={categoryStats["maintenance"].total} />
                   </p>
                 </div>
               </motion.div>
@@ -2895,7 +3218,7 @@ html, body {
                 <div>
                   <p className="text-2xl font-black font-mono text-white tracking-tight relative z-10">
                     <span className="text-xs font-bold text-emerald-400/80 mr-1">EGP</span>
-                    {categoryStats["transportation"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    <RollingNumber value={categoryStats["transportation"].total} />
                   </p>
                 </div>
               </motion.div>
@@ -2919,11 +3242,69 @@ html, body {
                 <div>
                   <p className="text-2xl font-black font-mono text-white tracking-tight relative z-10">
                     <span className="text-xs font-bold text-rose-400/80 mr-1">EGP</span>
-                    {categoryStats["other"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    <RollingNumber value={categoryStats["other"].total} />
                   </p>
                 </div>
               </motion.div>
             )}
+          </div>
+        </div>
+
+        {/* TIME PRESETS & VIEW MODE STRIP */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+          {/* Quick Presets Pills */}
+          <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-[#111116] border border-white/[0.08] shadow-lg overflow-x-auto max-w-full">
+            {[
+              { id: "this_month", label: isAr ? "الشهر الحالي" : "This Month" },
+              { id: "today", label: isAr ? "اليوم" : "Today" },
+              { id: "yesterday", label: isAr ? "أمس" : "Yesterday" },
+              { id: "this_week", label: isAr ? "هذا الأسبوع" : "This Week" },
+              { id: "last_month", label: isAr ? "الشهر السابق" : "Last Month" },
+              { id: "all", label: isAr ? "كل السجلات" : "All Time" },
+            ].map((preset) => {
+              const active = timePreset === preset.id;
+              return (
+                <button
+                  key={preset.id}
+                  onClick={() => handleSelectTimePreset(preset.id as any)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                    active
+                      ? "bg-gradient-to-r from-rose-500 to-red-600 text-white shadow-md shadow-rose-900/40 border border-white/20"
+                      : "text-slate-400 hover:text-white hover:bg-white/[0.04]"
+                  }`}
+                >
+                  {preset.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* View Mode Switcher */}
+          <div className="flex items-center gap-1 p-1 rounded-2xl bg-[#111116] border border-white/[0.08] shadow-lg">
+            <button
+              onClick={() => setViewMode("bento")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                viewMode === "bento"
+                  ? "bg-rose-500/20 text-rose-300 border border-rose-500/30 shadow-sm"
+                  : "text-slate-400 hover:text-white"
+              }`}
+              title={isAr ? "عرض البطاقات الموسع" : "Bento Card View"}
+            >
+              <LayoutGrid size={14} />
+              <span>{isAr ? "بطاقات" : "Bento"}</span>
+            </button>
+            <button
+              onClick={() => setViewMode("ledger")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                viewMode === "ledger"
+                  ? "bg-rose-500/20 text-rose-300 border border-rose-500/30 shadow-sm"
+                  : "text-slate-400 hover:text-white"
+              }`}
+              title={isAr ? "عرض الجدول المحاسبي عالي الكثافة" : "Compact Ledger View"}
+            >
+              <Rows size={14} />
+              <span>{isAr ? "جدول محاسبي" : "Ledger"}</span>
+            </button>
           </div>
         </div>
 
@@ -2943,7 +3324,10 @@ html, body {
           <input
             type="month"
             value={monthFilter}
-            onChange={(e) => setMonthFilter(e.target.value)}
+            onChange={(e) => {
+              setMonthFilter(e.target.value);
+              setTimePreset("custom");
+            }}
             className="w-full md:w-64 px-4 py-2.5 rounded-xl bg-white/[0.02] hover:bg-white/[0.05] focus:bg-white/[0.05] transition-colors border border-white/[0.06] outline-none text-white text-xs font-mono font-bold cursor-pointer"
           />
         </div>
@@ -3022,169 +3406,333 @@ html, body {
 
         {/* Data List for Mobile Portrait, Landscape & Desktop */}
         <div className="space-y-3 sm:space-y-4">
-          <AnimatePresence>
-            {filteredPayments.map((pay, idx) => {
-              const initials = pay.companyName ? pay.companyName.substring(0, 2).toUpperCase() : "NA";
-              const colors = [
-                'bg-indigo-500/15 text-indigo-300 border-indigo-500/30',
-                'bg-rose-500/15 text-rose-300 border-rose-500/30',
-                'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
-                'bg-amber-500/15 text-amber-300 border-amber-500/30',
-                'bg-sky-500/15 text-sky-300 border-sky-500/30'
-              ];
-              const charCode = pay.companyName ? pay.companyName.charCodeAt(0) : 0;
-              const avatarColor = colors[charCode % colors.length];
-
-              return (
-                <motion.div
-                  layout
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.2, delay: idx * 0.03 }}
-                  key={pay.id}
-                  className={`bg-[#111116] hover:bg-[#16161d] border rounded-2xl shadow-xl hover:border-rose-500/40 transition-all overflow-hidden group ${
-                    selectedBulkItems.has(pay.id) ? 'border-rose-500/60 ring-1 ring-rose-500/40' : 'border-white/[0.08]'
-                  }`}
-                >
-                  <div className="p-3.5 sm:p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 md:gap-4 relative">
-                    <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0 w-full">
+          {viewMode === "ledger" ? (
+            <div className="overflow-x-auto rounded-[24px] bg-[#111116] border border-white/[0.08] shadow-2xl">
+              <table className="w-full text-left text-xs text-slate-300">
+                <thead className="bg-[#0e0e13] border-b border-white/[0.08] text-[10px] font-black uppercase tracking-wider text-slate-400 sticky top-0 z-10">
+                  <tr>
+                    <th className="p-3.5 w-10 text-center">
                       <input
                         type="checkbox"
-                        checked={selectedBulkItems.has(pay.id)}
-                        onChange={() => handleSelectBulkItem(pay.id)}
-                        className="w-4 h-4 rounded text-rose-600 accent-rose-600 cursor-pointer mr-1 flex-shrink-0"
+                        className="w-3.5 h-3.5 rounded text-rose-600 accent-rose-600 cursor-pointer"
+                        checked={filteredPayments.length > 0 && selectedBulkItems.size === filteredPayments.length}
+                        onChange={handleSelectAllBulkItems}
                       />
-                      <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl border flex items-center justify-center font-black text-sm sm:text-base tracking-tight flex-shrink-0 group-hover:scale-105 transition-transform ${avatarColor}`}>
-                        {initials}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2 mb-1">
-                          <button
-                            onClick={() => setSelectedSupplierProfile(pay.companyName)}
-                            className="text-base sm:text-lg font-black text-white uppercase tracking-tight hover:text-rose-300 hover:underline text-left transition-colors truncate max-w-[200px] sm:max-w-none flex items-center gap-1 group/name cursor-pointer"
-                          >
-                            {pay.companyName}
-                            <ChevronRight className="w-4 h-4 opacity-0 group-hover/name:opacity-100 transition-opacity -ml-1 text-rose-400" />
-                          </button>
-                          <span className="bg-white/[0.05] text-slate-300 border border-white/[0.08] text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
-                            {CATEGORY_EMOJIS[pay.category]} <span className="capitalize">{pay.category}</span>
-                          </span>
-                          <span className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
-                            {METHOD_EMOJIS[pay.method] || "💵"} <span className="capitalize">{pay.method?.replace('_', ' ') || 'cash'}</span>
-                          </span>
-                          {pay.hasReturn && (
-                            <span 
-                              className="bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full font-black flex items-center gap-1 cursor-pointer hover:bg-amber-500/25 transition-colors"
-                              title={isAr ? `خصم مرتجع: ${Number(pay.returnDeductionAmount || 0).toLocaleString()} ج.م` : `RTV Deduction: EGP ${Number(pay.returnDeductionAmount || 0).toLocaleString()}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedPaymentForView(pay);
-                              }}
-                            >
-                              <RotateCcw size={11} className="text-amber-400" />
-                              <span>{isAr ? `مرتجع: ${Number(pay.returnDeductionAmount || 0).toLocaleString()} ج.م` : `RTV: EGP ${Number(pay.returnDeductionAmount || 0).toLocaleString()}`}</span>
+                    </th>
+                    <th className="p-3.5 whitespace-nowrap">{isAr ? "التاريخ" : "Date"}</th>
+                    <th className="p-3.5">{isAr ? "الشركة والمورد" : "Supplier & Category"}</th>
+                    <th className="p-3.5">{isAr ? "الفاتورة / أمر الشراء" : "Invoice & PO"}</th>
+                    <th className="p-3.5">{isAr ? "طريقة الدفع" : "Method"}</th>
+                    <th className="p-3.5 text-right whitespace-nowrap">{isAr ? "المبلغ الصافي" : "Net Amount"}</th>
+                    <th className="p-3.5 text-center">{isAr ? "الحالة" : "Status"}</th>
+                    <th className="p-3.5 text-right whitespace-nowrap">{isAr ? "إجراءات" : "Actions"}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/[0.04]">
+                  {filteredPayments.map((pay) => {
+                    const isSelected = selectedBulkItems.has(pay.id);
+                    return (
+                      <tr
+                        key={pay.id}
+                        onClick={() => handleSelectBulkItem(pay.id)}
+                        className={`hover:bg-white/[0.03] transition-colors cursor-pointer group ${isSelected ? "bg-rose-500/[0.06]" : ""}`}
+                      >
+                        <td className="p-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            className="w-3.5 h-3.5 rounded text-rose-600 accent-rose-600 cursor-pointer"
+                            checked={isSelected}
+                            onChange={() => handleSelectBulkItem(pay.id)}
+                          />
+                        </td>
+                        <td className="p-3.5 font-mono text-slate-400 whitespace-nowrap text-[11px]">
+                          {pay.date}
+                        </td>
+                        <td className="p-3.5">
+                          <div className="flex items-center gap-2.5">
+                            <span className="w-7 h-7 rounded-lg bg-white/[0.05] border border-white/[0.08] text-rose-300 flex items-center justify-center font-black text-[10px]">
+                              {pay.companyName ? pay.companyName.substring(0, 2).toUpperCase() : "NA"}
                             </span>
+                            <div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedSupplierProfile(pay.companyName);
+                                }}
+                                className="font-bold text-white hover:text-rose-400 text-left transition-colors truncate max-w-[180px] block"
+                              >
+                                {pay.companyName}
+                              </button>
+                              <span className="text-[10px] text-slate-400">
+                                {CATEGORY_EMOJIS[pay.category]} {pay.category}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-3.5 font-mono text-[11px] whitespace-nowrap">
+                          {pay.poNumber ? (
+                            <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20 font-bold mr-1">
+                              PO #{pay.poNumber}
+                            </span>
+                          ) : null}
+                          {pay.invoiceNumber ? (
+                            <span className="px-2 py-0.5 rounded bg-white/[0.05] text-slate-300 border border-white/[0.08]">
+                              Inv #{pay.invoiceNumber}
+                            </span>
+                          ) : (!pay.poNumber && <span className="text-slate-600">-</span>)}
+                        </td>
+                        <td className="p-3.5 whitespace-nowrap">
+                          <PaymentMethodBadge method={pay.method} />
+                        </td>
+                        <td className="p-3.5 text-right font-mono whitespace-nowrap">
+                          <span className="font-black text-rose-400 text-sm">
+                            <span className="text-[10px] text-rose-400/70 mr-1 font-bold">EGP</span>
+                            <RollingNumber value={Number(pay.total)} />
+                          </span>
+                          {pay.hasReturn && (pay.grossAmount || pay.grossTotal) && (
+                            <div className="text-[9px] text-slate-500 line-through">
+                              Gross: EGP {Number(pay.grossTotal || pay.grossAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </div>
                           )}
-                          {pay.isEdited && (
-                            <span 
-                              className="bg-rose-500/15 text-rose-400 border border-rose-500/30 text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1 cursor-pointer hover:bg-rose-500/25 transition-colors"
-                              title={pay.editHistory && pay.editHistory.length > 0 ? `Edited on ${new Date(pay.lastEditedAt).toLocaleDateString()}:\n${pay.editHistory[pay.editHistory.length - 1].summary}` : "Edited"}
-                              onClick={(e) => {
-                                e.stopPropagation();
+                        </td>
+                        <td className="p-3.5 text-center whitespace-nowrap">
+                          <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                            {pay.hasReturn && (
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                                RTV
+                              </span>
+                            )}
+                            {pay.isEdited && (
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">
+                                Edited
+                              </span>
+                            )}
+                            {Number(pay.tax) > 0 && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-white/[0.04] text-slate-400">
+                                Tax: {Number(pay.tax).toLocaleString()}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-3.5 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => {
                                 setSelectedPaymentForView(pay);
+                                playPrinterSound();
                               }}
+                              className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-slate-400 hover:text-white border border-white/[0.08] transition-colors"
+                              title="View Receipt"
                             >
-                              <Pencil size={11} className="shrink-0" /> {isAr ? "مُعدّل" : "Edited"}
+                              <Eye size={13} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedPaymentForPrint(pay);
+                                setTimeout(() => generatePDF(pay), 100);
+                              }}
+                              className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-slate-400 hover:text-white border border-white/[0.08] transition-colors"
+                              title="Print PDF"
+                            >
+                              <Download size={13} />
+                            </button>
+                            {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
+                              <>
+                                <button
+                                  onClick={() => handleOpenEditPayment(pay)}
+                                  className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-slate-400 hover:text-amber-400 border border-white/[0.08] transition-colors"
+                                  title="Edit Payment"
+                                >
+                                  <Pencil size={13} />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(pay.id)}
+                                  className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 transition-colors"
+                                  title="Delete Payment"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <AnimatePresence>
+              {filteredPayments.map((pay, idx) => {
+                const initials = pay.companyName ? pay.companyName.substring(0, 2).toUpperCase() : "NA";
+                const colors = [
+                  'bg-indigo-500/15 text-indigo-300 border-indigo-500/30',
+                  'bg-rose-500/15 text-rose-300 border-rose-500/30',
+                  'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+                  'bg-amber-500/15 text-amber-300 border-amber-500/30',
+                  'bg-sky-500/15 text-sky-300 border-sky-500/30'
+                ];
+                const charCode = pay.companyName ? pay.companyName.charCodeAt(0) : 0;
+                const avatarColor = colors[charCode % colors.length];
+
+                return (
+                  <motion.div
+                    layout
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.2, delay: idx * 0.03 }}
+                    key={pay.id}
+                    className={`bg-[#111116] hover:bg-[#16161d] border rounded-2xl shadow-xl hover:border-rose-500/40 transition-all overflow-hidden group ${
+                      selectedBulkItems.has(pay.id) ? 'border-rose-500/60 ring-1 ring-rose-500/40' : 'border-white/[0.08]'
+                    }`}
+                  >
+                    <div className="p-3.5 sm:p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 md:gap-4 relative">
+                      <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0 w-full">
+                        <input
+                          type="checkbox"
+                          checked={selectedBulkItems.has(pay.id)}
+                          onChange={() => handleSelectBulkItem(pay.id)}
+                          className="w-4 h-4 rounded text-rose-600 accent-rose-600 cursor-pointer mr-1 flex-shrink-0"
+                        />
+                        <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl border flex items-center justify-center font-black text-sm sm:text-base tracking-tight flex-shrink-0 group-hover:scale-105 transition-transform ${avatarColor}`}>
+                          {initials}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
+                            <button
+                              onClick={() => setSelectedSupplierProfile(pay.companyName)}
+                              className="text-base sm:text-lg font-black text-white uppercase tracking-tight hover:text-rose-300 hover:underline text-left transition-colors truncate max-w-[200px] sm:max-w-none flex items-center gap-1 group/name cursor-pointer"
+                            >
+                              {pay.companyName}
+                              <ChevronRight className="w-4 h-4 opacity-0 group-hover/name:opacity-100 transition-opacity -ml-1 text-rose-400" />
+                            </button>
+                            <span className="bg-white/[0.05] text-slate-300 border border-white/[0.08] text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                              {CATEGORY_EMOJIS[pay.category]} <span className="capitalize">{pay.category}</span>
                             </span>
+                            <PaymentMethodBadge method={pay.method} />
+                            {pay.hasReturn && (
+                              <span 
+                                className="bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full font-black flex items-center gap-1 cursor-pointer hover:bg-amber-500/25 transition-colors"
+                                title={isAr ? `خصم مرتجع: ${Number(pay.returnDeductionAmount || 0).toLocaleString()} ج.م` : `RTV Deduction: EGP ${Number(pay.returnDeductionAmount || 0).toLocaleString()}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedPaymentForView(pay);
+                                }}
+                              >
+                                <RotateCcw size={11} className="text-amber-400" />
+                                <span>{isAr ? `مرتجع: ${Number(pay.returnDeductionAmount || 0).toLocaleString()} ج.م` : `RTV: EGP ${Number(pay.returnDeductionAmount || 0).toLocaleString()}`}</span>
+                              </span>
+                            )}
+                            {pay.isEdited && (
+                              <span 
+                                className="bg-rose-500/15 text-rose-400 border border-rose-500/30 text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1 cursor-pointer hover:bg-rose-500/25 transition-colors"
+                                title={pay.editHistory && pay.editHistory.length > 0 ? `Edited on ${new Date(pay.lastEditedAt).toLocaleDateString()}:\n${pay.editHistory[pay.editHistory.length - 1].summary}` : "Edited"}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedPaymentForView(pay);
+                                }}
+                              >
+                                <Pencil size={11} className="shrink-0" /> {isAr ? "مُعدّل" : "Edited"}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs sm:text-sm font-medium text-slate-400 flex flex-wrap items-center gap-2 font-mono">
+                            <span>{pay.date}</span>
+                            {(pay.invoiceNumber || pay.poNumber) && (
+                              <>
+                                <span className="text-slate-600">•</span>
+                                {pay.invoiceNumber && <span>Inv: {pay.invoiceNumber}</span>}
+                                {pay.invoiceNumber && pay.poNumber && <span> | </span>}
+                                {pay.poNumber && <span>PO: {pay.poNumber}</span>}
+                              </>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-4 sm:gap-6 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-white/[0.06] pt-2.5 md:pt-0">
+                        <div className="text-left md:text-right">
+                          <p className="text-xl sm:text-2xl font-black text-rose-400 tracking-tight font-mono">
+                            <span className="text-xs sm:text-sm font-bold text-rose-400/70 mr-1">EGP</span>
+                            <RollingNumber value={Number(pay.total)} />
+                          </p>
+                          {pay.hasReturn && (pay.grossAmount || pay.grossTotal) && (
+                            <p className="text-[10px] text-slate-500 font-mono line-through mt-0.5">
+                              {isAr ? `الأصلي: ` : `Gross: `}
+                              EGP {Number(pay.grossTotal || pay.grossAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </p>
                           )}
                         </div>
-                        <p className="text-xs sm:text-sm font-medium text-slate-400 flex flex-wrap items-center gap-2 font-mono">
-                          <span>{pay.date}</span>
-                          {(pay.invoiceNumber || pay.poNumber) && (
+
+                        <div className="flex items-center gap-1.5 sm:gap-2">
+                          {(pay.category === "order" || pay.category === "credit" || !!pay.creditId) && (!pay.items || pay.items.length === 0) && !pay.poImageUrl && (
+                            <button
+                              onClick={() => setSelectedPaymentForPoUpload(pay)}
+                              className="text-xs font-bold bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 border border-blue-500/30 px-3 py-1.5 rounded-xl transition-all flex items-center gap-1 mr-1 cursor-pointer"
+                            >
+                              <Plus size={13} /> Add PO
+                            </button>
+                          )}
+                          <button
+                            onClick={() => {
+                              setSelectedPaymentForView(pay);
+                              playPrinterSound();
+                            }}
+                            className="p-2.5 text-slate-400 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-xl transition-all cursor-pointer"
+                            title="View Receipt"
+                          >
+                            <Eye size={18} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedPaymentForPrint(pay);
+                              setTimeout(() => generatePDF(pay), 100);
+                            }}
+                            className="p-2.5 text-slate-400 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-xl transition-all cursor-pointer"
+                            title="Print Voucher"
+                          >
+                            <Download size={18} />
+                          </button>
+                          {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
                             <>
-                              <span className="text-slate-600">•</span>
-                              {pay.invoiceNumber && <span>Inv: {pay.invoiceNumber}</span>}
-                              {pay.invoiceNumber && pay.poNumber && <span> | </span>}
-                              {pay.poNumber && <span>PO: {pay.poNumber}</span>}
+                              <button
+                                onClick={() => handleOpenEditPayment(pay)}
+                                className="p-2.5 text-slate-400 hover:text-amber-400 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-xl transition-all cursor-pointer"
+                                title={isAr ? "تعديل الفاتورة (خاص بالإدارة)" : "Edit Payment (Admin Only)"}
+                              >
+                                <Pencil size={18} />
+                              </button>
+                              <button 
+                                onClick={() => handleDelete(pay.id)} 
+                                className="p-2.5 text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded-xl transition-all cursor-pointer" 
+                                title={isAr ? "حذف السند" : "Delete Payment"}
+                              >
+                                <Trash2 size={18} />
+                              </button>
                             </>
                           )}
-                        </p>
+                        </div>
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-4 sm:gap-6 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-white/[0.06] pt-2.5 md:pt-0">
-                      <div className="text-left md:text-right">
-                        <p className="text-xl sm:text-2xl font-black text-rose-400 tracking-tight font-mono">
-                          <span className="text-xs sm:text-sm font-bold text-rose-400/70 mr-1">EGP</span>
-                          {Number(pay.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </p>
-                        {pay.hasReturn && (pay.grossAmount || pay.grossTotal) && (
-                          <p className="text-[10px] text-slate-500 font-mono line-through mt-0.5">
-                            {isAr ? `الأصلي: ` : `Gross: `}
-                            EGP {Number(pay.grossTotal || pay.grossAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-1.5 sm:gap-2">
-                        {(pay.category === "order" || pay.category === "credit" || !!pay.creditId) && (!pay.items || pay.items.length === 0) && !pay.poImageUrl && (
-                          <button
-                            onClick={() => setSelectedPaymentForPoUpload(pay)}
-                            className="text-xs font-bold bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 border border-blue-500/30 px-3 py-1.5 rounded-xl transition-all flex items-center gap-1 mr-1 cursor-pointer"
-                          >
-                            <Plus size={13} /> Add PO
-                          </button>
-                        )}
-                        <button
-                          onClick={() => {
-                            setSelectedPaymentForView(pay);
-                            playPrinterSound();
-                          }}
-                          className="p-2.5 text-slate-400 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-xl transition-all cursor-pointer"
-                          title="View Receipt"
-                        >
-                          <Eye size={18} />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedPaymentForPrint(pay);
-                            setTimeout(() => generatePDF(pay), 100);
-                          }}
-                          className="p-2.5 text-slate-400 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-xl transition-all cursor-pointer"
-                          title="Print Voucher"
-                        >
-                          <Download size={18} />
-                        </button>
-                        {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
-                          <>
-                            <button
-                              onClick={() => handleOpenEditPayment(pay)}
-                              className="p-2.5 text-slate-400 hover:text-amber-400 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-xl transition-all cursor-pointer"
-                              title={isAr ? "تعديل الفاتورة (خاص بالإدارة)" : "Edit Payment (Admin Only)"}
-                            >
-                              <Pencil size={18} />
-                            </button>
-                            <button 
-                              onClick={() => handleDelete(pay.id)} 
-                              className="p-2.5 text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded-xl transition-all cursor-pointer" 
-                              title={isAr ? "حذف السند" : "Delete Payment"}
-                            >
-                              <Trash2 size={18} />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          )}
 
           {filteredPayments.length === 0 && (
-            <div className="text-center py-16 text-slate-500 font-medium text-xs bg-[#111116] border border-white/[0.06] rounded-2xl">
-              {isAr ? "لا توجد سندات أو مدفوعات مطابقة لمعايير البحث." : "No payments found matching your criteria."}
+            <div className="text-center py-20 text-slate-400 font-medium text-xs bg-[#111116] border border-white/[0.08] rounded-3xl relative overflow-hidden flex flex-col items-center justify-center p-8">
+              <div className="w-16 h-16 rounded-2xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-center text-slate-500 mb-4 shadow-inner">
+                <FileText size={32} className="opacity-40" />
+              </div>
+              <h4 className="text-base font-black text-white mb-1">
+                {isAr ? "لا توجد سندات أو مدفوعات مطابقة" : "No Payments Found"}
+              </h4>
+              <p className="text-xs text-slate-500 max-w-sm">
+                {isAr ? "جرّب تغيير التاريخ أو الفلتر أو كلمة البحث للوصول للسجلات المطلوبة." : "Try adjusting your search criteria, selecting a different time preset, or clearing filters."}
+              </p>
             </div>
           )}
         </div>
@@ -3196,46 +3744,70 @@ html, body {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
+            className="fixed inset-0 bg-[#070709]/80 backdrop-blur-xl z-50 flex items-center justify-center p-4 overflow-y-auto"
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white dark:bg-slate-900 w-full max-w-4xl rounded-3xl shadow-2xl relative my-auto border border-slate-100 dark:border-slate-800"
+              className="bg-[#0e0e13] text-white w-full max-w-4xl rounded-3xl shadow-2xl relative my-auto border border-white/[0.1] overflow-hidden"
             >
+              {/* Multi-Color Ambient Top Glow Strip */}
+              <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 via-amber-400 to-indigo-500" />
+
               <button
                 onClick={handleCloseModal}
-                className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600 bg-slate-100 rounded-full transition-colors"
+                className="absolute top-6 right-6 p-2 text-slate-400 hover:text-white bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] rounded-full transition-colors cursor-pointer"
               >
                 <X size={20} />
               </button>
 
               <form onSubmit={handleSavePayment} className="p-8" dir={isAr ? "rtl" : "ltr"}>
-                <h2 className="text-2xl font-black text-slate-900 dark:text-white pb-6 tracking-tight">
-                  {isAr ? "تسجيل سند صرف / مدفوعات جديدة" : "Record Payment"}
-                </h2>
+                <div className="flex items-center gap-3 pb-6 border-b border-white/[0.08] mb-6">
+                  <div className="w-10 h-10 rounded-2xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400">
+                    <Plus size={20} />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-black text-white tracking-tight">
+                      {isAr ? "تسجيل سند صرف / مدفوعات جديدة" : "Record Payment"}
+                    </h2>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {isAr ? "تسجيل خروج أموال نقدية أو بنكية مع فحص الذكاء الاصطناعي للأصناف" : "Record cash or bank outgoing payment with AI extraction"}
+                    </p>
+                  </div>
+                </div>
 
                 {category === 'order' && (
                   <div
                     onDrop={handleDrop}
                     onDragOver={handleDragOver}
-                    className={`mb-6 border-2 border-dashed rounded-2xl p-6 text-center transition-colors ${isProcessingPo ? 'border-blue-500 bg-blue-50/50' : 'border-slate-300 hover:border-blue-400 bg-slate-50 hover:bg-slate-50/80 dark:bg-slate-800/50 dark:border-slate-700'}`}
+                    className={`mb-6 relative border-2 border-dashed rounded-2xl p-6 text-center transition-all overflow-hidden ${
+                      isProcessingPo
+                        ? 'border-rose-500 bg-rose-500/[0.08] shadow-[0_0_30px_rgba(244,63,94,0.2)]'
+                        : 'border-white/[0.12] hover:border-rose-500/50 bg-white/[0.02] hover:bg-white/[0.04]'
+                    }`}
                   >
+                    {isProcessingPo && (
+                      <motion.div
+                        animate={{ y: ["-100%", "200%"] }}
+                        transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                        className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-rose-400 to-transparent shadow-[0_0_15px_#f43f5e] pointer-events-none"
+                      />
+                    )}
                     {isProcessingPo ? (
-                      <div className="flex flex-col items-center justify-center gap-2 text-blue-600">
+                      <div className="flex flex-col items-center justify-center gap-2 text-rose-400">
                         <Loader2 className="h-8 w-8 animate-spin" />
-                        <span className="font-bold">{isAr ? "جاري قراءة أمر الشراء بالذكاء الاصطناعي..." : "Reading Purchase Order..."}</span>
+                        <span className="font-bold">{isAr ? "جاري قراءة أمر الشراء بالذكاء الاصطناعي..." : "Reading Purchase Order with AI..."}</span>
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center justify-center gap-2 text-slate-500">
-                        <ImageIcon className="h-8 w-8 text-slate-400" />
-                        <span className="font-bold">{isAr ? "اسحب صورة الفاتورة أو امر الشراء هنا" : "Paste or Drop PO Image Here"}</span>
-                        <span className="text-xs">{isAr ? "سيتم استخراج البيانات والأصناف تلقائياً بالذكاء الاصطناعي" : "We'll automatically extract the details using AI"}</span>
+                      <div className="flex flex-col items-center justify-center gap-2 text-slate-400">
+                        <ImageIcon className="h-8 w-8 text-slate-500" />
+                        <span className="font-bold text-white">{isAr ? "اسحب صورة الفاتورة أو أمر الشراء هنا" : "Paste or Drop PO Image Here"}</span>
+                        <span className="text-xs text-slate-400">{isAr ? "سيتم استخراج البيانات والأصناف تلقائياً بالذكاء الاصطناعي" : "We'll automatically extract the details using AI"}</span>
                         <button
                           type="button"
                           onClick={handlePastePoImageButtonClick}
-                          className="mt-2 flex items-center gap-2 px-3 py-1.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-bold rounded-lg transition-colors text-xs"
+                          className="mt-2 flex items-center gap-2 px-3.5 py-1.5 bg-white/[0.06] hover:bg-white/[0.1] text-slate-200 border border-white/[0.08] font-bold rounded-xl transition-colors text-xs cursor-pointer"
                         >
                           <ClipboardPaste size={14} />
                           {isAr ? "لصق من الحافظة" : "Paste from Clipboard"}
@@ -3248,18 +3820,18 @@ html, body {
                 <div className="grid md:grid-cols-2 gap-8">
                   <div className="space-y-6">
                     <div>
-                      <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">
+                      <h3 className="text-xs font-black text-rose-400 uppercase tracking-wider mb-4 border-b border-white/[0.08] pb-2">
                         {isAr ? "البيانات الأساسية" : "Basic Info"}
                       </h3>
                       <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "التاريخ *" : "Date *"}</label>
-                            <input type="date" required className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={date} onChange={(e) => setDate(e.target.value)} />
+                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "التاريخ *" : "Date *"}</label>
+                            <input type="date" required className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] focus:border-rose-500/50 focus:bg-white/[0.06] transition-all outline-none font-medium text-white text-xs" value={date} onChange={(e) => setDate(e.target.value)} />
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "طريقة الدفع *" : "Method *"}</label>
-                            <select className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={method} onChange={(e) => setMethod(e.target.value)}>
+                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "طريقة الدفع *" : "Method *"}</label>
+                            <select className="w-full p-3 rounded-xl bg-[#14141a] border border-white/[0.08] focus:border-rose-500/50 text-white text-xs outline-none font-medium" value={method} onChange={(e) => setMethod(e.target.value)}>
                               <option value="cash">{isAr ? "كاش (نقداً)" : "Cash"}</option>
                               <option value="visa">{isAr ? "فيزا (بطاقة)" : "Visa"}</option>
                               <option value="bank_transfer">{isAr ? "تحويل بنكي" : "Bank Transfer"}</option>
@@ -3269,25 +3841,25 @@ html, body {
 
                         <div>
                           <div className="flex justify-between items-center mb-1">
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">{isAr ? "الشركة / المورد *" : "Company / Supplier *"}</label>
-                            <button type="button" onClick={() => setShowAddSupplier(true)} className="text-[10px] text-blue-600 font-bold hover:underline flex items-center gap-1">
+                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">{isAr ? "الشركة / المورد *" : "Company / Supplier *"}</label>
+                            <button type="button" onClick={() => setShowAddSupplier(true)} className="text-[10px] text-rose-400 font-bold hover:underline flex items-center gap-1">
                               {isAr ? "+ مورد جديد" : "+ New Supplier"}
                             </button>
                           </div>
-                          <select required className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={companyName} onChange={(e) => setCompanyName(e.target.value)}>
+                          <select required className="w-full p-3 rounded-xl bg-[#14141a] border border-white/[0.08] focus:border-rose-500/50 text-white text-xs outline-none font-medium" value={companyName} onChange={(e) => setCompanyName(e.target.value)}>
                             <option value="">{isAr ? "-- اختر المورد --" : "Select a supplier..."}</option>
                             {suppliers.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                           </select>
                         </div>
 
                         <div>
-                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "اسم مندوب/سائق المورد" : "Rep Name"}</label>
-                          <input type="text" placeholder={isAr ? "السائق / المندوب" : "Driver / Representative"} className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={supplierRepName} onChange={(e) => setSupplierRepName(e.target.value)} />
+                          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "اسم مندوب/سائق المورد" : "Rep Name"}</label>
+                          <input type="text" placeholder={isAr ? "السائق / المندوب" : "Driver / Representative"} className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] focus:border-rose-500/50 text-white placeholder:text-slate-500 text-xs outline-none font-medium" value={supplierRepName} onChange={(e) => setSupplierRepName(e.target.value)} />
                         </div>
 
                         <div>
-                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "الرقم القومي للمندوب" : "Rep National ID"}</label>
-                          <input type="text" placeholder={isAr ? "الرقم القومي (١٤ رقم)" : "14-digit ID"} maxLength={14} className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={supplierNationalId} onChange={(e) => setSupplierNationalId(e.target.value)} />
+                          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "الرقم القومي للمندوب" : "Rep National ID"}</label>
+                          <input type="text" placeholder={isAr ? "الرقم القومي (١٤ رقم)" : "14-digit ID"} maxLength={14} className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] focus:border-rose-500/50 text-white placeholder:text-slate-500 text-xs outline-none font-medium font-mono" value={supplierNationalId} onChange={(e) => setSupplierNationalId(e.target.value)} />
                         </div>
 
                         {method === 'bank_transfer' && (
@@ -3327,32 +3899,32 @@ html, body {
 
                   <div className="space-y-6">
                     <div>
-                      <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">
+                      <h3 className="text-xs font-black text-rose-400 uppercase tracking-wider mb-4 border-b border-white/[0.08] pb-2">
                         {isAr ? "البيانات المالية والقيمة" : "Financials"}
                       </h3>
                       <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "المبلغ (قبل الضريبة) *" : "Amount (Before Tax) *"}</label>
-                            <input type="number" required placeholder="0.00" step="0.01" min="0" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-red-500/20 focus:bg-white transition-all outline-none font-bold text-red-600 text-lg" value={amount} onChange={(e) => setAmount(e.target.value)} />
+                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "المبلغ (قبل الضريبة) *" : "Amount (Before Tax) *"}</label>
+                            <input type="number" required placeholder="0.00" step="0.01" min="0" className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] focus:border-rose-500/50 text-rose-400 font-mono font-black text-lg outline-none" value={amount} onChange={(e) => setAmount(e.target.value)} />
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "قيمة الضريبة" : "Tax Amount"}</label>
-                            <input type="number" placeholder="0.00" step="0.01" min="0" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900 text-lg" value={tax} onChange={(e) => setTax(e.target.value)} />
+                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "قيمة الضريبة" : "Tax Amount"}</label>
+                            <input type="number" placeholder="0.00" step="0.01" min="0" className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] focus:border-rose-500/50 text-white font-mono font-bold text-lg outline-none" value={tax} onChange={(e) => setTax(e.target.value)} />
                           </div>
                         </div>
 
                         {/* Total Sum Preview Box (Amount + Tax) */}
-                        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/20 border border-emerald-200/80 dark:border-emerald-800/40 flex items-center justify-between shadow-xs transition-all">
+                        <div className="p-4 rounded-2xl bg-emerald-950/20 border border-emerald-500/30 flex items-center justify-between shadow-xl transition-all">
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-base shadow-xs shrink-0">
+                            <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold text-base shadow-xs shrink-0">
                               <Calculator size={18} />
                             </div>
                             <div>
-                              <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider block">
+                              <span className="text-[11px] font-black text-emerald-400 uppercase tracking-wider block">
                                 {isAr ? "إجمالي المبلغ (شامل الضريبة)" : "Total Amount (Incl. Tax)"}
                               </span>
-                              <span className="text-xs text-emerald-700/80 dark:text-emerald-400/80 font-medium">
+                              <span className="text-[11px] text-slate-400 font-mono">
                                 {(parseFloat(tax) || 0) > 0 ? (
                                   isAr 
                                     ? `${(parseFloat(amount) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} + ${(parseFloat(tax) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ضريبة`
@@ -3364,7 +3936,7 @@ html, body {
                             </div>
                           </div>
                           <div className="text-right shrink-0">
-                            <div className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono tracking-tight">
+                            <div className="text-lg sm:text-xl font-black text-emerald-400 font-mono tracking-tight">
                               EGP {((parseFloat(amount) || 0) + (parseFloat(tax) || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </div>
                           </div>
@@ -3372,9 +3944,9 @@ html, body {
 
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "التصنيف *" : "Category *"}</label>
+                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "التصنيف *" : "Category *"}</label>
                             <select 
-                              className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" 
+                              className="w-full p-3 rounded-xl bg-[#14141a] border border-white/[0.08] focus:border-rose-500/50 text-white text-xs outline-none font-medium" 
                               value={category} 
                               onChange={(e) => {
                                 const newCat = e.target.value;
@@ -3394,20 +3966,20 @@ html, body {
                             </select>
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "ملاحظات" : "Notes"}</label>
-                            <input type="text" placeholder={isAr ? "تفاصيل إضافية..." : "Optional details..."} className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={categoryNote} onChange={(e) => setCategoryNote(e.target.value)} />
+                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "ملاحظات" : "Notes"}</label>
+                            <input type="text" placeholder={isAr ? "تفاصيل إضافية..." : "Optional details..."} className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] focus:border-rose-500/50 text-white text-xs outline-none font-medium placeholder:text-slate-500" value={categoryNote} onChange={(e) => setCategoryNote(e.target.value)} />
                           </div>
                         </div>
 
                         <div className={`grid ${category === "order" ? "grid-cols-2" : "grid-cols-1"} gap-4`}>
                           <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "رقم الفاتورة" : "Invoice #"}</label>
-                            <input type="text" placeholder="INV-123" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} />
+                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "رقم الفاتورة" : "Invoice #"}</label>
+                            <input type="text" placeholder="INV-123" className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] focus:border-rose-500/50 text-white font-mono text-xs outline-none font-medium placeholder:text-slate-500" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} />
                           </div>
                           {category === "order" && (
                             <div>
-                              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{isAr ? "رقم أمر الشراء (PO)" : "PO #"}</label>
-                              <input type="text" placeholder="PO-123" className="w-full p-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none font-medium text-slate-900" value={poNumber} onChange={(e) => setPoNumber(e.target.value)} />
+                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "رقم أمر الشراء (PO)" : "PO #"}</label>
+                              <input type="text" placeholder="PO-123" className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] focus:border-rose-500/50 text-white font-mono text-xs outline-none font-medium placeholder:text-slate-500" value={poNumber} onChange={(e) => setPoNumber(e.target.value)} />
                             </div>
                           )}
                         </div>
@@ -3991,13 +4563,13 @@ html, body {
                 </div>
 
                 {poItems.length > 0 && (
-                  <div className="mt-8 pt-6 border-t border-slate-100">
-                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4">
+                  <div className="mt-8 pt-6 border-t border-white/[0.08]">
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">
                       {isAr ? `الأصناف المستخرجة (${poItems.length})` : `Extracted Items (${poItems.length})`}
                     </h3>
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm text-left" dir={isAr ? "rtl" : "ltr"}>
-                        <thead className="text-xs text-slate-500 bg-slate-50 dark:bg-slate-800/50 uppercase font-bold">
+                        <thead className="text-[11px] text-slate-400 bg-white/[0.04] uppercase font-mono tracking-wider border-b border-white/[0.06]">
                           <tr>
                             <th className="px-4 py-3 rounded-l-xl">{isAr ? "الباركود" : "Barcode"}</th>
                             <th className="px-4 py-3">{isAr ? "الوصف" : "Description"}</th>
@@ -4009,29 +4581,29 @@ html, body {
                         </thead>
                         <tbody>
                           {poItems.map((item, idx) => (
-                            <tr key={idx} className="border-b border-slate-50 dark:border-slate-800/50 last:border-0 font-medium">
+                            <tr key={idx} className="border-b border-white/[0.04] last:border-0 font-medium">
                               <td className="px-2 py-2">
-                                <input type="text" className="w-full p-2 rounded bg-slate-50 border-none focus:ring-1 focus:ring-blue-500 text-sm" value={item.barcode} onChange={e => handlePoItemChange(idx, 'barcode', e.target.value)} />
+                                <input type="text" className="w-full p-2 rounded-lg bg-white/[0.04] border border-white/[0.08] focus:border-rose-500/50 text-white font-mono text-xs outline-none" value={item.barcode} onChange={e => handlePoItemChange(idx, 'barcode', e.target.value)} />
                               </td>
                               <td className="px-2 py-2">
-                                <input type="text" className="w-full p-2 rounded bg-slate-50 border-none focus:ring-1 focus:ring-blue-500 text-sm" value={item.description} onChange={e => handlePoItemChange(idx, 'description', e.target.value)} />
+                                <input type="text" className="w-full p-2 rounded-lg bg-white/[0.04] border border-white/[0.08] focus:border-rose-500/50 text-white text-xs outline-none" value={item.description} onChange={e => handlePoItemChange(idx, 'description', e.target.value)} />
                               </td>
                               <td className="px-2 py-2">
-                                <input type="number" min="1" className="w-full p-2 rounded bg-slate-50 border-none focus:ring-1 focus:ring-blue-500 text-sm text-center" value={item.quantity} onChange={e => handlePoItemChange(idx, 'quantity', parseInt(e.target.value) || 0)} />
+                                <input type="number" min="1" className="w-full p-2 rounded-lg bg-white/[0.04] border border-white/[0.08] focus:border-rose-500/50 text-white text-xs font-mono text-center outline-none" value={item.quantity} onChange={e => handlePoItemChange(idx, 'quantity', parseInt(e.target.value) || 0)} />
                               </td>
                               <td className="px-2 py-2">
-                                <input type="number" min="0" step="0.01" className="w-full p-2 rounded bg-slate-50 border-none focus:ring-1 focus:ring-blue-500 text-sm text-right" value={item.unitPrice} onChange={e => handlePoItemChange(idx, 'unitPrice', parseFloat(e.target.value) || 0)} />
+                                <input type="number" min="0" step="0.01" className="w-full p-2 rounded-lg bg-white/[0.04] border border-white/[0.08] focus:border-rose-500/50 text-white text-xs font-mono text-right outline-none" value={item.unitPrice} onChange={e => handlePoItemChange(idx, 'unitPrice', parseFloat(e.target.value) || 0)} />
                               </td>
-                              <td className="px-4 py-3 text-right font-bold text-slate-900 dark:text-slate-300">{(item.quantity * item.unitPrice).toFixed(2)}</td>
+                              <td className="px-4 py-3 text-right font-bold text-rose-400 font-mono text-xs">{(item.quantity * item.unitPrice).toFixed(2)}</td>
                               <td className="px-2 py-2 text-center">
-                                <button type="button" onClick={() => handleRemovePoItem(idx)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"><Trash2 size={16} /></button>
+                                <button type="button" onClick={() => handleRemovePoItem(idx)} className="p-1.5 text-rose-400/80 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"><Trash2 size={16} /></button>
                               </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                       <div className="mt-3 flex justify-start">
-                        <button type="button" onClick={handleAddPoItem} className="text-sm font-bold text-blue-500 hover:text-blue-600 flex items-center gap-1 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors">
+                        <button type="button" onClick={handleAddPoItem} className="text-xs font-bold text-rose-400 hover:text-rose-300 flex items-center gap-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
                           {isAr ? "+ إضافة صنف" : "+ Add Item"}
                         </button>
                       </div>
@@ -4039,18 +4611,18 @@ html, body {
                   </div>
                 )}
 
-                <div className="mt-8 pt-6 border-t border-slate-100 flex justify-end gap-3">
+                <div className="mt-8 pt-6 border-t border-white/[0.08] flex justify-end gap-3">
                   <button
                     type="button"
                     onClick={handleCloseModal}
-                    className="px-6 py-3 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
+                    className="px-6 py-3 rounded-xl font-bold text-slate-300 bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] transition-all cursor-pointer text-sm"
                   >
                     {isAr ? "إلغاء" : "Cancel"}
                   </button>
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-8 py-3 rounded-xl font-bold shadow-md shadow-red-500/20 hover:shadow-red-500/40 hover:-translate-y-0.5 transition-all flex items-center gap-2 cursor-pointer"
+                    className="bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 hover:from-rose-500 hover:to-red-500 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-rose-600/30 hover:shadow-rose-600/50 hover:-translate-y-0.5 transition-all flex items-center gap-2 cursor-pointer text-sm"
                   >
                     {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : (isAr ? "حفظ وطباعة السند" : "Save & Print Receipt")}
                   </button>
@@ -4067,34 +4639,35 @@ html, body {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-[60] flex items-center justify-center p-4"
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl p-6 shadow-2xl"
+              className="bg-[#0e0e13] border border-white/[0.12] text-white w-full max-w-sm rounded-3xl p-6 shadow-2xl relative overflow-hidden"
             >
-              <h3 className="text-xl font-black text-slate-900 dark:text-white mb-4 tracking-tight">Add New Supplier</h3>
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-500 via-indigo-500 to-amber-500" />
+              <h3 className="text-lg font-black text-white mb-4 tracking-tight">Add New Supplier</h3>
               <input
                 type="text"
                 value={newSupplierName}
                 onChange={(e) => setNewSupplierName(e.target.value)}
                 placeholder="e.g. COCA COLA EG"
-                className="w-full border-none bg-slate-50 focus:ring-2 focus:ring-blue-500/20 rounded-xl p-3 text-slate-900 font-medium mb-6 outline-none"
+                className="w-full bg-white/[0.04] border border-white/[0.1] focus:border-rose-500/50 rounded-xl p-3 text-white font-medium mb-6 outline-none text-sm placeholder:text-slate-500"
                 autoFocus
               />
               <div className="flex gap-3 justify-end">
                 <button
                   onClick={() => setShowAddSupplier(false)}
-                  className="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 rounded-xl transition-colors"
+                  className="px-4 py-2 text-slate-300 font-bold bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] rounded-xl transition-all cursor-pointer text-sm"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleAddSupplier}
                   disabled={!newSupplierName.trim()}
-                  className="px-5 py-2 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm"
+                  className="px-5 py-2 bg-gradient-to-r from-rose-600 to-red-600 text-white font-bold rounded-xl hover:from-rose-500 hover:to-red-500 disabled:opacity-50 transition-all shadow-md shadow-rose-600/30 cursor-pointer text-sm"
                 >
                   Use Supplier
                 </button>
@@ -4640,33 +5213,34 @@ html, body {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4 overflow-y-auto"
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-[70] flex items-center justify-center p-4 overflow-y-auto"
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
-              className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-3xl shadow-2xl relative my-auto border border-slate-100 dark:border-slate-800 overflow-hidden flex flex-col max-h-[92vh]"
+              className="bg-[#0e0e13] border border-white/[0.12] text-white w-full max-w-2xl rounded-3xl shadow-2xl relative my-auto overflow-hidden flex flex-col max-h-[92vh]"
             >
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600" />
               {/* Header */}
-              <div className="flex justify-between items-center p-6 border-b border-amber-100 dark:border-amber-900/30 bg-gradient-to-r from-amber-50/80 via-orange-50/40 to-transparent dark:from-amber-950/20 dark:to-transparent" dir={isAr ? "rtl" : "ltr"}>
+              <div className="flex justify-between items-center p-6 border-b border-white/[0.08] bg-white/[0.02]" dir={isAr ? "rtl" : "ltr"}>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center font-black">
+                  <div className="w-10 h-10 rounded-2xl bg-amber-500/15 text-amber-400 flex items-center justify-center font-black border border-amber-500/30">
                     <Pencil size={20} />
                   </div>
                   <div>
-                    <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
+                    <h2 className="text-xl font-black text-white tracking-tight">
                       {isAr ? "تعديل سند الصرف (خاص بالإدارة)" : "Edit Payment Invoice (Admin Only)"}
                     </h2>
-                    <p className="text-xs font-bold text-amber-600/80 dark:text-amber-400/80 mt-0.5">
+                    <p className="text-xs font-bold text-amber-400/80 mt-0.5">
                       {isAr ? "سيتم تسجيل وتتبع كافة التعديلات تلقائياً في سجل الرقابة" : "All modifications will be tracked automatically in the audit log"}
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => { setShowEditModal(false); setEditingPayment(null); }}
-                  className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                  className="p-2 text-slate-400 hover:text-white rounded-full bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] transition-colors cursor-pointer"
                 >
                   <X size={20} />
                 </button>
@@ -4678,7 +5252,7 @@ html, body {
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
                         {isAr ? "التاريخ *" : "Date *"}
                       </label>
                       <input
@@ -4686,26 +5260,26 @@ html, body {
                         required
                         value={editDate}
                         onChange={(e) => setEditDate(e.target.value)}
-                        className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500/20"
+                        className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] font-mono text-sm text-white outline-none focus:border-amber-500/50"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
                         {isAr ? "الشركة / المورد *" : "Company / Supplier *"}
                       </label>
                       <select
                         required
                         value={editCompanyName}
                         onChange={(e) => setEditCompanyName(e.target.value)}
-                        className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500/20"
+                        className="w-full p-3 rounded-xl bg-[#14141c] border border-white/[0.08] font-medium text-white outline-none focus:border-amber-500/50 text-sm"
                       >
-                        <option value="">{isAr ? "-- اختر المورد --" : "Select a supplier..."}</option>
+                        <option value="" className="bg-[#14141c] text-slate-400">{isAr ? "-- اختر المورد --" : "Select a supplier..."}</option>
                         {suppliers.map((s) => (
-                          <option key={s.id} value={s.name}>{s.name}</option>
+                          <option key={s.id} value={s.name} className="bg-[#14141c] text-white">{s.name}</option>
                         ))}
                         {editCompanyName && !suppliers.some(s => s.name === editCompanyName) && (
-                          <option value={editCompanyName}>{editCompanyName}</option>
+                          <option value={editCompanyName} className="bg-[#14141c] text-white">{editCompanyName}</option>
                         )}
                       </select>
                     </div>
@@ -4713,7 +5287,7 @@ html, body {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
                         {isAr ? "المبلغ (قبل الضريبة) *" : "Amount (Before Tax) *"}
                       </label>
                       <input
@@ -4723,12 +5297,12 @@ html, body {
                         min="0"
                         value={editAmount}
                         onChange={(e) => setEditAmount(e.target.value)}
-                        className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 font-black text-red-600 text-lg outline-none focus:ring-2 focus:ring-amber-500/20"
+                        className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] font-black text-rose-400 text-lg outline-none focus:border-amber-500/50 font-mono"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
                         {isAr ? "قيمة الضريبة" : "Tax Amount"}
                       </label>
                       <input
@@ -4737,22 +5311,22 @@ html, body {
                         min="0"
                         value={editTax}
                         onChange={(e) => setEditTax(e.target.value)}
-                        className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-white text-lg outline-none focus:ring-2 focus:ring-amber-500/20"
+                        className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] font-bold text-white text-lg outline-none focus:border-amber-500/50 font-mono"
                       />
                     </div>
                   </div>
 
                   {/* Real-time Calculation Box */}
-                  <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/20 border border-emerald-200/80 dark:border-emerald-800/40 flex items-center justify-between shadow-xs">
+                  <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-500/5 border border-emerald-500/30 flex items-center justify-between shadow-xs">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-base shadow-xs shrink-0">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-base shadow-xs shrink-0 border border-emerald-500/30">
                         <Calculator size={18} />
                       </div>
                       <div>
-                        <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider block">
+                        <span className="text-[11px] font-bold text-emerald-300 uppercase tracking-wider block">
                           {isAr ? "إجمالي المبلغ المعدل (شامل الضريبة)" : "Total Updated Amount (Incl. Tax)"}
                         </span>
-                        <span className="text-xs text-emerald-700/80 dark:text-emerald-400/80 font-medium">
+                        <span className="text-xs text-emerald-400/80 font-medium">
                           {(parseFloat(editTax) || 0) > 0 ? (
                             isAr 
                               ? `${(parseFloat(editAmount) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} + ${(parseFloat(editTax) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ضريبة`
@@ -4764,7 +5338,7 @@ html, body {
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono tracking-tight">
+                      <div className="text-lg sm:text-xl font-black text-emerald-400 font-mono tracking-tight">
                         EGP {((parseFloat(editAmount) || 0) + (parseFloat(editTax) || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </div>
                     </div>
@@ -4772,22 +5346,22 @@ html, body {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
                         {isAr ? "طريقة الدفع *" : "Payment Method *"}
                       </label>
                       <select
                         value={editMethod}
                         onChange={(e) => setEditMethod(e.target.value)}
-                        className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500/20"
+                        className="w-full p-3 rounded-xl bg-[#14141c] border border-white/[0.08] font-medium text-white outline-none focus:border-amber-500/50 text-sm"
                       >
-                        <option value="cash">{isAr ? "💵 كاش (نقداً)" : "💵 Cash"}</option>
-                        <option value="visa">{isAr ? "💳 فيزا" : "💳 Visa"}</option>
-                        <option value="bank_transfer">{isAr ? "🏦 تحويل بنكي" : "🏦 Bank Transfer"}</option>
+                        <option value="cash" className="bg-[#14141c] text-white">{isAr ? "💵 كاش (نقداً)" : "💵 Cash"}</option>
+                        <option value="visa" className="bg-[#14141c] text-white">{isAr ? "💳 فيزا" : "💳 Visa"}</option>
+                        <option value="bank_transfer" className="bg-[#14141c] text-white">{isAr ? "🏦 تحويل بنكي" : "🏦 Bank Transfer"}</option>
                       </select>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
                         {isAr ? "التصنيف *" : "Category *"}
                       </label>
                       <select
@@ -4799,48 +5373,48 @@ html, body {
                             setEditPoNumber("");
                           }
                         }}
-                        className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500/20"
+                        className="w-full p-3 rounded-xl bg-[#14141c] border border-white/[0.08] font-medium text-white outline-none focus:border-amber-500/50 text-sm"
                       >
-                        <option value="order">{isAr ? "طلبات وبضائع" : "Order"}</option>
-                        <option value="credit">{isAr ? "سداد مديونية مورد / آجل" : "Credit Debt Payment"}</option>
-                        <option value="maintenance">{isAr ? "صيانة" : "Maintenance"}</option>
-                        <option value="utilities">{isAr ? "مرافق وخدمات" : "Utilities"}</option>
-                        <option value="transportation">{isAr ? "نقل ونولون" : "Transportation"}</option>
-                        <option value="other">{isAr ? "مصروفات أخرى" : "Other / Misc"}</option>
+                        <option value="order" className="bg-[#14141c] text-white">{isAr ? "طلبات وبضائع" : "Order"}</option>
+                        <option value="credit" className="bg-[#14141c] text-white">{isAr ? "سداد مديونية مورد / آجل" : "Credit Debt Payment"}</option>
+                        <option value="maintenance" className="bg-[#14141c] text-white">{isAr ? "صيانة" : "Maintenance"}</option>
+                        <option value="utilities" className="bg-[#14141c] text-white">{isAr ? "مرافق وخدمات" : "Utilities"}</option>
+                        <option value="transportation" className="bg-[#14141c] text-white">{isAr ? "نقل ونولون" : "Transportation"}</option>
+                        <option value="other" className="bg-[#14141c] text-white">{isAr ? "مصروفات أخرى" : "Other / Misc"}</option>
                       </select>
                     </div>
                   </div>
 
                   <div className={`grid ${(editCategory === "order" || editCategory === "credit") ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"} gap-4`}>
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
                         {isAr ? "رقم الفاتورة" : "Invoice #"}
                       </label>
                       <input
                         type="text"
                         value={editInvoiceNumber}
                         onChange={(e) => setEditInvoiceNumber(e.target.value)}
-                        className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500/20"
+                        className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] font-mono text-xs text-white outline-none focus:border-amber-500/50"
                       />
                     </div>
 
                     {(editCategory === "order" || editCategory === "credit") && (
                       <div>
-                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
                           {isAr ? "رقم أمر الشراء (PO)" : "PO #"}
                         </label>
                         <input
                           type="text"
                           value={editPoNumber}
                           onChange={(e) => setEditPoNumber(e.target.value)}
-                          className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500/20"
+                          className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] font-mono text-xs text-white outline-none focus:border-amber-500/50"
                         />
                       </div>
                     )}
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
                       {isAr ? "ملاحظات" : "Notes"}
                     </label>
                     <input
@@ -4848,25 +5422,25 @@ html, body {
                       value={editCategoryNote}
                       onChange={(e) => setEditCategoryNote(e.target.value)}
                       placeholder={isAr ? "تفاصيل إضافية أو سبب التعديل..." : "Optional details or reason for edit..."}
-                      className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500/20"
+                      className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white outline-none focus:border-amber-500/50 placeholder:text-slate-500"
                     />
                   </div>
 
                 </div>
 
                 {/* Footer */}
-                <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex justify-end gap-3">
+                <div className="p-6 border-t border-white/[0.08] bg-white/[0.02] flex justify-end gap-3">
                   <button
                     type="button"
                     onClick={() => { setShowEditModal(false); setEditingPayment(null); }}
-                    className="px-6 py-2.5 rounded-xl font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                    className="px-6 py-2.5 rounded-xl font-bold text-slate-300 bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] transition-colors cursor-pointer text-sm"
                   >
                     {isAr ? "إلغاء" : "Cancel"}
                   </button>
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="px-7 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 shadow-md shadow-amber-500/20 hover:shadow-amber-500/40 hover:-translate-y-0.5 transition-all flex items-center gap-2 cursor-pointer"
+                    className="px-7 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 hover:from-amber-600 hover:to-orange-700 shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 hover:-translate-y-0.5 transition-all flex items-center gap-2 cursor-pointer text-sm"
                   >
                     {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : (
                       <>
