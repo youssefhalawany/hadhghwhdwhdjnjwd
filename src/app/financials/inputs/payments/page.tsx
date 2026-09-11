@@ -905,7 +905,12 @@ import {
   Calculator,
   Pencil,
   RotateCcw,
-  Undo2
+  Undo2,
+  Sparkles,
+  Package,
+  Zap,
+  Truck,
+  Wrench
 } from "lucide-react";
 import { ReturnReceiptContent, PendingReturnTicket, groupPendingReturns } from "@/components/ReturnReceiptContent";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, LineChart, Line, XAxis, YAxis } from 'recharts';
@@ -2654,173 +2659,298 @@ html, body {
   }
 
   return (
-    <div className="min-h-screen bg-[#09090B] text-slate-100 pb-28 relative">
+    <div className="min-h-screen bg-[#070709] text-white font-sans selection:bg-rose-500 selection:text-white pb-28 relative overflow-x-hidden">
+      {/* LUXURY RADIAL AMBIENT BACKGROUND GLOWS (Matching Main Executive Hub) */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute top-[-10%] right-[-10%] w-[650px] h-[650px] bg-gradient-to-br from-rose-600/15 via-red-600/5 to-transparent rounded-full blur-[140px]" />
+        <div className="absolute top-[30%] left-[-10%] w-[600px] h-[600px] bg-gradient-to-br from-purple-600/10 via-indigo-600/5 to-transparent rounded-full blur-[140px]" />
+        <div className="absolute bottom-[-10%] right-[20%] w-[700px] h-[700px] bg-gradient-to-tr from-emerald-600/10 via-teal-600/5 to-transparent rounded-full blur-[160px]" />
+        {/* Subtle VIP Grid Mesh Overlay */}
+        <div 
+          className="absolute inset-0 opacity-[0.025]" 
+          style={{ 
+            backgroundImage: `radial-gradient(rgba(255, 255, 255, 0.4) 1px, transparent 1px)`, 
+            backgroundSize: "24px 24px" 
+          }} 
+        />
+      </div>
+
       {isSyncing && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#16161d]/90 border border-red-500/30 text-rose-400 text-xs font-bold shadow-2xl backdrop-blur-md animate-pulse pointer-events-none">
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#16161d]/90 border border-rose-500/30 text-rose-400 text-xs font-bold shadow-2xl backdrop-blur-md animate-pulse pointer-events-none">
           <span className="w-2 h-2 rounded-full bg-rose-400 animate-ping" />
           <span>{isAr ? "مزامنة لحظية..." : "Live cloud sync..."}</span>
         </div>
       )}
 
-      <div className="p-1 sm:p-4 md:p-6 max-w-7xl mx-auto space-y-4 sm:space-y-6">
+      <div className="relative z-10 p-2 sm:p-4 md:p-6 max-w-7xl mx-auto space-y-5 sm:space-y-7">
 
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        {/* TOP VIP HEADER STRIP */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-white/[0.07]">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-              {isAr ? "إدارة ومراقبة المدفوعات" : "Payments Control"}
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-red-500/10 via-rose-500/10 to-amber-500/10 border border-rose-500/20 text-rose-400 text-xs font-black tracking-wider uppercase mb-2">
+              <Sparkles className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
+              <span>{isAr ? "العمليات المالية • إدارة المصروفات والمدفوعات" : "Financial Operations • Corporate Outgoings"}</span>
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight leading-tight">
+              {isAr ? (
+                <>
+                  إدارة ومراقبة{" "}
+                  <span className="bg-gradient-to-r from-rose-400 via-red-300 to-amber-300 bg-clip-text text-transparent">
+                    المدفوعات
+                  </span>
+                </>
+              ) : (
+                <>
+                  Payments{" "}
+                  <span className="bg-gradient-to-r from-rose-400 via-red-300 to-amber-300 bg-clip-text text-transparent">
+                    Control
+                  </span>
+                </>
+              )}
             </h1>
-            <p className="text-xs sm:text-sm text-zinc-400 font-medium mt-1">
+            <p className="text-xs sm:text-sm text-slate-400 font-normal mt-1">
               {isAr ? "متابعة وإدارة جميع مدفوعات ومصروفات الشركة والفرع." : "Track and manage all corporate outgoings."}
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 bg-[#18181B] border border-white/10 text-zinc-300 px-4 py-2.5 rounded-xl font-semibold shadow-sm hover:bg-zinc-800 transition-all cursor-pointer">
-              <FileDown size={18} /> {isAr ? "تصدير الكل" : "Export All"}
+            <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-xs font-bold text-slate-300 hover:text-white transition-all shadow-sm cursor-pointer">
+              <FileDown size={16} /> {isAr ? "تصدير الكل" : "Export All"}
             </button>
             <button
               onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-2 text-white px-5 py-2.5 rounded-xl font-extrabold shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+              className="flex items-center gap-2 text-white px-5 py-2.5 rounded-xl text-xs font-black shadow-lg shadow-red-600/30 border border-white/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
               style={{ background: 'linear-gradient(135deg, #E11D48, #F97316)', boxShadow: '0 4px 16px rgba(225,29,72,0.3)' }}
             >
-              <Plus size={20} /> {isAr ? "تسجيل مدفوعات جديدة" : "Record Payment"}
+              <Plus size={18} /> {isAr ? "تسجيل مدفوعات جديدة" : "Record Payment"}
             </button>
           </div>
         </div>
 
-        {/* NEW DASHBOARD TOP */}
+        {/* DASHBOARD TOP BENTO GRID */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-1 bg-[#18181B] border border-white/10 p-6 rounded-3xl shadow-xl flex flex-col justify-center">
-            <h3 className="text-lg font-black text-white tracking-tight mb-4 flex items-center gap-2">
-              <PieChartIcon className="text-rose-500" size={20} /> {isAr ? "توزيع المصروفات" : "Spending Breakdown"}
-            </h3>
-            <div className="h-64 w-full">
-              {Object.keys(categoryStats).length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={Object.entries(categoryStats).map(([name, val]) => ({ name, value: val.total }))}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      {Object.entries(categoryStats).map(([name], index) => {
-                        const COLORS = ['#e11d48', '#f97316', '#3b82f6', '#10b981', '#8b5cf6', '#a1a1aa'];
-                        return <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />;
-                      })}
-                    </Pie>
-                    <RechartsTooltip
-                      formatter={(value: any) => `EGP ${Number(value).toLocaleString()}`}
-                      contentStyle={{ background: '#09090B', border: '1px solid rgba(255,255,255,0.1)', color: '#FAFAFA', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0, 0, 0, 0.5)' }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-full flex items-center justify-center text-zinc-500 font-medium text-sm">
-                  {isAr ? "لا توجد بيانات لهذه الفترة" : "No data for this period"}
+          {/* Donut Chart Bento Presentation Card */}
+          <div className="lg:col-span-1 rounded-[28px] p-6 bg-[#111116] border border-white/[0.08] hover:border-rose-500/30 shadow-2xl relative overflow-hidden flex flex-col justify-between transition-all group">
+            <div className="absolute top-[-30px] right-[-30px] w-48 h-48 bg-gradient-to-br from-rose-500/15 via-purple-600/10 to-transparent rounded-full blur-3xl pointer-events-none" />
+
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400">
+                    <PieChartIcon size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-white tracking-tight">
+                      {isAr ? "توزيع المصروفات" : "Spending Breakdown"}
+                    </h3>
+                    <span className="text-[11px] text-slate-400 font-medium">
+                      {isAr ? "تحليل النفقات حسب الفئة" : "Outgoings by category"}
+                    </span>
+                  </div>
                 </div>
-              )}
+              </div>
+
+              <div className="h-64 w-full">
+                {Object.keys(categoryStats).length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={Object.entries(categoryStats).map(([name, val]) => ({ name, value: val.total }))}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={82}
+                        paddingAngle={5}
+                        dataKey="value"
+                        stroke="none"
+                      >
+                        {Object.entries(categoryStats).map(([name], index) => {
+                          const COLORS = ['#e11d48', '#f97316', '#3b82f6', '#10b981', '#8b5cf6', '#a1a1aa'];
+                          return <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />;
+                        })}
+                      </Pie>
+                      <RechartsTooltip
+                        formatter={(value: any) => `EGP ${Number(value).toLocaleString()}`}
+                        contentStyle={{ background: '#16161d', border: '1px solid rgba(255,255,255,0.1)', color: '#FAFAFA', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0, 0, 0, 0.5)' }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-slate-500 font-medium text-xs">
+                    {isAr ? "لا توجد بيانات لهذه الفترة" : "No data for this period"}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
+          {/* Category Intelligence Bento Grid */}
           <div className="lg:col-span-2 grid grid-cols-2 md:grid-cols-3 gap-4">
             {categoryStats["order"] && (
-              <motion.div whileHover={{ y: -4 }} className="bg-[#18181B] border border-blue-500/20 p-5 rounded-3xl shadow-md relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-5xl">📦</div>
-                <div className="flex items-center gap-2 text-blue-400 mb-3">
-                  <span className="text-sm font-black tracking-wide uppercase">{isAr ? "طلبات وبضائع" : "Order"}</span>
+              <motion.div whileHover={{ y: -4 }} className="rounded-[24px] p-5 bg-[#111116] border border-blue-500/30 hover:border-blue-400/60 shadow-xl relative overflow-hidden group transition-all flex flex-col justify-between">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/20 via-indigo-500/10 to-transparent rounded-full blur-2xl pointer-events-none" />
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="w-9 h-9 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400">
+                      <Package size={18} />
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/[0.05] border border-white/[0.08] text-blue-300 font-mono">
+                      {categoryStats["order"].count} {isAr ? "سند" : "payment(s)"}
+                    </span>
+                  </div>
+                  <span className="text-xs font-black tracking-wider uppercase text-blue-400 block mb-1">
+                    {isAr ? "طلبات وبضائع" : "Order"}
+                  </span>
                 </div>
-                <p className="text-2xl font-black text-white tracking-tight relative z-10">EGP {categoryStats["order"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                <p className="text-xs font-bold text-blue-400/80 mt-1 relative z-10">{categoryStats["order"].count} {isAr ? "سند" : "payment(s)"}</p>
+                <div>
+                  <p className="text-2xl font-black font-mono text-white tracking-tight relative z-10">
+                    <span className="text-xs font-bold text-blue-400/80 mr-1">EGP</span>
+                    {categoryStats["order"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
               </motion.div>
             )}
             {categoryStats["utilities"] && (
-              <motion.div whileHover={{ y: -4 }} className="bg-[#18181B] border border-amber-500/20 p-5 rounded-3xl shadow-md relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-5xl">💡</div>
-                <div className="flex items-center gap-2 text-amber-400 mb-3">
-                  <span className="text-sm font-black tracking-wide uppercase">{isAr ? "المرافق والخدمات" : "Utilities"}</span>
+              <motion.div whileHover={{ y: -4 }} className="rounded-[24px] p-5 bg-[#111116] border border-amber-500/30 hover:border-amber-400/60 shadow-xl relative overflow-hidden group transition-all flex flex-col justify-between">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-amber-500/20 via-orange-500/10 to-transparent rounded-full blur-2xl pointer-events-none" />
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                      <Zap size={18} />
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/[0.05] border border-white/[0.08] text-amber-300 font-mono">
+                      {categoryStats["utilities"].count} {isAr ? "سند" : "payment(s)"}
+                    </span>
+                  </div>
+                  <span className="text-xs font-black tracking-wider uppercase text-amber-400 block mb-1">
+                    {isAr ? "المرافق والخدمات" : "Utilities"}
+                  </span>
                 </div>
-                <p className="text-2xl font-black text-white tracking-tight relative z-10">EGP {categoryStats["utilities"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                <p className="text-xs font-bold text-amber-400/80 mt-1 relative z-10">{categoryStats["utilities"].count} {isAr ? "سند" : "payment(s)"}</p>
+                <div>
+                  <p className="text-2xl font-black font-mono text-white tracking-tight relative z-10">
+                    <span className="text-xs font-bold text-amber-400/80 mr-1">EGP</span>
+                    {categoryStats["utilities"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
               </motion.div>
             )}
             {categoryStats["maintenance"] && (
-              <motion.div whileHover={{ y: -4 }} className="bg-[#18181B] border border-purple-500/20 p-5 rounded-3xl shadow-md relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-5xl">🔧</div>
-                <div className="flex items-center gap-2 text-purple-400 mb-3">
-                  <span className="text-sm font-black tracking-wide uppercase">{isAr ? "الصيانة" : "Maintenance"}</span>
+              <motion.div whileHover={{ y: -4 }} className="rounded-[24px] p-5 bg-[#111116] border border-purple-500/30 hover:border-purple-400/60 shadow-xl relative overflow-hidden group transition-all flex flex-col justify-between">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/20 via-indigo-500/10 to-transparent rounded-full blur-2xl pointer-events-none" />
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="w-9 h-9 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                      <Wrench size={18} />
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/[0.05] border border-white/[0.08] text-purple-300 font-mono">
+                      {categoryStats["maintenance"].count} {isAr ? "سند" : "payment(s)"}
+                    </span>
+                  </div>
+                  <span className="text-xs font-black tracking-wider uppercase text-purple-400 block mb-1">
+                    {isAr ? "الصيانة" : "Maintenance"}
+                  </span>
                 </div>
-                <p className="text-2xl font-black text-white tracking-tight relative z-10">EGP {categoryStats["maintenance"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                <p className="text-xs font-bold text-purple-400/80 mt-1 relative z-10">{categoryStats["maintenance"].count} {isAr ? "سند" : "payment(s)"}</p>
+                <div>
+                  <p className="text-2xl font-black font-mono text-white tracking-tight relative z-10">
+                    <span className="text-xs font-bold text-purple-400/80 mr-1">EGP</span>
+                    {categoryStats["maintenance"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
               </motion.div>
             )}
             {categoryStats["transportation"] && (
-              <motion.div whileHover={{ y: -4 }} className="bg-[#18181B] border border-emerald-500/20 p-5 rounded-3xl shadow-md relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-5xl">🚚</div>
-                <div className="flex items-center gap-2 text-emerald-400 mb-3">
-                  <span className="text-sm font-black tracking-wide uppercase">{isAr ? "النقل والنولون" : "Transportation"}</span>
+              <motion.div whileHover={{ y: -4 }} className="rounded-[24px] p-5 bg-[#111116] border border-emerald-500/30 hover:border-emerald-400/60 shadow-xl relative overflow-hidden group transition-all flex flex-col justify-between">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-500/20 via-teal-500/10 to-transparent rounded-full blur-2xl pointer-events-none" />
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                      <Truck size={18} />
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/[0.05] border border-white/[0.08] text-emerald-300 font-mono">
+                      {categoryStats["transportation"].count} {isAr ? "سند" : "payment(s)"}
+                    </span>
+                  </div>
+                  <span className="text-xs font-black tracking-wider uppercase text-emerald-400 block mb-1">
+                    {isAr ? "النقل والنولون" : "Transportation"}
+                  </span>
                 </div>
-                <p className="text-2xl font-black text-white tracking-tight relative z-10">EGP {categoryStats["transportation"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                <p className="text-xs font-bold text-emerald-400/80 mt-1 relative z-10">{categoryStats["transportation"].count} {isAr ? "سند" : "payment(s)"}</p>
+                <div>
+                  <p className="text-2xl font-black font-mono text-white tracking-tight relative z-10">
+                    <span className="text-xs font-bold text-emerald-400/80 mr-1">EGP</span>
+                    {categoryStats["transportation"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
               </motion.div>
             )}
             {categoryStats["other"] && (
-              <motion.div whileHover={{ y: -4 }} className="bg-[#18181B] border border-rose-500/20 p-5 rounded-3xl shadow-md relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-5xl">📝</div>
-                <div className="flex items-center gap-2 text-rose-400 mb-3">
-                  <span className="text-sm font-black tracking-wide uppercase">{isAr ? "مصروفات أخرى" : "Other"}</span>
+              <motion.div whileHover={{ y: -4 }} className="rounded-[24px] p-5 bg-[#111116] border border-rose-500/30 hover:border-rose-400/60 shadow-xl relative overflow-hidden group transition-all flex flex-col justify-between">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-rose-500/20 via-red-500/10 to-transparent rounded-full blur-2xl pointer-events-none" />
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="w-9 h-9 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400">
+                      <FileText size={18} />
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/[0.05] border border-white/[0.08] text-rose-300 font-mono">
+                      {categoryStats["other"].count} {isAr ? "سند" : "payment(s)"}
+                    </span>
+                  </div>
+                  <span className="text-xs font-black tracking-wider uppercase text-rose-400 block mb-1">
+                    {isAr ? "مصروفات أخرى" : "Other"}
+                  </span>
                 </div>
-                <p className="text-2xl font-black text-white tracking-tight relative z-10">EGP {categoryStats["other"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                <p className="text-xs font-bold text-rose-400/80 mt-1 relative z-10">{categoryStats["other"].count} {isAr ? "سند" : "payment(s)"}</p>
+                <div>
+                  <p className="text-2xl font-black font-mono text-white tracking-tight relative z-10">
+                    <span className="text-xs font-bold text-rose-400/80 mr-1">EGP</span>
+                    {categoryStats["other"].total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
               </motion.div>
             )}
           </div>
         </div>
 
-        <div className="bg-[#18181B] backdrop-blur-md border border-white/10 p-2 rounded-2xl shadow-xl flex flex-col md:flex-row gap-2">
+        {/* SEARCH & MONTH PICKER BAR */}
+        <div className="bg-[#111116] border border-white/[0.08] focus-within:border-rose-500/40 p-2 rounded-2xl shadow-xl flex flex-col md:flex-row gap-2 transition-all">
           <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={20} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input
               type="text"
               placeholder={isAr ? "ابحث باسم الشركة، رقم الفاتورة، أو أمر الشراء..." : "Search company, invoice, PO number..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 rounded-xl bg-transparent focus:bg-zinc-800/80 transition-colors border-none outline-none text-white placeholder:text-zinc-500 font-medium"
+              className="w-full pl-11 pr-4 py-2.5 rounded-xl bg-transparent focus:bg-white/[0.03] transition-colors border-none outline-none text-white placeholder:text-slate-500 text-xs font-medium"
             />
           </div>
-          <div className="h-px md:h-auto md:w-px bg-white/10"></div>
+          <div className="h-px md:h-auto md:w-px bg-white/[0.08]"></div>
           <input
             type="month"
             value={monthFilter}
             onChange={(e) => setMonthFilter(e.target.value)}
-            className="w-full md:w-64 px-4 py-3 rounded-xl bg-transparent hover:bg-zinc-800/80 focus:bg-zinc-800 transition-colors border-none outline-none text-white font-extrabold cursor-pointer"
+            className="w-full md:w-64 px-4 py-2.5 rounded-xl bg-white/[0.02] hover:bg-white/[0.05] focus:bg-white/[0.05] transition-colors border border-white/[0.06] outline-none text-white text-xs font-mono font-bold cursor-pointer"
           />
         </div>
 
+        {/* BULK ACTION BAR */}
         {selectedBulkItems.size > 0 && (
-          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-4">
-            <div className="flex items-center gap-3 text-blue-700">
-              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center font-bold">
+          <div className="bg-[#111116] border border-blue-500/40 rounded-2xl p-4 flex items-center justify-between shadow-2xl animate-in fade-in slide-in-from-top-4">
+            <div className="flex items-center gap-3 text-blue-400">
+              <div className="w-8 h-8 rounded-xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center font-bold text-xs text-blue-300 font-mono">
                 {selectedBulkItems.size}
               </div>
-              <span className="font-bold text-sm">Payments Selected</span>
+              <span className="font-bold text-xs text-white">Payments Selected</span>
             </div>
             <div className="flex gap-2">
               <button
                 onClick={() => setSelectedBulkItems(new Set())}
-                className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
+                className="px-3.5 py-1.5 text-xs font-bold text-slate-400 hover:text-white hover:bg-white/[0.06] rounded-xl transition-colors cursor-pointer"
               >
                 Clear
               </button>
               <button
                 onClick={generateBulkPDF}
                 disabled={isGeneratingBulkPDF}
-                className="px-5 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm transition-colors flex items-center gap-2"
+                className="px-4 py-1.5 text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-xl shadow-lg shadow-blue-600/30 border border-white/20 transition-all flex items-center gap-2 cursor-pointer"
               >
-                {isGeneratingBulkPDF ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer size={16} />}
+                {isGeneratingBulkPDF ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Printer size={15} />}
                 {isGeneratingBulkPDF ? 'Generating...' : 'Bulk Print PDF'}
               </button>
             </div>
@@ -2830,19 +2960,19 @@ html, body {
         {/* Mobile-Only Summary & Method Filter Pills (Strictly md:hidden) */}
         <div className="md:hidden space-y-3">
           <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="p-3 rounded-2xl bg-[#0B1121] border border-emerald-500/30">
+            <div className="p-3 rounded-2xl bg-[#111116] border border-emerald-500/30">
               <p className="text-[10px] font-extrabold text-slate-400 uppercase">Cash Paid</p>
               <p className="text-sm font-black font-mono text-emerald-400 mt-0.5">
                 EGP {methodTotals.cash.toLocaleString()}
               </p>
             </div>
-            <div className="p-3 rounded-2xl bg-[#0B1121] border border-blue-500/30">
+            <div className="p-3 rounded-2xl bg-[#111116] border border-blue-500/30">
               <p className="text-[10px] font-extrabold text-slate-400 uppercase">Visa Paid</p>
               <p className="text-sm font-black font-mono text-blue-400 mt-0.5">
                 EGP {methodTotals.visa.toLocaleString()}
               </p>
             </div>
-            <div className="p-3 rounded-2xl bg-[#0B1121] border border-purple-500/30">
+            <div className="p-3 rounded-2xl bg-[#111116] border border-purple-500/30">
               <p className="text-[10px] font-extrabold text-slate-400 uppercase">Bank Transfer</p>
               <p className="text-sm font-black font-mono text-purple-400 mt-0.5">
                 EGP {methodTotals.bank_transfer.toLocaleString()}
@@ -2851,17 +2981,23 @@ html, body {
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-2 px-2">
+        {/* ALL RECORDS HEADER */}
+        <div className="flex items-center justify-between pt-2 px-1">
           <div className="flex items-center gap-3">
             <input
               type="checkbox"
-              className="w-5 h-5 rounded text-blue-600 cursor-pointer"
+              className="w-4 h-4 rounded text-rose-600 accent-rose-600 cursor-pointer"
               checked={filteredPayments.length > 0 && selectedBulkItems.size === filteredPayments.length}
               onChange={handleSelectAllBulkItems}
             />
-            <h2 className="text-sm font-black text-slate-500 uppercase tracking-wider">
-              All Records ({filteredPayments.length})
-            </h2>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black text-slate-400 uppercase tracking-wider">
+                {isAr ? "كافة السجلات" : "All Records"}
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-white/[0.06] text-slate-300 border border-white/[0.08] font-mono">
+                {filteredPayments.length}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -2871,11 +3007,11 @@ html, body {
             {filteredPayments.map((pay, idx) => {
               const initials = pay.companyName ? pay.companyName.substring(0, 2).toUpperCase() : "NA";
               const colors = [
-                'bg-indigo-950/80 text-indigo-300 border-indigo-700/50',
-                'bg-rose-950/80 text-rose-300 border-rose-700/50',
-                'bg-emerald-950/80 text-emerald-300 border-emerald-700/50',
-                'bg-amber-950/80 text-amber-300 border-amber-700/50',
-                'bg-sky-950/80 text-sky-300 border-sky-700/50'
+                'bg-indigo-500/15 text-indigo-300 border-indigo-500/30',
+                'bg-rose-500/15 text-rose-300 border-rose-500/30',
+                'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+                'bg-amber-500/15 text-amber-300 border-amber-500/30',
+                'bg-sky-500/15 text-sky-300 border-sky-500/30'
               ];
               const charCode = pay.companyName ? pay.companyName.charCodeAt(0) : 0;
               const avatarColor = colors[charCode % colors.length];
@@ -2888,7 +3024,9 @@ html, body {
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ duration: 0.2, delay: idx * 0.03 }}
                   key={pay.id}
-                  className={`bg-[#0B1121] border rounded-2xl shadow-lg hover:border-slate-700 transition-all overflow-hidden group ${selectedBulkItems.has(pay.id) ? 'border-blue-400 ring-1 ring-blue-400' : 'border-slate-800'}`}
+                  className={`bg-[#111116] hover:bg-[#16161d] border rounded-2xl shadow-xl hover:border-rose-500/40 transition-all overflow-hidden group ${
+                    selectedBulkItems.has(pay.id) ? 'border-rose-500/60 ring-1 ring-rose-500/40' : 'border-white/[0.08]'
+                  }`}
                 >
                   <div className="p-3.5 sm:p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 md:gap-4 relative">
                     <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0 w-full">
@@ -2896,29 +3034,29 @@ html, body {
                         type="checkbox"
                         checked={selectedBulkItems.has(pay.id)}
                         onChange={() => handleSelectBulkItem(pay.id)}
-                        className="w-5 h-5 rounded text-blue-600 cursor-pointer mr-1 flex-shrink-0"
+                        className="w-4 h-4 rounded text-rose-600 accent-rose-600 cursor-pointer mr-1 flex-shrink-0"
                       />
-                      <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full border flex items-center justify-center font-black text-sm sm:text-lg tracking-tight flex-shrink-0 ${avatarColor}`}>
+                      <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl border flex items-center justify-center font-black text-sm sm:text-base tracking-tight flex-shrink-0 group-hover:scale-105 transition-transform ${avatarColor}`}>
                         {initials}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <button
                             onClick={() => setSelectedSupplierProfile(pay.companyName)}
-                            className="text-base sm:text-lg font-bold text-white uppercase tracking-tight hover:text-blue-400 hover:underline text-left transition-colors truncate max-w-[200px] sm:max-w-none flex items-center gap-1 group/name"
+                            className="text-base sm:text-lg font-black text-white uppercase tracking-tight hover:text-rose-300 hover:underline text-left transition-colors truncate max-w-[200px] sm:max-w-none flex items-center gap-1 group/name cursor-pointer"
                           >
                             {pay.companyName}
-                            <ChevronRight className="w-4 h-4 opacity-0 group-hover/name:opacity-100 transition-opacity -ml-1" />
+                            <ChevronRight className="w-4 h-4 opacity-0 group-hover/name:opacity-100 transition-opacity -ml-1 text-rose-400" />
                           </button>
-                          <span className="bg-slate-800 text-slate-300 border border-slate-700 text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                          <span className="bg-white/[0.05] text-slate-300 border border-white/[0.08] text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
                             {CATEGORY_EMOJIS[pay.category]} <span className="capitalize">{pay.category}</span>
                           </span>
-                          <span className="bg-emerald-950/50 text-emerald-400 border border-emerald-800/60 text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                          <span className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
                             {METHOD_EMOJIS[pay.method] || "💵"} <span className="capitalize">{pay.method?.replace('_', ' ') || 'cash'}</span>
                           </span>
                           {pay.hasReturn && (
                             <span 
-                              className="bg-amber-950/60 text-amber-300 border border-amber-600/60 text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full font-black flex items-center gap-1 shadow-xs cursor-pointer hover:bg-amber-900/60 transition-colors"
+                              className="bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full font-black flex items-center gap-1 cursor-pointer hover:bg-amber-500/25 transition-colors"
                               title={isAr ? `خصم مرتجع: ${Number(pay.returnDeductionAmount || 0).toLocaleString()} ج.م` : `RTV Deduction: EGP ${Number(pay.returnDeductionAmount || 0).toLocaleString()}`}
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -2931,7 +3069,7 @@ html, body {
                           )}
                           {pay.isEdited && (
                             <span 
-                              className="bg-amber-950/40 text-amber-400 border border-amber-800/60 text-[10px] sm:text-xs px-2 py-0.5 rounded-full font-bold flex items-center gap-1 cursor-pointer hover:bg-amber-900/40 transition-colors"
+                              className="bg-rose-500/15 text-rose-400 border border-rose-500/30 text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1 cursor-pointer hover:bg-rose-500/25 transition-colors"
                               title={pay.editHistory && pay.editHistory.length > 0 ? `Edited on ${new Date(pay.lastEditedAt).toLocaleDateString()}:\n${pay.editHistory[pay.editHistory.length - 1].summary}` : "Edited"}
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -2942,8 +3080,8 @@ html, body {
                             </span>
                           )}
                         </div>
-                        <p className="text-xs sm:text-sm font-medium text-slate-400 flex flex-wrap items-center gap-2">
-                          <span className="text-slate-400">{pay.date}</span>
+                        <p className="text-xs sm:text-sm font-medium text-slate-400 flex flex-wrap items-center gap-2 font-mono">
+                          <span>{pay.date}</span>
                           {(pay.invoiceNumber || pay.poNumber) && (
                             <>
                               <span className="text-slate-600">•</span>
@@ -2956,25 +3094,25 @@ html, body {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4 sm:gap-6 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-slate-800/80 pt-2.5 md:pt-0">
+                    <div className="flex items-center gap-4 sm:gap-6 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-white/[0.06] pt-2.5 md:pt-0">
                       <div className="text-left md:text-right">
-                        <p className="text-xl sm:text-2xl font-black text-rose-500 tracking-tight font-mono">
-                          <span className="text-xs sm:text-sm font-medium text-slate-400 mr-1">EGP</span>
+                        <p className="text-xl sm:text-2xl font-black text-rose-400 tracking-tight font-mono">
+                          <span className="text-xs sm:text-sm font-bold text-rose-400/70 mr-1">EGP</span>
                           {Number(pay.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </p>
                         {pay.hasReturn && (pay.grossAmount || pay.grossTotal) && (
-                          <p className="text-[10px] text-slate-400 font-mono line-through mt-0.5">
+                          <p className="text-[10px] text-slate-500 font-mono line-through mt-0.5">
                             {isAr ? `الأصلي: ` : `Gross: `}
                             EGP {Number(pay.grossTotal || pay.grossAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                           </p>
                         )}
                       </div>
 
-                      <div className="flex items-center gap-1 sm:gap-2">
+                      <div className="flex items-center gap-1.5 sm:gap-2">
                         {(pay.category === "order" || pay.category === "credit" || !!pay.creditId) && (!pay.items || pay.items.length === 0) && !pay.poImageUrl && (
                           <button
                             onClick={() => setSelectedPaymentForPoUpload(pay)}
-                            className="text-xs font-bold bg-blue-900/30 text-blue-400 hover:bg-blue-900/50 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 mr-1"
+                            className="text-xs font-bold bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 border border-blue-500/30 px-3 py-1.5 rounded-xl transition-all flex items-center gap-1 mr-1 cursor-pointer"
                           >
                             <Plus size={13} /> Add PO
                           </button>
@@ -2984,32 +3122,36 @@ html, body {
                             setSelectedPaymentForView(pay);
                             playPrinterSound();
                           }}
-                          className="p-2 sm:p-2.5 text-slate-400 hover:text-blue-400 hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
+                          className="p-2.5 text-slate-400 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-xl transition-all cursor-pointer"
                           title="View Receipt"
                         >
-                          <Eye size={19} />
+                          <Eye size={18} />
                         </button>
                         <button
                           onClick={() => {
                             setSelectedPaymentForPrint(pay);
                             setTimeout(() => generatePDF(pay), 100);
                           }}
-                          className="p-2 sm:p-2.5 text-slate-400 hover:text-blue-400 hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
+                          className="p-2.5 text-slate-400 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-xl transition-all cursor-pointer"
                           title="Print Voucher"
                         >
-                          <Download size={19} />
+                          <Download size={18} />
                         </button>
                         {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
                           <>
                             <button
                               onClick={() => handleOpenEditPayment(pay)}
-                              className="p-2 sm:p-2.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
+                              className="p-2.5 text-slate-400 hover:text-amber-400 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-xl transition-all cursor-pointer"
                               title={isAr ? "تعديل الفاتورة (خاص بالإدارة)" : "Edit Payment (Admin Only)"}
                             >
-                              <Pencil size={19} />
+                              <Pencil size={18} />
                             </button>
-                            <button onClick={() => handleDelete(pay.id)} className="p-2 sm:p-2.5 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-xl transition-colors cursor-pointer" title={isAr ? "حذف السند" : "Delete Payment"}>
-                              <Trash2 size={19} />
+                            <button 
+                              onClick={() => handleDelete(pay.id)} 
+                              className="p-2.5 text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded-xl transition-all cursor-pointer" 
+                              title={isAr ? "حذف السند" : "Delete Payment"}
+                            >
+                              <Trash2 size={18} />
                             </button>
                           </>
                         )}
@@ -3022,8 +3164,8 @@ html, body {
           </AnimatePresence>
 
           {filteredPayments.length === 0 && (
-            <div className="text-center py-12 text-slate-500 font-medium">
-              No payments found matching your criteria.
+            <div className="text-center py-16 text-slate-500 font-medium text-xs bg-[#111116] border border-white/[0.06] rounded-2xl">
+              {isAr ? "لا توجد سندات أو مدفوعات مطابقة لمعايير البحث." : "No payments found matching your criteria."}
             </div>
           )}
         </div>
