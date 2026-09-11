@@ -1023,6 +1023,22 @@ export default function PaymentsRedesignPage() {
     return `${today.getFullYear()}-${mm}`;
   });
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const s = params.get("search");
+      if (s) {
+        setSearchQuery(s);
+        const m = params.get("month");
+        if (m) {
+          setMonthFilter(m);
+        } else {
+          setMonthFilter(""); // clear month filter so searched PO/invoice across all months is shown!
+        }
+      }
+    }
+  }, []);
+
   // Supplier Features State
   const [selectedSupplierProfile, setSelectedSupplierProfile] = useState<string | null>(null);
   const [credits, setCredits] = useState<any[]>([]);
@@ -2515,11 +2531,14 @@ html, body {
 
       // Search Filter
       if (searchQuery) {
-        const q = searchQuery.toLowerCase();
+        const q = searchQuery.toLowerCase().trim();
         return (
           p.companyName?.toLowerCase().includes(q) ||
           p.invoiceNumber?.toLowerCase().includes(q) ||
           p.poNumber?.toLowerCase().includes(q) ||
+          p.date?.toLowerCase().includes(q) ||
+          p.supplierRepName?.toLowerCase().includes(q) ||
+          p.category?.toLowerCase().includes(q) ||
           p.items?.some((it: any) => (it.description || it.itemName || it.barcode)?.toLowerCase().includes(q))
         );
       }
