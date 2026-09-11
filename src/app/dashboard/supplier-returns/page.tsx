@@ -102,76 +102,90 @@ function ReturnReceiptContent({ data, currentBranch }: { data: any; currentBranc
   const isGenericTransfer = (data.items?.length === 1 && (data.items[0].barcode === "N/A" || !data.items[0].barcode)) || (!data.items || data.items.length === 0);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "7px", width: "100%", color: "#0f172a", boxSizing: "border-box" }} dir="rtl">
+    <div
+      className="rtv-content-root"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        width: "100%",
+        minHeight: "274mm",
+        height: "100%",
+        color: "#0f172a",
+        boxSizing: "border-box",
+        gap: "10px"
+      }}
+      dir="rtl"
+    >
       {/* 1. OFFICIAL CORPORATE HEADER */}
-      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 2fr 1.3fr", gap: "8px", alignItems: "center", borderBottom: "2.5px solid #0f172a", paddingBottom: "5px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 2fr 1.3fr", gap: "10px", alignItems: "center", borderBottom: "2.5px solid #0f172a", paddingBottom: "10px" }}>
         {/* Right: Company Identity */}
-        <div style={{ textAlign: "right", fontSize: "10px", lineHeight: "1.4", color: "#1e293b" }}>
-          <div style={{ fontWeight: "900", fontSize: "12px", color: "#0f172a" }}>{branchDetails.companyName}</div>
-          <div style={{ fontSize: "9.5px", fontWeight: "800", color: "#dc2626", marginTop: "1px" }}>{branchDetails.brandName}</div>
-          <div style={{ fontSize: "8.5px", fontFamily: "monospace", marginTop: "2px", color: "#475569" }}>س.ت: {branchDetails.cr} | ب.ض: {branchDetails.tax}</div>
-          <div style={{ fontSize: "8px", color: "#64748b" }}>إدارة سلاسل الإمداد والمخازن • قسم مرتجعات الموردين (RTV)</div>
+        <div style={{ textAlign: "right", fontSize: "11px", lineHeight: "1.45", color: "#1e293b" }}>
+          <div style={{ fontWeight: "900", fontSize: "14.5px", color: "#0f172a" }}>{branchDetails.companyName}</div>
+          <div style={{ fontSize: "12px", fontWeight: "800", color: "#dc2626", marginTop: "2px" }}>{branchDetails.brandName}</div>
+          <div style={{ fontSize: "10px", fontFamily: "monospace", marginTop: "3px", color: "#334155" }}>س.ت: {branchDetails.cr} | ب.ض: {branchDetails.tax}</div>
+          <div style={{ fontSize: "9.5px", color: "#64748b", marginTop: "2px" }}>إدارة سلاسل الإمداد والمخازن • قسم مرتجعات الموردين (RTV)</div>
         </div>
 
         {/* Center: Title Badge */}
         <div style={{ textAlign: "center" }}>
-          <div style={{ border: "2px solid #0f172a", borderRadius: "8px", padding: "4px 10px", background: "#f8fafc" }}>
-            <div style={{ fontSize: "13px", fontWeight: "900", color: "#0f172a", letterSpacing: "0.3px" }}>
+          <div style={{ border: "2.5px solid #0f172a", borderRadius: "10px", padding: "8px 14px", background: "#f8fafc", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+            <div style={{ fontSize: "15.5px", fontWeight: "900", color: "#0f172a", letterSpacing: "0.5px" }}>
               إشعار مرتجع بضاعة رسمي للمورد
             </div>
-            <div style={{ fontSize: "10px", fontWeight: "bold", color: "#dc2626", marginTop: "1px" }}>
+            <div style={{ fontSize: "12px", fontWeight: "800", color: "#dc2626", marginTop: "3px" }}>
               محضر تسليم مرتجعات وإخلاء طرف المخازن (RTV Manifest)
             </div>
-            <div style={{ fontSize: "8px", color: "#475569", marginTop: "1px" }}>
+            <div style={{ fontSize: "9.5px", color: "#475569", marginTop: "2px" }}>
               وثيقة تسليم ومقاصة مالية رسمية معتمدة
             </div>
           </div>
         </div>
 
         {/* Left: Metadata */}
-        <div style={{ textAlign: "left", fontSize: "9px", lineHeight: "1.5", color: "#1e293b" }} dir="rtl">
-          <div><strong>رقم الإشعار:</strong> <span style={{ fontWeight: "bold", color: "#dc2626", fontSize: "10.5px", fontFamily: "monospace" }}>#RET-{data.returnNumber}</span></div>
+        <div style={{ textAlign: "left", fontSize: "10.5px", lineHeight: "1.6", color: "#1e293b" }} dir="rtl">
+          <div><strong>رقم الإشعار:</strong> <span style={{ fontWeight: "900", color: "#dc2626", fontSize: "12.5px", fontFamily: "monospace" }}>#RET-{data.returnNumber}</span></div>
           {data.transferOutNumber && (
-            <div><strong>إذن تحويل خارجي:</strong> <span style={{ fontWeight: "bold", color: "#2563eb", fontFamily: "monospace" }}>TR-{data.transferOutNumber}</span></div>
+            <div><strong>إذن تحويل خارجي:</strong> <span style={{ fontWeight: "800", color: "#2563eb", fontFamily: "monospace", fontSize: "11.5px" }}>TR-{data.transferOutNumber}</span></div>
           )}
-          <div><strong>تاريخ التسليم:</strong> <span style={{ fontSize: "8.5px" }}>{arabicDate}</span></div>
-          <div><strong>الفرع المصدر:</strong> {branchDetails.tag}</div>
+          <div><strong>تاريخ التسليم:</strong> <span style={{ fontSize: "10.5px", fontWeight: "600" }}>{arabicDate}</span></div>
+          <div><strong>الفرع المصدر:</strong> <span style={{ fontWeight: "800" }}>{branchDetails.tag}</span></div>
         </div>
       </div>
 
       {/* 2. OPERATIONAL NOTICE */}
-      <div style={{ backgroundColor: '#eff6ff', border: '1.5px solid #bfdbfe', borderRight: '4px solid #2563eb', borderRadius: '6px', padding: '5px 8px' }}>
-        <p style={{ margin: 0, fontSize: '9px', color: '#1e3a8a', lineHeight: 1.45, fontWeight: 'bold' }}>
-          <span style={{ color: '#2563eb', marginLeft: '5px' }}>✦</span>
+      <div style={{ backgroundColor: '#eff6ff', border: '1.5px solid #bfdbfe', borderRight: '5px solid #2563eb', borderRadius: '8px', padding: '9px 14px' }}>
+        <p style={{ margin: 0, fontSize: '11px', color: '#1e3a8a', lineHeight: 1.5, fontWeight: '700' }}>
+          <span style={{ color: '#2563eb', marginLeft: '6px', fontSize: '12px' }}>✦</span>
           إشعار تسليم رسمي: البضاعة الموضحة بهذا الكشف تم فحصها وإخراجها وتسليمها إلى مندوب الشركة الموردة ({data.agentName || "المندوب المعتمد"}) بقيمة إجمالية {(totalAmount || 0).toLocaleString()} ج.م، وتعتبر هذه الوثيقة إشعاراً رسمياً لإتمام المقاصة المحاسبية وإبراء ذمة الفرع من عهدتها.
         </p>
       </div>
 
       {/* 3. SUPPLIER & SETTLEMENT GRID */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
         {/* Box 1: Supplier & Agent */}
-        <div style={{ border: "1.5px solid #cbd5e1", borderRadius: "7px", overflow: "hidden" }}>
-          <div style={{ background: "#0f172a", color: "#fff", fontSize: "9px", fontWeight: "bold", padding: "3px 8px", display: "flex", justifyContent: "space-between" }}>
+        <div style={{ border: "1.5px solid #cbd5e1", borderRadius: "8px", overflow: "hidden", background: "#f8fafc" }}>
+          <div style={{ background: "#0f172a", color: "#fff", fontSize: "10.5px", fontWeight: "bold", padding: "6px 12px", display: "flex", justifyContent: "space-between" }}>
             <span>أولاً: بيانات الشركة الموردة والمندوب المستلم</span>
-            <span style={{ fontSize: "8px", opacity: 0.85 }}>بيانات معتمدة</span>
+            <span style={{ fontSize: "9px", opacity: 0.85 }}>بيانات معتمدة</span>
           </div>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9px", background: "#f8fafc" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10.5px", background: "#f8fafc" }}>
             <tbody>
               <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
-                <td style={{ padding: "3.5px 8px", fontWeight: "bold", color: "#475569", width: "35%" }}>الشركة / المورد:</td>
-                <td style={{ padding: "3.5px 8px", fontWeight: "900", color: "#0f172a", fontSize: "10.5px" }}>{data.supplier}</td>
+                <td style={{ padding: "7px 12px", fontWeight: "bold", color: "#475569", width: "35%" }}>الشركة / المورد:</td>
+                <td style={{ padding: "7px 12px", fontWeight: "900", color: "#0f172a", fontSize: "12.5px" }}>{data.supplier}</td>
               </tr>
               <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
-                <td style={{ padding: "3.5px 8px", fontWeight: "bold", color: "#475569" }}>مندوب الاستلام:</td>
-                <td style={{ padding: "3.5px 8px", fontWeight: "bold", color: "#0f172a" }}>{data.agentName}</td>
+                <td style={{ padding: "7px 12px", fontWeight: "bold", color: "#475569" }}>مندوب الاستلام:</td>
+                <td style={{ padding: "7px 12px", fontWeight: "800", color: "#0f172a", fontSize: "11.5px" }}>{data.agentName}</td>
               </tr>
               <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
-                <td style={{ padding: "3.5px 8px", fontWeight: "bold", color: "#475569" }}>هاتف المندوب:</td>
-                <td style={{ padding: "3.5px 8px", fontWeight: "bold", color: "#0f172a", fontFamily: "monospace" }} dir="ltr">{data.agentMobile}</td>
+                <td style={{ padding: "7px 12px", fontWeight: "bold", color: "#475569" }}>هاتف المندوب:</td>
+                <td style={{ padding: "7px 12px", fontWeight: "800", color: "#0f172a", fontFamily: "monospace", fontSize: "11.5px" }} dir="ltr">{data.agentMobile}</td>
               </tr>
               <tr>
-                <td style={{ padding: "3.5px 8px", fontWeight: "bold", color: "#475569" }}>الرقم القومي:</td>
-                <td style={{ padding: "3.5px 8px" }}>
+                <td style={{ padding: "7px 12px", fontWeight: "bold", color: "#475569" }}>الرقم القومي:</td>
+                <td style={{ padding: "7px 12px" }}>
                   <div style={{ display: "flex", gap: "2px", direction: "ltr", justifyContent: "flex-end" }}>
                     {nidChars.map((ch, idx) => (
                       <span
@@ -180,11 +194,11 @@ function ReturnReceiptContent({ data, currentBranch }: { data: any; currentBranc
                           display: "inline-flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          width: "14px",
-                          height: "16px",
-                          border: "1.2px solid #0f172a",
-                          borderRadius: "2px",
-                          fontSize: "9.5px",
+                          width: "17px",
+                          height: "21px",
+                          border: "1.5px solid #0f172a",
+                          borderRadius: "3px",
+                          fontSize: "11.5px",
                           fontWeight: "900",
                           background: ch.trim() ? "#ffffff" : "#f1f5f9",
                           color: "#0f172a",
@@ -202,35 +216,35 @@ function ReturnReceiptContent({ data, currentBranch }: { data: any; currentBranc
         </div>
 
         {/* Box 2: Financial & Settlement Terms */}
-        <div style={{ border: "1.5px solid #cbd5e1", borderRadius: "7px", overflow: "hidden" }}>
-          <div style={{ background: "#0f172a", color: "#fff", fontSize: "9px", fontWeight: "bold", padding: "3px 8px", display: "flex", justifyContent: "space-between" }}>
+        <div style={{ border: "1.5px solid #cbd5e1", borderRadius: "8px", overflow: "hidden", background: "#f8fafc" }}>
+          <div style={{ background: "#0f172a", color: "#fff", fontSize: "10.5px", fontWeight: "bold", padding: "6px 12px", display: "flex", justifyContent: "space-between" }}>
             <span>ثانياً: المعاملة المالية وطريقة التسوية</span>
-            <span style={{ fontSize: "8px", opacity: 0.85 }}>المقاصة والحسابات</span>
+            <span style={{ fontSize: "9px", opacity: 0.85 }}>المقاصة والحسابات</span>
           </div>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9px", background: "#f8fafc" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10.5px", background: "#f8fafc" }}>
             <tbody>
               <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
-                <td style={{ padding: "3.5px 8px", fontWeight: "bold", color: "#475569", width: "35%" }}>طريقة التسوية:</td>
-                <td style={{ padding: "3.5px 8px", fontWeight: "bold", color: "#0f172a" }}>
+                <td style={{ padding: "7px 12px", fontWeight: "bold", color: "#475569", width: "35%" }}>طريقة التسوية:</td>
+                <td style={{ padding: "7px 12px", fontWeight: "800", color: "#0f172a", fontSize: "11px" }}>
                   {data.settlementMethod === 'money' ? "تسوية مالية (نقداً من الخزينة / تحويل)" : "استبدال بضاعة (تسوية عينية)"}
                 </td>
               </tr>
               <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
-                <td style={{ padding: "3.5px 8px", fontWeight: "bold", color: "#475569" }}>توقيت السداد:</td>
-                <td style={{ padding: "3.5px 8px", fontWeight: "bold", color: "#0f172a" }}>
+                <td style={{ padding: "7px 12px", fontWeight: "bold", color: "#475569" }}>توقيت السداد:</td>
+                <td style={{ padding: "7px 12px", fontWeight: "800", color: "#0f172a", fontSize: "11px" }}>
                   {data.paymentTiming === 'now' 
                     ? "سداد فوري عند الاستلام (تم الصرف)" 
                     : `سداد آجل (تاريخ الاستحقاق: ${data.expectedPaymentDate ? formatArabicFullDate(data.expectedPaymentDate) : "مؤجل"})`}
                 </td>
               </tr>
               <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
-                <td style={{ padding: "3.5px 8px", fontWeight: "bold", color: "#475569" }}>حالة المقاصة:</td>
-                <td style={{ padding: "3.5px 8px" }}>
+                <td style={{ padding: "7px 12px", fontWeight: "bold", color: "#475569" }}>حالة المقاصة:</td>
+                <td style={{ padding: "7px 12px" }}>
                   <span style={{
                     display: "inline-block",
-                    padding: "1.5px 7px",
+                    padding: "3px 10px",
                     borderRadius: "4px",
-                    fontSize: "8.5px",
+                    fontSize: "10px",
                     fontWeight: "900",
                     background: data.isSettled ? "#dcfce7" : "#fef3c7",
                     color: data.isSettled ? "#166534" : "#92400e"
@@ -240,13 +254,13 @@ function ReturnReceiptContent({ data, currentBranch }: { data: any; currentBranc
                 </td>
               </tr>
               <tr>
-                <td style={{ padding: "3.5px 8px", fontWeight: "bold", color: "#475569" }}>إجمالي القيمة:</td>
-                <td style={{ padding: "3.5px 8px" }}>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: "5px" }}>
-                    <span style={{ fontSize: "14px", fontWeight: "900", color: "#0f172a" }}>{totalAmount.toLocaleString()}</span>
-                    <span style={{ fontSize: "9.5px", fontWeight: "bold", color: "#475569" }}>جنيه مصري</span>
+                <td style={{ padding: "7px 12px", fontWeight: "bold", color: "#475569" }}>إجمالي القيمة:</td>
+                <td style={{ padding: "7px 12px" }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
+                    <span style={{ fontSize: "17px", fontWeight: "900", color: "#0f172a" }}>{totalAmount.toLocaleString()}</span>
+                    <span style={{ fontSize: "11px", fontWeight: "bold", color: "#475569" }}>جنيه مصري</span>
                   </div>
-                  <div style={{ fontSize: "8px", fontWeight: "bold", color: "#047857", marginTop: "1px" }}>
+                  <div style={{ fontSize: "9.5px", fontWeight: "bold", color: "#047857", marginTop: "2px" }}>
                     فقط وقدره {totalAmountWords} جنيهاً مصرياً لا غير.
                   </div>
                 </td>
@@ -257,50 +271,61 @@ function ReturnReceiptContent({ data, currentBranch }: { data: any; currentBranc
       </div>
 
       {/* 4. ITEMS TABLE OR TRANSFER CONFIRMATION */}
-      <div style={{ border: "1.5px solid #cbd5e1", borderRadius: "7px", overflow: "hidden" }}>
-        <div style={{ background: "#0f172a", color: "#fff", fontSize: "9px", fontWeight: "bold", padding: "3px 8px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div className="rtv-items-box" style={{ border: "1.5px solid #cbd5e1", borderRadius: "8px", overflow: "hidden", flex: 1, display: "flex", flexDirection: "column" }}>
+        <div style={{ background: "#0f172a", color: "#fff", fontSize: "10.5px", fontWeight: "bold", padding: "6px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span>ثالثاً: تفاصيل وبيان الأصناف المرتجعة</span>
           {data.transferOutNumber && (
-            <span style={{ fontSize: "8px", background: "#1e3a8a", padding: "1px 6px", borderRadius: "3px", color: "#93c5fd" }}>
+            <span style={{ fontSize: "9.5px", background: "#1e3a8a", padding: "2px 8px", borderRadius: "4px", color: "#93c5fd", fontWeight: "bold" }}>
               إذن خروج: TR-{data.transferOutNumber}
             </span>
           )}
         </div>
 
         {isGenericTransfer ? (
-          <div style={{ padding: "12px 14px", background: "#f8fafc", textAlign: "center" }}>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: "5px", background: "#dcfce7", color: "#166534", padding: "3px 10px", borderRadius: "5px", fontWeight: "900", fontSize: "10.5px", marginBottom: "4px" }}>
+          <div style={{ padding: "24px 20px", background: "#f8fafc", textAlign: "center", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", gap: "10px" }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "#dcfce7", border: "1px solid #86efac", color: "#166534", padding: "8px 18px", borderRadius: "8px", fontWeight: "900", fontSize: "13px" }}>
               <span>✓</span>
               <span>مطابق لمستند التحويل الخارجي رقم: {data.transferOutNumber ? `(TR-${data.transferOutNumber})` : "المرفق"}</span>
             </div>
-            <p style={{ margin: 0, fontSize: "9px", color: "#475569", fontWeight: "bold" }}>
-              تم تسليم كامل محتويات ومشمول إذن التحويل الخارجي الصادر من الفرع إلى مندوب الشركة الموردة بعد الفحص والمطابقة التامة بحالة سليمة.
+            <p style={{ margin: 0, fontSize: "11.5px", color: "#334155", fontWeight: "700", maxWidth: "85%", lineHeight: 1.65 }}>
+              تم تسليم كامل محتويات ومشمول إذن التحويل الخارجي الصادر من الفرع إلى مندوب الشركة الموردة بعد الفحص والمطابقة التامة بحالة سليمة وبحضور الأطراف المعنية.
             </p>
+            <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap", marginTop: "4px" }}>
+              <span style={{ fontSize: "10px", fontWeight: "800", color: "#475569", background: "#e2e8f0", padding: "3px 10px", borderRadius: "4px" }}>
+                ✓ حالة الأصناف: فحص ومطابقة 100% بحالة جيدة
+              </span>
+              <span style={{ fontSize: "10px", fontWeight: "800", color: "#475569", background: "#e2e8f0", padding: "3px 10px", borderRadius: "4px" }}>
+                ✓ إذن التحويل: مستند خروج معتمد ومرفق بالأصل
+              </span>
+              <span style={{ fontSize: "10px", fontWeight: "800", color: "#475569", background: "#e2e8f0", padding: "3px 10px", borderRadius: "4px" }}>
+                ✓ إخلاء الطرف: إبراء ذمة الفرع وسريان مسؤولية المورد
+              </span>
+            </div>
           </div>
         ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "8.5px" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px", flex: 1 }}>
             <thead>
-              <tr style={{ background: "#f1f5f9", borderBottom: "1.2px solid #cbd5e1" }}>
-                <th style={{ padding: "3.5px 6px", textAlign: "center", width: "32px", borderLeft: "1px solid #cbd5e1" }}>م</th>
-                <th style={{ padding: "3.5px 8px", textAlign: "right", width: "120px", borderLeft: "1px solid #cbd5e1" }}>باركود الصنف</th>
-                <th style={{ padding: "3.5px 8px", textAlign: "right", borderLeft: "1px solid #cbd5e1" }}>اسم وبيان الصنف</th>
-                <th style={{ padding: "3.5px 8px", textAlign: "center", width: "65px" }}>الكمية</th>
+              <tr style={{ background: "#f1f5f9", borderBottom: "1.5px solid #cbd5e1" }}>
+                <th style={{ padding: "6px 8px", textAlign: "center", width: "36px", borderLeft: "1px solid #cbd5e1" }}>م</th>
+                <th style={{ padding: "6px 10px", textAlign: "right", width: "130px", borderLeft: "1px solid #cbd5e1" }}>باركود الصنف</th>
+                <th style={{ padding: "6px 10px", textAlign: "right", borderLeft: "1px solid #cbd5e1" }}>اسم وبيان الصنف</th>
+                <th style={{ padding: "6px 10px", textAlign: "center", width: "75px" }}>الكمية</th>
               </tr>
             </thead>
             <tbody>
               {data.items.map((it: any, idx: number) => (
                 <tr key={it.id || idx} style={{ borderBottom: "1px solid #e2e8f0", background: idx % 2 === 0 ? "#fff" : "#f8fafc" }}>
-                  <td style={{ padding: "3px 6px", textAlign: "center", fontWeight: "bold", color: "#64748b", borderLeft: "1px solid #e2e8f0" }}>{idx + 1}</td>
-                  <td style={{ padding: "3px 8px", fontWeight: "700", fontFamily: "monospace", color: "#334155", borderLeft: "1px solid #e2e8f0" }}>{it.barcode || "—"}</td>
-                  <td style={{ padding: "3px 8px", fontWeight: "bold", color: "#0f172a", borderLeft: "1px solid #e2e8f0" }}>{it.itemName || it.description || it.name || "صنف مرتجع"}</td>
-                  <td style={{ padding: "3px 8px", textAlign: "center", fontWeight: "900", color: "#0f172a" }}>{it.quantity || 1}</td>
+                  <td style={{ padding: "6px 8px", textAlign: "center", fontWeight: "bold", color: "#64748b", borderLeft: "1px solid #e2e8f0" }}>{idx + 1}</td>
+                  <td style={{ padding: "6px 10px", fontWeight: "700", fontFamily: "monospace", color: "#334155", borderLeft: "1px solid #e2e8f0" }}>{it.barcode || "—"}</td>
+                  <td style={{ padding: "6px 10px", fontWeight: "bold", color: "#0f172a", borderLeft: "1px solid #e2e8f0" }}>{it.itemName || it.description || it.name || "صنف مرتجع"}</td>
+                  <td style={{ padding: "6px 10px", textAlign: "center", fontWeight: "900", color: "#0f172a" }}>{it.quantity || 1}</td>
                 </tr>
               ))}
-              <tr style={{ background: "#e2e8f0", borderTop: "1.5px solid #0f172a" }}>
-                <td colSpan={3} style={{ padding: "4px 10px", textAlign: "right", fontWeight: "900", color: "#0f172a", borderLeft: "1px solid #cbd5e1" }}>
+              <tr style={{ background: "#e2e8f0", borderTop: "2px solid #0f172a" }}>
+                <td colSpan={3} style={{ padding: "7px 12px", textAlign: "right", fontWeight: "900", color: "#0f172a", borderLeft: "1px solid #cbd5e1" }}>
                   إجمالي عدد القطع والوحدات المرتجعة:
                 </td>
-                <td style={{ padding: "4px 8px", textAlign: "center", fontWeight: "900", fontSize: "10.5px", color: "#0f172a" }}>
+                <td style={{ padding: "7px 10px", textAlign: "center", fontWeight: "900", fontSize: "11.5px", color: "#0f172a" }}>
                   {totalQty} قطعة
                 </td>
               </tr>
@@ -310,45 +335,54 @@ function ReturnReceiptContent({ data, currentBranch }: { data: any; currentBranc
       </div>
 
       {/* 5. LEGAL DECLARATION & CLEARANCE */}
-      <div style={{ border: "1.5px solid #0f172a", borderRadius: "7px", padding: "5px 8px", background: "#f8fafc" }}>
-        <div style={{ fontSize: "9px", fontWeight: "900", color: "#0f172a", marginBottom: "2px" }}>
+      <div style={{ border: "1.5px solid #0f172a", borderRadius: "8px", padding: "9px 14px", background: "#f8fafc" }}>
+        <div style={{ fontSize: "11px", fontWeight: "900", color: "#0f172a", marginBottom: "3px" }}>
           رابعاً: إقرار الاستلام الرسمي وإخلاء مسؤولية إدارة الفرع
         </div>
-        <p style={{ margin: 0, fontSize: "8px", lineHeight: "1.45", color: "#334155", textAlign: "justify" }}>
+        <p style={{ margin: 0, fontSize: "10px", lineHeight: "1.6", color: "#1e293b", textAlign: "justify", fontWeight: "500" }}>
           أقر أنا الموقع أدناه مندوب شركة ({data.supplier})، وبموجب هويتي ورقمي القومي المبينين أعلاه، بأنني قد عاينت واستلمت البضاعة الموضحة بهذا الإشعار بكامل كمياتها وبحالة سليمة ومطابقة لما تم الاتفاق عليه، وبذلك أصبحت البضاعة في عهدتي وتحت مسؤولية الشركة الموردة، وتعتبر ذمة فرع سيركل كيه ({branchDetails.companyName}) بريئة تماماً من عهدة هذه الأصناف اعتباراً من تاريخه وساعته، مع التزام الشركة الموردة بإتمام إجراءات التسوية المالية المقررة.
         </p>
       </div>
 
       {/* 6. SIGNATURES & SEALS */}
-      <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1.1fr 1.3fr", gap: "8px", alignItems: "end", marginTop: "2px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1.1fr 1.3fr", gap: "10px", alignItems: "stretch", marginTop: "2px" }}>
         {/* 1. Supplier Agent Signature */}
-        <div style={{ border: "1.5px solid #cbd5e1", borderRadius: "7px", padding: "5px 6px", background: "#fff", textAlign: "center" }}>
-          <div style={{ fontSize: "8.5px", fontWeight: "bold", color: "#475569", marginBottom: "1px" }}>المستلم (مندوب الشركة الموردة)</div>
-          <div style={{ fontSize: "9.5px", fontWeight: "900", color: "#0f172a" }}>{data.agentName}</div>
-          <div style={{ fontSize: "7.5px", color: "#64748b", marginTop: "1px" }}>الرقم القومي: {data.agentNationalId}</div>
-          <div style={{ borderBottom: "1.2px dashed #94a3b8", height: "20px", margin: "3px 6px" }} />
-          <div style={{ fontSize: "7.5px", color: "#94a3b8" }}>التوقيع والاستلام / التاريخ</div>
+        <div style={{ border: "1.5px solid #cbd5e1", borderRadius: "8px", padding: "10px 12px", background: "#fff", textAlign: "center", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: "100px" }}>
+          <div>
+            <div style={{ fontSize: "10px", fontWeight: "bold", color: "#475569", marginBottom: "2px" }}>المستلم (مندوب الشركة الموردة)</div>
+            <div style={{ fontSize: "12px", fontWeight: "900", color: "#0f172a" }}>{data.agentName}</div>
+            <div style={{ fontSize: "9px", color: "#64748b", marginTop: "2px" }}>الرقم القومي: {data.agentNationalId}</div>
+          </div>
+          <div>
+            <div style={{ borderBottom: "1.5px dashed #94a3b8", height: "40px", margin: "4px 8px" }} />
+            <div style={{ fontSize: "9px", color: "#94a3b8" }}>التوقيع والاستلام / التاريخ</div>
+          </div>
         </div>
 
         {/* 2. Official Branch Stamp */}
-        <div style={{ border: "2px dashed #0f172a", borderRadius: "7px", padding: "5px 6px", background: "#f8fafc", textAlign: "center", minHeight: "62px", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
-          <div style={{ fontSize: "8px", fontWeight: "900", color: "#0f172a", textTransform: "uppercase" }}>خاتم الفرع المعتمد</div>
-          <div style={{ fontSize: "7px", color: "#64748b", marginTop: "1px" }}>Official Branch Stamp</div>
-          <div style={{ fontSize: "6.5px", color: "#94a3b8", marginTop: "1px" }}>لا يعتمد الإيصال إلا بالختم الرسمي</div>
+        <div style={{ border: "2px dashed #0f172a", borderRadius: "8px", padding: "10px", background: "#f8fafc", textAlign: "center", minHeight: "100px", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", position: "relative" }}>
+          <div style={{ width: "65px", height: "65px", border: "1px dashed #cbd5e1", borderRadius: "50%", position: "absolute", opacity: 0.4 }} />
+          <div style={{ fontSize: "10.5px", fontWeight: "900", color: "#0f172a", textTransform: "uppercase", zIndex: 1 }}>خاتم الفرع المعتمد</div>
+          <div style={{ fontSize: "8.5px", color: "#64748b", marginTop: "2px", zIndex: 1 }}>Official Branch Stamp</div>
+          <div style={{ fontSize: "8px", color: "#94a3b8", marginTop: "4px", zIndex: 1 }}>لا يعتمد الإيصال إلا بالختم الرسمي</div>
         </div>
 
         {/* 3. Store Manager / Dispatcher Signature */}
-        <div style={{ border: "1.5px solid #cbd5e1", borderRadius: "7px", padding: "5px 6px", background: "#fff", textAlign: "center" }}>
-          <div style={{ fontSize: "8.5px", fontWeight: "bold", color: "#475569", marginBottom: "1px" }}>المُسلِّم (إدارة الفرع / أمين المخزن)</div>
-          <div style={{ fontSize: "9.5px", fontWeight: "900", color: "#0f172a" }}>{data.items?.[0]?.createdBy || "مدير الفرع"}</div>
-          <div style={{ fontSize: "7.5px", color: "#64748b", marginTop: "1px" }}>الصفة: مدير الفرع / أمين العهدة</div>
-          <div style={{ borderBottom: "1.2px dashed #94a3b8", height: "20px", margin: "3px 6px" }} />
-          <div style={{ fontSize: "7.5px", color: "#94a3b8" }}>التوقيع والاعتماد / التاريخ</div>
+        <div style={{ border: "1.5px solid #cbd5e1", borderRadius: "8px", padding: "10px 12px", background: "#fff", textAlign: "center", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: "100px" }}>
+          <div>
+            <div style={{ fontSize: "10px", fontWeight: "bold", color: "#475569", marginBottom: "2px" }}>المُسلِّم (إدارة الفرع / أمين المخزن)</div>
+            <div style={{ fontSize: "12px", fontWeight: "900", color: "#0f172a" }}>{data.items?.[0]?.createdBy || "مدير الفرع"}</div>
+            <div style={{ fontSize: "9px", color: "#64748b", marginTop: "2px" }}>الصفة: مدير الفرع / أمين العهدة</div>
+          </div>
+          <div>
+            <div style={{ borderBottom: "1.5px dashed #94a3b8", height: "40px", margin: "4px 8px" }} />
+            <div style={{ fontSize: "9px", color: "#94a3b8" }}>التوقيع والاعتماد / التاريخ</div>
+          </div>
         </div>
       </div>
 
       {/* 7. AUDIT FOOTER */}
-      <div style={{ borderTop: "1.2px solid #0f172a", paddingTop: "3px", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "7px", color: "#475569" }}>
+      <div style={{ borderTop: "1.5px solid #0f172a", paddingTop: "6px", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "8.5px", color: "#475569" }}>
         <div>وثيقة إشعار مرتجع بضاعة رسمية للمورد (RTV) • معتمدة قانونياً ومحاسبياً</div>
         <div>كود الوثيقة: RET-{data.returnNumber} | تاريخ الطباعة: {new Date().toLocaleDateString('ar-EG')}</div>
         <div>منظومة التقارير المالية والإدارية الموحدة • ANH Circle K</div>
@@ -2109,7 +2143,7 @@ export default function SupplierReturnsDashboard() {
 
               {/* On-screen paper preview */}
               <div className="p-4 md:p-6 overflow-y-auto bg-slate-100 dark:bg-slate-950 flex justify-center">
-                <div className="bg-white shadow-xl rounded-xl border border-slate-200 w-full max-w-[190mm] p-6 text-slate-900" dir="rtl" style={{ fontFamily: "'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif" }}>
+                <div className="bg-white shadow-2xl rounded-xl border border-slate-200 w-full max-w-[192mm] min-h-[278mm] p-6 text-slate-900 flex flex-col justify-between" dir="rtl" style={{ fontFamily: "'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif" }}>
                   <ReturnReceiptContent data={printData} currentBranch={currentBranch} />
                 </div>
               </div>
@@ -2127,7 +2161,7 @@ export default function SupplierReturnsDashboard() {
           @media print {
             @page {
               size: A4 portrait;
-              margin: 6mm 8mm;
+              margin: 7mm 8mm;
             }
             body {
               -webkit-print-color-adjust: exact !important;
@@ -2136,24 +2170,46 @@ export default function SupplierReturnsDashboard() {
               margin: 0 !important;
               padding: 0 !important;
             }
+            .rtv-print-sheet {
+              display: flex !important;
+              flex-direction: column !important;
+              justify-content: space-between !important;
+              box-sizing: border-box !important;
+              width: 100% !important;
+              max-width: 192mm !important;
+              min-height: 278mm !important;
+              height: 278mm !important;
+              margin: 0 auto !important;
+              padding: 1mm 1mm !important;
+              page-break-after: avoid !important;
+              break-after: avoid !important;
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
+              background-color: #ffffff !important;
+              overflow: hidden !important;
+            }
+            .rtv-content-root {
+              display: flex !important;
+              flex-direction: column !important;
+              justify-content: space-between !important;
+              box-sizing: border-box !important;
+              width: 100% !important;
+              height: 100% !important;
+              min-height: 274mm !important;
+              flex: 1 !important;
+            }
+            .rtv-items-box {
+              flex: 1 !important;
+              display: flex !important;
+              flex-direction: column !important;
+              min-height: 55mm !important;
+            }
           }
           table {
             page-break-inside: avoid;
           }
         ` }} />
-        <div style={{
-          margin: "0 auto",
-          width: "100%",
-          maxWidth: "190mm",
-          minHeight: "275mm",
-          boxSizing: "border-box",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          padding: "2mm 2mm",
-          pageBreakInside: "avoid",
-          breakInside: "avoid"
-        }}>
+        <div className="rtv-print-sheet">
           <ReturnReceiptContent data={printData} currentBranch={currentBranch} />
         </div>
       </div>
