@@ -31,6 +31,7 @@ import {
   collection,
   addDoc,
   getDocs,
+  getDoc,
   query,
   orderBy,
   serverTimestamp,
@@ -76,8 +77,10 @@ import {
   ExternalLink,
   Check,
   Layers,
-  PackageOpen
+  PackageOpen,
+  Upload
 } from "lucide-react";
+import { notifyFinancialsUpdated } from "@/lib/financial-sync";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { TiltCard } from "@/components/MobileUX/TiltCard";
@@ -363,6 +366,11 @@ export default function CreditsPage() {
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [bankTransferFile, setBankTransferFile] = useState<File | null>(null);
+  const [paymentPoNumber, setPaymentPoNumber] = useState("");
+  const [paymentPoImageUrl, setPaymentPoImageUrl] = useState("");
+  const [paymentPoItems, setPaymentPoItems] = useState<any[]>([]);
+  const [isProcessingPaymentPo, setIsProcessingPaymentPo] = useState(false);
+  const [showPaymentItemsDrawer, setShowPaymentItemsDrawer] = useState(false);
 
   // Goods Return / RTV Deduction Form State
   const [hasReturn, setHasReturn] = useState(false);
@@ -1538,6 +1546,58 @@ export default function CreditsPage() {
     }
   };
 
+  const handleUploadPaymentPo = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error(isAr ? 'برجاء رفع ملف صورة صالح.' : 'Please upload a valid image file.');
+      return;
+    }
+    setIsProcessingPaymentPo(true);
+    try {
+      const base64Image = await compressImage(file, 1000, 0.7);
+      setPaymentPoImageUrl(base64Image);
+
+      const response = await fetch('/api/process-po', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64Image }),
+        signal: AbortSignal.timeout(18000)
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.poNumber && data.poNumber !== "UNKNOWN" && !paymentPoNumber) {
+          setPaymentPoNumber(data.poNumber);
+        }
+        if (data.items && data.items.length > 0 && paymentPoItems.length === 0) {
+          setPaymentPoItems(data.items);
+        }
+        toast.success(isAr ? 'تم استخراج بيانات أمر الشراء بنجاح!' : 'PO processed successfully!');
+      }
+    } catch (err) {
+      console.warn("PO OCR error, image preserved:", err);
+      toast.info(isAr ? "تم حفظ صورة أمر الشراء" : "PO image saved");
+    } finally {
+      setIsProcessingPaymentPo(false);
+    }
+  };
+
+  const handlePastePaymentPo = async () => {
+    try {
+      const clipboardItems = await navigator.clipboard.read();
+      for (const item of clipboardItems) {
+        const imageType = item.types.find(type => type.startsWith('image/'));
+        if (imageType) {
+          const blob = await item.getType(imageType);
+          const file = new File([blob], "pasted-po.png", { type: imageType });
+          await handleUploadPaymentPo(file);
+          return;
+        }
+      }
+      toast.error(isAr ? 'لم يتم العثور على صورة في الحافظة' : 'No image found in clipboard');
+    } catch (e) {
+      toast.error(isAr ? 'تعذر قراءة الحافظة، يرجى رفع الصورة' : 'Failed to read clipboard');
+    }
+  };
+
   const handleOpenPaymentModal = (credit: Credit) => {
     setSelectedCreditForPayment(credit);
     setPaymentDate(new Date().toISOString().split('T')[0]);
@@ -1560,8 +1620,68 @@ export default function CreditsPage() {
     setReturnAgentMobile("");
     setReturnReason("");
     setReturnItems([]);
+    setShowPaymentItemsDrawer(false);
+
+    // Initialize PO details
+    setPaymentPoNumber(credit.poNumber || "");
+    const initialPoImage = credit.poImageUrl || credit.poUrl || (credit.poUrls && credit.poUrls[0]) || "";
+    setPaymentPoImageUrl(initialPoImage);
+
+    // Resolve PO items from memory or state
+    let items = credit.items || [];
+    if (items.length === 0 && creditPOItems[credit.id] && creditPOItems[credit.id].length > 0) {
+      items = creditPOItems[credit.id];
+    }
+    setPaymentPoItems(items);
+
     setShowPaymentModal(true);
     fetchPendingReturnsList();
+
+    // Background fetch if items or PO are missing on credit
+    if ((items.length === 0 || !credit.poNumber || !initialPoImage) && (credit.invoiceNumber || credit.id)) {
+      (async () => {
+        try {
+          let fetchedItems: any[] = [];
+          if (credit.invoiceNumber) {
+            const expSnap = await getDocs(
+              query(collection(db, "expiries"), where("invoiceNumber", "==", credit.invoiceNumber))
+            );
+            if (!expSnap.empty) {
+              fetchedItems = expSnap.docs.map(d => {
+                const ed = d.data();
+                return {
+                  barcode: ed.barcode || "N/A",
+                  description: ed.itemName || "Unnamed Item",
+                  quantity: ed.quantity || 1,
+                  unitPrice: ed.unitPrice || 0,
+                };
+              });
+            }
+          }
+          if (fetchedItems.length === 0 && credit.id) {
+            const directSnap = await getDoc(doc(db, "credits", credit.id));
+            if (directSnap.exists()) {
+              const dData = directSnap.data();
+              if (dData.items && Array.isArray(dData.items) && dData.items.length > 0) {
+                fetchedItems = dData.items;
+              }
+              if (dData.poNumber && !credit.poNumber) {
+                setPaymentPoNumber(dData.poNumber);
+              }
+              if (dData.poImageUrl && !initialPoImage) {
+                setPaymentPoImageUrl(dData.poImageUrl);
+              }
+            }
+          }
+          if (fetchedItems.length > 0) {
+            setPaymentPoItems(fetchedItems);
+            setCreditPOItems(prev => ({ ...prev, [credit.id]: fetchedItems }));
+          }
+        } catch (e) {
+          console.warn("Could not background fetch PO items for payment modal:", e);
+        }
+      })();
+    }
   };
 
   const handleProcessPayment = async (e: React.FormEvent) => {
@@ -1734,20 +1854,54 @@ export default function CreditsPage() {
         paymentVoucherNumber: voucherRef
       } : null;
 
+      const finalPoNumber = paymentPoNumber.trim() || selectedCreditForPayment.poNumber || "";
+      const finalItems = (paymentPoItems && paymentPoItems.length > 0)
+        ? paymentPoItems
+        : ((selectedCreditForPayment.items && selectedCreditForPayment.items.length > 0)
+            ? selectedCreditForPayment.items
+            : (creditPOItems[selectedCreditForPayment.id] || []));
+
+      const finalPoImageUrl = paymentPoImageUrl || selectedCreditForPayment.poImageUrl || selectedCreditForPayment.poUrl || (selectedCreditForPayment.poUrls && selectedCreditForPayment.poUrls[0]) || "";
+
+      const finalInvoiceUrls = (selectedCreditForPayment.invoiceUrls && selectedCreditForPayment.invoiceUrls.length > 0)
+        ? selectedCreditForPayment.invoiceUrls
+        : (selectedCreditForPayment.invoiceUrl ? [selectedCreditForPayment.invoiceUrl] : (finalPoImageUrl ? [finalPoImageUrl] : []));
+
+      const finalInvoiceUrl = selectedCreditForPayment.invoiceUrl || (finalInvoiceUrls.length > 0 ? finalInvoiceUrls[0] : "");
+      const finalPoUrls = (selectedCreditForPayment.poUrls && selectedCreditForPayment.poUrls.length > 0)
+        ? selectedCreditForPayment.poUrls
+        : (finalPoImageUrl ? [finalPoImageUrl] : []);
+
       // Step D: Update Credit Document in Firestore
       const creditUpdatePayload: any = {
         paidAmount: newPaidAmount,
         status: newStatus,
         updatedAt: serverTimestamp(),
       };
+      if (finalPoNumber && !selectedCreditForPayment.poNumber) {
+        creditUpdatePayload.poNumber = finalPoNumber;
+      }
+      if (finalItems.length > 0 && (!selectedCreditForPayment.items || selectedCreditForPayment.items.length === 0)) {
+        creditUpdatePayload.items = finalItems;
+      }
+      if (finalPoImageUrl && !selectedCreditForPayment.poImageUrl) {
+        creditUpdatePayload.poImageUrl = finalPoImageUrl;
+      }
       await updateDoc(doc(db, "credits", selectedCreditForPayment.id), creditUpdatePayload);
 
       // Optimistically update local credit state immediately
       setCredits(prev => prev.map(c => c.id === selectedCreditForPayment.id ? { 
         ...c, 
         paidAmount: newPaidAmount, 
-        status: newStatus as any 
+        status: newStatus as any,
+        ...(finalPoNumber ? { poNumber: finalPoNumber } : {}),
+        ...(finalItems.length > 0 ? { items: finalItems } : {}),
+        ...(finalPoImageUrl ? { poImageUrl: finalPoImageUrl } : {})
       } : c));
+
+      if (finalItems.length > 0) {
+        setCreditPOItems(prev => ({ ...prev, [selectedCreditForPayment.id]: finalItems }));
+      }
 
       // Step E: Write cash_payments (single source of truth for payments ledger)
       // Safe accounting: Safe balance outflow is payment.amount, so we store netCashDisbursed
@@ -1762,8 +1916,9 @@ export default function CreditsPage() {
           returnNumber: finalReturnNumber || "",
           returnTransferOutNumber: returnTransferOutNumber.trim() || (isPendingSource ? selectedPendingReturn.transferOutNumber : "") || "",
           returnDetails: returnDetailsPayload,
-          category: "credit",
-          categoryNote: `Credit Payment - Inv #${selectedCreditForPayment.invoiceNumber || ""} - ${selectedCreditForPayment.companyName || ""}${hasReturn ? ` (RTV: EGP ${numReturnAmount})` : ''}`,
+          category: "order",
+          subCategory: "credit_payment",
+          categoryNote: `Credit Payment - Inv #${selectedCreditForPayment.invoiceNumber || ""} - ${selectedCreditForPayment.companyName || ""}${finalPoNumber ? ` • PO #${finalPoNumber}` : ''}${hasReturn ? ` (RTV: EGP ${numReturnAmount})` : ''}`,
           companyName: selectedCreditForPayment.companyName || "Unknown",
           createdAt: serverTimestamp(),
           createdBy: userEmail,
@@ -1772,11 +1927,16 @@ export default function CreditsPage() {
           invoiceNumber: selectedCreditForPayment.invoiceNumber || "",
           isTaxable: Number(selectedCreditForPayment.tax) > 0,
           method: paymentMethod,
-          poNumber: selectedCreditForPayment.poNumber || "",
-          poImageUrl: selectedCreditForPayment.poImageUrl || "",
+          poNumber: finalPoNumber,
+          poImageUrl: finalPoImageUrl,
+          poUrl: finalPoImageUrl,
+          poUrls: finalPoUrls,
+          invoiceUrl: finalInvoiceUrl,
+          invoiceUrls: finalInvoiceUrls,
+          managerSignature: selectedCreditForPayment.managerSignature || "",
           supplierRepName: finalRepName,
           supplierNationalId: finalRepNationalId,
-          items: selectedCreditForPayment.items || [],
+          items: finalItems,
           storeId: targetStoreId,
           tax: 0,
           total: netCashDisbursed,
@@ -1787,6 +1947,14 @@ export default function CreditsPage() {
         }
         const cashDocRef = await addDoc(collection(db, "cash_payments"), paymentRecord);
         createdCashPaymentId = cashDocRef.id;
+
+        // Auto sync products to master DB if items present
+        if (finalItems && finalItems.length > 0) {
+          syncProductsToMaster(finalItems, paymentDate || new Date().toISOString().split("T")[0], selectedCreditForPayment.companyName).catch(() => {});
+        }
+
+        // Notify financials sync across all views
+        notifyFinancialsUpdated(targetStoreId);
 
         // Auto open print dialog immediately for the dual-sheet voucher
         const createdPaymentForPrint = {
@@ -3384,6 +3552,141 @@ html, body {
                       <span className="text-sm font-bold text-slate-400 uppercase tracking-wide">{isAr ? "المبلغ المتبقي" : "Remaining Balance"}</span>
                       <span className="text-2xl font-black text-indigo-400 font-mono tracking-tight">EGP {((selectedCreditForPayment.amountDue + selectedCreditForPayment.tax) - selectedCreditForPayment.paidAmount).toLocaleString()}</span>
                     </div>
+                  </div>
+
+                  {/* Purchase Order (PO) Details & Document Card */}
+                  <div className="bg-[#0B1121] p-4.5 rounded-2xl border border-indigo-500/30 shadow-md space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold">
+                          <FileText size={16} />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-black text-white flex items-center gap-2">
+                            {isAr ? "بيانات أمر الشراء والتوريد (P.O.)" : "Purchase Order (PO) Details"}
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-900/60 text-indigo-300 border border-indigo-700/50">
+                              {isAr ? "ينتقل تلقائياً لسند الصرف" : "Carried to Payment"}
+                            </span>
+                          </h4>
+                          <p className="text-[11px] text-slate-400">
+                            {isAr ? "سيتم ربط رقم الـ PO وصور المستندات والأصناف بالكامل مع إيصال الصرف المالي" : "PO number, items & documents are linked with the payment voucher"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                          {isAr ? "رقم أمر الشراء / التوريد (PO Number)" : "PO Number / Reference"}
+                        </label>
+                        <input 
+                          type="text"
+                          placeholder={isAr ? "مثال: PO-45012 أو إذن توريد" : "e.g. PO-45012"}
+                          className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-indigo-500 transition-all outline-none font-mono font-bold text-white text-sm"
+                          value={paymentPoNumber}
+                          onChange={(e) => setPaymentPoNumber(e.target.value)}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                          {isAr ? "مستند / صورة أمر الشراء (PO Image)" : "PO Document / Image"}
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <label className="flex-1 cursor-pointer bg-slate-900 hover:bg-slate-850 border border-slate-700 hover:border-indigo-500 rounded-xl p-2 text-xs font-bold text-slate-300 flex items-center justify-center gap-1.5 transition-colors">
+                            <Upload size={14} className="text-indigo-400" />
+                            <span>{paymentPoImageUrl ? (isAr ? "تغيير صورة الـ PO" : "Change PO Image") : (isAr ? "رفع صورة الـ PO" : "Upload PO Image")}</span>
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              className="hidden" 
+                              onChange={(e) => {
+                                if (e.target.files && e.target.files[0]) {
+                                  handleUploadPaymentPo(e.target.files[0]);
+                                }
+                              }} 
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            onClick={handlePastePaymentPo}
+                            title={isAr ? "لصق من الحافظة" : "Paste from clipboard"}
+                            className="p-2 bg-slate-900 hover:bg-slate-850 border border-slate-700 rounded-xl text-slate-400 hover:text-indigo-400 transition-colors cursor-pointer"
+                          >
+                            <ClipboardPaste size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Attached Items & Thumbnail Row */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800 text-xs">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {paymentPoItems && paymentPoItems.length > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => setShowPaymentItemsDrawer(!showPaymentItemsDrawer)}
+                            className="px-2.5 py-1 rounded-lg bg-emerald-950/60 text-emerald-400 border border-emerald-800/60 font-bold flex items-center gap-1.5 hover:bg-emerald-900/60 transition-colors cursor-pointer"
+                          >
+                            <CheckCircle size={12} />
+                            <span>{isAr ? `${paymentPoItems.length} صنف مسجل بأمر الشراء` : `${paymentPoItems.length} PO Items Attached`}</span>
+                            <ChevronDown size={12} className={`transition-transform ${showPaymentItemsDrawer ? "rotate-180" : ""}`} />
+                          </button>
+                        ) : (
+                          <span className="text-slate-500 text-[11px] font-medium flex items-center gap-1">
+                            <AlertCircle size={12} /> {isAr ? "لا توجد أصناف مستخرجة مسجلة" : "No itemized products attached"}
+                          </span>
+                        )}
+
+                        {paymentPoImageUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setPreviewImage({ url: paymentPoImageUrl, title: `PO - ${selectedCreditForPayment.companyName}` })}
+                            className="px-2.5 py-1 rounded-lg bg-indigo-950/60 text-indigo-300 border border-indigo-800/60 font-bold flex items-center gap-1.5 hover:bg-indigo-900/60 transition-colors cursor-pointer"
+                          >
+                            <Eye size={12} />
+                            <span>{isAr ? "معاينة صورة الـ PO" : "Preview PO Image"}</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {isProcessingPaymentPo && (
+                        <span className="text-[11px] text-indigo-400 font-bold flex items-center gap-1 animate-pulse">
+                          <Loader2 size={12} className="animate-spin" /> {isAr ? "جاري معالجة أمر الشراء..." : "Processing PO image..."}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Expandable Items Preview */}
+                    {showPaymentItemsDrawer && paymentPoItems && paymentPoItems.length > 0 && (
+                      <div className="overflow-x-auto max-h-44 overflow-y-auto border border-slate-800 rounded-xl bg-slate-950/60 mt-2">
+                        <table className="w-full text-left text-[11px]">
+                          <thead className="bg-slate-900 text-slate-400 border-b border-slate-800 font-bold">
+                            <tr>
+                              <th className="px-3 py-1.5">#</th>
+                              <th className="px-3 py-1.5">Barcode</th>
+                              <th className="px-3 py-1.5">Description</th>
+                              <th className="px-3 py-1.5 text-center">Qty</th>
+                              <th className="px-3 py-1.5 text-right">Price</th>
+                              <th className="px-3 py-1.5 text-right">Total</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {paymentPoItems.map((it: any, itIdx: number) => (
+                              <tr key={itIdx} className="border-b border-slate-850/50 last:border-0 font-medium">
+                                <td className="px-3 py-1 text-slate-500 font-mono">{itIdx + 1}</td>
+                                <td className="px-3 py-1 text-slate-400 font-mono">{it.barcode || "N/A"}</td>
+                                <td className="px-3 py-1 text-white font-bold">{it.description || it.itemName || "Item"}</td>
+                                <td className="px-3 py-1 text-center text-indigo-300 font-bold">{it.quantity}</td>
+                                <td className="px-3 py-1 text-right text-slate-300 font-mono">{Number(it.unitPrice || 0).toFixed(2)}</td>
+                                <td className="px-3 py-1 text-right text-emerald-400 font-mono font-bold">{(Number(it.quantity || 1) * Number(it.unitPrice || 0)).toFixed(2)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-4 mb-2">
@@ -5080,7 +5383,7 @@ html, body {
                   </div>
                   <div style={{ flex: 1, padding: '10px 15px' }}>
                     <span style={{ fontSize: '10px', color: '#666', textTransform: 'uppercase', fontWeight: 'bold', display: 'block' }}>PO # / رقم أمر الشراء</span>
-                    <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#000', fontFamily: 'monospace', display: 'block', marginTop: '2px' }}>{credit.poNumber || '-'}</span>
+                    <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#000', fontFamily: 'monospace', display: 'block', marginTop: '2px' }}>{payment.poNumber || credit.poNumber || '-'}</span>
                   </div>
                 </div>
                 {/* Row 3: Account Balance Position */}

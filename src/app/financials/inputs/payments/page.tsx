@@ -856,7 +856,7 @@ function BankTransferReceiptPrintPage({
   );
 }
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { TiltCard } from "@/components/MobileUX/TiltCard";
 import { dispatchNotificationSystem } from "@/lib/notifications";
 import { notifyFinancialsUpdated } from "@/lib/financial-sync";
@@ -957,6 +957,7 @@ const compressImage = (file: File, maxWidth: number = 1200, quality: number = 0.
 
 const CATEGORY_EMOJIS: Record<string, string> = {
   order: "📦",
+  credit: "📑",
   maintenance: "🔧",
   utilities: "💡",
   transportation: "🚚",
@@ -2148,7 +2149,7 @@ export default function PaymentsRedesignPage() {
       changes.push(`Invoice #: "${editingPayment.invoiceNumber || 'N/A'}" ➔ "${editInvoiceNumber.trim() || 'N/A'}"`);
     }
 
-    const effectiveEditPoNumber = editCategory === "order" ? editPoNumber.trim() : "";
+    const effectiveEditPoNumber = (editCategory === "order" || editCategory === "credit" || !!editingPayment.creditId) ? editPoNumber.trim() : "";
     if ((editingPayment.poNumber || "") !== effectiveEditPoNumber) {
       changes.push(`PO #: "${editingPayment.poNumber || 'N/A'}" ➔ "${effectiveEditPoNumber || 'None'}"`);
     }
@@ -2463,9 +2464,47 @@ html, body {
         setSelectedBulkItems(new Set());
       }
     }, 1000);
-  };// Derived filtered data
+  };
+
+  // Helper to enrich payment with linked credit data (PO, items, invoice images) if missing
+  const getEnrichedPayment = useCallback((p: any) => {
+    if (!p) return p;
+    if (!p.creditId && !p.invoiceNumber) return p;
+
+    // Find matching credit by creditId or invoiceNumber + companyName
+    const matchingCredit = p.creditId
+      ? credits.find(c => c.id === p.creditId)
+      : credits.find(c => c.invoiceNumber && c.invoiceNumber === p.invoiceNumber && (!p.companyName || !c.companyName || c.companyName.toLowerCase() === p.companyName.toLowerCase()));
+
+    if (!matchingCredit) return p;
+
+    const enriched = { ...p };
+    if (!enriched.poNumber && matchingCredit.poNumber) {
+      enriched.poNumber = matchingCredit.poNumber;
+    }
+    if ((!enriched.items || enriched.items.length === 0) && matchingCredit.items && matchingCredit.items.length > 0) {
+      enriched.items = matchingCredit.items;
+    }
+    if (!enriched.poImageUrl) {
+      enriched.poImageUrl = matchingCredit.poImageUrl || matchingCredit.poUrl || (matchingCredit.poUrls && matchingCredit.poUrls[0]) || "";
+    }
+    if (!enriched.invoiceUrl && matchingCredit.invoiceUrl) {
+      enriched.invoiceUrl = matchingCredit.invoiceUrl;
+    }
+    if ((!enriched.invoiceUrls || enriched.invoiceUrls.length === 0) && matchingCredit.invoiceUrls && matchingCredit.invoiceUrls.length > 0) {
+      enriched.invoiceUrls = matchingCredit.invoiceUrls;
+    } else if ((!enriched.invoiceUrls || enriched.invoiceUrls.length === 0) && matchingCredit.invoiceUrl) {
+      enriched.invoiceUrls = [matchingCredit.invoiceUrl];
+    }
+    if (!enriched.managerSignature && matchingCredit.managerSignature) {
+      enriched.managerSignature = matchingCredit.managerSignature;
+    }
+    return enriched;
+  }, [credits]);
+
+  // Derived filtered data
   const filteredPayments = useMemo(() => {
-    return payments.filter(p => {
+    return payments.map(getEnrichedPayment).filter(p => {
       // Month Filter
       if (monthFilter && p.date && !p.date.startsWith(monthFilter)) return false;
 
@@ -2475,12 +2514,13 @@ html, body {
         return (
           p.companyName?.toLowerCase().includes(q) ||
           p.invoiceNumber?.toLowerCase().includes(q) ||
-          p.poNumber?.toLowerCase().includes(q)
+          p.poNumber?.toLowerCase().includes(q) ||
+          p.items?.some((it: any) => (it.description || it.itemName || it.barcode)?.toLowerCase().includes(q))
         );
       }
       return true;
     });
-  }, [payments, monthFilter, searchQuery]);
+  }, [payments, monthFilter, searchQuery, getEnrichedPayment]);
 
   // Aggregate Category Stats for the top cards & method totals
   const { categoryStats, methodTotals } = useMemo(() => {
@@ -2931,7 +2971,7 @@ html, body {
                       </div>
 
                       <div className="flex items-center gap-1 sm:gap-2">
-                        {pay.category === "order" && (!pay.items || pay.items.length === 0) && !pay.poImageUrl && (
+                        {(pay.category === "order" || pay.category === "credit" || !!pay.creditId) && (!pay.items || pay.items.length === 0) && !pay.poImageUrl && (
                           <button
                             onClick={() => setSelectedPaymentForPoUpload(pay)}
                             className="text-xs font-bold bg-blue-900/30 text-blue-400 hover:bg-blue-900/50 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 mr-1"
@@ -4120,7 +4160,7 @@ html, body {
                       <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "التصنيف" : "Category"}</p>
                         <p className="text-xl font-black text-slate-900 dark:text-white capitalize flex items-center gap-2">
-                          {CATEGORY_EMOJIS[selectedPaymentForView.category] || "📦"} {selectedPaymentForView.category === 'order' ? (isAr ? "طلبات وبضائع" : "Order") : selectedPaymentForView.category === 'utilities' ? (isAr ? "المرافق والخدمات" : "Utilities") : selectedPaymentForView.category === 'maintenance' ? (isAr ? "الصيانة" : "Maintenance") : selectedPaymentForView.category === 'transportation' ? (isAr ? "النقل والنولون" : "Transportation") : (isAr ? "مصروفات أخرى" : "Other")}
+                          {CATEGORY_EMOJIS[selectedPaymentForView.category] || "📦"} {selectedPaymentForView.category === 'order' ? (isAr ? "طلبات وبضائع" : "Order") : selectedPaymentForView.category === 'credit' ? (isAr ? "سداد مديونية مورد / آجل" : "Credit Debt Payment") : selectedPaymentForView.category === 'utilities' ? (isAr ? "المرافق والخدمات" : "Utilities") : selectedPaymentForView.category === 'maintenance' ? (isAr ? "الصيانة" : "Maintenance") : selectedPaymentForView.category === 'transportation' ? (isAr ? "النقل والنولون" : "Transportation") : (isAr ? "مصروفات أخرى" : "Other")}
                         </p>
                       </div>
                       <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
@@ -4594,13 +4634,14 @@ html, body {
                         onChange={(e) => {
                           const newCat = e.target.value;
                           setEditCategory(newCat);
-                          if (newCat !== "order") {
+                          if (newCat !== "order" && newCat !== "credit") {
                             setEditPoNumber("");
                           }
                         }}
                         className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500/20"
                       >
                         <option value="order">{isAr ? "طلبات وبضائع" : "Order"}</option>
+                        <option value="credit">{isAr ? "سداد مديونية مورد / آجل" : "Credit Debt Payment"}</option>
                         <option value="maintenance">{isAr ? "صيانة" : "Maintenance"}</option>
                         <option value="utilities">{isAr ? "مرافق وخدمات" : "Utilities"}</option>
                         <option value="transportation">{isAr ? "نقل ونولون" : "Transportation"}</option>
@@ -4609,7 +4650,7 @@ html, body {
                     </div>
                   </div>
 
-                  <div className={`grid ${editCategory === "order" ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"} gap-4`}>
+                  <div className={`grid ${(editCategory === "order" || editCategory === "credit") ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"} gap-4`}>
                     <div>
                       <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
                         {isAr ? "رقم الفاتورة" : "Invoice #"}
@@ -4622,7 +4663,7 @@ html, body {
                       />
                     </div>
 
-                    {editCategory === "order" && (
+                    {(editCategory === "order" || editCategory === "credit") && (
                       <div>
                         <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
                           {isAr ? "رقم أمر الشراء (PO)" : "PO #"}
