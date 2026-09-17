@@ -94,7 +94,28 @@ export async function POST(request: Request) {
     let targetTokens: string[] = [];
 
     if (Array.isArray(inputTokens) && inputTokens.length > 0) {
-      targetTokens = inputTokens.filter(t => typeof t === 'string' && t.trim().length > 10);
+      const allowCashiers = Array.isArray(targetRoles) && targetRoles.map((r: any) => String(r).toLowerCase()).includes('cashier');
+      const rawTokens = inputTokens.filter(t => typeof t === 'string' && t.trim().length > 10).map(t => t.trim());
+
+      if (!allowCashiers) {
+        // Exclude any cashier device tokens from receiving Manager app broadcasts/alerts
+        try {
+          const tokensSnap = await adminDb.collection('user_tokens').get();
+          const cashierTokens = new Set<string>();
+          tokensSnap.forEach(doc => {
+            const d = doc.data();
+            if ((d.role || '').toLowerCase() === 'cashier') {
+              if (d.fcmToken) cashierTokens.add(d.fcmToken.trim());
+              if (Array.isArray(d.tokens)) d.tokens.forEach((t: string) => cashierTokens.add(t.trim()));
+            }
+          });
+          targetTokens = rawTokens.filter(t => !cashierTokens.has(t));
+        } catch {
+          targetTokens = rawTokens;
+        }
+      } else {
+        targetTokens = rawTokens;
+      }
     } else {
       try {
         const [tokensSnap, usersSnap] = await Promise.all([
@@ -178,18 +199,23 @@ Details: ${messageBody}`;
       }
     }
 
+    // Explicit ANH Manager PWA branding: guarantees all notifications are recognized as Manager Portal
+    const hasManagerBrand = finalTitle.includes("ANH Manager") || finalTitle.includes("مدير ANH");
+    const displayTitle = hasManagerBrand ? finalTitle : `🏢 [ANH Manager] ${finalTitle}`;
+
     // Multicast Message with collapse keys & priority for Android, iOS APNs, and WebPush
     const message = {
       notification: {
-        title: finalTitle,
+        title: displayTitle,
         body: finalBody,
       },
       data: {
-        title: finalTitle,
+        title: displayTitle,
         body: finalBody,
         url: targetUrl,
         tag: notificationTag,
-        type: String(type || 'system')
+        type: String(type || 'system'),
+        appName: 'ANH Manager'
       },
       android: {
         priority: "high" as const,
@@ -202,14 +228,14 @@ Details: ${messageBody}`;
           Topic: notificationTag.replace(/[^a-zA-Z0-9_-]/g, '_')
         },
         notification: {
-          title: finalTitle,
+          title: displayTitle,
           body: finalBody,
           icon: '/icon-manager.png',
           badge: '/icons8-circled-k-50.png',
           requireInteraction: false,
           tag: notificationTag,
           renotify: true,
-          data: { url: targetUrl }
+          data: { url: targetUrl, appName: 'ANH Manager' }
         },
         fcmOptions: {
           link: targetUrl
@@ -223,7 +249,7 @@ Details: ${messageBody}`;
         payload: {
           aps: {
             alert: {
-              title: finalTitle,
+              title: displayTitle,
               body: finalBody
             },
             sound: "default",
