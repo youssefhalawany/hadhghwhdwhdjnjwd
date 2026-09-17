@@ -19,7 +19,8 @@ export async function POST(request: Request) {
       branchName,
       type = "system",
       tag: inputTag,
-      enableAi = false
+      enableAi = false,
+      targetRoles
     } = bodyData;
 
     const messageBody = rawBody || altBody;
@@ -37,6 +38,20 @@ export async function POST(request: Request) {
 
     // Track token sources: token -> array of { col: string, docId: string, isArray: boolean }
     const tokenSourceMap = new Map<string, Array<{ col: string; docId: string; isArray: boolean }>>();
+
+    const isTokenRoleMatched = (data: any) => {
+      // If targetRoles is explicitly provided (e.g. admin broadcast), honor it
+      if (Array.isArray(targetRoles) && targetRoles.length > 0) {
+        return targetRoles.map((r: any) => String(r).toLowerCase()).includes((data.role || "").toLowerCase());
+      }
+      // General operational alerts: ONLY send to managers, admins, owners, and master.
+      // NEVER send manager alerts to cashier tokens to avoid duplicate notifications on phones running both apps!
+      const role = (data.role || "").toLowerCase();
+      if (role === "cashier") {
+        return false;
+      }
+      return true;
+    };
 
     const isTokenBranchMatched = (data: any, docId: string, notifBranchId?: string) => {
       if (!notifBranchId || notifBranchId === "all") return true;
@@ -89,7 +104,7 @@ export async function POST(request: Request) {
 
         tokensSnap.forEach((doc) => {
           const data = doc.data();
-          if (isTokenBranchMatched(data, doc.id, branchId)) {
+          if (isTokenBranchMatched(data, doc.id, branchId) && isTokenRoleMatched(data)) {
             if (data.fcmToken && typeof data.fcmToken === 'string' && data.fcmToken.trim().length > 10) {
               const tok = data.fcmToken.trim();
               targetTokens.push(tok);
@@ -111,7 +126,7 @@ export async function POST(request: Request) {
 
         usersSnap.forEach((doc) => {
           const data = doc.data();
-          if (isTokenBranchMatched(data, doc.id, branchId)) {
+          if (isTokenBranchMatched(data, doc.id, branchId) && isTokenRoleMatched(data)) {
             if (data.fcmToken && typeof data.fcmToken === 'string' && data.fcmToken.trim().length > 10) {
               const tok = data.fcmToken.trim();
               targetTokens.push(tok);
@@ -178,14 +193,7 @@ Details: ${messageBody}`;
       },
       android: {
         priority: "high" as const,
-        collapseKey: notificationTag,
-        notification: {
-          title: finalTitle,
-          body: finalBody,
-          icon: "icon_manager",
-          channelId: "circlek_high_importance",
-          tag: notificationTag
-        }
+        collapseKey: notificationTag
       },
       webpush: {
         headers: {

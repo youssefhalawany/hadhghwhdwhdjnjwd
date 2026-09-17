@@ -1,15 +1,15 @@
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  manifest: "/manifest-cashier.json",
+  manifest: "/manifest-manager.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "ANH Cashier",
+    title: "ANH Manager",
   },
   icons: {
-    icon: "/icon-cashier.png",
-    apple: "/icon-cashier.png",
+    icon: "/icon-manager.png",
+    apple: "/icon-manager.png",
   }
 };
 

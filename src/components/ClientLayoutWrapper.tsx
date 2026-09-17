@@ -1019,16 +1019,15 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   }, [user, currentBranch]);
 
   useEffect(() => {
-    // Dynamically inject the correct PWA manifest based on the portal
+    // Unify all PWA sessions under the official Manager Portal App
     let link = document.querySelector("link[rel~='manifest']") as HTMLLinkElement;
     if (!link) {
       link = document.createElement('link');
       link.rel = 'manifest';
       document.head.appendChild(link);
     }
-    const isCashierPortal = pathname?.startsWith('/cashier') || pathname?.startsWith('/shift-reports/cashier') || pathname?.startsWith('/voids/cashier') || pathname?.startsWith('/checklists/cashier') || pathname?.startsWith('/owner');
-    link.href = isCashierPortal ? '/manifest-cashier.json' : '/manifest-manager.json';
-  }, [pathname]);
+    link.href = '/manifest-manager.json';
+  }, []);
 
   // Synchronize OS PWA App Icon Badge count
   useEffect(() => {

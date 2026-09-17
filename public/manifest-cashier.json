@@ -1,8 +1,8 @@
 {
-  "name": "ANH CK Cashier Portal",
-  "short_name": "ANH Cashier",
-  "description": "ANH CK Cashier Portal — Shift Reports, Checklists, Expiries",
-  "start_url": "/cashier",
+  "name": "ANH CK Manager Portal",
+  "short_name": "ANH Manager",
+  "description": "ANH CK Franchise Management — Shifts, Checklists, Inventory & Reports",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
@@ -11,7 +11,7 @@
   "categories": ["business", "productivity"],
   "icons": [
     {
-      "src": "/icon-cashier.png",
+      "src": "/icon-manager.png",
       "sizes": "192x192 512x512 1024x1024",
       "type": "image/png",
       "purpose": "any maskable"
@@ -22,19 +22,19 @@
       "name": "Shift Report",
       "short_name": "Shift",
       "url": "/shift-reports/cashier",
-      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/icon-manager.png", "sizes": "192x192" }]
     },
     {
       "name": "Checklists",
       "short_name": "Check",
       "url": "/checklists/cashier",
-      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/icon-manager.png", "sizes": "192x192" }]
     },
     {
       "name": "Expiries",
       "short_name": "Expiry",
       "url": "/expiries",
-      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/icon-manager.png", "sizes": "192x192" }]
     }
   ]
 }
