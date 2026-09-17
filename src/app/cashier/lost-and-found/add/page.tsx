@@ -88,12 +88,14 @@ export default function AddLostAndFoundPage() {
       }
       
       try {
-        fetch("/api/notifications/notify-master", {
+        fetch("/api/notifications/send", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             title: "New Lost & Found Record",
-            body: `Cashier: ${cashierName || 'Unknown'}\nItem: ${payload.description}`
+            body: `Cashier: ${cashierName || 'Unknown'}\nItem: ${payload.description}`,
+            branchId: storeId,
+            tag: "circlek-lost-and-found"
           })
         }).catch(e => console.error("Notify error", e));
       } catch (err) {}

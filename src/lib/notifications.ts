@@ -63,17 +63,23 @@ export async function dispatchNotificationSystem(payload: SystemNotificationPayl
     console.error("Error creating Firestore notification document:", err);
   }
 
-  // 2. Dispatch High-Priority Push Notifications filtered by branch
-  Promise.allSettled([
-    fetch("/api/notifications/notify-master", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: formattedTitle, body: formattedBody, url, branchId: resolvedBranchId, branchName: resolvedBranchName }),
-    }),
+  // 2. Dispatch High-Priority Push Notification (Single Unified Dispatch)
+  try {
     fetch("/api/notifications/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: formattedTitle, body: formattedBody, url, branchId: resolvedBranchId, branchName: resolvedBranchName }),
-    })
-  ]).catch(err => console.error("Error sending push notification broadcast:", err));
+      body: JSON.stringify({
+        title: formattedTitle,
+        body: formattedBody,
+        url,
+        type,
+        tag: `circlek-${type || "system"}`,
+        branchId: resolvedBranchId,
+        branchName: resolvedBranchName,
+        metadata
+      }),
+    }).catch(err => console.error("Error sending push notification broadcast:", err));
+  } catch (err) {
+    console.error("Error dispatching notification:", err);
+  }
 }

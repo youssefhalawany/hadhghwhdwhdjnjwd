@@ -56,17 +56,26 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
                       const messagingInstance = messaging ? await messaging : null;
                       if (messagingInstance) {
                         const token = await getToken(messagingInstance, { 
-                          vapidKey: "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeZ2Ig14" // Placeholder, Firebase often auto-resolves this from the project if omitted, but VAPID is technically required. We will try to fetch it.
-                        }).catch(() => null); // Catch if vapid is strictly needed and fails
+                          vapidKey: process.env.NEXT_PUBLIC_VAPID_KEY || "BHiDvLTbQ2DTED8p7X1BQ8Vu811fuu3dmpVfclmA5P7n-DuRltU7kkai9E2_2VkbLpS7Ns5ekNQClP5CsTeWf7M"
+                        }).catch(() => null);
 
                         if (token) {
-                          const fcmTokens = data.fcmTokens || [];
-                          if (!fcmTokens.includes(token)) {
-                            const { updateDoc } = await import("firebase/firestore");
-                            await updateDoc(doc(db, "users", currentUser.uid), {
-                              fcmTokens: [...fcmTokens, token]
-                            });
-                          }
+                          const { setDoc } = await import("firebase/firestore");
+                          await setDoc(doc(db, "users", currentUser.uid), {
+                            fcmToken: token,
+                            fcmTokens: [token],
+                            role: userRole,
+                            updatedAt: new Date().toISOString()
+                          }, { merge: true }).catch(() => {});
+
+                          await setDoc(doc(db, "user_tokens", currentUser.uid), {
+                            fcmToken: token,
+                            tokens: [token],
+                            email: currentUser.email || "owner@anhreports.com",
+                            role: userRole,
+                            branchId: "all",
+                            updatedAt: new Date().toISOString()
+                          }, { merge: true }).catch(() => {});
                         }
                       }
                     } catch (e) { console.error("FCM Token Error:", e); }

@@ -98,9 +98,30 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
   const [pushPermissionNeeded, setPushPermissionNeeded] = useState(false);
 
-  const registerFcmPushToken = async (currentUserObj?: any) => {
-    if (typeof window === "undefined" || !("Notification" in window)) {
-      toast.error(language === "ar" ? "الإشعارات غير مدعومة على هذا الجهاز" : "Push notifications are not supported on this browser/device.");
+  const registerFcmPushToken = async (currentUserObj?: any, isUserGesture: boolean = false) => {
+    if (typeof window === "undefined") return;
+
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isStandalone = (window.navigator as any).standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+
+    // Check iOS PWA requirement
+    if (isIOS && !isStandalone) {
+      if (isUserGesture) {
+        toast(
+          language === "ar"
+            ? "📲 على أجهزة آيفون: اضغط على زر المشاركة (📤) بالأسفل ثم اختر 'إضافة إلى الشاشة الرئيسية' (Add to Home Screen) لتفعيل إشعارات شاشة القفل!"
+            : "📲 On iPhone: Tap the Share button (📤) then 'Add to Home Screen' to enable push notifications!",
+          { duration: 8000, icon: "ℹ️" }
+        );
+      }
+      setPushPermissionNeeded(true);
+      return;
+    }
+
+    if (!("Notification" in window)) {
+      if (isUserGesture) {
+        toast.error(language === "ar" ? "الإشعارات غير مدعومة على هذا الجهاز" : "Push notifications are not supported on this browser/device.");
+      }
       return;
     }
 
@@ -108,24 +129,32 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       let perm = Notification.permission;
 
       if (perm === "denied") {
-        toast.error(
-          language === "ar"
-            ? "الإشعارات محظورة من إعدادات المتصفح. يرجى تفعيلها من إعدادات الموقع."
-            : "Notifications are blocked in your browser settings. Please enable notification permissions in site settings.",
-          { duration: 6000 }
-        );
+        if (isUserGesture) {
+          toast.error(
+            language === "ar"
+              ? "الإشعارات محظورة من إعدادات المتصفح. يرجى تفعيلها من إعدادات الموقع ⚙️."
+              : "Notifications are blocked in your browser settings. Please enable them in site settings ⚙️.",
+            { duration: 6000 }
+          );
+        }
         setPushPermissionNeeded(false);
         return;
       }
 
       if (perm !== "granted") {
-        setPushPermissionNeeded(true);
-        return;
+        if (isUserGesture) {
+          perm = await Notification.requestPermission();
+        } else {
+          setPushPermissionNeeded(true);
+          return;
+        }
       }
 
       if (perm === "granted") {
         setPushPermissionNeeded(false);
-        toast.success(language === "ar" ? "تم تفعيل الإشعارات بنجاح! 🔔" : "Push notifications enabled successfully! 🔔");
+        if (isUserGesture) {
+          toast.success(language === "ar" ? "تم تفعيل الإشعارات بنجاح! 🔔" : "Push notifications enabled successfully! 🔔");
+        }
 
         if ("serviceWorker" in navigator) {
           const reg = await navigator.serviceWorker.register("/firebase-messaging-sw.js").catch((swErr) => {
@@ -162,6 +191,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
                     role: activeRole,
                     branchId: activeBranch,
                     storeIds,
+                    deviceType: isIOS ? "ios_pwa" : /Android/.test(navigator.userAgent) ? "android" : "desktop",
                     updatedAt: new Date().toISOString()
                   });
 
@@ -176,11 +206,15 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
           }
         }
       } else {
-        toast.error(language === "ar" ? "لم يتم منح إذن الإشعارات" : "Notification permission was not granted.");
+        if (isUserGesture) {
+          toast.error(language === "ar" ? "لم يتم منح إذن الإشعارات" : "Notification permission was not granted.");
+        }
       }
     } catch (err: any) {
       console.error("FCM Token generation error:", err);
-      toast.error(language === "ar" ? "حدث خطأ أثناء طلب تفعيل الإشعارات" : "Failed to request notification permission.");
+      if (isUserGesture) {
+        toast.error(language === "ar" ? "حدث خطأ أثناء طلب تفعيل الإشعارات" : "Failed to request notification permission.");
+      }
     }
   };
 
@@ -1431,7 +1465,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => registerFcmPushToken(user)}
+                onClick={() => registerFcmPushToken(user, true)}
                 className="px-3.5 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 active:scale-95 text-white border border-white/30 text-[11px] font-bold uppercase tracking-wider backdrop-blur-sm transition-all cursor-pointer"
               >
                 {isAr ? "تفعيل الإشعارات 🔔" : "Enable Push Notifications 🔔"}

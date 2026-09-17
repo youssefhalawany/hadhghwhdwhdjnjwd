@@ -16,13 +16,16 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   console.log('[sw.js] Received background message ', payload);
 
-  const notificationTitle = payload.notification?.title || payload.data?.title || "Circle K Notification";
-  const notificationBody = payload.notification?.body || payload.data?.body || "Tap to view update.";
-  const clickUrl = payload.data?.url || payload.notification?.click_action || '/financials/inputs';
+  // CRITICAL: If payload already includes a 'notification' object, Firebase's SDK
+  // automatically renders the system notification. Invoking showNotification again
+  // creates duplicate notifications. Only render manually for data-only messages.
+  if (payload.notification && payload.notification.title) {
+    return;
+  }
 
-  const actions = payload.notification?.actions || [
-    { action: 'open_overview', title: '💸 Safe Balance & Overview' }
-  ];
+  const notificationTitle = payload.data?.title || "Circle K Notification";
+  const notificationBody = payload.data?.body || "Tap to view update.";
+  const clickUrl = payload.data?.url || '/financials/inputs';
 
   const notificationOptions = {
     body: notificationBody,
@@ -30,10 +33,9 @@ messaging.onBackgroundMessage((payload) => {
     badge: '/icons8-circled-k-50.png',
     vibrate: [200, 100, 200],
     data: { url: clickUrl },
-    actions: actions,
-    tag: payload.data?.tag || `circlek-alert-${Date.now()}`,
-    renotify: true,
-    requireInteraction: true
+    tag: payload.data?.tag || 'circlek-alert',
+    renotify: false,
+    requireInteraction: false
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
@@ -72,4 +74,3 @@ self.addEventListener('install', () => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(clients.claim());
 });
-

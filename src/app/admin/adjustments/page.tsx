@@ -152,6 +152,23 @@ export type AdjustmentRecord = {
   remainingBalance?: number;
 };
 
+export function formatAdjustmentDate(dateVal: any, isAr: boolean = false): string {
+  if (!dateVal) return isAr ? "غير محدد" : "N/A";
+  try {
+    if (typeof dateVal?.toDate === "function") {
+      return dateVal.toDate().toLocaleDateString(isAr ? 'ar-EG' : 'en-US');
+    }
+    if (dateVal?.seconds) {
+      return new Date(dateVal.seconds * 1000).toLocaleDateString(isAr ? 'ar-EG' : 'en-US');
+    }
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return isAr ? "غير محدد" : "N/A";
+    return d.toLocaleDateString(isAr ? 'ar-EG' : 'en-US');
+  } catch {
+    return isAr ? "غير محدد" : "N/A";
+  }
+}
+
 export default function AdminAdjustmentsPage() {
   const { language: lang } = useLanguage();
   const isAr = lang === "ar";
@@ -162,7 +179,6 @@ export default function AdminAdjustmentsPage() {
   const [employees, setEmployees] = useState<any[]>([]);
   const [adjustments, setAdjustments] = useState<AdjustmentRecord[]>([]);
   const [oldDeductions, setOldDeductions] = useState<AdjustmentRecord[]>([]);
-  const [oldLoans, setOldLoans] = useState<AdjustmentRecord[]>([]);
   const [allSystemLoans, setAllSystemLoans] = useState<any[]>([]);
   const [historyAdjustments, setHistoryAdjustments] = useState<AdjustmentRecord[]>([]);
   const [isFetchingHistory, setIsFetchingHistory] = useState(false);
@@ -256,33 +272,6 @@ export default function AdminAdjustmentsPage() {
       console.error("deductions snapshot error:", err);
     });
 
-    // Fetch old loans for the current payroll month (approximate)
-    const d = new Date();
-    if (d.getDate() < 15) d.setMonth(d.getMonth() - 1);
-    const monthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    const lQ = query(collection(db, "loans"), where("date", ">=", monthStr));
-    const unsubOldL = onSnapshot(lQ, (snap) => {
-      const arr: any[] = [];
-      snap.forEach(l => {
-        const data = l.data();
-        if (data.date && data.date.startsWith(monthStr)) {
-          arr.push({
-            id: l.id,
-            employeeId: data.employeeId,
-            type: "loan",
-            amount: Number(data.approved || data.amount) || 0,
-            reason: data.reason || "Old System Loan",
-            status: "pending",
-            storeId: data.storeId || data.branchId,
-            createdAt: data.createdAt || data.date || new Date().toISOString()
-          } as AdjustmentRecord);
-        }
-      });
-      setOldLoans(arr);
-    }, (err) => {
-      console.error("loans snapshot error:", err);
-    });
-
     // Fetch all system loans for company/branch telemetry and forecasting
     const sysLoansQ = query(collection(db, "loans"), limit(300));
     const unsubSysLoans = onSnapshot(sysLoansQ, (snap) => {
@@ -299,7 +288,6 @@ export default function AdminAdjustmentsPage() {
       unsubEmp();
       unsubAdj();
       unsubOldD();
-      unsubOldL();
       unsubSysLoans();
     };
   }, [isAdmin]);
@@ -424,18 +412,26 @@ export default function AdminAdjustmentsPage() {
       });
   }, [branchSystemLoans, adjustments, isAr]);
 
-  // Combined & branch-filtered adjustments
+  // Combined & branch-filtered adjustments (strictly deduplicated)
   const allAdjustments = useMemo(() => {
-    const combined = [...adjustments, ...oldDeductions, ...oldLoans, ...activeSystemLoansAsAdjustments];
+    const seenIds = new Set<string>();
+    const combined = [...adjustments, ...oldDeductions, ...activeSystemLoansAsAdjustments];
     return combined
       .filter(item => {
+        const uniqueKey = item.id || (item as any).loanDocId;
+        if (uniqueKey) {
+          if (seenIds.has(uniqueKey)) return false;
+          seenIds.add(uniqueKey);
+        }
         const emp = employees.find(e => e.id === item.employeeId);
         return isBranchMatch((item as any).storeId, emp);
       })
       .sort((a: any, b: any) => {
-        return new Date(b.createdAt || "").getTime() - new Date(a.createdAt || "").getTime();
+        const timeA = new Date(a.createdAt || "").getTime() || 0;
+        const timeB = new Date(b.createdAt || "").getTime() || 0;
+        return timeB - timeA;
       });
-  }, [adjustments, oldDeductions, oldLoans, activeSystemLoansAsAdjustments, employees, isBranchMatch]);
+  }, [adjustments, oldDeductions, activeSystemLoansAsAdjustments, employees, isBranchMatch]);
 
   // Branch-filtered history adjustments
   const filteredHistoryAdjustments = useMemo(() => {
@@ -1268,7 +1264,7 @@ export default function AdminAdjustmentsPage() {
                     const emp = employees.find(e => e.id === adj.employeeId);
                     return (
                     <tr key={adj.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors">
-                      <td className="px-5 py-4 text-xs font-mono text-slate-500">{new Date(adj.createdAt).toLocaleDateString(isAr ? 'ar-EG' : 'en-US')}</td>
+                      <td className="px-5 py-4 text-xs font-mono text-slate-500">{formatAdjustmentDate(adj.createdAt, isAr)}</td>
                       <td className="px-5 py-4 font-bold text-sm text-slate-800 dark:text-white">
                         <div className="flex items-center gap-2">
                           <div className="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center justify-center">
