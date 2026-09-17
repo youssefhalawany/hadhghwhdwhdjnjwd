@@ -79,7 +79,13 @@ import {
   Check,
   Layers,
   PackageOpen,
-  Upload
+  Upload,
+  BarChart3,
+  List,
+  Kanban,
+  Sparkles,
+  ArrowUpRight,
+  SlidersHorizontal
 } from "lucide-react";
 import { notifyFinancialsUpdated } from "@/lib/financial-sync";
 import { motion, AnimatePresence } from "framer-motion";
@@ -208,33 +214,62 @@ function SortableInvoiceCard({ credit, onSelect, onStatusChange }: { credit: Cre
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.4 : 1,
+    opacity: isDragging ? 0.35 : 1,
   };
+
+  const totalDue = credit.amountDue + (credit.tax || 0);
+  const remaining = (credit.status === 'paid' || credit.settledAsFull) ? 0 : Math.max(0, totalDue - (credit.paidAmount || 0));
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 mb-3 cursor-grab active:cursor-grabbing hover:border-blue-300 dark:hover:border-blue-600 transition-colors relative"
+      className="bg-slate-900/80 backdrop-blur-md p-4 rounded-2xl shadow-md border border-white/[0.07] hover:border-indigo-500/50 mb-3 cursor-grab active:cursor-grabbing transition-all group relative overflow-hidden"
       {...attributes}
       {...listeners}
       onClick={() => onSelect(credit)}
     >
-      <div className="flex justify-between items-start mb-2">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <h4 className="font-bold text-slate-900 dark:text-white capitalize text-sm truncate">{credit.companyName}</h4>
+      <div className="flex justify-between items-start mb-2.5 gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-7 h-7 rounded-lg bg-indigo-950/80 border border-indigo-700/40 flex items-center justify-center font-black text-indigo-300 text-xs shrink-0">
+            {credit.companyName.substring(0, 2).toUpperCase()}
+          </div>
+          <h4 className="font-bold text-white capitalize text-sm truncate group-hover:text-indigo-300 transition-colors">
+            {credit.companyName}
+          </h4>
           {credit.isEdited && (
-            <span className="text-[10px] bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 px-1.5 py-0.2 rounded font-bold shrink-0 flex items-center gap-0.5" title="Edited">
+            <span className="text-[10px] bg-amber-950/60 text-amber-400 border border-amber-800/60 px-1.5 py-0.2 rounded font-bold shrink-0 flex items-center gap-0.5" title="Edited">
               <Pencil size={9} />
             </span>
           )}
         </div>
-        <span className="text-xs font-semibold text-slate-500 shrink-0">{credit.invoiceNumber || 'No Inv'}</span>
+        <span className="text-[11px] font-mono text-slate-400 shrink-0 bg-slate-950/80 px-2 py-0.5 rounded-md border border-white/[0.05]">
+          #{credit.invoiceNumber || 'No Inv'}
+        </span>
       </div>
-      <p className="text-lg font-black text-slate-900 dark:text-white mb-2">EGP {Number(credit.amountDue).toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
-      <div className="flex justify-between items-center text-xs text-slate-500">
-        <span className="flex items-center gap-1"><Clock size={12} /> {credit.collectionDate || 'No Date'}</span>
-        {credit.paidAmount > 0 && <span className="text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">Partial</span>}
+
+      <div className="flex items-baseline justify-between mb-2.5">
+        <p className="text-base font-black text-rose-400 font-mono tracking-tight">
+          <span className="text-xs font-medium text-slate-400 mr-1">EGP</span>
+          {Number(totalDue).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+        </p>
+        {remaining > 0 && remaining < totalDue && (
+          <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+            Rem: {remaining.toLocaleString()}
+          </span>
+        )}
+      </div>
+
+      <div className="flex justify-between items-center text-[11px] text-slate-400 pt-2 border-t border-white/[0.05]">
+        <span className="flex items-center gap-1.5 font-medium">
+          <Clock size={12} className="text-slate-500" />
+          {credit.collectionDate || 'No Due Date'}
+        </span>
+        {credit.paidAmount > 0 && (
+          <span className="text-emerald-400 font-bold bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full text-[10px]">
+            Paid {credit.paidAmount.toLocaleString()}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -243,18 +278,33 @@ function SortableInvoiceCard({ credit, onSelect, onStatusChange }: { credit: Cre
 // --- Droppable Column for Kanban Board ---
 function DroppableColumn({ id, title, credits, onSelect }: { id: string, title: string, credits: Credit[], onSelect: (c: Credit) => void }) {
   const { setNodeRef } = useDroppable({ id });
+  
+  const columnStyles = {
+    open: { border: "border-amber-500/30", bg: "bg-amber-500/5", icon: <AlertCircle size={18} className="text-amber-400" />, badge: "bg-amber-500/20 text-amber-300" },
+    pending: { border: "border-sky-500/30", bg: "bg-sky-500/5", icon: <Clock size={18} className="text-sky-400" />, badge: "bg-sky-500/20 text-sky-300" },
+    paid: { border: "border-emerald-500/30", bg: "bg-emerald-500/5", icon: <CheckCircle size={18} className="text-emerald-400" />, badge: "bg-emerald-500/20 text-emerald-300" },
+  }[id] || { border: "border-slate-800", bg: "bg-slate-900/40", icon: <Layers size={18} className="text-slate-400" />, badge: "bg-slate-800 text-slate-300" };
+
+  const totalAmount = credits.reduce((acc, c) => acc + (c.amountDue + (c.tax || 0)), 0);
+
   return (
-    <div className="flex-1 bg-slate-100/50 dark:bg-slate-900/50 rounded-2xl p-4 flex flex-col border border-slate-200/60 dark:border-slate-800">
-      <h3 className="font-black text-slate-800 dark:text-slate-200 mb-4 capitalize flex items-center gap-2">
-        {id === 'open' && <AlertCircle size={18} className="text-slate-500" />}
-        {id === 'pending' && <Clock size={18} className="text-blue-500" />}
-        {id === 'paid' && <CheckCircle size={18} className="text-emerald-500" />}
-        {title}
-        <span className="ml-auto bg-white dark:bg-slate-800 text-xs px-2 py-1 rounded-lg text-slate-500">
+    <div className={`flex-1 min-w-[280px] bg-slate-900/50 backdrop-blur-xl rounded-2xl p-4 flex flex-col border ${columnStyles.border} shadow-xl`}>
+      <div className="flex items-center justify-between mb-3 pb-3 border-b border-white/[0.06]">
+        <div className="flex items-center gap-2">
+          {columnStyles.icon}
+          <h3 className="font-bold text-white text-sm tracking-tight">{title}</h3>
+        </div>
+        <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full ${columnStyles.badge}`}>
           {credits.length}
         </span>
-      </h3>
-      <div ref={setNodeRef} className="flex-1 overflow-y-auto pr-2 min-h-[200px]">
+      </div>
+
+      <div className="text-[11px] font-mono text-slate-400 mb-3 px-1 flex justify-between">
+        <span>Total Volume:</span>
+        <span className="font-bold text-white">EGP {totalAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+      </div>
+
+      <div ref={setNodeRef} className="flex-1 overflow-y-auto custom-scrollbar pr-1 min-h-[300px]">
         <SortableContext id={id} items={credits.map((c: any) => c.id)} strategy={verticalListSortingStrategy}>
           {credits.map((credit: any) => (
             <SortableInvoiceCard 
@@ -264,6 +314,11 @@ function DroppableColumn({ id, title, credits, onSelect }: { id: string, title: 
               onStatusChange={() => {}}
             />
           ))}
+          {credits.length === 0 && (
+            <div className="h-32 border-2 border-dashed border-white/[0.06] rounded-2xl flex items-center justify-center text-xs font-semibold text-slate-500">
+              Drop invoices here
+            </div>
+          )}
         </SortableContext>
       </div>
     </div>
@@ -323,6 +378,7 @@ export default function CreditsPage() {
   // Dashboard & Profile State
   const [simulatorCash, setSimulatorCash] = useState<string>("");
   const [selectedSupplierProfile, setSelectedSupplierProfile] = useState<string | null>(null);
+  const [showAnalyticsDrawer, setShowAnalyticsDrawer] = useState<boolean>(false);
 
   // Bulk Print State
   const [selectedBulkItems, setSelectedBulkItems] = useState<Set<string>>(new Set());
@@ -3104,26 +3160,59 @@ html, body {
 
   return (
     <>
-      <div className="min-h-screen bg-[#09090B] text-slate-100 p-1 sm:p-4 md:p-8 font-sans print:hidden pb-28 relative">
+      <div className="min-h-screen bg-[#09090b] text-slate-100 p-2 sm:p-5 md:p-8 font-sans print:hidden pb-32 relative selection:bg-indigo-500/30 selection:text-indigo-200">
+        {/* Luxury Atmospheric Backdrop Glow */}
+        <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1100px] h-[400px] bg-gradient-to-b from-indigo-500/10 via-sky-500/5 to-transparent blur-3xl opacity-60" />
+          <div className="absolute top-1/4 right-0 w-[500px] h-[300px] bg-emerald-500/5 blur-3xl" />
+        </div>
+
         {isSyncing && (
-          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#16161d]/90 border border-indigo-500/30 text-indigo-400 text-xs font-bold shadow-2xl backdrop-blur-md animate-pulse pointer-events-none">
+          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900/90 border border-indigo-500/30 text-indigo-400 text-xs font-bold shadow-2xl backdrop-blur-md animate-pulse pointer-events-none">
             <span className="w-2 h-2 rounded-full bg-indigo-400 animate-ping" />
-            <span>{isAr ? "مزامنة لحظية..." : "Live cloud sync..."}</span>
+            <span>{isAr ? "مزامنة سحابية لحظية..." : "Live cloud sync..."}</span>
           </div>
         )}
-        <div className="max-w-[1400px] mx-auto space-y-4 sm:space-y-8">
+        <div className="max-w-[1440px] mx-auto space-y-5 sm:space-y-7">
           
-          {/* Header & Actions */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                {isAr ? "إدارة الآجل والديون" : "Credits Management"}
-              </h1>
-              <p className="text-sm text-slate-400 font-medium mt-1">
-                {isAr ? "متابعة وإدارة وتحصيل مديونيات وآجل العملاء والفرع." : "Track, manage, and collect outstanding corporate credits."}
-              </p>
+          {/* Executive Command Header */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900/40 backdrop-blur-xl border border-white/[0.08] p-4 sm:p-6 rounded-3xl shadow-xl relative overflow-hidden">
+            <div className="flex items-center gap-4">
+              <div className="w-13 h-13 rounded-2xl bg-gradient-to-br from-indigo-500/20 via-indigo-600/10 to-sky-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shadow-lg shadow-indigo-500/10 shrink-0">
+                <FileText size={26} className="drop-shadow-sm" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                    {isAr ? "إدارة الآجل والديون" : "Credits Management"}
+                  </h1>
+                  <span className="text-[11px] font-black px-3 py-1 rounded-full bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 font-mono tracking-wide uppercase">
+                    {currentBranch === "all" ? (isAr ? "كل الفروع" : "All Branches") : currentBranch}
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-400 font-medium mt-1">
+                  {isAr ? "مركز المتابعة المالية اللحظية، مديونيات الشركات، وأوامر الشراء والتحصيل." : "Corporate liabilities, vendor debt ledger, PO verifications & settlement radar."}
+                </p>
+              </div>
             </div>
-            <div className="flex items-center gap-3">
+
+            <div className="flex items-center gap-2.5 flex-wrap w-full md:w-auto justify-start md:justify-end">
+              {/* Toggle Analytics Drawer */}
+              <button
+                type="button"
+                onClick={() => setShowAnalyticsDrawer(prev => !prev)}
+                className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all border cursor-pointer ${
+                  showAnalyticsDrawer 
+                    ? "bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-500/20" 
+                    : "bg-slate-800/60 hover:bg-slate-800 text-slate-300 border-slate-700/60 hover:border-slate-600"
+                }`}
+                title="Toggle Executive Analytics & Simulator"
+              >
+                <BarChart3 size={16} />
+                <span className="hidden sm:inline">{isAr ? "التحليلات والمحاكي" : "Analytics & Settle"}</span>
+                {showAnalyticsDrawer ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </button>
+
               <button 
                 onClick={async () => {
                   setIsRefreshing(true);
@@ -3132,412 +3221,688 @@ html, body {
                   toast.success(isAr ? "تم تحديث البيانات بنجاح!" : "Credits refreshed!");
                 }}
                 disabled={isRefreshing}
-                className="flex items-center gap-2 bg-slate-800/60 backdrop-blur-md border border-slate-700/60 text-slate-300 px-3.5 py-2.5 rounded-xl font-semibold shadow-sm hover:bg-slate-700 hover:text-white transition-all cursor-pointer disabled:opacity-50"
+                className="flex items-center gap-2 bg-slate-800/60 backdrop-blur-md border border-slate-700/60 text-slate-300 px-3.5 py-2.5 rounded-xl font-semibold shadow-sm hover:bg-slate-700 hover:text-white transition-all cursor-pointer disabled:opacity-50 text-xs sm:text-sm"
                 title={isAr ? "تحديث فوري" : "Fast Refresh"}
               >
-                <RefreshCw size={16} className={isRefreshing ? "animate-spin text-indigo-400" : ""} />
+                <RefreshCw size={15} className={isRefreshing ? "animate-spin text-indigo-400" : ""} />
                 <span className="hidden sm:inline">{isAr ? "تحديث" : "Refresh"}</span>
               </button>
-              <button className="flex items-center gap-2 bg-slate-800/60 backdrop-blur-md border border-slate-700/60 text-slate-300 px-4 py-2.5 rounded-xl font-semibold shadow-sm hover:bg-slate-700 hover:border-slate-600 transition-all">
-                <FileDown size={18} /> {isAr ? "تصدير" : "Export"}
+
+              <button className="flex items-center gap-2 bg-slate-800/60 backdrop-blur-md border border-slate-700/60 text-slate-300 px-3.5 py-2.5 rounded-xl font-semibold shadow-sm hover:bg-slate-700 hover:border-slate-600 transition-all text-xs sm:text-sm cursor-pointer">
+                <FileDown size={16} />
+                <span className="hidden sm:inline">{isAr ? "تصدير" : "Export"}</span>
               </button>
+
               <button
                 onClick={() => setShowAddModal(true)}
-                className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-semibold shadow-md shadow-indigo-600/20 hover:bg-indigo-700 hover:shadow-indigo-600/40 hover:-translate-y-0.5 transition-all cursor-pointer"
+                className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 via-indigo-500 to-indigo-600 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold px-4 sm:px-5 py-2.5 rounded-xl shadow-lg shadow-indigo-600/25 hover:shadow-indigo-600/40 hover:-translate-y-0.5 active:translate-y-0 transition-all cursor-pointer text-xs sm:text-sm"
               >
-                <Plus size={20} /> {isAr ? "إضافة دين جديد" : "Add Credit"}
+                <Plus size={18} />
+                <span>{isAr ? "إضافة دين جديد" : "Add Credit"}</span>
               </button>
             </div>
           </div>
 
-          {/* ADVANCED DASHBOARDS */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
-            {/* 1. Credit Aging Dashboard */}
-            <div className="bg-[#0B1121] border border-slate-800 p-6 rounded-3xl shadow-lg lg:col-span-1">
-              <h3 className="text-lg font-black text-slate-100 flex items-center gap-2 mb-6">
-                <AlertCircle size={20} className="text-rose-500" />
-                {isAr ? "أعمار الديون والآجل" : "Credit Aging"}
-              </h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={dashboardData.agingChartData} margin={{top:10, right:10, left:-20, bottom:0}}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1e293b" />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize:12, fill:'#64748b'}} />
-                    <YAxis axisLine={false} tickLine={false} tick={{fontSize:12, fill:'#64748b'}} tickFormatter={(val) => `£${(val/1000).toFixed(0)}k`} />
-                    <RechartsTooltip cursor={{fill: '#1e293b'}} contentStyle={{borderRadius:'12px', border:'1px solid #334155', boxShadow:'0 10px 15px -3px rgb(0 0 0 / 0.3)', backgroundColor:'#1e293b', color:'#e2e8f0'}} />
-                    <Bar dataKey="amount" radius={[6,6,6,6]}>
-                      {dashboardData.agingChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* 2. Debt Waterfall */}
-            <div className="bg-[#0B1121] border border-slate-800 p-6 rounded-3xl shadow-lg lg:col-span-1">
-              <h3 className="text-lg font-black text-slate-100 flex items-center gap-2 mb-6">
-                <Calendar size={20} className="text-sky-500" />
-                30-Day Debt Waterfall
-              </h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={dashboardData.waterfallChartData} margin={{top:10, right:10, left:-20, bottom:0}}>
-                    <defs>
-                      <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1e293b" />
-                    <XAxis dataKey="date" axisLine={false} tickLine={false} tickFormatter={(val) => val.split('-').slice(1).join('/')} tick={{fontSize:12, fill:'#64748b'}} />
-                    <YAxis axisLine={false} tickLine={false} tick={{fontSize:12, fill:'#64748b'}} tickFormatter={(val) => `£${(val/1000).toFixed(0)}k`} />
-                    <RechartsTooltip cursor={{stroke: '#475569', strokeWidth: 1, strokeDasharray: '4 4'}} contentStyle={{borderRadius:'12px', border:'1px solid #334155', boxShadow:'0 10px 15px -3px rgb(0 0 0 / 0.3)', backgroundColor:'#1e293b', color:'#e2e8f0'}} />
-                    <Area type="monotone" dataKey="amount" stroke="#0ea5e9" strokeWidth={3} fillOpacity={1} fill="url(#colorAmount)" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* 3. Smart Payment Simulator */}
-            <div className="bg-gradient-to-br from-slate-900 to-[#0B1121] border border-slate-800 p-6 rounded-3xl shadow-lg lg:col-span-1 relative overflow-hidden flex flex-col">
-              <div className="absolute top-0 right-0 p-4 opacity-5"><Banknote size={100} /></div>
-              <h3 className="text-lg font-black text-indigo-300 flex items-center gap-2 mb-2 relative z-10">
-                <Banknote size={20} /> Smart Settle Simulator
-              </h3>
-              <p className="text-sm text-slate-400 mb-4 relative z-10">Type your available cash. We'll suggest the perfect payment plan.</p>
-              
-              <div className="relative z-10 flex gap-2 mb-4">
-                <input 
-                  type="number"
-                  placeholder="e.g. 20000"
-                  value={simulatorCash}
-                  onChange={(e) => setSimulatorCash(e.target.value)}
-                  className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 font-bold text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                />
-              </div>
-
-              <div className="flex-1 overflow-y-auto pr-1 space-y-2 relative z-10 max-h-40">
-                {simulatorResults.length === 0 ? (
-                  <div className="text-center text-slate-500 text-sm mt-8">Awaiting cash input...</div>
-                ) : (
-                  simulatorResults.map((res, i) => (
-                    <div key={i} className="flex justify-between items-center bg-slate-800/60 p-2 rounded-lg border border-slate-700/50">
-                      <div>
-                        <p className="text-xs font-bold text-white capitalize">{res.credit.companyName}</p>
-                        <p className="text-[10px] text-slate-400">{res.type} Payment</p>
-                      </div>
-                      <p className="text-sm font-black text-indigo-400">EGP {res.payAmount.toLocaleString()}</p>
+          {/* COLLAPSIBLE INTELLIGENCE & ANALYTICS DRAWER */}
+          <AnimatePresence>
+            {showAnalyticsDrawer && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3 }}
+                className="overflow-hidden"
+              >
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-1 pb-3">
+                  
+                  {/* 1. Credit Aging Dashboard */}
+                  <div className="bg-slate-900/60 backdrop-blur-xl border border-white/[0.08] p-6 rounded-3xl shadow-xl lg:col-span-1">
+                    <h3 className="text-base font-black text-slate-100 flex items-center gap-2 mb-6">
+                      <AlertCircle size={18} className="text-rose-500" />
+                      {isAr ? "أعمار الديون والآجل" : "Credit Aging Breakdown"}
+                    </h3>
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={dashboardData.agingChartData} margin={{top:10, right:10, left:-20, bottom:0}}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1e293b" />
+                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize:12, fill:'#64748b'}} />
+                          <YAxis axisLine={false} tickLine={false} tick={{fontSize:12, fill:'#64748b'}} tickFormatter={(val) => `£${(val/1000).toFixed(0)}k`} />
+                          <RechartsTooltip cursor={{fill: '#1e293b'}} contentStyle={{borderRadius:'12px', border:'1px solid #334155', boxShadow:'0 10px 15px -3px rgb(0 0 0 / 0.3)', backgroundColor:'#1e293b', color:'#e2e8f0'}} />
+                          <Bar dataKey="amount" radius={[6,6,6,6]}>
+                            {dashboardData.agingChartData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
                     </div>
-                  ))
+                  </div>
+
+                  {/* 2. Debt Waterfall */}
+                  <div className="bg-slate-900/60 backdrop-blur-xl border border-white/[0.08] p-6 rounded-3xl shadow-xl lg:col-span-1">
+                    <h3 className="text-base font-black text-slate-100 flex items-center gap-2 mb-6">
+                      <Calendar size={18} className="text-sky-500" />
+                      {isAr ? "مسار الديون خلال 30 يوم" : "30-Day Debt Waterfall"}
+                    </h3>
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={dashboardData.waterfallChartData} margin={{top:10, right:10, left:-20, bottom:0}}>
+                          <defs>
+                            <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.35}/>
+                              <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1e293b" />
+                          <XAxis dataKey="date" axisLine={false} tickLine={false} tickFormatter={(val) => val.split('-').slice(1).join('/')} tick={{fontSize:12, fill:'#64748b'}} />
+                          <YAxis axisLine={false} tickLine={false} tick={{fontSize:12, fill:'#64748b'}} tickFormatter={(val) => `£${(val/1000).toFixed(0)}k`} />
+                          <RechartsTooltip cursor={{stroke: '#475569', strokeWidth: 1, strokeDasharray: '4 4'}} contentStyle={{borderRadius:'12px', border:'1px solid #334155', boxShadow:'0 10px 15px -3px rgb(0 0 0 / 0.3)', backgroundColor:'#1e293b', color:'#e2e8f0'}} />
+                          <Area type="monotone" dataKey="amount" stroke="#0ea5e9" strokeWidth={3} fillOpacity={1} fill="url(#colorAmount)" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  {/* 3. Smart Payment Simulator */}
+                  <div className="bg-gradient-to-br from-slate-900/90 via-slate-900/60 to-indigo-950/40 backdrop-blur-xl border border-indigo-500/20 p-6 rounded-3xl shadow-xl lg:col-span-1 relative overflow-hidden flex flex-col">
+                    <div className="absolute top-0 right-0 p-4 opacity-5"><Banknote size={100} /></div>
+                    <div className="flex items-center justify-between mb-2 relative z-10">
+                      <h3 className="text-base font-black text-indigo-300 flex items-center gap-2">
+                        <Banknote size={18} /> {isAr ? "محاكي السداد الذكي" : "Smart Settle Simulator"}
+                      </h3>
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 uppercase">AI Assistant</span>
+                    </div>
+                    <p className="text-xs text-slate-400 mb-3 relative z-10">
+                      {isAr ? "أدخل النقد المتوفر لاقتراح خطة السداد والتوزيع الأمثل على الفواتير." : "Enter available cash to calculate optimal multi-vendor settlement."}
+                    </p>
+                    
+                    <div className="relative z-10 flex gap-2 mb-3">
+                      <input 
+                        type="number"
+                        placeholder="e.g. 25000"
+                        value={simulatorCash}
+                        onChange={(e) => setSimulatorCash(e.target.value)}
+                        className="flex-1 bg-slate-950/80 border border-slate-700/80 focus:border-indigo-500 rounded-xl px-4 py-2 font-bold text-white text-sm focus:ring-2 focus:ring-indigo-500/20 focus:outline-none transition-all"
+                      />
+                    </div>
+
+                    {/* Quick Preset Buttons */}
+                    <div className="flex gap-1.5 mb-3 flex-wrap relative z-10">
+                      {[5000, 10000, 25000, 50000].map(amt => (
+                        <button
+                          key={amt}
+                          type="button"
+                          onClick={() => setSimulatorCash(String(amt))}
+                          className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 text-slate-300 transition-colors cursor-pointer"
+                        >
+                          +{amt.toLocaleString()} EGP
+                        </button>
+                      ))}
+                      {stats.outstanding.amount > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setSimulatorCash(String(Math.round(stats.outstanding.amount)))}
+                          className="text-[10px] font-black px-2.5 py-1 rounded-lg bg-indigo-900/60 hover:bg-indigo-800 text-indigo-300 border border-indigo-700/50 transition-colors cursor-pointer"
+                        >
+                          {isAr ? "كل المستحق" : "Max All"}
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto pr-1 space-y-2 relative z-10 max-h-36 custom-scrollbar">
+                      {simulatorResults.length === 0 ? (
+                        <div className="text-center text-slate-500 text-xs py-6 font-medium">
+                          {isAr ? "في انتظار إدخال المبلغ..." : "Awaiting cash input..."}
+                        </div>
+                      ) : (
+                        simulatorResults.map((res, i) => (
+                          <div key={i} className="flex justify-between items-center bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/50 hover:border-slate-600 transition-colors">
+                            <div className="min-w-0 pr-2">
+                              <p className="text-xs font-bold text-white capitalize truncate">{res.credit.companyName}</p>
+                              <p className="text-[10px] text-slate-400">{res.type} Payment</p>
+                            </div>
+                            <p className="text-xs sm:text-sm font-black text-indigo-400 font-mono shrink-0">EGP {res.payAmount.toLocaleString()}</p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                  
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Unified Executive KPI Metric Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+            
+            {/* 1. Outstanding */}
+            <motion.div 
+              whileHover={{ y: -3, transition: { duration: 0.15 } }} 
+              className="bg-slate-900/60 backdrop-blur-xl border border-amber-500/20 hover:border-amber-500/40 p-4.5 rounded-2xl shadow-lg relative overflow-hidden group transition-all"
+            >
+              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity text-amber-500">
+                <AlertCircle size={44} />
+              </div>
+              <div className="flex items-center gap-2 text-amber-400 mb-2">
+                <AlertCircle size={16} />
+                <p className="text-[11px] font-black tracking-wider uppercase">{isAr ? "المستحق القائم" : "Outstanding"}</p>
+              </div>
+              <div className="flex items-baseline gap-1 relative z-10">
+                <span className="text-xs font-bold text-amber-400/80">EGP</span>
+                <span className="text-xl sm:text-2xl font-black text-white tracking-tight font-mono">
+                  {stats.outstanding.amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </span>
+              </div>
+              <div className="flex items-center justify-between mt-2 pt-2 border-t border-amber-500/10 text-[11px] font-semibold text-amber-400/80 relative z-10">
+                <span>{stats.outstanding.count} {isAr ? "فاتورة مفتوحة" : "invoices"}</span>
+                <span className="text-[10px] font-bold bg-amber-500/15 px-2 py-0.5 rounded-full">{isAr ? "نشط" : "Open"}</span>
+              </div>
+            </motion.div>
+
+            {/* 2. Pending */}
+            <motion.div 
+              whileHover={{ y: -3, transition: { duration: 0.15 } }} 
+              className="bg-slate-900/60 backdrop-blur-xl border border-sky-500/20 hover:border-sky-500/40 p-4.5 rounded-2xl shadow-lg relative overflow-hidden group transition-all"
+            >
+              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity text-sky-400">
+                <Clock size={44} />
+              </div>
+              <div className="flex items-center gap-2 text-sky-400 mb-2">
+                <Clock size={16} />
+                <p className="text-[11px] font-black tracking-wider uppercase">{isAr ? "قيد المراجعة" : "Pending"}</p>
+              </div>
+              <div className="flex items-baseline gap-1 relative z-10">
+                <span className="text-xs font-bold text-sky-400/80">EGP</span>
+                <span className="text-xl sm:text-2xl font-black text-white tracking-tight font-mono">
+                  {stats.pending.amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </span>
+              </div>
+              <div className="flex items-center justify-between mt-2 pt-2 border-t border-sky-500/10 text-[11px] font-semibold text-sky-400/80 relative z-10">
+                <span>{stats.pending.count} {isAr ? "قيد التدقيق" : "awaiting clear"}</span>
+                <span className="text-[10px] font-bold bg-sky-500/15 px-2 py-0.5 rounded-full">{isAr ? "معلق" : "Review"}</span>
+              </div>
+            </motion.div>
+
+            {/* 3. Partial */}
+            <motion.div 
+              whileHover={{ y: -3, transition: { duration: 0.15 } }} 
+              className="bg-slate-900/60 backdrop-blur-xl border border-violet-500/20 hover:border-violet-500/40 p-4.5 rounded-2xl shadow-lg relative overflow-hidden group transition-all"
+            >
+              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity text-violet-400">
+                <PieChart size={44} />
+              </div>
+              <div className="flex items-center gap-2 text-violet-400 mb-2">
+                <PieChart size={16} />
+                <p className="text-[11px] font-black tracking-wider uppercase">{isAr ? "مسدد جزئياً" : "Partially Paid"}</p>
+              </div>
+              <div className="flex items-baseline gap-1 relative z-10">
+                <span className="text-xs font-bold text-violet-400/80">EGP</span>
+                <span className="text-xl sm:text-2xl font-black text-white tracking-tight font-mono">
+                  {stats.partial.amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </span>
+              </div>
+              <div className="flex items-center justify-between mt-2 pt-2 border-t border-violet-500/10 text-[11px] font-semibold text-violet-400/80 relative z-10">
+                <span>{stats.partial.count} {isAr ? "دفعة جزئية" : "partial"}</span>
+                <span className="text-[10px] font-bold bg-violet-500/15 px-2 py-0.5 rounded-full">{isAr ? "جاري" : "In Flow"}</span>
+              </div>
+            </motion.div>
+
+            {/* 4. Collected */}
+            <motion.div 
+              whileHover={{ y: -3, transition: { duration: 0.15 } }} 
+              className="bg-slate-900/60 backdrop-blur-xl border border-emerald-500/20 hover:border-emerald-500/40 p-4.5 rounded-2xl shadow-lg relative overflow-hidden group transition-all"
+            >
+              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity text-emerald-400">
+                <CheckCircle size={44} />
+              </div>
+              <div className="flex items-center gap-2 text-emerald-400 mb-2">
+                <CheckCircle size={16} />
+                <p className="text-[11px] font-black tracking-wider uppercase">{isAr ? "المُحصل بالكامل" : "Collected"}</p>
+              </div>
+              <div className="flex items-baseline gap-1 relative z-10">
+                <span className="text-xs font-bold text-emerald-400/80">EGP</span>
+                <span className="text-xl sm:text-2xl font-black text-white tracking-tight font-mono">
+                  {stats.collected.amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </span>
+              </div>
+              <div className="flex items-center justify-between mt-2 pt-2 border-t border-emerald-500/10 text-[11px] font-semibold text-emerald-400/80 relative z-10">
+                <span>{stats.collected.count} {isAr ? "مسدد بالكامل" : "fully settled"}</span>
+                <span className="text-[10px] font-bold bg-emerald-500/15 px-2 py-0.5 rounded-full">{isAr ? "تم" : "Paid"}</span>
+              </div>
+            </motion.div>
+
+            {/* 5. Overdue */}
+            <motion.div 
+              whileHover={{ y: -3, transition: { duration: 0.15 } }} 
+              className="bg-slate-900/60 backdrop-blur-xl border border-rose-500/20 hover:border-rose-500/40 p-4.5 rounded-2xl shadow-lg relative overflow-hidden group transition-all"
+            >
+              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity text-rose-400">
+                <AlertTriangle size={44} />
+              </div>
+              <div className="flex items-center gap-2 text-rose-400 mb-2">
+                <AlertTriangle size={16} />
+                <p className="text-[11px] font-black tracking-wider uppercase">{isAr ? "المتأخرات" : "Overdue"}</p>
+              </div>
+              <div className="flex items-baseline gap-1 relative z-10">
+                <span className="text-xs font-bold text-rose-400/80">EGP</span>
+                <span className="text-xl sm:text-2xl font-black text-white tracking-tight font-mono">
+                  {stats.overdue.amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </span>
+              </div>
+              <div className="flex items-center justify-between mt-2 pt-2 border-t border-rose-500/10 text-[11px] font-semibold text-rose-400/80 relative z-10">
+                <span>{stats.overdue.count} {isAr ? "تجاوز الموعد" : "past due"}</span>
+                <span className="text-[10px] font-bold bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded-full animate-pulse">{isAr ? "عاجل" : "Alert"}</span>
+              </div>
+            </motion.div>
+
+            {/* 6. Sales Only */}
+            <motion.div 
+              whileHover={{ y: -3, transition: { duration: 0.15 } }} 
+              className="bg-slate-900/60 backdrop-blur-xl border border-purple-500/20 hover:border-purple-500/40 p-4.5 rounded-2xl shadow-lg relative overflow-hidden group transition-all"
+            >
+              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity text-purple-400">
+                <Building size={44} />
+              </div>
+              <div className="flex items-center gap-2 text-purple-400 mb-2">
+                <Building size={16} />
+                <p className="text-[11px] font-black tracking-wider uppercase">{isAr ? "مبيعات فقط" : "Sales Only"}</p>
+              </div>
+              <div className="flex items-baseline gap-1 relative z-10">
+                <span className="text-xs font-bold text-purple-400/80">EGP</span>
+                <span className="text-xl sm:text-2xl font-black text-white tracking-tight font-mono">
+                  {stats.salesOnly.amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </span>
+              </div>
+              <div className="flex items-center justify-between mt-2 pt-2 border-t border-purple-500/10 text-[11px] font-semibold text-purple-400/80 relative z-10">
+                <span>{stats.salesOnly.count} {isAr ? "حساب تجاري" : "accounts"}</span>
+                <span className="text-[10px] font-bold bg-purple-500/15 px-2 py-0.5 rounded-full">{isAr ? "شركات" : "Corp"}</span>
+              </div>
+            </motion.div>
+
+          </div>
+
+          {/* Unified Executive Command Bar & Quick Filter Chips */}
+          <div className="bg-slate-900/40 backdrop-blur-xl border border-white/[0.08] p-3 sm:p-4 rounded-2xl shadow-xl flex flex-col gap-3">
+            
+            {/* Top Row: View Switcher & Search Bar */}
+            <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
+              
+              {/* Segmented View Mode Switcher */}
+              <div className="flex bg-slate-950/80 p-1 rounded-xl border border-white/[0.08] shrink-0">
+                <button 
+                  onClick={() => setViewMode('list')} 
+                  className={`px-3 sm:px-4 py-2 rounded-lg font-bold text-xs sm:text-sm transition-all flex items-center gap-1.5 cursor-pointer ${
+                    viewMode === 'list' 
+                      ? 'bg-indigo-600 shadow-md text-white' 
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <List size={15} />
+                  <span>{isAr ? "قائمة الفواتير" : "List"}</span>
+                </button>
+                <button 
+                  onClick={() => setViewMode('board')} 
+                  className={`px-3 sm:px-4 py-2 rounded-lg font-bold text-xs sm:text-sm transition-all flex items-center gap-1.5 cursor-pointer ${
+                    viewMode === 'board' 
+                      ? 'bg-indigo-600 shadow-md text-white' 
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <Kanban size={15} />
+                  <span>{isAr ? "لوحة كانبان" : "Board"}</span>
+                </button>
+                <button 
+                  onClick={() => setViewMode('companies')} 
+                  className={`px-3 sm:px-4 py-2 rounded-lg font-bold text-xs sm:text-sm transition-all flex items-center gap-1.5 cursor-pointer ${
+                    viewMode === 'companies' 
+                      ? 'bg-indigo-600 shadow-md text-white' 
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <Building2 size={15} />
+                  <span>{isAr ? "مديونيات الشركات" : "Companies Owed"}</span>
+                  <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full bg-white/10 text-white">
+                    {companyOverallStats.activeCreditorsCount}
+                  </span>
+                </button>
+              </div>
+
+              {/* Search Bar */}
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                <input
+                  type="text"
+                  placeholder={isAr ? "ابحث باسم الشركة، رقم الفاتورة، أمر الشراء PO..." : "Search by company name, invoice #, or PO #..."}
+                  className="w-full pl-10 pr-9 py-2.5 rounded-xl bg-slate-950/80 focus:bg-slate-950 border border-slate-700/80 focus:border-indigo-500 transition-all outline-none text-white placeholder:text-slate-500 text-xs sm:text-sm font-medium"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                {searchTerm && (
+                  <button 
+                    onClick={() => setSearchTerm("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-0.5 rounded-md"
+                  >
+                    <X size={15} />
+                  </button>
                 )}
               </div>
             </div>
-            
-          </div>
 
-          {/* Premium Metric Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-orange-950/40 to-slate-900 border border-orange-800/30 p-5 rounded-2xl shadow-sm relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><AlertCircle size={48} className="text-orange-500" /></div>
-              <div className="flex items-center gap-2 text-orange-500 mb-3">
-                <AlertCircle size={18} className="drop-shadow-sm" />
-                <p className="text-sm font-bold tracking-wide uppercase">Outstanding</p>
-              </div>
-              <div className="flex items-center gap-1 relative z-10">
-                <span className="text-xl font-bold text-white tracking-tight mt-1">EGP</span>
-                <AnalogOdometer value={stats.outstanding.amount} />
-              </div>
-              <p className="text-xs font-semibold text-orange-500/70 mt-1 relative z-10">{stats.outstanding.count} open invoices</p>
-            </motion.div>
-
-            <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-blue-950/40 to-slate-900 border border-blue-800/30 p-5 rounded-2xl shadow-sm relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Clock size={48} className="text-blue-400" /></div>
-              <div className="flex items-center gap-2 text-blue-400 mb-3">
-                <Clock size={18} className="drop-shadow-sm" />
-                <p className="text-sm font-bold tracking-wide uppercase">Pending</p>
-              </div>
-              <p className="text-2xl font-black text-white tracking-tight relative z-10">EGP {stats.pending.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-              <p className="text-xs font-semibold text-blue-400/70 mt-1 relative z-10">{stats.pending.count} awaiting clear</p>
-            </motion.div>
-
-            <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-amber-950/40 to-slate-900 border border-amber-800/30 p-5 rounded-2xl shadow-sm relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><PieChart size={48} className="text-amber-400" /></div>
-              <div className="flex items-center gap-2 text-amber-400 mb-3">
-                <PieChart size={18} className="drop-shadow-sm" />
-                <p className="text-sm font-bold tracking-wide uppercase">Partial</p>
-              </div>
-              <p className="text-2xl font-black text-white tracking-tight relative z-10">EGP {stats.partial.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-              <p className="text-xs font-semibold text-amber-400/70 mt-1 relative z-10">{stats.partial.count} partially paid</p>
-            </motion.div>
-
-            <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-emerald-950/40 to-slate-900 border border-emerald-800/30 p-5 rounded-2xl shadow-sm relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><CheckCircle size={48} className="text-emerald-400" /></div>
-              <div className="flex items-center gap-2 text-emerald-400 mb-3">
-                <CheckCircle size={18} className="drop-shadow-sm" />
-                <p className="text-sm font-bold tracking-wide uppercase">Collected</p>
-              </div>
-              <p className="text-2xl font-black text-white tracking-tight relative z-10">EGP {stats.collected.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-              <p className="text-xs font-semibold text-emerald-400/70 mt-1 relative z-10">{stats.collected.count} fully paid</p>
-            </motion.div>
-
-            <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-red-950/40 to-slate-900 border border-red-800/30 p-5 rounded-2xl shadow-sm relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><AlertTriangle size={48} className="text-red-400" /></div>
-              <div className="flex items-center gap-2 text-red-400 mb-3">
-                <AlertTriangle size={18} className="drop-shadow-sm" />
-                <p className="text-sm font-bold tracking-wide uppercase">Overdue</p>
-              </div>
-              <p className="text-2xl font-black text-white tracking-tight relative z-10">EGP {stats.overdue.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-              <p className="text-xs font-semibold text-red-400/70 mt-1 relative z-10">{stats.overdue.count} past due date</p>
-            </motion.div>
-
-            <motion.div whileHover={{ y: -4 }} className="bg-gradient-to-br from-violet-950/40 to-slate-900 border border-violet-800/30 p-5 rounded-2xl shadow-sm relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Building size={48} className="text-violet-400" /></div>
-              <div className="flex items-center gap-2 text-violet-400 mb-3">
-                <Building size={18} className="drop-shadow-sm" />
-                <p className="text-sm font-bold tracking-wide uppercase">Sales Only</p>
-              </div>
-              <p className="text-2xl font-black text-white tracking-tight relative z-10">EGP {stats.salesOnly.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-              <p className="text-xs font-semibold text-violet-400/70 mt-1 relative z-10">{stats.salesOnly.count} active accounts</p>
-            </motion.div>
-          </div>
-
-          {/* Unified Command Bar (Filters) */}
-          <div className="bg-[#0B1121] border border-slate-800 p-2.5 rounded-2xl shadow-xl flex flex-col md:flex-row gap-2 items-center">
-            
-            {/* View Mode Toggle */}
-            <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
-              <button onClick={() => setViewMode('list')} className={`px-3 sm:px-4 py-2 rounded-lg font-bold text-xs sm:text-sm transition-all ${viewMode === 'list' ? 'bg-indigo-600 shadow-sm text-white' : 'text-slate-400 hover:text-slate-200'}`}>List</button>
-              <button onClick={() => setViewMode('board')} className={`px-3 sm:px-4 py-2 rounded-lg font-bold text-xs sm:text-sm transition-all ${viewMode === 'board' ? 'bg-indigo-600 shadow-sm text-white' : 'text-slate-400 hover:text-slate-200'}`}>Board</button>
-              <button onClick={() => setViewMode('companies')} className={`px-3 sm:px-4 py-2 rounded-lg font-bold text-xs sm:text-sm transition-all flex items-center gap-1.5 ${viewMode === 'companies' ? 'bg-indigo-600 shadow-sm text-white' : 'text-slate-400 hover:text-slate-200'}`}>
-                <Building2 size={15} />
-                <span>Companies Owed (مديونيات الشركات)</span>
-              </button>
+            {/* Bottom Row: Quick Status Filter Chips with Live Counts */}
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pt-1 pb-0.5">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider shrink-0 mr-1">
+                {isAr ? "تصفية بالحالة:" : "Status:"}
+              </span>
+              {[
+                { id: "all", labelEn: "All", labelAr: "الكل", count: filteredCredits.length, color: "indigo" },
+                { id: "open", labelEn: "Open", labelAr: "مفتوح", count: stats.outstanding.count, color: "amber" },
+                { id: "pending", labelEn: "Pending", labelAr: "معلق", count: stats.pending.count, color: "sky" },
+                { id: "partial", labelEn: "Partial", labelAr: "جزئي", count: stats.partial.count, color: "violet" },
+                { id: "overdue", labelEn: "Overdue ⚠️", labelAr: "متأخر ⚠️", count: stats.overdue.count, color: "rose" },
+                { id: "paid", labelEn: "Fully Paid 🟢", labelAr: "مسدد بالكامل 🟢", count: stats.collected.count, color: "emerald" },
+                { id: "salesOnly", labelEn: "Sales Only 🏢", labelAr: "مبيعات شركات 🏢", count: stats.salesOnly.count, color: "purple" }
+              ].map(chip => {
+                const isActive = statusFilter === chip.id;
+                return (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    onClick={() => setStatusFilter(chip.id)}
+                    className={`px-3 py-1.5 rounded-xl font-bold text-xs shrink-0 transition-all flex items-center gap-1.5 border cursor-pointer ${
+                      isActive 
+                        ? "bg-indigo-600 text-white border-indigo-500 shadow-md shadow-indigo-600/25" 
+                        : "bg-slate-950/60 hover:bg-slate-900 text-slate-300 border-white/[0.06] hover:border-slate-700"
+                    }`}
+                  >
+                    <span>{isAr ? chip.labelAr : chip.labelEn}</span>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+                      isActive ? "bg-white/20 text-white" : "bg-slate-800 text-slate-400"
+                    }`}>
+                      {chip.count}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
-            <div className="relative flex-1 w-full">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={20} />
-              <input
-                type="text"
-                placeholder="Search company or invoice..."
-                className="w-full pl-12 pr-4 py-3 rounded-xl bg-slate-950/80 focus:bg-slate-950 border border-slate-800 focus:border-indigo-500 transition-colors outline-none text-white placeholder:text-slate-500 font-medium"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-
-            <select
-              className="w-full md:w-64 px-4 py-3 rounded-xl bg-slate-950/80 hover:bg-slate-950 focus:bg-slate-950 border border-slate-800 transition-colors outline-none text-slate-200 font-bold cursor-pointer appearance-none"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="all">⚡ All Statuses</option>
-              <option value="open">Open Credits</option>
-              <option value="pending">Pending Payments</option>
-              <option value="partial">Partially Paid</option>
-              <option value="paid">Fully Paid</option>
-              <option value="overdue">⚠️ Overdue</option>
-              <option value="salesOnly">🏢 Sales Only Accounts</option>
-            </select>
           </div>
 
         {/* Credits Data View */}
         {selectedBulkItems.size > 0 && (
-          <div className="bg-blue-950/40 border border-blue-800/60 rounded-2xl p-4 flex items-center justify-between shadow-xl animate-in fade-in slide-in-from-top-4 mb-4">
-            <div className="flex items-center gap-3 text-blue-300">
-              <div className="w-8 h-8 rounded-full bg-blue-900/60 border border-blue-700 flex items-center justify-center font-bold">
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-indigo-950/40 backdrop-blur-xl border border-indigo-500/30 rounded-2xl p-4 flex items-center justify-between shadow-2xl shadow-indigo-950/50 mb-4"
+          >
+            <div className="flex items-center gap-3 text-indigo-300">
+              <div className="w-8 h-8 rounded-xl bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center font-mono font-bold text-sm text-white">
                 {selectedBulkItems.size}
               </div>
-              <span className="font-bold text-sm">Credits Selected</span>
+              <div>
+                <span className="font-bold text-sm text-white">{isAr ? "فواتير محددة" : "Invoices Selected"}</span>
+                <p className="text-[11px] text-indigo-300/70">{isAr ? "جاهزة للطباعة المجمعة كملف PDF" : "Ready for batch statement export"}</p>
+              </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
               <button 
                 onClick={() => setSelectedBulkItems(new Set())}
-                className="px-4 py-2 text-sm font-bold text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-xl transition-colors"
+                className="px-3.5 py-1.5 text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800/80 rounded-xl transition-colors cursor-pointer"
               >
-                Clear
+                {isAr ? "إلغاء التحديد" : "Clear"}
               </button>
               <button 
                 onClick={generateBulkPDF}
                 disabled={isGeneratingBulkPDF}
-                className="px-5 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm transition-colors flex items-center gap-2"
+                className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl shadow-lg shadow-indigo-600/25 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                {isGeneratingBulkPDF ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer size={16} />}
-                {isGeneratingBulkPDF ? 'Generating...' : 'Bulk Print PDF'}
+                {isGeneratingBulkPDF ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer size={15} />}
+                <span>{isGeneratingBulkPDF ? (isAr ? "جاري التجهيز..." : "Generating...") : (isAr ? "طباعة PDF مجمعة" : "Bulk Print PDF")}</span>
               </button>
             </div>
-          </div>
+          </motion.div>
         )}
-
-        {/* Mobile Summary Cards & Status Filters (Strictly md:hidden) */}
-        <div className="md:hidden space-y-3">
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="p-3 rounded-2xl bg-[#0B1121] border border-orange-500/30">
-              <p className="text-[10px] font-extrabold text-slate-400 uppercase">Outstanding</p>
-              <p className="text-sm font-black font-mono text-orange-400 mt-0.5">
-                EGP {stats.outstanding.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-              </p>
-            </div>
-            <div className="p-3 rounded-2xl bg-[#0B1121] border border-amber-500/30">
-              <p className="text-[10px] font-extrabold text-slate-400 uppercase">Partial</p>
-              <p className="text-sm font-black font-mono text-amber-400 mt-0.5">
-                EGP {stats.partial.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-              </p>
-            </div>
-            <div className="p-3 rounded-2xl bg-[#0B1121] border border-rose-500/30">
-              <p className="text-[10px] font-extrabold text-slate-400 uppercase">Overdue</p>
-              <p className="text-sm font-black font-mono text-rose-400 mt-0.5">
-                EGP {stats.overdue.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-              </p>
-            </div>
-          </div>
-        </div>
 
         {viewMode === 'list' && (
-          <div className="flex items-center gap-3 px-2 mb-2">
-            <input 
-              type="checkbox" 
-              className="w-5 h-5 rounded text-blue-600 cursor-pointer"
-              checked={filteredCredits.length > 0 && selectedBulkItems.size === filteredCredits.length}
-              onChange={handleSelectAllBulkItems}
-            />
-            <h2 className="text-sm font-black text-slate-400 uppercase tracking-wider">
-              ALL RECORDS ({filteredCredits.length})
-            </h2>
+          <div className="flex items-center justify-between px-3 py-2 bg-slate-900/40 backdrop-blur-md rounded-xl border border-white/[0.05] mb-3">
+            <div className="flex items-center gap-2.5">
+              <input 
+                type="checkbox" 
+                className="w-4 h-4 rounded text-indigo-600 accent-indigo-600 cursor-pointer"
+                checked={filteredCredits.length > 0 && selectedBulkItems.size === filteredCredits.length}
+                onChange={handleSelectAllBulkItems}
+              />
+              <span className="text-xs font-black text-slate-300 uppercase tracking-wider">
+                {isAr ? "جميع السجلات" : "ALL RECORDS"}
+              </span>
+              <span className="text-[10px] font-mono font-bold bg-white/10 text-white px-2 py-0.5 rounded-full">
+                {filteredCredits.length}
+              </span>
+            </div>
+            <span className="text-[11px] font-semibold text-slate-400 hidden sm:inline-block">
+              {isAr ? "عرض تفصيلي مع إمكانية السداد السريع" : "Live Debt Ledger & Quick Settlement"}
+            </span>
           </div>
         )}
 
-        {/* Data List for Mobile Portrait, Landscape & Desktop */}
+        {/* Data List View */}
         <div>
           {viewMode === 'list' ? (
             <div className="space-y-3 sm:space-y-4">
             <AnimatePresence>
               {filteredCredits.map((credit, idx) => {
               const isExpanded = expandedCredits[credit.id];
-              const totalDue = credit.amountDue + credit.tax;
-              const remaining = (credit.status === 'paid' || credit.settledAsFull) ? 0 : Math.max(0, totalDue - credit.paidAmount);
+              const totalDue = credit.amountDue + (credit.tax || 0);
+              const remaining = (credit.status === 'paid' || credit.settledAsFull) ? 0 : Math.max(0, totalDue - (credit.paidAmount || 0));
+              const paidPercent = totalDue > 0 ? Math.min(100, Math.round(((credit.paidAmount || 0) / totalDue) * 100)) : 0;
 
               // Generate Company Initials for Avatar
               const initials = credit.companyName.substring(0, 2).toUpperCase();
               const colors = [
-                'bg-indigo-950/80 text-indigo-300 border-indigo-700/50', 
-                'bg-rose-950/80 text-rose-300 border-rose-700/50', 
-                'bg-emerald-950/80 text-emerald-300 border-emerald-700/50',
-                'bg-amber-950/80 text-amber-300 border-amber-700/50',
-                'bg-sky-950/80 text-sky-300 border-sky-700/50'
+                'from-indigo-600/30 to-violet-900/30 text-indigo-300 border-indigo-500/40', 
+                'from-rose-600/30 to-pink-900/30 text-rose-300 border-rose-500/40', 
+                'from-emerald-600/30 to-teal-900/30 text-emerald-300 border-emerald-500/40',
+                'from-amber-600/30 to-orange-900/30 text-amber-300 border-amber-500/40',
+                'from-sky-600/30 to-cyan-900/30 text-sky-300 border-sky-500/40'
               ];
               const avatarColor = colors[credit.companyName.charCodeAt(0) % colors.length];
 
               return (
                 <motion.div 
                   layout
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.2, delay: idx * 0.03 }}
+                  exit={{ opacity: 0, scale: 0.96 }}
+                  transition={{ duration: 0.2, delay: Math.min(idx * 0.02, 0.3) }}
                   key={credit.id} 
-                  className={`bg-[#0B1121] border rounded-2xl shadow-lg hover:border-slate-700 transition-all overflow-hidden group ${selectedBulkItems.has(credit.id) ? 'border-indigo-500 ring-1 ring-indigo-500' : 'border-slate-800'}`}
+                  className={`bg-slate-900/70 backdrop-blur-xl border rounded-2xl shadow-xl transition-all overflow-hidden group hover:shadow-indigo-500/5 ${
+                    selectedBulkItems.has(credit.id) 
+                      ? 'border-indigo-500 ring-2 ring-indigo-500/30 bg-indigo-950/20' 
+                      : 'border-white/[0.08] hover:border-slate-700'
+                  }`}
                 >
-                  {/* Row Summary */}
-                  <div className="p-3.5 sm:p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 md:gap-4 relative">
+                  {/* Card Main Summary */}
+                  <div className="p-4 sm:p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-3.5 md:gap-4 relative">
                     
-                    {/* Left: Avatar + Details */}
+                    {/* Left: Checkbox + Avatar + Company Details */}
                     <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0 w-full">
                       <input 
                         type="checkbox" 
                         checked={selectedBulkItems.has(credit.id)}
                         onChange={() => handleSelectBulkItem(credit.id)}
-                        className="w-5 h-5 rounded text-indigo-600 cursor-pointer mr-1 flex-shrink-0"
+                        className="w-4 h-4 rounded text-indigo-600 accent-indigo-600 cursor-pointer mr-0.5 flex-shrink-0"
                       />
-                      <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full border flex items-center justify-center font-black text-sm sm:text-lg tracking-tight flex-shrink-0 ${avatarColor}`}>
+                      
+                      <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br border flex items-center justify-center font-black text-sm sm:text-base tracking-tight flex-shrink-0 shadow-inner ${avatarColor}`}>
                         {initials}
                       </div>
+
                       <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2 mb-1">
-                          <button onClick={() => setSelectedSupplierProfile(credit.companyName)} className="text-base sm:text-lg font-bold text-white uppercase tracking-tight text-left hover:text-indigo-400 transition-colors underline decoration-dotted decoration-indigo-500/50 underline-offset-4 truncate max-w-[200px] sm:max-w-none">
+                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
+                          <button 
+                            onClick={() => setSelectedSupplierProfile(credit.companyName)} 
+                            className="text-base sm:text-lg font-black text-white uppercase tracking-tight text-left hover:text-indigo-400 transition-colors underline decoration-dotted decoration-indigo-500/50 underline-offset-4 truncate max-w-[200px] sm:max-w-none cursor-pointer"
+                          >
                             {credit.companyName}
                           </button>
                           
-                          {/* Modern Badges */}
+                          {/* Modern Status Badges */}
                           {credit.status === 'paid' && (
-                            <span className="bg-emerald-950/60 text-emerald-400 border border-emerald-800/60 text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
-                              <CheckCircle size={12}/> {credit.settledAsFull ? (isAr ? "تسوية كاملة" : "Settled Full") : "Paid"}
+                            <span className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[11px] px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                              <CheckCircle size={12}/> {credit.settledAsFull ? (isAr ? "تسوية كاملة" : "Settled Full") : (isAr ? "مسدد بالكامل" : "Paid")}
                             </span>
                           )}
-                          {credit.status === 'pending' && <span className="bg-blue-950/60 text-blue-400 border border-blue-800/60 text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><Clock size={12}/> Pending</span>}
-                          {credit.status === 'partial' && <span className="bg-amber-950/60 text-amber-400 border border-amber-800/60 text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><PieChart size={12}/> Partial</span>}
-                          {credit.status === 'overdue' && <span className="bg-rose-950/60 text-rose-400 border border-rose-800/60 text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><AlertTriangle size={12}/> Overdue</span>}
-                          {credit.status === 'open' && <span className="bg-slate-800 text-slate-300 border border-slate-700 text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><AlertCircle size={12}/> Open</span>}
+                          {credit.status === 'pending' && (
+                            <span className="bg-sky-500/15 text-sky-400 border border-sky-500/30 text-[11px] px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                              <Clock size={12}/> {isAr ? "قيد المراجعة" : "Pending"}
+                            </span>
+                          )}
+                          {credit.status === 'partial' && (
+                            <span className="bg-violet-500/15 text-violet-300 border border-violet-500/30 text-[11px] px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                              <PieChart size={12}/> {isAr ? "مسدد جزئياً" : "Partial"}
+                            </span>
+                          )}
+                          {credit.status === 'overdue' && (
+                            <span className="bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[11px] px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1 animate-pulse">
+                              <AlertTriangle size={12}/> {isAr ? "متأخر ⚠️" : "Overdue"}
+                            </span>
+                          )}
+                          {credit.status === 'open' && (
+                            <span className="bg-slate-800 text-slate-300 border border-slate-700 text-[11px] px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                              <AlertCircle size={12}/> {isAr ? "مفتوح" : "Open"}
+                            </span>
+                          )}
 
                           {credit.onSalesOnly && (
-                            <span className="bg-violet-950/60 text-violet-400 border border-violet-800/60 text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1"><Building size={12}/> Sales Only</span>
+                            <span className="bg-purple-500/15 text-purple-300 border border-purple-500/30 text-[11px] px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                              <Building size={12}/> {isAr ? "مبيعات شركات" : "Sales Only"}
+                            </span>
                           )}
 
                           {credit.isEdited && (
                             <span 
-                              className="bg-amber-950/50 text-amber-400 border border-amber-800/60 text-[10px] sm:text-xs px-2 py-0.5 rounded-full font-bold flex items-center gap-1 cursor-pointer hover:bg-amber-900/50 transition-colors"
+                              className="bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[11px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1 cursor-pointer hover:bg-amber-500/25 transition-colors"
                               title={credit.editHistory && credit.editHistory.length > 0 ? `Edited on ${new Date(credit.lastEditedAt!).toLocaleDateString()}:\n${credit.editHistory[credit.editHistory.length - 1].summary}` : "Edited"}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setSelectedCreditForView(credit);
                               }}
                             >
-                              <Pencil size={11} className="shrink-0" /> {isAr ? "مُعدّل" : "Edited"}
+                              <Pencil size={10} className="shrink-0" /> {isAr ? "مُعدّل" : "Edited"}
                             </span>
                           )}
                         </div>
-                        <p className="text-xs sm:text-sm font-medium text-slate-400 flex flex-wrap items-center gap-2">
-                          <span className="flex items-center gap-1"><FileText size={13} className="text-slate-500" /> Inv: {credit.invoiceNumber}</span>
-                          {credit.poNumber && <><span className="text-slate-600">•</span> <span>PO: {credit.poNumber}</span></>} 
-                          <span className="text-slate-600">•</span> <span>Due: {credit.collectionDate}</span>
-                        </p>
+
+                        {/* Sub-pills: Inv, PO, Due Date */}
+                        <div className="text-xs font-medium text-slate-400 flex flex-wrap items-center gap-2 mt-1">
+                          <span className="flex items-center gap-1 font-mono text-slate-300 bg-slate-950/60 px-2 py-0.5 rounded-md border border-white/[0.05]">
+                            <FileText size={12} className="text-indigo-400" />
+                            Inv: #{credit.invoiceNumber || "—"}
+                          </span>
+                          {credit.poNumber && (
+                            <span className="font-mono text-teal-300 bg-teal-950/40 px-2 py-0.5 rounded-md border border-teal-800/40 text-[11px]">
+                              PO: {credit.poNumber}
+                            </span>
+                          )}
+                          <span className="flex items-center gap-1 text-[11px] text-slate-400">
+                            <Clock size={11} className="text-slate-500" />
+                            {isAr ? "الاستحقاق:" : "Due:"} {credit.collectionDate || "—"}
+                          </span>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Right: Financials & Actions */}
-                    <div className="flex items-center gap-4 sm:gap-6 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-slate-800/80 pt-2.5 md:pt-0">
+                    {/* Right: Financial Amounts + Quick Progress + Actions */}
+                    <div className="flex items-center gap-4 sm:gap-6 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-white/[0.06] pt-3 md:pt-0">
+                      
+                      {/* Financial amounts */}
                       <div className="text-left md:text-right">
-                        <p className="text-xl sm:text-2xl font-black text-rose-500 tracking-tight font-mono">
-                          <span className="text-xs sm:text-sm font-medium text-slate-400 mr-1">EGP</span>
-                          {totalDue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </p>
-                        <p className="text-xs sm:text-sm font-medium text-slate-400 flex items-center justify-start md:justify-end gap-1">
-                          Paid: <span className="text-emerald-400 font-bold">{credit.paidAmount.toLocaleString()}</span>
-                        </p>
+                        <div className="flex items-baseline gap-1 justify-start md:justify-end">
+                          <span className="text-xs font-bold text-slate-500">EGP</span>
+                          <span className={`text-xl sm:text-2xl font-black font-mono tracking-tight ${credit.status === 'paid' || remaining === 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            {totalDue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        
+                        <div className="text-xs font-semibold text-slate-400 flex items-center justify-start md:justify-end gap-1.5 mt-0.5">
+                          <span>{isAr ? "المسدد:" : "Paid:"}</span>
+                          <span className="text-emerald-400 font-mono font-bold">
+                            {(credit.paidAmount || 0).toLocaleString()}
+                          </span>
+                          {remaining > 0 && (
+                            <>
+                              <span className="text-slate-600">•</span>
+                              <span className="text-rose-400/90 font-mono">
+                                {isAr ? "متبقي" : "Rem:"} {remaining.toLocaleString()}
+                              </span>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Mini visual progress bar */}
+                        <div className="w-32 sm:w-40 bg-slate-950 h-1.5 rounded-full overflow-hidden border border-white/[0.06] mt-1.5 flex" title={`${paidPercent}% settled`}>
+                          <div 
+                            style={{ width: `${paidPercent}%` }} 
+                            className="bg-emerald-500 h-full transition-all duration-300"
+                          />
+                          <div 
+                            style={{ width: `${100 - paidPercent}%` }} 
+                            className={`${credit.status === 'overdue' ? 'bg-rose-500' : 'bg-rose-500/30'} h-full transition-all duration-300`}
+                          />
+                        </div>
                       </div>
                       
-                      {/* Action Dropdown / Buttons */}
-                      <div className="flex items-center gap-1 sm:gap-2">
-                        <button onClick={() => setSelectedCreditForView(credit)} className="p-2 sm:p-2.5 text-slate-400 hover:text-indigo-400 hover:bg-slate-800/80 rounded-xl transition-colors cursor-pointer" title="View Statement">
-                          <Eye size={19} />
+                      {/* Action Buttons */}
+                      <div className="flex items-center gap-1 sm:gap-1.5">
+                        <button 
+                          onClick={() => setSelectedCreditForView(credit)} 
+                          className="p-2 text-slate-400 hover:text-indigo-300 hover:bg-white/[0.06] rounded-xl transition-all cursor-pointer" 
+                          title={isAr ? "عرض كشف الحساب" : "View Statement"}
+                        >
+                          <Eye size={18} />
                         </button>
-                        <button onClick={() => handlePrintPdf(credit)} disabled={isPrinting} className="p-2 sm:p-2.5 text-slate-400 hover:text-indigo-400 hover:bg-slate-800/80 rounded-xl transition-colors disabled:opacity-50 cursor-pointer" title="Print Voucher">
-                          <Printer size={19} />
+                        
+                        <button 
+                          onClick={() => handlePrintPdf(credit)} 
+                          disabled={isPrinting} 
+                          className="p-2 text-slate-400 hover:text-indigo-300 hover:bg-white/[0.06] rounded-xl transition-all disabled:opacity-50 cursor-pointer" 
+                          title={isAr ? "طباعة الإذن" : "Print Voucher"}
+                        >
+                          <Printer size={18} />
                         </button>
+                        
                         {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && (
                           <>
                             <button
                               onClick={() => handleOpenEditCredit(credit)}
-                              className="p-2 sm:p-2.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800/80 rounded-xl transition-colors cursor-pointer"
+                              className="p-2 text-slate-400 hover:text-amber-300 hover:bg-white/[0.06] rounded-xl transition-all cursor-pointer"
                               title={isAr ? "تعديل الفاتورة (خاص بالإدارة)" : "Edit Credit (Admin Only)"}
                             >
-                              <Pencil size={19} />
+                              <Pencil size={18} />
                             </button>
-                            <button onClick={() => handleDeleteCredit(credit.id)} className="p-2 sm:p-2.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800/80 rounded-xl transition-colors cursor-pointer" title={isAr ? "حذف الدين" : "Delete Credit"}>
-                              <Trash2 size={19} />
+                            <button 
+                              onClick={() => handleDeleteCredit(credit.id)} 
+                              className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all cursor-pointer" 
+                              title={isAr ? "حذف الدين" : "Delete Credit"}
+                            >
+                              <Trash2 size={18} />
                             </button>
                           </>
                         )}
+
                         <button
                           onClick={() => toggleExpand(credit.id)}
-                          className={`p-2 sm:p-2.5 rounded-xl transition-colors cursor-pointer ${isExpanded ? 'bg-indigo-950/80 text-indigo-400 border border-indigo-800/50' : 'text-slate-400 hover:bg-slate-800/80 hover:text-slate-200'}`}
-                          title="Toggle Details"
+                          className={`p-2 rounded-xl transition-all cursor-pointer ${
+                            isExpanded 
+                              ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/40' 
+                              : 'text-slate-400 hover:bg-white/[0.06] hover:text-white'
+                          }`}
+                          title={isExpanded ? "Collapse Details" : "Expand Details"}
                         >
-                          {isExpanded ? <ChevronUp size={19} /> : <ChevronDown size={19} />}
+                          {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                         </button>
                       </div>
+
                     </div>
                   </div>
 
@@ -3548,108 +3913,133 @@ html, body {
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
-                        className="border-t border-slate-800 bg-[#070C18]"
+                        className="border-t border-white/[0.06] bg-slate-950/70"
                       >
-                        <div className="p-5 md:p-6">
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                            <div className="bg-[#0B1121] p-4 rounded-xl border border-slate-800 shadow-sm">
-                              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Amount</p>
-                              <p className="font-black text-white">EGP {credit.amountDue.toLocaleString()}</p>
+                        <div className="p-4 sm:p-6">
+                          
+                          {/* 4 Financial Metric Tiles */}
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
+                            <div className="bg-slate-900/80 p-3.5 rounded-2xl border border-white/[0.06] shadow-sm">
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                                {isAr ? "أصل المبلغ" : "Amount Due"}
+                              </p>
+                              <p className="font-black text-white font-mono text-base sm:text-lg">
+                                EGP {credit.amountDue.toLocaleString()}
+                              </p>
                             </div>
-                            <div className="bg-[#0B1121] p-4 rounded-xl border border-slate-800 shadow-sm">
-                              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Tax</p>
-                              <p className="font-black text-white">EGP {credit.tax.toLocaleString()}</p>
+                            
+                            <div className="bg-slate-900/80 p-3.5 rounded-2xl border border-white/[0.06] shadow-sm">
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                                {isAr ? "الضريبة" : "Tax (14%)"}
+                              </p>
+                              <p className="font-black text-white font-mono text-base sm:text-lg">
+                                EGP {(credit.tax || 0).toLocaleString()}
+                              </p>
                             </div>
-                            <div className="bg-rose-950/30 p-4 rounded-xl border border-rose-900/50 shadow-sm">
-                              <p className="text-xs font-bold text-rose-400 uppercase tracking-wider mb-1">Remaining</p>
-                              <p className="font-black text-rose-400">EGP {remaining.toLocaleString()}</p>
+                            
+                            <div className="bg-rose-950/25 p-3.5 rounded-2xl border border-rose-500/30 shadow-sm">
+                              <p className="text-[10px] font-bold text-rose-400 uppercase tracking-wider mb-1">
+                                {isAr ? "المتبقي للسداد" : "Remaining Due"}
+                              </p>
+                              <p className="font-black text-rose-300 font-mono text-base sm:text-lg">
+                                EGP {remaining.toLocaleString()}
+                              </p>
                             </div>
-                            <div className="bg-[#0B1121] p-4 rounded-xl border border-slate-800 shadow-sm">
-                              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Type</p>
-                              <p className="font-bold text-white flex items-center gap-2">
-                                {credit.onSalesOnly ? <><Building size={14} className="text-violet-400"/> Sales Only</> : <><CreditCard size={14} className="text-indigo-400"/> Standard</>}
+                            
+                            <div className="bg-slate-900/80 p-3.5 rounded-2xl border border-white/[0.06] shadow-sm">
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                                {isAr ? "نوع الحساب" : "Account Type"}
+                              </p>
+                              <p className="font-bold text-white flex items-center gap-1.5 text-sm mt-0.5">
+                                {credit.onSalesOnly 
+                                  ? <><Building size={14} className="text-purple-400"/> {isAr ? "مبيعات شركات" : "Sales Only"}</> 
+                                  : <><CreditCard size={14} className="text-indigo-400"/> {isAr ? "مورد قياسي" : "Standard Vendor"}</>}
                               </p>
                             </div>
                           </div>
 
                           {/* Payment History Section */}
-                          <div className="flex justify-between items-center border-t border-slate-800 pt-6 mb-4">
-                            <h4 className="font-bold text-white flex items-center gap-2">
-                              <Banknote className="text-emerald-400"/> {isAr ? "سجل المدفوعات والتسويات" : "Payment History"}
+                          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-t border-white/[0.06] pt-5 mb-4">
+                            <h4 className="font-bold text-white text-sm sm:text-base flex items-center gap-2">
+                              <Banknote className="text-emerald-400" size={18} />
+                              <span>{isAr ? "سجل المدفوعات والتسويات" : "Payment & Settlement Log"}</span>
                               {creditHistories[credit.id] && creditHistories[credit.id].length > 0 && (
-                                <span className="text-xs font-mono bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 px-2 py-0.5 rounded-full font-bold">
+                                <span className="text-[11px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-bold">
                                   {creditHistories[credit.id].length}
                                 </span>
                               )}
                             </h4>
+
                             {credit.status !== "paid" && !credit.settledAsFull && (
                               <div className="flex items-center gap-2">
                                 {credit.status === "partial" && (
                                   <button
                                     onClick={() => handleOpenSettleModal(credit)}
-                                    className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 px-3 py-2 rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                                    className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
                                     title={isAr ? "اعتبار المبلغ المسدد سداداً نهائياً وإلغاء المتبقي" : "Settle as Full & Cancel Remaining"}
                                   >
                                     <CheckCircle2 size={14} />
-                                    <span>{isAr ? "تسوية كاملة وإغلاق الدين" : "Settle Full"}</span>
+                                    <span>{isAr ? "تسوية كاملة وإغلاق" : "Settle Full"}</span>
                                   </button>
                                 )}
                                 <button
                                   onClick={() => handleOpenPaymentModal(credit)}
-                                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md hover:-translate-y-0.5 transition-all flex items-center gap-1.5 cursor-pointer"
+                                  className="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-lg shadow-indigo-600/25 hover:-translate-y-0.5 transition-all flex items-center gap-1.5 cursor-pointer"
                                 >
-                                  <Plus size={15} /> {isAr ? "تسجيل سداد" : "Record Payment"}
+                                  <Plus size={14} />
+                                  <span>{isAr ? "تسجيل سداد" : "Record Payment"}</span>
                                 </button>
                               </div>
                             )}
                           </div>
                           
                           {loadingHistories[credit.id] ? (
-                            <div className="flex justify-center items-center py-8 bg-[#0B1121] rounded-xl border border-slate-800">
-                              <Loader2 className="animate-spin text-indigo-400 mr-2" size={20} />
+                            <div className="flex justify-center items-center py-8 bg-slate-900/50 rounded-2xl border border-white/[0.06]">
+                              <Loader2 className="animate-spin text-indigo-400 mr-2" size={18} />
                               <span className="text-xs text-slate-400 font-medium">{isAr ? "جاري تحميل سجل السداد والأصناف..." : "Loading payments & PO items..."}</span>
                             </div>
                           ) : creditHistories[credit.id] && creditHistories[credit.id].length > 0 ? (
                             <div className="space-y-2">
-                              {creditHistories[credit.id].map((payment, idx) => {
+                              {creditHistories[credit.id].map((payment, pIdx) => {
                                 const receiptImg = payment.bankTransferReceiptUrl || payment.receiptUrl;
                                 return (
-                                  <div key={payment.id || idx} className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-[#0B1121] p-3.5 rounded-xl border border-slate-800 shadow-sm gap-3 hover:border-slate-700 transition-colors">
+                                  <div key={payment.id || pIdx} className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-slate-900/60 p-3.5 rounded-xl border border-white/[0.06] shadow-sm gap-3 hover:border-slate-700 transition-colors">
                                     <div className="flex items-center gap-3">
-                                      <div className="w-10 h-10 rounded-full bg-emerald-950/60 border border-emerald-800/60 flex items-center justify-center text-emerald-400 shrink-0">
-                                        <CheckCircle size={18} />
+                                      <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                                        <CheckCircle size={17} />
                                       </div>
                                       <div>
                                         <div className="flex items-center gap-2 flex-wrap">
-                                          <p className="font-bold text-white font-mono tracking-tight text-base">
+                                          <p className="font-bold text-white font-mono tracking-tight text-sm sm:text-base">
                                             EGP {Number(payment.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                           </p>
                                           {payment.hasReturn && (
-                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-400 border border-amber-500/40">
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/40">
                                               <RotateCcw size={10} />
                                               {isAr ? `خصم مرتجع: ${Number(payment.returnDeductionAmount || payment.returnDetails?.returnAmount || 0).toLocaleString()} ج.م` : `RTV: EGP ${Number(payment.returnDeductionAmount || payment.returnDetails?.returnAmount || 0).toLocaleString()}`}
                                             </span>
                                           )}
                                           {payment.grossAmount && Number(payment.grossAmount) > Number(payment.amount) && (
-                                            <span className="text-[11px] text-slate-500 font-mono">
+                                            <span className="text-[10px] text-slate-400 font-mono">
                                               ({isAr ? "إجمالي الدين المسدد:" : "Gross Settled:"} EGP {Number(payment.grossAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })})
                                             </span>
                                           )}
                                         </div>
-                                        <p className="text-xs font-medium text-slate-400 flex items-center gap-1.5 flex-wrap mt-0.5">
-                                          <Calendar size={12}/> <span>{payment.date || "Completed"}</span> 
+                                        <p className="text-[11px] font-medium text-slate-400 flex items-center gap-1.5 flex-wrap mt-0.5">
+                                          <Calendar size={11} className="text-slate-500" /> 
+                                          <span>{payment.date || "Completed"}</span> 
                                           <span className="text-slate-600">•</span> 
-                                          <span className="uppercase font-semibold text-slate-300">{payment.method || "CASH"}</span>
+                                          <span className="uppercase font-semibold text-slate-300 bg-slate-950 px-1.5 py-0.2 rounded border border-white/[0.05]">{payment.method || "CASH"}</span>
                                           {payment.createdBy && (
                                             <>
                                               <span className="text-slate-600">•</span>
-                                              <span className="text-slate-500 font-mono text-[11px]">{payment.createdBy.split('@')[0]}</span>
+                                              <span className="text-slate-400 font-mono text-[10px]">{payment.createdBy.split('@')[0]}</span>
                                             </>
                                           )}
                                           {payment.hasReturn && (payment.returnTransferOutNumber || payment.returnDetails?.transferOutNumber) && (
                                             <>
                                               <span className="text-slate-600">•</span>
-                                              <span className="text-amber-400 font-mono text-[11px]">TR-{payment.returnTransferOutNumber || payment.returnDetails?.transferOutNumber}</span>
+                                              <span className="text-amber-400 font-mono text-[10px]">TR-{payment.returnTransferOutNumber || payment.returnDetails?.transferOutNumber}</span>
                                             </>
                                           )}
                                         </p>
@@ -3659,48 +4049,48 @@ html, body {
                                       {receiptImg && (
                                         <button 
                                           onClick={() => setPreviewImage({ url: receiptImg, title: `Payment Receipt - Inv #${credit.invoiceNumber || ""}` })}
-                                          className="text-xs font-bold px-3 py-1.5 bg-blue-950/60 text-blue-400 border border-blue-800/60 rounded-xl hover:bg-blue-900/60 transition-colors flex items-center gap-1.5 cursor-pointer"
+                                          className="text-xs font-bold px-2.5 py-1 bg-sky-950/60 text-sky-300 border border-sky-800/60 rounded-lg hover:bg-sky-900/60 transition-colors flex items-center gap-1 cursor-pointer"
                                           title="View Receipt Image"
                                         >
-                                          <FileText size={13}/> {isAr ? "عرض الإيصال" : "Receipt"}
+                                          <FileText size={12}/> {isAr ? "عرض الإيصال" : "Receipt"}
                                         </button>
                                       )}
                                       <button
                                         onClick={() => handlePrintPaymentReceipt(credit, payment)}
-                                        className="text-xs font-bold px-3 py-1.5 bg-indigo-950/60 text-indigo-300 border border-indigo-800/60 rounded-xl hover:bg-indigo-900/60 hover:text-white transition-colors flex items-center gap-1.5 cursor-pointer"
+                                        className="text-xs font-bold px-2.5 py-1 bg-indigo-950/60 text-indigo-300 border border-indigo-800/60 rounded-lg hover:bg-indigo-900/60 hover:text-white transition-colors flex items-center gap-1 cursor-pointer"
                                         title={isAr ? "طباعة إيصال السداد الرسمي" : "Print Official Payment Voucher"}
                                       >
-                                        <Printer size={13}/> {isAr ? "طباعة الإيصال" : "Print Receipt"}
+                                        <Printer size={12}/> {isAr ? "طباعة" : "Print"}
                                       </button>
                                       {!(typeof window !== "undefined" && localStorage.getItem("circlek_role") === "manager") && !payment.isSettlement && (
                                         <button
                                           onClick={() => handleDeleteCreditPayment(credit, payment)}
-                                          className="text-xs font-bold p-1.5 bg-rose-950/40 text-rose-400 border border-rose-800/50 rounded-xl hover:bg-rose-900/50 hover:text-rose-300 transition-colors flex items-center gap-1 cursor-pointer"
+                                          className="text-xs font-bold p-1 bg-rose-950/40 text-rose-400 border border-rose-800/50 rounded-lg hover:bg-rose-900/50 hover:text-rose-300 transition-colors flex items-center cursor-pointer"
                                           title={isAr ? "حذف الدفعة" : "Delete Payment"}
                                         >
-                                          <Trash2 size={13} />
+                                          <Trash2 size={12} />
                                         </button>
                                       )}
-                                      <span className="text-xs font-bold px-2.5 py-1 bg-emerald-950/60 text-emerald-400 border border-emerald-800/60 rounded-full flex items-center gap-1">
-                                        <CheckCircle size={12}/> {isAr ? "مسدد" : "Paid"}
+                                      <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-full flex items-center gap-1">
+                                        <CheckCircle size={10}/> {isAr ? "مسدد" : "Paid"}
                                       </span>
                                     </div>
                                   </div>
                                 );
                               })}
-                              <div className="flex justify-between items-center pt-4 mt-2 border-t border-slate-800/80 px-1">
+                              <div className="flex justify-between items-center pt-3 mt-2 border-t border-white/[0.06] px-1">
                                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{isAr ? "إجمالي المسدد" : "Total Paid"}</span>
-                                <span className="text-base font-black text-emerald-400 tracking-tight font-mono">EGP {credit.paidAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                <span className="text-sm sm:text-base font-black text-emerald-400 tracking-tight font-mono">EGP {(credit.paidAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                               </div>
                             </div>
                           ) : (
-                            <div className="text-center py-8 bg-[#0B1121] rounded-xl border border-dashed border-slate-800">
-                              <p className="text-sm font-bold text-slate-500">{isAr ? "لا توجد مدفوعات مسجلة حتى الآن" : "No payments recorded yet"}</p>
+                            <div className="text-center py-6 bg-slate-900/40 rounded-2xl border border-dashed border-white/[0.08]">
+                              <p className="text-xs font-bold text-slate-500">{isAr ? "لا توجد مدفوعات مسجلة حتى الآن" : "No payments recorded yet"}</p>
                             </div>
                           )}
 
                           {/* PO Items & Image Area */}
-                          <div className="border-t border-slate-800 pt-6 mt-6">
+                          <div className="border-t border-white/[0.06] pt-5 mt-6">
                             {(() => {
                               const displayPoItems = (creditPOItems[credit.id] && creditPOItems[credit.id].length > 0)
                                 ? creditPOItems[credit.id]
@@ -3715,18 +4105,18 @@ html, body {
 
                               return (
                                 <>
-                                  <div className="flex justify-between items-center mb-4">
+                                  <div className="flex justify-between items-center mb-3">
                                     <div className="flex items-center gap-2">
-                                      <ImageIcon className="text-indigo-400" size={18} />
-                                      <h4 className="font-bold text-white text-base">
+                                      <ImageIcon className="text-indigo-400" size={17} />
+                                      <h4 className="font-bold text-white text-sm sm:text-base">
                                         {isAr ? "تفاصيل أمر الشراء والأصناف (PO Items)" : "Purchase Order Details"}
                                       </h4>
                                       {credit.poNumber ? (
-                                        <span className="text-xs font-mono bg-indigo-950 text-indigo-300 border border-indigo-800/60 px-2 py-0.5 rounded-full font-bold">
+                                        <span className="text-[11px] font-mono bg-indigo-950 text-indigo-300 border border-indigo-800/60 px-2 py-0.5 rounded-full font-bold">
                                           PO: {credit.poNumber}
                                         </span>
                                       ) : displayPoItems.length > 0 ? (
-                                        <span className="text-xs font-mono bg-emerald-950 text-emerald-300 border border-emerald-800/60 px-2 py-0.5 rounded-full font-bold">
+                                        <span className="text-[11px] font-mono bg-emerald-950 text-emerald-300 border border-emerald-800/60 px-2 py-0.5 rounded-full font-bold">
                                           {isAr ? "مرفق أصناف" : "Items Attached"}
                                         </span>
                                       ) : null}
@@ -3734,49 +4124,49 @@ html, body {
                                     {!hasCreditPo ? (
                                       <button
                                         onClick={() => setSelectedCreditForPoUpload(credit)}
-                                        className="text-indigo-400 bg-indigo-950/60 border border-indigo-800/60 px-3.5 py-1.5 rounded-xl text-xs font-bold hover:bg-indigo-900/60 transition-colors flex items-center gap-1 cursor-pointer"
+                                        className="text-indigo-300 bg-indigo-950/60 border border-indigo-700/50 px-3 py-1 rounded-xl text-xs font-bold hover:bg-indigo-900/60 transition-colors flex items-center gap-1 cursor-pointer"
                                       >
-                                        <Plus size={14}/> {isAr ? "إرفاق PO / فاتورة" : "+ Add PO"}
+                                        <Plus size={13}/> {isAr ? "إرفاق PO / فاتورة" : "+ Add PO"}
                                       </button>
                                     ) : (
                                       <button
                                         onClick={() => setSelectedCreditForPoUpload(credit)}
-                                        className="text-slate-400 hover:text-indigo-300 bg-slate-900/60 border border-slate-800 px-3 py-1 rounded-xl text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
+                                        className="text-slate-400 hover:text-indigo-300 bg-slate-900/60 border border-white/[0.08] px-2.5 py-1 rounded-xl text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
                                         title={isAr ? "تعديل أو إعادة رفع أمر الشراء" : "Change or re-upload PO"}
                                       >
-                                        <Pencil size={12}/> {isAr ? "تعديل الـ PO" : "Edit PO"}
+                                        <Pencil size={11}/> {isAr ? "تعديل الـ PO" : "Edit PO"}
                                       </button>
                                     )}
                                   </div>
 
                                   {/* PO Items Table */}
                                   {displayPoItems.length > 0 && (
-                                    <div className="overflow-x-auto border border-slate-800 bg-[#0B1121] rounded-2xl mb-5 shadow-sm">
-                                      <table className="w-full text-sm text-left">
-                                        <thead className="text-xs text-slate-400 bg-slate-950/80 border-b border-slate-800 uppercase font-bold tracking-wider">
+                                    <div className="overflow-x-auto border border-white/[0.06] bg-slate-900/60 rounded-2xl mb-4 shadow-sm">
+                                      <table className="w-full text-xs text-left">
+                                        <thead className="text-[10px] text-slate-400 bg-slate-950/80 border-b border-white/[0.06] uppercase font-bold tracking-wider">
                                           <tr>
-                                            <th className="px-4 py-3">#</th>
-                                            <th className="px-4 py-3">Barcode</th>
-                                            <th className="px-4 py-3">{isAr ? "الوصف / اسم الصنف" : "Description"}</th>
-                                            <th className="px-4 py-3 text-center">Qty</th>
-                                            <th className="px-4 py-3 text-right">Unit Price</th>
-                                            <th className="px-4 py-3 text-right">Total</th>
+                                            <th className="px-3.5 py-2.5">#</th>
+                                            <th className="px-3.5 py-2.5">Barcode</th>
+                                            <th className="px-3.5 py-2.5">{isAr ? "الوصف / اسم الصنف" : "Description"}</th>
+                                            <th className="px-3.5 py-2.5 text-center">Qty</th>
+                                            <th className="px-3.5 py-2.5 text-right">Unit Price</th>
+                                            <th className="px-3.5 py-2.5 text-right">Total</th>
                                           </tr>
                                         </thead>
-                                        <tbody>
-                                          {displayPoItems.map((item: any, idx: number) => {
+                                        <tbody className="divide-y divide-white/[0.04]">
+                                          {displayPoItems.map((item: any, itmIdx: number) => {
                                             const desc = item.description || item.name || item.itemName || item.item || "صنف";
                                             const qty = Math.max(1, Number(item.quantity) || 1);
                                             const unitPrice = Number(item.unitPrice ?? item.price ?? 0);
                                             const lineTotal = Number(item.total ?? item.totalPrice ?? (qty * unitPrice));
                                             return (
-                                              <tr key={idx} className="border-b border-slate-850/60 last:border-0 font-medium hover:bg-slate-900/40 transition-colors">
-                                                <td className="px-4 py-2.5 text-xs text-slate-500 font-mono">{idx + 1}</td>
-                                                <td className="px-4 py-2.5 text-slate-400 font-mono text-xs">{item.barcode || item.code || "N/A"}</td>
-                                                <td className="px-4 py-2.5 text-white font-bold">{desc}</td>
-                                                <td className="px-4 py-2.5 text-center text-indigo-300 font-bold">{qty}</td>
-                                                <td className="px-4 py-2.5 text-right text-slate-300 font-mono">{unitPrice > 0 ? unitPrice.toFixed(2) : "-"}</td>
-                                                <td className="px-4 py-2.5 text-right font-bold text-emerald-400 font-mono">{lineTotal > 0 ? lineTotal.toFixed(2) : "-"}</td>
+                                              <tr key={itmIdx} className="font-medium hover:bg-slate-900/60 transition-colors">
+                                                <td className="px-3.5 py-2 text-slate-500 font-mono text-[11px]">{itmIdx + 1}</td>
+                                                <td className="px-3.5 py-2 text-slate-400 font-mono text-[11px]">{item.barcode || item.code || "—"}</td>
+                                                <td className="px-3.5 py-2 text-white font-bold">{desc}</td>
+                                                <td className="px-3.5 py-2 text-center text-indigo-300 font-bold font-mono">{qty}</td>
+                                                <td className="px-3.5 py-2 text-right text-slate-300 font-mono">{unitPrice > 0 ? unitPrice.toFixed(2) : "—"}</td>
+                                                <td className="px-3.5 py-2 text-right font-bold text-emerald-400 font-mono">{lineTotal > 0 ? lineTotal.toFixed(2) : "—"}</td>
                                               </tr>
                                             );
                                           })}
@@ -3787,10 +4177,10 @@ html, body {
 
                                   {/* Scanned PO Image Preview & Gallery */}
                                   {(credit.poImageUrl || credit.poUrl || (credit.poUrls && credit.poUrls.length > 0)) && (
-                                    <div className="mt-4">
-                                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-                                        <ImageIcon size={14} className="text-indigo-400" />
-                                        {isAr ? "مرفقات ومستندات الفاتورة وأمر الشراء" : "Scanned PO & Invoice Documents"}
+                                    <div className="mt-3">
+                                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                        <ImageIcon size={13} className="text-indigo-400" />
+                                        <span>{isAr ? "مرفقات ومستندات الفاتورة وأمر الشراء" : "Scanned PO & Invoice Documents"}</span>
                                       </p>
                                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                                         {[
@@ -3803,15 +4193,15 @@ html, body {
                                           <div 
                                             key={imgIdx}
                                             onClick={() => setPreviewImage({ url: imgUrl, title: `Document ${imgIdx + 1} - ${credit.companyName}` })}
-                                            className="relative group border border-slate-800 rounded-2xl overflow-hidden bg-[#0B1121] aspect-video cursor-pointer hover:border-indigo-500/80 transition-all shadow-md"
+                                            className="relative group border border-white/[0.08] rounded-2xl overflow-hidden bg-slate-950 aspect-video cursor-pointer hover:border-indigo-500/80 transition-all shadow-md"
                                           >
                                             <img 
                                               src={imgUrl} 
                                               alt={`PO Doc ${imgIdx + 1}`} 
                                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                                             />
-                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity">
-                                              <Eye size={18} className="text-white" />
+                                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1.5 transition-opacity">
+                                              <Eye size={16} className="text-white" />
                                               <span className="text-xs font-bold text-white">{isAr ? "عرض" : "View"}</span>
                                             </div>
                                           </div>
@@ -3821,7 +4211,7 @@ html, body {
                                   )}
                                   
                                   {!hasCreditPo && (
-                                    <div className="text-center py-6 bg-[#0B1121] rounded-xl border border-dashed border-slate-800">
+                                    <div className="text-center py-5 bg-slate-900/40 rounded-2xl border border-dashed border-white/[0.08]">
                                       <p className="text-xs font-bold text-slate-500">{isAr ? "لا يوجد أمر شراء أو أصناف مرفقة" : "No PO items or documents attached"}</p>
                                     </div>
                                   )}
@@ -3839,10 +4229,10 @@ html, body {
           </AnimatePresence>
 
           {filteredCredits.length === 0 && (
-            <div className="text-center py-16 bg-[#0B1121] rounded-3xl border border-slate-800 border-dashed">
+            <div className="text-center py-16 bg-slate-900/40 rounded-3xl border border-white/[0.08] border-dashed">
               <AlertCircle className="mx-auto text-slate-600 mb-3" size={48} />
-              <p className="text-slate-300 font-bold text-lg">No credits found.</p>
-              <p className="text-slate-500 text-sm">Try adjusting your search or filters.</p>
+              <p className="text-slate-200 font-bold text-lg">{isAr ? "لم يتم العثور على أي فواتير" : "No credits found."}</p>
+              <p className="text-slate-500 text-sm mt-1">{isAr ? "جرّب تغيير كلمات البحث أو الفلاتر" : "Try adjusting your search or filters."}</p>
             </div>
           )}
 
@@ -3878,78 +4268,103 @@ html, body {
             {/* Top Overview KPI Banner */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               
-              <div className="bg-gradient-to-br from-rose-950/40 to-slate-900 border border-rose-800/40 p-4 rounded-2xl shadow-sm">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[11px] font-bold text-rose-400 uppercase tracking-wider">Total Owed (المديونية)</span>
-                  <AlertCircle className="w-4 h-4 text-rose-400" />
+              <div className="bg-slate-900/70 backdrop-blur-xl border border-rose-500/30 hover:border-rose-500/50 p-4.5 rounded-2xl shadow-xl relative overflow-hidden group transition-all">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-black text-rose-400 uppercase tracking-wider">{isAr ? "إجمالي المديونية" : "Total Owed"}</span>
+                  <div className="p-1.5 rounded-lg bg-rose-500/10 text-rose-400">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                  </div>
                 </div>
-                <p className="text-xl sm:text-2xl font-black text-rose-300 font-mono tracking-tight">
-                  EGP {companyOverallStats.totalRemainingDue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </p>
-                <p className="text-[10px] text-rose-400/70 font-semibold mt-1">Outstanding to all suppliers</p>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-xs font-bold text-rose-400/80">EGP</span>
+                  <p className="text-xl sm:text-2xl font-black text-white font-mono tracking-tight">
+                    {companyOverallStats.totalRemainingDue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                </div>
+                <p className="text-[10px] text-rose-300/70 font-semibold mt-1.5">{isAr ? "المستحق لكافة الموردين" : "Outstanding to all suppliers"}</p>
               </div>
 
-              <div className="bg-gradient-to-br from-red-950/50 to-slate-900 border border-red-700/50 p-4 rounded-2xl shadow-sm">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[11px] font-bold text-red-400 uppercase tracking-wider">Total Overdue (متأخرات)</span>
-                  <AlertTriangle className="w-4 h-4 text-red-400" />
+              <div className="bg-slate-900/70 backdrop-blur-xl border border-red-500/40 hover:border-red-500/60 p-4.5 rounded-2xl shadow-xl relative overflow-hidden group transition-all">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-black text-red-400 uppercase tracking-wider">{isAr ? "إجمالي المتأخرات" : "Total Overdue"}</span>
+                  <div className="p-1.5 rounded-lg bg-red-500/15 text-red-400 animate-pulse">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                  </div>
                 </div>
-                <p className="text-xl sm:text-2xl font-black text-red-400 font-mono tracking-tight">
-                  EGP {companyOverallStats.totalOverdue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </p>
-                <p className="text-[10px] text-red-400/70 font-semibold mt-1">Passed collection deadline</p>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-xs font-bold text-red-400/80">EGP</span>
+                  <p className="text-xl sm:text-2xl font-black text-red-300 font-mono tracking-tight">
+                    {companyOverallStats.totalOverdue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                </div>
+                <p className="text-[10px] text-red-400/80 font-semibold mt-1.5">{isAr ? "تجاوزت موعد السداد" : "Passed collection deadline"}</p>
               </div>
 
-              <div className="bg-gradient-to-br from-emerald-950/40 to-slate-900 border border-emerald-800/40 p-4 rounded-2xl shadow-sm">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">Total Paid (تم سداده)</span>
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <div className="bg-slate-900/70 backdrop-blur-xl border border-emerald-500/30 hover:border-emerald-500/50 p-4.5 rounded-2xl shadow-xl relative overflow-hidden group transition-all">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-black text-emerald-400 uppercase tracking-wider">{isAr ? "تم سداده" : "Total Paid"}</span>
+                  <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                  </div>
                 </div>
-                <p className="text-xl sm:text-2xl font-black text-emerald-300 font-mono tracking-tight">
-                  EGP {companyOverallStats.totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </p>
-                <p className="text-[10px] text-emerald-400/70 font-semibold mt-1">Full + partial settlements</p>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-xs font-bold text-emerald-400/80">EGP</span>
+                  <p className="text-xl sm:text-2xl font-black text-white font-mono tracking-tight">
+                    {companyOverallStats.totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                </div>
+                <p className="text-[10px] text-emerald-400/70 font-semibold mt-1.5">{isAr ? "تسويات كلية وجزئية" : "Full + partial settlements"}</p>
               </div>
 
-              <div className="bg-gradient-to-br from-amber-950/40 to-slate-900 border border-amber-800/40 p-4 rounded-2xl shadow-sm">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider">Partial Paid (مسدد جزئياً)</span>
-                  <CreditCard className="w-4 h-4 text-amber-400" />
+              <div className="bg-slate-900/70 backdrop-blur-xl border border-amber-500/30 hover:border-amber-500/50 p-4.5 rounded-2xl shadow-xl relative overflow-hidden group transition-all">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-black text-amber-400 uppercase tracking-wider">{isAr ? "مسدد جزئياً" : "Partial Paid"}</span>
+                  <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400">
+                    <CreditCard className="w-3.5 h-3.5" />
+                  </div>
                 </div>
-                <p className="text-xl sm:text-2xl font-black text-amber-300 font-mono tracking-tight">
-                  EGP {companyOverallStats.totalPartialPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </p>
-                <p className="text-[10px] text-amber-400/70 font-semibold mt-1">Across active open invoices</p>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-xs font-bold text-amber-400/80">EGP</span>
+                  <p className="text-xl sm:text-2xl font-black text-white font-mono tracking-tight">
+                    {companyOverallStats.totalPartialPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                </div>
+                <p className="text-[10px] text-amber-400/70 font-semibold mt-1.5">{isAr ? "دفعات بالفواتير المفتوحة" : "Across active open invoices"}</p>
               </div>
 
-              <div className="col-span-2 md:col-span-1 bg-slate-900/80 border border-slate-800 p-4 rounded-2xl shadow-sm flex flex-col justify-between">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Creditor Companies</span>
-                  <Building className="w-4 h-4 text-slate-400" />
+              <div className="col-span-2 md:col-span-1 bg-slate-900/70 backdrop-blur-xl border border-white/[0.08] p-4.5 rounded-2xl shadow-xl flex flex-col justify-between">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{isAr ? "الشركات الدائنة" : "Creditor Companies"}</span>
+                  <div className="p-1.5 rounded-lg bg-white/5 text-slate-400">
+                    <Building className="w-3.5 h-3.5" />
+                  </div>
                 </div>
                 <div>
                   <p className="text-xl sm:text-2xl font-black text-white font-mono tracking-tight">
                     {companyOverallStats.activeCreditorsCount} <span className="text-xs text-slate-500 font-sans">/ {companyOverallStats.totalCompaniesCount}</span>
                   </p>
-                  <p className="text-[10px] text-teal-400 font-semibold mt-1">Live Reactive Sync</p>
+                  <p className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 mt-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                    <span>{isAr ? "مزامنة سحابية حية" : "Live Reactive Sync"}</span>
+                  </p>
                 </div>
               </div>
 
             </div>
 
-            {/* Sorting & Expand Controls */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-900/60 p-3 rounded-2xl border border-slate-800">
+            {/* Sorting & Expand Controls Toolbar */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-900/50 backdrop-blur-xl p-3 rounded-2xl border border-white/[0.06]">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-400 uppercase">Sort Companies:</span>
+                <span className="text-xs font-bold text-slate-400 uppercase">{isAr ? "ترتيب الشركات:" : "Sort Companies:"}</span>
                 <select 
                   value={companySortBy}
                   onChange={(e) => setCompanySortBy(e.target.value as any)}
-                  className="bg-slate-950 border border-slate-800 text-xs font-bold text-slate-200 rounded-xl px-3 py-1.5 outline-none cursor-pointer focus:border-indigo-500"
+                  className="bg-slate-950/80 border border-white/[0.08] text-xs font-bold text-slate-200 rounded-xl px-3 py-1.5 outline-none cursor-pointer focus:border-indigo-500 transition-colors"
                 >
-                  <option value="owed">Highest Owed First (الأعلى مديونية)</option>
-                  <option value="overdue">Highest Overdue First (الأكثر تأخيراً)</option>
-                  <option value="name">Alphabetical (أبجدياً)</option>
-                  <option value="invoices">Most Invoices (الأكثر فواتير)</option>
+                  <option value="owed">{isAr ? "الأعلى مديونية أولاً" : "Highest Owed First (الأعلى مديونية)"}</option>
+                  <option value="overdue">{isAr ? "الأكثر تأخيراً أولاً" : "Highest Overdue First (الأكثر تأخيراً)"}</option>
+                  <option value="name">{isAr ? "أبجدياً بالاسم" : "Alphabetical (أبجدياً)"}</option>
+                  <option value="invoices">{isAr ? "الأكثر فواتير" : "Most Invoices (الأكثر فواتير)"}</option>
                 </select>
               </div>
 
@@ -3960,25 +4375,25 @@ html, body {
                     filteredCompanies.forEach(c => { allOpen[c.companyName] = true; });
                     setExpandedCompanies(allOpen);
                   }}
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold transition-colors"
+                  className="px-3 py-1.5 bg-slate-800/80 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-colors cursor-pointer border border-white/[0.05]"
                 >
-                  Expand All
+                  {isAr ? "توسيع الكل" : "Expand All"}
                 </button>
                 <button 
                   onClick={() => setExpandedCompanies({})}
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold transition-colors"
+                  className="px-3 py-1.5 bg-slate-800/80 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-colors cursor-pointer border border-white/[0.05]"
                 >
-                  Collapse All
+                  {isAr ? "طي الكل" : "Collapse All"}
                 </button>
               </div>
             </div>
 
             {/* Company Cards List */}
             {filteredCompanies.length === 0 ? (
-              <div className="text-center py-16 bg-[#0B1121] rounded-3xl border border-slate-800 border-dashed">
+              <div className="text-center py-16 bg-slate-900/40 rounded-3xl border border-white/[0.08] border-dashed">
                 <Building className="mx-auto text-slate-600 mb-3" size={48} />
-                <p className="text-slate-300 font-bold text-lg">No companies found matching criteria.</p>
-                <p className="text-slate-500 text-sm">All company liabilities are settled or adjust search filter.</p>
+                <p className="text-slate-200 font-bold text-lg">{isAr ? "لا توجد شركات مطابقة لمعايير البحث" : "No companies found matching criteria."}</p>
+                <p className="text-slate-500 text-sm mt-1">{isAr ? "جميع مديونيات الشركات مسددة بالكامل أو قم بتعديل التصفية" : "All company liabilities are settled or adjust search filter."}</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -3992,20 +4407,22 @@ html, body {
                   return (
                     <div 
                       key={c.companyName}
-                      className={`bg-[#0B1121] border rounded-2xl shadow-xl transition-all overflow-hidden ${
-                        hasOverdue ? 'border-red-900/60 shadow-red-950/10' : 'border-slate-800 hover:border-slate-700'
+                      className={`bg-slate-900/70 backdrop-blur-xl border rounded-2xl shadow-xl transition-all overflow-hidden ${
+                        hasOverdue 
+                          ? 'border-rose-500/40 shadow-rose-950/10 hover:border-rose-500/60' 
+                          : 'border-white/[0.08] hover:border-slate-700'
                       }`}
                     >
                       {/* Card Header */}
                       <div 
                         onClick={() => setExpandedCompanies(prev => ({ ...prev, [c.companyName]: !prev[c.companyName] }))}
-                        className="p-4 sm:p-5 cursor-pointer hover:bg-slate-900/40 transition-colors"
+                        className="p-4 sm:p-5 cursor-pointer hover:bg-slate-800/30 transition-colors"
                       >
                         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                           
                           {/* Left: Avatar & Name */}
                           <div className="flex items-center gap-3.5 min-w-0">
-                            <div className="w-12 h-12 rounded-2xl bg-indigo-950 border border-indigo-700/50 flex items-center justify-center font-black text-indigo-300 text-base shadow-inner shrink-0">
+                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-600/30 to-violet-900/40 border border-indigo-500/40 flex items-center justify-center font-black text-indigo-300 text-base shadow-inner shrink-0">
                               {initials}
                             </div>
                             <div className="min-w-0">
@@ -4014,19 +4431,19 @@ html, body {
                                   {c.companyName}
                                 </h3>
                                 {hasOverdue && (
-                                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/40 flex items-center gap-1">
+                                  <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center gap-1 animate-pulse">
                                     <AlertTriangle size={11} />
-                                    EGP {c.overdueAmount.toLocaleString()} Overdue
+                                    EGP {c.overdueAmount.toLocaleString()} {isAr ? "متأخر" : "Overdue"}
                                   </span>
                                 )}
                                 {hasPartial && (
-                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                                    {c.partialInvoicesCount} Partial ({c.partialPaidAmount.toLocaleString()} EGP paid)
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300 border border-violet-500/40">
+                                    {c.partialInvoicesCount} {isAr ? "جزئي" : "Partial"} ({c.partialPaidAmount.toLocaleString()} EGP {isAr ? "مسدد" : "paid"})
                                   </span>
                                 )}
                               </div>
-                              <p className="text-xs text-slate-400 mt-0.5">
-                                {c.totalInvoicesCount} Total Invoices • {c.openInvoicesCount + c.partialInvoicesCount} Active Debt • {c.fullyPaidCount} Fully Paid
+                              <p className="text-xs text-slate-400 mt-1">
+                                {c.totalInvoicesCount} {isAr ? "إجمالي الفواتير" : "Total Invoices"} • {c.openInvoicesCount + c.partialInvoicesCount} {isAr ? "دين نشط" : "Active Debt"} • {c.fullyPaidCount} {isAr ? "مسدد بالكامل" : "Fully Paid"}
                               </p>
                             </div>
                           </div>
@@ -4035,28 +4452,28 @@ html, body {
                           <div className="flex items-center gap-4 sm:gap-6 flex-wrap justify-between w-full lg:w-auto">
                             
                             <div className="text-right">
-                              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Currently Owed</p>
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{isAr ? "المتبقي حالياً" : "Currently Owed"}</p>
                               <p className="text-base sm:text-lg font-black font-mono text-rose-400">
                                 EGP {c.totalRemainingDue.toLocaleString()}
                               </p>
                             </div>
 
                             <div className="text-right">
-                              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Total Paid</p>
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{isAr ? "إجمالي المسدد" : "Total Paid"}</p>
                               <p className="text-base sm:text-lg font-bold font-mono text-emerald-400">
                                 EGP {c.totalPaid.toLocaleString()}
                               </p>
                             </div>
 
                             <div className="text-right hidden sm:block">
-                              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Gross Total</p>
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{isAr ? "الإجمالي الكلي" : "Gross Total"}</p>
                               <p className="text-sm font-semibold font-mono text-slate-300">
                                 EGP {c.totalInvoiced.toLocaleString()}
                               </p>
                             </div>
 
-                            <div className="p-2 bg-slate-900 rounded-xl text-slate-400 hover:text-white transition-colors">
-                              {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                            <div className="p-2 bg-slate-800/80 border border-white/[0.06] rounded-xl text-slate-400 hover:text-white transition-colors">
+                              {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                             </div>
 
                           </div>
@@ -4064,7 +4481,7 @@ html, body {
                         </div>
 
                         {/* Progress Bar */}
-                        <div className="mt-4 w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800/80 flex">
+                        <div className="mt-4 w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-white/[0.05] flex">
                           <div 
                             style={{ width: `${paidPct}%` }}
                             className="bg-gradient-to-r from-emerald-600 to-teal-400 h-full transition-all duration-500"
@@ -4072,35 +4489,35 @@ html, body {
                           />
                           <div 
                             style={{ width: `${100 - paidPct}%` }}
-                            className={`${hasOverdue ? 'bg-red-500/80' : 'bg-rose-500/40'} h-full transition-all duration-500`}
+                            className={`${hasOverdue ? 'bg-rose-600' : 'bg-rose-500/40'} h-full transition-all duration-500`}
                             title={`Remaining: ${100 - paidPct}%`}
                           />
                         </div>
-                        <div className="flex justify-between items-center text-[10px] text-slate-500 font-semibold mt-1">
-                          <span>{paidPct}% Settled</span>
-                          <span>{100 - paidPct}% Outstanding</span>
+                        <div className="flex justify-between items-center text-[10px] text-slate-400 font-semibold mt-1.5">
+                          <span className="text-emerald-400 font-bold">{paidPct}% {isAr ? "تم تسويته" : "Settled"}</span>
+                          <span className="text-rose-400 font-bold">{100 - paidPct}% {isAr ? "متبقي" : "Outstanding"}</span>
                         </div>
 
                       </div>
 
                       {/* Expanded Invoices Table */}
                       {isExpanded && (
-                        <div className="border-t border-slate-800/80 bg-slate-950/70 p-4 sm:p-5 animate-in fade-in slide-in-from-top-2">
+                        <div className="border-t border-white/[0.06] bg-slate-950/80 p-4 sm:p-5 animate-in fade-in slide-in-from-top-2">
                           <div className="overflow-x-auto">
                             <table className="w-full text-xs text-left">
                               <thead>
-                                <tr className="text-[10px] text-slate-400 uppercase tracking-wider border-b border-slate-800 bg-slate-900/60">
-                                  <th className="p-2.5 font-bold">Invoice / PO</th>
-                                  <th className="p-2.5 font-bold">Issue Date</th>
-                                  <th className="p-2.5 font-bold">Collection Due</th>
-                                  <th className="p-2.5 font-bold text-right">Gross Total</th>
-                                  <th className="p-2.5 font-bold text-right">Paid Amount</th>
-                                  <th className="p-2.5 font-bold text-right text-rose-400">Remaining</th>
-                                  <th className="p-2.5 font-bold text-center">Status</th>
-                                  <th className="p-2.5 font-bold text-center">Action</th>
+                                <tr className="text-[10px] text-slate-400 uppercase tracking-wider border-b border-white/[0.06] bg-slate-900/60">
+                                  <th className="p-2.5 font-bold">{isAr ? "الفاتورة / أمر الشراء" : "Invoice / PO"}</th>
+                                  <th className="p-2.5 font-bold">{isAr ? "تاريخ الإصدار" : "Issue Date"}</th>
+                                  <th className="p-2.5 font-bold">{isAr ? "تاريخ التحصيل" : "Collection Due"}</th>
+                                  <th className="p-2.5 font-bold text-right">{isAr ? "الإجمالي الكلي" : "Gross Total"}</th>
+                                  <th className="p-2.5 font-bold text-right">{isAr ? "المسدد" : "Paid Amount"}</th>
+                                  <th className="p-2.5 font-bold text-right text-rose-400">{isAr ? "المتبقي" : "Remaining"}</th>
+                                  <th className="p-2.5 font-bold text-center">{isAr ? "الحالة" : "Status"}</th>
+                                  <th className="p-2.5 font-bold text-center">{isAr ? "الإجراء" : "Action"}</th>
                                 </tr>
                               </thead>
-                              <tbody className="divide-y divide-slate-800/50">
+                              <tbody className="divide-y divide-white/[0.04]">
                                 {c.invoices.map((inv) => {
                                   const gross = Number(inv.amountDue || 0) + Number(inv.tax || 0);
                                   const paid = Number(inv.paidAmount || 0);
@@ -4115,11 +4532,11 @@ html, body {
                                   const isInvOverdue = remaining > 0 && diffDays !== null && diffDays < 0 && inv.status !== 'paid' && !inv.settledAsFull;
 
                                   return (
-                                    <tr key={inv.id} className="hover:bg-slate-900/40 transition-colors">
+                                    <tr key={inv.id} className="hover:bg-slate-900/50 transition-colors">
                                       
                                       <td className="p-2.5 font-mono">
                                         <div className="font-bold text-white">#{inv.invoiceNumber || "N/A"}</div>
-                                        {inv.poNumber && <div className="text-[10px] text-teal-400">PO: {inv.poNumber}</div>}
+                                        {inv.poNumber && <div className="text-[10px] text-teal-300">PO: {inv.poNumber}</div>}
                                         {inv.settledAsFull && (
                                           <div className="text-[9px] text-emerald-400 font-sans font-bold" title={inv.settlementReason}>
                                             ✓ {isAr ? "تسوية كاملة" : "Full Settlement"}
@@ -4134,7 +4551,7 @@ html, body {
                                       <td className="p-2.5 whitespace-nowrap">
                                         <div className="font-mono text-slate-300">{colDate || "N/A"}</div>
                                         {isInvOverdue ? (
-                                          <span className="text-[9px] font-black text-red-400 flex items-center gap-0.5">
+                                          <span className="text-[9px] font-black text-rose-400 flex items-center gap-0.5">
                                             <AlertTriangle size={10} />
                                             {Math.abs(diffDays!)}d overdue
                                           </span>
@@ -4164,15 +4581,15 @@ html, body {
                                             {inv.settledAsFull ? (isAr ? "تسوية كاملة" : "Settled Full") : "Paid"}
                                           </span>
                                         ) : isInvOverdue ? (
-                                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/40">
+                                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40">
                                             Overdue
                                           </span>
                                         ) : paid > 0 ? (
-                                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300 border border-violet-500/40">
                                             Partial
                                           </span>
                                         ) : (
-                                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/30">
+                                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
                                             Open
                                           </span>
                                         )}
@@ -4184,7 +4601,7 @@ html, body {
                                             {paid > 0 && (
                                               <button 
                                                 onClick={() => handleOpenSettleModal(inv)}
-                                                className="px-2.5 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 font-bold rounded-lg text-xs transition-colors flex items-center gap-1 shadow-sm cursor-pointer"
+                                                className="px-2.5 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 font-bold rounded-xl text-xs transition-all flex items-center gap-1 shadow-sm cursor-pointer"
                                                 title={isAr ? "اعتبار المبلغ المدفوع سداداً نهائياً وإلغاء المتبقي" : "Settle as Paid All"}
                                               >
                                                 <CheckCircle2 size={12} />
@@ -4193,7 +4610,7 @@ html, body {
                                             )}
                                             <button 
                                               onClick={() => handleOpenPaymentModal(inv)}
-                                              className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-xs transition-colors flex items-center gap-1 shadow-sm cursor-pointer"
+                                              className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition-all flex items-center gap-1 shadow-lg shadow-indigo-600/20 cursor-pointer"
                                               title="Record Payment for this invoice"
                                             >
                                               <CreditCard size={13} />
@@ -4230,230 +4647,239 @@ html, body {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-50"
+            className="fixed inset-0 bg-black/80 backdrop-blur-xl flex items-center justify-center p-3 sm:p-4 z-50"
           >
             <motion.div 
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              initial={{ scale: 0.95, opacity: 0, y: 16 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
-              className="bg-[#0B1121] text-slate-100 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl border border-slate-800 flex flex-col max-h-[95vh]"
+              exit={{ scale: 0.95, opacity: 0, y: 16 }}
+              transition={{ type: "spring", duration: 0.45, bounce: 0.2 }}
+              className="bg-slate-900/95 backdrop-blur-2xl text-slate-100 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl border border-white/[0.1] flex flex-col max-h-[92vh]"
             >
-              <div className="flex justify-between items-center p-6 border-b border-slate-800 bg-slate-900/60" dir={isAr ? "rtl" : "ltr"}>
-                <div>
-                  <h2 className="text-2xl font-black text-white tracking-tight">
-                    {isAr ? "تسجيل آجل / مديونية جديدة" : "Record New Credit"}
-                  </h2>
-                  <p className="text-xs font-bold text-indigo-400 mt-1 uppercase tracking-wider">
-                    {isAr ? "ادخل البيانات أو اسحب صورة أمر الشراء" : "Fill in details or upload PO"}
-                  </p>
+              <div className="flex justify-between items-center p-5 sm:p-6 border-b border-white/[0.08] bg-slate-900/80" dir={isAr ? "rtl" : "ltr"}>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-bold">
+                    <Plus size={20} />
+                  </div>
+                  <div>
+                    <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                      {isAr ? "تسجيل آجل / مديونية جديدة" : "Record New Credit"}
+                    </h2>
+                    <p className="text-[11px] font-bold text-indigo-400 mt-0.5 uppercase tracking-wider">
+                      {isAr ? "ادخل البيانات أو اسحب صورة أمر الشراء" : "Fill in details or drop PO image"}
+                    </p>
+                  </div>
                 </div>
-                <button onClick={() => setShowAddModal(false)} className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-full transition-all shadow-sm cursor-pointer">
-                  <X size={20} />
+                <button 
+                  onClick={() => setShowAddModal(false)} 
+                  className="p-2 bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-all border border-white/[0.06] cursor-pointer"
+                >
+                  <X size={18} />
                 </button>
               </div>
 
               <form onSubmit={handleAddCredit} className="flex flex-col flex-1 min-h-0" dir={isAr ? "rtl" : "ltr"}>
-                <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+                <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar flex-1 space-y-5">
                   <div 
-                  onDrop={handleDrop}
-                  onDragOver={handleDragOver}
-                  className={`border-2 border-dashed rounded-3xl p-8 text-center transition-all duration-300 ${isProcessingPo ? 'border-indigo-500 bg-indigo-950/30 scale-[0.98]' : 'border-slate-700 hover:border-indigo-500 bg-slate-950/60 hover:bg-slate-900/60'}`}
-                >
-                  {isProcessingPo ? (
-                    <div className="flex flex-col items-center justify-center gap-3 text-indigo-400">
-                      <div className="p-3 bg-indigo-950 rounded-full mb-2 border border-indigo-800">
-                        <Loader2 className="h-8 w-8 animate-spin" />
+                    onDrop={handleDrop}
+                    onDragOver={handleDragOver}
+                    className={`border-2 border-dashed rounded-2xl p-6 sm:p-7 text-center transition-all duration-300 ${isProcessingPo ? 'border-indigo-500 bg-indigo-950/40 scale-[0.99]' : 'border-white/[0.1] hover:border-indigo-500/60 bg-slate-950/60 hover:bg-slate-900/60'}`}
+                  >
+                    {isProcessingPo ? (
+                      <div className="flex flex-col items-center justify-center gap-2.5 text-indigo-400">
+                        <div className="p-3 bg-indigo-950 rounded-2xl border border-indigo-800/60 shadow-lg">
+                          <Loader2 className="h-7 w-7 animate-spin" />
+                        </div>
+                        <span className="font-black text-base sm:text-lg tracking-tight text-white">{isAr ? "جاري قراءة أمر الشراء بالذكاء الاصطناعي..." : "Reading Purchase Order with AI..."}</span>
+                        <span className="text-xs font-medium text-indigo-400/80">{isAr ? "سيتم استخراج كافة التفاصيل تلقائياً" : "Extracting items and financials automatically"}</span>
                       </div>
-                      <span className="font-black text-lg tracking-tight text-white">{isAr ? "جاري قراءة أمر الشراء بالذكاء الاصطناعي..." : "Reading Purchase Order..."}</span>
-                      <span className="text-sm font-medium text-indigo-400/80">{isAr ? "سيتم استخراج البيانات تلقائياً" : "Extracting details automatically"}</span>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center gap-3 text-slate-400">
-                      <div className="p-4 bg-slate-900 border border-slate-800 shadow-sm rounded-full mb-2 text-indigo-400">
-                        <ImageIcon className="h-8 w-8" />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center gap-2 text-slate-400">
+                        <div className="p-3 bg-slate-900 border border-white/[0.08] shadow-sm rounded-2xl mb-1 text-indigo-400">
+                          <ImageIcon className="h-6 w-6" />
+                        </div>
+                        <span className="font-black text-base text-white tracking-tight">{isAr ? "اسحب صورة أمر الشراء أو الفاتورة هنا" : "Paste or Drop PO Image Here"}</span>
+                        <span className="text-xs font-medium text-slate-400">{isAr ? "سيتم استخراج البيانات بالذكاء الاصطناعي" : "AI will automatically extract all fields and items"}</span>
+                        <button
+                          type="button"
+                          onClick={handlePastePoImageButtonClick}
+                          className="mt-2 flex items-center gap-2 px-4 py-2 bg-slate-900 border border-white/[0.1] hover:border-indigo-500 hover:shadow-md text-indigo-300 font-bold rounded-xl transition-all text-xs group cursor-pointer"
+                        >
+                          <ClipboardPaste size={14} className="text-indigo-400 group-hover:text-indigo-300 transition-colors" />
+                          <span>{isAr ? "لصق من الحافظة" : "Paste from Clipboard"}</span>
+                        </button>
                       </div>
-                      <span className="font-black text-lg text-white tracking-tight">{isAr ? "اسحب صورة امر الشراء أو الفاتورة هنا" : "Paste or Drop PO Image Here"}</span>
-                      <span className="text-sm font-medium text-slate-400">{isAr ? "سيتم استخراج كافة البيانات بالذكاء الاصطناعي" : "We'll automatically extract the details using AI"}</span>
-                      <button
-                        type="button"
-                        onClick={handlePastePoImageButtonClick}
-                        className="mt-3 flex items-center gap-2 px-5 py-2.5 bg-slate-900 border border-slate-700 hover:border-indigo-500 hover:shadow-md text-indigo-300 font-bold rounded-xl transition-all text-sm group cursor-pointer"
-                      >
-                        <ClipboardPaste size={16} className="text-indigo-400 group-hover:text-indigo-300 transition-colors" />
-                        {isAr ? "لصق من الحافظة" : "Paste from Clipboard"}
-                      </button>
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
 
-                <div className="bg-slate-950/60 p-5 rounded-3xl border border-slate-800">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
-                    <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "رقم الفاتورة * " : "Invoice # *"}</label>
-                    <input required type="text" className="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 focus:border-indigo-500 transition-all outline-none font-medium text-white placeholder:text-slate-500" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "رقم أمر الشراء (PO)" : "PO #"}</label>
-                    <input type="text" className="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 focus:border-indigo-500 transition-all outline-none font-medium text-white placeholder:text-slate-500" value={poNumber} onChange={(e) => setPoNumber(e.target.value)} />
-                  </div>
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">{isAr ? "الشركة / المورد *" : "Company *"}</label>
-                      <button type="button" onClick={() => setShowAddSupplier(true)} className="text-[10px] text-indigo-400 font-bold hover:underline flex items-center gap-1 cursor-pointer">
-                        {isAr ? "+ مورد جديد" : "+ New Supplier"}
-                      </button>
-                    </div>
-                    <select required className="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 focus:border-indigo-500 transition-all outline-none font-medium text-white" value={companyName} onChange={(e) => setCompanyName(e.target.value)}>
-                      <option value="" className="bg-slate-900">{isAr ? "-- اختر المورد --" : "Select a supplier..."}</option>
-                      {suppliers.map(s => <option key={s.id} value={s.name} className="bg-slate-900">{s.name}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "المبلغ المستحق (قبل الضريبة) *" : "Amount Due (Before Tax) *"}</label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">EGP</span>
-                      <input required type="number" step="0.01" className="w-full pl-12 pr-4 p-3 rounded-xl bg-slate-900 border border-slate-700 focus:border-indigo-500 transition-all outline-none font-black text-white" value={amountDue} onChange={(e) => setAmountDue(e.target.value)} />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "قيمة الضريبة" : "Tax Amount"}</label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">EGP</span>
-                      <input type="number" step="0.01" className="w-full pl-12 pr-4 p-3 rounded-xl bg-slate-900 border border-slate-700 focus:border-indigo-500 transition-all outline-none font-bold text-white" value={tax} onChange={(e) => setTax(e.target.value)} />
-                    </div>
-                  </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "تاريخ التحصيل المتوقع" : "Collection Date"}</label>
-                      <input required type="date" className="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 focus:border-indigo-500 transition-all outline-none font-medium text-white" value={collectionDate} onChange={(e) => setCollectionDate(e.target.value)} />
-                      <div className="flex gap-2 mt-2 flex-wrap">
-                        {[14, 15, 30, 45].map(days => (
-                          <button 
-                            key={days} 
-                            type="button" 
-                            onClick={() => {
-                              const d = new Date();
-                              d.setDate(d.getDate() + days);
-                              setCollectionDate(d.toISOString().split('T')[0]);
-                            }}
-                            className="text-[10px] font-bold px-2.5 py-1 bg-indigo-950/80 border border-indigo-800/60 text-indigo-300 rounded-lg hover:bg-indigo-900 transition-colors cursor-pointer"
-                          >
-                            +{days} {isAr ? "يوم" : "Days"}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                  {/* Total Sum Preview Box (Amount Due + Tax) */}
-                  <div className="md:col-span-2 p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/40 to-teal-950/30 border border-emerald-800/40 flex items-center justify-between shadow-xs transition-all">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-base shadow-xs shrink-0">
-                        <Calculator size={18} />
+                  <div className="bg-slate-950/60 p-4 sm:p-5 rounded-2xl border border-white/[0.06]">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "رقم الفاتورة * " : "Invoice # *"}</label>
+                        <input required type="text" className="w-full p-2.5 rounded-xl bg-slate-900 border border-white/[0.08] focus:border-indigo-500 transition-all outline-none font-medium text-white placeholder:text-slate-500 text-sm" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} />
                       </div>
                       <div>
-                        <span className="text-[11px] font-bold text-emerald-300 uppercase tracking-wider block">
-                          {isAr ? "إجمالي المبلغ المستحق (شامل الضريبة)" : "Total Amount Due (Incl. Tax)"}
-                        </span>
-                        <span className="text-xs text-emerald-400/80 font-medium">
-                          {(parseFloat(tax) || 0) > 0 ? (
-                            isAr 
-                              ? `${(parseFloat(amountDue) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} + ${(parseFloat(tax) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ضريبة`
-                              : `${(parseFloat(amountDue) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} + ${(parseFloat(tax) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} tax`
-                          ) : (
-                            isAr ? "بدون ضريبة إضافية" : "No tax added"
-                          )}
-                        </span>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "رقم أمر الشراء (PO)" : "PO #"}</label>
+                        <input type="text" className="w-full p-2.5 rounded-xl bg-slate-900 border border-white/[0.08] focus:border-indigo-500 transition-all outline-none font-medium text-white placeholder:text-slate-500 text-sm" value={poNumber} onChange={(e) => setPoNumber(e.target.value)} />
                       </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <div className="text-lg sm:text-xl font-black text-emerald-400 font-mono tracking-tight">
-                        EGP {((parseFloat(amountDue) || 0) + (parseFloat(tax) || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      <div>
+                        <div className="flex justify-between items-center mb-1">
+                          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">{isAr ? "الشركة / المورد *" : "Company *"}</label>
+                          <button type="button" onClick={() => setShowAddSupplier(true)} className="text-[10px] text-indigo-400 font-bold hover:underline flex items-center gap-1 cursor-pointer">
+                            {isAr ? "+ مورد جديد" : "+ New Supplier"}
+                          </button>
+                        </div>
+                        <select required className="w-full p-2.5 rounded-xl bg-slate-900 border border-white/[0.08] focus:border-indigo-500 transition-all outline-none font-medium text-white text-sm" value={companyName} onChange={(e) => setCompanyName(e.target.value)}>
+                          <option value="" className="bg-slate-900">{isAr ? "-- اختر المورد --" : "Select a supplier..."}</option>
+                          {suppliers.map(s => <option key={s.id} value={s.name} className="bg-slate-900">{s.name}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "المبلغ المستحق (قبل الضريبة) *" : "Amount Due (Before Tax) *"}</label>
+                        <div className="relative">
+                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-xs">EGP</span>
+                          <input required type="number" step="0.01" className="w-full pl-11 pr-3 p-2.5 rounded-xl bg-slate-900 border border-white/[0.08] focus:border-indigo-500 transition-all outline-none font-black text-white font-mono text-sm" value={amountDue} onChange={(e) => setAmountDue(e.target.value)} />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "قيمة الضريبة" : "Tax Amount"}</label>
+                        <div className="relative">
+                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-xs">EGP</span>
+                          <input type="number" step="0.01" className="w-full pl-11 pr-3 p-2.5 rounded-xl bg-slate-900 border border-white/[0.08] focus:border-indigo-500 transition-all outline-none font-bold text-white font-mono text-sm" value={tax} onChange={(e) => setTax(e.target.value)} />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{isAr ? "تاريخ التحصيل المتوقع" : "Collection Date"}</label>
+                        <input required type="date" className="w-full p-2.5 rounded-xl bg-slate-900 border border-white/[0.08] focus:border-indigo-500 transition-all outline-none font-medium text-white text-sm" value={collectionDate} onChange={(e) => setCollectionDate(e.target.value)} />
+                        <div className="flex gap-1.5 mt-2 flex-wrap">
+                          {[14, 15, 30, 45].map(days => (
+                            <button 
+                              key={days} 
+                              type="button" 
+                              onClick={() => {
+                                const d = new Date();
+                                d.setDate(d.getDate() + days);
+                                setCollectionDate(d.toISOString().split('T')[0]);
+                              }}
+                              className="text-[10px] font-bold px-2.5 py-1 bg-indigo-950/80 border border-indigo-700/50 text-indigo-300 rounded-lg hover:bg-indigo-900/80 transition-colors cursor-pointer"
+                            >
+                              +{days} {isAr ? "يوم" : "Days"}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Total Sum Preview Box (Amount Due + Tax) */}
+                      <div className="md:col-span-2 p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/40 to-teal-950/30 border border-emerald-500/30 flex items-center justify-between shadow-xs transition-all">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-base shadow-xs shrink-0">
+                            <Calculator size={18} />
+                          </div>
+                          <div>
+                            <span className="text-[11px] font-bold text-emerald-300 uppercase tracking-wider block">
+                              {isAr ? "إجمالي المبلغ المستحق (شامل الضريبة)" : "Total Amount Due (Incl. Tax)"}
+                            </span>
+                            <span className="text-xs text-emerald-400/80 font-medium">
+                              {(parseFloat(tax) || 0) > 0 ? (
+                                isAr 
+                                  ? `${(parseFloat(amountDue) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} + ${(parseFloat(tax) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ضريبة`
+                                  : `${(parseFloat(amountDue) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} + ${(parseFloat(tax) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} tax`
+                              ) : (
+                                isAr ? "بدون ضريبة إضافية" : "No tax added"
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="text-lg sm:text-xl font-black text-emerald-400 font-mono tracking-tight">
+                            EGP {((parseFloat(amountDue) || 0) + (parseFloat(tax) || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
 
-                {poItems && poItems.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-300 mb-2">{isAr ? "الأصناف المستخرجة" : "Extracted PO Items"}</h4>
-                    <div className="bg-[#0B1121] rounded-xl border border-slate-800 overflow-hidden shadow-sm">
-                      <div className="max-h-48 overflow-y-auto custom-scrollbar">
-                        <table className="w-full text-left text-sm" dir={isAr ? "rtl" : "ltr"}>
-                          <thead className="bg-slate-950 border-b border-slate-800 sticky top-0">
-                            <tr>
-                              <th className="p-3 font-bold text-slate-400 uppercase text-[10px] tracking-wider">{isAr ? "الوصف" : "Description"}</th>
-                              <th className="p-3 font-bold text-slate-400 uppercase text-[10px] tracking-wider text-center">{isAr ? "الكمية" : "Qty"}</th>
-                              <th className="p-3 font-bold text-slate-400 uppercase text-[10px] tracking-wider text-right">{isAr ? "السعر" : "Price"}</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {poItems.map((item, idx) => (
-                              <tr key={idx} className="border-b border-slate-800/60 last:border-0 hover:bg-slate-900/60 transition-colors">
-                                <td className="p-3 text-white font-medium text-xs">{item.description || item.barcode || 'Unknown Item'}</td>
-                                <td className="p-3 text-slate-300 font-bold text-xs text-center">{item.quantity || 0}</td>
-                                <td className="p-3 text-indigo-400 font-bold text-xs text-right whitespace-nowrap">{item.unitPrice ? `${item.unitPrice} EGP` : '-'}</td>
+                  {poItems && poItems.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">{isAr ? "الأصناف المستخرجة" : "Extracted PO Items"}</h4>
+                      <div className="bg-slate-950/70 rounded-2xl border border-white/[0.06] overflow-hidden shadow-sm">
+                        <div className="max-h-48 overflow-y-auto custom-scrollbar">
+                          <table className="w-full text-left text-xs" dir={isAr ? "rtl" : "ltr"}>
+                            <thead className="bg-slate-900 border-b border-white/[0.06] sticky top-0">
+                              <tr>
+                                <th className="p-2.5 font-bold text-slate-400 uppercase text-[10px] tracking-wider">{isAr ? "الوصف" : "Description"}</th>
+                                <th className="p-2.5 font-bold text-slate-400 uppercase text-[10px] tracking-wider text-center">{isAr ? "الكمية" : "Qty"}</th>
+                                <th className="p-2.5 font-bold text-slate-400 uppercase text-[10px] tracking-wider text-right">{isAr ? "السعر" : "Price"}</th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                            </thead>
+                            <tbody className="divide-y divide-white/[0.04]">
+                              {poItems.map((item, itmIdx) => (
+                                <tr key={itmIdx} className="hover:bg-slate-900/60 transition-colors">
+                                  <td className="p-2.5 text-white font-medium text-xs">{item.description || item.barcode || 'Unknown Item'}</td>
+                                  <td className="p-2.5 text-slate-300 font-bold text-xs text-center font-mono">{item.quantity || 0}</td>
+                                  <td className="p-2.5 text-indigo-400 font-bold text-xs text-right whitespace-nowrap font-mono">{item.unitPrice ? `${item.unitPrice} EGP` : '-'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-                <div className="flex items-center gap-6 bg-slate-950/60 p-4 rounded-xl border border-slate-800">
-                  <label className="flex items-center gap-3 cursor-pointer group">
-                    <div className="relative flex items-center justify-center">
-                      <input type="checkbox" checked={onSalesOnly} onChange={(e) => setOnSalesOnly(e.target.checked)} className="peer sr-only" />
-                      <div className="w-6 h-6 rounded-md border-2 border-slate-700 bg-slate-900 peer-checked:bg-indigo-600 peer-checked:border-indigo-600 transition-colors"></div>
-                      <CheckCircle size={14} className="absolute text-white opacity-0 peer-checked:opacity-100 transition-opacity" />
-                    </div>
-                    <span className="text-slate-300 font-bold group-hover:text-white transition-colors">{isAr ? "مبيعات فقط" : "On Sales Only"}</span>
-                  </label>
-                  <label className="flex items-center gap-3 cursor-pointer group">
-                    <div className="relative flex items-center justify-center">
-                      <input type="checkbox" checked={isTaxable} onChange={(e) => setIsTaxable(e.target.checked)} className="peer sr-only" />
-                      <div className="w-6 h-6 rounded-md border-2 border-slate-700 bg-slate-900 peer-checked:bg-indigo-600 peer-checked:border-indigo-600 transition-colors"></div>
-                      <CheckCircle size={14} className="absolute text-white opacity-0 peer-checked:opacity-100 transition-opacity" />
-                    </div>
-                    <span className="text-slate-300 font-bold group-hover:text-white transition-colors">{isAr ? "خاضع للضريبة؟" : "Is Taxable?"}</span>
-                  </label>
-                </div>
+                  )}
 
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">{isAr ? "توقيع المدير المسؤول *" : "Manager Signature *"}</label>
-                    {(managerSignature || hasSigned) && (
-                      <button type="button" onClick={() => { sigPadRef.current?.clear(); setHasSigned(false); setManagerSignature(""); }} className="text-[10px] bg-rose-950/60 border border-rose-800/60 text-rose-300 px-2 py-1 rounded font-bold uppercase hover:bg-rose-900/60 transition-colors">
-                        {isAr ? "مسح التوقيع" : "Clear Signature"}
-                      </button>
-                    )}
+                  <div className="flex items-center gap-6 bg-slate-950/60 p-3.5 rounded-2xl border border-white/[0.06]">
+                    <label className="flex items-center gap-2.5 cursor-pointer group">
+                      <div className="relative flex items-center justify-center">
+                        <input type="checkbox" checked={onSalesOnly} onChange={(e) => setOnSalesOnly(e.target.checked)} className="peer sr-only" />
+                        <div className="w-5 h-5 rounded-md border-2 border-slate-700 bg-slate-900 peer-checked:bg-indigo-600 peer-checked:border-indigo-600 transition-colors"></div>
+                        <CheckCircle size={12} className="absolute text-white opacity-0 peer-checked:opacity-100 transition-opacity" />
+                      </div>
+                      <span className="text-slate-300 text-xs font-bold group-hover:text-white transition-colors">{isAr ? "مبيعات فقط" : "On Sales Only"}</span>
+                    </label>
+                    <label className="flex items-center gap-2.5 cursor-pointer group">
+                      <div className="relative flex items-center justify-center">
+                        <input type="checkbox" checked={isTaxable} onChange={(e) => setIsTaxable(e.target.checked)} className="peer sr-only" />
+                        <div className="w-5 h-5 rounded-md border-2 border-slate-700 bg-slate-900 peer-checked:bg-indigo-600 peer-checked:border-indigo-600 transition-colors"></div>
+                        <CheckCircle size={12} className="absolute text-white opacity-0 peer-checked:opacity-100 transition-opacity" />
+                      </div>
+                      <span className="text-slate-300 text-xs font-bold group-hover:text-white transition-colors">{isAr ? "خاضع للضريبة؟" : "Is Taxable?"}</span>
+                    </label>
                   </div>
-                  <div className="border border-slate-700 bg-slate-950 rounded-xl overflow-hidden relative shadow-inner" style={{ height: "150px" }}>
-                    {managerSignature && !hasSigned ? (
-                      <img src={managerSignature} alt="Saved Signature" className="w-full h-full object-contain p-4" />
-                    ) : (
-                      <SignaturePad 
-                        // @ts-expect-error: dynamic import ref typing mismatch
-                        ref={sigPadRef} 
-                        canvasProps={{ className: "w-full h-full cursor-crosshair" }} 
-                        onBegin={() => setHasSigned(true)}
-                        onEnd={() => {
-                          if (sigPadRef.current) {
-                            setManagerSignature(sigPadRef.current.toDataURL());
-                          }
-                        }}
-                      />
-                    )}
+
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">{isAr ? "توقيع المدير المسؤول *" : "Manager Signature *"}</label>
+                      {(managerSignature || hasSigned) && (
+                        <button type="button" onClick={() => { sigPadRef.current?.clear(); setHasSigned(false); setManagerSignature(""); }} className="text-[10px] bg-rose-950/60 border border-rose-800/60 text-rose-300 px-2.5 py-0.5 rounded-lg font-bold uppercase hover:bg-rose-900/60 transition-colors cursor-pointer">
+                          {isAr ? "مسح التوقيع" : "Clear Signature"}
+                        </button>
+                      )}
+                    </div>
+                    <div className="border border-white/[0.08] bg-slate-950 rounded-2xl overflow-hidden relative shadow-inner" style={{ height: "140px" }}>
+                      {managerSignature && !hasSigned ? (
+                        <img src={managerSignature} alt="Saved Signature" className="w-full h-full object-contain p-4" />
+                      ) : (
+                        <SignaturePad 
+                          // @ts-expect-error: dynamic import ref typing mismatch
+                          ref={sigPadRef} 
+                          canvasProps={{ className: "w-full h-full cursor-crosshair" }} 
+                          onBegin={() => setHasSigned(true)}
+                          onEnd={() => {
+                            if (sigPadRef.current) {
+                              setManagerSignature(sigPadRef.current.toDataURL());
+                            }
+                          }}
+                        />
+                      )}
+                    </div>
                   </div>
-                </div>
 
                 </div>
-                <div className="flex justify-end gap-3 p-6 border-t border-slate-800 bg-slate-900/60 mt-auto">
-                  <button type="button" onClick={() => setShowAddModal(false)} className="px-6 py-3 bg-slate-800 border border-slate-700 text-slate-300 rounded-xl font-bold hover:bg-slate-700 hover:text-white transition-all shadow-sm cursor-pointer">{isAr ? "إلغاء" : "Cancel"}</button>
-                  <button type="submit" disabled={isSubmitting} className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 shadow-md shadow-indigo-600/20 hover:shadow-indigo-600/40 hover:-translate-y-0.5 transition-all cursor-pointer">
-                    {isSubmitting && <Loader2 size={18} className="animate-spin" />}
-                    {isAr ? "حفظ الدين" : "Save Credit"}
+                <div className="flex justify-end gap-3 p-5 sm:p-6 border-t border-white/[0.08] bg-slate-900/80 mt-auto">
+                  <button type="button" onClick={() => setShowAddModal(false)} className="px-5 py-2.5 bg-slate-800/80 border border-white/[0.08] text-slate-300 rounded-xl font-bold hover:bg-slate-700 hover:text-white transition-all shadow-sm cursor-pointer text-xs">{isAr ? "إلغاء" : "Cancel"}</button>
+                  <button type="submit" disabled={isSubmitting} className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-500 disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-indigo-600/25 hover:-translate-y-0.5 transition-all cursor-pointer text-xs">
+                    {isSubmitting && <Loader2 size={16} className="animate-spin" />}
+                    <span>{isAr ? "حفظ الدين" : "Save Credit"}</span>
                   </button>
                 </div>
               </form>
@@ -4469,14 +4895,14 @@ html, body {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-50"
+            className="fixed inset-0 bg-black/80 backdrop-blur-xl flex items-center justify-center p-3 sm:p-4 z-50"
           >
             <motion.div 
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              initial={{ scale: 0.95, opacity: 0, y: 16 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
-              className="bg-[#0B1121] text-slate-100 rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl border border-slate-800 flex flex-col max-h-[95vh] relative"
+              exit={{ scale: 0.95, opacity: 0, y: 16 }}
+              transition={{ type: "spring", duration: 0.45, bounce: 0.2 }}
+              className="bg-slate-900/95 backdrop-blur-2xl text-slate-100 rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl border border-white/[0.1] flex flex-col max-h-[92vh] relative"
             >
               {/* Skeuomorphic Overlays */}
               {isCoinDropping && (
@@ -4489,23 +4915,38 @@ html, body {
                   <PosReceiptPrinter isPrinting={isReceiptPrinting} />
                 </div>
               )}
-              <div className="flex justify-between items-center p-6 border-b border-slate-800 bg-slate-900/60" dir={isAr ? "rtl" : "ltr"}>
-                <h2 className="text-2xl font-black text-white tracking-tight">{isAr ? "سداد مديونية مورد / آجل" : "Make Credit Payment"}</h2>
-                <button onClick={() => setShowPaymentModal(false)} className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-full transition-colors cursor-pointer">
-                  <X size={20} />
+              <div className="flex justify-between items-center p-5 sm:p-6 border-b border-white/[0.08] bg-slate-900/80" dir={isAr ? "rtl" : "ltr"}>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold">
+                    <CreditCard size={20} />
+                  </div>
+                  <div>
+                    <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                      {isAr ? "سداد مديونية مورد / آجل" : "Make Credit Payment"}
+                    </h2>
+                    <p className="text-[11px] font-bold text-emerald-400 mt-0.5 uppercase tracking-wider">
+                      {isAr ? "تسجيل دفعة نقدية أو بنكية مع خصم المرتجعات" : "Record payment with optional RTV deduction"}
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowPaymentModal(false)} 
+                  className="p-2 bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-all border border-white/[0.06] cursor-pointer"
+                >
+                  <X size={18} />
                 </button>
               </div>
 
               <form onSubmit={handleProcessPayment} className="flex flex-col flex-1 min-h-0" dir={isAr ? "rtl" : "ltr"}>
-                <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
-                  <div className="bg-gradient-to-br from-slate-900 to-indigo-950/40 p-5 rounded-2xl border border-indigo-900/50 shadow-inner">
-                    <p className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-1">{isAr ? "سداد لحساب" : "Paying For"}</p>
-                    <p className="text-lg text-white font-black tracking-tight">{selectedCreditForPayment.companyName}</p>
-                    <p className="text-sm font-medium text-slate-400 mb-4 flex items-center gap-1"><FileText size={14}/> {isAr ? "فاتورة رقم:" : "Inv:"} {selectedCreditForPayment.invoiceNumber}</p>
+                <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar flex-1 space-y-5">
+                  <div className="bg-gradient-to-br from-slate-900 to-indigo-950/60 p-4 sm:p-5 rounded-2xl border border-indigo-500/30 shadow-inner">
+                    <p className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-1">{isAr ? "سداد لحساب المورد:" : "Paying For:"}</p>
+                    <p className="text-lg sm:text-xl text-white font-black tracking-tight">{selectedCreditForPayment.companyName}</p>
+                    <p className="text-xs sm:text-sm font-medium text-slate-400 mb-3 flex items-center gap-1.5"><FileText size={13}/> {isAr ? "فاتورة رقم:" : "Inv:"} #{selectedCreditForPayment.invoiceNumber}</p>
                     
-                    <div className="bg-[#0B1121] p-3 rounded-xl border border-slate-800 flex justify-between items-center">
-                      <span className="text-sm font-bold text-slate-400 uppercase tracking-wide">{isAr ? "المبلغ المتبقي" : "Remaining Balance"}</span>
-                      <span className="text-2xl font-black text-indigo-400 font-mono tracking-tight">EGP {((selectedCreditForPayment.amountDue + selectedCreditForPayment.tax) - selectedCreditForPayment.paidAmount).toLocaleString()}</span>
+                    <div className="bg-slate-950/80 p-3.5 rounded-xl border border-white/[0.08] flex justify-between items-center">
+                      <span className="text-xs sm:text-sm font-bold text-slate-400 uppercase tracking-wide">{isAr ? "المبلغ المتبقي حالياً" : "Remaining Balance"}</span>
+                      <span className="text-xl sm:text-2xl font-black text-indigo-300 font-mono tracking-tight">EGP {((selectedCreditForPayment.amountDue + (selectedCreditForPayment.tax || 0)) - (selectedCreditForPayment.paidAmount || 0)).toLocaleString()}</span>
                     </div>
                   </div>
 
@@ -5362,11 +5803,11 @@ html, body {
                       );
                     })()}
                   </div>
-                <div className="flex justify-end gap-3 p-6 border-t border-slate-800 bg-slate-900/60 mt-auto">
-                  <button type="button" onClick={() => setShowPaymentModal(false)} className="px-6 py-3 bg-slate-800 border border-slate-700 text-slate-300 rounded-xl font-bold hover:bg-slate-700 hover:text-white transition-all shadow-sm cursor-pointer">{isAr ? "إلغاء" : "Cancel"}</button>
-                  <button type="submit" disabled={isSubmitting} className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 shadow-md shadow-indigo-600/20 hover:shadow-indigo-600/40 hover:-translate-y-0.5 transition-all cursor-pointer">
-                    {isSubmitting && <Loader2 size={18} className="animate-spin" />}
-                    {isAr ? (isMarkAsPaidAll ? "تأكيد السداد الكامل وإغلاق الدين" : "تأكيد التحصيل") : (isMarkAsPaidAll ? "Confirm Full Settlement" : "Confirm Payment")}
+                <div className="flex justify-end gap-3 p-5 sm:p-6 border-t border-white/[0.08] bg-slate-900/80 mt-auto">
+                  <button type="button" onClick={() => setShowPaymentModal(false)} className="px-5 py-2.5 bg-slate-800/80 border border-white/[0.08] text-slate-300 rounded-xl font-bold hover:bg-slate-700 hover:text-white transition-all shadow-sm cursor-pointer text-xs">{isAr ? "إلغاء" : "Cancel"}</button>
+                  <button type="submit" disabled={isSubmitting} className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-500 disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-indigo-600/25 hover:-translate-y-0.5 transition-all cursor-pointer text-xs">
+                    {isSubmitting && <Loader2 size={16} className="animate-spin" />}
+                    <span>{isAr ? (isMarkAsPaidAll ? "تأكيد السداد الكامل وإغلاق الدين" : "تأكيد التحصيل") : (isMarkAsPaidAll ? "Confirm Full Settlement" : "Confirm Payment")}</span>
                   </button>
                 </div>
               </form>
@@ -5387,16 +5828,17 @@ html, body {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+              className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-xl flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
             >
               <motion.div 
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                className="bg-[#0B1121] border border-slate-700/80 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl"
+                initial={{ scale: 0.95, opacity: 0, y: 16 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: 16 }}
+                transition={{ type: "spring", duration: 0.45, bounce: 0.2 }}
+                className="bg-slate-900/95 backdrop-blur-2xl border border-white/[0.1] rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl"
               >
                 {/* Modal Header */}
-                <div className="flex justify-between items-center p-5 border-b border-slate-800 bg-slate-900/60">
+                <div className="flex justify-between items-center p-5 border-b border-white/[0.08] bg-slate-900/80">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-black">
                       <CheckCircle2 size={20} />
@@ -5419,11 +5861,11 @@ html, body {
                 </div>
 
                 {/* Modal Body */}
-                <div className="p-6 space-y-4 text-xs">
+                <div className="p-5 sm:p-6 space-y-4 text-xs">
                   {/* Financial Breakdown */}
-                  <div className="grid grid-cols-3 gap-2.5 p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-center">
+                  <div className="grid grid-cols-3 gap-2.5 p-3.5 rounded-2xl bg-slate-950/80 border border-white/[0.08] text-center">
                     <div>
-                      <span className="text-[10px] text-slate-500 uppercase font-bold block">{isAr ? "إجمالي الفاتورة" : "Total Due"}</span>
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">{isAr ? "إجمالي الفاتورة" : "Total Due"}</span>
                       <span className="font-mono font-bold text-white text-sm">EGP {totalDue.toLocaleString()}</span>
                     </div>
                     <div>
@@ -5437,7 +5879,7 @@ html, body {
                   </div>
 
                   {/* Question Prompt */}
-                  <div className="p-3.5 rounded-xl bg-amber-950/20 border border-amber-800/40 text-amber-200">
+                  <div className="p-3.5 rounded-2xl bg-amber-950/25 border border-amber-500/30 text-amber-200">
                     <p className="font-bold text-xs text-amber-300 mb-1 flex items-center gap-1.5">
                       <AlertCircle size={14} />
                       {isAr ? "هل تؤكد اعتبار المبلغ المسدد سداداً نهائياً وإسقاط المتبقي؟" : "Confirm accepting paid amount as full settlement?"}
@@ -5466,7 +5908,7 @@ html, body {
                           key={item.id}
                           type="button"
                           onClick={() => setStandaloneSettleReasonCategory(item.ar)}
-                          className={`p-2 rounded-xl text-xs font-bold text-right border transition-all cursor-pointer ${standaloneSettleReasonCategory === item.ar ? 'bg-emerald-950/70 border-emerald-500 text-emerald-300 ring-1 ring-emerald-500/40' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'}`}
+                          className={`p-2 rounded-xl text-xs font-bold text-right border transition-all cursor-pointer ${standaloneSettleReasonCategory === item.ar ? 'bg-emerald-950/70 border-emerald-500 text-emerald-300 ring-1 ring-emerald-500/40' : 'bg-slate-900 border-white/[0.08] text-slate-400 hover:text-slate-200'}`}
                         >
                           ✓ {isAr ? item.ar : item.en}
                         </button>
@@ -5476,7 +5918,7 @@ html, body {
                     <textarea
                       placeholder={isAr ? "أدخل تفاصيل وملاحظات إضافية حول سبب التسوية وإسقاط المديونية..." : "Additional details/justification..."}
                       rows={2}
-                      className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-emerald-500 text-xs text-white placeholder-slate-500 outline-none resize-none font-medium"
+                      className="w-full p-2.5 rounded-xl bg-slate-950 border border-white/[0.08] focus:border-emerald-500 text-xs text-white placeholder-slate-500 outline-none resize-none font-medium"
                       value={standaloneSettleNotes}
                       onChange={(e) => setStandaloneSettleNotes(e.target.value)}
                     />
@@ -5484,11 +5926,11 @@ html, body {
                 </div>
 
                 {/* Modal Actions */}
-                <div className="flex justify-end gap-3 p-4 border-t border-slate-800 bg-slate-900/60">
+                <div className="flex justify-end gap-3 p-4 border-t border-white/[0.08] bg-slate-900/80">
                   <button 
                     type="button" 
                     onClick={() => { setShowSettleModal(false); setSelectedCreditForSettle(null); }}
-                    className="px-4 py-2 bg-slate-800 border border-slate-700 text-slate-300 rounded-xl font-bold hover:bg-slate-700 hover:text-white transition-all text-xs cursor-pointer"
+                    className="px-4 py-2 bg-slate-800/80 border border-white/[0.08] text-slate-300 rounded-xl font-bold hover:bg-slate-700 hover:text-white transition-all text-xs cursor-pointer"
                   >
                     {isAr ? "إلغاء" : "Cancel"}
                   </button>
@@ -5496,7 +5938,7 @@ html, body {
                     type="button" 
                     disabled={isSubmittingSettle}
                     onClick={handleConfirmStandaloneSettle}
-                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold transition-all text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/20 cursor-pointer disabled:opacity-50"
+                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold transition-all text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-600/20 cursor-pointer disabled:opacity-50"
                   >
                     {isSubmittingSettle && <Loader2 size={14} className="animate-spin" />}
                     <CheckCircle2 size={14} />
@@ -5515,35 +5957,45 @@ html, body {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[60] flex items-center justify-center p-3 sm:p-4"
           >
             <motion.div 
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[#0B1121] text-slate-100 w-full max-w-sm rounded-2xl p-6 shadow-2xl border border-slate-800 flex flex-col max-h-[95vh] overflow-y-auto custom-scrollbar"
+              initial={{ scale: 0.95, opacity: 0, y: 16 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 16 }}
+              transition={{ type: "spring", duration: 0.45, bounce: 0.2 }}
+              className="bg-slate-900/95 backdrop-blur-2xl text-slate-100 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-white/[0.1] flex flex-col max-h-[92vh] overflow-y-auto custom-scrollbar"
               dir={isAr ? "rtl" : "ltr"}
             >
-              <h3 className="text-xl font-black text-white mb-4 tracking-tight">{isAr ? "إضافة مورد جديد" : "Add New Supplier"}</h3>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-bold">
+                  <Building2 size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-white tracking-tight">{isAr ? "إضافة مورد جديد" : "Add New Supplier"}</h3>
+                  <p className="text-[11px] text-slate-400">{isAr ? "تسجيل مورد لقائمة الموردين" : "Add to vendor list"}</p>
+                </div>
+              </div>
+              
               <input 
                 type="text" 
                 value={newSupplierName} 
                 onChange={(e) => setNewSupplierName(e.target.value)} 
                 placeholder={isAr ? "مثال: كوكاكولا مصر" : "e.g. COCA COLA EG"} 
-                className="w-full bg-slate-900 border border-slate-700 focus:border-indigo-500 rounded-xl p-3 text-white placeholder:text-slate-500 font-medium mb-6 outline-none" 
+                className="w-full bg-slate-950 border border-white/[0.08] focus:border-indigo-500 rounded-xl p-3 text-white placeholder:text-slate-500 font-medium mb-5 outline-none text-sm" 
                 autoFocus 
               />
-              <div className="flex gap-3 justify-end">
+              <div className="flex gap-2.5 justify-end">
                 <button 
                   onClick={() => setShowAddSupplier(false)} 
-                  className="px-4 py-2 bg-slate-800 text-slate-300 font-bold hover:bg-slate-700 rounded-xl transition-colors cursor-pointer"
+                  className="px-4 py-2 bg-slate-800/80 border border-white/[0.08] text-slate-300 font-bold hover:bg-slate-700 hover:text-white rounded-xl transition-all cursor-pointer text-xs"
                 >
                   {isAr ? "إلغاء" : "Cancel"}
                 </button>
                 <button 
                   onClick={handleAddSupplier} 
                   disabled={!newSupplierName.trim()} 
-                  className="px-5 py-2 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-sm cursor-pointer"
+                  className="px-5 py-2 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-500 disabled:opacity-50 transition-all shadow-lg shadow-indigo-600/25 cursor-pointer text-xs"
                 >
                   {isAr ? "حفظ المورد" : "Save Supplier"}
                 </button>
@@ -5559,27 +6011,36 @@ html, body {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/80 backdrop-blur-xl z-50 flex items-center justify-center p-3 sm:p-4"
           >
             <motion.div 
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              initial={{ scale: 0.95, opacity: 0, y: 16 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="bg-[#0B1121] text-slate-100 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-slate-800 flex flex-col max-h-[95vh]"
+              exit={{ scale: 0.95, opacity: 0, y: 16 }}
+              transition={{ type: "spring", duration: 0.45, bounce: 0.2 }}
+              className="bg-slate-900/95 backdrop-blur-2xl text-slate-100 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-white/[0.1] flex flex-col max-h-[92vh]"
               dir={isAr ? "rtl" : "ltr"}
             >
-              <div className="flex justify-between items-center p-6 border-b border-slate-800 bg-slate-900/60">
-                <h2 className="text-xl font-black text-white tracking-tight">{isAr ? "إضافة أمر شراء للدين" : "Add PO to Credit"}</h2>
+              <div className="flex justify-between items-center p-5 sm:p-6 border-b border-white/[0.08] bg-slate-900/80">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-bold">
+                    <ImageIcon size={20} />
+                  </div>
+                  <div>
+                    <h2 className="text-lg sm:text-xl font-black text-white tracking-tight">{isAr ? "إضافة أمر شراء للدين" : "Add PO to Credit"}</h2>
+                    <p className="text-[11px] text-slate-400">{selectedCreditForPoUpload.companyName} • Inv #{selectedCreditForPoUpload.invoiceNumber}</p>
+                  </div>
+                </div>
                 <button 
                   onClick={() => setSelectedCreditForPoUpload(null)} 
-                  className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-full transition-colors cursor-pointer"
+                  className="p-2 bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-all border border-white/[0.06] cursor-pointer"
                 >
-                  <X size={20} />
+                  <X size={18} />
                 </button>
               </div>
 
-              <div className="p-6 overflow-y-auto custom-scrollbar flex-1 min-h-0">
-                <p className="text-sm text-slate-400 mb-6 font-medium">
+              <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar flex-1 min-h-0">
+                <p className="text-xs text-slate-400 mb-5 font-medium leading-relaxed">
                   {isAr 
                     ? "قم برفع أو سحب أو لصق صورة أمر الشراء. سيتم استخراج الأصناف وتحديثها تلقائياً بالذكاء الاصطناعي." 
                     : "Upload, drag-and-drop, or paste a purchase order image. We'll automatically extract the products and sync them with the catalog."}
@@ -5588,26 +6049,30 @@ html, body {
                 <div 
                   onDrop={handleDrop}
                   onDragOver={handleDragOver}
-                  className={`border-2 border-dashed rounded-2xl p-8 text-center transition-colors ${uploadingPoToOldCredit ? 'border-indigo-500 bg-indigo-950/40' : 'border-slate-700 hover:border-indigo-500 bg-slate-950/60 hover:bg-slate-900/60'}`}
+                  className={`border-2 border-dashed rounded-2xl p-7 text-center transition-all ${uploadingPoToOldCredit ? 'border-indigo-500 bg-indigo-950/40 scale-[0.99]' : 'border-white/[0.1] hover:border-indigo-500/60 bg-slate-950/60 hover:bg-slate-900/60'}`}
                 >
                   {uploadingPoToOldCredit ? (
-                    <div className="flex flex-col items-center justify-center gap-3 text-indigo-400">
-                      <Loader2 className="h-10 w-10 animate-spin" />
-                      <span className="font-bold text-lg text-white">{isAr ? "جاري معالجة المستند..." : "Processing Document..."}</span>
-                      <span className="text-sm text-indigo-400">{isAr ? "استخراج الأصناف ومطابقتها..." : "Extracting details and syncing items..."}</span>
+                    <div className="flex flex-col items-center justify-center gap-2.5 text-indigo-400">
+                      <div className="p-3 bg-indigo-950 rounded-2xl border border-indigo-800/60 shadow-lg">
+                        <Loader2 className="h-8 w-8 animate-spin" />
+                      </div>
+                      <span className="font-bold text-base text-white">{isAr ? "جاري معالجة المستند..." : "Processing Document..."}</span>
+                      <span className="text-xs text-indigo-400/80">{isAr ? "استخراج الأصناف ومطابقتها..." : "Extracting details and syncing items..."}</span>
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center justify-center gap-3 text-slate-400">
-                      <ImageIcon className="h-12 w-12 text-slate-500" />
-                      <span className="font-bold text-lg text-white">{isAr ? "اسحب صورة امر الشراء هنا" : "Paste or Drop PO Image Here"}</span>
-                      <span className="text-sm text-slate-400">{isAr ? "اضغط Ctrl+V / Cmd+V للصق مباشرة" : "Cmd+V / Ctrl+V to paste directly"}</span>
+                    <div className="flex flex-col items-center justify-center gap-2 text-slate-400">
+                      <div className="p-3 bg-slate-900 border border-white/[0.08] shadow-sm rounded-2xl mb-1 text-indigo-400">
+                        <ImageIcon className="h-7 w-7" />
+                      </div>
+                      <span className="font-bold text-base text-white tracking-tight">{isAr ? "اسحب صورة أمر الشراء هنا" : "Paste or Drop PO Image Here"}</span>
+                      <span className="text-xs text-slate-400">{isAr ? "اضغط Ctrl+V / Cmd+V للصق مباشرة" : "Cmd+V / Ctrl+V to paste directly"}</span>
                       <button
                         type="button"
                         onClick={handlePastePoImageButtonClick}
-                        className="mt-4 flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl transition-colors text-sm border border-slate-700 cursor-pointer"
+                        className="mt-3 flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-indigo-300 font-bold rounded-xl transition-all text-xs border border-white/[0.08] cursor-pointer shadow-sm"
                       >
-                        <ClipboardPaste size={18} />
-                        {isAr ? "لصق من الحافظة" : "Paste from Clipboard"}
+                        <ClipboardPaste size={15} className="text-indigo-400" />
+                        <span>{isAr ? "لصق من الحافظة" : "Paste from Clipboard"}</span>
                       </button>
                     </div>
                   )}
@@ -5616,6 +6081,7 @@ html, body {
             </motion.div>
           </motion.div>
         )}
+
       </AnimatePresence>
     </div>
 
@@ -5922,35 +6388,35 @@ html, body {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4 overflow-y-auto"
+          className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[70] flex items-center justify-center p-4 overflow-y-auto"
         >
           <motion.div
             initial={{ scale: 0.95, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.95, opacity: 0, y: 20 }}
             transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
-            className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-3xl shadow-2xl relative my-auto border border-slate-100 dark:border-slate-800 overflow-hidden flex flex-col max-h-[92vh]"
+            className="bg-slate-900/95 backdrop-blur-2xl w-full max-w-2xl rounded-3xl shadow-2xl shadow-black/80 relative my-auto border border-white/[0.1] overflow-hidden flex flex-col max-h-[92vh]"
           >
             {/* Header */}
-            <div className="flex justify-between items-center p-6 border-b border-amber-100 dark:border-amber-900/30 bg-gradient-to-r from-amber-50/80 via-orange-50/40 to-transparent dark:from-amber-950/20 dark:to-transparent" dir={isAr ? "rtl" : "ltr"}>
+            <div className="flex justify-between items-center p-6 border-b border-white/[0.08] bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent" dir={isAr ? "rtl" : "ltr"}>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center font-black">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/15 text-amber-400 border border-amber-500/20 flex items-center justify-center font-black shadow-inner">
                   <Pencil size={20} />
                 </div>
                 <div>
-                  <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
+                  <h2 className="text-xl font-black text-white tracking-tight">
                     {isAr ? "تعديل فاتورة الآجل (خاص بالإدارة)" : "Edit Credit Invoice (Admin Only)"}
                   </h2>
-                  <p className="text-xs font-bold text-amber-600/80 dark:text-amber-400/80 mt-0.5">
+                  <p className="text-xs font-bold text-amber-400/80 mt-0.5">
                     {isAr ? "سيتم تسجيل وتتبع كافة التعديلات تلقائياً في سجل الرقابة" : "All modifications will be tracked automatically in the audit log"}
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => { setShowEditCreditModal(false); setEditingCredit(null); }}
-                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                className="p-2 text-slate-400 hover:text-white rounded-xl bg-slate-800/60 hover:bg-slate-800 transition-colors cursor-pointer border border-white/[0.06]"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
@@ -5960,7 +6426,7 @@ html, body {
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
                       {isAr ? "التاريخ *" : "Date *"}
                     </label>
                     <input
@@ -5968,26 +6434,26 @@ html, body {
                       required
                       value={editDate}
                       onChange={(e) => setEditDate(e.target.value)}
-                      className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500/20"
+                      className="w-full p-3 rounded-xl bg-slate-950/70 border border-white/[0.1] font-medium text-white outline-none focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/20 transition-all"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
                       {isAr ? "الشركة / المورد *" : "Company / Supplier *"}
                     </label>
                     <select
                       required
                       value={editCompanyName}
                       onChange={(e) => setEditCompanyName(e.target.value)}
-                      className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500/20"
+                      className="w-full p-3 rounded-xl bg-slate-950/70 border border-white/[0.1] font-medium text-white outline-none focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/20 transition-all"
                     >
-                      <option value="">{isAr ? "-- اختر المورد --" : "Select a supplier..."}</option>
+                      <option value="" className="bg-slate-900 text-slate-400">{isAr ? "-- اختر المورد --" : "Select a supplier..."}</option>
                       {suppliers.map((s) => (
-                        <option key={s.id} value={s.name}>{s.name}</option>
+                        <option key={s.id} value={s.name} className="bg-slate-900 text-white">{s.name}</option>
                       ))}
                       {editCompanyName && !suppliers.some(s => s.name === editCompanyName) && (
-                        <option value={editCompanyName}>{editCompanyName}</option>
+                        <option value={editCompanyName} className="bg-slate-900 text-white">{editCompanyName}</option>
                       )}
                     </select>
                   </div>
@@ -5995,7 +6461,7 @@ html, body {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
                       {isAr ? "المبلغ المستحق (قبل الضريبة) *" : "Amount Due (Before Tax) *"}
                     </label>
                     <input
@@ -6005,12 +6471,12 @@ html, body {
                       min="0"
                       value={editAmountDue}
                       onChange={(e) => setEditAmountDue(e.target.value)}
-                      className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 font-black text-indigo-600 dark:text-indigo-400 text-lg outline-none focus:ring-2 focus:ring-amber-500/20"
+                      className="w-full p-3 rounded-xl bg-slate-950/70 border border-white/[0.1] font-mono font-black text-indigo-400 text-lg outline-none focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/20 transition-all"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
                       {isAr ? "قيمة الضريبة" : "Tax Amount"}
                     </label>
                     <input
@@ -6019,22 +6485,22 @@ html, body {
                       min="0"
                       value={editTax}
                       onChange={(e) => setEditTax(e.target.value)}
-                      className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-white text-lg outline-none focus:ring-2 focus:ring-amber-500/20"
+                      className="w-full p-3 rounded-xl bg-slate-950/70 border border-white/[0.1] font-mono font-bold text-white text-lg outline-none focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/20 transition-all"
                     />
                   </div>
                 </div>
 
                 {/* Real-time Calculation Box */}
-                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/20 border border-emerald-200/80 dark:border-emerald-800/40 flex items-center justify-between shadow-xs">
+                <div className="p-4 rounded-2xl bg-emerald-950/30 border border-emerald-500/30 flex items-center justify-between shadow-lg">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-base shadow-xs shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold text-base shrink-0">
                       <Calculator size={18} />
                     </div>
                     <div>
-                      <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider block">
+                      <span className="text-[11px] font-bold text-emerald-300 uppercase tracking-wider block">
                         {isAr ? "إجمالي المبلغ المستحق المعدل (شامل الضريبة)" : "Total Updated Due (Incl. Tax)"}
                       </span>
-                      <span className="text-xs text-emerald-700/80 dark:text-emerald-400/80 font-medium">
+                      <span className="text-xs text-emerald-400/80 font-medium">
                         {(parseFloat(editTax) || 0) > 0 ? (
                           isAr 
                             ? `${(parseFloat(editAmountDue) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} + ${(parseFloat(editTax) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ضريبة`
@@ -6046,7 +6512,7 @@ html, body {
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <div className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono tracking-tight">
+                    <div className="text-lg sm:text-xl font-black text-emerald-400 font-mono tracking-tight">
                       EGP {((parseFloat(editAmountDue) || 0) + (parseFloat(editTax) || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                   </div>
@@ -6054,50 +6520,50 @@ html, body {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
                       {isAr ? "رقم الفاتورة" : "Invoice #"}
                     </label>
                     <input
                       type="text"
                       value={editInvoiceNumber}
                       onChange={(e) => setEditInvoiceNumber(e.target.value)}
-                      className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500/20"
+                      className="w-full p-3 rounded-xl bg-slate-950/70 border border-white/[0.1] font-medium text-white outline-none focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/20 transition-all"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
                       {isAr ? "رقم أمر الشراء (PO)" : "PO #"}
                     </label>
                     <input
                       type="text"
                       value={editPoNumber}
                       onChange={(e) => setEditPoNumber(e.target.value)}
-                      className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500/20"
+                      className="w-full p-3 rounded-xl bg-slate-950/70 border border-white/[0.1] font-medium text-white outline-none focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/20 transition-all"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
                       {isAr ? "تاريخ التحصيل المتوقع" : "Expected Collection Date"}
                     </label>
                     <input
                       type="date"
                       value={editCollectionDate}
                       onChange={(e) => setEditCollectionDate(e.target.value)}
-                      className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500/20"
+                      className="w-full p-3 rounded-xl bg-slate-950/70 border border-white/[0.1] font-medium text-white outline-none focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/20 transition-all"
                     />
                   </div>
 
                   <div className="flex items-center gap-3 pt-6">
-                    <label className="flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                    <label className="flex items-center gap-2.5 text-sm font-bold text-slate-300 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={editOnSalesOnly}
                         onChange={(e) => setEditOnSalesOnly(e.target.checked)}
-                        className="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-600"
+                        className="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500 border-white/[0.2] bg-slate-950"
                       />
                       {isAr ? "سداد من المبيعات فقط (Sales Only)" : "On Sales Only"}
                     </label>
@@ -6107,18 +6573,18 @@ html, body {
               </div>
 
               {/* Footer */}
-              <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex justify-end gap-3">
+              <div className="p-6 border-t border-white/[0.08] bg-slate-950/50 flex justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => { setShowEditCreditModal(false); setEditingCredit(null); }}
-                  className="px-6 py-2.5 rounded-xl font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                  className="px-6 py-2.5 rounded-xl font-bold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer border border-white/[0.06]"
                 >
                   {isAr ? "إلغاء" : "Cancel"}
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-7 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 shadow-md shadow-amber-500/20 hover:shadow-amber-500/40 hover:-translate-y-0.5 transition-all flex items-center gap-2 cursor-pointer"
+                  className="px-7 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40 hover:-translate-y-0.5 transition-all flex items-center gap-2 cursor-pointer"
                 >
                   {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : (
                     <>
@@ -6142,30 +6608,30 @@ html, body {
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-slate-200 dark:border-slate-800 relative"
+              className="bg-slate-900/95 backdrop-blur-2xl w-full max-w-md rounded-3xl shadow-2xl shadow-black/80 overflow-hidden flex flex-col border border-white/[0.1] relative"
             >
               <button
                 onClick={() => setSavedCreditForQR(null)}
-                className="absolute top-4 right-4 p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors"
+                className="absolute top-4 right-4 p-2 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer border border-white/[0.06]"
                 title={isAr ? "إغلاق للعودة للنظام" : "Close & return to system"}
               >
                 <X size={18} />
               </button>
 
               <div className="p-6 text-center flex-1 flex flex-col items-center justify-center">
-                <div className="w-14 h-14 bg-indigo-500/10 text-indigo-500 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-indigo-500/20">
+                <div className="w-14 h-14 bg-indigo-500/15 text-indigo-400 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-indigo-500/25 shadow-inner">
                   <ImageIcon size={28} />
                 </div>
-                <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight mb-1">
+                <h2 className="text-xl font-black text-white tracking-tight mb-1">
                   {isAr ? "إرفاق صورة الفاتورة الورقية" : "Attach Credit Paper Invoice"}
                 </h2>
-                <p className="text-xs text-slate-500 font-medium mb-4 max-w-[320px]">
+                <p className="text-xs text-slate-400 font-medium mb-4 max-w-[320px]">
                   {isAr
                     ? `امسح رمز QR بالهاتف أو اضغط زر اللصق من الحافظة (Ctrl+V) لشركة ${savedCreditForQR.companyName}`
                     : `Scan QR with phone or click button to paste invoice image from clipboard for ${savedCreditForQR.companyName}`}
                 </p>
 
-                <div className="bg-white p-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 inline-block mb-4 shadow-sm">
+                <div className="bg-white p-4 rounded-2xl border-2 border-white/[0.1] inline-block mb-4 shadow-xl">
                   <QRCode
                     value={`${typeof window !== 'undefined' ? window.location.origin : 'https://anh-zeta.vercel.app'}/cashier/upload-invoice/${savedCreditForQR.id}?type=credit`}
                     size={170}
@@ -6185,8 +6651,7 @@ html, body {
                   <button
                     onClick={handlePasteFromClipboardButton}
                     disabled={isPasting}
-                    className="w-full py-3.5 px-4 rounded-xl font-extrabold text-sm text-white flex items-center justify-center gap-2.5 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-indigo-500/20 cursor-pointer"
-                    style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}
+                    className="w-full py-3.5 px-4 rounded-xl font-extrabold text-sm text-white flex items-center justify-center gap-2.5 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-indigo-500/25 bg-gradient-to-r from-indigo-500 via-indigo-600 to-violet-600 hover:from-indigo-600 hover:to-violet-700 cursor-pointer"
                   >
                     {isPasting ? (
                       <Loader2 className="w-4 h-4 animate-spin text-white" />
@@ -6201,15 +6666,15 @@ html, body {
                   <button
                     onClick={() => qrFileInputRef.current?.click()}
                     disabled={isPasting}
-                    className="w-full py-3 px-4 rounded-xl font-bold text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                    className="w-full py-3 px-4 rounded-xl font-bold text-xs bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center gap-2 transition-colors cursor-pointer border border-white/[0.08]"
                   >
-                    <FileText className="w-4 h-4 text-slate-500" />
+                    <FileText className="w-4 h-4 text-indigo-400" />
                     <span>{isAr ? "اختيار صورة الفاتورة من الجهاز" : "Select Invoice Image File"}</span>
                   </button>
                 </div>
 
                 <p className="text-[11px] text-slate-400 mt-1 font-semibold flex items-center justify-center gap-1.5">
-                  <Loader2 className="h-3 w-3 animate-spin text-indigo-500" />
+                  <Loader2 className="h-3 w-3 animate-spin text-indigo-400" />
                   {isPasting ? (isAr ? "جاري الرفع وإغلاق النافذة..." : "Uploading & returning to system...") : (isAr ? "يتم إغلاق النافذة والعودة للنظام فور اللصق" : "Modal closes & system resumes automatically upon pasting")}
                 </p>
               </div>
@@ -6910,7 +7375,7 @@ html, body {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60]"
+            className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[60]"
             onClick={() => setSelectedSupplierProfile(null)}
           />
           <motion.div
@@ -6918,61 +7383,66 @@ html, body {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: "spring", bounce: 0, duration: 0.4 }}
-            className="fixed inset-y-0 right-0 w-full md:w-[450px] bg-white dark:bg-slate-900 shadow-2xl z-[70] border-l border-slate-200 dark:border-slate-800 flex flex-col"
+            className="fixed inset-y-0 right-0 w-full md:w-[460px] bg-slate-900/95 backdrop-blur-2xl shadow-2xl shadow-black/80 z-[70] border-l border-white/[0.1] flex flex-col"
           >
-            <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-              <h2 className="text-xl font-black text-slate-900 dark:text-white capitalize tracking-tight flex items-center gap-2">
-                <Building className="text-indigo-600" size={24} />
-                {selectedSupplierData.name} Profile
+            <div className="flex justify-between items-center p-6 border-b border-white/[0.08] bg-slate-950/40">
+              <h2 className="text-xl font-black text-white capitalize tracking-tight flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-indigo-500/15 border border-indigo-500/25 flex items-center justify-center text-indigo-400">
+                  <Building size={20} />
+                </div>
+                <span>{selectedSupplierData.name} Profile</span>
               </h2>
-              <button onClick={() => setSelectedSupplierProfile(null)} className="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors">
-                <X size={20} />
+              <button 
+                onClick={() => setSelectedSupplierProfile(null)} 
+                className="p-2 bg-slate-800/80 hover:bg-slate-800 border border-white/[0.08] rounded-xl text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X size={18} />
               </button>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
               
               {/* Trust Score Header */}
-              <div className="flex items-center gap-4 mb-8">
-                <div className={`w-20 h-20 rounded-full flex items-center justify-center border-4 shadow-inner ${selectedSupplierData.trustScore >= 80 ? 'border-emerald-500 bg-emerald-50 text-emerald-600' : selectedSupplierData.trustScore >= 50 ? 'border-amber-500 bg-amber-50 text-amber-600' : 'border-red-500 bg-red-50 text-red-600'}`}>
-                  <span className="text-2xl font-black">{selectedSupplierData.trustScore}%</span>
+              <div className="flex items-center gap-4 mb-8 p-4 rounded-2xl bg-slate-950/50 border border-white/[0.08]">
+                <div className={`w-20 h-20 rounded-2xl flex items-center justify-center border-2 shadow-inner shrink-0 ${selectedSupplierData.trustScore >= 80 ? 'border-emerald-500/60 bg-emerald-950/40 text-emerald-400' : selectedSupplierData.trustScore >= 50 ? 'border-amber-500/60 bg-amber-950/40 text-amber-400' : 'border-rose-500/60 bg-rose-950/40 text-rose-400'}`}>
+                  <span className="text-2xl font-black font-mono">{selectedSupplierData.trustScore}%</span>
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest">Trust Score</h3>
-                  <p className="text-lg font-black text-slate-900 dark:text-white">
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Trust Score</h3>
+                  <p className="text-base font-black text-white mt-0.5">
                     {selectedSupplierData.trustScore >= 80 ? 'Excellent Partner' : selectedSupplierData.trustScore >= 50 ? 'Average Partner' : 'High Risk Partner'}
                   </p>
                 </div>
               </div>
 
               {/* Radar Chart */}
-              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-700 mb-8 h-64 flex flex-col">
-                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 text-center">Relationship Metrics</h4>
+              <div className="bg-slate-950/60 rounded-2xl p-4 border border-white/[0.08] mb-6 h-64 flex flex-col">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 text-center">Relationship Metrics</h4>
                 <div className="flex-1">
                   <ResponsiveContainer width="100%" height="100%">
                     <RadarChart cx="50%" cy="50%" outerRadius="70%" data={selectedSupplierData.radarData}>
-                      <PolarGrid stroke="#e2e8f0" />
-                      <PolarAngleAxis dataKey="subject" tick={{fill: '#64748b', fontSize: 10, fontWeight: 'bold'}} />
+                      <PolarGrid stroke="#334155" />
+                      <PolarAngleAxis dataKey="subject" tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 'bold'}} />
                       <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                      <Radar name="Supplier" dataKey="A" stroke="#4f46e5" fill="#4f46e5" fillOpacity={0.4} />
+                      <Radar name="Supplier" dataKey="A" stroke="#818cf8" fill="#6366f1" fillOpacity={0.4} />
                     </RadarChart>
                   </ResponsiveContainer>
                 </div>
               </div>
 
               {/* Data Grid */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 rounded-xl shadow-sm">
-                  <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Total Volume</p>
-                  <p className="text-lg font-black text-slate-900 dark:text-white">EGP {selectedSupplierData.totalVolume.toLocaleString()}</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-slate-950/60 border border-white/[0.08] p-4 rounded-2xl">
+                  <p className="text-xs font-bold text-slate-400 uppercase mb-1">Total Volume</p>
+                  <p className="text-base font-black font-mono text-white">EGP {selectedSupplierData.totalVolume.toLocaleString()}</p>
                 </div>
-                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 rounded-xl shadow-sm">
-                  <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Current Debt</p>
-                  <p className="text-lg font-black text-slate-900 dark:text-white">EGP {selectedSupplierData.totalDebt.toLocaleString()}</p>
+                <div className="bg-slate-950/60 border border-white/[0.08] p-4 rounded-2xl">
+                  <p className="text-xs font-bold text-slate-400 uppercase mb-1">Current Debt</p>
+                  <p className="text-base font-black font-mono text-amber-400">EGP {selectedSupplierData.totalDebt.toLocaleString()}</p>
                 </div>
-                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 rounded-xl shadow-sm col-span-2">
-                  <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Average Payment Speed</p>
-                  <p className="text-lg font-black text-slate-900 dark:text-white">{selectedSupplierData.avgDaysToPay} Days</p>
+                <div className="bg-slate-950/60 border border-white/[0.08] p-4 rounded-2xl col-span-2">
+                  <p className="text-xs font-bold text-slate-400 uppercase mb-1">Average Payment Speed</p>
+                  <p className="text-base font-black font-mono text-indigo-400">{selectedSupplierData.avgDaysToPay} Days</p>
                 </div>
               </div>
 
