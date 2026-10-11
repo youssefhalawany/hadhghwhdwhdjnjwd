@@ -245,17 +245,19 @@ body {
     display: none !important;
   }
 
-  .pay-page {
+  .pay-page,
+  .rtv-print-page {
     display: flex !important;
     flex-direction: column !important;
     justify-content: space-between !important;
     box-sizing: border-box !important;
     width: 100% !important;
-    max-width: 190mm !important;
-    min-height: 268mm !important;
-    height: 268mm !important;
+    max-width: 194mm !important;
+    min-height: 274mm !important;
+    height: 274mm !important;
+    max-height: 274mm !important;
     margin: 0 auto !important;
-    padding: 2mm 0 !important;
+    padding: 5mm 6mm !important;
     page-break-after: always !important;
     break-after: page !important;
     page-break-inside: avoid !important;
@@ -264,17 +266,20 @@ body {
     overflow: hidden !important;
   }
 
-  .pay-page-last {
+  .pay-page-last,
+  .rtv-print-page:last-child,
+  .rtv-print-page-single {
     display: flex !important;
     flex-direction: column !important;
     justify-content: space-between !important;
     box-sizing: border-box !important;
     width: 100% !important;
-    max-width: 190mm !important;
-    min-height: 268mm !important;
-    height: 268mm !important;
+    max-width: 194mm !important;
+    min-height: 274mm !important;
+    height: 274mm !important;
+    max-height: 274mm !important;
     margin: 0 auto !important;
-    padding: 2mm 0 !important;
+    padding: 5mm 6mm !important;
     page-break-after: avoid !important;
     break-after: avoid !important;
     page-break-inside: avoid !important;

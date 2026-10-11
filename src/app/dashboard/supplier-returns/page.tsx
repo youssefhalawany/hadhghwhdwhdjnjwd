@@ -1762,7 +1762,7 @@ export default function SupplierReturnsDashboard() {
 
               {/* On-screen paper preview */}
               <div className="p-4 md:p-6 overflow-y-auto bg-slate-100 dark:bg-slate-950 flex justify-center">
-                <div className="bg-white shadow-2xl rounded-xl border border-slate-200 w-full max-w-[192mm] min-h-[278mm] p-6 text-slate-900 flex flex-col justify-between" dir="rtl" style={{ fontFamily: "'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif" }}>
+                <div className="w-full max-w-[210mm] flex flex-col items-center gap-6" dir="rtl" style={{ fontFamily: "'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif" }}>
                   <ReturnReceiptContent data={printData} currentBranch={currentBranch} />
                 </div>
               </div>
@@ -1775,62 +1775,54 @@ export default function SupplierReturnsDashboard() {
 
     {/* 🌟 OFFICIAL EGYPTIAN ARABIC RETURN RECEIPT (RTV) - 100% CLEAN A4 PRINTABLE DOCUMENT 🌟 */}
     {printData && (
-      <div className="hidden print:block w-full text-slate-900 bg-white" dir="rtl" style={{ fontFamily: "'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif", fontSize: "10px", lineHeight: "1.4" }}>
+      <div className="hidden print:block w-full text-slate-900 bg-white" dir="rtl" style={{ fontFamily: "'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif" }}>
         <style dangerouslySetInnerHTML={{ __html: `
           @media print {
             @page {
               size: A4 portrait;
-              margin: 7mm 8mm;
+              margin: 6mm 8mm !important;
             }
-            body {
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-              background: #fff !important;
+            body, html {
               margin: 0 !important;
               padding: 0 !important;
+              background: #ffffff !important;
+              background-color: #ffffff !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
             }
-            .rtv-print-sheet {
+            .no-print, header, nav, aside, footer, [role="navigation"] {
+              display: none !important;
+            }
+            .rtv-print-page {
               display: flex !important;
               flex-direction: column !important;
               justify-content: space-between !important;
               box-sizing: border-box !important;
               width: 100% !important;
-              max-width: 192mm !important;
-              min-height: 278mm !important;
-              height: 278mm !important;
+              max-width: 194mm !important;
+              min-height: 274mm !important;
+              height: 274mm !important;
+              max-height: 274mm !important;
               margin: 0 auto !important;
-              padding: 1mm 1mm !important;
-              page-break-after: avoid !important;
-              break-after: avoid !important;
+              padding: 5mm 6mm !important;
+              page-break-after: always !important;
+              break-after: page !important;
               page-break-inside: avoid !important;
               break-inside: avoid !important;
               background-color: #ffffff !important;
               overflow: hidden !important;
             }
-            .rtv-content-root {
-              display: flex !important;
-              flex-direction: column !important;
-              justify-content: space-between !important;
-              box-sizing: border-box !important;
-              width: 100% !important;
-              height: 100% !important;
-              min-height: 274mm !important;
-              flex: 1 !important;
+            .rtv-print-page:last-child,
+            .rtv-print-page-single {
+              page-break-after: avoid !important;
+              break-after: avoid !important;
             }
-            .rtv-items-box {
-              flex: 1 !important;
-              display: flex !important;
-              flex-direction: column !important;
-              min-height: 55mm !important;
+            table {
+              page-break-inside: avoid;
             }
-          }
-          table {
-            page-break-inside: avoid;
           }
         ` }} />
-        <div className="rtv-print-sheet">
-          <ReturnReceiptContent data={printData} currentBranch={currentBranch} />
-        </div>
+        <ReturnReceiptContent data={printData} currentBranch={currentBranch} isPrint={true} />
       </div>
     )}
     </PageTransition>
