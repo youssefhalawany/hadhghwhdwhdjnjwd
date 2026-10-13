@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Sun, Moon, Shield, Database, LayoutDashboard, FileText, Printer, ClipboardList, CheckCircle, Search, LogOut, User, Users, Menu, X, Bell, PackageX, Truck, CalendarDays, DollarSign, Activity, Wallet, Tag, Sparkles, Barcode, Briefcase, Clock, PackageMinus, Package, Bot, ShoppingCart, Box, Monitor, ArrowLeft } from "lucide-react";
+import { Sun, Moon, Shield, Database, LayoutDashboard, FileText, Printer, ClipboardList, CheckCircle, Search, LogOut, User, Users, Menu, X, Bell, PackageX, Truck, CalendarDays, DollarSign, Activity, Wallet, Tag, Sparkles, Barcode, Briefcase, Clock, PackageMinus, Package, Bot, ShoppingCart, Box, Monitor, ArrowLeft, Building2 } from "lucide-react";
 import { auth, messaging, dbService, db } from "@/lib/firebase";
 import { getToken } from "firebase/messaging";
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile, setPersistence, browserLocalPersistence, indexedDBLocalPersistence } from "firebase/auth";
@@ -542,6 +542,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     if (path === "/" || path === "/dashboard") return "Dashboard Overview";
     if (path.includes("/financials/inputs/deposits")) return "Deposits Input";
     if (path.includes("/financials/inputs/sales")) return "Sales Input";
+    if (path.includes("/financials/companies-profiles")) return "Companies Profiles";
     if (path.includes("/financials/inputs/payments")) return "Payments Input";
     if (path.includes("/financials/inputs/credits")) return "Credits Input";
     if (path.includes("/financials/inputs/cheques")) return "Cheques Input";
@@ -1076,6 +1077,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     {
       name: t("nav.financials"), icon: FileText, children: [
         { name: t("nav.financial_inputs"), href: "/financials/inputs", icon: Wallet },
+        { name: language === "ar" ? "ملفات الشركات" : "Companies Profiles", href: "/financials/companies-profiles", icon: Building2 },
         { name: t("nav.reports"), href: "/financial-reports", icon: FileText },
         { name: language === "ar" ? "تفاصيل المبيعات" : "Detailed Sales", href: "/financials/detailed-sales", icon: Activity },
         { name: language === "ar" ? "ملخص الشهر" : "Month Summary", href: "/financial-reports/month-summary", icon: CalendarDays },

@@ -3,7 +3,7 @@
 import React, { useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Wallet, DollarSign, FileText, CreditCard, FileCheck, Receipt } from "lucide-react";
+import { Wallet, DollarSign, FileText, CreditCard, FileCheck, Receipt, Building2 } from "lucide-react";
 import { PageTransition } from "@/components/PageTransition";
 import { useLanguage } from "@/context/LanguageContext";
 import { triggerHapticFeedback } from "@/lib/pwaBadges";
@@ -16,6 +16,7 @@ export default function FinancialInputsLayout({ children }: { children: React.Re
 
   const tabs = [
     { name: isAr ? "نظرة عامة" : "Overview", href: "/financials/inputs", icon: Wallet },
+    { name: isAr ? "ملفات الشركات" : "Companies Profiles", href: "/financials/companies-profiles", icon: Building2 },
     { name: isAr ? "المبيعات" : "Sales", href: "/financials/inputs/sales", icon: DollarSign },
     { name: isAr ? "المدفوعات" : "Payments", href: "/financials/inputs/payments", icon: CreditCard },
     { name: isAr ? "الأجل والديون" : "Credits", href: "/financials/inputs/credits", icon: FileText },

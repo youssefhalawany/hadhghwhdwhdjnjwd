@@ -487,6 +487,16 @@ export default function VIPBentoEnterprisePortal() {
           color: "text-emerald-400",
         },
         {
+          id: "companies-profiles",
+          nameAr: "ملفات وسجل الشركات والموردين",
+          nameEn: "Companies Profiles",
+          descAr: "سجل شامل لكل الموردين: مدفوعات، آجل، مرتجعات، وتوالف الصلاحيات",
+          descEn: "Comprehensive vendor ledger: payments, credits, returns & expiries",
+          href: "/financials/companies-profiles",
+          icon: Building2,
+          color: "text-cyan-400",
+        },
+        {
           id: "detailed-sales",
           nameAr: "تفاصيل المبيعات بالساعة",
           nameEn: "Detailed Sales",

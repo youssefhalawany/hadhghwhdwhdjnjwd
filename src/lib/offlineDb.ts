@@ -78,3 +78,10 @@ export async function getCacheData(key: string) {
   const entry = await db.get('cache', key);
   return entry ? entry.data : null;
 }
+
+export async function getCacheEntry(key: string): Promise<{ data: any; timestamp: number } | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const entry = await db.get('cache', key);
+  return entry ? { data: entry.data, timestamp: entry.timestamp } : null;
+}

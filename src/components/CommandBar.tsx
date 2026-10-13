@@ -28,7 +28,8 @@ import {
   Bot,
   Truck,
   Zap,
-  Wrench
+  Wrench,
+  Building2
 } from "lucide-react";
 import { db, productsDb } from "@/lib/firebase";
 import { collection, query, where, getDocs, limit, orderBy } from "firebase/firestore";
@@ -51,6 +52,7 @@ interface SearchResultItem {
 
 const PORTAL_PAGES = [
   // Financials & Vault
+  { name: "Companies Profiles & Vendor Ledger", nameAr: "ملفات وسجل الشركات والموردين", desc: "Comprehensive vendor ledger: payments, credits, returns & expiries", href: "/financials/companies-profiles", category: "Financials", keywords: "companies company profiles vendor suppliers ledger edita ulker coca cola johan jwhayna شركات موردين ملفات سجل كشف حساب", icon: Building2, color: "text-cyan-400 bg-cyan-500/15 border-cyan-500/30" },
   { name: "Payments Control", nameAr: "إدارة ومراقبة المدفوعات", desc: "Corporate outgoings, vendor invoices, disbursements, and POs", href: "/financials/inputs/payments", category: "Financials", keywords: "payment payments invoice invoices po voucher outgoings ulker vendor supplier مصروفات مدفوعات فواتير سند صرف", icon: Receipt, color: "text-rose-400 bg-rose-500/15 border-rose-500/30" },
   { name: "Safe Inputs & Cash Vault", nameAr: "تسجيل مدخلات الخزينة", desc: "Daily safe drop reconciliation, cashier float balance", href: "/financials/inputs", category: "Financials", keywords: "safe vault cash float drop reconciliation خزينة عهدة توريد درج", icon: Wallet, color: "text-emerald-400 bg-emerald-500/15 border-emerald-500/30" },
   { name: "Detailed Sales Telemetry", nameAr: "تفاصيل المبيعات اليومية", desc: "Daily sales shift reports, cash and visa reconciliation", href: "/financials/detailed-sales", category: "Financials", keywords: "sales detailed revenue register shifts telemetry مبيعات تقفيل وردية كاش فيزا", icon: Activity, color: "text-emerald-400 bg-emerald-500/15 border-emerald-500/30" },
