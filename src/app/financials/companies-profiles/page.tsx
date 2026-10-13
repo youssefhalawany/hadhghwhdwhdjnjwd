@@ -40,6 +40,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
+import { useBranch } from "@/context/BranchContext";
 import { triggerHapticFeedback } from "@/lib/pwaBadges";
 import { toast } from "sonner";
 import {
@@ -60,6 +61,7 @@ export default function CompaniesProfilesPage() {
 
   const { language } = useLanguage();
   const isAr = language === "ar";
+  const { currentBranch } = useBranch();
 
   // Data states
   const [profiles, setProfiles] = useState<CompanyProfile[]>([]);
@@ -265,44 +267,174 @@ export default function CompaniesProfilesPage() {
   const handleExportExcel = async () => {
     if (!activeCompany) return;
     try {
-      const rows = (activeCompany.events || []).map((e) => ({
-        date: e.date,
-        type: e.type.toUpperCase(),
-        title: e.titleAr || e.title,
-        amount: e.amount,
-        invoiceNumber: e.invoiceNumber || "-",
-        poNumber: e.poNumber || "-",
-        returnNumber: e.returnNumber || "-",
-        method: e.method || "-",
-        item: e.itemName || "-",
-        qty: e.quantity || "-",
-        notes: e.notes || "-",
-      }));
+      // 1. Sort events chronologically (oldest first) so running balance flows properly
+      const sortedEvents = [...(activeCompany.events || [])].sort((a, b) => {
+        const da = a.date || "";
+        const db = b.date || "";
+        if (da !== db) return da.localeCompare(db);
+        return (a.createdAt || "").localeCompare(b.createdAt || "");
+      });
+
+      let currentBalance = 0;
+      const rows = sortedEvents.map((e, idx) => {
+        const isCredit = e.type === "credit";
+        const isPayment = e.type === "payment" || e.type === "credit_payment";
+        const isReturn = e.type === "return";
+
+        const creditMoney = isCredit ? Number(e.amount || 0) : 0;
+        const paidMoney = isPayment ? Number(e.amount || 0) : 0;
+        const returnMoney = isReturn ? Number(e.amount || 0) : 0;
+
+        // Running balance: Credit increases payable debt, payments and returns decrease it
+        if (isCredit) {
+          currentBalance += creditMoney;
+        } else if (isPayment) {
+          currentBalance -= paidMoney;
+        } else if (isReturn) {
+          currentBalance -= returnMoney;
+        }
+
+        const typeLabelMap: Record<string, string> = {
+          credit: isAr ? "فاتورة آجل (Credit)" : "Credit Invoice",
+          payment: isAr ? "سداد مدفوعات (Payment)" : "Payment Voucher",
+          credit_payment: isAr ? "سداد فاتورة آجل (Payment)" : "Credit Payment",
+          return: isAr ? "مرتجع بضاعة (RTV)" : "Vendor Return (RTV)",
+          expiry: isAr ? "صنف هالك / منتهي (Expiry)" : "Expired / Waste",
+          cheque: isAr ? "شيك بنكي (Cheque)" : "Bank Cheque",
+        };
+
+        const methodLabelMap: Record<string, string> = {
+          bank_transfer: isAr ? "تحويل بنكي" : "Bank Transfer",
+          cash: isAr ? "نقدي (خزينة)" : "Cash",
+          cheque: isAr ? "شيك" : "Cheque",
+          credit: isAr ? "آجل" : "Credit",
+        };
+
+        return {
+          index: idx + 1,
+          date: e.date || "-",
+          type: typeLabelMap[e.type] || e.type.toUpperCase(),
+          title: e.titleAr || e.title || "-",
+          creditMoney: creditMoney,
+          paidMoney: paidMoney,
+          returnMoney: returnMoney,
+          runningBalance: currentBalance,
+          invoiceNumber: e.invoiceNumber || "-",
+          poNumber: e.poNumber || "-",
+          returnNumber: e.returnNumber || "-",
+          method: methodLabelMap[e.method || ""] || e.method || "-",
+          item: e.itemName || "-",
+          qty: e.quantity !== undefined && e.quantity !== null ? e.quantity : "-",
+          notes: e.notes || (isPayment && e.transferReference ? `Ref #${e.transferReference}` : "-"),
+        };
+      });
+
+      const branchDisplay =
+        currentBranch === "ola" ? "Circle K - Ola El Koronfol" : "Circle K - El Alamein 4";
+
+      const vendorDossier = {
+        companyName: activeCompany.name,
+        bankName: activeCompany.bankingInfo?.bankName,
+        bankAccountNumber: activeCompany.bankingInfo?.accountNumber,
+        beneficiaryName: activeCompany.bankingInfo?.beneficiaryName || activeCompany.name,
+        contacts: (activeCompany.contacts || []).map(
+          (c) => `${c.name}${c.phone ? ` (${c.phone})` : ""}`
+        ),
+        totalCredits: activeCompany.totalInvoiced || 0,
+        totalPaid: activeCompany.totalPaid || 0,
+        totalReturns: activeCompany.totalReturnsValue || 0,
+        netBalance: activeCompany.remainingCredit || 0,
+      };
+
+      const kpis = [
+        {
+          label: "إجمالي فواتير الآجل (Total Credits)",
+          value: Number(activeCompany.totalInvoiced || 0),
+          isCurrency: true,
+          color: "amber" as const,
+        },
+        {
+          label: "إجمالي المسدد والمدفوعات (Total Paid)",
+          value: Number(activeCompany.totalPaid || 0),
+          isCurrency: true,
+          color: "emerald" as const,
+        },
+        {
+          label: "إجمالي المرتجعات (Total Returns)",
+          value: Number(activeCompany.totalReturnsValue || 0),
+          isCurrency: true,
+          color: "blue" as const,
+        },
+        {
+          label: "صافي الرصيد المستحق (Net Due Balance)",
+          value: Number(activeCompany.remainingCredit || 0),
+          isCurrency: true,
+          color: (activeCompany.remainingCredit || 0) > 0 ? ("crimson" as const) : ("emerald" as const),
+        },
+      ];
+
+      const columns = [
+        { header: "#", key: "index", width: 6, align: "center" as const },
+        { header: "التاريخ (Date)", key: "date", width: 14, align: "center" as const },
+        { header: "النوع (Type)", key: "type", width: 22, align: "center" as const },
+        { header: "البيان والتفاصيل (Description)", key: "title", width: 34, align: "left" as const },
+        {
+          header: "قيمة الآجل (Credits Invoiced)",
+          key: "creditMoney",
+          width: 20,
+          isCurrency: true,
+          headerColor: "FFB45309",
+          align: "right" as const,
+        },
+        {
+          header: "المبلغ المسدد (Paid Amount)",
+          key: "paidMoney",
+          width: 20,
+          isCurrency: true,
+          headerColor: "FF047857",
+          align: "right" as const,
+        },
+        {
+          header: "قيمة المرتجع (Return / RTV)",
+          key: "returnMoney",
+          width: 18,
+          isCurrency: true,
+          headerColor: "FF1D4ED8",
+          align: "right" as const,
+        },
+        {
+          header: "الرصيد التراكمي المستحق (Balance Due)",
+          key: "runningBalance",
+          width: 24,
+          isCurrency: true,
+          headerColor: "FF0F172A",
+          align: "right" as const,
+        },
+        { header: "رقم الفاتورة (Invoice #)", key: "invoiceNumber", width: 18, align: "center" as const },
+        { header: "رقم الـ PO", key: "poNumber", width: 16, align: "center" as const },
+        { header: "رقم المرتجع (RTV)", key: "returnNumber", width: 16, align: "center" as const },
+        { header: "طريقة السداد", key: "method", width: 15, align: "center" as const },
+        { header: "الصنف (Item)", key: "item", width: 24, align: "left" as const },
+        { header: "الكمية (Qty)", key: "qty", width: 11, align: "center" as const },
+        { header: "ملاحظات وبيانات التحويل", key: "notes", width: 28, align: "left" as const },
+      ];
 
       await exportToExcel({
         title: `كشف حساب شركة: ${activeCompany.name}`,
         subtitle: `سجل التعاملات المعتمد والمدفوعات والآجل والمرتجعات والتوالف`,
-        sheetName: "Statement",
-        creator: "Circle K Finance Engine",
-        columns: [
-          { header: "التاريخ (Date)", key: "date", width: 14 },
-          { header: "النوع (Type)", key: "type", width: 12 },
-          { header: "البيان (Description)", key: "title", width: 28 },
-          { header: "المبلغ (Amount)", key: "amount", width: 16, isCurrency: true },
-          { header: "رقم الفاتورة (Invoice #)", key: "invoiceNumber", width: 18 },
-          { header: "رقم الـ PO", key: "poNumber", width: 16 },
-          { header: "رقم المرتجع (RTV)", key: "returnNumber", width: 16 },
-          { header: "طريقة السداد", key: "method", width: 14 },
-          { header: "الصنف", key: "item", width: 22 },
-          { header: "الكمية", key: "qty", width: 10 },
-          { header: "ملاحظات", key: "notes", width: 26 },
-        ],
+        sheetName: "كشف حساب - Statement",
+        creator: "Circle K Egypt - El Alamein 4",
+        branchName: branchDisplay,
+        vendorDossier,
+        kpis,
+        columns,
         data: rows,
       });
-      toast.success(isAr ? "تم تصدير ملف الإكسل بنجاح" : "Excel exported successfully");
+
+      toast.success(isAr ? "تم تصدير كشف الحساب الاحترافي بنجاح" : "Professional Excel ledger exported successfully");
     } catch (e) {
-      console.error(e);
-      toast.error(isAr ? "فشل تصدير الإكسل" : "Failed to export");
+      console.error("Excel export error:", e);
+      toast.error(isAr ? "فشل تصدير ملف الإكسل" : "Failed to export Excel file");
     }
   };
 
