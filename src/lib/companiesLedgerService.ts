@@ -325,9 +325,9 @@ export async function syncCompaniesProfiles(
 
   const getOrCreate = (rawName: string) => {
     const trimmed = (rawName || "").trim();
-    if (!trimmed) return null;
+    if (!trimmed || trimmed === "-" || trimmed === "N/A" || trimmed.toLowerCase() === "undefined" || trimmed.toLowerCase() === "null") return null;
     const norm = normalizeCompanyName(trimmed);
-    if (!norm) return null;
+    if (!norm || norm.length < 2) return null;
 
     if (!companyMap.has(norm)) {
       companyMap.set(norm, {
@@ -345,7 +345,13 @@ export async function syncCompaniesProfiles(
 
   // 1. Process cash_payments
   cashPaymentsRaw.forEach((pay: any) => {
-    if (pay.status === "deleted" || pay.status === "cancelled") return;
+    if (
+      pay.status === "deleted" ||
+      pay.status === "cancelled" ||
+      pay.deleted === true ||
+      pay.isDeleted === true ||
+      pay.isCancelled === true
+    ) return;
     const rawName = (pay.companyName || pay.supplier || pay.vendor || pay.supplierRepName || "").trim();
     const entry = getOrCreate(rawName);
     if (!entry) return;
@@ -395,7 +401,13 @@ export async function syncCompaniesProfiles(
 
   // 2. Process credits (invoices)
   creditsRaw.forEach((cred: any) => {
-    if (cred.status === "deleted" || cred.status === "cancelled" || cred.deleted === true) return;
+    if (
+      cred.status === "deleted" ||
+      cred.status === "cancelled" ||
+      cred.deleted === true ||
+      cred.isDeleted === true ||
+      cred.isCancelled === true
+    ) return;
     const rawName = (cred.companyName || cred.supplierName || cred.supplier || cred.vendor || cred.name || "").trim();
     const entry = getOrCreate(rawName);
     if (!entry) return;
@@ -433,7 +445,13 @@ export async function syncCompaniesProfiles(
 
   // 3. Process credit_payments
   creditPaymentsRaw.forEach((cp: any) => {
-    if (cp.status === "deleted" || cp.status === "cancelled") return;
+    if (
+      cp.status === "deleted" ||
+      cp.status === "cancelled" ||
+      cp.deleted === true ||
+      cp.isDeleted === true ||
+      cp.isCancelled === true
+    ) return;
     const rawName = (cp.companyName || cp.supplierName || cp.supplier || cp.vendor || "").trim();
     const entry = getOrCreate(rawName);
     if (!entry) return;
@@ -464,7 +482,12 @@ export async function syncCompaniesProfiles(
 
   // 4. Process supplier_returns
   supplierReturnsRaw.forEach((ret: any) => {
-    if (ret.isDeleted === true) return;
+    if (
+      ret.isDeleted === true ||
+      ret.deleted === true ||
+      ret.status === "deleted" ||
+      ret.status === "cancelled"
+    ) return;
     const rawName = (ret.supplier || ret.supplierName || ret.companyName || ret.vendor || "").trim();
     const entry = getOrCreate(rawName);
     if (!entry) return;
@@ -499,6 +522,12 @@ export async function syncCompaniesProfiles(
 
   // 5. Process expiries
   expiriesRaw.forEach((exp: any) => {
+    if (
+      exp.status === "deleted" ||
+      exp.status === "cancelled" ||
+      exp.deleted === true ||
+      exp.isDeleted === true
+    ) return;
     const rawName = (exp.supplier || exp.vendor || exp.companyName || "").trim();
     const entry = getOrCreate(rawName);
     if (!entry) return;
@@ -534,6 +563,12 @@ export async function syncCompaniesProfiles(
 
   // 6. Process cheques
   chequesRaw.forEach((chq: any) => {
+    if (
+      chq.status === "deleted" ||
+      chq.status === "cancelled" ||
+      chq.deleted === true ||
+      chq.isDeleted === true
+    ) return;
     const rawName = (chq.companyName || chq.payee || chq.supplier || chq.beneficiary || "").trim();
     const entry = getOrCreate(rawName);
     if (!entry) return;
@@ -570,6 +605,10 @@ export async function syncCompaniesProfiles(
   let grandTotalExpiriesValue = 0;
 
   companyMap.forEach((data, normId) => {
+    // Strictly omit companies with no active transactions or blank names
+    if (!data.events || data.events.length === 0) return;
+    if (!data.canonicalName || data.canonicalName.trim().length < 2) return;
+
     // Sort events descending by date
     const sortedEvents = data.events.sort((a, b) => {
       const dComp = b.date.localeCompare(a.date);
