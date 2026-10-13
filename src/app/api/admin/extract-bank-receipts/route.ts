@@ -119,9 +119,36 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    // Mode A: Direct image extraction (e.g. pasted in payments form)
+    // Mode A: Direct image extraction (e.g. pasted in payments form or specific company card)
     if (body.imageBase64) {
       const extracted = await extractBankReceiptData(body.imageBase64);
+      
+      // If companyName or companyId is provided, propagate the extracted bank details
+      if (body.companyName && extracted && (extracted.bankName || extracted.bankAccountNumber)) {
+        try {
+          const db = getAdminDb();
+          const snap = await db.collection("cash_payments")
+            .where("companyName", "==", body.companyName)
+            .get();
+            
+          const batch = db.batch();
+          snap.forEach(d => {
+            const updatePayload: Record<string, any> = {
+              bankExtractedAt: new Date().toISOString(),
+            };
+            if (extracted.bankName) updatePayload.bankName = extracted.bankName;
+            if (extracted.bankAccountNumber) updatePayload.bankAccountNumber = extracted.bankAccountNumber;
+            if (extracted.beneficiaryName) updatePayload.beneficiaryName = extracted.beneficiaryName;
+            if (extracted.transferReference) updatePayload.transferReference = extracted.transferReference;
+            if (extracted.senderName) updatePayload.bankSenderName = extracted.senderName;
+            batch.update(d.ref, updatePayload);
+          });
+          await batch.commit();
+        } catch (dbErr) {
+          console.warn("Failed to propagate company bank details:", dbErr);
+        }
+      }
+
       return NextResponse.json({ success: true, data: extracted });
     }
 
@@ -161,8 +188,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, data: extracted, docId: body.docId });
     }
 
-    // Mode C: Incremental batch extraction
-    const limitNum = Math.min(20, Math.max(1, Number(body.limit || 5)));
+    // Mode C: Incremental batch extraction (cap at 2 to stay strictly within serverless timeout limits)
+    const limitNum = Math.min(2, Math.max(1, Number(body.limit || 2)));
     const snap = await db.collection("cash_payments").where("bankTransferReceiptUrl", "!=", null).get();
 
     const pendingDocs = snap.docs.filter((d) => {

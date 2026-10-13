@@ -160,43 +160,125 @@ export default function CompaniesProfilesPage() {
     }
   };
 
-  // AI Bank Receipts Batch Extractor
+  // AI Bank Receipts Extractor
   const handleScanBankReceiptsAI = async () => {
     setIsScanningReceipts(true);
     toast.loading(
       isAr
-        ? "جاري تدقيق واستخراج بيانات الإيصالات البنكية القديمة بالذكاء الاصطناعي..."
-        : "AI scanning historical bank transfer receipts...",
+        ? "جاري تدقيق واستخراج بيانات الإيصالات البنكية بالذكاء الاصطناعي..."
+        : "AI scanning bank transfer receipts...",
       { id: "scan-bank-receipts" }
     );
     try {
-      const res = await fetch("/api/admin/extract-bank-receipts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ batch: true, limit: 15 }),
-      });
-      const rawText = await res.text();
-      let data: any = null;
-      try {
-        data = JSON.parse(rawText);
-      } catch {
-        throw new Error(res.statusText || "Server response was not valid JSON");
+      // Priority 1: If current active company has a bank receipt on file, extract it directly
+      const companyReceiptUrl = activeCompany?.bankingInfo?.lastTransferReceiptUrl;
+
+      if (companyReceiptUrl) {
+        const res = await fetch("/api/admin/extract-bank-receipts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            imageBase64: companyReceiptUrl,
+            companyName: activeCompany?.name
+          }),
+        });
+
+        const rawText = await res.text();
+        let data: any = null;
+        try {
+          data = JSON.parse(rawText);
+        } catch {
+          if (!res.ok) {
+            throw new Error(
+              res.status === 504 
+                ? (isAr ? "انتهت مهلة استجابة السيرفر، يرجى إعادة المحاولة" : "Server timed out, please retry")
+                : (isAr ? `خطأ بالخادم (${res.status})` : `Server error (${res.status})`)
+            );
+          }
+          throw new Error(isAr ? "تعذر قراءة بيانات السيرفر" : "Invalid server response");
+        }
+
+        toast.dismiss("scan-bank-receipts");
+        if (res.ok && data?.success && data?.data) {
+          const bank = data.data.bankName || "";
+          const acct = data.data.bankAccountNumber || "";
+          toast.success(
+            isAr
+              ? `تم بنجاح قراءة إيصال التحويل وحفظ الحساب: ${bank} (${acct})`
+              : `Extracted bank dossier: ${bank} (${acct})`
+          );
+          handleSync(false);
+        } else {
+          toast.error(data?.error || (isAr ? "فشل استخراج بيانات الإيصال" : "Failed to extract receipt"));
+        }
+        return;
+      }
+
+      // Priority 2: General batch extraction (chunks of 2 max to prevent serverless timeouts)
+      let totalProcessed = 0;
+      let iterations = 0;
+      const MAX_ITERATIONS = 4; // up to 8 receipts max per run
+
+      while (iterations < MAX_ITERATIONS) {
+        iterations++;
+        const res = await fetch("/api/admin/extract-bank-receipts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ batch: true, limit: 2 }),
+        });
+
+        const rawText = await res.text();
+        let data: any = null;
+        try {
+          data = JSON.parse(rawText);
+        } catch {
+          if (!res.ok) {
+            throw new Error(
+              res.status === 504 
+                ? (isAr ? "انتهت مهلة استجابة السيرفر، يرجى إعادة المحاولة" : "Server timed out, please retry")
+                : (isAr ? `خطأ بالخادم (${res.status})` : `Server error (${res.status})`)
+            );
+          }
+          throw new Error(isAr ? "تعذر قراءة بيانات السيرفر" : "Invalid server response");
+        }
+
+        if (!res.ok || !data?.success) {
+          throw new Error(data?.error || (isAr ? "فشل استخراج الإيصالات" : "Failed to process receipts"));
+        }
+
+        const count = data.processed || 0;
+        totalProcessed += count;
+
+        if (count === 0) {
+          break; // no more pending receipts!
+        }
+
+        toast.loading(
+          isAr
+            ? `جاري استخراج الإيصالات البنكية... (تم إنجاز ${totalProcessed})`
+            : `Scanning receipts... (${totalProcessed} completed)`,
+          { id: "scan-bank-receipts" }
+        );
       }
 
       toast.dismiss("scan-bank-receipts");
-      if (res.ok && data?.success) {
+      if (totalProcessed > 0) {
         toast.success(
           isAr
-            ? `تم بنجاح قراءة واستخراج بيانات ${data.processed || 0} إيصال بنكي وحفظها بالسجلات!`
-            : `Extracted & saved ${data.processed || 0} bank transfer receipts to ledger!`
+            ? `تم بنجاح قراءة واستخراج بيانات ${totalProcessed} إيصال بنكي وحفظها بالسجلات!`
+            : `Extracted & saved ${totalProcessed} bank transfer receipts to ledger!`
         );
         handleSync(false);
       } else {
-        toast.error(data?.error || "Failed to scan receipts");
+        toast.success(
+          isAr
+            ? "جميع الإيصالات البنكية تم تدقيقها واستخراج بياناتها مسبقاً!"
+            : "All bank receipts are already extracted and up to date!"
+        );
       }
     } catch (err: any) {
       toast.dismiss("scan-bank-receipts");
-      toast.error(err.message || "Failed to scan receipts");
+      toast.error(err.message || (isAr ? "فشل استخراج الإيصالات" : "Failed to scan receipts"));
     } finally {
       setIsScanningReceipts(false);
     }
