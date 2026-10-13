@@ -15,19 +15,40 @@ const genAI = new GoogleGenerativeAI(GEMINI_KEY);
 
 const MODELS_TO_TRY = [
   "gemini-3.5-flash-lite",
-  "gemini-3.5-flash",
+  "gemini-3.1-flash-lite",
   "gemini-3.8-flash",
+  "gemini-3.6-flash",
   "gemini-flash-latest",
 ];
 
 export async function extractBankReceiptData(receiptBase64OrUrl: string): Promise<any> {
-  let base64Data = receiptBase64OrUrl;
+  let base64Data = "";
   let mimeType = "image/jpeg";
-  if (receiptBase64OrUrl.includes(";base64,")) {
-    const parts = receiptBase64OrUrl.split(";base64,");
-    base64Data = parts[1];
-    const match = parts[0].match(/data:(.*)/);
-    if (match && match[1]) mimeType = match[1];
+
+  if (!receiptBase64OrUrl) {
+    throw new Error("Empty receipt image provided");
+  }
+
+  // Handle URL vs Data URL vs raw Base64
+  if (receiptBase64OrUrl.startsWith("http://") || receiptBase64OrUrl.startsWith("https://")) {
+    const res = await fetch(receiptBase64OrUrl);
+    if (!res.ok) throw new Error(`Failed to fetch receipt from URL: ${res.statusText}`);
+    const arrayBuffer = await res.arrayBuffer();
+    base64Data = Buffer.from(arrayBuffer).toString("base64");
+    const contentType = res.headers.get("content-type");
+    if (contentType) mimeType = contentType.split(";")[0].trim();
+  } else if (receiptBase64OrUrl.includes(",")) {
+    const commaIdx = receiptBase64OrUrl.indexOf(",");
+    const meta = receiptBase64OrUrl.substring(0, commaIdx);
+    base64Data = receiptBase64OrUrl.substring(commaIdx + 1).replace(/\s+/g, "");
+    const match = meta.match(/data:([^;]+)/);
+    if (match && match[1]) mimeType = match[1].trim();
+  } else {
+    base64Data = receiptBase64OrUrl.replace(/\s+/g, "");
+  }
+
+  if (!base64Data) {
+    throw new Error("Failed to parse valid base64 data from receipt");
   }
 
   const prompt = `
@@ -73,11 +94,15 @@ Return ONLY a valid JSON object matching these exact keys without markdown or co
 
       const text = res.response.text();
       if (text) {
-        return JSON.parse(text);
+        const cleaned = text.replace(/```(?:json)?/gi, "").replace(/```/g, "").trim();
+        return JSON.parse(cleaned);
       }
     } catch (e: any) {
       lastErr = e;
       console.warn(`[Bank Receipt OCR - Model ${modelName} failed]:`, e?.message || e);
+      if (e?.status === 503 || e?.message?.includes("503")) {
+        await new Promise((r) => setTimeout(r, 600));
+      }
     }
   }
 

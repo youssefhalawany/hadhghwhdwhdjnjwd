@@ -11,10 +11,10 @@ const genAI = new GoogleGenerativeAI(GEMINI_KEY);
 // High-speed vision model list with graceful fallback
 async function generateFastPOExtraction(prompt: string, inlineData: { data: string; mimeType: string }) {
   const modelsToTry = [
-    "gemini-2.5-flash",
-    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
+    "gemini-3.8-flash",
     "gemini-3.6-flash",
-    "gemini-2.5-pro",
     "gemini-flash-latest"
   ];
   let lastError: any = null;
@@ -46,6 +46,9 @@ async function generateFastPOExtraction(prompt: string, inlineData: { data: stri
     } catch (error: any) {
       lastError = error;
       console.warn(`[PO Vision Scanner] Model ${modelName} failed, trying next:`, error?.message || error);
+      if (error?.status === 503 || error?.message?.includes("503")) {
+        await new Promise((r) => setTimeout(r, 600));
+      }
     }
   }
 
@@ -65,17 +68,36 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Gemini API key is not configured on the server." }, { status: 500 });
     }
 
-    // Extract the base64 data and mime type
+    // Extract the base64 data and mime type cleanly
     let mimeType = "image/jpeg";
-    let base64Data = image;
+    let base64Data = "";
 
-    if (image.includes(";base64,")) {
-      const parts = image.split(";base64,");
-      const match = parts[0].match(/data:(.*)/);
-      if (match && match[1]) {
-        mimeType = match[1];
+    if (image.startsWith("http://") || image.startsWith("https://")) {
+      try {
+        const imgRes = await fetch(image);
+        if (imgRes.ok) {
+          const buf = await imgRes.arrayBuffer();
+          base64Data = Buffer.from(buf).toString("base64");
+          const cType = imgRes.headers.get("content-type");
+          if (cType) mimeType = cType.split(";")[0].trim();
+        }
+      } catch (fetchErr) {
+        console.warn("Failed to fetch image from URL:", fetchErr);
       }
-      base64Data = parts[1];
+    } else if (image.includes(",")) {
+      const commaIdx = image.indexOf(",");
+      const meta = image.substring(0, commaIdx);
+      base64Data = image.substring(commaIdx + 1).replace(/\s+/g, "");
+      const match = meta.match(/data:([^;]+)/);
+      if (match && match[1]) {
+        mimeType = match[1].trim();
+      }
+    } else {
+      base64Data = image.replace(/\s+/g, "");
+    }
+
+    if (!base64Data) {
+      return NextResponse.json({ error: "Failed to parse base64 image data" }, { status: 400 });
     }
 
     const prompt = `

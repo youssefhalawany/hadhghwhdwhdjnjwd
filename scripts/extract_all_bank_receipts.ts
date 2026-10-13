@@ -22,13 +22,24 @@ function normalizeName(name: string): string {
 }
 
 async function extractOne(docRef: FirebaseFirestore.DocumentReference, receiptUrl: string): Promise<any> {
-  let base64Data = receiptUrl;
+  let base64Data = "";
   let mimeType = "image/jpeg";
-  if (receiptUrl.includes(";base64,")) {
-    const parts = receiptUrl.split(";base64,");
-    base64Data = parts[1];
-    const match = parts[0].match(/data:(.*)/);
-    if (match && match[1]) mimeType = match[1];
+
+  if (receiptUrl.startsWith("http://") || receiptUrl.startsWith("https://")) {
+    const res = await fetch(receiptUrl);
+    if (!res.ok) throw new Error(`Failed to fetch receipt from URL: ${res.statusText}`);
+    const arrayBuffer = await res.arrayBuffer();
+    base64Data = Buffer.from(arrayBuffer).toString("base64");
+    const contentType = res.headers.get("content-type");
+    if (contentType) mimeType = contentType.split(";")[0].trim();
+  } else if (receiptUrl.includes(",")) {
+    const commaIdx = receiptUrl.indexOf(",");
+    const meta = receiptUrl.substring(0, commaIdx);
+    base64Data = receiptUrl.substring(commaIdx + 1).replace(/\s+/g, "");
+    const match = meta.match(/data:([^;]+)/);
+    if (match && match[1]) mimeType = match[1].trim();
+  } else {
+    base64Data = receiptUrl.replace(/\s+/g, "");
   }
 
   const model = genAI.getGenerativeModel({
