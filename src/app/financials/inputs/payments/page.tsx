@@ -1001,35 +1001,45 @@ function cleanPayload<T = any>(obj: any): T {
 }
 
 const compressImage = (file: File, maxWidth: number = 800, quality: number = 0.65): Promise<string> => {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const reader = new FileReader();
-    reader.readAsDataURL(file);
     reader.onload = (event) => {
+      const rawData = event.target?.result as string;
+      if (!rawData) {
+        resolve("");
+        return;
+      }
       const img = new window.Image();
-      img.src = event.target?.result as string;
+      img.crossOrigin = "anonymous";
       img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
+        try {
+          const canvas = document.createElement('canvas');
+          let width = Math.round(img.width || 800);
+          let height = Math.round(img.height || 1000);
 
-        if (width > maxWidth) {
-          height = Math.round((height * maxWidth) / width);
-          width = maxWidth;
-        }
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
 
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', quality));
-        } else {
-          resolve(event.target?.result as string);
+          canvas.width = Math.max(1, width);
+          canvas.height = Math.max(1, height);
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+            return;
+          }
+        } catch (canvasErr) {
+          console.warn("Canvas compression fallback:", canvasErr);
         }
+        resolve(rawData);
       };
-      img.onerror = (error) => reject(error);
+      img.onerror = () => resolve(rawData);
+      img.src = rawData;
     };
-    reader.onerror = (error) => reject(error);
+    reader.onerror = () => resolve("");
+    reader.readAsDataURL(file);
   });
 };
 
@@ -1853,21 +1863,26 @@ export default function PaymentsRedesignPage() {
     try {
       setIsExtractingBankReceipt(true);
       const compressedBase64 = await compressImage(file, 800, 0.65);
+      if (!compressedBase64) return;
       const res = await fetch("/api/admin/extract-bank-receipts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imageBase64: compressedBase64 }),
       });
-      if (res.ok) {
-        const json = await res.json();
-        if (json.data && (json.data.bankName || json.data.bankAccountNumber || json.data.transferReference)) {
-          setExtractedBankInfo(json.data);
-          toast.success(
-            isAr
-              ? `تم استخراج بيانات البنك تلقائياً: ${json.data.bankName || ""} (${json.data.bankAccountNumber || ""})`
-              : `Extracted bank details: ${json.data.bankName || ""} (${json.data.bankAccountNumber || ""})`
-          );
-        }
+      const rawText = await res.text();
+      let json: any = null;
+      try {
+        json = JSON.parse(rawText);
+      } catch (parseErr) {
+        console.warn("Could not parse bank receipt extraction response");
+      }
+      if (res.ok && json?.data && (json.data.bankName || json.data.bankAccountNumber || json.data.transferReference)) {
+        setExtractedBankInfo(json.data);
+        toast.success(
+          isAr
+            ? `تم استخراج بيانات البنك تلقائياً: ${json.data.bankName || ""} (${json.data.bankAccountNumber || ""})`
+            : `Extracted bank details: ${json.data.bankName || ""} (${json.data.bankAccountNumber || ""})`
+        );
       }
     } catch (e) {
       console.warn("Auto bank extraction failed:", e);
@@ -1915,7 +1930,13 @@ export default function PaymentsRedesignPage() {
         if (response.status === 429) throw new Error("RATE_LIMIT");
         throw new Error('Failed to process image');
       }
-      const data = await response.json();
+      const rawText = await response.text();
+      let data: any = {};
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        throw new Error("Invalid response from server");
+      }
 
       let newItems: any[] = [];
       if (data.items && Array.isArray(data.items)) {
@@ -2005,7 +2026,13 @@ export default function PaymentsRedesignPage() {
         if (response.status === 429) throw new Error("RATE_LIMIT");
         throw new Error('Failed to process image');
       }
-      const data = await response.json();
+      const rawText = await response.text();
+      let data: any = {};
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        throw new Error("Invalid response from server");
+      }
 
       if (data.poNumber) setPoNumber(data.poNumber);
       if (data.invoiceNumber) setInvoiceNumber(data.invoiceNumber);

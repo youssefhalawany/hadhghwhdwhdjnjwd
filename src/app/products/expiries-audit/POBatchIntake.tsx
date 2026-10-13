@@ -163,9 +163,16 @@ export function POBatchIntake({ currentBranch, onBatchSaved }: Props) {
         body: JSON.stringify({ image: base64Image }),
       });
 
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        throw new Error(data.error || (isAr ? "فشل في قراءة الفاتورة" : "Failed to extract PO details"));
+      const rawText = await res.text();
+      let data: any = null;
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        throw new Error(res.statusText || (isAr ? "فشل في قراءة الفاتورة" : "Failed to extract PO details"));
+      }
+
+      if (!res.ok || data?.error) {
+        throw new Error(data?.error || (isAr ? "فشل في قراءة الفاتورة" : "Failed to extract PO details"));
       }
 
       const extractedSupplier = data.companyName || data.supplier || data.vendor || data.supplierName || (isAr ? "مورد عام" : "General Vendor");

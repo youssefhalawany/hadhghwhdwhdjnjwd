@@ -21,31 +21,18 @@ function normalizeName(name: string): string {
   return n;
 }
 
+import { prepareVisionImage } from "../src/lib/vision-sanitizer";
+
+const MODELS_TO_TRY = [
+  "gemini-3.1-flash-lite",
+  "gemini-3.5-flash-lite",
+  "gemini-3.8-flash",
+  "gemini-3.6-flash",
+  "gemini-flash-latest"
+];
+
 async function extractOne(docRef: FirebaseFirestore.DocumentReference, receiptUrl: string): Promise<any> {
-  let base64Data = "";
-  let mimeType = "image/jpeg";
-
-  if (receiptUrl.startsWith("http://") || receiptUrl.startsWith("https://")) {
-    const res = await fetch(receiptUrl);
-    if (!res.ok) throw new Error(`Failed to fetch receipt from URL: ${res.statusText}`);
-    const arrayBuffer = await res.arrayBuffer();
-    base64Data = Buffer.from(arrayBuffer).toString("base64");
-    const contentType = res.headers.get("content-type");
-    if (contentType) mimeType = contentType.split(";")[0].trim();
-  } else if (receiptUrl.includes(",")) {
-    const commaIdx = receiptUrl.indexOf(",");
-    const meta = receiptUrl.substring(0, commaIdx);
-    base64Data = receiptUrl.substring(commaIdx + 1).replace(/\s+/g, "");
-    const match = meta.match(/data:([^;]+)/);
-    if (match && match[1]) mimeType = match[1].trim();
-  } else {
-    base64Data = receiptUrl.replace(/\s+/g, "");
-  }
-
-  const model = genAI.getGenerativeModel({
-    model: "gemini-3.5-flash-lite",
-    generationConfig: { responseMimeType: "application/json", temperature: 0.1 },
-  });
+  const { base64Data, mimeType } = await prepareVisionImage(receiptUrl);
 
   const prompt = `
 Extract Egyptian bank transfer details as JSON:
@@ -57,13 +44,30 @@ Extract Egyptian bank transfer details as JSON:
 6. "transferDate": Date (YYYY-MM-DD)
 `;
 
-  const res = await model.generateContent([
-    prompt,
-    { inlineData: { data: base64Data, mimeType } },
-  ]);
+  let lastErr: any = null;
+  for (const modelName of MODELS_TO_TRY) {
+    try {
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        generationConfig: { responseMimeType: "application/json", temperature: 0.1 },
+      });
 
-  const parsed = JSON.parse(res.response.text());
-  return parsed;
+      const res = await model.generateContent([
+        prompt,
+        { inlineData: { data: base64Data, mimeType } },
+      ]);
+
+      const parsed = JSON.parse(res.response.text());
+      return parsed;
+    } catch (e: any) {
+      lastErr = e;
+      if (e?.status === 503 || e?.message?.includes("503")) {
+        await new Promise((r) => setTimeout(r, 600));
+      }
+    }
+  }
+
+  throw lastErr || new Error("All AI models failed to extract receipt");
 }
 
 async function run() {

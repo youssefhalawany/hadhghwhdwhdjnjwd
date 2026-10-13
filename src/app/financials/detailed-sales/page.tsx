@@ -333,42 +333,67 @@ export default function DetailedSalesPage() {
 
     try {
       const getBase64 = (file: File): Promise<string> => {
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader(); reader.readAsDataURL(file);
+        return new Promise((resolve) => {
+          const reader = new FileReader();
           reader.onload = (event) => {
-            const img = new Image(); img.src = event.target?.result as string;
+            const rawData = event.target?.result as string;
+            if (!rawData) {
+              resolve("");
+              return;
+            }
+            const img = new Image();
+            img.crossOrigin = "anonymous";
             img.onload = () => {
-              const canvas = document.createElement('canvas');
-              const MAX_WIDTH = 1800; const MAX_HEIGHT = 2800;
-              let width = img.width; let height = img.height;
-              if (width > height) { if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; } } 
-              else { if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; } }
-              canvas.width = width; canvas.height = height;
-              const ctx = canvas.getContext('2d');
-              if (ctx) { ctx.drawImage(img, 0, 0, width, height); resolve(canvas.toDataURL('image/jpeg', 0.75)); } 
-              else { resolve(event.target?.result as string); }
+              try {
+                const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 1800; const MAX_HEIGHT = 2800;
+                let width = Math.round(img.width || 800);
+                let height = Math.round(img.height || 1000);
+                if (width > height) { if (width > MAX_WIDTH) { height = Math.round(height * (MAX_WIDTH / width)); width = MAX_WIDTH; } } 
+                else { if (height > MAX_HEIGHT) { width = Math.round(width * (MAX_HEIGHT / height)); height = MAX_HEIGHT; } }
+                canvas.width = Math.max(1, width);
+                canvas.height = Math.max(1, height);
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                  ctx.drawImage(img, 0, 0, width, height);
+                  resolve(canvas.toDataURL('image/jpeg', 0.75));
+                  return;
+                }
+              } catch (canvasErr) {
+                console.warn("Canvas compression fallback:", canvasErr);
+              }
+              resolve(rawData);
             };
-            img.onerror = () => reject(new Error("Could not decode image."));
+            img.onerror = () => resolve(rawData);
+            img.src = rawData;
           };
-          reader.onerror = () => reject(new Error("Failed to read the file."));
+          reader.onerror = () => resolve("");
+          reader.readAsDataURL(file);
         });
       };
 
       const base64 = await getBase64(file);
+      if (!base64) throw new Error("Could not read image file");
+
       const res = await fetch("/api/extract-detailed-sales", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imageBase64: base64 }),
       });
 
-      if (!res.ok) {
-        let errorMessage = "Failed to extract data from image";
-        try { const errJson = await res.json(); errorMessage = errJson.error || errorMessage; } catch(e) {}
-        throw new Error(errorMessage);
+      const rawText = await res.text();
+      let json: any = null;
+      try {
+        json = JSON.parse(rawText);
+      } catch {
+        throw new Error(res.statusText || "Server response format error");
       }
 
-      const json = await res.json();
-      if (json.success && json.data) {
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.error || "Failed to extract data from image");
+      }
+
+      if (json.data) {
         setExtractedData(json.data); setAiAnalysis(null); toast.success("Report data extracted successfully!");
-      } else { throw new Error(json.error || "Invalid response format"); }
+      } else { throw new Error("Invalid response format"); }
     } catch (error: any) {
       console.error(error); const msg = error.message || "Something went wrong."; toast.error(msg); setErrorMsg(msg);
     } finally { setIsProcessing(false); }

@@ -291,48 +291,63 @@ export default function CashierVoidPage() {
     setIsProcessingImage(true);
     
     const getBase64 = (f: File): Promise<string> => {
-      return new Promise((resolve, reject) => {
+      return new Promise((resolve) => {
         const reader = new FileReader();
-        reader.readAsDataURL(f);
         reader.onload = (event) => {
+          const rawData = event.target?.result as string;
+          if (!rawData) {
+            resolve("");
+            return;
+          }
           const img = new Image();
-          img.src = event.target?.result as string;
+          img.crossOrigin = "anonymous";
           img.onload = () => {
-            const canvas = document.createElement('canvas');
-            const MAX_WIDTH = 1200;
-            const MAX_HEIGHT = 1600;
-            let width = img.width;
-            let height = img.height;
+            try {
+              const canvas = document.createElement('canvas');
+              const MAX_WIDTH = 1200;
+              const MAX_HEIGHT = 1600;
+              let width = Math.round(img.width || 800);
+              let height = Math.round(img.height || 1000);
 
-            if (width > height) {
-              if (width > MAX_WIDTH) {
-                height *= MAX_WIDTH / width;
-                width = MAX_WIDTH;
+              if (width > height) {
+                if (width > MAX_WIDTH) {
+                  height = Math.round(height * (MAX_WIDTH / width));
+                  width = MAX_WIDTH;
+                }
+              } else {
+                if (height > MAX_HEIGHT) {
+                  width = Math.round(width * (MAX_HEIGHT / height));
+                  height = MAX_HEIGHT;
+                }
               }
-            } else {
-              if (height > MAX_HEIGHT) {
-                width *= MAX_HEIGHT / height;
-                height = MAX_HEIGHT;
+
+              canvas.width = Math.max(1, width);
+              canvas.height = Math.max(1, height);
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                const compressed = canvas.toDataURL('image/jpeg', 0.65);
+                resolve(compressed);
+                return;
               }
+            } catch (canvasErr) {
+              console.warn("Canvas compression fallback:", canvasErr);
             }
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-              ctx.drawImage(img, 0, 0, width, height);
-              resolve(canvas.toDataURL('image/jpeg', 0.6));
-            } else {
-              resolve(event.target?.result as string);
-            }
+            resolve(rawData);
           };
-          img.onerror = (e) => reject(e);
+          img.onerror = () => resolve(rawData);
+          img.src = rawData;
         };
-        reader.onerror = error => reject(error);
+        reader.onerror = () => resolve("");
+        reader.readAsDataURL(f);
       });
     };
 
     try {
       const base64 = await getBase64(file);
+      if (!base64) {
+        throw new Error("Could not read image file");
+      }
       
       const res = await fetch("/api/extract-receipt", {
         method: "POST",
@@ -340,20 +355,20 @@ export default function CashierVoidPage() {
         body: JSON.stringify({ imageBase64: base64 })
       });
       
-      if (!res.ok) {
-        let errorMessage = "Server error";
-        try {
-           const errJson = await res.json();
-           errorMessage = errJson.error || errorMessage;
-        } catch(e) {
-           errorMessage = res.statusText || errorMessage;
-        }
-        throw new Error(errorMessage);
+      const rawText = await res.text();
+      let json: any = null;
+      try {
+        json = JSON.parse(rawText);
+      } catch {
+        throw new Error(res.statusText || "Server error while processing receipt");
       }
 
-      const json = await res.json();
-      if (json.success && json.data) {
-        const data = json.data;
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.error || "Failed to scan receipt");
+      }
+
+      const data = json.data;
+      if (data) {
         setExtractedReceipt(data);
         setSelectedItems([]); // reset selections
         
@@ -366,7 +381,7 @@ export default function CashierVoidPage() {
         setHasAttemptedScan(true);
         vibrateSuccess();
       } else {
-        throw new Error(json.error || "Failed to extract");
+        throw new Error("No receipt data extracted");
       }
     } catch (err: any) {
       console.error("Extraction error:", err);

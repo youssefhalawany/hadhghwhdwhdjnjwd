@@ -175,9 +175,16 @@ export default function CompaniesProfilesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ batch: true, limit: 15 }),
       });
-      const data = await res.json();
+      const rawText = await res.text();
+      let data: any = null;
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        throw new Error(res.statusText || "Server response was not valid JSON");
+      }
+
       toast.dismiss("scan-bank-receipts");
-      if (data.success) {
+      if (res.ok && data?.success) {
         toast.success(
           isAr
             ? `تم بنجاح قراءة واستخراج بيانات ${data.processed || 0} إيصال بنكي وحفظها بالسجلات!`
@@ -185,7 +192,7 @@ export default function CompaniesProfilesPage() {
         );
         handleSync(false);
       } else {
-        toast.error(data.error || "Failed to scan receipts");
+        toast.error(data?.error || "Failed to scan receipts");
       }
     } catch (err: any) {
       toast.dismiss("scan-bank-receipts");

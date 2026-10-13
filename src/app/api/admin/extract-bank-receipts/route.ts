@@ -14,42 +14,17 @@ const GEMINI_KEY =
 const genAI = new GoogleGenerativeAI(GEMINI_KEY);
 
 const MODELS_TO_TRY = [
-  "gemini-3.5-flash-lite",
   "gemini-3.1-flash-lite",
+  "gemini-3.5-flash-lite",
   "gemini-3.8-flash",
   "gemini-3.6-flash",
   "gemini-flash-latest",
 ];
 
+import { prepareVisionImage, formatVisionApiError } from "@/lib/vision-sanitizer";
+
 export async function extractBankReceiptData(receiptBase64OrUrl: string): Promise<any> {
-  let base64Data = "";
-  let mimeType = "image/jpeg";
-
-  if (!receiptBase64OrUrl) {
-    throw new Error("Empty receipt image provided");
-  }
-
-  // Handle URL vs Data URL vs raw Base64
-  if (receiptBase64OrUrl.startsWith("http://") || receiptBase64OrUrl.startsWith("https://")) {
-    const res = await fetch(receiptBase64OrUrl);
-    if (!res.ok) throw new Error(`Failed to fetch receipt from URL: ${res.statusText}`);
-    const arrayBuffer = await res.arrayBuffer();
-    base64Data = Buffer.from(arrayBuffer).toString("base64");
-    const contentType = res.headers.get("content-type");
-    if (contentType) mimeType = contentType.split(";")[0].trim();
-  } else if (receiptBase64OrUrl.includes(",")) {
-    const commaIdx = receiptBase64OrUrl.indexOf(",");
-    const meta = receiptBase64OrUrl.substring(0, commaIdx);
-    base64Data = receiptBase64OrUrl.substring(commaIdx + 1).replace(/\s+/g, "");
-    const match = meta.match(/data:([^;]+)/);
-    if (match && match[1]) mimeType = match[1].trim();
-  } else {
-    base64Data = receiptBase64OrUrl.replace(/\s+/g, "");
-  }
-
-  if (!base64Data) {
-    throw new Error("Failed to parse valid base64 data from receipt");
-  }
+  const { base64Data, mimeType } = await prepareVisionImage(receiptBase64OrUrl);
 
   const prompt = `
 You are an expert Egyptian & Arab banking system document analyzer.
@@ -228,6 +203,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: any) {
     console.error("Error in extract-bank-receipts route:", err);
-    return NextResponse.json({ error: err.message || "Extraction failed" }, { status: 500 });
+    return NextResponse.json({ error: formatVisionApiError(err) }, { status: 500 });
   }
 }

@@ -133,35 +133,45 @@ function cleanPayload<T = any>(obj: any): T {
 }
 
 const compressImage = (file: File, maxWidth: number = 800, quality: number = 0.65): Promise<string> => {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const reader = new FileReader();
-    reader.readAsDataURL(file);
     reader.onload = (event) => {
+      const rawData = event.target?.result as string;
+      if (!rawData) {
+        resolve("");
+        return;
+      }
       const img = new window.Image();
-      img.src = event.target?.result as string;
+      img.crossOrigin = "anonymous";
       img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-        
-        if (width > maxWidth) {
-          height = Math.round((height * maxWidth) / width);
-          width = maxWidth;
+        try {
+          const canvas = document.createElement('canvas');
+          let width = Math.round(img.width || 800);
+          let height = Math.round(img.height || 1000);
+          
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+          
+          canvas.width = Math.max(1, width);
+          canvas.height = Math.max(1, height);
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+            return;
+          }
+        } catch (canvasErr) {
+          console.warn("Canvas compression fallback:", canvasErr);
         }
-        
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', quality));
-        } else {
-          resolve(event.target?.result as string);
-        }
+        resolve(rawData);
       };
-      img.onerror = (error) => reject(error);
+      img.onerror = () => resolve(rawData);
+      img.src = rawData;
     };
-    reader.onerror = (error) => reject(error);
+    reader.onerror = () => resolve("");
+    reader.readAsDataURL(file);
   });
 };
 
@@ -1517,7 +1527,13 @@ export default function CreditsPage() {
           throw new Error('Failed to process PO');
         }
 
-        const data = await response.json();
+        const rawText = await response.text();
+        let data: any = {};
+        try {
+          data = JSON.parse(rawText);
+        } catch {
+          throw new Error('Failed to parse response');
+        }
         
         // User requested to skip saving PO images to storage for faster processing
         setPoImageUrl("");
@@ -1574,7 +1590,13 @@ export default function CreditsPage() {
           throw new Error('Failed to process PO');
         }
 
-        const data = await response.json();
+        const rawText = await response.text();
+        let data: any = {};
+        try {
+          data = JSON.parse(rawText);
+        } catch {
+          throw new Error('Failed to parse response');
+        }
         
         const rawItems = (data.items && Array.isArray(data.items)) ? data.items : [];
         const standardizedItems = rawItems.map((it: any) => {
@@ -1766,7 +1788,13 @@ export default function CreditsPage() {
         signal: AbortSignal.timeout(18000)
       });
       if (response.ok) {
-        const data = await response.json();
+        const rawText = await response.text();
+        let data: any = {};
+        try {
+          data = JSON.parse(rawText);
+        } catch {
+          data = {};
+        }
         if (data.poNumber && data.poNumber !== "UNKNOWN" && !paymentPoNumber) {
           setPaymentPoNumber(data.poNumber);
         }

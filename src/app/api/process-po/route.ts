@@ -11,8 +11,8 @@ const genAI = new GoogleGenerativeAI(GEMINI_KEY);
 // High-speed vision model list with graceful fallback
 async function generateFastPOExtraction(prompt: string, inlineData: { data: string; mimeType: string }) {
   const modelsToTry = [
-    "gemini-3.5-flash-lite",
     "gemini-3.1-flash-lite",
+    "gemini-3.5-flash-lite",
     "gemini-3.8-flash",
     "gemini-3.6-flash",
     "gemini-flash-latest"
@@ -55,6 +55,8 @@ async function generateFastPOExtraction(prompt: string, inlineData: { data: stri
   throw lastError || new Error("All AI models failed to extract PO data");
 }
 
+import { prepareVisionImage, formatVisionApiError } from "@/lib/vision-sanitizer";
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -68,37 +70,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Gemini API key is not configured on the server." }, { status: 500 });
     }
 
-    // Extract the base64 data and mime type cleanly
-    let mimeType = "image/jpeg";
-    let base64Data = "";
-
-    if (image.startsWith("http://") || image.startsWith("https://")) {
-      try {
-        const imgRes = await fetch(image);
-        if (imgRes.ok) {
-          const buf = await imgRes.arrayBuffer();
-          base64Data = Buffer.from(buf).toString("base64");
-          const cType = imgRes.headers.get("content-type");
-          if (cType) mimeType = cType.split(";")[0].trim();
-        }
-      } catch (fetchErr) {
-        console.warn("Failed to fetch image from URL:", fetchErr);
-      }
-    } else if (image.includes(",")) {
-      const commaIdx = image.indexOf(",");
-      const meta = image.substring(0, commaIdx);
-      base64Data = image.substring(commaIdx + 1).replace(/\s+/g, "");
-      const match = meta.match(/data:([^;]+)/);
-      if (match && match[1]) {
-        mimeType = match[1].trim();
-      }
-    } else {
-      base64Data = image.replace(/\s+/g, "");
-    }
-
-    if (!base64Data) {
-      return NextResponse.json({ error: "Failed to parse base64 image data" }, { status: 400 });
-    }
+    const { base64Data, mimeType } = await prepareVisionImage(image);
 
     const prompt = `
 You are an expert Purchase Order (PO), Delivery Note (إذن تسليم / إذن صرف), and Supplier Invoice data extraction system for convenience retail stores (Circle K, FMCG suppliers).
@@ -166,6 +138,6 @@ Return ONLY a valid JSON object matching this exact schema:
     if (error?.status === 429) {
       return NextResponse.json({ error: "RATE_LIMIT" }, { status: 429 });
     }
-    return NextResponse.json({ error: error.message || "Failed to process image" }, { status: 500 });
+    return NextResponse.json({ error: formatVisionApiError(error) }, { status: 500 });
   }
 }

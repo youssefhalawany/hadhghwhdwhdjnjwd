@@ -6,31 +6,14 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const MODELS_TO_TRY = [
-  "gemini-3.5-flash-lite",
   "gemini-3.1-flash-lite",
+  "gemini-3.5-flash-lite",
   "gemini-3.8-flash",
   "gemini-3.6-flash",
   "gemini-flash-latest"
 ];
 
-function sanitizeImageBase64(input: string): { base64Data: string; mimeType: string } {
-  let base64Data = "";
-  let mimeType = "image/jpeg";
-
-  if (input.includes(",")) {
-    const commaIndex = input.indexOf(",");
-    const metadata = input.substring(0, commaIndex);
-    base64Data = input.substring(commaIndex + 1).replace(/\s+/g, "");
-    const match = metadata.match(/data:([^;]+)/);
-    if (match && match[1]) {
-      mimeType = match[1].trim();
-    }
-  } else {
-    base64Data = input.replace(/\s+/g, "");
-  }
-
-  return { base64Data, mimeType };
-}
+import { prepareVisionImage, formatVisionApiError } from "@/lib/vision-sanitizer";
 
 export async function POST(req: NextRequest) {
   try {
@@ -40,32 +23,13 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const imageBase64 = body.imageBase64 || body.image;
+    const imageInput = body.imageBase64 || body.image;
     
-    if (!imageBase64 || typeof imageBase64 !== "string") {
-      return NextResponse.json({ error: "No image provided." }, { status: 400 });
+    if (!imageInput || typeof imageInput !== "string") {
+      return NextResponse.json({ error: "No receipt image provided." }, { status: 400 });
     }
 
-    let { base64Data, mimeType } = sanitizeImageBase64(imageBase64);
-
-    // If an HTTP/HTTPS URL was supplied, fetch it to base64
-    if (imageBase64.startsWith("http://") || imageBase64.startsWith("https://")) {
-      try {
-        const urlRes = await fetch(imageBase64);
-        if (urlRes.ok) {
-          const buf = await urlRes.arrayBuffer();
-          base64Data = Buffer.from(buf).toString("base64");
-          const cType = urlRes.headers.get("content-type");
-          if (cType) mimeType = cType.split(";")[0].trim();
-        }
-      } catch (fetchErr) {
-        console.warn("Failed to download image from URL:", fetchErr);
-      }
-    }
-
-    if (!base64Data) {
-      return NextResponse.json({ error: "Failed to parse base64 image data." }, { status: 400 });
-    }
+    const { base64Data, mimeType } = await prepareVisionImage(imageInput);
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const prompt = `
@@ -140,6 +104,7 @@ Return ONLY raw JSON without markdown or additional explanation.
 
   } catch (error: any) {
     console.error("Error extracting receipt:", error);
-    return NextResponse.json({ error: error.message || "Failed to process receipt" }, { status: 500 });
+    const friendlyError = formatVisionApiError(error);
+    return NextResponse.json({ error: friendlyError }, { status: 500 });
   }
 }
