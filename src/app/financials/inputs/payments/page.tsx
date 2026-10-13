@@ -811,6 +811,48 @@ function BankTransferReceiptPrintPage({
             </div>
           </div>
 
+          {/* Verified Banking Metadata Strip */}
+          {(payment.bankName || payment.bankAccountNumber || payment.transferReference) && (
+            <div
+              style={{
+                marginTop: '8px',
+                padding: '6px 12px',
+                backgroundColor: '#f0fdf4',
+                border: '1px solid #86efac',
+                borderRadius: '6px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                fontSize: '10px',
+                color: '#166534'
+              }}
+            >
+              <div style={{ display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap' }}>
+                {payment.bankName && (
+                  <div>
+                    <span style={{ fontWeight: '700', color: '#15803d' }}>البنك / Bank: </span>
+                    <span style={{ fontWeight: '900', color: '#0f172a' }}>{payment.bankName}</span>
+                  </div>
+                )}
+                {payment.bankAccountNumber && (
+                  <div>
+                    <span style={{ fontWeight: '700', color: '#15803d' }}>رقم الحساب / Account: </span>
+                    <span style={{ fontWeight: '900', color: '#0f172a', fontFamily: 'monospace' }}>{payment.bankAccountNumber}</span>
+                  </div>
+                )}
+                {payment.transferReference && (
+                  <div>
+                    <span style={{ fontWeight: '700', color: '#15803d' }}>رقم العملية / Ref No: </span>
+                    <span style={{ fontWeight: '900', color: '#0f172a', fontFamily: 'monospace' }}>{payment.transferReference}</span>
+                  </div>
+                )}
+              </div>
+              <div style={{ fontWeight: '800', fontSize: '9px', backgroundColor: '#dcfce7', padding: '2px 8px', borderRadius: '4px', border: '1px solid #bbf7d0', whiteSpace: 'nowrap' }}>
+                ✓ بيانات بنكية مستخرجة ومعتمدة
+              </div>
+            </div>
+          )}
+
           {/* Attached Bank Slip Image Viewer */}
           <div
             style={{
@@ -918,7 +960,8 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   CalendarDays,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Landmark
 } from "lucide-react";
 import { ReturnReceiptContent, PendingReturnTicket, groupPendingReturns } from "@/components/ReturnReceiptContent";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, LineChart, Line, XAxis, YAxis, AreaChart, Area } from 'recharts';
@@ -1265,6 +1308,14 @@ export default function PaymentsRedesignPage() {
   const [showAddSupplier, setShowAddSupplier] = useState(false);
   const [qrCodeData, setQrCodeData] = useState("");
   const [bankTransferFile, setBankTransferFile] = useState<File | null>(null);
+  const [extractedBankInfo, setExtractedBankInfo] = useState<{
+    bankName?: string;
+    bankAccountNumber?: string;
+    beneficiaryName?: string;
+    transferReference?: string;
+    senderName?: string;
+  } | null>(null);
+  const [isExtractingBankReceipt, setIsExtractingBankReceipt] = useState(false);
 
   // Auto-fill from deep-linking (e.g. 1-Click Settle from Company Profile)
   const searchParams = useSearchParams();
@@ -1797,6 +1848,34 @@ export default function PaymentsRedesignPage() {
     }
   };
 
+  const handleAutoExtractBankReceipt = async (file: File) => {
+    setBankTransferFile(file);
+    try {
+      setIsExtractingBankReceipt(true);
+      const compressedBase64 = await compressImage(file, 800, 0.65);
+      const res = await fetch("/api/admin/extract-bank-receipts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64: compressedBase64 }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data && (json.data.bankName || json.data.bankAccountNumber || json.data.transferReference)) {
+          setExtractedBankInfo(json.data);
+          toast.success(
+            isAr
+              ? `تم استخراج بيانات البنك تلقائياً: ${json.data.bankName || ""} (${json.data.bankAccountNumber || ""})`
+              : `Extracted bank details: ${json.data.bankName || ""} (${json.data.bankAccountNumber || ""})`
+          );
+        }
+      }
+    } catch (e) {
+      console.warn("Auto bank extraction failed:", e);
+    } finally {
+      setIsExtractingBankReceipt(false);
+    }
+  };
+
   const handlePasteBankReceipt = async () => {
     try {
       const clipboardItems = await navigator.clipboard.read();
@@ -1805,7 +1884,7 @@ export default function PaymentsRedesignPage() {
         for (const imageType of imageTypes) {
           const blob = await clipboardItem.getType(imageType);
           const file = new File([blob], "pasted-bank-receipt.png", { type: imageType });
-          setBankTransferFile(file);
+          await handleAutoExtractBankReceipt(file);
           toast.success('Bank transfer receipt pasted successfully!');
           return;
         }
@@ -2001,7 +2080,7 @@ export default function PaymentsRedesignPage() {
           if (file) {
             e.preventDefault();
             if (method === 'bank_transfer') {
-              setBankTransferFile(file);
+              handleAutoExtractBankReceipt(file);
               toast.success("Bank transfer receipt pasted!");
             } else {
               handleImageUpload(file);
@@ -2045,6 +2124,8 @@ export default function PaymentsRedesignPage() {
     setPoItems([]);
     setIsProcessingPo(false);
     setBankTransferFile(null);
+    setExtractedBankInfo(null);
+    setIsExtractingBankReceipt(false);
     // Reset Return States
     setHasReturn(false);
     setReturnSource("pending");
@@ -2302,7 +2383,13 @@ export default function PaymentsRedesignPage() {
         returnDetails: returnDetailsPayload,
         ...(finalPoItems.length > 0 ? { items: finalPoItems } : {}),
         ...(finalPoImageUrl ? { poImageUrl: finalPoImageUrl } : {}),
-        ...(bankTransferReceiptUrl ? { bankTransferReceiptUrl } : {})
+        ...(bankTransferReceiptUrl ? { bankTransferReceiptUrl } : {}),
+        ...(extractedBankInfo?.bankName ? { bankName: extractedBankInfo.bankName } : {}),
+        ...(extractedBankInfo?.bankAccountNumber ? { bankAccountNumber: extractedBankInfo.bankAccountNumber } : {}),
+        ...(extractedBankInfo?.beneficiaryName ? { beneficiaryName: extractedBankInfo.beneficiaryName } : {}),
+        ...(extractedBankInfo?.transferReference ? { transferReference: extractedBankInfo.transferReference } : {}),
+        ...(extractedBankInfo?.senderName ? { bankSenderName: extractedBankInfo.senderName } : {}),
+        ...(extractedBankInfo ? { bankExtractedAt: new Date().toISOString() } : {})
       };
 
       const cleanedPayment = cleanPayload(newPayment);
@@ -4236,11 +4323,50 @@ html, body {
                                 accept="image/*"
                                 onChange={(e) => {
                                   if (e.target.files && e.target.files[0]) {
-                                    setBankTransferFile(e.target.files[0]);
+                                    handleAutoExtractBankReceipt(e.target.files[0]);
                                   }
                                 }}
-                                className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200"
+                                className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 cursor-pointer"
                               />
+
+                              {isExtractingBankReceipt && (
+                                <div className="flex items-center gap-2 p-2 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-400 text-xs animate-pulse">
+                                  <Sparkles size={13} className="animate-spin text-blue-400" />
+                                  <span>{isAr ? "جاري قراءة واستخراج بيانات التحويل البنكي بالذكاء الاصطناعي..." : "AI is analyzing & extracting bank receipt details..."}</span>
+                                </div>
+                              )}
+
+                              {extractedBankInfo && !isExtractingBankReceipt && (
+                                <div className="p-3 bg-emerald-500/10 border border-emerald-500/25 rounded-xl space-y-1.5 text-xs text-emerald-300">
+                                  <div className="flex items-center justify-between font-bold text-emerald-400 border-b border-emerald-500/20 pb-1">
+                                    <span className="flex items-center gap-1.5"><Sparkles size={13} /> {isAr ? "بيانات التحويل المستخرجة AI" : "AI Extracted Bank Dossier"}</span>
+                                    <span className="text-[10px] font-mono bg-emerald-500/20 px-1.5 py-0.5 rounded text-emerald-300">VERIFIED</span>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-2 pt-1 text-[11px]">
+                                    <div>
+                                      <span className="text-slate-400 block text-[9px] uppercase font-bold">{isAr ? "اسم البنك" : "Bank"}</span>
+                                      <span className="font-semibold text-white/90">{extractedBankInfo.bankName || "—"}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-slate-400 block text-[9px] uppercase font-bold">{isAr ? "رقم الحساب / IBAN" : "Account / IBAN"}</span>
+                                      <span className="font-mono font-semibold text-emerald-400">{extractedBankInfo.bankAccountNumber || "—"}</span>
+                                    </div>
+                                    {extractedBankInfo.transferReference && (
+                                      <div className="col-span-2">
+                                        <span className="text-slate-400 block text-[9px] uppercase font-bold">{isAr ? "رقم العملية / Ref No" : "Ref / Tx ID"}</span>
+                                        <span className="font-mono font-semibold text-white/90">{extractedBankInfo.transferReference}</span>
+                                      </div>
+                                    )}
+                                    {extractedBankInfo.beneficiaryName && (
+                                      <div className="col-span-2">
+                                        <span className="text-slate-400 block text-[9px] uppercase font-bold">{isAr ? "اسم المستفيد" : "Beneficiary"}</span>
+                                        <span className="font-semibold text-white/80">{extractedBankInfo.beneficiaryName}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
                               {bankTransferFile ? (
                                 <p className="text-xs font-medium text-blue-800 break-all bg-blue-100/50 p-2 rounded-lg border border-blue-200 inline-flex items-center gap-1"><CheckCircle2 size={12} /> {bankTransferFile.name}</p>
                               ) : (

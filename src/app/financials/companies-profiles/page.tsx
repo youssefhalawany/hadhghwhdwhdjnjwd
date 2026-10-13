@@ -37,6 +37,7 @@ import {
   Copy,
   PlusCircle,
   ArrowUpRight,
+  Sparkles,
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { triggerHapticFeedback } from "@/lib/pwaBadges";
@@ -80,6 +81,7 @@ export default function CompaniesProfilesPage() {
   const [showStatementModal, setShowStatementModal] = useState<boolean>(false);
   const [selectedEventForPreview, setSelectedEventForPreview] = useState<CompanyEvent | null>(null);
   const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
+  const [isScanningReceipts, setIsScanningReceipts] = useState<boolean>(false);
 
   // 1. Initial Load: Instant local cache load
   useEffect(() => {
@@ -153,6 +155,41 @@ export default function CompaniesProfilesPage() {
       setSyncing(false);
       setLoading(false);
       setSyncStep("");
+    }
+  };
+
+  // AI Bank Receipts Batch Extractor
+  const handleScanBankReceiptsAI = async () => {
+    setIsScanningReceipts(true);
+    toast.loading(
+      isAr
+        ? "جاري تدقيق واستخراج بيانات الإيصالات البنكية القديمة بالذكاء الاصطناعي..."
+        : "AI scanning historical bank transfer receipts...",
+      { id: "scan-bank-receipts" }
+    );
+    try {
+      const res = await fetch("/api/admin/extract-bank-receipts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ batch: true, limit: 15 }),
+      });
+      const data = await res.json();
+      toast.dismiss("scan-bank-receipts");
+      if (data.success) {
+        toast.success(
+          isAr
+            ? `تم بنجاح قراءة واستخراج بيانات ${data.processed || 0} إيصال بنكي وحفظها بالسجلات!`
+            : `Extracted & saved ${data.processed || 0} bank transfer receipts to ledger!`
+        );
+        handleSync(false);
+      } else {
+        toast.error(data.error || "Failed to scan receipts");
+      }
+    } catch (err: any) {
+      toast.dismiss("scan-bank-receipts");
+      toast.error(err.message || "Failed to scan receipts");
+    } finally {
+      setIsScanningReceipts(false);
     }
   };
 
@@ -747,12 +784,23 @@ export default function CompaniesProfilesPage() {
                           <Landmark className="w-4 h-4 text-emerald-400" />
                           <span>{isAr ? "الحساب البنكي والتحويلات الرقمية" : "Official Banking & Wire Transfer Dossier"}</span>
                         </div>
-                        {activeCompany.bankingInfo?.lastTransferReceiptUrl && (
-                          <span className="flex items-center gap-1 text-[10px] font-bold text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/20">
-                            <ShieldCheck className="w-3 h-3" />
-                            <span>{isAr ? "إيصال مرفق" : "Receipt On File"}</span>
-                          </span>
-                        )}
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={handleScanBankReceiptsAI}
+                            disabled={isScanningReceipts}
+                            className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold transition-all cursor-pointer disabled:opacity-50"
+                            title={isAr ? "قراءة واستخراج بيانات الإيصالات بالذكاء الاصطناعي" : "Scan Bank Receipts with AI"}
+                          >
+                            <Sparkles className="w-3 h-3 text-emerald-400" />
+                            <span>{isScanningReceipts ? (isAr ? "جاري القراءة..." : "Scanning...") : (isAr ? "استخراج الإيصالات AI" : "Sync Receipts AI")}</span>
+                          </button>
+                          {activeCompany.bankingInfo?.lastTransferReceiptUrl && (
+                            <span className="flex items-center gap-1 text-[10px] font-bold text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/20">
+                              <ShieldCheck className="w-3 h-3" />
+                              <span>{isAr ? "إيصال معتمد" : "Receipt On File"}</span>
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       <div className="space-y-2 text-xs">
@@ -772,6 +820,7 @@ export default function CompaniesProfilesPage() {
                           </div>
                         </div>
 
+                        {/* Account Number / IBAN */}
                         <div className="p-2.5 rounded-xl bg-[#090E1A] border border-white/[0.04] flex items-center justify-between gap-2">
                           <div>
                             <span className="text-[10px] text-slate-500 block mb-0.5">{isAr ? "رقم الحساب / الآيبان" : "Account Number / IBAN"}</span>
@@ -794,6 +843,29 @@ export default function CompaniesProfilesPage() {
                           )}
                         </div>
 
+                        {/* Transfer Reference / Transaction ID */}
+                        {activeCompany.bankingInfo?.transferReference && (
+                          <div className="p-2.5 rounded-xl bg-[#090E1A] border border-white/[0.04] flex items-center justify-between gap-2">
+                            <div>
+                              <span className="text-[10px] text-slate-500 block mb-0.5">{isAr ? "رقم العملية / المرجع البنكي" : "Transfer Reference / Ref No"}</span>
+                              <span className="font-mono font-bold text-cyan-300 text-[11px] block">
+                                #{activeCompany.bankingInfo.transferReference}
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(activeCompany.bankingInfo?.transferReference || "");
+                                triggerHapticFeedback(10);
+                                toast.success(isAr ? "تم نسخ رقم العملية" : "Ref copied");
+                              }}
+                              className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                              title={isAr ? "نسخ" : "Copy"}
+                            >
+                              <Copy className="w-3 h-3" />
+                            </button>
+                          </div>
+                        )}
+
                         <div className="p-2.5 rounded-xl bg-[#090E1A] border border-white/[0.04] flex items-center justify-between">
                           <div>
                             <span className="text-[10px] text-slate-500 block">{isAr ? "إجمالي التحويلات البنكية المنفذة" : "Total Wire Transferred"}</span>
@@ -806,8 +878,8 @@ export default function CompaniesProfilesPage() {
                             <button
                               onClick={() =>
                                 setPreviewImage({
-                                  url: activeCompany.bankingInfo!.lastTransferReceiptUrl!,
-                                  title: isAr ? `إشعار التحويل البنكي - ${activeCompany.name}` : `Bank Transfer Slip - ${activeCompany.name}`,
+                                   url: activeCompany.bankingInfo!.lastTransferReceiptUrl!,
+                                   title: isAr ? `إشعار التحويل البنكي - ${activeCompany.name}` : `Bank Transfer Slip - ${activeCompany.name}`,
                                 })
                               }
                               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[11px] font-bold transition-all cursor-pointer"
@@ -1108,6 +1180,14 @@ export default function CompaniesProfilesPage() {
                                       {ev.returnNumber && (
                                         <span className="font-mono text-rose-300">RTV: #{ev.returnNumber}</span>
                                       )}
+                                      {ev.transferReference && (
+                                        <span className="font-mono text-emerald-300 bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/20">
+                                          Ref: #{ev.transferReference}
+                                        </span>
+                                      )}
+                                      {ev.bankName && (
+                                        <span className="text-slate-400 font-medium text-[10px]">({ev.bankName})</span>
+                                      )}
                                       {ev.itemName && <span className="text-slate-300">{ev.itemName}</span>}
                                       {ev.quantity ? (
                                         <span className="text-slate-500 font-mono">({ev.quantity} ق)</span>
@@ -1116,9 +1196,26 @@ export default function CompaniesProfilesPage() {
                                     {ev.notes && <p className="text-[10px] text-slate-500 italic mt-0.5">{ev.notes}</p>}
                                   </td>
 
-                                  {/* Method */}
+                                  {/* Method & Receipt preview */}
                                   <td className="p-3 text-[11px] text-slate-400 whitespace-nowrap">
-                                    {ev.method || "-"}
+                                    <div className="flex items-center gap-1.5">
+                                      <span>{ev.method || "-"}</span>
+                                      {ev.bankTransferReceiptUrl && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setPreviewImage({
+                                              url: ev.bankTransferReceiptUrl!,
+                                              title: isAr ? `إشعار تحويل - ${ev.date}` : `Transfer Slip - ${ev.date}`,
+                                            });
+                                          }}
+                                          className="p-1 text-cyan-400 hover:text-cyan-300 rounded hover:bg-cyan-500/10 transition-colors"
+                                          title={isAr ? "معاينة الإشعار" : "View slip"}
+                                        >
+                                          <Eye className="w-3 h-3" />
+                                        </button>
+                                      )}
+                                    </div>
                                   </td>
 
                                   {/* Amount */}

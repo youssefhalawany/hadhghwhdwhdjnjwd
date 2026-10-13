@@ -42,6 +42,10 @@ export interface CompanyEvent {
   returnDeductionAmount?: number;
   receiptUrl?: string;
   bankTransferReceiptUrl?: string;
+  bankName?: string;
+  bankAccountNumber?: string;
+  beneficiaryName?: string;
+  transferReference?: string;
   notes?: string;
   storeId?: string;
   branchId?: string;
@@ -61,6 +65,8 @@ export interface VendorBankingInfo {
   bankName?: string;
   accountNumber?: string;
   beneficiaryName?: string;
+  transferReference?: string;
+  senderName?: string;
   lastTransferDate?: string;
   lastTransferReceiptUrl?: string;
   totalTransferred: number;
@@ -153,9 +159,20 @@ export function sanitizeCompanyProfile(p: any): CompanyProfile {
       cheque: Number(p?.paymentMethods?.cheque || 0),
       other: Number(p?.paymentMethods?.other || 0),
     },
-    contacts: Array.isArray(p?.contacts) ? p.contacts : [],
-    bankingInfo: p?.bankingInfo || undefined,
+    bankingInfo: p?.bankingInfo
+      ? {
+          bankName: p.bankingInfo.bankName || undefined,
+          accountNumber: p.bankingInfo.accountNumber || undefined,
+          beneficiaryName: p.bankingInfo.beneficiaryName || undefined,
+          transferReference: p.bankingInfo.transferReference || undefined,
+          senderName: p.bankingInfo.senderName || undefined,
+          lastTransferDate: p.bankingInfo.lastTransferDate || undefined,
+          lastTransferReceiptUrl: p.bankingInfo.lastTransferReceiptUrl || undefined,
+          totalTransferred: Number(p.bankingInfo.totalTransferred || 0),
+        }
+      : undefined,
     monthlySpend: Array.isArray(p?.monthlySpend) ? p.monthlySpend : [],
+    contacts: Array.isArray(p?.contacts) ? p.contacts : [],
     events: Array.isArray(p?.events) ? p.events : [],
   };
 }
@@ -402,6 +419,8 @@ export async function syncCompaniesProfiles(
       bankName?: string;
       accountNumber?: string;
       beneficiaryName?: string;
+      transferReference?: string;
+      senderName?: string;
       lastTransferDate?: string;
       lastTransferReceiptUrl?: string;
       totalTransferred: number;
@@ -468,9 +487,13 @@ export async function syncCompaniesProfiles(
     }
 
     // Extract Banking Info
-    if (pay.bankName && !entry.banking.bankName) entry.banking.bankName = pay.bankName;
-    if (pay.bankAccountNumber && !entry.banking.accountNumber) entry.banking.accountNumber = pay.bankAccountNumber;
-    if (pay.beneficiaryName && !entry.banking.beneficiaryName) entry.banking.beneficiaryName = pay.beneficiaryName;
+    if (pay.bankName) entry.banking.bankName = pay.bankName;
+    if (pay.bankAccountNumber || pay.accountNumber) {
+      entry.banking.accountNumber = pay.bankAccountNumber || pay.accountNumber;
+    }
+    if (pay.beneficiaryName) entry.banking.beneficiaryName = pay.beneficiaryName;
+    if (pay.transferReference) entry.banking.transferReference = pay.transferReference;
+    if (pay.bankSenderName) entry.banking.senderName = pay.bankSenderName;
     if (pay.bankTransferReceiptUrl) {
       entry.banking.lastTransferReceiptUrl = pay.bankTransferReceiptUrl;
       entry.banking.lastTransferDate = date;
@@ -514,6 +537,10 @@ export async function syncCompaniesProfiles(
       returnNumber: pay.returnNumber || undefined,
       receiptUrl: pay.receiptUrl || pay.invoiceUrl || undefined,
       bankTransferReceiptUrl: pay.bankTransferReceiptUrl || undefined,
+      bankName: pay.bankName || undefined,
+      bankAccountNumber: pay.bankAccountNumber || pay.accountNumber || undefined,
+      beneficiaryName: pay.beneficiaryName || undefined,
+      transferReference: pay.transferReference || undefined,
       notes: pay.notes || pay.description || undefined,
       storeId: pay.storeId,
       branchId: pay.branchId,
@@ -864,6 +891,7 @@ export async function syncCompaniesProfiles(
       data.banking.bankName ||
       data.banking.accountNumber ||
       data.banking.beneficiaryName ||
+      data.banking.transferReference ||
       data.banking.totalTransferred > 0 ||
       data.banking.lastTransferReceiptUrl
         ? data.banking
